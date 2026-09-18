@@ -582,4 +582,247 @@ class CheckRegistrationUsernameServiceTest {
           "DOWNSTREAM_REJECTION", "ERROR", responseCode, 422, "PAGE", false, null, true);
     }
   }
+
+  // ----- session.isExpired() / wrong scenario (added round 203) -----------------
+
+  @Test
+  void rejectsExpiredSessionAndDoesNotCallAvailability() {
+    var expired =
+        new AuthFlowSession(
+            new AuthFlowSessionId("afs_secret"),
+            AuthFlowScenario.REGISTRATION,
+            AuthFlowStatus.OTP_VERIFIED,
+            sha256("csrf"),
+            "otp_secret",
+            new AuthFlowSessionData("EMAIL", "m****r@example.com", java.util.Map.of()),
+            NOW.minusSeconds(3600),
+            NOW.minusSeconds(3600),
+            NOW.minusSeconds(1));
+    var sessions = FakeSessions.with(expired);
+    var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
+    var service =
+        service(
+            sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
+    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(CheckRegistrationUsernameResultStatus.INVALID_AUTH_FLOW))
+        .verifyComplete();
+    assertThat(availability.calls).isZero();
+  }
+
+  @Test
+  void rejectsWrongScenarioAndDoesNotCallAvailability() {
+    var wrongScenario =
+        new AuthFlowSession(
+            new AuthFlowSessionId("afs_secret"),
+            AuthFlowScenario.LOGIN,
+            AuthFlowStatus.OTP_VERIFIED,
+            sha256("csrf"),
+            "otp_secret",
+            new AuthFlowSessionData("EMAIL", "m****r@example.com", java.util.Map.of()),
+            NOW.minusSeconds(300),
+            NOW.minusSeconds(60),
+            NOW.plusSeconds(1800));
+    var sessions = FakeSessions.with(wrongScenario);
+    var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
+    var service =
+        service(
+            sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
+    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(CheckRegistrationUsernameResultStatus.INVALID_AUTH_FLOW))
+        .verifyComplete();
+    assertThat(availability.calls).isZero();
+  }
+
+  // ----- validUsername() sub-branches (added round 203) --------------------------
+
+  @Test
+  void rejectsUsernameShorterThanMinLength() {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
+    var service =
+        service(
+            sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
+    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "a1")))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(CheckRegistrationUsernameResultStatus.VALIDATION_FAILED))
+        .verifyComplete();
+  }
+
+  @Test
+  void rejectsUsernameLongerThanMaxLength() {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
+    var service =
+        service(
+            sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
+    String tooLong = "a1".repeat(100);
+    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), tooLong)))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(CheckRegistrationUsernameResultStatus.VALIDATION_FAILED))
+        .verifyComplete();
+  }
+
+  @Test
+  void rejectsUsernameContainingWhitespace() {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
+    var service =
+        service(
+            sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
+    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc 1@")))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(CheckRegistrationUsernameResultStatus.VALIDATION_FAILED))
+        .verifyComplete();
+  }
+
+  @Test
+  void rejectsUsernameWithDisallowedCharacters() {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
+    var service =
+        service(
+            sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
+    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1<>")))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(CheckRegistrationUsernameResultStatus.VALIDATION_FAILED))
+        .verifyComplete();
+  }
+
+  // ----- publicUsernameRejectionCode() 3-way branch (added round 203) ------------------
+
+  @Test
+  void mapsCustIdDuplicatedToIsRegisteredCode() {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability =
+        new FakeAvailability(
+            RegistrationUsernameAvailabilityResult.rejected("err.tpa.cust.id.duplicated"));
+    var service =
+        service(
+            sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
+    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+        .assertNext(
+            result ->
+                assertThat(result.errors().getFirst().code())
+                    .isEqualTo("err.registration.username.isRegistered"))
+        .verifyComplete();
+  }
+
+  @Test
+  void mapsMemberRegisteredToIsRegisteredCode() {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability =
+        new FakeAvailability(
+            RegistrationUsernameAvailabilityResult.rejected("err.tpa.member.registered"));
+    var service =
+        service(
+            sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
+    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+        .assertNext(
+            result ->
+                assertThat(result.errors().getFirst().code())
+                    .isEqualTo("err.registration.username.isRegistered"))
+        .verifyComplete();
+  }
+
+  @Test
+  void passesThroughClassifiedRegistrationUsernameCode() {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability =
+        new FakeAvailability(
+            RegistrationUsernameAvailabilityResult.rejected("err.tpa.some.other.rejection"));
+    var service =
+        service(
+            sessions,
+            availability,
+            new FakeClassifier("err.registration.username.someOtherClassifiedCode"));
+    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+        .assertNext(
+            result ->
+                assertThat(result.errors().getFirst().code())
+                    .isEqualTo("err.registration.username.someOtherClassifiedCode"))
+        .verifyComplete();
+  }
+
+  @Test
+  void fallsBackToCheckFailedWhenClassifierCodeIsUnrelated() {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability =
+        new FakeAvailability(
+            RegistrationUsernameAvailabilityResult.rejected("err.tpa.some.other.rejection"));
+    var service = service(sessions, availability, new FakeClassifier("downstream.generic.other"));
+    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+        .assertNext(
+            result ->
+                assertThat(result.errors().getFirst().code())
+                    .isEqualTo("err.registration.username.checkFailed"))
+        .verifyComplete();
+  }
+
+  @Test
+  void blankDownstreamErrorCodeClassifiesAsUnknown() {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.rejected("  "));
+    var classifier = new FakeClassifier("err.registration.username.isRegistered");
+    var service = service(sessions, availability, classifier);
+    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+        .assertNext(result -> assertThat(result).isNotNull())
+        .verifyComplete();
+    assertThat(classifier.lastRequest.downstreamErrorCode()).isEqualTo("unknown");
+  }
+
+  // ----- existingUsernameCheck() RuntimeException catch (added round 203) ------------
+
+  @Test
+  void corruptedUsernameCheckStateIsIgnoredAndAvailabilityIsCalledAgain() {
+    var existing =
+        new UsernameCheckState(
+            new SelectedTrust("TL", "ENV1"), "abc1@", NOW.minusSeconds(60), null);
+    var sessions = FakeSessions.with(session(AuthFlowStatus.USERNAME_VERIFIED, "csrf", existing));
+    var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
+    var throwingProtector = new ThrowingUnprotectUsernameCheckProtector();
+    var service =
+        new CheckRegistrationUsernameService(
+            sessions,
+            expiryRefresh(sessions),
+            availability,
+            new FakePolicy(),
+            new FakeClassifier("err.registration.username.isRegistered"),
+            throwingProtector,
+            CLOCK);
+    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE))
+        .verifyComplete();
+    assertThat(availability.calls).isOne();
+  }
+
+  private static final class ThrowingUnprotectUsernameCheckProtector
+      implements RegistrationUsernameCheckProtectorPort {
+    @Override
+    public RegistrationUsernameCheckEncryptedState protect(UsernameCheckState usernameCheckState) {
+      return new RegistrationUsernameCheckEncryptedState(
+          "encrypted-username-check", "test-v1", "AES_GCM_V1");
+    }
+
+    @Override
+    public UsernameCheckState unprotect(RegistrationUsernameCheckEncryptedState encryptedState) {
+      throw new IllegalStateException("corrupted state");
+    }
+  }
 }
