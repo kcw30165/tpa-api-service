@@ -12,6 +12,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ConfirmationProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FieldProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FormMetadataProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.OptionProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.OptionSetProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageMetadataProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageSchemaProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleActionProperties;
@@ -802,5 +804,197 @@ class PersonalInformationWebMapperTest {
     field.setId(id);
     field.setLabel(Map.of("en", id));
     return field;
+  }
+
+  // ----- option set resolution (added round 207) ---------------------------------
+
+  @Test
+  void optionSetsAreOmittedWhenFormHasNoOptionSets() {
+    var page = pageWithSections(section("main", List.of(field("visible", "visible", "visible"))));
+    Map<String, Object> response =
+        mapper(page).toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
+    Map<String, Object> form = asMap(response.get("form"));
+    assertThat(asMap(form.get("optionSets"))).isEmpty();
+  }
+
+  @Test
+  void optionSetWithBlankIdOrEmptyOptionsIsSkipped() {
+    var page = pageWithSections(section("main", List.of(field("visible", "visible", "visible"))));
+    var form = page.getForm();
+    var blankIdSet = new OptionSetProperties();
+    blankIdSet.setOptions(Map.of("en", List.of(optionOf("v", "l"))));
+    var emptyOptionsSet = new OptionSetProperties();
+    emptyOptionsSet.setOptions(Map.of());
+    java.util.Map<String, OptionSetProperties> optionSets = new java.util.LinkedHashMap<>();
+    optionSets.put(" ", blankIdSet);
+    optionSets.put("empty", emptyOptionsSet);
+    form.setOptionSets(optionSets);
+    Map<String, Object> response =
+        mapper(properties(page))
+            .toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
+    assertThat(asMap(asMap(response.get("form")).get("optionSets"))).isEmpty();
+  }
+
+  @Test
+  void optionSetResolvesUsingPlainCodeFallbackWhenNoVariantMatches() {
+    // NOTE (round 208): resolveOptionSetOptions()'s candidate keys are built
+    // as "<code>.<variant>" from ConfigVariantCandidateGenerator.generate(...),
+    // with the PLAIN code itself always appended as the final, guaranteed
+    // fallback candidate (confirmed round 205's production dump:
+    // optionSetCandidateKeys(...) always ends with "candidates.add(code);").
+    // Using the plain code as the map key (rather than an unverified guess
+    // at the real variant-suffix format) exercises this confirmed fallback
+    // branch directly.
+    var page = pageWithSections(section("main", List.of(field("visible", "visible", "visible"))));
+    var form = page.getForm();
+    var optionSet = new OptionSetProperties();
+    optionSet.setCode("countries");
+    optionSet.setOptions(Map.of("countries", List.of(optionOf("HK", "Hong Kong"))));
+    form.setOptionSets(Map.of("countryOptions", optionSet));
+    Map<String, Object> response =
+        mapper(properties(page))
+            .toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
+    List<?> options = asList(asMap(asMap(response.get("form")).get("optionSets")).get("countryOptions"));
+    assertThat(options).hasSize(1);
+    assertThat(asMap(options.get(0))).containsEntry("value", "HK").containsEntry("label", "Hong Kong");
+  }
+
+  @Test
+  void optionSetWithNoMatchingCandidateKeyIsOmitted() {
+    var page = pageWithSections(section("main", List.of(field("visible", "visible", "visible"))));
+    var form = page.getForm();
+    var optionSet = new OptionSetProperties();
+    optionSet.setCode("countries");
+    optionSet.setOptions(Map.of("fr", List.of(optionOf("HK", "Hong Kong"))));
+    form.setOptionSets(Map.of("countryOptions", optionSet));
+    Map<String, Object> response =
+        mapper(properties(page))
+            .toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
+    assertThat(asMap(asMap(response.get("form")).get("optionSets"))).isEmpty();
+  }
+
+  @Test
+  void optionWithNullValueDefaultsToEmptyString() {
+    // NOTE (round 208): same plain-code-fallback fix as the test above.
+    var page = pageWithSections(section("main", List.of(field("visible", "visible", "visible"))));
+    var form = page.getForm();
+    var optionSet = new OptionSetProperties();
+    optionSet.setCode("statuses");
+    var optionWithNullValue = new OptionProperties();
+    optionWithNullValue.setLabel(Map.of("en", "Active"));
+    form.setOptionSets(Map.of("statusOptions", optionSet));
+    optionSet.setOptions(Map.of("statuses", java.util.Arrays.asList(optionWithNullValue)));
+    Map<String, Object> response =
+        mapper(properties(page))
+            .toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
+    List<?> options = asList(asMap(asMap(response.get("form")).get("optionSets")).get("statusOptions"));
+    assertThat(asMap(options.get(0))).containsEntry("value", "");
+  }
+
+  // ----- accountEnv/trustCode/schemeType variant-aware resolution (added round 207) -----
+
+  @Test
+  void titleResolvesUsingAccountEnvTrustCodeSchemeTypeVariantFromDisplayMap() {
+    var page = new PageSchemaProperties();
+    var metadata = new PageMetadataProperties();
+    metadata.setId("page-id");
+    metadata.setTitleCode("page.title");
+    page.setMetadata(metadata);
+    var form = new FormMetadataProperties();
+    form.setSections(List.of(section("main", List.of(field("visible", "visible", "visible")))));
+    page.setForm(form);
+    page.setDisplay(
+        Map.of("page.title", Map.of("en", "Variant Title for ENV1")));
+    Map<String, Object> response =
+        mapper(properties(page))
+            .toResponse(
+                Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), Map.of(), "en",
+                "ENV1", "TRUST1", "SCHEME1");
+    assertThat(asMap(response.get("page"))).containsEntry("title", "Variant Title for ENV1");
+  }
+
+  // ----- security verification (added round 207) ---------------------------------
+
+  @Test
+  void securityVerificationResolvesLabelAndInstructionAndRemovesCodeFields() {
+    var page = new PageSchemaProperties();
+    page.setMetadata(new PageMetadataProperties());
+    var form = new FormMetadataProperties();
+    form.setSections(List.of(section("main", List.of(field("visible", "visible", "visible")))));
+    page.setForm(form);
+    var confirmation = new ConfirmationProperties();
+    var securityVerification = new java.util.LinkedHashMap<String, Object>();
+    securityVerification.put("labelCode", "security.label");
+    securityVerification.put("label", Map.of("en", "Fallback Label"));
+    securityVerification.put("instructionCode", "security.instruction");
+    securityVerification.put("instruction", Map.of("en", "Fallback Instruction"));
+    confirmation.setSecurityVerification(securityVerification);
+    page.setConfirmation(confirmation);
+    Map<String, Object> response =
+        mapper(properties(page))
+            .toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
+    Map<String, Object> confirmationResponse = asMap(asMap(response.get("form")).get("confirmation"));
+    Map<String, Object> securityResponse = asMap(confirmationResponse.get("securityVerification"));
+    assertThat(securityResponse)
+        .containsEntry("label", "Fallback Label")
+        .containsEntry("instruction", "Fallback Instruction")
+        .doesNotContainKeys("labelCode", "instructionCode");
+  }
+
+  @Test
+  void emptySecurityVerificationIsNotIncludedInConfirmationResponse() {
+    var page = new PageSchemaProperties();
+    page.setMetadata(new PageMetadataProperties());
+    var form = new FormMetadataProperties();
+    form.setSections(List.of(section("main", List.of(field("visible", "visible", "visible")))));
+    page.setForm(form);
+    var confirmation = new ConfirmationProperties();
+    confirmation.setSecurityVerification(Map.of());
+    page.setConfirmation(confirmation);
+    Map<String, Object> response =
+        mapper(properties(page))
+            .toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
+    Map<String, Object> confirmationResponse = asMap(asMap(response.get("form")).get("confirmation"));
+    assertThat(confirmationResponse).doesNotContainKey("securityVerification");
+  }
+
+  // ----- duplicate / missing YAML binding logging (added round 207) ----------------
+
+  @Test
+  void duplicateYamlBindingLogsErrorButFirstFieldStillReceivesValue() {
+    LoggingSanitizer sanitizer = mock(LoggingSanitizer.class);
+    var page =
+        pageWithSections(
+            section(
+                "main",
+                List.of(
+                    boundField("first", "shared", "shared-config", null),
+                    boundField("duplicate", "shared", "shared-config", null))));
+    Map<String, Object> response =
+        new PersonalInformationWebMapper(sanitizer, properties(page))
+            .toResponse(Map.of("shared", "value"), Map.of("shared-config", "EDITABLE_OPTION"), "en");
+    List<?> fields = fields(response);
+    assertThat(fields).hasSize(1);
+    assertThat(asMap(fields.get(0))).containsEntry("name", "first");
+    verify(sanitizer, atLeastOnce()).toSafeString(any());
+  }
+
+  @Test
+  void missingExpectedApimConfigForBoundFieldIsLoggedButDoesNotThrow() {
+    LoggingSanitizer sanitizer = mock(LoggingSanitizer.class);
+    var page =
+        pageWithSections(
+            section("main", List.of(boundField("neverSubmitted", "never", "never-config", null))));
+    Map<String, Object> response =
+        new PersonalInformationWebMapper(sanitizer, properties(page)).toResponse(Map.of(), Map.of(), "en");
+    assertThat(sections(response)).isEmpty();
+    verify(sanitizer, atLeastOnce()).toSafeString(any());
+  }
+
+  private static OptionProperties optionOf(String value, String label) {
+    var option = new OptionProperties();
+    option.setValue(value);
+    option.setLabel(Map.of("en", label));
+    return option;
   }
 }
