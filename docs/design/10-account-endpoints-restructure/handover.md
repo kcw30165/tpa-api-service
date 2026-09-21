@@ -298,3 +298,36 @@ model change.
 Next unblocked step is S3: the summary assembler, composing
 `GetAccountBalanceService` and the gain/loss source port against the R-2, R-4,
 and R-5 aggregation rules already encoded in the S2 response contract tests.
+
+
+## Currency threaded through account gain-loss (R-7)
+
+`GetAccountGainLossCommand` and `FetchAccountGainLossCommand` gained a
+nullable `currency` field, and `ApimAccountGainLossSourceAdapter` now forwards
+it instead of hardcoding `""`. This closes a gap surfaced while investigating
+S3: `TRPGetInvestGL` will soon require currency-aware calculation (matching
+`TRPGetMemberAccBal`), and the previous hardcoded blank would have silently
+computed the wrong currency once that lands.
+
+Done as its own isolated subtask, ahead of the summary assembler. Backward
+compatibility is structural, not just tested: `GetAccountGainLossCommand`
+keeps a nine-argument compatibility constructor at exactly the shape
+`AccountGainLossController` uses, forwarding `null`. The controller file has a
+verified zero-line diff. Currency stays nullable and unnormalized at the
+command layer; only `TrpGetInvestGlApimRequest` normalizes to the wire empty
+string, mirroring the balance side's existing layering.
+
+`GetAccountGainLossService` had zero tests before this subtask. Two were
+added, targeting exactly the propagation behaviour introduced here.
+
+The first attempt threaded the command records and the adapter correctly but
+missed the service call site: the source wraps the constructor call with the
+opening parenthesis at end-of-line, so the first argument is on the line
+*after* the marker, not sharing it. A position-based insertion found an empty
+line and failed closed rather than editing the wrong place. The repair locates
+the target by matching the actual `command.period(),` line's content.
+
+The summary assembler (S3) can now call `GetAccountGainLossCommand`'s
+ten-argument canonical constructor directly with the same currency resolved
+for the balance side, giving a currency-consistent summary payload as Q-7
+requires.

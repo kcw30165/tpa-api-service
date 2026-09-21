@@ -191,3 +191,37 @@ gain/loss.
 
 Note the contrast with the null case in R-5: zero rows means a real zero; rows
 present with null percentage means unreported.
+
+**R-7 Currency threading through account gain-loss — RESOLVED 21/09/2026.**
+`GetAccountGainLossCommand` and `FetchAccountGainLossCommand` gain a nullable,
+unnormalized `currency` field, and `ApimAccountGainLossSourceAdapter` forwards
+`command.currency()` to `TrpGetInvestGlApimRequest` instead of a hardcoded
+`""`. This threads Q-7's decision (`TRPGetInvestGL` accepts `curr`, matching
+`TRPGetMemberAccBal`) all the way from the command layer to the wire.
+
+Done as an isolated subtask ahead of the summary assembler (S3), because
+downstream will require currency-aware gain/loss calculation soon; leaving it
+hardcoded would have silently computed the wrong currency once that lands.
+
+Backward compatible by construction: `GetAccountGainLossCommand` retains a
+nine-argument compatibility constructor at the exact shape
+`AccountGainLossController` already uses, forwarding `currency = null` rather
+than a fabricated empty string. `/api/v1/account/gain-loss` has no currency
+query parameter and is unaffected - verified by an explicit zero-diff audit on
+the controller file. Normalization to the wire `""` form remains solely
+`TrpGetInvestGlApimRequest`'s responsibility, mirroring how
+`GetAccountBalanceCommand` / `FetchAccountBalanceCommand` /
+`TrpGetMemberAccBalApimRequest` already layer this.
+
+`GetAccountGainLossService` had no test coverage before this change; two tests
+were added, guarding exactly the new behaviour: explicit currency forwards
+through, and the compatibility-constructor path forwards `null` rather than
+`""`.
+
+The first implementation attempt applied the command-record and adapter edits
+correctly but failed to thread the service call site, because the source
+wraps the constructor call across lines and the repair script assumed the
+first argument sat on the line immediately after the opening parenthesis. It
+did not; a newline sits there instead. The repair locates the argument line by
+its content (`command.period(),`) rather than by position relative to the
+call marker.
