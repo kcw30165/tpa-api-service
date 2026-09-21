@@ -79,23 +79,46 @@ are identical.
 
 ## Open — blocking implementation
 
-**R-1 Downstream availability.** `TRPGetMemberAccBal.percentage`,
-`TRPGetInvestGL.curr`, `TRPGetInvestGL` `seq`, and `TRPGetGeneralMetaData`
-metadata-name `ab-percentage` are additions, not existing fields. Required
-before S2:
+**R-1 Downstream contract — RESOLVED 21/09/2026.**
 
-- the exact JSON property names and casing. `TRPGetMemberAccBal` uses
-  hyphenated names throughout (`fund-code`, `fund-price`, `fund-seq`), so
-  `percentage` is expected to follow, but `TRPGetInvestGL` mixes conventions
-  (`FundCode`, `GL` versus `fund-name`, `fund-seq`) so its `curr` and `seq`
-  names still need confirming;
-- whether `percentage` arrives as a ratio (0.25) or a display percentage
-  (25.0);
-- the exact `seq` property name;
-- whether these fields are already deployed in the SIT APIM environment, or
-  whether the BFF must tolerate their absence during a transition.
+| Addition | Operation | Wire form |
+| --- | --- | --- |
+| Percentage | `TRPGetMemberAccBal` response | `accBal[].percentage`, e.g. `25.0` |
+| Currency | `TRPGetInvestGL` **request** | `curr` |
+| Sequence | `TRPGetInvestGL` response | `fund-seq` — already exists, no change |
+| Precision | `TRPGetGeneralMetaData` | `metadata-name: "acbal-pcnt"`, `metadata-type: "precision"` |
 
-The BFF cannot be implemented against an unspecified wire contract.
+Four consequences.
+
+*Percentage is display form, not a ratio.* `25.0` means 25%, so the BFF
+renders the value as received and never multiplies by 100. The sample metadata
+row carries `metadata-value: "1"`, giving one decimal place — matching the
+Portfolio Overview UI.
+
+*Percentage sits on the holding row, not the fund row.* It arrives in `accBal`
+alongside `disp-src`, `sub-disp-src`, and `fund-code`, which is the display
+source granularity. `holdings[]` is per fund, so a fund held across several
+display sources returns several percentage values. They are not summed: the
+values are shares of one portfolio, and the fund's share is their sum only if
+the source rows partition the fund exactly. See R-5.
+
+*`fund-seq` already exists.* Q-4 ordering needs no downstream change, and the
+gain/loss DTO gains no sequence field. Note `TRPGetMemberAccBal` also has a
+`fund-seq`; ordering uses the `TRPGetInvestGL` one per Q-4.
+
+*The metadata wire name is `acbal-pcnt`.* The BFF constant is
+`AB_PERCENTAGE`, mapped in `GeneralMetadataWireValues`. An earlier draft of
+this requirement said `ab-pcnt`; `acbal-pcnt` is the later and authoritative
+value.
+
+**R-5 Percentage aggregation across display sources — NEW, blocking.**
+`percentage` is per `accBal` row, so one fund spread over EE/ER or OE/OR
+returns multiple values while `holdings[]` has one row per fund. Is the fund's
+`portfolioPercentage` the sum of its row percentages, or does TAS intend each
+row's value to already be the fund total repeated? Summing is only correct if
+the rows partition the fund's balance, and it is the same aggregation `balance`
+already performs. This must be confirmed rather than assumed, because a wrong
+choice silently produces percentages that do not sum to 100.
 
 **R-2 Balance value for a sold fund.** For a fund present in `TRPGetInvestGL`
 with no current holding, is `holdings[].balance` `"0.00"`, or null/omitted?

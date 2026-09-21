@@ -177,3 +177,30 @@ The rule is now explicit: active contract documents must contain no reference
 to the superseded metadata name, while this handover retains them as labelled
 history. Superseded entries above carry a blockquote marker pointing forward
 to the correction.
+
+## S0-B percentage metadata key
+
+`GeneralMetadataName` gains `AB_PERCENTAGE`, mapped in
+`GeneralMetadataWireValues` to the wire name `acbal-pcnt`. Both files change
+together: `NAMES` is a fixed `Map.of(...)`, so an enum constant without a
+mapping would make `nameToWire` return null silently and `nameFromWire` throw.
+An audit now asserts the enum and the map are the same size.
+
+This is safe only because S0-A landed first. Before `ae440394`,
+`precisions(...)` resolved every enum constant, so adding one would have made
+Account Balance demand `acbal-pcnt` and fail with SYSTEM_FAILURE.
+
+The constant is declared but not yet requested: no use case includes it in a
+required key set, so `/api/v1/account/balance` and `/api/v1/account/gain-loss`
+resolve exactly the metadata they did before. An audit enforces that
+`AB_PERCENTAGE` appears nowhere outside the metadata package.
+
+R-1 is resolved, and the wire forms are recorded in the decisions document.
+`fund-seq` already exists on `TRPGetInvestGL`, so Q-4 ordering needs no
+downstream change. Percentage arrives as display form (`25.0`, not `0.25`), so
+the BFF never multiplies by 100.
+
+The R-1 payload also raised R-5. Percentage arrives per `accBal` row, which is
+display-source granularity, while `holdings[]` is per fund — so a fund held
+across several display sources returns several percentages. Whether they sum
+or repeat must be confirmed before the assembler is written.
