@@ -224,3 +224,21 @@ affected test was widened to pass an explicit empty currency.
 This cost one test-compile failure in the first attempt: the balance records
 compiled cleanly via their compatibility constructors, which masked the fact
 that the gain/loss request had no such fallback.
+
+### Exact-JSON assertion repair
+
+Widening `TrpGetInvestGlApimRequest` broke
+`serializesExactHyphenatedRequestContract` at runtime, not at compile time. The
+test compares the serialized request to a literal JSON string that ended at
+`"mode":"ssi"`; the record now also emits `"curr":""`.
+
+Neither compile gate could catch this. An exact-string assertion is a runtime
+value comparison, so the arity repair in the previous subtask produced a green
+build over a test that was guaranteed to fail. This subtask runs the two
+affected contract tests directly rather than relying on compilation.
+
+The expected JSON now ends `"mode":"ssi","curr":""`, matching record component
+declaration order — the record carries no `@JsonPropertyOrder`. A companion
+test asserts that a selected currency is carried through and that null
+normalizes to empty, mirroring the balance-side contract test which already
+covered both the initial-load and currency-change shapes.
