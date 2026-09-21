@@ -651,4 +651,29 @@ class SortEngineTest {
     assertEquals(List.of("A", "B"), sorted.items().stream().map(Item::name).toList());
     assertEquals(List.of("X", "Y"), sorted.data().items().stream().map(Item::name).toList());
   }
+
+  // ----- leaf field resolves but is not a List (added round 221 - NEVER
+  // exercised by any of the 27 original tests, which only cover
+  // nonexistent-field-name and null-intermediate-path cases) --------------------
+
+  @ApplySorts({
+    @SortList(
+        path = "name",
+        by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))
+  })
+  static void leafIsNotAList() {}
+
+  @Test
+  void failsFastWhenLeafFieldIsNotAList() {
+    // Item.name() resolves successfully (unlike "badPath"'s nonexistent
+    // field), but its value is a String, not a List - this exercises the
+    // "!(fieldValue instanceof List<?> list)" branch inside
+    // rebuildWithSort(...), which no other existing test reaches.
+    var item = new Item("not-a-list-value", null, null, null, null);
+    var ex =
+        assertThrows(IllegalStateException.class, () -> engine.sort(item, annotation("leafIsNotAList")));
+    assertTrue(
+        ex.getMessage().contains("name"),
+        "Error message should mention the leaf field name that did not resolve to a list");
+  }
 }
