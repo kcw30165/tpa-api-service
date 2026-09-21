@@ -10,7 +10,7 @@ One summary request performs, sequentially:
 1. `ReferenceDatePort.resolveReferenceDate(accountEnv)` — once, shared.
 2. `GeneralMetadataResolver.resolve(...)` — once, for the Account Balance
    precision key set (FUND_PRICE, NET_ASSET_VALUE, UNIT_BALANCE, FX_RATE) plus
-   the new GL_PERCENTAGE key.
+   the new AB_PERCENTAGE key.
 3. `AccountBalanceSourcePort.fetchRawAccountBalance(...)` — `TRPGetMemberAccBal`.
 4. `AccountGainLossSourcePort.fetch(...)` — `TRPGetInvestGL`.
 
@@ -20,16 +20,17 @@ ledger cardinality of 18 changes; summary introduces no new APIM operation.
 
 ## Metadata addition
 
-`GeneralMetadataName` gains `GL_PERCENTAGE("gl-percentage")`. It is requested
-only by the summary use case. Account Balance and Account Gain/Loss key sets
-are unchanged, so neither existing feature's metadata behaviour is altered.
+`GeneralMetadataName` gains `AB_PERCENTAGE("ab-percentage")`. It is requested
+only by the summary use case. The Account Balance and Account Gain/Loss key
+sets are unchanged, so neither existing feature's metadata behaviour is
+altered, and `/api/v1/account/balance` does not begin returning a percentage.
 
 Note: `DefaultAccountBalancePresentationTransformer.precisions(...)` iterates
 `GeneralMetadataName.values()` and calls `orElseThrow()` on each. Adding an
-enum constant would make Account Balance demand `gl-percentage` and fail when
+enum constant would make Account Balance demand `ab-percentage` and fail when
 it is absent. That method must be narrowed to the keys the caller actually
-requested before the enum is extended. This is a required S3 repair, not an
-optional cleanup.
+requested before the enum is extended. This is sequenced as S0-A and is a
+required repair, not an optional cleanup.
 
 ## Holdings source
 
@@ -58,7 +59,7 @@ holding is normal; its `balance` follows R-2.
 | `fundName` | Balance `fundDtl` name when the fund is held, else the `InvestGL` name; both via `DynamicDescriptionResolver` with symmetric non-blank fallback |
 | `fundSequence` | `InvestGL` `seq` |
 | `balance` | Sum of `nav` across every matching holding, all display and sub-display sources; R-2 governs the unheld case |
-| `portfolioPercentage` | `InvestGL.percentage`, rendered at `gl-percentage` precision |
+| `portfolioPercentage` | Balance `fundDtl.percentage`, rendered at `ab-percentage` precision; governed by R-4 when the fund is unheld |
 | `gainLoss` | `InvestGL.GL`, rendered at NAV precision |
 
 Sentinel `-1` and null participating NAV values fail through

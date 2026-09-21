@@ -82,7 +82,7 @@ gainLossBreakdown
         ├─ fundName         localized via Accept-Language
         ├─ fundSequence        from TRPGetInvestGL seq
         ├─ balance          string, NAV precision
-        ├─ portfolioPercentage  string, downstream-supplied, gl-percentage precision
+        ├─ portfolioPercentage  string, downstream-supplied, ab-percentage precision
         └─ gainLoss         string, NAV precision, signed
 ```
 

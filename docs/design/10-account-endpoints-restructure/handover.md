@@ -72,6 +72,9 @@ script, or configuration value was affected; the live routing remains
 
 ## Summary contract ratification
 
+> **Superseded.** The operation and metadata name below were corrected later in
+> this document; see "Percentage ownership correction". Retained as history.
+
 Q-1 through Q-8 are closed. The consequential change is Q-3: percentage is no
 longer computed by the BFF. TAS supplies `percentage` on `TRPGetInvestGL` and
 a `gl-percentage` metadata name on `TRPGetGeneralMetaData`, so the BFF renders
@@ -90,10 +93,11 @@ whether `percentage` is a ratio or a display percentage. R-2: the `balance`
 value for a sold fund that has gain/loss but no holding.
 
 One internal repair is now mandatory and is sequenced as S0.
-`DefaultAccountBalancePresentationTransformer.precisions(...)` iterates
-`GeneralMetadataName.values()` and calls `orElseThrow()` per constant, so
-adding `GL_PERCENTAGE` would make Account Balance demand a metadata key it
-does not use. The method must resolve only requested keys first.
+`DefaultAccountBalancePresentationTransformer.precisions(...)` resolves every
+enum constant and calls `orElseThrow()` on each, so adding a new percentage
+constant would make Account Balance demand a metadata key it does not use.
+The method must resolve only requested keys first. (The constant was named
+`GL_PERCENTAGE` at the time of writing; it is now `AB_PERCENTAGE`.)
 
 ## Account number addition
 
@@ -135,3 +139,41 @@ The first attempt at this subtask failed its own audit rather than its edit:
 the check for enum-wide iteration matched the Javadoc sentence describing the
 removed behaviour. The comment no longer names the construct literally, and the
 audit now inspects executable lines only.
+
+## Percentage ownership correction
+
+Q-3 is corrected: `percentage` is supplied by `TRPGetMemberAccBal`, not
+`TRPGetInvestGL`, and the metadata name is `ab-percentage`, not
+`gl-percentage`. `% of Portfolio` is a fund's share of account balance;
+gain/loss can be negative and a negative number cannot express a portfolio
+share, so the field belonged on the balance operation from the start.
+
+Practical consequences. The BFF enum constant becomes
+`AB_PERCENTAGE("ab-percentage")`. The APIM DTO change moves from
+`TrpGetInvestGlFund` to `AccountBalanceFundDetail`, which also means
+`RawAccountBalanceFundDetail` must carry the value through the raw boundary and
+`AccountBalanceApimContentValidator` must tolerate it. Percentage now sits
+beside `fund-code` in `fundDtl`, so it needs no join to reach the right fund.
+
+`/api/v1/account/balance` is unaffected: `ab-percentage` is requested only by
+the summary use case, and the balance response gains no field.
+
+This creates R-4. `holdings[]` is driven by the gain/loss fund list, which is a
+superset of the balance list, so a sold fund has no `fundDtl` row and therefore
+no percentage. R-2 and R-4 both concern the unheld-fund row and should be
+answered together.
+
+S0-A (the `precisions(...)` narrowing) is unaffected by this correction; it is
+enum-agnostic and the Account Balance key set it declares does not change.
+
+### Correction audit note
+
+The percentage-ownership correction was applied in one pass but its audit
+initially failed, because a repository-wide search for the old term matched
+this cumulative handover file — where the superseded decision is recorded on
+purpose, including the sentence stating the new name replaces the old one.
+
+The rule is now explicit: active contract documents must contain no reference
+to the superseded metadata name, while this handover retains them as labelled
+history. Superseded entries above carry a blockquote marker pointing forward
+to the correction.

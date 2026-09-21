@@ -67,11 +67,11 @@ downstream, which removes work from S3 and adds a prerequisite.
 
 ### S0 Metadata enum widening — new, precedes S2
 
-Add `GL_PERCENTAGE("gl-percentage")` to `GeneralMetadataName`, and narrow
+Add `AB_PERCENTAGE("ab-percentage")` to `GeneralMetadataName`, and narrow
 `DefaultAccountBalancePresentationTransformer.precisions(...)` so it resolves
 only the keys its caller requested instead of iterating
 `GeneralMetadataName.values()`. Without this narrowing, adding the enum
-constant makes Account Balance require `gl-percentage` and fail.
+constant makes Account Balance require `ab-percentage` and fail.
 
 Gate: existing Account Balance and Account Gain/Loss metadata tests still pass
 unchanged, proving neither feature's required key set moved.
@@ -83,16 +83,19 @@ downstream-supplied value. `AccountSummaryDataResponse` is unchanged otherwise.
 
 ### S3 revision
 
-No percentage arithmetic. The assembler renders `InvestGL.percentage` at
-`gl-percentage` precision, orders by `InvestGL` `seq`, and drives `holdings[]`
-from the gain/loss fund list. It asserts the Q-5 superset invariant and fails
+No percentage arithmetic. The assembler renders the balance-side
+`fundDtl.percentage` at `ab-percentage` precision, orders by `InvestGL` `seq`,
+and drives `holdings[]` from the gain/loss fund list. It asserts the Q-5 superset invariant and fails
 with SYSTEM_FAILURE when a holding has no gain/loss counterpart.
 
 ### APIM DTO revision — blocked on R-1
 
-`TrpGetInvestGlFund` gains `percentage` and `seq`; `TrpGetInvestGlApimRequest`
-gains `curr`. `AccountGainLossApimContentValidator` must accept the new fields
-without weakening its existing checks. Exact property names and the
+`AccountBalanceFundDetail` gains `percentage`; `TrpGetInvestGlFund` gains
+`seq`; `TrpGetInvestGlApimRequest` gains `curr`. Both
+`AccountBalanceApimContentValidator` and
+`AccountGainLossApimContentValidator` must accept the new fields without
+weakening their existing checks, and `RawAccountBalanceFundDetail` must carry
+`percentage` through the raw boundary. Exact property names and the
 ratio-versus-percentage question are unresolved; see R-1.
 
 ### S2/S3 addendum — accountNumber

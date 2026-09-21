@@ -23,18 +23,25 @@ S1 at commit d160cf01.
 toggle is served by one summary call with no FE follow-up request.
 
 **Q-3 Percentage scale and rounding — RESOLVED, ownership moved downstream.**
-Java does not compute `% of Portfolio`. TAS supplies it:
+Corrected 21/09/2026: percentage belongs to Account Balance, not Gain/Loss.
+`% of Portfolio` is a fund's share of account balance. Gain/loss can be
+negative, and a negative value cannot express a share of a portfolio, so
+siting the field on the gain/loss operation was wrong.
 
-- `TRPGetInvestGL` gains a per-fund `percentage` field.
-- `TRPGetGeneralMetaData` gains metadata-name `gl-percentage`, whose
+Java does not compute the percentage. TAS supplies it:
+
+- `TRPGetMemberAccBal` gains a per-fund `percentage` field.
+- `TRPGetGeneralMetaData` gains metadata-name `ab-percentage`, whose
   `precision` drives rendering.
 
-The BFF adds `GL_PERCENTAGE("gl-percentage")` to `GeneralMetadataName` and
+The BFF adds `AB_PERCENTAGE("ab-percentage")` to `GeneralMetadataName` and
 renders `percentage` through the existing `ExactPrecisionRenderer` with
-`RoundingMode.UNNECESSARY`, exactly as every other monetary field. No division
-is performed in Java and no rounding is introduced anywhere in the account
-feature set. `totalValue` is still aggregated from balance NAV; only the
-per-fund percentage is downstream-owned.
+`RoundingMode.UNNECESSARY`, exactly as every other precision-governed value.
+No division is performed in Java and no rounding is introduced anywhere in
+the account feature set. `totalValue` is still aggregated from balance NAV.
+
+Because the field now arrives on the balance operation, it sits alongside
+`fund-code` in `fundDtl` and needs no join to be attributed to a fund.
 
 **Q-4 Holdings ordering — RESOLVED.** `TRPGetInvestGL` supplies `seq`.
 `holdings[]` is ordered by that field ascending, with trimmed `fundCode` as the
@@ -72,12 +79,16 @@ are identical.
 
 ## Open — blocking implementation
 
-**R-1 Downstream availability.** `TRPGetInvestGL.percentage`,
-`TRPGetInvestGL.curr`, and `TRPGetGeneralMetaData` metadata-name
-`gl-percentage` are additions, not existing fields. Required before S2:
+**R-1 Downstream availability.** `TRPGetMemberAccBal.percentage`,
+`TRPGetInvestGL.curr`, `TRPGetInvestGL` `seq`, and `TRPGetGeneralMetaData`
+metadata-name `ab-percentage` are additions, not existing fields. Required
+before S2:
 
-- the exact JSON property names and casing, noting that `TRPGetInvestGL`
-  already mixes conventions (`FundCode`, `GL` versus `fund-name`, `fund-seq`);
+- the exact JSON property names and casing. `TRPGetMemberAccBal` uses
+  hyphenated names throughout (`fund-code`, `fund-price`, `fund-seq`), so
+  `percentage` is expected to follow, but `TRPGetInvestGL` mixes conventions
+  (`FundCode`, `GL` versus `fund-name`, `fund-seq`) so its `curr` and `seq`
+  names still need confirming;
 - whether `percentage` arrives as a ratio (0.25) or a display percentage
   (25.0);
 - the exact `seq` property name;
@@ -106,3 +117,17 @@ unresolved:
   every existing field in this response envelope is camelCase (`asOfDate`,
   `currencySelection`, `displayAccountId`). This pack assumes `accountNumber`
   for consistency. Confirm, or state that the hyphenated form is required.
+
+**R-4 Percentage for a sold fund.** Percentage now arrives on
+`TRPGetMemberAccBal`, but `holdings[]` is driven by the `TRPGetInvestGL` fund
+list, which per Q-5 is a superset. A sold fund therefore has gain/loss and a
+`seq` but no balance-side `fundDtl` row, and so no `percentage`.
+
+This is the same shape as R-2 and should be answered with it: for an unheld
+fund, is `portfolioPercentage` `"0.0"`, null, or omitted? Zero is arguably
+correct here — a sold fund genuinely occupies zero percent of the current
+portfolio — but that is an assumption, not a decision.
+
+Note that R-2 and R-4 together determine whether an unheld fund row is
+`balance: "0.00", portfolioPercentage: "0.0"` or a pair of nulls. They should
+be resolved consistently.
