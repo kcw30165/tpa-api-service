@@ -5,6 +5,7 @@
 ```
 GET /api/v1/account/summary
 GET /api/v1/account/summary?currency=USD
+GET /api/v1/account/summary?period=YEAR_TO_DATE
 ```
 
 Header profile is identical to `GET /api/v1/account/balance`:
@@ -49,9 +50,9 @@ gainLossBreakdown
  └─ holdings[]
         ├─ fundCode
         ├─ fundName         localized via Accept-Language
-        ├─ fundSequence
+        ├─ fundSequence        from TRPGetInvestGL seq
         ├─ balance          string, NAV precision
-        ├─ portfolioPercentage  string, see composition contract
+        ├─ portfolioPercentage  string, downstream-supplied, gl-percentage precision
         └─ gainLoss         string, NAV precision, signed
 ```
 
@@ -77,7 +78,10 @@ Balance and Account Gain/Loss contracts.
 
 ## Period selection
 
-`gainLossBreakdown.period` is always present and echoes the effective period.
-Whether `summary` accepts a `period` query parameter is open question Q-2; the
-documented default is `SINCE_SCHEME_INCEPTION`, matching
-`/api/v1/account/gain-loss`.
+`period` is an optional query parameter accepting `SINCE_SCHEME_INCEPTION` or
+`YEAR_TO_DATE`, defaulting to `SINCE_SCHEME_INCEPTION`, identical to
+`/api/v1/account/gain-loss`. `gainLossBreakdown.period` always echoes the
+effective value.
+
+`currency` is forwarded to both upstream calls, so the balance sections and the
+gain/loss breakdown are always expressed in the same currency.

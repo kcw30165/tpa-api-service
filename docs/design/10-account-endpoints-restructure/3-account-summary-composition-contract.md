@@ -1,111 +1,88 @@
 # Account Summary Composition Contract
 
+Ratified 21/09/2026. Supersedes the 21/09/2026 draft in which the BFF computed
+`% of Portfolio` and ordered holdings by `fund-seq`.
+
 ## Upstream calls
 
-One summary request performs:
+One summary request performs, sequentially:
 
 1. `ReferenceDatePort.resolveReferenceDate(accountEnv)` — once, shared.
-2. `GeneralMetadataResolver.resolve(...)` — once, with the union of the
-   Account Balance precision key set (FUND_PRICE, NET_ASSET_VALUE,
-   UNIT_BALANCE, FX_RATE) and the Gain/Loss key set (NET_ASSET_VALUE). The
-   union equals the Account Balance set, so no additional metadata key is
-   introduced.
+2. `GeneralMetadataResolver.resolve(...)` — once, for the Account Balance
+   precision key set (FUND_PRICE, NET_ASSET_VALUE, UNIT_BALANCE, FX_RATE) plus
+   the new GL_PERCENTAGE key.
 3. `AccountBalanceSourcePort.fetchRawAccountBalance(...)` — `TRPGetMemberAccBal`.
 4. `AccountGainLossSourcePort.fetch(...)` — `TRPGetInvestGL`.
 
-Steps 3 and 4 share the same resolved reference date and the same resolved
-metadata set. Neither source port, adapter, DTO, nor APIM path is modified;
-`summary` is a new composing use case over the two existing ports.
+Both source calls receive the same reference date, the same resolved metadata,
+and the same `curr` value. Neither existing APIM adapter path nor the routing
+ledger cardinality of 18 changes; summary introduces no new APIM operation.
 
-## Join
+## Metadata addition
 
-The join key is the trimmed fund code.
+`GeneralMetadataName` gains `GL_PERCENTAGE("gl-percentage")`. It is requested
+only by the summary use case. Account Balance and Account Gain/Loss key sets
+are unchanged, so neither existing feature's metadata behaviour is altered.
+
+Note: `DefaultAccountBalancePresentationTransformer.precisions(...)` iterates
+`GeneralMetadataName.values()` and calls `orElseThrow()` on each. Adding an
+enum constant would make Account Balance demand `gl-percentage` and fail when
+it is absent. That method must be narrowed to the keys the caller actually
+requested before the enum is extended. This is a required S3 repair, not an
+optional cleanup.
+
+## Holdings source
+
+`holdings[]` is driven by the `TRPGetInvestGL` fund list. Per Q-5 that list is
+a superset of the balance fund list, because a sold fund retains gain/loss
+with no current holding.
+
+Join key is the trimmed fund code:
 
 ```
-RawAccountBalanceFundDetail.fundCode   (TRPGetMemberAccBal fundDtl.fund-code)
-RawFundGainLoss.fundCode               (TRPGetInvestGL InvestGL.FundCode)
+TRPGetInvestGL      InvestGL.FundCode   (already trimmed by the adapter)
+TRPGetMemberAccBal  fundDtl.fund-code   (not trimmed today)
 ```
 
-`ApimAccountGainLossSourceAdapter` already trims `FundCode`. The balance side
-is not trimmed today, so the composer must trim both sides before comparison
-rather than relying on either adapter. This mirrors the shared
-`IdentifierNormalizer` precedent introduced during the idempotency refactor.
+The composer trims both sides rather than relying on either adapter.
 
-## Per-fund balance
+A balance holding whose fund code is absent from `TRPGetInvestGL` violates the
+Q-5 superset invariant and maps to SYSTEM_FAILURE. A gain/loss fund with no
+holding is normal; its `balance` follows R-2.
 
-`holdings[].balance` is the sum of `nav` across every holding whose
-`fundCode` matches, across all display sources and sub-display sources. This
-is the same figure the Fund Level View already aggregates per
-`(displaySource, fundCode)`, summed one level higher to the fund.
+## Per-fund values
+
+| Field | Source |
+| --- | --- |
+| `fundCode` | `InvestGL.FundCode`, trimmed |
+| `fundName` | Balance `fundDtl` name when the fund is held, else the `InvestGL` name; both via `DynamicDescriptionResolver` with symmetric non-blank fallback |
+| `fundSequence` | `InvestGL` `seq` |
+| `balance` | Sum of `nav` across every matching holding, all display and sub-display sources; R-2 governs the unheld case |
+| `portfolioPercentage` | `InvestGL.percentage`, rendered at `gl-percentage` precision |
+| `gainLoss` | `InvestGL.GL`, rendered at NAV precision |
 
 Sentinel `-1` and null participating NAV values fail through
 `AccountBalanceRetrievalException.systemFailure()`, consistent with
 `DefaultAccountOverviewAggregator`.
 
-## totalValue
+## Totals
 
 `totalValue` equals `accountOverview.accountTotals.totalBalance` — the sum of
-all participating `nav` values. It is recomputed from the same normalized
-holdings rather than parsed back from the rendered string.
+all participating `nav` values, recomputed from the normalized holdings rather
+than parsed back from the rendered string.
 
-## totalGainLoss
-
-`totalGainLoss` is the exact `BigDecimal` sum of every `RawFundGainLoss.gainLoss`
-returned by `TRPGetInvestGL`, rendered once at NAV precision. This is the same
-rule `AccountGainLossAssembler` already applies, so
+`totalGainLoss` is the exact `BigDecimal` sum of every `InvestGL.GL`, rendered
+once at NAV precision. This matches `AccountGainLossAssembler`, so
 `/api/v1/account/gain-loss` and `/api/v1/account/summary` return an identical
-total for the same account, period, and reference date.
-
-The total is summed over the full `TRPGetInvestGL` fund list, independent of
-join outcome, so an unjoined fund cannot silently change the total.
-
-## portfolioPercentage
-
-```
-portfolioPercentage = (holding balance / totalValue) * 100
-```
-
-Computed on exact `BigDecimal` values before rendering. When `totalValue` is
-zero, every `portfolioPercentage` is `"0.0"` and no division is attempted.
-
-Scale is open question Q-3. The UI shows one decimal place (35.0%, 25.0%,
-22.0%, 12.0%, 6.0%). Percentage is a presentation-derived ratio, not a TAS
-monetary value, so it is not covered by an existing precision metadata key and
-requires an explicit decision rather than reuse of NAV precision.
+total for the same account, period, currency, and reference date.
 
 ## Ordering
 
-`holdings[]` is ordered by `fundSequence` ascending, then trimmed `fundCode`
-ascending — identical to `AccountGainLossAssembler`. The UI's descending
-balance order in the screenshot is treated as an FE sort affordance (the
-Balance and Gain/Loss column headers both carry sort icons), not a BFF
-guarantee. See Q-4.
-
-## Fund set reconciliation
-
-Three cases must be handled explicitly:
-
-| Case | Behaviour | Rationale |
-| --- | --- | --- |
-| Fund in both sources | Full holding entry | Normal |
-| Fund in balance only, absent from `InvestGL` | Open question Q-5 | A zero-gain fund and a missing fund are not the same thing |
-| Fund in `InvestGL` only, no matching holding | Open question Q-5 | Would mean a gain/loss with no balance |
-
-`AccountGainLossApimContentValidator` already accepts an empty `InvestGL`
-array as valid, so the empty-gain/loss case is a real runtime state and must
-not be treated as a contract violation.
-
-## Localization
-
-`holdings[].fundName` uses the shared `DynamicDescriptionResolver` with
-symmetric non-blank fallback. When both sources supply a fund name, the
-Account Balance `fundDtl` name is authoritative, because that is the name
-already rendered in `investmentPortfolio` within the same payload and the two
-sections must not disagree.
+`holdings[]` is ordered by `InvestGL` `seq` ascending, then trimmed `fundCode`
+ascending.
 
 ## Rendering
 
-`balance`, `totalValue`, `totalGainLoss`, and `gainLoss` use the existing
-`ExactPrecisionRenderer` at NAV precision with `RoundingMode.UNNECESSARY`.
-Java sums before rendering and never rounds, preserving the Account Balance and
-Account Gain/Loss rules unchanged.
+All monetary values and the percentage use the existing
+`ExactPrecisionRenderer` with `RoundingMode.UNNECESSARY`. Java sums before
+rendering and performs no division and no rounding.

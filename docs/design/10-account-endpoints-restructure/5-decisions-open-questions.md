@@ -10,49 +10,83 @@
 - The breakdown represents the supplied Portfolio Overview / Holdings UI.
 - The breakdown is composed from `TRPGetMemberAccBal` and `TRPGetInvestGL`.
 
-## Decided in this pack, reversible on review
+## Ratified 21/09/2026
 
-- Class-level `@RequestMapping("/api/v1")` retained; only method paths change.
-- Configuration keys, property prefixes, package names, and observability event
-  names are not renamed.
-- No dual-routing alias for the old paths.
-- `gainLossBreakdown` is added as a sibling of `investmentPortfolio`; no
-  existing Account Balance field changes.
-- Summary fails whole rather than degrading on partial upstream failure.
-- Fund name is taken from the Account Balance side when both sources supply one.
+**Q-1 Transition window — RESOLVED.** Atomic cutover, no alias. Implemented in
+S1 at commit d160cf01.
 
-## Open — required before implementation
+**Q-2 Period parameter — RESOLVED.** `/api/v1/account/summary` accepts
+`?period=SINCE_SCHEME_INCEPTION|YEAR_TO_DATE`, defaulting to
+`SINCE_SCHEME_INCEPTION`. The controller reuses the existing
+`AccountGainLossPeriod` enum and the same `@RequestParam` shape as
+`AccountGainLossController`, so the UI's Since Scheme Inception / Year to Date
+toggle is served by one summary call with no FE follow-up request.
 
-**Q-1 Transition window.** Is a temporary alias on the old paths required while
-the front end is released, or is the cutover atomic?
+**Q-3 Percentage scale and rounding — RESOLVED, ownership moved downstream.**
+Java does not compute `% of Portfolio`. TAS supplies it:
 
-**Q-2 Period parameter.** Does `/api/v1/account/summary` accept
-`?period=SINCE_SCHEME_INCEPTION|YEAR_TO_DATE`? The UI shows a working
-Since Scheme Inception / Year to Date toggle, which implies either a parameter
-on summary or an FE follow-up call to `/api/v1/account/gain-loss`.
+- `TRPGetInvestGL` gains a per-fund `percentage` field.
+- `TRPGetGeneralMetaData` gains metadata-name `gl-percentage`, whose
+  `precision` drives rendering.
 
-**Q-3 Percentage scale and rounding.** The UI shows one decimal place. Exact
-`BigDecimal` division rarely terminates, so `RoundingMode.UNNECESSARY` cannot
-be used for percentage. Which scale, and which rounding mode? This is the only
-place in the account feature set where Java would round, so it needs explicit
-sign-off. Also: should the percentages be forced to sum to 100?
+The BFF adds `GL_PERCENTAGE("gl-percentage")` to `GeneralMetadataName` and
+renders `percentage` through the existing `ExactPrecisionRenderer` with
+`RoundingMode.UNNECESSARY`, exactly as every other monetary field. No division
+is performed in Java and no rounding is introduced anywhere in the account
+feature set. `totalValue` is still aggregated from balance NAV; only the
+per-fund percentage is downstream-owned.
 
-**Q-4 Holdings ordering.** Fund sequence (consistent with
-`/api/v1/account/gain-loss`) or descending balance (matching the screenshot)?
+**Q-4 Holdings ordering — RESOLVED.** `TRPGetInvestGL` supplies `seq`.
+`holdings[]` is ordered by that field ascending, with trimmed `fundCode` as the
+tie-breaker. This is the downstream display order and replaces the earlier
+proposal to reuse `fund-seq` or to sort by descending balance.
 
-**Q-5 Fund set reconciliation.** For a fund present in balance but absent from
-`InvestGL`: emit with null `gainLoss`, emit with `"0.00"`, or omit? And for a
-fund present in `InvestGL` with no matching holding: omit, or treat as a
-technical failure?
+**Q-5 Fund set reconciliation — RESOLVED.** The `TRPGetInvestGL` fund set is a
+superset of the `TRPGetMemberAccBal` fund set. A fund may appear in gain/loss
+with no current holding because it was sold; the reverse cannot occur.
+Therefore:
 
-**Q-6 Sequential vs concurrent upstream calls.** Sequential gives deterministic
-error precedence; concurrent halves latency. Both are non-blocking.
+- `holdings[]` is driven by the `TRPGetInvestGL` fund list, not the balance
+  fund list.
+- A balance holding with no matching gain/loss fund is a technical contract
+  violation and maps to SYSTEM_FAILURE.
+- A gain/loss fund with no matching holding is normal and must be emitted.
+  See R-2 for the balance value in that case.
 
-**Q-7 Currency and gain/loss.** `TRPGetMemberAccBal` accepts `curr`, but
-`TRPGetInvestGL` has no currency parameter. When the member selects USD, is the
-gain/loss section still HKD, is it suppressed, or is the whole currency
-selection unavailable on summary?
+**Q-6 Sequential vs concurrent upstream calls — DECIDED, low risk.**
+Sequential. Balance first, then gain/loss. This keeps error precedence
+deterministic and matches the existing Account Balance orchestration shape.
+Revisit only if measured latency justifies it.
 
-**Q-8 E2E scenario pack.** Does the correlated release require a new
-`account-summary` scenario pack under `scripts/e2e/scenarios/`, or is renaming
-the existing `account-balance` pack paths sufficient for this change?
+**Q-7 Currency — RESOLVED.** `TRPGetInvestGL` gains a `curr` field with the
+same semantics as `TRPGetMemberAccBal`: always serialized, empty string on
+initial load, selected value on currency change. The summary endpoint passes
+one `currency` value to both upstream calls, so the whole payload is
+internally consistent in a single currency. Currency selection remains fully
+available on summary.
+
+**Q-8 E2E scenario pack — DECIDED, low risk.** Extend the existing
+`scripts/e2e/scenarios/account-balance/` pack with a summary scenario rather
+than creating a new pack. The bootstrap, login journey, and assertion helpers
+are identical.
+
+## Open — blocking implementation
+
+**R-1 Downstream availability.** `TRPGetInvestGL.percentage`,
+`TRPGetInvestGL.curr`, and `TRPGetGeneralMetaData` metadata-name
+`gl-percentage` are additions, not existing fields. Required before S2:
+
+- the exact JSON property names and casing, noting that `TRPGetInvestGL`
+  already mixes conventions (`FundCode`, `GL` versus `fund-name`, `fund-seq`);
+- whether `percentage` arrives as a ratio (0.25) or a display percentage
+  (25.0);
+- the exact `seq` property name;
+- whether these fields are already deployed in the SIT APIM environment, or
+  whether the BFF must tolerate their absence during a transition.
+
+The BFF cannot be implemented against an unspecified wire contract.
+
+**R-2 Balance value for a sold fund.** For a fund present in `TRPGetInvestGL`
+with no current holding, is `holdings[].balance` `"0.00"`, or null/omitted?
+Zero asserts a real position of zero; null asserts no position. The UI
+screenshot shows no such row, so this is not resolvable from the design.

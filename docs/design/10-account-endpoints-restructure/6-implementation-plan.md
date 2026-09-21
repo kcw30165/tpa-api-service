@@ -59,3 +59,38 @@ APIM routing ledger cardinality is unchanged at 18.
 Run `mvn spotless:apply` once, then `mvn -DskipTests compile` and
 `mvn -DskipTests test-compile`. Update `handover.md`. Full `mvn test` is run
 manually outside the generated scripts.
+
+## Plan revision 21/09/2026
+
+The ratified decisions move percentage computation and holdings ordering
+downstream, which removes work from S3 and adds a prerequisite.
+
+### S0 Metadata enum widening — new, precedes S2
+
+Add `GL_PERCENTAGE("gl-percentage")` to `GeneralMetadataName`, and narrow
+`DefaultAccountBalancePresentationTransformer.precisions(...)` so it resolves
+only the keys its caller requested instead of iterating
+`GeneralMetadataName.values()`. Without this narrowing, adding the enum
+constant makes Account Balance require `gl-percentage` and fail.
+
+Gate: existing Account Balance and Account Gain/Loss metadata tests still pass
+unchanged, proving neither feature's required key set moved.
+
+### S2 revision
+
+`GainLossBreakdownHoldingResponse.portfolioPercentage` carries a
+downstream-supplied value. `AccountSummaryDataResponse` is unchanged otherwise.
+
+### S3 revision
+
+No percentage arithmetic. The assembler renders `InvestGL.percentage` at
+`gl-percentage` precision, orders by `InvestGL` `seq`, and drives `holdings[]`
+from the gain/loss fund list. It asserts the Q-5 superset invariant and fails
+with SYSTEM_FAILURE when a holding has no gain/loss counterpart.
+
+### APIM DTO revision — blocked on R-1
+
+`TrpGetInvestGlFund` gains `percentage` and `seq`; `TrpGetInvestGlApimRequest`
+gains `curr`. `AccountGainLossApimContentValidator` must accept the new fields
+without weakening its existing checks. Exact property names and the
+ratio-versus-percentage question are unresolved; see R-1.

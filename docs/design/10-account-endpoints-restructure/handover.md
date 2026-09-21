@@ -69,3 +69,28 @@ The old paths now appear exactly six times in the repository, all within this
 design pack and all as deliberate history. No controller mapping, test, e2e
 script, or configuration value was affected; the live routing remains
 `/api/v1/account/balance` and `/api/v1/account/gain-loss`.
+
+## Summary contract ratification
+
+Q-1 through Q-8 are closed. The consequential change is Q-3: percentage is no
+longer computed by the BFF. TAS supplies `percentage` on `TRPGetInvestGL` and
+a `gl-percentage` metadata name on `TRPGetGeneralMetaData`, so the BFF renders
+it like any other precision-governed value and the account feature set keeps
+its invariant that Java never rounds.
+
+Q-4 and Q-5 similarly moved downstream: ordering uses the `TRPGetInvestGL`
+`seq` field, and the gain/loss fund list is authoritative for `holdings[]`
+because it is a superset of the balance fund list — a sold fund retains
+gain/loss with no current holding. Q-7 adds `curr` to `TRPGetInvestGL`, so a
+currency selection applies consistently across the whole summary payload.
+
+Two blockers remain before S0 begins. R-1: the exact wire contract for the
+three downstream additions is unspecified, including property naming and
+whether `percentage` is a ratio or a display percentage. R-2: the `balance`
+value for a sold fund that has gain/loss but no holding.
+
+One internal repair is now mandatory and is sequenced as S0.
+`DefaultAccountBalancePresentationTransformer.precisions(...)` iterates
+`GeneralMetadataName.values()` and calls `orElseThrow()` per constant, so
+adding `GL_PERCENTAGE` would make Account Balance demand a metadata key it
+does not use. The method must resolve only requested keys first.
