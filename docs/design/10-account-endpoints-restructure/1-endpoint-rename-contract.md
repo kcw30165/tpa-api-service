@@ -55,5 +55,8 @@ E2E script *filenames* and scenario-pack directory names are not renamed.
 
 No dual-routing alias is provided. The old paths are removed, not deprecated.
 The BFF is consumed by the ORSO front end only, and the front end is changed in
-the same correlated release. See open question Q-1 if a transition window is
-later required.
+the same correlated release.
+
+Ratified as Q-1 on 21/09/2026: the cutover is atomic. The front-end release and
+this backend release must be deployed together, because the old paths return 404
+the moment this change is live.
