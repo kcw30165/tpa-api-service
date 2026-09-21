@@ -109,3 +109,28 @@ Neither value is trimmed, padded, or reformatted beyond the R-3 decision, and
 neither is re-derived from an APIM response. A null or blank `policyNo` or
 `certNo` is a technical contract violation and maps to SYSTEM_FAILURE rather
 than producing a malformed value such as `-230` or `00000008802-`.
+
+## Percentage aggregation
+
+`percentage` is reported per `accBal` row, keyed by `fund-code`, `disp-src`,
+and `sub-disp-src`. A fund's `portfolioPercentage` is the exact `BigDecimal`
+sum of its row percentages, rendered once at `ab-percentage` precision.
+
+This is the same key and the same fold that produces `balance`, so both values
+are computed in one traversal over the fund's rows. `DefaultFundLevelPortfolioBuilder`
+already aggregates `(displaySource, fundCode)`; summing one level higher to the
+fund is that same operation, so the assembler reuses the traversal rather than
+introducing a parallel one.
+
+Three cases must stay distinct:
+
+| Rows for the fund | percentage values | Outcome |
+| --- | --- | --- |
+| One or more, all populated | summed | rendered share |
+| One or more, some null | partial sum | SYSTEM_FAILURE |
+| None (sold fund) | empty sum | `"0.0"` |
+
+The middle row is the important one. Folding null into zero would silently
+understate a held fund's share, and during the pre-deployment window - when
+every row is null - it would render a fabricated `"0.0"` for the entire
+portfolio instead of reporting the section as unavailable.

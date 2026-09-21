@@ -111,19 +111,29 @@ gain/loss DTO gains no sequence field. Note `TRPGetMemberAccBal` also has a
 this requirement said `ab-pcnt`; `acbal-pcnt` is the later and authoritative
 value.
 
-**R-5 Percentage aggregation across display sources — NEW, blocking.**
-`percentage` is per `accBal` row, so one fund spread over EE/ER or OE/OR
-returns multiple values while `holdings[]` has one row per fund. Is the fund's
-`portfolioPercentage` the sum of its row percentages, or does TAS intend each
-row's value to already be the fund total repeated? Summing is only correct if
-the rows partition the fund's balance, and it is the same aggregation `balance`
-already performs. This must be confirmed rather than assumed, because a wrong
-choice silently produces percentages that do not sum to 100.
+**R-5 Percentage aggregation across display sources — RESOLVED 21/09/2026.**
+`accBal[].percentage` is reported at `fund-code` + `disp-src` + `sub-disp-src`
+granularity. A fund's `portfolioPercentage` is the **sum** of its row
+percentages.
 
-**R-2 Balance value for a sold fund.** For a fund present in `TRPGetInvestGL`
-with no current holding, is `holdings[].balance` `"0.00"`, or null/omitted?
-Zero asserts a real position of zero; null asserts no position. The UI
-screenshot shows no such row, so this is not resolvable from the design.
+This is the same key `balance` already aggregates on, so the two values
+partition identical rows: a fund's percentage share always corresponds to its
+balance share, and the column sums to 100 across the portfolio. The assembler
+folds percentage in the same traversal that produces `balance` rather than
+making a second pass.
+
+Null is not zero. A row whose `percentage` is null inside a fund that has other
+populated rows yields a partial sum, which is a technical contract violation and
+maps to SYSTEM_FAILURE, consistent with the sentinel rule for `nav`. The
+transition state before TAS deploys - where *every* row is null - is the
+distinct case of an unreported section, not a zero one, and must not be
+rendered as `"0.0"`.
+
+**R-2 Balance for a sold fund — RESOLVED 21/09/2026, follows from R-5.**
+A sold fund appears in `TRPGetInvestGL` but has no `accBal` rows at all. Since
+`balance` is a sum over those rows, the empty sum gives `"0.00"`. No special
+case is required and none should be added: emitting null here would mean
+deliberately overriding an arithmetically correct result.
 
 **R-3 Account number format.** `/api/v1/account/summary` gains
 `result.data.accountNumber`, composed as
@@ -141,16 +151,12 @@ unresolved:
   `currencySelection`, `displayAccountId`). This pack assumes `accountNumber`
   for consistency. Confirm, or state that the hyphenated form is required.
 
-**R-4 Percentage for a sold fund.** Percentage now arrives on
-`TRPGetMemberAccBal`, but `holdings[]` is driven by the `TRPGetInvestGL` fund
-list, which per Q-5 is a superset. A sold fund therefore has gain/loss and a
-`seq` but no balance-side `fundDtl` row, and so no `percentage`.
+**R-4 Percentage for a sold fund — RESOLVED 21/09/2026, follows from R-5.**
+Identical reasoning: zero rows, so `portfolioPercentage` is `"0.0"`. The row
+therefore reads `balance: "0.00"`, `portfolioPercentage: "0.0"`, with
+`gainLoss` from `InvestGL` - which is the correct presentation, because a sold
+fund occupies none of the current portfolio while still carrying realised
+gain/loss.
 
-This is the same shape as R-2 and should be answered with it: for an unheld
-fund, is `portfolioPercentage` `"0.0"`, null, or omitted? Zero is arguably
-correct here — a sold fund genuinely occupies zero percent of the current
-portfolio — but that is an assumption, not a decision.
-
-Note that R-2 and R-4 together determine whether an unheld fund row is
-`balance: "0.00", portfolioPercentage: "0.0"` or a pair of nulls. They should
-be resolved consistently.
+Note the contrast with the null case in R-5: zero rows means a real zero; rows
+present with null percentage means unreported.
