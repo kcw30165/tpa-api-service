@@ -2,8 +2,8 @@
 
 ## Confirmed by instruction
 
-- `/api/v1/account/balance` becomes `/api/v1/account/balance`.
-- `/api/v1/account/gain-loss` becomes `/api/v1/account/gain-loss`.
+- `/api/v1/account-balance` becomes `/api/v1/account/balance`.
+- `/api/v1/account-gain-loss` becomes `/api/v1/account/gain-loss`.
 - `/api/v1/account/summary` is GET, uses the same headers as
   `/api/v1/account/balance`, returns the same response as
   `/api/v1/account/balance`, and adds a gain/loss breakdown section.

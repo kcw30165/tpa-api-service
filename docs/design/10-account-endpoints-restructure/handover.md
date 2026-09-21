@@ -55,3 +55,17 @@ directory are also unchanged.
 
 No compatibility alias was added; the cutover is atomic per Q-1. Formatting remains
 deferred to S6. Summary endpoint work stays blocked on Q-2 through Q-8.
+
+### S1 documentation repair
+
+The S1 documentation pass rewrote every old public path occurrence, including
+the six that must retain the pre-rename path because they document the rename
+itself. Those lines briefly read "`/api/v1/account/balance` becomes
+`/api/v1/account/balance`". The change-set items, the path-change table's
+Before column, and the confirmed-by-instruction bullets now carry the correct
+`/api/v1/account-balance` and `/api/v1/account-gain-loss` originals.
+
+The old paths now appear exactly six times in the repository, all within this
+design pack and all as deliberate history. No controller mapping, test, e2e
+script, or configuration value was affected; the live routing remains
+`/api/v1/account/balance` and `/api/v1/account/gain-loss`.

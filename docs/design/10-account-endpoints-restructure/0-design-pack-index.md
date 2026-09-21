@@ -6,8 +6,8 @@
 
 ## Change set
 
-1. Rename `GET /api/v1/account/balance` to `GET /api/v1/account/balance`.
-2. Rename `GET /api/v1/account/gain-loss` to `GET /api/v1/account/gain-loss`.
+1. Rename `GET /api/v1/account-balance` to `GET /api/v1/account/balance`.
+2. Rename `GET /api/v1/account-gain-loss` to `GET /api/v1/account/gain-loss`.
 3. Add `GET /api/v1/account/summary`, which returns the Account Balance payload
    plus one additional gain/loss breakdown section representing the Portfolio
    Overview / Holdings UI, composed from both `TRPGetMemberAccBal` and
