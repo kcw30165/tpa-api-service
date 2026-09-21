@@ -204,3 +204,23 @@ The R-1 payload also raised R-5. Percentage arrives per `accBal` row, which is
 display-source granularity, while `holdings[]` is per fund — so a fund held
 across several display sources returns several percentages. Whether they sum
 or repeat must be confirmed before the assembler is written.
+
+### DTO arity note
+
+The request and response records were widened differently, deliberately.
+
+`AccountBalanceHolding` and `RawAccountBalanceHolding` keep a compatibility
+constructor at the previous arity, because `percentage` is downstream-optional:
+it is absent until TAS deploys, and every existing caller legitimately has no
+value to supply. Null means "not reported", distinct from a real zero share.
+
+`TrpGetInvestGlApimRequest` does not. Its compact canonical constructor
+normalizes null currency to an empty string, mirroring
+`TrpGetMemberAccBalApimRequest` exactly, and adding an overload would have
+created a second arity where the balance request has only one. `curr` is
+caller-supplied, not downstream-optional, so callers should state it. The one
+affected test was widened to pass an explicit empty currency.
+
+This cost one test-compile failure in the first attempt: the balance records
+compiled cleanly via their compatibility constructors, which masked the fact
+that the gain/loss request had no such fallback.

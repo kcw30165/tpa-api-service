@@ -43,7 +43,8 @@ public final class ApimAccountGainLossSourceAdapter implements AccountGainLossSo
               command.policyNo(),
               command.certNo().trim(),
               command.referenceDate().format(DATE),
-              AccountGainLossApimModeMapper.toWireValue(command.period()));
+              AccountGainLossApimModeMapper.toWireValue(command.period()),
+              "");
       var exchange =
           new ApimExchangeRequest<>(
               path,
