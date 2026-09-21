@@ -109,3 +109,29 @@ unresolved details: whether the value uses the configured 11/4 zero padding,
 and whether the JSON property is `accountNumber` (assumed, matching every other
 field in this envelope) or the literal `account-number` as written in the
 requirement.
+
+## S0-A precision key narrowing
+
+`DefaultAccountBalancePresentationTransformer.precisions(...)` now resolves an
+explicit caller-supplied key set instead of iterating every enum constant. A
+private constant declares the four keys Account Balance actually renders —
+FUND_PRICE, NET_ASSET_VALUE, UNIT_BALANCE, FX_RATE — matching
+`GetAccountBalanceService.REQUIRED_METADATA` exactly. The single-argument
+overload is retained and delegates, so `DefaultAccountBalanceAssembler` and
+`AccountBalancePresentationTransformerTest` are untouched.
+
+Resolved output is unchanged today: those four keys are currently the complete
+enum, so the returned map is identical. What changes is the failure mode.
+Account Balance no longer demands a precision row for every future metadata
+name, so adding `AB_PERCENTAGE` for the summary endpoint will not make it
+`orElseThrow()` on a key it does not use.
+
+`GeneralMetadataName` itself is deliberately untouched. Adding `AB_PERCENTAGE`
+also requires a wire mapping in `GeneralMetadataWireValues`, whose `NAMES` map
+is a fixed `Map.of(...)` of the four current constants — that is S0-B and stays
+blocked on the R-1 wire contract.
+
+The first attempt at this subtask failed its own audit rather than its edit:
+the check for enum-wide iteration matched the Javadoc sentence describing the
+removed behaviour. The comment no longer names the construct literally, and the
+audit now inspects executable lines only.
