@@ -90,3 +90,19 @@ The BFF cannot be implemented against an unspecified wire contract.
 with no current holding, is `holdings[].balance` `"0.00"`, or null/omitted?
 Zero asserts a real position of zero; null asserts no position. The UI
 screenshot shows no such row, so this is not resolvable from the design.
+
+**R-3 Account number format.** `/api/v1/account/summary` gains
+`result.data.accountNumber`, composed as
+`AccountContext.policyNo + "-" + AccountContext.certNo`. Two points are
+unresolved:
+
+- *Padding.* `auth-workflows.login.account-identifiers` already configures
+  `policy-no.width: 11`, `cert-no.width: 4`, and `pad-character: "0"`. Is the
+  emitted value the padded form (`00000008802-0230`) or the raw context values
+  (`00000008802-230`)? The Account Balance APIM contract shows `policy-no` as
+  `"00000008802"` and `cert-no` as `230`, so the two sides already differ in
+  padding today.
+- *JSON property name.* The requirement was written as `account-number`, but
+  every existing field in this response envelope is camelCase (`asOfDate`,
+  `currencySelection`, `displayAccountId`). This pack assumes `accountNumber`
+  for consistency. Confirm, or state that the hyphenated form is required.

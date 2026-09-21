@@ -86,3 +86,25 @@ ascending.
 All monetary values and the percentage use the existing
 `ExactPrecisionRenderer` with `RoundingMode.UNNECESSARY`. Java sums before
 rendering and performs no division and no rounding.
+
+## accountNumber derivation
+
+`accountNumber` requires no upstream call. It is composed in the application
+layer from the already-resolved `PortalAccessContext`:
+
+```
+AccountContext.policyNo + "-" + AccountContext.certNo
+```
+
+`GetAccountSummaryCommand` already carries `policyNo` and `certNo`, because
+both are needed for the two APIM requests, so no new field crosses the
+application boundary and `PortalAccessContext` still does not reach any
+adapter.
+
+Composition happens in the summary assembler, not in the controller, keeping
+the controller a thin mapping layer consistent with `AccountBalanceController`.
+
+Neither value is trimmed, padded, or reformatted beyond the R-3 decision, and
+neither is re-derived from an APIM response. A null or blank `policyNo` or
+`certNo` is a technical contract violation and maps to SYSTEM_FAILURE rather
+than producing a malformed value such as `-230` or `00000008802-`.

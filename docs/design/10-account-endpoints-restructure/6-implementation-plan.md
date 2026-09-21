@@ -94,3 +94,14 @@ with SYSTEM_FAILURE when a holding has no gain/loss counterpart.
 gains `curr`. `AccountGainLossApimContentValidator` must accept the new fields
 without weakening its existing checks. Exact property names and the
 ratio-versus-percentage question are unresolved; see R-1.
+
+### S2/S3 addendum — accountNumber
+
+`AccountSummaryDataResponse` gains a leading `accountNumber` string, and the
+application `AccountSummaryResult` gains the matching field. The summary
+assembler composes it from the command's `policyNo` and `certNo`; no upstream
+call, request parameter, or adapter change is involved.
+
+Gate: tests asserting the composed value for padded and unpadded inputs per the
+R-3 decision, non-null enforcement, SYSTEM_FAILURE on blank identifiers, and a
+redaction check proving the composed value is absent from observability output.

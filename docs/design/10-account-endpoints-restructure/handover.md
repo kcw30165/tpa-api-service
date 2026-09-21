@@ -94,3 +94,18 @@ One internal repair is now mandatory and is sequenced as S0.
 `GeneralMetadataName.values()` and calls `orElseThrow()` per constant, so
 adding `GL_PERCENTAGE` would make Account Balance demand a metadata key it
 does not use. The method must resolve only requested keys first.
+
+## Account number addition
+
+`/api/v1/account/summary` gains `result.data.accountNumber`, composed as
+`policyNo + "-" + certNo` from the selected account's protected context. It is
+derived inside the BFF, needs no upstream call, and is scoped to summary only,
+so `/api/v1/account/balance` and `/api/v1/account/gain-loss` are untouched.
+
+Two points on record. First, both components are protected identifiers under
+`apim.encryption`, so publishing their concatenation is a deliberate disclosure
+and the composed value must stay out of logs. Second, R-3 captures the two
+unresolved details: whether the value uses the configured 11/4 zero padding,
+and whether the JSON property is `accountNumber` (assumed, matching every other
+field in this envelope) or the literal `account-number` as written in the
+requirement.

@@ -28,6 +28,7 @@ section, `gainLossBreakdown`.
 
 ```
 result.data
+ ├─ accountNumber           (new)
  ├─ asOfDate                (unchanged, from TRPGetMemberAccBal as-of-date)
  ├─ currencySelection       (unchanged)
  ├─ accountOverview         (unchanged)
@@ -38,6 +39,35 @@ result.data
 Every existing Account Balance field keeps its current name, nullability,
 ordering, and Jackson inclusion behaviour. No existing field is moved,
 renamed, or removed.
+
+## accountNumber
+
+`accountNumber` is a non-null string composed from the selected account's
+protected context:
+
+```
+accountNumber = AccountContext.policyNo + "-" + AccountContext.certNo
+```
+
+It is derived entirely inside the BFF from `PortalAccessContext`. It is not
+requested from, or echoed by, `TRPGetMemberAccBal` or `TRPGetInvestGL`, and it
+is not accepted as a request parameter. The front end cannot influence it.
+
+The field is present on `/api/v1/account/summary` only. `/api/v1/account/balance`
+and `/api/v1/account/gain-loss` are unchanged, so no existing consumer contract
+moves.
+
+Composition is a literal join on `-`. Padding and formatting are governed by
+R-3, which is unresolved: the login configuration already declares
+`policy-no.width: 11`, `cert-no.width: 4`, and `pad-character: "0"`, so whether
+the emitted value is the padded or unpadded form is an explicit decision rather
+than an implementation detail.
+
+Both `policyNo` and `certNo` are protected identifiers listed in
+`apim.encryption.request-fields` and `response-fields`. Emitting their
+concatenation to the front end is therefore a deliberate disclosure of two
+otherwise-protected values in one field, approved as part of this requirement.
+The composed value must never appear in logs or observability events.
 
 ## gainLossBreakdown section
 
