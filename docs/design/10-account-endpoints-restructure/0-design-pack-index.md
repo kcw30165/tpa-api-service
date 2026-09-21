@@ -21,6 +21,7 @@
 - 4-account-summary-error-contract.md
 - 5-decisions-open-questions.md
 - 6-implementation-plan.md
+- 7-account-balance-deprecation-plan.md
 - handover.md
 
 ## Preserved baselines

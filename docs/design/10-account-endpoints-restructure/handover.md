@@ -279,3 +279,22 @@ script had captured the correct names in its own evidence step, but the DTO was
 written from assumption in the same pass rather than from that output.
 Production compile caught it immediately, which is the gate ordering working as
 intended - the failure surfaced before any test or audit could obscure it.
+
+## S7 deprecation plan ratified
+
+`/api/v1/account/balance` will be withdrawn once summary is proven; the plan
+is `7-account-balance-deprecation-plan.md`. Four confirmed decisions:
+`/api/v1/account/gain-loss` stays; `TRPGetMemberAccBal` and everything around
+it keeps its current name, since it is downstream-owned and accurate; S7 runs
+after S3 and S4 land, not before; and the e2e scenario pack is renamed to
+`account-summary` as the one renaming in scope.
+
+The shared response records (`CurrencySelectionResponse`, `AccountOverviewResponse`,
+`InvestmentPortfolioResponse`, and their nested types) move package rather than
+being duplicated or deleted - `AccountSummaryDataResponse` (S2) already
+references them, so S7 is a package move plus an import update, not a data
+model change.
+
+Next unblocked step is S3: the summary assembler, composing
+`GetAccountBalanceService` and the gain/loss source port against the R-2, R-4,
+and R-5 aggregation rules already encoded in the S2 response contract tests.

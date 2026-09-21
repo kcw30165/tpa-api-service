@@ -108,3 +108,16 @@ call, request parameter, or adapter change is involved.
 Gate: tests asserting the composed value for padded and unpadded inputs per the
 R-3 decision, non-null enforcement, SYSTEM_FAILURE on blank identifiers, and a
 redaction check proving the composed value is absent from observability output.
+
+
+## S7 Account Balance endpoint deprecation
+
+See `7-account-balance-deprecation-plan.md` for the full plan. Runs after S3
+and S4 are complete and summary is proven. Removes `AccountBalanceController`
+and `AccountBalanceResultResponse`; moves the shared section response records
+into the summary package; renames the e2e scenario pack. Does not touch
+`TRPGetMemberAccBal`, its adapter, its DTOs, or its configuration keys, and
+does not withdraw `/api/v1/account/gain-loss`.
+
+Gate: full suite green with the old endpoint removed and the e2e pack renamed
+and passing against `/api/v1/account/summary`.
