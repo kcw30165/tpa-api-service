@@ -242,3 +242,40 @@ declaration order — the record carries no `@JsonPropertyOrder`. A companion
 test asserts that a selected currency is carried through and that null
 normalizes to empty, mirroring the balance-side contract test which already
 covered both the initial-load and currency-change shapes.
+
+## S2 summary response contract
+
+Four records under `adapter/in/web/response/accountsummary/`.
+`AccountSummaryDataResponse` references the existing `CurrencySelectionResponse`,
+`AccountOverviewResponse`, and `InvestmentPortfolioResponse` rather than
+redeclaring their fields, so the balance payload cannot drift between the two
+endpoints and inclusion rules such as `ALWAYS` on `pendingSwitchIn` are
+inherited rather than reimplemented. A test asserts that specifically.
+
+Field order is locked: `accountNumber`, `asOfDate`, `currencySelection`,
+`accountOverview`, `investmentPortfolio`, `gainLossBreakdown`; holdings are
+`fundCode`, `fundName`, `fundSequence`, `balance`, `portfolioPercentage`,
+`gainLoss`. Monetary values and the percentage are strings, matching the
+existing account contracts, so precision survives the wire. `holdings`
+normalises null to an empty list, since an account with no gain/loss funds is a
+state the validator already accepts.
+
+The sold-fund row is pinned by test as `"0.00"` / `"0.0"` with gain/loss still
+reported, encoding the R-2, R-4, and R-5 decisions before an assembler exists
+to violate them.
+
+R-6 is resolved from evidence rather than assumption: `AccountContext` holds
+padded identifiers, so `accountNumber` is a direct join.
+
+No controller, service, or Spring wiring yet. S3 adds the assembler, where R-5
+aggregation and the null-versus-zero distinction are enforced.
+
+### Naming note
+
+The first attempt at these records imported `AccountBalanceCurrencySelectionResponse`
+and two similarly prefixed names that do not exist. Only the two top-level
+balance records carry an `AccountBalance` prefix; the sections do not. The
+script had captured the correct names in its own evidence step, but the DTO was
+written from assumption in the same pass rather than from that output.
+Production compile caught it immediately, which is the gate ordering working as
+intended - the failure surfaced before any test or audit could obscure it.

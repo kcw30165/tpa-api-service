@@ -162,21 +162,25 @@ schema.
 *Implementation caveat, see R-6.* Whether the assembler pads at render time
 depends on the form already stored in `AccountContext.certNo`.
 
-**R-6 Stored form of AccountContext.certNo — OPEN, implementation detail.**
-`LoginAccountRecordValidationService` produces both raw and padded values
-(`rawPolicyNo` / padded, `rawCertNo` / padded) during login. Which form is
-written into the session `AccountContext` decides whether the summary assembler
-pads or uses the value verbatim.
+**R-6 Stored form of AccountContext.certNo — RESOLVED 21/09/2026 from evidence.**
+`AccountContext` already holds the padded form. The login chain is:
 
-Padding an already-padded `"0230"` to width 4 is a no-op, but padding a raw
-`"230"` that was stored as `"0230"` elsewhere would be inconsistent, and
-re-padding an already-padded `policyNo` is likewise a no-op only because the
-value is already at width. The rule must be stated rather than relied upon:
-the assembler pads to the configured width and is idempotent for values already
-at that width, rejecting any value longer than its width as a contract
-violation.
+```
+LoginValidatedAccount   rawPolicyNo / policyNo, rawCertNo / certNo
+LoginSessionAccount     carries both raw and padded
+LoginAuthenticatedSessionAccountMapper  passes policyNo() and certNo()
+AuthenticatedAccountContextResolver     copies those into AccountContext
+```
 
-This is resolvable from repository evidence, not a business decision.
+The mapper selects the padded accessors, never the raw ones, so by the time the
+summary use case sees the context the values are already at width. Corroborated
+by `PortalAccessContextWebFilterTest`, which uses `"00000008802"` and `"0001"`,
+and by the balance APIM adapter sending `certNo` as `"0230"`.
+
+`accountNumber` is therefore a direct join. Padding is retained in the assembler
+only as an idempotent normalisation: a value already at width is unchanged, and
+a value longer than its width is a contract violation mapping to SYSTEM_FAILURE.
+This keeps the rule true regardless of how the context is populated later.
 
 **R-4 Percentage for a sold fund — RESOLVED 21/09/2026, follows from R-5.**
 Identical reasoning: zero rows, so `portfolioPercentage` is `"0.0"`. The row
