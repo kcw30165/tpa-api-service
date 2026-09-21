@@ -281,4 +281,164 @@ class SmsSenderAdapterTest {
 
     return node;
   }
+
+  // ----- validateConfiguration()'s remaining missing-config branches (added
+  // round 216 - only baseUrl-blank was previously tested) ------------------------
+
+  @Test
+  void rejectsMissingUsernameWhenEnabled() {
+    SmsProperties properties = baseProperties();
+    properties.setUsername("");
+    SmsSenderAdapter adapter =
+        adapterWith(properties, request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+    StepVerifier.create(
+            adapter.sendSms(new SmsMessage("91234567", "Hello Member", "HK", "req-123")))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(SenderStatus.FAILED);
+              assertThat(result.failureCode()).isEqualTo("SMS_CONFIG_USERNAME_MISSING");
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void rejectsMissingPasswordWhenEnabled() {
+    SmsProperties properties = baseProperties();
+    properties.setPassword("  ");
+    SmsSenderAdapter adapter =
+        adapterWith(properties, request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+    StepVerifier.create(
+            adapter.sendSms(new SmsMessage("91234567", "Hello Member", "HK", "req-123")))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(SenderStatus.FAILED);
+              assertThat(result.failureCode()).isEqualTo("SMS_CONFIG_PASSWORD_MISSING");
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void rejectsMissingSendIdWhenEnabled() {
+    SmsProperties properties = baseProperties();
+    properties.setSendId(null);
+    SmsSenderAdapter adapter =
+        adapterWith(properties, request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+    StepVerifier.create(
+            adapter.sendSms(new SmsMessage("91234567", "Hello Member", "HK", "req-123")))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(SenderStatus.FAILED);
+              assertThat(result.failureCode()).isEqualTo("SMS_CONFIG_SEND_ID_MISSING");
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void rejectsMissingClassCodeWhenEnabled() {
+    SmsProperties properties = baseProperties();
+    properties.setClassCode("");
+    SmsSenderAdapter adapter =
+        adapterWith(properties, request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+    StepVerifier.create(
+            adapter.sendSms(new SmsMessage("91234567", "Hello Member", "HK", "req-123")))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(SenderStatus.FAILED);
+              assertThat(result.failureCode()).isEqualTo("SMS_CONFIG_CLASS_CODE_MISSING");
+            })
+        .verifyComplete();
+  }
+
+  // ----- null message guard (added round 216) -------------------------------------
+
+  @Test
+  void nullMessageWithValidConfigurationErrorsWithIllegalArgumentException() {
+    SmsSenderAdapter adapter =
+        adapterWith(
+            baseProperties(), request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+    StepVerifier.create(adapter.sendSms(null))
+        .expectError(IllegalArgumentException.class)
+        .verify();
+  }
+
+  // ----- onErrorResume() error path (added round 216) -------------------------------
+
+  @Test
+  void providerExchangeErrorYieldsUnknownOutcome() {
+    SmsSenderAdapter adapter =
+        adapterWith(
+            baseProperties(),
+            request -> Mono.error(new java.io.IOException("connection reset")));
+    StepVerifier.create(
+            adapter.sendSms(new SmsMessage("91234567", "Hello Member", "HK", "req-123")))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(SenderStatus.UNKNOWN_OUTCOME);
+              assertThat(result.failureCode()).isEqualTo("SMS_REQUEST_OUTCOME_UNKNOWN");
+            })
+        .verifyComplete();
+  }
+
+  // ----- normalizePhone() HK-prefix-stripping branches (added round 216) -----------
+
+  @Test
+  void normalizesPhoneWithPlus852PrefixByStrippingIt() {
+    AtomicReference<String> capturedBody = new AtomicReference<>();
+    SmsSenderAdapter adapter =
+        adapterWith(
+            baseProperties(),
+            request -> {
+              MockClientHttpRequest mockRequest =
+                  new MockClientHttpRequest(request.method(), request.url());
+              request.writeTo(mockRequest, ExchangeStrategies.withDefaults()).block();
+              capturedBody.set(mockRequest.getBodyAsString().block());
+              return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+            });
+    StepVerifier.create(
+            adapter.sendSms(new SmsMessage("+85291234567", "Hello Member", "HK", "req-123")))
+        .assertNext(result -> assertThat(result.status()).isEqualTo(SenderStatus.ACCEPTED))
+        .verifyComplete();
+    JsonNode payload = readJson(capturedBody.get());
+    assertThat(payload.get("phone").asText()).isEqualTo("91234567");
+  }
+
+  @Test
+  void normalizesElevenDigitPhoneWithLeading852PrefixByStrippingIt() {
+    AtomicReference<String> capturedBody = new AtomicReference<>();
+    SmsSenderAdapter adapter =
+        adapterWith(
+            baseProperties(),
+            request -> {
+              MockClientHttpRequest mockRequest =
+                  new MockClientHttpRequest(request.method(), request.url());
+              request.writeTo(mockRequest, ExchangeStrategies.withDefaults()).block();
+              capturedBody.set(mockRequest.getBodyAsString().block());
+              return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+            });
+    StepVerifier.create(
+            adapter.sendSms(new SmsMessage("85291234567", "Hello Member", "HK", "req-123")))
+        .assertNext(result -> assertThat(result.status()).isEqualTo(SenderStatus.ACCEPTED))
+        .verifyComplete();
+    JsonNode payload = readJson(capturedBody.get());
+    assertThat(payload.get("phone").asText()).isEqualTo("91234567");
+  }
+
+  // ----- safeProviderResponseBody() blank-body branch (added round 216) ------------
+
+  @Test
+  void returnsFailedWithGenericMessageWhenProvider5xxResponseBodyIsBlank() {
+    SmsSenderAdapter adapter =
+        adapterWith(
+            baseProperties(),
+            request ->
+                Mono.just(ClientResponse.create(HttpStatus.INTERNAL_SERVER_ERROR).body("").build()));
+    StepVerifier.create(
+            adapter.sendSms(new SmsMessage("91234567", "Hello Member", "HK", "req-123")))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(SenderStatus.FAILED);
+              assertThat(result.failureCode()).isEqualTo("SMS_HTTP_500");
+            })
+        .verifyComplete();
+  }
 }
