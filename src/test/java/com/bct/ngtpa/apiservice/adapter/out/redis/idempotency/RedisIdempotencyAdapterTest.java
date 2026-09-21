@@ -137,4 +137,82 @@ class RedisIdempotencyAdapterTest {
       return Mono.just(replacement);
     }
   }
+
+  // ----- markUnknown() and load() (added round 182 - not covered by the
+  // original file's 2 tests, which only exercise reserve/complete/fail) -----------
+
+  @Test
+  void markUnknownTransitionsAndLoadReturnsRecord() {
+    FakeRedis redis = new FakeRedis();
+    var adapter = adapter(redis);
+    var reserved = adapter.reserve(reserve(token("ownerToken0123456789abcdefghijklm"))).block();
+    var unknown =
+        adapter
+            .markUnknown(
+                new IdempotencyCommands.MarkUnknown(
+                    op(), fp(), reserved.reservationToken(), NOW.plusSeconds(1), Duration.ofMinutes(5)))
+            .block();
+    assertThat(unknown.status()).isEqualTo(IdempotencyStatus.UNKNOWN_OUTCOME);
+
+    var loaded = adapter.load(op()).block();
+    assertThat(loaded).isPresent();
+    assertThat(loaded.get().status()).isEqualTo(IdempotencyStatus.UNKNOWN_OUTCOME);
+  }
+
+  @Test
+  void loadMissingRecordReturnsEmpty() {
+    FakeRedis redis = new FakeRedis();
+    var adapter = adapter(redis);
+    var loaded = adapter.load(op()).block();
+    assertThat(loaded).isEmpty();
+  }
+
+  @Test
+  void unknownOutcomeExistingIsClassifiedOnReReserve() {
+    FakeRedis redis = new FakeRedis();
+    var adapter = adapter(redis);
+    var reserved = adapter.reserve(reserve(token("ownerToken0123456789abcdefghijklm"))).block();
+    adapter
+        .markUnknown(
+            new IdempotencyCommands.MarkUnknown(
+                op(), fp(), reserved.reservationToken(), NOW.plusSeconds(1), Duration.ofMinutes(5)))
+        .block();
+    var reReserve = adapter.reserve(reserve(token("otherToken0123456789abcdefghijk"))).block();
+    assertThat(reReserve.outcome())
+        .isEqualTo(IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING);
+  }
+
+  @Test
+  void failedExistingIsClassifiedOnReReserve() {
+    FakeRedis redis = new FakeRedis();
+    var adapter = adapter(redis);
+    var reserved = adapter.reserve(reserve(token("ownerToken0123456789abcdefghijklm"))).block();
+    adapter
+        .fail(
+            new IdempotencyCommands.Fail(
+                op(), fp(), reserved.reservationToken(), NOW.plusSeconds(1), Duration.ofMinutes(5)))
+        .block();
+    var reReserve = adapter.reserve(reserve(token("otherToken0123456789abcdefghijk"))).block();
+    assertThat(reReserve.outcome()).isEqualTo(IdempotencyReservationOutcome.FAILED_EXISTING);
+  }
+
+  @Test
+  void expiredExistingRecordOnReserveErrors() {
+    FakeRedis redis = new FakeRedis();
+    var adapter = adapter(redis);
+    adapter
+        .reserve(
+            new IdempotencyCommands.Reserve(
+                op(), fp(), token("ownerToken0123456789abcdefghijklm"), NOW, Duration.ofSeconds(1)))
+        .block();
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                adapter
+                    .reserve(
+                        new IdempotencyCommands.Reserve(
+                            op(), fp(), token("otherToken0123456789abcdefghijk"),
+                            NOW.plusSeconds(10), Duration.ofMinutes(5)))
+                    .block())
+        .hasMessageContaining("reserve failed");
+  }
 }

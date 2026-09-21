@@ -176,4 +176,70 @@ class ApimPayloadCryptoServiceTest {
     properties.getEncryption().setResponseFields(responseFields);
     return properties;
   }
+
+  // ----- decryptResponse(..., JavaType, ...) overload's own disabled/no-fields
+  // branches (added round 229 - only ever reached indirectly via
+  // decryptResponseEnvelope(...) with encryption ENABLED; never independently
+  // tested for the disabled/empty-fields cases on THIS specific overload) -----
+
+  @Test
+  void decryptResponseEnvelopeReturnsParsedEnvelopeWhenEncryptionDisabled() throws Exception {
+    ApimPayloadCryptoService service = service(disabledProperties());
+    String responseJson =
+        OBJECT_MAPPER.writeValueAsString(
+            Map.of("response", Map.of("err-message", "", "data", List.of(Map.of("secret", "raw-value")))));
+
+    ApimResponseEnvelope<Map> envelope =
+        service.decryptResponseEnvelope(
+            "/ws/NGTPA/v1/TRPGetMsgBoard", responseJson, Map.class, keyPair.getPublic());
+
+    assertEquals("raw-value", envelope.getResponse().getData().getFirst().get("secret"));
+  }
+
+  @Test
+  void decryptResponseEnvelopeReturnsParsedEnvelopeWhenNoResponseFieldsConfigured() throws Exception {
+    ApimPayloadCryptoService service = service(encryptionProperties(List.of(), List.of()));
+    String responseJson =
+        OBJECT_MAPPER.writeValueAsString(
+            Map.of("response", Map.of("err-message", "", "data", List.of(Map.of("secret", "raw-value")))));
+
+    ApimResponseEnvelope<Map> envelope =
+        service.decryptResponseEnvelope(
+            "/ws/NGTPA/v1/TRPGetMsgBoard", responseJson, Map.class, keyPair.getPublic());
+
+    assertEquals("raw-value", envelope.getResponse().getData().getFirst().get("secret"));
+  }
+
+  @Test
+  void decryptResponseEnvelopeWrapsParseErrorsWhenJsonCannotBeReadAsEnvelope() {
+    ApimPayloadCryptoService service = service(disabledProperties());
+
+    ApimCryptoException error =
+        assertThrows(
+            ApimCryptoException.class,
+            () ->
+                service.decryptResponseEnvelope(
+                    "/ws/NGTPA/v1/TRPGetMsgBoard", "not-json", Map.class));
+
+    assertEquals("Failed to parse APIM response payload.", error.getMessage());
+  }
+
+  @Test
+  void decryptResponseEnvelopeWrapsDecryptionErrorsForInvalidEncryptedFieldFormat() throws Exception {
+    ApimPayloadCryptoService service = service(encryptionProperties(List.of("secret"), List.of("secret")));
+    String responseJson =
+        OBJECT_MAPPER.writeValueAsString(
+            Map.of(
+                "response",
+                Map.of("err-message", "", "data", List.of(Map.of("secret", "missing-separator")))));
+
+    ApimCryptoException error =
+        assertThrows(
+            ApimCryptoException.class,
+            () ->
+                service.decryptResponseEnvelope(
+                    "/ws/NGTPA/v1/TRPGetMsgBoard", responseJson, Map.class, keyPair.getPublic()));
+
+    assertEquals("Failed to decrypt APIM response payload.", error.getMessage());
+  }
 }

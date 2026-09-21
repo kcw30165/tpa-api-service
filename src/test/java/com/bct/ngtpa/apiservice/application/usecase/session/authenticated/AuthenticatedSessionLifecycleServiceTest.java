@@ -218,4 +218,194 @@ class AuthenticatedSessionLifecycleServiceTest {
               Clock.fixed(NOW, ZoneOffset.UTC));
     }
   }
+
+  // ----- create(): failure and error paths (added round 142) --------------------
+
+  @Test
+  void createYieldsFailedWhenPersistenceStatusIsNotStored() {
+    var f = new ErrorFixture();
+    var cmd =
+        new CreateAuthenticatedSessionCommand(
+            new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
+            List.of(account()),
+            "csrf_hash",
+            "req");
+    StepVerifier.create(f.service.create(cmd))
+        .assertNext(r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.FAILED))
+        .verifyComplete();
+  }
+
+  @Test
+  void createYieldsFailedWhenStoreThrows() {
+    var f = new ErrorFixture();
+    f.storeShouldError = true;
+    var cmd =
+        new CreateAuthenticatedSessionCommand(
+            new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
+            List.of(account()),
+            "csrf_hash",
+            "req");
+    StepVerifier.create(f.service.create(cmd))
+        .assertNext(r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.FAILED))
+        .verifyComplete();
+  }
+
+  // ----- loadAndTouch(): error path (added round 142) --------------------------
+
+  @Test
+  void loadAndTouchYieldsFailedWhenTouchThrows() {
+    var f = new ErrorFixture();
+    f.touchShouldError = true;
+    f.loaded.set(
+        session(
+            NOW.minusSeconds(120),
+            NOW.plusSeconds(60),
+            NOW.plusSeconds(600),
+            AuthenticatedSessionStatus.ACTIVE));
+    StepVerifier.create(
+            f.service.loadAndTouch(new LoadAndTouchAuthenticatedSessionCommand(ID, "req")))
+        .assertNext(r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.FAILED))
+        .verifyComplete();
+  }
+
+  // ----- logout(): entirely untested in the original file (added round 142) ----
+
+  @Test
+  void logoutPersistsProtectedTerminalSession() {
+    var fixture = new Fixture();
+    fixture.loaded.set(
+        session(
+            NOW.minusSeconds(100),
+            NOW.plusSeconds(100),
+            NOW.plusSeconds(1000),
+            AuthenticatedSessionStatus.ACTIVE));
+    StepVerifier.create(
+            fixture.service.logout(
+                new LogoutActiveAuthenticatedSessionCommand(ID, "req")))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(AuthenticatedSessionLifecycleStatus.LOGGED_OUT))
+        .verifyComplete();
+    assertThat(fixture.loaded.get().status()).isEqualTo(AuthenticatedSessionStatus.LOGGED_OUT);
+  }
+
+  @Test
+  void logoutOnAlreadyTerminalSessionReturnsExistingStatusWithoutTouching() {
+    var fixture = new Fixture();
+    fixture.loaded.set(
+        session(
+            NOW.minusSeconds(100),
+            NOW.plusSeconds(100),
+            NOW.plusSeconds(1000),
+            AuthenticatedSessionStatus.REVOKED));
+    StepVerifier.create(
+            fixture.service.logout(
+                new LogoutActiveAuthenticatedSessionCommand(ID, "req")))
+        .assertNext(
+            result -> assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.REVOKED))
+        .verifyComplete();
+    assertThat(fixture.touched.get()).isNull();
+  }
+
+  @Test
+  void logoutOnExpiredSessionPersistsExpiredInstead() {
+    var fixture = new Fixture();
+    fixture.loaded.set(
+        session(
+            NOW.minusSeconds(100),
+            NOW.minusSeconds(1),
+            NOW.plusSeconds(100),
+            AuthenticatedSessionStatus.ACTIVE));
+    StepVerifier.create(
+            fixture.service.logout(
+                new LogoutActiveAuthenticatedSessionCommand(ID, "req")))
+        .assertNext(
+            result -> assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.EXPIRED))
+        .verifyComplete();
+  }
+
+  /**
+   * Variant of {@link Fixture} supporting deliberate error injection on store()/touch(), and a
+   * non-STORED persistence status, to exercise create()'s and loadAndTouch()'s failure/error
+   * branches. Mirrors Fixture's own conventions exactly (anonymous-class port/protector, no
+   * Mockito).
+   */
+  static final class ErrorFixture {
+    final AtomicReference<AuthenticatedSession> loaded = new AtomicReference<>();
+    final AuthenticatedSessionLifecycleService service;
+    boolean storeShouldError;
+    boolean touchShouldError;
+
+    ErrorFixture() {
+      AuthenticatedSessionProtectorPort protector =
+          new AuthenticatedSessionProtectorPort() {
+            public ProtectedAuthenticatedSession protect(AuthenticatedSession s) {
+              loaded.set(s);
+              return com.bct.ngtpa.apiservice.application.dto.session.authenticated
+                  .ProtectedAuthenticatedSessionTestFixtures.envelope("v1", "cipher", "nonce", "tag");
+            }
+
+            public AuthenticatedSession unprotect(ProtectedAuthenticatedSession p) {
+              return loaded.get();
+            }
+          };
+      AuthenticatedSessionPort port =
+          new AuthenticatedSessionPort() {
+            public Mono<AuthenticatedSessionPersistenceResult> store(
+                StoreAuthenticatedSessionCommand c) {
+              if (storeShouldError) {
+                return Mono.error(new IllegalStateException("boom"));
+              }
+              return Mono.just(
+                  new AuthenticatedSessionPersistenceResult(
+                      AuthenticatedSessionPersistenceStatus.REVOKED));
+            }
+
+            public Mono<Optional<ProtectedAuthenticatedSession>> load(
+                LoadAuthenticatedSessionCommand c) {
+              return Mono.just(
+                  Optional.ofNullable(loaded.get())
+                      .map(
+                          x ->
+                              com.bct.ngtpa.apiservice.application.dto.session.authenticated
+                                  .ProtectedAuthenticatedSessionTestFixtures.envelope(
+                                  "v1", "cipher", "nonce", "tag")));
+            }
+
+            public Mono<AuthenticatedSessionPersistenceResult> touch(
+                TouchAuthenticatedSessionCommand c) {
+              if (touchShouldError) {
+                return Mono.error(new IllegalStateException("boom"));
+              }
+              return Mono.just(
+                  new AuthenticatedSessionPersistenceResult(
+                      AuthenticatedSessionPersistenceStatus.TOUCHED));
+            }
+
+            public Mono<AuthenticatedSessionPersistenceResult> revoke(
+                RevokeAuthenticatedSessionCommand c) {
+              return Mono.just(
+                  new AuthenticatedSessionPersistenceResult(
+                      AuthenticatedSessionPersistenceStatus.REVOKED));
+            }
+
+            public Mono<AuthenticatedSessionPersistenceResult> delete(
+                DeleteAuthenticatedSessionCommand c) {
+              return Mono.just(
+                  new AuthenticatedSessionPersistenceResult(
+                      AuthenticatedSessionPersistenceStatus.DELETED));
+            }
+          };
+      service =
+          new AuthenticatedSessionLifecycleService(
+              port,
+              protector,
+              () -> ID,
+              Duration.ofSeconds(1800),
+              Duration.ofSeconds(28800),
+              Duration.ofSeconds(300),
+              Clock.fixed(NOW, ZoneOffset.UTC));
+    }
+  }
 }
