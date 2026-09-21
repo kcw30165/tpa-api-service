@@ -8,7 +8,7 @@ import org.springframework.context.annotation.*;
 @Configuration
 public class LoginAccountValidationConfig {
   @Bean
-  @ConfigurationProperties("auth-workflows.login.account-identifiers")
+  @ConfigurationProperties("account-identifiers")
   LoginAccountIdentifierProperties loginAccountIdentifierProperties() {
     return new LoginAccountIdentifierProperties();
   }

@@ -38,7 +38,6 @@ public class AuthWorkflowProperties {
     private final LoginOtp otp = new LoginOtp();
     private final LoginIdempotency idempotency = new LoginIdempotency();
     private final LoginSession session = new LoginSession();
-    private final LoginAccount account = new LoginAccount();
     private final Message message = new Message();
   }
 
@@ -160,13 +159,6 @@ public class AuthWorkflowProperties {
     private boolean httpOnly = true;
     private boolean secure = true;
     private String sameSite = "None";
-  }
-
-  @Getter
-  @Setter
-  public static class LoginAccount {
-    private int identifierWidth;
-    private char identifierPadCharacter = '0';
   }
 
   @Getter
@@ -362,7 +354,6 @@ public class AuthWorkflowProperties {
     requirePositive(login.session.absoluteTimeoutSeconds, "session.absolute-timeout-seconds");
     requirePositive(login.session.terminalRetentionSeconds, "session.terminal-retention-seconds");
     requirePositive(login.session.idleTimeoutSeconds, "session.idle-timeout-seconds");
-    requirePositive(login.account.identifierWidth, "account.identifier-width");
   }
 
   private void requirePositive(int value, String property) {

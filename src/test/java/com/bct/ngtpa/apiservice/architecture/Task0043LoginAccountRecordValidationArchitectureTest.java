@@ -55,4 +55,35 @@ class Task0043LoginAccountRecordValidationArchitectureTest {
             "width: 4",
             "pad-character: \"0\"");
   }
+
+  @Test
+  void identifierFormattingIsGlobalRatherThanLoginScoped() throws Exception {
+    String yaml = Files.readString(Path.of("src/main/resources/application.yml"));
+    String config =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/config/auth/login/"
+                    + "LoginAccountValidationConfig.java"));
+
+    // Declared at column zero, so it is a root key rather than nested under
+    // auth-workflows.login. Padding applies wherever identifiers are rendered.
+    assertThat(yaml).contains("\naccount-identifiers:\n");
+    assertThat(config).contains("@ConfigurationProperties(\"account-identifiers\")");
+    assertThat(config).doesNotContain("auth-workflows.login.account-identifiers");
+  }
+
+  @Test
+  void unusedLoginAccountIdentifierWidthIsRemoved() throws Exception {
+    String yaml = Files.readString(Path.of("src/main/resources/application.yml"));
+    String properties =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/config/"
+                    + "AuthWorkflowProperties.java"));
+
+    // auth-workflows.login.account was validated at startup but read by no
+    // business code; the live widths live in the global block above.
+    assertThat(yaml).doesNotContain("identifier-width", "identifier-pad-character");
+    assertThat(properties).doesNotContain("LoginAccount", "identifierWidth");
+  }
 }
