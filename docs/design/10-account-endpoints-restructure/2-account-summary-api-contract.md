@@ -57,11 +57,19 @@ The field is present on `/api/v1/account/summary` only. `/api/v1/account/balance
 and `/api/v1/account/gain-loss` are unchanged, so no existing consumer contract
 moves.
 
-Composition is a literal join on `-`. Padding and formatting are governed by
-R-3, which is unresolved: the login configuration already declares
-`policy-no.width: 11`, `cert-no.width: 4`, and `pad-character: "0"`, so whether
-the emitted value is the padded or unpadded form is an explicit decision rather
-than an implementation detail.
+Both components are left-padded to their configured width before joining:
+
+```
+accountNumber = leftPad(policyNo, 11) + "-" + leftPad(certNo, 4)
+```
+
+With `policy-no.width: 11`, `cert-no.width: 4`, and `pad-character: "0"` from
+the global `account-identifiers` block, a member holding policy `8802`
+certificate `230` receives `"00000008802-0230"`.
+
+The value is always exactly 16 characters, so the front end can rely on a fixed
+width. A component longer than its configured width is a contract violation and
+maps to SYSTEM_FAILURE rather than being truncated.
 
 Both `policyNo` and `certNo` are protected identifiers listed in
 `apim.encryption.request-fields` and `response-fields`. Emitting their

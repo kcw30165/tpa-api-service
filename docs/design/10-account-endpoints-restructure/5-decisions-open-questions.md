@@ -135,21 +135,48 @@ A sold fund appears in `TRPGetInvestGL` but has no `accBal` rows at all. Since
 case is required and none should be added: emitting null here would mean
 deliberately overriding an arithmetically correct result.
 
-**R-3 Account number format.** `/api/v1/account/summary` gains
-`result.data.accountNumber`, composed as
-`AccountContext.policyNo + "-" + AccountContext.certNo`. Two points are
-unresolved:
+**R-3 Account number format — RESOLVED 21/09/2026.**
 
-- *Padding.* `auth-workflows.login.account-identifiers` already configures
-  `policy-no.width: 11`, `cert-no.width: 4`, and `pad-character: "0"`. Is the
-  emitted value the padded form (`00000008802-0230`) or the raw context values
-  (`00000008802-230`)? The Account Balance APIM contract shows `policy-no` as
-  `"00000008802"` and `cert-no` as `230`, so the two sides already differ in
-  padding today.
-- *JSON property name.* The requirement was written as `account-number`, but
-  every existing field in this response envelope is camelCase (`asOfDate`,
-  `currencySelection`, `displayAccountId`). This pack assumes `accountNumber`
-  for consistency. Confirm, or state that the hyphenated form is required.
+`accountNumber` uses the configured width on *both* components:
+
+```
+accountNumber = leftPad(policyNo, 11) + "-" + leftPad(certNo, 4)
+              = "00000008802-0230"
+```
+
+Widths and pad character come from the global `account-identifiers` block
+(`policy-no.width: 11`, `cert-no.width: 4`, `pad-character: "0"`), promoted to
+root in commit 8dcebaae. Applying the width to `policyNo` but not `certNo`
+would contradict the reason that block was made global.
+
+Note the APIM wire form differs: `TRPGetMemberAccBal` sends `cert-no` as the
+unpadded `230`. That is a downstream request contract and is unaffected;
+`accountNumber` is a presentation value assembled by the BFF.
+
+*JSON property name.* `accountNumber`, camelCase, consistent with every other
+field in this envelope (`asOfDate`, `currencySelection`, `displayAccountId`).
+The requirement was written as `account-number`; the config key is
+`account-identifiers`, but that governs the YAML namespace, not the response
+schema.
+
+*Implementation caveat, see R-6.* Whether the assembler pads at render time
+depends on the form already stored in `AccountContext.certNo`.
+
+**R-6 Stored form of AccountContext.certNo — OPEN, implementation detail.**
+`LoginAccountRecordValidationService` produces both raw and padded values
+(`rawPolicyNo` / padded, `rawCertNo` / padded) during login. Which form is
+written into the session `AccountContext` decides whether the summary assembler
+pads or uses the value verbatim.
+
+Padding an already-padded `"0230"` to width 4 is a no-op, but padding a raw
+`"230"` that was stored as `"0230"` elsewhere would be inconsistent, and
+re-padding an already-padded `policyNo` is likewise a no-op only because the
+value is already at width. The rule must be stated rather than relied upon:
+the assembler pads to the configured width and is idempotent for values already
+at that width, rejecting any value longer than its width as a contract
+violation.
+
+This is resolvable from repository evidence, not a business decision.
 
 **R-4 Percentage for a sold fund — RESOLVED 21/09/2026, follows from R-5.**
 Identical reasoning: zero rows, so `portfolioPercentage` is `"0.0"`. The row
