@@ -33,3 +33,25 @@ dev @ 19a4b41c061ae58a34cb156232435e3eaf7d6845.
 Q-1 through Q-8 in `5-decisions-open-questions.md` must be answered before S1
 begins. Q-3 is the most consequential: it would introduce the first rounding
 operation in the account feature set.
+
+## S1 endpoint rename
+
+Both account read endpoints now live under `/api/v1/account`. `AccountBalanceController`
+serves `/account/balance` and `AccountGainLossController` serves `/account/gain-loss`;
+both retain the shared class-level `@RequestMapping("/api/v1")`, so
+`ContributionController` and `NotificationController` are unaffected.
+
+Path literals were updated in the two controllers, `AccountBalanceControllerTest`,
+`AccountGainLossPublicContractTest`, three e2e scripts, and the Account Balance and
+Account Gain/Loss contract documents. Request headers, query parameters, response
+bodies, status codes, and error mappings are unchanged.
+
+Deliberately preserved: `apim.account-balance.path` and `apim.account-gain-loss.path`
+plus their environment overrides, both `@ConfigurationProperties` prefixes, the
+`accountbalance` and `accountgainloss` package names, the `TRPGetMemberAccBal` and
+`TRPGetInvestGL` APIM paths, and every `account-balance.*` / `account-gain-loss.*`
+observability event name. E2E script filenames and the `account-balance` scenario-pack
+directory are also unchanged.
+
+No compatibility alias was added; the cutover is atomic per Q-1. Formatting remains
+deferred to S6. Summary endpoint work stays blocked on Q-2 through Q-8.

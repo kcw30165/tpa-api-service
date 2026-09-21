@@ -20,8 +20,8 @@ Excluded: gain/loss, Current Portfolio Gauge, total funds, top holdings, Importa
 ## Public request
 
 ```http
-GET /api/v1/account-balance
-GET /api/v1/account-balance?currency=USD
+GET /api/v1/account/balance
+GET /api/v1/account/balance?currency=USD
 ```
 
 Request header profile:

@@ -74,7 +74,7 @@ Do not echo Account-Ref, request currency, account currency, snapshot ID, fixed 
 
 ## Idempotency decision
 
-`Idempotency-Key` is not required for `GET /api/v1/account-balance`. The operation is read-only and safe to repeat. The BFF does not create an idempotency record or replay store for this endpoint.
+`Idempotency-Key` is not required for `GET /api/v1/account/balance`. The operation is read-only and safe to repeat. The BFF does not create an idempotency record or replay store for this endpoint.
 
 ## Phase I Repository Ratification
 

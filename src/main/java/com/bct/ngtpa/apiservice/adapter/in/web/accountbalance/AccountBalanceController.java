@@ -21,7 +21,7 @@ public class AccountBalanceController {
   private final GetAccountBalanceUseCase getAccountBalanceUseCase;
   private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
 
-  @GetMapping(value = "/account-balance", produces = MediaType.APPLICATION_JSON_VALUE)
+  @GetMapping(value = "/account/balance", produces = MediaType.APPLICATION_JSON_VALUE)
   public Mono<MutationResponse<AccountBalanceResultResponse>> getAccountBalance(
       @RequestParam(value = "currency", required = false) String currency,
       @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false)

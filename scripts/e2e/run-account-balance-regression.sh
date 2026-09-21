@@ -48,7 +48,7 @@ set -e
 printf 'child_exit=%s\n' "$rc" > "$PARENT/020-exit-codes.txt"
 [[ "$rc" -eq 0 ]] || { printf 'status=FAIL\n' > "$PARENT/090-final-status.txt"; exit "$rc"; }
 [[ "$(cat "$TMP/count")" == 5 ]] || { printf 'ERROR request count mismatch\n' >&2; exit 1; }
-for marker in '/api/v1/auth/login' '/api/v1/auth/login/otp/send' '/api/v1/auth/login/otp/verify' '/api/v1/account-balance' '/api/v1/auth/logout' 'Account-Ref:' 'portal_sid='; do
+for marker in '/api/v1/auth/login' '/api/v1/auth/login/otp/send' '/api/v1/auth/login/otp/verify' '/api/v1/account/balance' '/api/v1/auth/logout' 'Account-Ref:' 'portal_sid='; do
   grep -Fq -- "$marker" "$TMP/requests" || { printf 'ERROR missing transport marker: %s\n' "$marker" >&2; exit 1; }
 done
 if grep -R -E -q 'SYNTHETIC_(COOKIE|CSRF|DEST|MASK|PORTAL|AUTH_CSRF|ACCOUNT|ENV)|synthetic-password|246810' "$CHILD_ROOT"; then

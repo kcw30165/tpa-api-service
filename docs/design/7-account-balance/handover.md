@@ -154,7 +154,7 @@ The governed APIM operation inventory contains `TRPGetGeneralMetaData` exactly o
 
 ## Phase III-001 FE contract and controller boundary
 
-Implemented `GET /api/v1/account-balance` with optional `currency`, shared `X-Request-Id` enforcement, optional `Accept-Language` with English fallback, and selected-account delegation through `CurrentPortalAccessContextResolver`. The success envelope uses `MutationResponse` with Account Balance data under `result.data`. Account Overview nullable fields remain stable, portfolio omission is property-scoped, and public terminology uses Display Account and Sub-Display-Account. APIM retrieval and final transformation remain excluded from this subphase.
+Implemented `GET /api/v1/account/balance` with optional `currency`, shared `X-Request-Id` enforcement, optional `Accept-Language` with English fallback, and selected-account delegation through `CurrentPortalAccessContextResolver`. The success envelope uses `MutationResponse` with Account Balance data under `result.data`. Account Overview nullable fields remain stable, portfolio omission is property-scoped, and public terminology uses Display Account and Sub-Display-Account. APIM retrieval and final transformation remain excluded from this subphase.
 
 ## Phase III-002 application context and reference-date orchestration
 

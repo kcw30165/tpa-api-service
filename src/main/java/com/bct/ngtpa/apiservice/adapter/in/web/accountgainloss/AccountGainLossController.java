@@ -22,7 +22,7 @@ public class AccountGainLossController {
   private final GetAccountGainLossUseCase useCase;
   private final CurrentPortalAccessContextResolver contextResolver;
 
-  @GetMapping(value = "/account-gain-loss", produces = MediaType.APPLICATION_JSON_VALUE)
+  @GetMapping(value = "/account/gain-loss", produces = MediaType.APPLICATION_JSON_VALUE)
   public Mono<MutationResponse<AccountGainLossResultResponse>> getAccountGainLoss(
       @RequestParam(value = "period", required = false, defaultValue = "SINCE_SCHEME_INCEPTION")
           AccountGainLossPeriod period,

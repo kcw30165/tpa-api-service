@@ -20,7 +20,7 @@ class AccountBalanceControllerTest {
   void missingRequestIdUsesSharedFilter() {
     client(c -> Mono.just(result()), resolver(context()))
         .get()
-        .uri("/api/v1/account-balance")
+        .uri("/api/v1/account/balance")
         .exchange()
         .expectStatus()
         .isBadRequest()
@@ -41,7 +41,7 @@ class AccountBalanceControllerTest {
             },
             resolver(context()))
         .get()
-        .uri("/api/v1/account-balance")
+        .uri("/api/v1/account/balance")
         .header("X-Request-Id", "req-1")
         .exchange()
         .expectStatus()
@@ -65,7 +65,7 @@ class AccountBalanceControllerTest {
             },
             resolver(context()))
         .get()
-        .uri("/api/v1/account-balance?currency=USD")
+        .uri("/api/v1/account/balance?currency=USD")
         .header("X-Request-Id", "req-2")
         .exchange()
         .expectStatus()
@@ -81,7 +81,7 @@ class AccountBalanceControllerTest {
   void responseUsesResultDataAndApprovedTerminologyWithScopedOmission() {
     client(c -> Mono.just(result()), resolver(context()))
         .get()
-        .uri("/api/v1/account-balance")
+        .uri("/api/v1/account/balance")
         .header("X-Request-Id", "req-3")
         .exchange()
         .expectStatus()

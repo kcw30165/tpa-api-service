@@ -34,7 +34,7 @@ class AccountGainLossPublicContractTest {
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/accountgainloss/AccountGainLossController.java"));
     assertThat(source)
         .contains(
-            "/account-gain-loss",
+            "/account/gain-loss",
             "defaultValue = \"SINCE_SCHEME_INCEPTION\"",
             "CurrentPortalAccessContextResolver",
             "account.accountEnv()",

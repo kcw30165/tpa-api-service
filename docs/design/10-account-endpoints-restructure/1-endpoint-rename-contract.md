@@ -4,8 +4,8 @@
 
 | Before | After | Method |
 | --- | --- | --- |
-| /api/v1/account-balance | /api/v1/account/balance | GET |
-| /api/v1/account-gain-loss | /api/v1/account/gain-loss | GET |
+| /api/v1/account/balance | /api/v1/account/balance | GET |
+| /api/v1/account/gain-loss | /api/v1/account/gain-loss | GET |
 
 Request headers, query parameters, response bodies, status codes, and error
 mappings are unchanged. Only the URL path segment changes.
