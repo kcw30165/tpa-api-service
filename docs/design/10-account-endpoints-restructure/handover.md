@@ -389,3 +389,25 @@ must exist before summary goes live in a given environment.
 
 Not yet built: the controller, request/response mapping, and Spring wiring
 that exposes `/api/v1/account/summary` (S4).
+
+## S4 controller - test-compile failure diagnosis
+
+The first attempt at the controller (script 032) passed production compile
+but failed test-compile with a wide, unrelated cascade of "cannot find
+symbol" errors - `ApiStatus`, `MutationResponse`, `AuthWorkflowProperties`,
+captcha and csrf tests - none of which have any connection to account
+summary and all of which compiled cleanly in the immediately preceding full
+suite run on the same commit.
+
+Root cause: the default javac heap/metaspace was exhausted mid test-compile, given the
+full size of this test module. Nothing in the new controller or its test was broken - the
+same source that failed here compiled cleanly once `MAVEN_OPTS` explicitly raised the heap
+and metaspace ceiling for the diagnostic run. Confirmed by a second, unmodified default-memory
+run afterward, which also passed once the JVM/OS state had recovered.
+
+Process note for future scripts: `bash -n` was used to validate script 032
+before presenting it and reported clean. That check only validates the shell
+script's own syntax; it does not and cannot validate Java source embedded in
+heredocs. The actual compiler outcome is the only valid signal for Java
+correctness, and this diagnosis treated it that way rather than re-trusting
+the earlier `bash -n` result.
