@@ -331,3 +331,61 @@ The summary assembler (S3) can now call `GetAccountGainLossCommand`'s
 ten-argument canonical constructor directly with the same currency resolved
 for the balance side, giving a currency-consistent summary payload as Q-7
 requires.
+
+## S3 account summary application service and assembler
+
+100% additive: `GetAccountSummaryService`, `AccountSummaryAssembler`, four new
+application DTOs, `GetAccountSummaryUseCase`, and
+`AccountSummaryApplicationConfig`. No existing file was modified - both
+`DefaultAccountBalanceAssembler` and `AccountGainLossAssembler` are reused
+completely unmodified, consumed as their existing bean types.
+
+Orchestration resolves one reference date and one metadata set (the existing
+four Account Balance precision keys plus `AB_PERCENTAGE`), then fetches
+balance and gain/loss sequentially - balance first. If balance fails,
+gain/loss is never invoked (Q-6), verified by an explicit test asserting the
+gain/loss port's invocation flag stays false. `AccountBalanceRetrievalException`
+and `AccountGainLossRetrievalException` propagate unchanged; anything else
+maps to `AccountBalanceRetrievalException.systemFailure()`.
+
+`AccountSummaryAssembler` is the only new logic:
+
+- **accountNumber**: `policyNo + "-" + certNo`, blank either side fails
+  (R-3/R-6).
+- **Per-fund balance/percentage**: summed across every `accBal` row for a
+  fund, keyed by trimmed fund code, independent of display source (R-5).
+  `nav` uses the same null/-1 sentinel check as the rest of Account Balance.
+- **Null vs zero**: a fund entirely absent from balance holdings (sold)
+  renders `"0.00"`/`"0.0"` - a real zero (R-2/R-4). A fund present with every
+  row's percentage null renders `portfolioPercentage: null` - unreported
+  (R-6, e.g. before TAS deploys the field). A fund with some rows reported and
+  some not is a technical failure (R-5) - this state is never rendered.
+- **Q-5 superset check**: every held fund must appear in the gain/loss fund
+  list; a balance-only fund is a contract violation.
+- **fundName precedence**: the balance-side `fundDtl` name when the fund is
+  held, else the already-resolved gain/loss name.
+- **totalValue / totalGainLoss / fund order / gainLoss / period /
+  gainLossAsOfDate**: reused verbatim from the two existing results, never
+  recomputed - summary cannot silently disagree with either standalone
+  endpoint's totals.
+
+An architecture test (mirroring `AccountGainLossAssemblerArchitectureTest`)
+asserts the new assembler stays framework-free and performs no rounding.
+
+Fifteen new tests: ten on the assembler (accountNumber, multi-row summation,
+sold-fund zero, all-null-unreported, partial-null failure, superset
+violation, sentinel rejection, totals passthrough, ordering, fundName
+precedence both directions), one architecture guard, and four on the
+orchestrator (single reference-date/metadata resolution with the correct key
+set, sequential call order, both error-precedence paths, and the
+unrecognized-exception mapping).
+
+Operational note: `GeneralMetadataResolver` will now be asked for
+`acbal-pcnt` precision in every environment where summary is deployed. If that
+metadata row is not yet configured somewhere, summary fails closed exactly as
+Account Balance already does when any of its four keys is missing - this is
+existing behaviour, not a new failure mode, but it means the metadata row
+must exist before summary goes live in a given environment.
+
+Not yet built: the controller, request/response mapping, and Spring wiring
+that exposes `/api/v1/account/summary` (S4).
