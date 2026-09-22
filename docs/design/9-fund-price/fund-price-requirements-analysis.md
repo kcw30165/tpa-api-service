@@ -16,11 +16,16 @@ The Fund Price page requires three authenticated, selected-account-scoped BFF en
 - Available dates and maximum history months come from `TRPGetFundPriceMode`.
 - Java stores validated mode metadata in account-scoped authenticated session state.
 - Price and export requests use stored metadata for validation and range derivation.
-- Java joins Fund Price and Fund Info by `fund-code` with one-to-one integrity.
-- Page rows default to fund name ascending (selected via Accept-Language), then unit price ascending.
-- Export rows sort by price date descending, then English fund name ascending.
+- Java joins Fund Price and Fund Info by `fund-code`. Every `FundPrice` record must
+  resolve to exactly one `FundInfo` record; a `FundInfo` record with no price row in
+  the returned range is not an error outside the single-date DAILY case.
+- Page rows sort by risk level ascending (empty last), then English fund name ascending,
+  then unit price ascending (unit price being the downstream bid-price).
+- Export rows sort by price date descending, then risk level ascending (empty last),
+  then English fund name ascending.
 - XLSX filename is `fund_price_info.xlsx`.
-- Risk level is removed entirely from scope; no field, column, sort, or wording is implemented.
+- Risk level is in scope as a web response field and as a sort key for both web and
+  export. It is not an export column. fund-seq is out of scope entirely.
 
 ## Non-functional requirements
 

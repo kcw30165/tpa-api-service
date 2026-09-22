@@ -56,7 +56,14 @@ Validation requires one data item, a supported nonblank mode, a supported nonbla
 ### Response
 
 The response contains one data item with `FundPrice` and `FundInfo` arrays. APIM DTOs retain exact downstream wire names. The adapter maps them into application contracts. 
-`risk-level`: string representing the fund risk level. Valid values are "0.5" to "5.0" in increments of "0.5".
+`risk-level`: string representing the fund risk level. The downstream system emits the
+literal strings `"0.5"`, `"1"`, `"1.5"`, `"2"`, `"2.5"`, `"3"`, `"3.5"`, `"4"`,
+`"4.5"`, `"5"` -- whole numbers are NOT zero-padded to one decimal place (`"1"`, not
+`"1.0"`). An empty string is a legitimate value meaning "no risk level assigned" and
+is not an error. Java parses the value to `BigDecimal` for ordering only, and echoes
+the raw downstream string verbatim to FE without reformatting. A nonblank value
+outside this set is an invalid downstream contract and fails closed as HTTP 503
+`SYSTEM_ERROR`.
 
 ```json
 {
@@ -194,9 +201,14 @@ Use TRPGetGeneralMetaData to obtain precision for fund price.
 
 ## Reconciliation invariants
 
-- Each `fund-code` appears at most once in each array.
-- Every Fund Price record has exactly one Fund Info record.
-- Every Fund Info record has exactly one Fund Price record in the returned range where the contract expects one-to-one data.
+- `fund-code` is unique within the `FundInfo` array.
+- The pair (`fund-code`, `price-date`) is unique within the `FundPrice` array. A
+  `fund-code` legitimately appears once per price date across a MONTHLY or export
+  range.
+- Every `FundPrice` record resolves to exactly one `FundInfo` record by `fund-code`.
+- A `FundInfo` record with no `FundPrice` record in the returned range is NOT an
+  error; the stricter one-to-one expectation applies only to the single-date DAILY
+  case.
 - Null, blank, duplicate, missing, or unmatched required values are invalid downstream contracts.
 - Prices remain `BigDecimal`; Java does not invent rounding.
 

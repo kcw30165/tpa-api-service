@@ -15,7 +15,7 @@ Conceptual value:
   "accountRefBinding": "server-controlled association",
   "accountEnv": "DB",
   "policyNo": "00000008802",
-  "referenceDate": "2026-09-18",
+  "referenceDate": "18/09/2026",
   "mode": "DAILY",
   "fundPriceType": "BIDOFFER PRICE",
   "availableFundPriceDates": ["18/09/2026", "18/05/2026"],

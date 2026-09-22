@@ -42,13 +42,29 @@ Conceptual returned fields per row:
   "priceDate": "05/05/2026",
   "fundCurrency": "HKD",
   "bidUnitPrice": 159.7628,
-  "offerUnitPrice": 159.7628
+  "offerUnitPrice": 159.7628,
+  "riskLevel": "1.5"
 }
 ```
 
 Java must model supported fields explicitly. It must not expose APIM DTOs or implement generic arbitrary-field passthrough.
 
-When the cached fund-price-type is BIDOFFER PRICE, Java returns bidUnitPrice and offerUnitPrice as shown above. When it is UNIT PRICE, Java returns a single unitPrice field sourced from bid-price instead of the two fields; fund-price-type itself is never returned to FE, which owns display labelling. fundCode/fundName resolve per Accept-Language; there is no separate Chinese field in the web (non-export) response.
+When the cached fund-price-type is BIDOFFER PRICE, Java returns bidUnitPrice and
+offerUnitPrice as shown above. When it is UNIT PRICE, Java returns a single unitPrice
+field sourced from bid-price instead of the two fields; fund-price-type itself is never
+returned to FE, which owns display labelling. fundName resolves per Accept-Language;
+there is no separate Chinese field in the web (non-export) response.
+
+riskLevel carries the raw downstream risk-level string verbatim (for example "1" or
+"1.5"); Java does not reformat or zero-pad it. Emission is result-set scoped: when at
+least one fund in the result set carries a risk level, riskLevel is present on every
+row with absent values serialized as null; when no fund carries one, the key is absent
+from every row.
+
+Rows are ordered by risk level ascending (an empty risk level ranks as the highest risk
+and sorts last), then English fund name ascending, then unit price ascending, where
+unit price is the downstream bid-price under both fund-price-type values. fund-seq is
+not returned and is not a sort key.
 
 ## 3. Export Fund Price
 
@@ -59,7 +75,8 @@ GET /api/v1/fund-price/export
 - No FE date-range parameters.
 - Filename: `fund_price_info.xlsx`.
 - Media type: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
-- Uses `Accept-Language` for header localization.
+- Headers are always bilingual and do not vary by request language; `Accept-Language`
+  does not select the workbook header language.
 
 ## Public failures
 

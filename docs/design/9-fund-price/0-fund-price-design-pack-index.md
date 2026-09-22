@@ -4,7 +4,7 @@
 **Status:** Proposed solution-design baseline for repository review and approval  
 **Implementation status:** Not started  
 **Target branch:** `features/impl-fund-price`  
-**Baseline:** `19a4b41c061ae58a34cb156232435e3eaf7d6845`
+**Baseline:** `4fb53ffa663222ceeb26646b11d39005ca559c76`
 
 ## Purpose
 

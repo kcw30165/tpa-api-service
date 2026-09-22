@@ -11,7 +11,7 @@
 
 ## Required next steps
 
-1. Copy this pack into `docs/design/7-fund-price/` on `features/impl-fund-price`.
+1. Copy this pack into `docs/design/9-fund-price/` on `features/impl-fund-price`.
 2. Review the Git diff and confirm no non-document files changed.
 3. Run the repository documentation checks required by `.github` guidance.
 4. Commit the design pack.

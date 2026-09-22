@@ -6,6 +6,8 @@
 - Malformed DAILY date: HTTP 400, field target `date`, APIM not called.
 - Malformed MONTHLY value: HTTP 400, field target `date`, APIM not called.
 - Date/month outside maximum history: HTTP 400, field target `date`, APIM not called.
+- Input shape disagrees with cached mode (a day supplied under MONTHLY, or a month
+  supplied under DAILY): HTTP 400, field target `date`, APIM not called.
 - Date unavailable or month contains no available date: HTTP 400, field target `date`, APIM not called.
 
 ## Session and contract errors
@@ -18,6 +20,7 @@ The following map to HTTP 503, `ApiStatus.SYSTEM_ERROR`, and the repository gene
 - Blank or unsupported mode.
 - Invalid maximum history months.
 - Invalid available-date value.
+- Nonblank risk-level outside the downstream-supported value set.
 - Session read/write, encryption, or concurrency failure.
 
 ## Downstream errors

@@ -50,7 +50,8 @@ Both operations are:
 - actor role from protected actor context
 - `ApimRetryEligibility.SAFE_BUSINESS_CALL`
 
-The authoritative routing ledger and exact-operation guard must be updated from 15 to 17 operations.
+The authoritative routing ledger and exact-operation guard must be updated from 18 to 20
+operations. TRPGetGeneralMetaData is already ledger entry 18 and is reused, not added.
 
 ## Unsupported mode
 
