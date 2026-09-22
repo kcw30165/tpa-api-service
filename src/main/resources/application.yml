@@ -99,6 +99,15 @@ auth-flow-session:
       required: false
       ttl-seconds: 600
 
+# Global account identifier formatting. Not login-specific: policy and
+# certificate numbers are padded identically wherever they are rendered.
+account-identifiers:
+  policy-no:
+    width: 11
+  cert-no:
+    width: 4
+  pad-character: "0"
+
 auth-workflows:
   forgot-password:
     message:
@@ -227,15 +236,6 @@ auth-workflows:
       prefix: acc
       entropy-bytes: 24
       max-generation-attempts: 8
-    account-identifiers:
-      policy-no:
-        width: 11
-      cert-no:
-        width: 4
-      pad-character: "0"
-    account:
-      identifier-width: ${LOGIN_ACCOUNT_IDENTIFIER_WIDTH:8}
-      identifier-pad-character: "0"
   username-recovery:
     session:
       ttl-seconds: 600

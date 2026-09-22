@@ -12,7 +12,9 @@ public final class GeneralMetadataWireValues {
           GeneralMetadataName.UNIT_BALANCE,
           "unit",
           GeneralMetadataName.FX_RATE,
-          "fx-rate");
+          "fx-rate",
+          GeneralMetadataName.AB_PERCENTAGE,
+          "acbal-pcnt");
   private static final Map<GeneralMetadataType, String> TYPES =
       Map.of(
           GeneralMetadataType.PRECISION,

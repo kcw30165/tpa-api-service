@@ -9,4 +9,26 @@ public record RawAccountBalanceHolding(
     BigDecimal unit,
     BigDecimal netAssetValue,
     BigDecimal vestedBalance,
-    BigDecimal transitAmount) {}
+    BigDecimal transitAmount,
+    BigDecimal percentage) {
+
+  /** Compatibility constructor for callers predating the downstream percentage field. */
+  public RawAccountBalanceHolding(
+      String displaySource,
+      String subDisplaySource,
+      String fundCode,
+      BigDecimal unit,
+      BigDecimal netAssetValue,
+      BigDecimal vestedBalance,
+      BigDecimal transitAmount) {
+    this(
+        displaySource,
+        subDisplaySource,
+        fundCode,
+        unit,
+        netAssetValue,
+        vestedBalance,
+        transitAmount,
+        null);
+  }
+}

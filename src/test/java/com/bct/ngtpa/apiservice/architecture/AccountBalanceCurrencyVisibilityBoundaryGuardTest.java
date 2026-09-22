@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class AccountBalanceCurrencyVisibilityBoundaryGuardTest {
 
   private static final Path RESPONSE_ROOT =
-      Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/response/accountbalance");
+      Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/response/accountsummary");
 
   @Test
   void omissionIsScopedAcrossBothViewsAndForbiddenFieldIsAbsent() throws Exception {

@@ -1,0 +1,520 @@
+# Account Endpoints Restructure Handover
+
+## Current stage
+
+Design baseline only. No production or test Java source has been modified.
+
+## Branch
+
+`feature/account-endpoints-restructure-and-summary`, cut from
+dev @ 19a4b41c061ae58a34cb156232435e3eaf7d6845.
+
+## Investigation findings carried into this pack
+
+- Both account controllers use class-level `@RequestMapping("/api/v1")` with a
+  method-level path segment, so the rename is method-scoped.
+- `/api/v1` is shared with `ContributionController` and
+  `NotificationController`, which must not be disturbed.
+- `TRPGetMemberAccBal` exposes fund identity as `fundDtl.fund-code`;
+  `TRPGetInvestGL` exposes it as `InvestGL.FundCode`. The gain/loss adapter
+  trims; the balance adapter does not. The composer must trim both sides.
+- Both features already resolve reference date and general metadata through the
+  same shared ports, and the Gain/Loss metadata key set is a subset of the
+  Account Balance set, so composition needs no new metadata key.
+- `AccountGainLossApimContentValidator` treats an empty `InvestGL` array as
+  valid, so an empty gain/loss result is a real runtime state.
+- The APIM routing ledger cardinality is 18 and must remain 18: summary
+  introduces no new APIM operation.
+- No OpenAPI or Swagger artifact exists in the repository, so the design
+  documents are the authoritative contract.
+
+## Blocking
+
+Q-1 through Q-8 in `5-decisions-open-questions.md` must be answered before S1
+begins. Q-3 is the most consequential: it would introduce the first rounding
+operation in the account feature set.
+
+## S1 endpoint rename
+
+Both account read endpoints now live under `/api/v1/account`. `AccountBalanceController`
+serves `/account/balance` and `AccountGainLossController` serves `/account/gain-loss`;
+both retain the shared class-level `@RequestMapping("/api/v1")`, so
+`ContributionController` and `NotificationController` are unaffected.
+
+Path literals were updated in the two controllers, `AccountBalanceControllerTest`,
+`AccountGainLossPublicContractTest`, three e2e scripts, and the Account Balance and
+Account Gain/Loss contract documents. Request headers, query parameters, response
+bodies, status codes, and error mappings are unchanged.
+
+Deliberately preserved: `apim.account-balance.path` and `apim.account-gain-loss.path`
+plus their environment overrides, both `@ConfigurationProperties` prefixes, the
+`accountbalance` and `accountgainloss` package names, the `TRPGetMemberAccBal` and
+`TRPGetInvestGL` APIM paths, and every `account-balance.*` / `account-gain-loss.*`
+observability event name. E2E script filenames and the `account-balance` scenario-pack
+directory are also unchanged.
+
+No compatibility alias was added; the cutover is atomic per Q-1. Formatting remains
+deferred to S6. Summary endpoint work stays blocked on Q-2 through Q-8.
+
+### S1 documentation repair
+
+The S1 documentation pass rewrote every old public path occurrence, including
+the six that must retain the pre-rename path because they document the rename
+itself. Those lines briefly read "`/api/v1/account/balance` becomes
+`/api/v1/account/balance`". The change-set items, the path-change table's
+Before column, and the confirmed-by-instruction bullets now carry the correct
+`/api/v1/account-balance` and `/api/v1/account-gain-loss` originals.
+
+The old paths now appear exactly six times in the repository, all within this
+design pack and all as deliberate history. No controller mapping, test, e2e
+script, or configuration value was affected; the live routing remains
+`/api/v1/account/balance` and `/api/v1/account/gain-loss`.
+
+## Summary contract ratification
+
+> **Superseded.** The operation and metadata name below were corrected later in
+> this document; see "Percentage ownership correction". Retained as history.
+
+Q-1 through Q-8 are closed. The consequential change is Q-3: percentage is no
+longer computed by the BFF. TAS supplies `percentage` on `TRPGetInvestGL` and
+a `gl-percentage` metadata name on `TRPGetGeneralMetaData`, so the BFF renders
+it like any other precision-governed value and the account feature set keeps
+its invariant that Java never rounds.
+
+Q-4 and Q-5 similarly moved downstream: ordering uses the `TRPGetInvestGL`
+`seq` field, and the gain/loss fund list is authoritative for `holdings[]`
+because it is a superset of the balance fund list — a sold fund retains
+gain/loss with no current holding. Q-7 adds `curr` to `TRPGetInvestGL`, so a
+currency selection applies consistently across the whole summary payload.
+
+Two blockers remain before S0 begins. R-1: the exact wire contract for the
+three downstream additions is unspecified, including property naming and
+whether `percentage` is a ratio or a display percentage. R-2: the `balance`
+value for a sold fund that has gain/loss but no holding.
+
+One internal repair is now mandatory and is sequenced as S0.
+`DefaultAccountBalancePresentationTransformer.precisions(...)` resolves every
+enum constant and calls `orElseThrow()` on each, so adding a new percentage
+constant would make Account Balance demand a metadata key it does not use.
+The method must resolve only requested keys first. (The constant was named
+`GL_PERCENTAGE` at the time of writing; it is now `AB_PERCENTAGE`.)
+
+## Account number addition
+
+`/api/v1/account/summary` gains `result.data.accountNumber`, composed as
+`policyNo + "-" + certNo` from the selected account's protected context. It is
+derived inside the BFF, needs no upstream call, and is scoped to summary only,
+so `/api/v1/account/balance` and `/api/v1/account/gain-loss` are untouched.
+
+Two points on record. First, both components are protected identifiers under
+`apim.encryption`, so publishing their concatenation is a deliberate disclosure
+and the composed value must stay out of logs. Second, R-3 captures the two
+unresolved details: whether the value uses the configured 11/4 zero padding,
+and whether the JSON property is `accountNumber` (assumed, matching every other
+field in this envelope) or the literal `account-number` as written in the
+requirement.
+
+## S0-A precision key narrowing
+
+`DefaultAccountBalancePresentationTransformer.precisions(...)` now resolves an
+explicit caller-supplied key set instead of iterating every enum constant. A
+private constant declares the four keys Account Balance actually renders —
+FUND_PRICE, NET_ASSET_VALUE, UNIT_BALANCE, FX_RATE — matching
+`GetAccountBalanceService.REQUIRED_METADATA` exactly. The single-argument
+overload is retained and delegates, so `DefaultAccountBalanceAssembler` and
+`AccountBalancePresentationTransformerTest` are untouched.
+
+Resolved output is unchanged today: those four keys are currently the complete
+enum, so the returned map is identical. What changes is the failure mode.
+Account Balance no longer demands a precision row for every future metadata
+name, so adding `AB_PERCENTAGE` for the summary endpoint will not make it
+`orElseThrow()` on a key it does not use.
+
+`GeneralMetadataName` itself is deliberately untouched. Adding `AB_PERCENTAGE`
+also requires a wire mapping in `GeneralMetadataWireValues`, whose `NAMES` map
+is a fixed `Map.of(...)` of the four current constants — that is S0-B and stays
+blocked on the R-1 wire contract.
+
+The first attempt at this subtask failed its own audit rather than its edit:
+the check for enum-wide iteration matched the Javadoc sentence describing the
+removed behaviour. The comment no longer names the construct literally, and the
+audit now inspects executable lines only.
+
+## Percentage ownership correction
+
+Q-3 is corrected: `percentage` is supplied by `TRPGetMemberAccBal`, not
+`TRPGetInvestGL`, and the metadata name is `ab-percentage`, not
+`gl-percentage`. `% of Portfolio` is a fund's share of account balance;
+gain/loss can be negative and a negative number cannot express a portfolio
+share, so the field belonged on the balance operation from the start.
+
+Practical consequences. The BFF enum constant becomes
+`AB_PERCENTAGE("ab-percentage")`. The APIM DTO change moves from
+`TrpGetInvestGlFund` to `AccountBalanceFundDetail`, which also means
+`RawAccountBalanceFundDetail` must carry the value through the raw boundary and
+`AccountBalanceApimContentValidator` must tolerate it. Percentage now sits
+beside `fund-code` in `fundDtl`, so it needs no join to reach the right fund.
+
+`/api/v1/account/balance` is unaffected: `ab-percentage` is requested only by
+the summary use case, and the balance response gains no field.
+
+This creates R-4. `holdings[]` is driven by the gain/loss fund list, which is a
+superset of the balance list, so a sold fund has no `fundDtl` row and therefore
+no percentage. R-2 and R-4 both concern the unheld-fund row and should be
+answered together.
+
+S0-A (the `precisions(...)` narrowing) is unaffected by this correction; it is
+enum-agnostic and the Account Balance key set it declares does not change.
+
+### Correction audit note
+
+The percentage-ownership correction was applied in one pass but its audit
+initially failed, because a repository-wide search for the old term matched
+this cumulative handover file — where the superseded decision is recorded on
+purpose, including the sentence stating the new name replaces the old one.
+
+The rule is now explicit: active contract documents must contain no reference
+to the superseded metadata name, while this handover retains them as labelled
+history. Superseded entries above carry a blockquote marker pointing forward
+to the correction.
+
+## S0-B percentage metadata key
+
+`GeneralMetadataName` gains `AB_PERCENTAGE`, mapped in
+`GeneralMetadataWireValues` to the wire name `acbal-pcnt`. Both files change
+together: `NAMES` is a fixed `Map.of(...)`, so an enum constant without a
+mapping would make `nameToWire` return null silently and `nameFromWire` throw.
+An audit now asserts the enum and the map are the same size.
+
+This is safe only because S0-A landed first. Before `ae440394`,
+`precisions(...)` resolved every enum constant, so adding one would have made
+Account Balance demand `acbal-pcnt` and fail with SYSTEM_FAILURE.
+
+The constant is declared but not yet requested: no use case includes it in a
+required key set, so `/api/v1/account/balance` and `/api/v1/account/gain-loss`
+resolve exactly the metadata they did before. An audit enforces that
+`AB_PERCENTAGE` appears nowhere outside the metadata package.
+
+R-1 is resolved, and the wire forms are recorded in the decisions document.
+`fund-seq` already exists on `TRPGetInvestGL`, so Q-4 ordering needs no
+downstream change. Percentage arrives as display form (`25.0`, not `0.25`), so
+the BFF never multiplies by 100.
+
+The R-1 payload also raised R-5. Percentage arrives per `accBal` row, which is
+display-source granularity, while `holdings[]` is per fund — so a fund held
+across several display sources returns several percentages. Whether they sum
+or repeat must be confirmed before the assembler is written.
+
+### DTO arity note
+
+The request and response records were widened differently, deliberately.
+
+`AccountBalanceHolding` and `RawAccountBalanceHolding` keep a compatibility
+constructor at the previous arity, because `percentage` is downstream-optional:
+it is absent until TAS deploys, and every existing caller legitimately has no
+value to supply. Null means "not reported", distinct from a real zero share.
+
+`TrpGetInvestGlApimRequest` does not. Its compact canonical constructor
+normalizes null currency to an empty string, mirroring
+`TrpGetMemberAccBalApimRequest` exactly, and adding an overload would have
+created a second arity where the balance request has only one. `curr` is
+caller-supplied, not downstream-optional, so callers should state it. The one
+affected test was widened to pass an explicit empty currency.
+
+This cost one test-compile failure in the first attempt: the balance records
+compiled cleanly via their compatibility constructors, which masked the fact
+that the gain/loss request had no such fallback.
+
+### Exact-JSON assertion repair
+
+Widening `TrpGetInvestGlApimRequest` broke
+`serializesExactHyphenatedRequestContract` at runtime, not at compile time. The
+test compares the serialized request to a literal JSON string that ended at
+`"mode":"ssi"`; the record now also emits `"curr":""`.
+
+Neither compile gate could catch this. An exact-string assertion is a runtime
+value comparison, so the arity repair in the previous subtask produced a green
+build over a test that was guaranteed to fail. This subtask runs the two
+affected contract tests directly rather than relying on compilation.
+
+The expected JSON now ends `"mode":"ssi","curr":""`, matching record component
+declaration order — the record carries no `@JsonPropertyOrder`. A companion
+test asserts that a selected currency is carried through and that null
+normalizes to empty, mirroring the balance-side contract test which already
+covered both the initial-load and currency-change shapes.
+
+## S2 summary response contract
+
+Four records under `adapter/in/web/response/accountsummary/`.
+`AccountSummaryDataResponse` references the existing `CurrencySelectionResponse`,
+`AccountOverviewResponse`, and `InvestmentPortfolioResponse` rather than
+redeclaring their fields, so the balance payload cannot drift between the two
+endpoints and inclusion rules such as `ALWAYS` on `pendingSwitchIn` are
+inherited rather than reimplemented. A test asserts that specifically.
+
+Field order is locked: `accountNumber`, `asOfDate`, `currencySelection`,
+`accountOverview`, `investmentPortfolio`, `gainLossBreakdown`; holdings are
+`fundCode`, `fundName`, `fundSequence`, `balance`, `portfolioPercentage`,
+`gainLoss`. Monetary values and the percentage are strings, matching the
+existing account contracts, so precision survives the wire. `holdings`
+normalises null to an empty list, since an account with no gain/loss funds is a
+state the validator already accepts.
+
+The sold-fund row is pinned by test as `"0.00"` / `"0.0"` with gain/loss still
+reported, encoding the R-2, R-4, and R-5 decisions before an assembler exists
+to violate them.
+
+R-6 is resolved from evidence rather than assumption: `AccountContext` holds
+padded identifiers, so `accountNumber` is a direct join.
+
+No controller, service, or Spring wiring yet. S3 adds the assembler, where R-5
+aggregation and the null-versus-zero distinction are enforced.
+
+### Naming note
+
+The first attempt at these records imported `AccountBalanceCurrencySelectionResponse`
+and two similarly prefixed names that do not exist. Only the two top-level
+balance records carry an `AccountBalance` prefix; the sections do not. The
+script had captured the correct names in its own evidence step, but the DTO was
+written from assumption in the same pass rather than from that output.
+Production compile caught it immediately, which is the gate ordering working as
+intended - the failure surfaced before any test or audit could obscure it.
+
+## S7 deprecation plan ratified
+
+`/api/v1/account/balance` will be withdrawn once summary is proven; the plan
+is `7-account-balance-deprecation-plan.md`. Four confirmed decisions:
+`/api/v1/account/gain-loss` stays; `TRPGetMemberAccBal` and everything around
+it keeps its current name, since it is downstream-owned and accurate; S7 runs
+after S3 and S4 land, not before; and the e2e scenario pack is renamed to
+`account-summary` as the one renaming in scope.
+
+The shared response records (`CurrencySelectionResponse`, `AccountOverviewResponse`,
+`InvestmentPortfolioResponse`, and their nested types) move package rather than
+being duplicated or deleted - `AccountSummaryDataResponse` (S2) already
+references them, so S7 is a package move plus an import update, not a data
+model change.
+
+Next unblocked step is S3: the summary assembler, composing
+`GetAccountBalanceService` and the gain/loss source port against the R-2, R-4,
+and R-5 aggregation rules already encoded in the S2 response contract tests.
+
+
+## Currency threaded through account gain-loss (R-7)
+
+`GetAccountGainLossCommand` and `FetchAccountGainLossCommand` gained a
+nullable `currency` field, and `ApimAccountGainLossSourceAdapter` now forwards
+it instead of hardcoding `""`. This closes a gap surfaced while investigating
+S3: `TRPGetInvestGL` will soon require currency-aware calculation (matching
+`TRPGetMemberAccBal`), and the previous hardcoded blank would have silently
+computed the wrong currency once that lands.
+
+Done as its own isolated subtask, ahead of the summary assembler. Backward
+compatibility is structural, not just tested: `GetAccountGainLossCommand`
+keeps a nine-argument compatibility constructor at exactly the shape
+`AccountGainLossController` uses, forwarding `null`. The controller file has a
+verified zero-line diff. Currency stays nullable and unnormalized at the
+command layer; only `TrpGetInvestGlApimRequest` normalizes to the wire empty
+string, mirroring the balance side's existing layering.
+
+`GetAccountGainLossService` had zero tests before this subtask. Two were
+added, targeting exactly the propagation behaviour introduced here.
+
+The first attempt threaded the command records and the adapter correctly but
+missed the service call site: the source wraps the constructor call with the
+opening parenthesis at end-of-line, so the first argument is on the line
+*after* the marker, not sharing it. A position-based insertion found an empty
+line and failed closed rather than editing the wrong place. The repair locates
+the target by matching the actual `command.period(),` line's content.
+
+The summary assembler (S3) can now call `GetAccountGainLossCommand`'s
+ten-argument canonical constructor directly with the same currency resolved
+for the balance side, giving a currency-consistent summary payload as Q-7
+requires.
+
+## S3 account summary application service and assembler
+
+100% additive: `GetAccountSummaryService`, `AccountSummaryAssembler`, four new
+application DTOs, `GetAccountSummaryUseCase`, and
+`AccountSummaryApplicationConfig`. No existing file was modified - both
+`DefaultAccountBalanceAssembler` and `AccountGainLossAssembler` are reused
+completely unmodified, consumed as their existing bean types.
+
+Orchestration resolves one reference date and one metadata set (the existing
+four Account Balance precision keys plus `AB_PERCENTAGE`), then fetches
+balance and gain/loss sequentially - balance first. If balance fails,
+gain/loss is never invoked (Q-6), verified by an explicit test asserting the
+gain/loss port's invocation flag stays false. `AccountBalanceRetrievalException`
+and `AccountGainLossRetrievalException` propagate unchanged; anything else
+maps to `AccountBalanceRetrievalException.systemFailure()`.
+
+`AccountSummaryAssembler` is the only new logic:
+
+- **accountNumber**: `policyNo + "-" + certNo`, blank either side fails
+  (R-3/R-6).
+- **Per-fund balance/percentage**: summed across every `accBal` row for a
+  fund, keyed by trimmed fund code, independent of display source (R-5).
+  `nav` uses the same null/-1 sentinel check as the rest of Account Balance.
+- **Null vs zero**: a fund entirely absent from balance holdings (sold)
+  renders `"0.00"`/`"0.0"` - a real zero (R-2/R-4). A fund present with every
+  row's percentage null renders `portfolioPercentage: null` - unreported
+  (R-6, e.g. before TAS deploys the field). A fund with some rows reported and
+  some not is a technical failure (R-5) - this state is never rendered.
+- **Q-5 superset check**: every held fund must appear in the gain/loss fund
+  list; a balance-only fund is a contract violation.
+- **fundName precedence**: the balance-side `fundDtl` name when the fund is
+  held, else the already-resolved gain/loss name.
+- **totalValue / totalGainLoss / fund order / gainLoss / period /
+  gainLossAsOfDate**: reused verbatim from the two existing results, never
+  recomputed - summary cannot silently disagree with either standalone
+  endpoint's totals.
+
+An architecture test (mirroring `AccountGainLossAssemblerArchitectureTest`)
+asserts the new assembler stays framework-free and performs no rounding.
+
+Fifteen new tests: ten on the assembler (accountNumber, multi-row summation,
+sold-fund zero, all-null-unreported, partial-null failure, superset
+violation, sentinel rejection, totals passthrough, ordering, fundName
+precedence both directions), one architecture guard, and four on the
+orchestrator (single reference-date/metadata resolution with the correct key
+set, sequential call order, both error-precedence paths, and the
+unrecognized-exception mapping).
+
+Operational note: `GeneralMetadataResolver` will now be asked for
+`acbal-pcnt` precision in every environment where summary is deployed. If that
+metadata row is not yet configured somewhere, summary fails closed exactly as
+Account Balance already does when any of its four keys is missing - this is
+existing behaviour, not a new failure mode, but it means the metadata row
+must exist before summary goes live in a given environment.
+
+Not yet built: the controller, request/response mapping, and Spring wiring
+that exposes `/api/v1/account/summary` (S4).
+
+## S4 controller - test-compile failure diagnosis
+
+The first attempt at the controller (script 032) passed production compile
+but failed test-compile with a wide, unrelated cascade of "cannot find
+symbol" errors - `ApiStatus`, `MutationResponse`, `AuthWorkflowProperties`,
+captcha and csrf tests - none of which have any connection to account
+summary and all of which compiled cleanly in the immediately preceding full
+suite run on the same commit.
+
+Root cause: the default javac heap/metaspace was exhausted mid test-compile, given the
+full size of this test module. Nothing in the new controller or its test was broken - the
+same source that failed here compiled cleanly once `MAVEN_OPTS` explicitly raised the heap
+and metaspace ceiling for the diagnostic run. Confirmed by a second, unmodified default-memory
+run afterward, which also passed once the JVM/OS state had recovered.
+
+Process note for future scripts: `bash -n` was used to validate script 032
+before presenting it and reported clean. That check only validates the shell
+script's own syntax; it does not and cannot validate Java source embedded in
+heredocs. The actual compiler outcome is the only valid signal for Java
+correctness, and this diagnosis treated it that way rather than re-trusting
+the earlier `bash -n` result.
+
+## S6 feature stabilization - deferred formatting applied
+
+Every subtask from S0 through S4 explicitly deferred `mvn spotless:apply`,
+per project convention. This stage is that single deferred run for the whole
+feature.
+
+Safety proof: the full suite was run twice - once immediately before
+`spotless:apply`, once immediately after - and both runs produced an
+identical result:
+
+```
+before: 
+after:  
+```
+
+An identical test count with the same pass/fail outcome across a formatter
+run that touched only `.java` files is direct evidence the formatting was
+behaviour-preserving, not an assumption. Both `compile` and `test-compile`
+also re-ran clean after formatting.
+
+No new files were created by `spotless:apply`, and no non-`.java` file was
+touched - config, YAML, and shell scripts across the whole feature are
+untouched by this stage.
+
+This closes S0 through S6 of the account endpoints restructure and summary
+feature. `/api/v1/account/balance`, `/api/v1/account/gain-loss`, and
+`/api/v1/account/summary` are all live, formatted, and fully tested.
+
+Remaining: **S7**, the ratified account-balance deprecation plan
+(`7-account-balance-deprecation-plan.md`) - removing
+`AccountBalanceController`, moving the shared response records into the
+`accountsummary` package, and renaming the e2e scenario pack. Sequenced last
+by design, once summary has run in the field.
+
+## S7 - Account Balance endpoint deprecation (COMPLETE)
+
+`AccountBalanceController` and `/api/v1/account/balance` are removed.
+`/api/v1/account/summary` is the sole account-overview endpoint going
+forward; `/api/v1/account/gain-loss` is untouched and stays live per the
+ratified plan.
+
+**Deleted** (zero remaining consumers, verified exhaustively across
+scripts 035-037): `AccountBalanceController.java`,
+`AccountBalanceDataResponse.java`, `AccountBalanceResultResponse.java`,
+`AccountBalanceControllerTest.java`, and
+`AccountBalanceControllerBoundaryGuardTest.java` (a single-purpose guard that
+existed only to assert facts about the now-deleted controller file).
+
+**Moved, package only, zero logic change**: the eleven shared response
+records (`CurrencySelectionResponse`, `AccountOverviewResponse` + 3 nested,
+`InvestmentPortfolioResponse` + 6 nested) relocated from
+`response.accountbalance` to `response.accountsummary`. Every consumer's
+import was repointed; `AccountSummaryController`, `AccountSummaryDataResponse`,
+and their two contract tests already depended on these types since S2/S3, so
+this was purely a package-path change on already-working code.
+
+**Three test files surgically fixed**, each defect identified before any
+edit was made:
+
+- `AccountBalanceCurrencyVisibilityBoundaryGuardTest` read the response
+  package directory by literal path; its `RESPONSE_ROOT` constant now points
+  at `response/accountsummary`.
+- `AccountBalanceArchitectureConfigurationGuardTest` had one test method
+  (`forbiddenRuntimeAndWebContractsRemainAbsent`) that read the deleted
+  controller file directly; that single method was removed. Its four sibling
+  tests, asserting facts about APIM adapters and shared config, are untouched
+  and re-verified green.
+- `AccountBalanceVisibilitySerializationTest` imported the moving records via
+  wildcard import; moved into the `accountsummary` test package with its
+  import repointed to match.
+
+**Verified unnecessary to touch** - two guard tests initially looked
+in-scope by name, but their literal `Files.readString` path arguments were
+traced and shown to read `AccountBalanceRetrievalResponsePolicy.java`, a file
+S7 never modifies: `AccountBalancePublicErrorHardeningGuardTest` and
+`AccountBalanceRetrievalErrorBoundaryGuardTest`. Both were re-run as direct
+evidence.
+
+**Build-hygiene note.** The first execution attempt of this subtask hit a
+false-alarm full-suite failure: a compiled `.class` file for
+`AccountBalanceControllerBoundaryGuardTest` - produced by an EARLIER script's
+test-compile, before this subtask deleted its `.java` source - was still
+present in `target/test-classes`. Maven's incremental compiler does not prune
+orphaned outputs when a source file is removed; it only adds or updates.
+Surefire's classpath scan found and ran the stale bytecode, which threw
+`NoSuchFileException` trying to read the (correctly) deleted controller file
+- a build-artifact staleness issue, not a code defect. `mvn clean` before
+recompiling is the correct fix and is now the standard step whenever a
+subtask deletes a `.java` source file with its own test.
+
+**Preserved exactly**, confirmed by audit: `TRPGetMemberAccBal`,
+`ApimAccountBalanceSourceAdapter`, `GetAccountBalanceService`,
+`DefaultAccountBalanceAssembler` and every collaborator,
+`apim.account-balance.*` configuration, every `account-balance.*`
+observability event name, and the 18-operation routing ledger.
+
+**e2e pack renamed**: `scripts/e2e/scenarios/account-balance/` ->
+`scripts/e2e/scenarios/account-summary/`, with the request-path literal
+inside `list-authenticated.sh` updated to `/api/v1/account/summary`.
+Top-level runner script filenames (`run-account-balance-*.sh`) were
+deliberately left unrenamed - out of the ratified scope.
+
+This closes S0 through S7. The account endpoints restructure and summary
+feature is complete: `/api/v1/account/gain-loss` and
+`/api/v1/account/summary` are the two live account-overview endpoints;
+`/api/v1/account/balance` no longer exists.

@@ -1,6 +1,6 @@
 # Account Gain/Loss API Contract
 
-`GET /api/v1/account-gain-loss?period=SINCE_SCHEME_INCEPTION|YEAR_TO_DATE`
+`GET /api/v1/account/gain-loss?period=SINCE_SCHEME_INCEPTION|YEAR_TO_DATE`
 
 The default period is `SINCE_SCHEME_INCEPTION`. Downstream mappings are `ssi` and `ytd`.
 

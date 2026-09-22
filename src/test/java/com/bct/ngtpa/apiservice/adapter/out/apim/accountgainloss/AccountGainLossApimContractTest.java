@@ -29,10 +29,25 @@ class AccountGainLossApimContractTest {
   void serializesExactHyphenatedRequestContract() throws Exception {
     var request =
         new TrpGetInvestGlApimRequest(
-            "db230", "role_user_mbr", "00000008802", "230", "01/09/2026", "ssi");
+            "db230", "role_user_mbr", "00000008802", "230", "01/09/2026", "ssi", "");
     assertThat(mapper.writeValueAsString(request))
         .isEqualTo(
-            "{\"login-user-id\":\"db230\",\"login-user-role\":\"role_user_mbr\",\"policy-no\":\"00000008802\",\"cert-no\":\"230\",\"ref-date\":\"01/09/2026\",\"mode\":\"ssi\"}");
+            "{\"login-user-id\":\"db230\",\"login-user-role\":\"role_user_mbr\",\"policy-no\":\"00000008802\",\"cert-no\":\"230\",\"ref-date\":\"01/09/2026\",\"mode\":\"ssi\",\"curr\":\"\"}");
+  }
+
+  @Test
+  void serializesSelectedCurrencyAndNormalizesNullToEmpty() throws Exception {
+    var selected =
+        new TrpGetInvestGlApimRequest(
+            "db230", "role_user_mbr", "00000008802", "230", "01/09/2026", "ssi", "USD");
+    assertThat(mapper.readTree(mapper.writeValueAsString(selected)).path("curr").asText())
+        .isEqualTo("USD");
+
+    var unspecified =
+        new TrpGetInvestGlApimRequest(
+            "db230", "role_user_mbr", "00000008802", "230", "01/09/2026", "ssi", null);
+    assertThat(mapper.readTree(mapper.writeValueAsString(unspecified)).path("curr").asText())
+        .isEmpty();
   }
 
   @Test

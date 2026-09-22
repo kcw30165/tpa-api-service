@@ -4,5 +4,6 @@ public enum GeneralMetadataName {
   FUND_PRICE,
   NET_ASSET_VALUE,
   UNIT_BALANCE,
-  FX_RATE
+  FX_RATE,
+  AB_PERCENTAGE
 }

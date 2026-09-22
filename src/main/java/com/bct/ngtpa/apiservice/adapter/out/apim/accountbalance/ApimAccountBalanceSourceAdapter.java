@@ -118,7 +118,8 @@ public final class ApimAccountBalanceSourceAdapter implements AccountBalanceSour
                         v.unit(),
                         v.netAssetValue(),
                         v.vestedBalance(),
-                        v.transitAmount()))
+                        v.transitAmount(),
+                        v.percentage()))
             .toList());
   }
 }

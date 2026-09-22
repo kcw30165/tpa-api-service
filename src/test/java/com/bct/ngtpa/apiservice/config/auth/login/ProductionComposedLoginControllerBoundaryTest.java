@@ -258,7 +258,6 @@ class ProductionComposedLoginControllerBoundaryTest {
     login.getSession().setAbsoluteTimeoutSeconds(1800);
     login.getSession().setIdleTimeoutSeconds(900);
     login.getSession().setTerminalRetentionSeconds(300);
-    login.getAccount().setIdentifierWidth(12);
     all.setLogin(login);
     return all;
   }

@@ -57,8 +57,7 @@ class Task0043LoginFoundationTest {
             "login:",
             "resend-limit-enabled: false",
             "max-verify-attempts: 5",
-            "idle-timeout-seconds:",
-            "identifier-width:");
+            "idle-timeout-seconds:");
   }
 
   private AuthWorkflowProperties validProperties() {
@@ -87,7 +86,6 @@ class Task0043LoginFoundationTest {
     login.getSession().setAbsoluteTimeoutSeconds(900);
     login.getSession().setIdleTimeoutSeconds(900);
     login.getSession().setTerminalRetentionSeconds(300);
-    login.getAccount().setIdentifierWidth(8);
     properties.setLogin(login);
     return properties;
   }

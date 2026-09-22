@@ -10,4 +10,32 @@ public record AccountBalanceHolding(
     @JsonProperty("unit") BigDecimal unit,
     @JsonProperty("nav") BigDecimal netAssetValue,
     @JsonProperty("vested-bal") BigDecimal vestedBalance,
-    @JsonProperty("transit-amt") BigDecimal transitAmount) {}
+    @JsonProperty("transit-amt") BigDecimal transitAmount,
+    @JsonProperty("percentage") BigDecimal percentage) {
+
+  /**
+   * Compatibility constructor for callers predating the downstream percentage field.
+   *
+   * <p>TAS supplies {@code percentage} inside {@code accBal}, at display-source granularity. It is
+   * absent until that downstream change is deployed, and absence is represented as null rather than
+   * zero so an unreported share is never mistaken for a real zero share.
+   */
+  public AccountBalanceHolding(
+      String displaySource,
+      String subDisplaySource,
+      String fundCode,
+      BigDecimal unit,
+      BigDecimal netAssetValue,
+      BigDecimal vestedBalance,
+      BigDecimal transitAmount) {
+    this(
+        displaySource,
+        subDisplaySource,
+        fundCode,
+        unit,
+        netAssetValue,
+        vestedBalance,
+        transitAmount,
+        null);
+  }
+}

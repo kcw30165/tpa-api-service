@@ -51,6 +51,7 @@ public final class GetAccountGainLossService implements GetAccountGainLossUseCas
                                             .fetch(
                                                 new FetchAccountGainLossCommand(
                                                     command.period(),
+                                                    command.currency(),
                                                     command.accountEnv(),
                                                     command.policyNo(),
                                                     command.certNo(),

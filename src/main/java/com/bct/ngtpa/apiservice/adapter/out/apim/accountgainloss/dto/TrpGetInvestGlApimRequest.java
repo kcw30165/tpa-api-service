@@ -8,4 +8,10 @@ public record TrpGetInvestGlApimRequest(
     @JsonProperty("policy-no") String policyNo,
     @JsonProperty("cert-no") String certNo,
     @JsonProperty("ref-date") String referenceDate,
-    @JsonProperty("mode") String mode) {}
+    @JsonProperty("mode") String mode,
+    @JsonProperty("curr") String currency) {
+
+  public TrpGetInvestGlApimRequest {
+    currency = currency == null ? "" : currency;
+  }
+}
