@@ -42,9 +42,18 @@ class ApimAccountGainLossSourceAdapterTest {
     return new ApimAccountGainLossSourceAdapter(executor, properties);
   }
 
+                                                // new FetchAccountGainLossCommand(
+                                                //     command.period(),
+                                                //     command.currency(),
+                                                //     command.accountEnv(),
+                                                //     command.policyNo(),
+                                                //     command.certNo(),
+                                                //     command.actorUserId(),
+                                                //     command.actorUserRole(),
+                                                //     date))
   private FetchAccountGainLossCommand command() {
     return new FetchAccountGainLossCommand(
-        AccountGainLossPeriod.YEAR_TO_DATE, "env1", "policy1", "cert1", "actor1",
+        AccountGainLossPeriod.YEAR_TO_DATE,"HKD", "env1", "policy1", "cert1", "actor1",
         ActorUserRole.ROLE_USER_MBR, LocalDate.of(2026, 1, 1));
   }
 
