@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance;
+package com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary;
 
 import java.util.List;
 

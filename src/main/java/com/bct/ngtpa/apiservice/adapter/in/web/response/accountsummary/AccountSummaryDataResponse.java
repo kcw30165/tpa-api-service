@@ -1,8 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance.AccountOverviewResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance.CurrencySelectionResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance.InvestmentPortfolioResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.AccountOverviewResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.CurrencySelectionResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.InvestmentPortfolioResponse;
 
 /**
  * Account summary payload: the full Account Balance shape plus two additions.

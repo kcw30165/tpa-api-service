@@ -445,3 +445,76 @@ Remaining: **S7**, the ratified account-balance deprecation plan
 `AccountBalanceController`, moving the shared response records into the
 `accountsummary` package, and renaming the e2e scenario pack. Sequenced last
 by design, once summary has run in the field.
+
+## S7 - Account Balance endpoint deprecation (COMPLETE)
+
+`AccountBalanceController` and `/api/v1/account/balance` are removed.
+`/api/v1/account/summary` is the sole account-overview endpoint going
+forward; `/api/v1/account/gain-loss` is untouched and stays live per the
+ratified plan.
+
+**Deleted** (zero remaining consumers, verified exhaustively across
+scripts 035-037): `AccountBalanceController.java`,
+`AccountBalanceDataResponse.java`, `AccountBalanceResultResponse.java`,
+`AccountBalanceControllerTest.java`, and
+`AccountBalanceControllerBoundaryGuardTest.java` (a single-purpose guard that
+existed only to assert facts about the now-deleted controller file).
+
+**Moved, package only, zero logic change**: the eleven shared response
+records (`CurrencySelectionResponse`, `AccountOverviewResponse` + 3 nested,
+`InvestmentPortfolioResponse` + 6 nested) relocated from
+`response.accountbalance` to `response.accountsummary`. Every consumer's
+import was repointed; `AccountSummaryController`, `AccountSummaryDataResponse`,
+and their two contract tests already depended on these types since S2/S3, so
+this was purely a package-path change on already-working code.
+
+**Three test files surgically fixed**, each defect identified before any
+edit was made:
+
+- `AccountBalanceCurrencyVisibilityBoundaryGuardTest` read the response
+  package directory by literal path; its `RESPONSE_ROOT` constant now points
+  at `response/accountsummary`.
+- `AccountBalanceArchitectureConfigurationGuardTest` had one test method
+  (`forbiddenRuntimeAndWebContractsRemainAbsent`) that read the deleted
+  controller file directly; that single method was removed. Its four sibling
+  tests, asserting facts about APIM adapters and shared config, are untouched
+  and re-verified green.
+- `AccountBalanceVisibilitySerializationTest` imported the moving records via
+  wildcard import; moved into the `accountsummary` test package with its
+  import repointed to match.
+
+**Verified unnecessary to touch** - two guard tests initially looked
+in-scope by name, but their literal `Files.readString` path arguments were
+traced and shown to read `AccountBalanceRetrievalResponsePolicy.java`, a file
+S7 never modifies: `AccountBalancePublicErrorHardeningGuardTest` and
+`AccountBalanceRetrievalErrorBoundaryGuardTest`. Both were re-run as direct
+evidence.
+
+**Build-hygiene note.** The first execution attempt of this subtask hit a
+false-alarm full-suite failure: a compiled `.class` file for
+`AccountBalanceControllerBoundaryGuardTest` - produced by an EARLIER script's
+test-compile, before this subtask deleted its `.java` source - was still
+present in `target/test-classes`. Maven's incremental compiler does not prune
+orphaned outputs when a source file is removed; it only adds or updates.
+Surefire's classpath scan found and ran the stale bytecode, which threw
+`NoSuchFileException` trying to read the (correctly) deleted controller file
+- a build-artifact staleness issue, not a code defect. `mvn clean` before
+recompiling is the correct fix and is now the standard step whenever a
+subtask deletes a `.java` source file with its own test.
+
+**Preserved exactly**, confirmed by audit: `TRPGetMemberAccBal`,
+`ApimAccountBalanceSourceAdapter`, `GetAccountBalanceService`,
+`DefaultAccountBalanceAssembler` and every collaborator,
+`apim.account-balance.*` configuration, every `account-balance.*`
+observability event name, and the 18-operation routing ledger.
+
+**e2e pack renamed**: `scripts/e2e/scenarios/account-balance/` ->
+`scripts/e2e/scenarios/account-summary/`, with the request-path literal
+inside `list-authenticated.sh` updated to `/api/v1/account/summary`.
+Top-level runner script filenames (`run-account-balance-*.sh`) were
+deliberately left unrenamed - out of the ratified scope.
+
+This closes S0 through S7. The account endpoints restructure and summary
+feature is complete: `/api/v1/account/gain-loss` and
+`/api/v1/account/summary` are the two live account-overview endpoints;
+`/api/v1/account/balance` no longer exists.

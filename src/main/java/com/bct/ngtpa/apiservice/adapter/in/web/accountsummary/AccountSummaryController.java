@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.accountsummary;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance.*;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.application.dto.*;

@@ -2,9 +2,9 @@ package com.bct.ngtpa.apiservice.adapter.in.web.accountsummary;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance.AccountOverviewResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance.AccountOverviewTotalsResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance.CurrencySelectionResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.AccountOverviewResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.AccountOverviewTotalsResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.CurrencySelectionResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.AccountSummaryDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.AccountSummaryResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.GainLossBreakdownHoldingResponse;
