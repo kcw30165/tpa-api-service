@@ -29,9 +29,9 @@ import reactor.core.publisher.Mono;
 
 /**
  * Resolves one reference date and one metadata set, then composes the Account Balance and Account
- * Gain/Loss application services sequentially - balance first, gain/loss only if balance
- * succeeds (Q-6: deterministic error precedence; the structural base of the payload is confirmed
- * retrievable before the second upstream call is made).
+ * Gain/Loss application services sequentially - balance first, gain/loss only if balance succeeds
+ * (Q-6: deterministic error precedence; the structural base of the payload is confirmed retrievable
+ * before the second upstream call is made).
  *
  * <p>Neither existing assembler is modified. This class only adds the new summary-specific
  * composition performed by {@link AccountSummaryAssembler}.
@@ -95,7 +95,9 @@ public final class GetAccountSummaryService implements GetAccountSummaryUseCase 
   }
 
   private Mono<AccountSummaryResult> fetchAndAssemble(
-      GetAccountSummaryCommand command, LocalDate referenceDate, ResolvedGeneralMetadataSet metadata) {
+      GetAccountSummaryCommand command,
+      LocalDate referenceDate,
+      ResolvedGeneralMetadataSet metadata) {
     var balanceCommand =
         new GetAccountBalanceCommand(
             command.language(),

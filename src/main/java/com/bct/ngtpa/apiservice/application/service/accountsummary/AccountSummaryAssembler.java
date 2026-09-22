@@ -27,11 +27,11 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Composes an already-produced {@link AccountBalanceResult} and {@link AccountGainLossResult}
- * into the account summary shape. Both existing assemblers are reused verbatim for every value
- * they already compute; the only new computation here is the per-fund balance/percentage
- * aggregation (R-5), the sold-fund empty-sum rule (R-2/R-4), the null-vs-unreported distinction
- * (R-6), the Q-5 superset invariant, and the accountNumber join (R-3).
+ * Composes an already-produced {@link AccountBalanceResult} and {@link AccountGainLossResult} into
+ * the account summary shape. Both existing assemblers are reused verbatim for every value they
+ * already compute; the only new computation here is the per-fund balance/percentage aggregation
+ * (R-5), the sold-fund empty-sum rule (R-2/R-4), the null-vs-unreported distinction (R-6), the Q-5
+ * superset invariant, and the accountNumber join (R-3).
  */
 public final class AccountSummaryAssembler {
 
@@ -169,12 +169,12 @@ public final class AccountSummaryAssembler {
 
   /**
    * Sums nav and percentage across every accBal row for a fund, keyed by trimmed fund code. nav
-   * uses the same sentinel rule as the rest of Account Balance (null or -1 is a technical
-   * failure). percentage is null-safe: a fund whose rows are ALL null-percentage is treated as
-   * globally unreported for that fund (R-6, e.g. the pre-deployment transition state); a fund with
-   * SOME null and some populated rows is a partial-sum contract violation and fails (R-5). A fund
-   * with zero rows at all (sold, R-2/R-4) is not represented here; the caller substitutes the
-   * empty-sum default.
+   * uses the same sentinel rule as the rest of Account Balance (null or -1 is a technical failure).
+   * percentage is null-safe: a fund whose rows are ALL null-percentage is treated as globally
+   * unreported for that fund (R-6, e.g. the pre-deployment transition state); a fund with SOME null
+   * and some populated rows is a partial-sum contract violation and fails (R-5). A fund with zero
+   * rows at all (sold, R-2/R-4) is not represented here; the caller substitutes the empty-sum
+   * default.
    */
   private Map<String, FundAggregate> aggregate(List<RawAccountBalanceHolding> holdings) {
     Map<String, BigDecimal> balanceSums = new LinkedHashMap<>();

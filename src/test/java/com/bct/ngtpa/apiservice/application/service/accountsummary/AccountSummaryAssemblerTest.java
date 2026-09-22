@@ -259,7 +259,11 @@ class AccountSummaryAssemblerTest {
   }
 
   private static RawAccountBalanceHolding rawHolding(
-      String fundCode, String displaySource, String subDisplaySource, String nav, String percentage) {
+      String fundCode,
+      String displaySource,
+      String subDisplaySource,
+      String nav,
+      String percentage) {
     return new RawAccountBalanceHolding(
         displaySource,
         subDisplaySource,

@@ -28,15 +28,15 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Guards the currency-threading change to GetAccountGainLossService. The service previously had
- * no test coverage at all; these two cases protect exactly the behaviour being introduced.
+ * Guards the currency-threading change to GetAccountGainLossService. The service previously had no
+ * test coverage at all; these two cases protect exactly the behaviour being introduced.
  *
  * <p>Currency must be forwarded into {@code FetchAccountGainLossCommand} when the caller supplies
  * one, and must forward as {@code null} - not a fabricated {@code ""} - when the caller uses the
- * nine-argument compatibility constructor, which is the exact shape
- * {@code AccountGainLossController} still uses for the standalone, currency-less
- * {@code /api/v1/account/gain-loss} endpoint. Normalizing null to the wire empty string remains
- * the APIM adapter's responsibility, not this service's.
+ * nine-argument compatibility constructor, which is the exact shape {@code
+ * AccountGainLossController} still uses for the standalone, currency-less {@code
+ * /api/v1/account/gain-loss} endpoint. Normalizing null to the wire empty string remains the APIM
+ * adapter's responsibility, not this service's.
  */
 class GetAccountGainLossServiceCurrencyPropagationTest {
 
@@ -89,8 +89,7 @@ class GetAccountGainLossServiceCurrencyPropagationTest {
     assertThat(captured.get().currency()).isNull();
   }
 
-  private GetAccountGainLossService service(
-      AtomicReference<FetchAccountGainLossCommand> captured) {
+  private GetAccountGainLossService service(AtomicReference<FetchAccountGainLossCommand> captured) {
     ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(REFERENCE_DATE);
     GeneralMetadataResolver metadataResolver = query -> Mono.just(metadata());
     AccountGainLossSourcePort source =
@@ -99,8 +98,7 @@ class GetAccountGainLossServiceCurrencyPropagationTest {
           return Mono.just(
               new RawAccountGainLossData(
                   REFERENCE_DATE,
-                  List.of(
-                      new RawFundGainLoss("DGLE", "Fund", "基金", 1, new BigDecimal("100.00")))));
+                  List.of(new RawFundGainLoss("DGLE", "Fund", "基金", 1, new BigDecimal("100.00")))));
         };
     var assembler = new AccountGainLossAssembler();
     return new GetAccountGainLossService(referenceDatePort, metadataResolver, source, assembler);

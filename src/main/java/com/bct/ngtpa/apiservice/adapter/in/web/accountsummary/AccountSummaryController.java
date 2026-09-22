@@ -19,17 +19,16 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 /**
- * Same header profile as {@code /api/v1/account/balance}: shared X-Request-Id enforcement (via
- * the request filter, not here), optional Accept-Language with English fallback, and
- * selected-account delegation through {@link CurrentPortalAccessContextResolver}.
+ * Same header profile as {@code /api/v1/account/balance}: shared X-Request-Id enforcement (via the
+ * request filter, not here), optional Accept-Language with English fallback, and selected-account
+ * delegation through {@link CurrentPortalAccessContextResolver}.
  *
  * <p>Adds {@code period}, matching {@code /api/v1/account/gain-loss} exactly (optional, default
- * {@code SINCE_SCHEME_INCEPTION}). The response is the full Account Balance payload plus
- * {@code accountNumber} and {@code gainLossBreakdown}; every other field name, nullability, and
- * ordering matches {@code /api/v1/account/balance} because this controller reuses the same
- * application-level {@link CurrencySelection}, {@link AccountOverview}, and
- * {@link InvestmentPortfolio} types that {@code AccountBalanceController} maps, via
- * {@link AccountSummaryResult} (S3).
+ * {@code SINCE_SCHEME_INCEPTION}). The response is the full Account Balance payload plus {@code
+ * accountNumber} and {@code gainLossBreakdown}; every other field name, nullability, and ordering
+ * matches {@code /api/v1/account/balance} because this controller reuses the same application-level
+ * {@link CurrencySelection}, {@link AccountOverview}, and {@link InvestmentPortfolio} types that
+ * {@code AccountBalanceController} maps, via {@link AccountSummaryResult} (S3).
  */
 @RestController
 @RequestMapping("/api/v1")

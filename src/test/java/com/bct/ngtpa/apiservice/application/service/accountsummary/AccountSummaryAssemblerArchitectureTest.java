@@ -16,7 +16,8 @@ class AccountSummaryAssemblerArchitectureTest {
             Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/service/accountsummary/AccountSummaryAssembler.java"));
     assertThat(source)
-        .doesNotContain("org.springframework", "PortalAccessContext", "RoundingMode", "double", "Double");
+        .doesNotContain(
+            "org.springframework", "PortalAccessContext", "RoundingMode", "double", "Double");
     assertThat(source).contains("BigDecimal::add", "ExactPrecisionRenderer");
   }
 }

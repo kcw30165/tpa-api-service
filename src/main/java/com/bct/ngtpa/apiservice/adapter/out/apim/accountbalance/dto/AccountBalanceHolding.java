@@ -16,9 +16,9 @@ public record AccountBalanceHolding(
   /**
    * Compatibility constructor for callers predating the downstream percentage field.
    *
-   * <p>TAS supplies {@code percentage} inside {@code accBal}, at display-source granularity.
-   * It is absent until that downstream change is deployed, and absence is represented as null
-   * rather than zero so an unreported share is never mistaken for a real zero share.
+   * <p>TAS supplies {@code percentage} inside {@code accBal}, at display-source granularity. It is
+   * absent until that downstream change is deployed, and absence is represented as null rather than
+   * zero so an unreported share is never mistaken for a real zero share.
    */
   public AccountBalanceHolding(
       String displaySource,

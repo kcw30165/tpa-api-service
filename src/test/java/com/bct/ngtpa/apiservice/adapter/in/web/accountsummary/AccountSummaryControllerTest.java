@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.accountsummary;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.*;
@@ -21,9 +20,9 @@ import reactor.core.publisher.Mono;
 
 /**
  * Note: this test binds directly to the controller instance via {@code WebTestClient.
- * bindToController(...)}, which does NOT include the shared X-Request-Id enforcement filter
- * (that is registered at the application context level, not per-controller). Missing-header
- * rejection is therefore covered by the filter's own tests, not duplicated here.
+ * bindToController(...)}, which does NOT include the shared X-Request-Id enforcement filter (that
+ * is registered at the application context level, not per-controller). Missing-header rejection is
+ * therefore covered by the filter's own tests, not duplicated here.
  */
 class AccountSummaryControllerTest {
 
@@ -151,8 +150,7 @@ class AccountSummaryControllerTest {
   private static PortalAccessContext context() {
     return new PortalAccessContext(
         new ActorContext("U", ActorUserRole.ROLE_USER_MBR),
-        new AccountContext(
-            "ACC-1", "JP", "00000008802", "0230", "T", "S", TermStatus.BLANK, null));
+        new AccountContext("ACC-1", "JP", "00000008802", "0230", "T", "S", TermStatus.BLANK, null));
   }
 
   private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {

@@ -62,7 +62,9 @@ class GetAccountSummaryServiceTest {
     AccountBalanceAssembler balanceAssembler =
         (command, referenceDate, resolvedMetadata, raw) -> Mono.just(balanceResult());
 
-    var service = service(referenceDatePort, metadataResolver, balanceSource, gainLossSource, balanceAssembler);
+    var service =
+        service(
+            referenceDatePort, metadataResolver, balanceSource, gainLossSource, balanceAssembler);
 
     StepVerifier.create(service.get(command()))
         .assertNext(
@@ -77,7 +79,8 @@ class GetAccountSummaryServiceTest {
     assertThat(callOrder).containsExactly("balance", "gainloss");
     assertThat(capturedQuery.get().requiredKeys())
         .contains(
-            new GeneralMetadataKey(GeneralMetadataName.AB_PERCENTAGE, GeneralMetadataType.PRECISION));
+            new GeneralMetadataKey(
+                GeneralMetadataName.AB_PERCENTAGE, GeneralMetadataType.PRECISION));
   }
 
   @Test
@@ -95,7 +98,9 @@ class GetAccountSummaryServiceTest {
     AccountBalanceAssembler balanceAssembler =
         (command, referenceDate, resolvedMetadata, raw) -> Mono.just(balanceResult());
 
-    var service = service(referenceDatePort, metadataResolver, balanceSource, gainLossSource, balanceAssembler);
+    var service =
+        service(
+            referenceDatePort, metadataResolver, balanceSource, gainLossSource, balanceAssembler);
 
     StepVerifier.create(service.get(command()))
         .expectErrorSatisfies(
@@ -118,7 +123,9 @@ class GetAccountSummaryServiceTest {
     AccountBalanceAssembler balanceAssembler =
         (command, referenceDate, resolvedMetadata, raw) -> Mono.just(balanceResult());
 
-    var service = service(referenceDatePort, metadataResolver, balanceSource, gainLossSource, balanceAssembler);
+    var service =
+        service(
+            referenceDatePort, metadataResolver, balanceSource, gainLossSource, balanceAssembler);
 
     StepVerifier.create(service.get(command()))
         .expectErrorSatisfies(
@@ -132,14 +139,17 @@ class GetAccountSummaryServiceTest {
 
   @Test
   void unexpectedRuntimeExceptionMapsToAccountBalanceSystemFailure() {
-    ReferenceDatePort referenceDatePort = accountEnv -> Mono.error(new IllegalStateException("boom"));
+    ReferenceDatePort referenceDatePort =
+        accountEnv -> Mono.error(new IllegalStateException("boom"));
     GeneralMetadataResolver metadataResolver = query -> Mono.just(metadata());
     AccountBalanceSourcePort balanceSource = fetch -> Mono.just(rawBalance());
     AccountGainLossSourcePort gainLossSource = fetch -> Mono.just(rawGainLoss());
     AccountBalanceAssembler balanceAssembler =
         (command, referenceDate, resolvedMetadata, raw) -> Mono.just(balanceResult());
 
-    var service = service(referenceDatePort, metadataResolver, balanceSource, gainLossSource, balanceAssembler);
+    var service =
+        service(
+            referenceDatePort, metadataResolver, balanceSource, gainLossSource, balanceAssembler);
 
     StepVerifier.create(service.get(command()))
         .expectErrorSatisfies(

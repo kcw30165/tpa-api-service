@@ -19,9 +19,9 @@ public final class DefaultAccountBalancePresentationTransformer
   /**
    * Precision metadata keys required by Account Balance rendering.
    *
-   * <p>This set is deliberately explicit rather than derived from every enum constant.
-   * Resolving the whole enum would make Account Balance fail as soon as a new metadata
-   * name is introduced for another feature.
+   * <p>This set is deliberately explicit rather than derived from every enum constant. Resolving
+   * the whole enum would make Account Balance fail as soon as a new metadata name is introduced for
+   * another feature.
    */
   private static final Set<GeneralMetadataName> ACCOUNT_BALANCE_PRECISIONS =
       Set.of(
