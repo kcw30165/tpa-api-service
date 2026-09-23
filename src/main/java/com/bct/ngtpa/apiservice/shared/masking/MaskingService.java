@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.shared.masking;
 
+import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -109,6 +110,15 @@ public class MaskingService {
    */
   public String loggingPlaceholder() {
     return properties.getLogging().getPlaceholder();
+  }
+
+  /**
+   * Returns the configured field-name substrings that mark a structured-log field or
+   * plain-text key=value assignment as sensitive (case-insensitive, non-alphanumeric-stripped
+   * matching is the caller's responsibility - this accessor returns the raw configured list).
+   */
+  public List<String> sensitiveTokens() {
+    return List.copyOf(properties.getLogging().getSensitiveTokens());
   }
 
   private String maskFirstLast(String value, MaskingProperties.EmailMobile config) {

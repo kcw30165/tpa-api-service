@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +18,8 @@ import org.junit.jupiter.api.Test;
 
 class LoggingSanitizerTest {
 
-  private final LoggingSanitizer sanitizer = new LoggingSanitizer(new ObjectMapper(), properties());
+  private final LoggingSanitizer sanitizer =
+      new LoggingSanitizer(new ObjectMapper(), maskingService());
 
   @Test
   void masksSensitiveMapKeys() {
@@ -339,25 +342,101 @@ class LoggingSanitizerTest {
 
   private record WithNumericList(String name, List<Integer> values) {}
 
-  private static LoggingSanitizerProperties properties() {
-    LoggingSanitizerProperties properties = new LoggingSanitizerProperties();
-    properties.setSensitiveTokens(
-        List.of(
-            "authorization",
-            "token",
-            "secret",
-            "password",
-            "apiKey",
-            "Certificate",
-            "clientSecret",
-            "policyNo",
-            "certNo",
-            "userId",
-            "privateKey",
-            "publicKey",
-            "policy-no",
-            "cert-no",
-            "user-id"));
-    return properties;
+  // ── Coverage-closure tests (Phase 3b) ─────────────────────────────────────
+  // Two branches remain genuinely unreachable and are NOT force-tested here:
+  //   - toSafeString()'s catch block: sanitizeValue() never throws by design
+  //     (it catches internally and falls back to typeName()), so the sanitized
+  //     value passed to objectMapper.writeValueAsString() is always JSON-safe.
+  //   - sanitizeJsonNode()'s "node == null" check: Jackson never returns a Java
+  //     null JsonNode reference (only NullNode instances, whose .isNull() path
+  //     is covered below and by sanitizeJsonNodeNullFieldReturnsNull).
+
+  @Test
+  void sanitizeTextWithNullReturnsNull() {
+    assertNull(sanitizer.sanitizeText(null));
+  }
+
+  @Test
+  void sanitizeTextWithValidJsonMasksSensitiveFieldAndReturnsJson() {
+    String result =
+        sanitizer.sanitizeText("{\"authorization\":\"Bearer abc\",\"traceId\":\"trace-1\"}");
+    assertTrue(result.contains("\"authorization\":\"***\""));
+    assertTrue(result.contains("\"traceId\":\"trace-1\""));
+  }
+
+  @Test
+  void sanitizeTextWithJsonNullLiteralReturnsNull() {
+    assertNull(sanitizer.sanitizeText("null"));
+  }
+
+  @Test
+  void typeNameReturnsNullStringForNullValueDirectly() throws Exception {
+    var method = LoggingSanitizer.class.getDeclaredMethod("typeName", Object.class);
+    method.setAccessible(true);
+    Object result = method.invoke(sanitizer, new Object[] {null});
+    assertEquals("null", result);
+  }
+
+  @Test
+  void typeNameReturnsArrayNotationForArrayValueDirectly() throws Exception {
+    var method = LoggingSanitizer.class.getDeclaredMethod("typeName", Object.class);
+    method.setAccessible(true);
+    Object result = method.invoke(sanitizer, new Object[] {new int[] {1, 2, 3}});
+    assertEquals("int[]", result);
+  }
+
+  @Test
+  void maskTokenAssignmentSkipsNullSensitiveTokenDirectly() throws Exception {
+    // MaskingService.sensitiveTokens() uses List.copyOf(), which itself rejects
+    // null elements before maskTokenAssignment() would ever see them - so this
+    // defensive branch can only be exercised by invoking the private method
+    // directly with a null token, bypassing that upstream guard.
+    var method =
+        LoggingSanitizer.class.getDeclaredMethod(
+            "maskTokenAssignment", String.class, String.class);
+    method.setAccessible(true);
+    Object result = method.invoke(sanitizer, "password=secret123 other=1", null);
+    assertEquals("password=secret123 other=1", result);
+  }
+
+  @Test
+  void maskTokenAssignmentSkipsEmptyNormalizedToken() {
+    MaskingProperties properties = new MaskingProperties();
+    properties.getLogging().setSensitiveTokens(List.of("!!!", "password"));
+    LoggingSanitizer localSanitizer =
+        new LoggingSanitizer(new ObjectMapper(), new MaskingService(properties));
+    String sanitized = localSanitizer.sanitizeText("password=secret123 other=1");
+    assertFalse(sanitized.contains("secret123"));
+  }
+
+  @Test
+  void sanitizeTextMasksQuotedSensitiveValueInPlainTextAssignment() {
+    String sanitized = sanitizer.sanitizeText("apiKey=\"super-secret-value\" other=1");
+    assertFalse(sanitized.contains("super-secret-value"));
+    assertTrue(sanitized.contains("\"***\""));
+  }
+
+  private static MaskingService maskingService() {
+    MaskingProperties properties = new MaskingProperties();
+    properties
+        .getLogging()
+        .setSensitiveTokens(
+            List.of(
+                "authorization",
+                "token",
+                "secret",
+                "password",
+                "apiKey",
+                "Certificate",
+                "clientSecret",
+                "policyNo",
+                "certNo",
+                "userId",
+                "privateKey",
+                "publicKey",
+                "policy-no",
+                "cert-no",
+                "user-id"));
+    return new MaskingService(properties);
   }
 }

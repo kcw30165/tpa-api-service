@@ -8,7 +8,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.certificate.ApimCertificateHead
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimOAuthClientConfig;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,7 @@ class ApimWebClientConfigTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final LoggingSanitizer loggingSanitizer =
-      new LoggingSanitizer(objectMapper, new LoggingSanitizerProperties());
+      new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties()));
 
   private final ApimContextPropagationExchangeFilter requestIdFilter =
       new ApimContextPropagationExchangeFilter();

@@ -13,7 +13,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
@@ -94,10 +95,10 @@ public class ApimWebClientFacade {
         apimCertificateService,
         apimProperties,
         null,
-        new LoggingSanitizer(objectMapper, new LoggingSanitizerProperties()),
+        new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties())),
         new ApimContextPropagationExchangeFilter(),
         new ApimRequestLoggingExchangeFilter(
-            new LoggingSanitizer(objectMapper, new LoggingSanitizerProperties()), objectMapper));
+            new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties())), objectMapper));
   }
 
   public Mono<String> post(

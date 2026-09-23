@@ -12,7 +12,8 @@ import com.bct.ngtpa.apiservice.application.dto.RefreshReferenceDateResult;
 import com.bct.ngtpa.apiservice.application.port.in.RefreshReferenceDateUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -189,6 +190,6 @@ class ReferenceDateRefreshControllerTest {
   }
 
   private static LoggingSanitizer testLoggingSanitizer() {
-    return new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties());
+    return new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties()));
   }
 }

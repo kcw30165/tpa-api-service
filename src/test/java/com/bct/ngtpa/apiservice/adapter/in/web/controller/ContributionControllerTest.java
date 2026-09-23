@@ -34,7 +34,8 @@ import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryRow;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
@@ -901,9 +902,11 @@ class ContributionControllerTest {
   }
 
   private static LoggingSanitizer testLoggingSanitizer() {
-    LoggingSanitizerProperties properties = new LoggingSanitizerProperties();
-    properties.setSensitiveTokens(List.of("policyNo", "userId", "apiKey", "token", "memberId"));
-    return new LoggingSanitizer(new ObjectMapper(), properties);
+    MaskingProperties properties = new MaskingProperties();
+    properties
+        .getLogging()
+        .setSensitiveTokens(List.of("policyNo", "userId", "apiKey", "token", "memberId"));
+    return new LoggingSanitizer(new ObjectMapper(), new MaskingService(properties));
   }
 
   private ExportContributionSummaryUseCase unusedExportUseCase() {

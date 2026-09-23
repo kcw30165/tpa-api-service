@@ -10,7 +10,8 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -665,25 +666,27 @@ class RequestLoggingWebFilterTest {
   }
 
   private static LoggingSanitizer sanitizer() {
-    LoggingSanitizerProperties sanitizerProps = new LoggingSanitizerProperties();
-    sanitizerProps.setSensitiveTokens(
-        List.of(
-            "authorization",
-            "token",
-            "secret",
-            "password",
-            "apiKey",
-            "Certificate",
-            "clientSecret",
-            "policyNo",
-            "certNo",
-            "userId",
-            "privateKey",
-            "publicKey",
-            "policy-no",
-            "cert-no",
-            "user-id"));
-    return new LoggingSanitizer(new ObjectMapper(), sanitizerProps);
+    MaskingProperties sanitizerProps = new MaskingProperties();
+    sanitizerProps
+        .getLogging()
+        .setSensitiveTokens(
+            List.of(
+                "authorization",
+                "token",
+                "secret",
+                "password",
+                "apiKey",
+                "Certificate",
+                "clientSecret",
+                "policyNo",
+                "certNo",
+                "userId",
+                "privateKey",
+                "publicKey",
+                "policy-no",
+                "cert-no",
+                "user-id"));
+    return new LoggingSanitizer(new ObjectMapper(), new MaskingService(sanitizerProps));
   }
 
   private static JsonNode parseJson(String msg) {

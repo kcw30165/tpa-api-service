@@ -9,6 +9,8 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -336,32 +338,34 @@ class ExecutionLoggingAspectTest {
     AspectJProxyFactory proxyFactory = new AspectJProxyFactory(target);
     proxyFactory.addAspect(
         new ExecutionLoggingAspect(
-            new LoggingSanitizer(new ObjectMapper(), properties()), new ObjectMapper()));
+            new LoggingSanitizer(new ObjectMapper(), maskingService()), new ObjectMapper()));
     return new ProxiedService(target, proxyFactory.getProxy());
   }
 
   private record ProxiedService(TestService target, TestService proxy) {}
 
-  private static LoggingSanitizerProperties properties() {
-    LoggingSanitizerProperties properties = new LoggingSanitizerProperties();
-    properties.setSensitiveTokens(
-        List.of(
-            "authorization",
-            "token",
-            "secret",
-            "password",
-            "apiKey",
-            "Certificate",
-            "clientSecret",
-            "policyNo",
-            "certNo",
-            "userId",
-            "privateKey",
-            "publicKey",
-            "policy-no",
-            "cert-no",
-            "user-id"));
-    return properties;
+  private static MaskingService maskingService() {
+    MaskingProperties properties = new MaskingProperties();
+    properties
+        .getLogging()
+        .setSensitiveTokens(
+            List.of(
+                "authorization",
+                "token",
+                "secret",
+                "password",
+                "apiKey",
+                "Certificate",
+                "clientSecret",
+                "policyNo",
+                "certNo",
+                "userId",
+                "privateKey",
+                "publicKey",
+                "policy-no",
+                "cert-no",
+                "user-id"));
+    return new MaskingService(properties);
   }
 
   static class TestService {

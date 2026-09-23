@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.shared.masking;
 
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -58,5 +60,35 @@ public class MaskingProperties {
     private boolean enabled = true;
     private String maskCharacter = "*";
     private String placeholder = "***";
+
+    /**
+     * Field-name substrings (case-insensitive, non-alphanumeric-stripped) that mark a
+     * structured-log field or plain-text key=value assignment as sensitive and therefore
+     * subject to full redaction via {@code placeholder}. Migrated from the former
+     * logging-sanitizer.sensitive-tokens key (LoggingSanitizerProperties, now deleted) so
+     * all masking-related configuration lives under this single masking.* tree.
+     */
+    private List<String> sensitiveTokens =
+        new ArrayList<>(
+            List.of(
+                "password",
+                "clientSecret",
+                "client_secret",
+                "clientId",
+                "client_id",
+                "apiKey",
+                "apikey",
+                "token",
+                "secret",
+                "policyNo",
+                "policy_no",
+                "policy-no",
+                "certificate",
+                "cert"));
+
+    public void setSensitiveTokens(List<String> sensitiveTokens) {
+      this.sensitiveTokens =
+          sensitiveTokens == null ? new ArrayList<>() : new ArrayList<>(sensitiveTokens);
+    }
   }
 }

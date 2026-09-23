@@ -523,4 +523,19 @@ masking:
     enabled: true
     mask-character: "*"
     placeholder: "***"
+    sensitive-tokens:
+      - password
+      - clientSecret
+      - client_secret
+      - clientId
+      - client_id
+      - apiKey
+      - apikey
+      - token
+      - secret
+      - policyNo
+      - policy_no
+      - policy-no
+      - certificate
+      - cert
   disabled-placeholder: "<masked>"

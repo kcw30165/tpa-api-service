@@ -37,23 +37,24 @@ amount-display-format:
     amount: "#,##0.00"
     amount.JP: "#,##0.000"
 
-logging-sanitizer:
-  sensitive-tokens:
-    - authorization
-    - token
-    - secret
-    - password
-    - apiKey
-    - Certificate
-    - clientSecret
-    - policyNo
-    - certNo
-    - userId
-    - privateKey
-    - publicKey
-    - policy-no
-    - cert-no
-    - user-id
+masking:
+  logging:
+    sensitive-tokens:
+      - authorization
+      - token
+      - secret
+      - password
+      - apiKey
+      - Certificate
+      - clientSecret
+      - policyNo
+      - certNo
+      - userId
+      - privateKey
+      - publicKey
+      - policy-no
+      - cert-no
+      - user-id
 
 logging:
   level:
