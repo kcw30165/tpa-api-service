@@ -80,7 +80,8 @@ public final class AesGcmAuthenticatedSessionProtector
           session.createdAt(),
           session.lastAccessedAt(),
           session.idleExpiresAt(),
-          session.absoluteExpiresAt());
+          session.absoluteExpiresAt(),
+          session.revision());
     } catch (Exception exception) {
       throw new IllegalStateException("Unable to protect authenticated session");
     }
@@ -207,7 +208,8 @@ public final class AesGcmAuthenticatedSessionProtector
           envelope.createdAt(),
           envelope.updatedAt(),
           envelope.idleExpiresAt(),
-          envelope.absoluteExpiresAt());
+          envelope.absoluteExpiresAt(),
+          envelope.sessionRevision());
     }
   }
 

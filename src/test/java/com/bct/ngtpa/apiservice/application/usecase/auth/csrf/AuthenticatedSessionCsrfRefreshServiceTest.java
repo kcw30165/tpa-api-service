@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.csrf;
 
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -65,7 +66,8 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
         NOW.minusSeconds(300),
         NOW.minusSeconds(60),
         NOW.plusSeconds(1800),
-        NOW.plusSeconds(3600));
+        NOW.plusSeconds(3600),
+        new SessionRevision("0".repeat(32)));
   }
 
   private AuthenticatedSession usableSession() {
@@ -78,7 +80,8 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
         NOW.minusSeconds(300),
         NOW.minusSeconds(60),
         NOW.plusSeconds(1800),
-        NOW.plusSeconds(3600));
+        NOW.plusSeconds(3600),
+        new SessionRevision("0".repeat(32)));
   }
 
   private void givenUnprotectedSessionUsable() {
@@ -134,7 +137,8 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
             NOW.minusSeconds(300),
             NOW.minusSeconds(60),
             NOW.plusSeconds(1800),
-            NOW.plusSeconds(3600));
+            NOW.plusSeconds(3600),
+            new SessionRevision("0".repeat(32)));
     when(protector.unprotect(any())).thenReturn(revoked);
     StepVerifier.create(newService().refresh(sid.value(), "req-1"))
         .assertNext(
@@ -155,7 +159,8 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
             NOW.minusSeconds(3600),
             NOW.minusSeconds(3540),
             NOW.minusSeconds(1),
-            NOW.plusSeconds(3600));
+            NOW.plusSeconds(3600),
+            new SessionRevision("0".repeat(32)));
     when(protector.unprotect(any())).thenReturn(almostExpired);
     StepVerifier.create(newService().refresh(sid.value(), "req-1"))
         .assertNext(

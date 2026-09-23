@@ -67,7 +67,8 @@ class RedisAuthenticatedSessionCasUpdateAdapterTest {
         now,
         now,
         now.plusSeconds(900),
-        now.plusSeconds(28800));
+        now.plusSeconds(28800),
+        new SessionRevision("0".repeat(32)));
   }
 
   private AuthenticatedSessionCasUpdateCommand command() {

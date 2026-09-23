@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase.session.authenticated;
 
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.*;
@@ -141,7 +142,8 @@ class AuthenticatedSessionLifecycleServiceTest {
         NOW.minusSeconds(200),
         last,
         idle,
-        absolute);
+        absolute,
+        new SessionRevision("0".repeat(32)));
   }
 
   static final class Fixture {

@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.session;
 
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.*;
@@ -82,7 +83,8 @@ class EstablishAuthenticatedLoginSessionServiceTest {
                   Instant.EPOCH,
                   Instant.EPOCH,
                   Instant.EPOCH.plusSeconds(10),
-                  Instant.EPOCH.plusSeconds(20));
+                  Instant.EPOCH.plusSeconds(20),
+                  new SessionRevision("0".repeat(32)));
           return Mono.just(AuthenticatedSessionLifecycleResult.active(session));
         };
     DeleteAuthFlowSessionPort cleanup =

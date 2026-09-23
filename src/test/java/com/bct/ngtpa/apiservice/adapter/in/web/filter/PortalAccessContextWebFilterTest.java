@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
@@ -129,7 +130,8 @@ class PortalAccessContextWebFilterTest {
         Instant.EPOCH,
         Instant.EPOCH,
         Instant.EPOCH.plusSeconds(300),
-        Instant.EPOCH.plusSeconds(900));
+        Instant.EPOCH.plusSeconds(900),
+        new SessionRevision("0".repeat(32)));
   }
 
   private PortalAccessContext context(String accountRef) {

@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.infrastructure.security.session;
 
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -55,7 +56,8 @@ class AesGcmAuthenticatedSessionProtectorTest {
             value.createdAt(),
             value.updatedAt(),
             value.idleExpiresAt(),
-            value.absoluteExpiresAt());
+            value.absoluteExpiresAt(),
+            new SessionRevision("0".repeat(32)));
 
     assertThatThrownBy(() -> protector.unprotect(tampered))
         .isInstanceOf(IllegalStateException.class)
@@ -76,7 +78,8 @@ class AesGcmAuthenticatedSessionProtectorTest {
             value.createdAt(),
             value.updatedAt(),
             value.idleExpiresAt(),
-            value.absoluteExpiresAt());
+            value.absoluteExpiresAt(),
+            new SessionRevision("0".repeat(32)));
 
     assertThatThrownBy(() -> protector.unprotect(tampered))
         .isInstanceOf(IllegalStateException.class)
@@ -102,7 +105,8 @@ class AesGcmAuthenticatedSessionProtectorTest {
             value.createdAt(),
             value.updatedAt(),
             value.idleExpiresAt(),
-            value.absoluteExpiresAt());
+            value.absoluteExpiresAt(),
+            new SessionRevision("0".repeat(32)));
 
     assertThatThrownBy(() -> protector.unprotect(unsupported))
         .isInstanceOf(IllegalArgumentException.class)
@@ -129,6 +133,7 @@ class AesGcmAuthenticatedSessionProtectorTest {
         now,
         now,
         now.plusSeconds(1800),
-        now.plusSeconds(28800));
+        now.plusSeconds(28800),
+        new SessionRevision("0".repeat(32)));
   }
 }

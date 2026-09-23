@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.auth;
 
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSession;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -43,7 +44,8 @@ public final class RedisAuthenticatedSessionJsonMapper {
       String createdAt,
       String updatedAt,
       String idleExpiresAt,
-      String absoluteExpiresAt) {
+      String absoluteExpiresAt,
+      String sessionRevision) {
 
     static WireEnvelope from(ProtectedAuthenticatedSession value) {
       return new WireEnvelope(
@@ -53,7 +55,8 @@ public final class RedisAuthenticatedSessionJsonMapper {
           value.createdAt().toString(),
           value.updatedAt().toString(),
           value.idleExpiresAt().toString(),
-          value.absoluteExpiresAt().toString());
+          value.absoluteExpiresAt().toString(),
+          value.sessionRevision().value());
     }
 
     ProtectedAuthenticatedSession toDomain() {
@@ -65,7 +68,8 @@ public final class RedisAuthenticatedSessionJsonMapper {
           Instant.parse(createdAt),
           Instant.parse(updatedAt),
           Instant.parse(idleExpiresAt),
-          Instant.parse(absoluteExpiresAt));
+          Instant.parse(absoluteExpiresAt),
+          new SessionRevision(sessionRevision));
     }
   }
 

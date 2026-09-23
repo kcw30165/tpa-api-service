@@ -86,6 +86,10 @@ public final class RecoverCommittedLoginService
     String raw = csrfTokens.generate();
     if (raw == null || raw.isBlank()) return Mono.just(RecoverCommittedLoginResult.failed());
     String replacementHash = csrfHasher.hash(raw);
+    // Carries the loaded session's existing revision forward unchanged: this mutation goes
+    // through AuthenticatedLoginReplaySessionPort's CAS (blob-compare), not the new generic
+    // AuthenticatedSessionCasUpdatePort, per the ratified decision not to refactor working login
+    // code in this delivery.
     var replacement =
         new AuthenticatedSession(
             session.authenticatedSessionId(),
@@ -96,7 +100,8 @@ public final class RecoverCommittedLoginService
             session.createdAt(),
             session.lastAccessedAt(),
             session.idleExpiresAt(),
-            session.absoluteExpiresAt());
+            session.absoluteExpiresAt(),
+            session.revision());
     Instant expiry =
         session.idleExpiresAt().isBefore(session.absoluteExpiresAt())
             ? session.idleExpiresAt()

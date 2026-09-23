@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.infrastructure.security.session;
 
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -52,7 +53,8 @@ class AuthenticatedSessionHybridEnvelopeTest {
             envelope.createdAt(),
             envelope.updatedAt(),
             envelope.idleExpiresAt(),
-            envelope.absoluteExpiresAt());
+            envelope.absoluteExpiresAt(),
+            new SessionRevision("0".repeat(32)));
 
     assertThatThrownBy(() -> protector.unprotect(tampered))
         .isInstanceOf(IllegalStateException.class)
@@ -78,6 +80,7 @@ class AuthenticatedSessionHybridEnvelopeTest {
         Instant.parse("2026-01-01T00:00:00Z"),
         Instant.parse("2026-01-01T00:01:00Z"),
         Instant.parse("2026-01-01T00:16:00Z"),
-        Instant.parse("2026-01-01T08:00:00Z"));
+        Instant.parse("2026-01-01T08:00:00Z"),
+        new SessionRevision("0".repeat(32)));
   }
 }

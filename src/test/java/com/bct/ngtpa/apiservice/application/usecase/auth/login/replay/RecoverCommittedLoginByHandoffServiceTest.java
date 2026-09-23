@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.replay;
 
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -86,7 +87,8 @@ class RecoverCommittedLoginByHandoffServiceTest {
             NOW.minusSeconds(60),
             NOW.minusSeconds(30),
             NOW.plusSeconds(300),
-            NOW.plusSeconds(600));
+            NOW.plusSeconds(600),
+            new SessionRevision("0".repeat(32)));
 
     assertFailed(cleaned(NOW.plusSeconds(300)), mismatched);
   }
@@ -187,7 +189,8 @@ class RecoverCommittedLoginByHandoffServiceTest {
         NOW.minusSeconds(60),
         NOW.minusSeconds(30),
         NOW.plusSeconds(300),
-        NOW.plusSeconds(600));
+        NOW.plusSeconds(600),
+        new SessionRevision("0".repeat(32)));
   }
 
   private static AuthenticatedSession unusableSession() {
@@ -200,7 +203,8 @@ class RecoverCommittedLoginByHandoffServiceTest {
         NOW.minusSeconds(600),
         NOW.minusSeconds(600),
         NOW.minusSeconds(1),
-        NOW.plusSeconds(600));
+        NOW.plusSeconds(600),
+        new SessionRevision("0".repeat(32)));
   }
 
   private static final class Fixture {

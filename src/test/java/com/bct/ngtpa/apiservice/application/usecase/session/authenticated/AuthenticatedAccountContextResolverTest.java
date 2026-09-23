@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase.session.authenticated;
 
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.*;
@@ -83,7 +84,8 @@ class AuthenticatedAccountContextResolverTest {
             NOW,
             NOW,
             NOW.plusSeconds(1800),
-            NOW.plusSeconds(28800));
+            NOW.plusSeconds(28800),
+            new SessionRevision("0".repeat(32)));
     return AuthenticatedSessionLifecycleResult.active(session);
   }
 }
