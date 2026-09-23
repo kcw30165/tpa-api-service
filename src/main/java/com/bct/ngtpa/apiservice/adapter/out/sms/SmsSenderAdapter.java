@@ -5,7 +5,9 @@ import com.bct.ngtpa.apiservice.application.dto.message.SenderResult;
 import com.bct.ngtpa.apiservice.application.dto.message.SenderStatus;
 import com.bct.ngtpa.apiservice.application.dto.message.SmsMessage;
 import com.bct.ngtpa.apiservice.application.port.out.SmsSenderPort;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
@@ -22,10 +24,13 @@ public class SmsSenderAdapter implements SmsSenderPort {
 
   private final WebClient webClient;
   private final SmsProperties smsProperties;
+  private final MaskingService maskingService;
 
-  public SmsSenderAdapter(WebClient webClient, SmsProperties smsProperties) {
+  public SmsSenderAdapter(
+      WebClient webClient, SmsProperties smsProperties, MaskingService maskingService) {
     this.webClient = webClient;
     this.smsProperties = smsProperties;
+    this.maskingService = Objects.requireNonNull(maskingService, "maskingService must not be null");
   }
 
   @Override
@@ -35,7 +40,7 @@ public class SmsSenderAdapter implements SmsSenderPort {
       log.warn(
           "SMS adapter configuration incomplete path={} phoneMasked={} contentLogged=false",
           smsProperties.getSendSinglePath(),
-          maskPhone(message == null ? null : message.recipient()));
+          maskingService.maskMobile(message == null ? null : message.recipient()));
       return Mono.just(configurationFailure);
     }
 
@@ -43,13 +48,13 @@ public class SmsSenderAdapter implements SmsSenderPort {
       return Mono.error(new IllegalArgumentException("message must not be null"));
     }
 
-    String phoneMasked = maskPhone(message.recipient());
+    String phoneMasked = maskingService.maskMobile(message.recipient());
     String country = resolveCountry(message.country());
 
     log.info(
         "SMS outbound debug path={} phoneSuffix={} country={} usernameLength={} passwordLength={} smsContentLength={} smsContentHasNewline={} contentLogged=false",
         smsProperties.getSendSinglePath(),
-        phoneSuffix(normalizePhone(message.recipient())),
+        maskingService.maskMobile(normalizePhone(message.recipient())),
         country,
         smsProperties.getUsername() == null ? -1 : smsProperties.getUsername().length(),
         smsProperties.getPassword() == null ? -1 : smsProperties.getPassword().length(),
@@ -132,14 +137,6 @@ public class SmsSenderAdapter implements SmsSenderPort {
     return body.toString().getBytes(StandardCharsets.UTF_8);
   }
 
-  private String phoneSuffix(String phone) {
-    if (!StringUtils.hasText(phone)) {
-      return "***";
-    }
-    String trimmed = phone.trim();
-    return trimmed.length() <= 4 ? "***" : "****" + trimmed.substring(trimmed.length() - 4);
-  }
-
   private void appendPart(StringBuilder body, String boundary, String name, String value) {
     body.append("--").append(boundary).append("\r\n");
     body.append("Content-Disposition: form-data; name=\"").append(name).append("\"").append("\r\n");
@@ -200,17 +197,6 @@ public class SmsSenderAdapter implements SmsSenderPort {
           SMS_CONFIGURATION_FAILURE_MESSAGE);
     }
     return null;
-  }
-
-  private String maskPhone(String recipient) {
-    if (!StringUtils.hasText(recipient)) {
-      return "***";
-    }
-    String trimmed = recipient.trim();
-    if (trimmed.length() <= 4) {
-      return "***";
-    }
-    return trimmed.substring(0, 4) + "****";
   }
 
   private String normalizePhone(String phone) {

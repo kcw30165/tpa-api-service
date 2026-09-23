@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.out.email.PlainSocketSmtpClient;
 import com.bct.ngtpa.apiservice.adapter.out.email.SmtpClient;
 import com.bct.ngtpa.apiservice.adapter.out.email.SmtpEmailSenderAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.EmailSenderPort;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -22,8 +23,9 @@ public class EmailSenderConfig {
   }
 
   @Bean
-  public EmailSenderPort emailSenderPort(SmtpClient smtpClient, EmailProperties emailProperties) {
-    return new SmtpEmailSenderAdapter(smtpClient, emailProperties);
+  public EmailSenderPort emailSenderPort(
+      SmtpClient smtpClient, EmailProperties emailProperties, MaskingService maskingService) {
+    return new SmtpEmailSenderAdapter(smtpClient, emailProperties, maskingService);
   }
 
   @Bean

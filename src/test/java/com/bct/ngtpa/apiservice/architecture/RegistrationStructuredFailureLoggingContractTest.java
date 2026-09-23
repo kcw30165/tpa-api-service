@@ -21,10 +21,11 @@ class RegistrationStructuredFailureLoggingContractTest {
 
   @Test
   void lookupDiagnosticValuesAreMaskedNotHashed() throws Exception {
-    String masker = read("RegistrationLookupLogMasker.java");
-    assertThat(masker)
-        .contains("maskedLocal")
-        .contains("substring(text.length() - suffix)")
+    String adapter = read("ApimRegistrationLookupAdapter.java");
+    assertThat(adapter)
+        .contains("MaskingService")
+        .contains("maskingService.maskIdentity")
+        .contains("maskingService.maskDateOfBirth")
         .doesNotContain("MessageDigest", "SHA-256");
   }
 

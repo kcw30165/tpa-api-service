@@ -8,6 +8,8 @@ import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.out.sms.config.SmsProperties;
 import com.bct.ngtpa.apiservice.application.dto.message.SenderStatus;
 import com.bct.ngtpa.apiservice.application.dto.message.SmsMessage;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,7 +72,8 @@ class SmsDeliverySecurityGuardTest {
             .baseUrl(properties.getBaseUrl())
             .exchangeFunction(exchangeFunction)
             .build();
-    return new SmsSenderAdapter(webClient, properties);
+    return new SmsSenderAdapter(
+        webClient, properties, new MaskingService(new MaskingProperties()));
   }
 
   private SmsProperties baseProperties() {

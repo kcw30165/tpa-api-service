@@ -19,6 +19,7 @@ import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -31,27 +32,34 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
   private final TrpSearchMemberApimMapper requestMapper;
   private final TrpSearchMemberApimResultMapper resultMapper;
   private final FailureEventPort failureEventPort;
+  private final MaskingService maskingService;
 
   @Autowired
   public ApimRegistrationLookupAdapter(
-      ApimExchangeExecutor executor, FailureEventPort failureEventPort) {
+      ApimExchangeExecutor executor,
+      FailureEventPort failureEventPort,
+      MaskingService maskingService) {
     this(
         executor,
         new TrpSearchMemberApimMapper(),
         new TrpSearchMemberApimResultMapper(),
-        failureEventPort);
+        failureEventPort,
+        maskingService);
   }
 
   ApimRegistrationLookupAdapter(
       ApimExchangeExecutor executor,
       TrpSearchMemberApimMapper requestMapper,
       TrpSearchMemberApimResultMapper resultMapper,
-      FailureEventPort failureEventPort) {
+      FailureEventPort failureEventPort,
+      MaskingService maskingService) {
     this.executor = Objects.requireNonNull(executor, "executor must not be null");
     this.requestMapper = Objects.requireNonNull(requestMapper, "requestMapper must not be null");
     this.resultMapper = Objects.requireNonNull(resultMapper, "resultMapper must not be null");
     this.failureEventPort =
         Objects.requireNonNull(failureEventPort, "failureEventPort must not be null");
+    this.maskingService =
+        Objects.requireNonNull(maskingService, "maskingService must not be null");
   }
 
   @Override
@@ -123,12 +131,14 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
   private LinkedHashMap<String, Object> safeDimensions(RegistrationLookupCommand command) {
     var d = new LinkedHashMap<String, Object>();
     d.put("searchBy", command.identityType().name());
-    d.put("identityValue", RegistrationLookupLogMasker.identity(command.identityValue()));
-    d.put("dateOfBirth", RegistrationLookupLogMasker.dateOfBirth(command.dateOfBirth()));
+    d.put("identityValue", maskingService.maskIdentity(command.identityValue()));
+    d.put("dateOfBirth", maskingService.maskDateOfBirth(command.dateOfBirth()));
     d.put("contactType", command.contactType().name());
     d.put(
         "contactValue",
-        RegistrationLookupLogMasker.contact(command.contactType(), command.contactValue()));
+        command.contactType() == RegistrationContactType.EMAIL
+            ? maskingService.maskEmail(command.contactValue())
+            : maskingService.maskMobile(command.contactValue()));
     return d;
   }
 

@@ -24,9 +24,12 @@ import org.springframework.util.StringUtils;
  * configured {@code masking.disabled-placeholder} is returned instead of any
  * partial reveal, so the raw value is never exposed either way.
  *
- * <p>Identity masking reveals only the last {@code '/'}-delimited path
- * segment (e.g. {@code TRUST/0001/G12345678} -&gt; {@code **&#47;**&#47;G12345678}).
- * Date-of-birth masking is always a full, non-partial redaction.
+ * <p>Identity and date-of-birth masking are always a full, non-partial
+ * redaction: real identity values in this system (GPN/GPFS/STAFFNO/ID) are
+ * short opaque codes with no safely-revealable substring, so
+ * {@link #maskIdentity(String)} always returns the configured
+ * {@code masking.disabled-placeholder} rather than attempting any partial
+ * reveal.
  */
 @Component
 public class MaskingService {
@@ -81,17 +84,6 @@ public class MaskingService {
   public String maskIdentity(String identity) {
     if (!StringUtils.hasText(identity)) {
       return identity;
-    }
-    MaskingProperties.Identity config = properties.getIdentity();
-    if (!config.isEnabled()) {
-      return properties.getDisabledPlaceholder();
-    }
-    String trimmed = identity.trim();
-    int separator = trimmed.lastIndexOf('/');
-    if (separator >= 0 && separator + 1 < trimmed.length()) {
-      String maskChar = config.getMaskCharacter();
-      String group = maskChar.repeat(2);
-      return group + "/" + group + "/" + trimmed.substring(separator + 1);
     }
     return properties.getDisabledPlaceholder();
   }

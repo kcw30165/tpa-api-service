@@ -145,15 +145,11 @@ class MaskingServiceTest {
   // ----- maskIdentity() -----------------------------------------------------------
 
   @Test
-  void maskIdentityRevealsOnlyLastPathSegment() {
-    MaskingService service = service(defaults());
-    assertThat(service.maskIdentity("TRUST/0001/G12345678")).isEqualTo("**/**/G12345678");
-  }
-
-  @Test
-  void maskIdentityWithoutSeparatorReturnsPlaceholder() {
+  void maskIdentityAlwaysReturnsConfiguredPlaceholderRegardlessOfShape() {
     MaskingService service = service(defaults());
     assertThat(service.maskIdentity("G12345678")).isEqualTo("<masked>");
+    assertThat(service.maskIdentity("A123B")).isEqualTo("<masked>");
+    assertThat(service.maskIdentity("1234567890")).isEqualTo("<masked>");
   }
 
   @Test
@@ -161,7 +157,7 @@ class MaskingServiceTest {
     MaskingProperties properties = defaults();
     properties.getIdentity().setEnabled(false);
     MaskingService service = service(properties);
-    assertThat(service.maskIdentity("TRUST/0001/G12345678")).isEqualTo("<masked>");
+    assertThat(service.maskIdentity("G12345678")).isEqualTo("<masked>");
   }
 
   @Test
