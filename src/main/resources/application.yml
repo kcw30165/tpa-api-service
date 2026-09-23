@@ -10,9 +10,6 @@ spring:
       - optional:classpath:application-registration-errors.yml
   application:
     name: ngtpa-api-server
-  cloud:
-    config:
-      enabled: ${SPRING_CLOUD_CONFIG_ENABLED:false}
   ssl:
     bundle:
       pem:
