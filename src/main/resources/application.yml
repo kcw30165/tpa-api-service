@@ -294,6 +294,8 @@ auth-workflows:
       complete-ttl-seconds: 300
 
 apim:
+  fund-price-mode:
+    path: /ws/NGTPA/v1/TRPGetFundPriceMode
   account-balance:
     path: ${APIM_ACCOUNT_BALANCE_PATH:/ws/NGTPA/v1/TRPGetMemberAccBal}
   account-gain-loss:
@@ -498,6 +500,8 @@ shared-idempotency:
     secret: ${SHARED_IDEMPOTENCY_FORGOT_PASSWORD_START_REPLAY_SECRET:}
 
 fund-price:
+  date-format:
+    full-date: "dd/MM/yyyy"
   export:
     headers:
       fund-price-date: "Fund Price Date基金價格日期"
