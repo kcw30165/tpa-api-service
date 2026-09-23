@@ -499,3 +499,28 @@ shared-idempotency:
   forgot-password-start-replay:
     key-version: ${SHARED_IDEMPOTENCY_FORGOT_PASSWORD_START_REPLAY_KEY_VERSION:}
     secret: ${SHARED_IDEMPOTENCY_FORGOT_PASSWORD_START_REPLAY_SECRET:}
+
+# Centralized masking policy (email/mobile/identity/date-of-birth destination
+# masking and generic logging redaction). See MaskingService for the contract.
+masking:
+  email:
+    enabled: true
+    mode: variable-length
+    mask-length: 4
+    mask-character: "*"
+  mobile:
+    enabled: true
+    mode: variable-length
+    mask-length: 4
+    mask-character: "*"
+  identity:
+    enabled: true
+    mask-character: "*"
+  date-of-birth:
+    enabled: true
+    placeholder: "<redacted>"
+  logging:
+    enabled: true
+    mask-character: "*"
+    placeholder: "***"
+  disabled-placeholder: "<masked>"
