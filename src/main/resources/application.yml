@@ -497,6 +497,21 @@ shared-idempotency:
     key-version: ${SHARED_IDEMPOTENCY_FORGOT_PASSWORD_START_REPLAY_KEY_VERSION:}
     secret: ${SHARED_IDEMPOTENCY_FORGOT_PASSWORD_START_REPLAY_SECRET:}
 
+fund-price:
+  export:
+    headers:
+      fund-price-date: "Fund Price Date基金價格日期"
+      fund-name: "Fund Name"
+      chinese-fund-name: "基金名稱"
+      unit-price:
+        currency: "Unit Price Currency 單位貨幣"
+        price: "Unit Price單位價格"
+      bid-offer:
+        bid-currency: "Bid Price Currency買入單位貨幣"
+        bid-price: "Bid Unit Price單位價格"
+        offer-currency: "Offer Price Currency賣出單位貨幣"
+        offer-price: "Offer Price單位價格"
+
 # Centralized masking policy (email/mobile/identity/date-of-birth destination
 # masking and generic logging redaction). See MaskingService for the contract.
 masking:
