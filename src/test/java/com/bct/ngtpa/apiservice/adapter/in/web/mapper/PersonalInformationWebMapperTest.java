@@ -812,7 +812,8 @@ class PersonalInformationWebMapperTest {
   void optionSetsAreOmittedWhenFormHasNoOptionSets() {
     var page = pageWithSections(section("main", List.of(field("visible", "visible", "visible"))));
     Map<String, Object> response =
-        mapper(page).toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
+        mapper(page)
+            .toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
     Map<String, Object> form = asMap(response.get("form"));
     assertThat(asMap(form.get("optionSets"))).isEmpty();
   }
@@ -854,9 +855,12 @@ class PersonalInformationWebMapperTest {
     Map<String, Object> response =
         mapper(properties(page))
             .toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
-    List<?> options = asList(asMap(asMap(response.get("form")).get("optionSets")).get("countryOptions"));
+    List<?> options =
+        asList(asMap(asMap(response.get("form")).get("optionSets")).get("countryOptions"));
     assertThat(options).hasSize(1);
-    assertThat(asMap(options.get(0))).containsEntry("value", "HK").containsEntry("label", "Hong Kong");
+    assertThat(asMap(options.get(0)))
+        .containsEntry("value", "HK")
+        .containsEntry("label", "Hong Kong");
   }
 
   @Test
@@ -887,7 +891,8 @@ class PersonalInformationWebMapperTest {
     Map<String, Object> response =
         mapper(properties(page))
             .toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
-    List<?> options = asList(asMap(asMap(response.get("form")).get("optionSets")).get("statusOptions"));
+    List<?> options =
+        asList(asMap(asMap(response.get("form")).get("optionSets")).get("statusOptions"));
     assertThat(asMap(options.get(0))).containsEntry("value", "");
   }
 
@@ -903,13 +908,17 @@ class PersonalInformationWebMapperTest {
     var form = new FormMetadataProperties();
     form.setSections(List.of(section("main", List.of(field("visible", "visible", "visible")))));
     page.setForm(form);
-    page.setDisplay(
-        Map.of("page.title", Map.of("en", "Variant Title for ENV1")));
+    page.setDisplay(Map.of("page.title", Map.of("en", "Variant Title for ENV1")));
     Map<String, Object> response =
         mapper(properties(page))
             .toResponse(
-                Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), Map.of(), "en",
-                "ENV1", "TRUST1", "SCHEME1");
+                Map.of("visible", "ok"),
+                Map.of("visible", "EDITABLE_OPTION"),
+                Map.of(),
+                "en",
+                "ENV1",
+                "TRUST1",
+                "SCHEME1");
     assertThat(asMap(response.get("page"))).containsEntry("title", "Variant Title for ENV1");
   }
 
@@ -933,7 +942,8 @@ class PersonalInformationWebMapperTest {
     Map<String, Object> response =
         mapper(properties(page))
             .toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
-    Map<String, Object> confirmationResponse = asMap(asMap(response.get("form")).get("confirmation"));
+    Map<String, Object> confirmationResponse =
+        asMap(asMap(response.get("form")).get("confirmation"));
     Map<String, Object> securityResponse = asMap(confirmationResponse.get("securityVerification"));
     assertThat(securityResponse)
         .containsEntry("label", "Fallback Label")
@@ -954,7 +964,8 @@ class PersonalInformationWebMapperTest {
     Map<String, Object> response =
         mapper(properties(page))
             .toResponse(Map.of("visible", "ok"), Map.of("visible", "EDITABLE_OPTION"), "en");
-    Map<String, Object> confirmationResponse = asMap(asMap(response.get("form")).get("confirmation"));
+    Map<String, Object> confirmationResponse =
+        asMap(asMap(response.get("form")).get("confirmation"));
     assertThat(confirmationResponse).doesNotContainKey("securityVerification");
   }
 
@@ -972,7 +983,8 @@ class PersonalInformationWebMapperTest {
                     boundField("duplicate", "shared", "shared-config", null))));
     Map<String, Object> response =
         new PersonalInformationWebMapper(sanitizer, properties(page))
-            .toResponse(Map.of("shared", "value"), Map.of("shared-config", "EDITABLE_OPTION"), "en");
+            .toResponse(
+                Map.of("shared", "value"), Map.of("shared-config", "EDITABLE_OPTION"), "en");
     List<?> fields = fields(response);
     assertThat(fields).hasSize(1);
     assertThat(asMap(fields.get(0))).containsEntry("name", "first");
@@ -986,7 +998,8 @@ class PersonalInformationWebMapperTest {
         pageWithSections(
             section("main", List.of(boundField("neverSubmitted", "never", "never-config", null))));
     Map<String, Object> response =
-        new PersonalInformationWebMapper(sanitizer, properties(page)).toResponse(Map.of(), Map.of(), "en");
+        new PersonalInformationWebMapper(sanitizer, properties(page))
+            .toResponse(Map.of(), Map.of(), "en");
     assertThat(sections(response)).isEmpty();
     verify(sanitizer, atLeastOnce()).toSafeString(any());
   }

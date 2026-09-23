@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -57,7 +56,8 @@ class IdempotentCancelUsernameRecoveryServiceTest {
   }
 
   private IdempotentCancelUsernameRecoveryService newService() {
-    return new IdempotentCancelUsernameRecoveryService(executor, operation, bridge, policy, clock, ttl);
+    return new IdempotentCancelUsernameRecoveryService(
+        executor, operation, bridge, policy, clock, ttl);
   }
 
   @Test
@@ -96,7 +96,8 @@ class IdempotentCancelUsernameRecoveryServiceTest {
         .thenReturn(
             Mono.just(
                 new IdempotentExecutionResult(
-                    IdempotencyReservationOutcome.ACQUIRED, mock(HydratedIdempotentResponse.class))));
+                    IdempotencyReservationOutcome.ACQUIRED,
+                    mock(HydratedIdempotentResponse.class))));
     newService().cancel(command(), "csrf", "https://origin", "https://ref").block();
     return captor.getValue();
   }
@@ -108,8 +109,7 @@ class IdempotentCancelUsernameRecoveryServiceTest {
     UsernameRecoveryCancelResult result =
         new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SUCCESS);
     when(operation.execute(any(), any(), any(), any(), any()))
-        .thenReturn(
-            Mono.just(UsernameRecoveryCancelProtectedExecutionResult.completed(result)));
+        .thenReturn(Mono.just(UsernameRecoveryCancelProtectedExecutionResult.completed(result)));
     HydratedIdempotentResponse transientResponse = mock(HydratedIdempotentResponse.class);
     when(bridge.toTransientResponse(result, 200)).thenReturn(transientResponse);
     // NOTE (round 99): captureExecutionCommand() runs the FULL cancel() flow
@@ -137,9 +137,7 @@ class IdempotentCancelUsernameRecoveryServiceTest {
     when(bridge.fromTransientResponse(any()))
         .thenReturn(new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SUCCESS));
     IdempotentExecutionCommand cmd = captureExecutionCommand();
-    StepVerifier.create(cmd.protectedOperation().get())
-        .expectError()
-        .verify();
+    StepVerifier.create(cmd.protectedOperation().get()).expectError().verify();
   }
 
   // ----- route() outcome-switch branches (via canned executor results) --------------
@@ -149,7 +147,8 @@ class IdempotentCancelUsernameRecoveryServiceTest {
     HydratedIdempotentResponse response = mock(HydratedIdempotentResponse.class);
     when(executor.execute(any()))
         .thenReturn(
-            Mono.just(new IdempotentExecutionResult(IdempotencyReservationOutcome.ACQUIRED, response)));
+            Mono.just(
+                new IdempotentExecutionResult(IdempotencyReservationOutcome.ACQUIRED, response)));
     UsernameRecoveryCancelResult expected =
         new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SUCCESS);
     when(bridge.fromTransientResponse(response)).thenReturn(expected);
@@ -202,7 +201,9 @@ class IdempotentCancelUsernameRecoveryServiceTest {
   void failedExistingErrors() {
     when(executor.execute(any()))
         .thenReturn(
-            Mono.just(new IdempotentExecutionResult(IdempotencyReservationOutcome.FAILED_EXISTING, null)));
+            Mono.just(
+                new IdempotentExecutionResult(
+                    IdempotencyReservationOutcome.FAILED_EXISTING, null)));
     StepVerifier.create(newService().cancel(command(), "csrf", "https://origin", "https://ref"))
         .expectError(UsernameRecoveryCancelException.class)
         .verify();

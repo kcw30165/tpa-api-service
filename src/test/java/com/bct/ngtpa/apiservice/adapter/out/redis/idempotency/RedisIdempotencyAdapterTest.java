@@ -150,7 +150,11 @@ class RedisIdempotencyAdapterTest {
         adapter
             .markUnknown(
                 new IdempotencyCommands.MarkUnknown(
-                    op(), fp(), reserved.reservationToken(), NOW.plusSeconds(1), Duration.ofMinutes(5)))
+                    op(),
+                    fp(),
+                    reserved.reservationToken(),
+                    NOW.plusSeconds(1),
+                    Duration.ofMinutes(5)))
             .block();
     assertThat(unknown.status()).isEqualTo(IdempotencyStatus.UNKNOWN_OUTCOME);
 
@@ -210,8 +214,11 @@ class RedisIdempotencyAdapterTest {
                 adapter
                     .reserve(
                         new IdempotencyCommands.Reserve(
-                            op(), fp(), token("otherToken0123456789abcdefghijk"),
-                            NOW.plusSeconds(10), Duration.ofMinutes(5)))
+                            op(),
+                            fp(),
+                            token("otherToken0123456789abcdefghijk"),
+                            NOW.plusSeconds(10),
+                            Duration.ofMinutes(5)))
                     .block())
         .hasMessageContaining("reserve failed");
   }

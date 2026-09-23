@@ -17,7 +17,8 @@ import reactor.test.StepVerifier;
 /** Branch-oriented tests for {@link DefaultForgotPasswordOtpResendProtectedReplayResolver}. */
 class DefaultForgotPasswordOtpResendProtectedReplayResolverTest {
 
-  private final ForgotPasswordOtpReplayResolver replay = mock(ForgotPasswordOtpReplayResolver.class);
+  private final ForgotPasswordOtpReplayResolver replay =
+      mock(ForgotPasswordOtpReplayResolver.class);
 
   private DefaultForgotPasswordOtpResendProtectedReplayResolver newResolver() {
     return new DefaultForgotPasswordOtpResendProtectedReplayResolver(replay);

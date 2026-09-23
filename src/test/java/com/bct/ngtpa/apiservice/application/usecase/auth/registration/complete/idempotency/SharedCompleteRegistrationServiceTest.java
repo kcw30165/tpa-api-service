@@ -60,8 +60,7 @@ class SharedCompleteRegistrationServiceTest {
       mock(AuthFlowSessionExpiryRefreshPort.class);
   private final RegistrationUsernameCheckContextLoader usernames =
       mock(RegistrationUsernameCheckContextLoader.class);
-  private final RegistrationPasswordValidator passwords =
-      mock(RegistrationPasswordValidator.class);
+  private final RegistrationPasswordValidator passwords = mock(RegistrationPasswordValidator.class);
   private final IdempotencyExecutor executor = mock(IdempotencyExecutor.class);
   private final RegistrationCompleteProtectedOperation operation =
       mock(RegistrationCompleteProtectedOperation.class);
@@ -76,30 +75,54 @@ class SharedCompleteRegistrationServiceTest {
 
   private SharedCompleteRegistrationService newService() {
     return new SharedCompleteRegistrationService(
-        contexts, expiry, usernames, passwords, executor, operation, responses, identities,
-        fingerprints, clock);
+        contexts,
+        expiry,
+        usernames,
+        passwords,
+        executor,
+        operation,
+        responses,
+        identities,
+        fingerprints,
+        clock);
   }
 
   // ----- fixtures ------------------------------------------------------------
 
   private RegistrationAuthFlowContext registrationContext() {
     return new RegistrationAuthFlowContext(
-        MemberIdentityType.GPN, "G12345678", "01/01/1990", RegistrationContactType.EMAIL,
+        MemberIdentityType.GPN,
+        "G12345678",
+        "01/01/1990",
+        RegistrationContactType.EMAIL,
         "test@example.com");
   }
 
   private AuthFlowSession sessionWith(AuthFlowStatus status) {
     return new AuthFlowSession(
-        sid, com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario.REGISTRATION,
-        status, "csrfhash", null, new AuthFlowSessionData("email", "j***@example.com", Map.of()),
-        NOW.minusSeconds(120), NOW.minusSeconds(60), NOW.plusSeconds(1800));
+        sid,
+        com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario.REGISTRATION,
+        status,
+        "csrfhash",
+        null,
+        new AuthFlowSessionData("email", "j***@example.com", Map.of()),
+        NOW.minusSeconds(120),
+        NOW.minusSeconds(60),
+        NOW.plusSeconds(1800));
   }
 
   private CompleteRegistrationCommand command() {
     return new CompleteRegistrationCommand(
-        sid, "csrf-token", new RegistrationIdempotencyKey("reg-complete-e2e-001"), "Passw0rd!",
-        "Passw0rd!", "https://portal.bcthk.com", "https://portal.bcthk.com/complete", "en",
-        "req-1", Duration.ofMinutes(5));
+        sid,
+        "csrf-token",
+        new RegistrationIdempotencyKey("reg-complete-e2e-001"),
+        "Passw0rd!",
+        "Passw0rd!",
+        "https://portal.bcthk.com",
+        "https://portal.bcthk.com/complete",
+        "en",
+        "req-1",
+        Duration.ofMinutes(5));
   }
 
   private void givenIdempotencyIdentityBuildable() {
@@ -129,7 +152,8 @@ class SharedCompleteRegistrationServiceTest {
 
   private void givenExecutorReturns(IdempotencyReservationOutcome outcome, boolean withResponse) {
     givenIdempotencyIdentityBuildable();
-    HydratedIdempotentResponse response = withResponse ? mock(HydratedIdempotentResponse.class) : null;
+    HydratedIdempotentResponse response =
+        withResponse ? mock(HydratedIdempotentResponse.class) : null;
     when(executor.execute(any()))
         .thenReturn(Mono.just(new IdempotentExecutionResult(outcome, response)));
   }
@@ -239,8 +263,12 @@ class SharedCompleteRegistrationServiceTest {
     givenExecutorReturns(IdempotencyReservationOutcome.ACQUIRED, true);
     CompleteRegistrationResult expected =
         new CompleteRegistrationResult(
-            CompleteRegistrationResultStatus.REGISTERED, WorkflowNextStep.RETURN_TO_LOGIN, true,
-            true, List.of(), List.of());
+            CompleteRegistrationResultStatus.REGISTERED,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            true,
+            true,
+            List.of(),
+            List.of());
     when(responses.fromTransientResponse(any())).thenReturn(expected);
     StepVerifier.create(newService().complete(command())).expectNext(expected).verifyComplete();
   }
@@ -251,8 +279,12 @@ class SharedCompleteRegistrationServiceTest {
     givenExecutorReturns(IdempotencyReservationOutcome.COMPLETED_REPLAY, true);
     CompleteRegistrationResult expected =
         new CompleteRegistrationResult(
-            CompleteRegistrationResultStatus.REGISTERED, WorkflowNextStep.RETURN_TO_LOGIN, true,
-            true, List.of(), List.of());
+            CompleteRegistrationResultStatus.REGISTERED,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            true,
+            true,
+            List.of(),
+            List.of());
     when(responses.fromTransientResponse(any())).thenReturn(expected);
     StepVerifier.create(newService().complete(command())).expectNext(expected).verifyComplete();
   }

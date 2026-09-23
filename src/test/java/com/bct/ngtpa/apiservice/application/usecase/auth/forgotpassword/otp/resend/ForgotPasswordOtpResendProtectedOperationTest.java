@@ -60,12 +60,12 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Branch-oriented reactive tests for {@link ForgotPasswordOtpResendProtectedOperation}. Targets
- * the high-value branches of the resend eligibility/dispatch tree (~85-90% scope, per agreed
- * plan). {@code masker} and {@code refs} are mocked directly - injecting them is a tracked
- * refactor, not done here. All Mono-returning methods on {@code otp} and {@code challengeState}
- * are defensively stubbed in {@link #givenEligible()} to eliminate unstubbed-null-Mono NPEs,
- * regardless of which specific method the production code's private helpers invoke.
+ * Branch-oriented reactive tests for {@link ForgotPasswordOtpResendProtectedOperation}. Targets the
+ * high-value branches of the resend eligibility/dispatch tree (~85-90% scope, per agreed plan).
+ * {@code masker} and {@code refs} are mocked directly - injecting them is a tracked refactor, not
+ * done here. All Mono-returning methods on {@code otp} and {@code challengeState} are defensively
+ * stubbed in {@link #givenEligible()} to eliminate unstubbed-null-Mono NPEs, regardless of which
+ * specific method the production code's private helpers invoke.
  */
 class ForgotPasswordOtpResendProtectedOperationTest {
 
@@ -95,7 +95,8 @@ class ForgotPasswordOtpResendProtectedOperationTest {
   private final ForgotPasswordOtpCommitRetentionPolicy retention =
       new ForgotPasswordOtpCommitRetentionPolicy(Duration.ofMinutes(5), Duration.ofHours(1));
   private final ForgotPasswordOtpTemplates templates = ForgotPasswordOtpTemplates.approved();
-  private final ForgotPasswordInitialOtpPolicy otpPolicy = ForgotPasswordInitialOtpPolicy.approved();
+  private final ForgotPasswordInitialOtpPolicy otpPolicy =
+      ForgotPasswordInitialOtpPolicy.approved();
 
   private final AuthFlowSessionId sid = new AuthFlowSessionId("afs-otp-1");
   private final String csrfHash = sha256(RAW_CSRF);
@@ -104,8 +105,22 @@ class ForgotPasswordOtpResendProtectedOperationTest {
 
   private ForgotPasswordOtpResendProtectedOperation newOp() {
     return new ForgotPasswordOtpResendProtectedOperation(
-        refs, locks, sessions, protector, foundation, otp, challengeState, delivery, masker,
-        commitStates, retention, templates, otpPolicy, clock, idempotencyTtl, lockLease,
+        refs,
+        locks,
+        sessions,
+        protector,
+        foundation,
+        otp,
+        challengeState,
+        delivery,
+        masker,
+        commitStates,
+        retention,
+        templates,
+        otpPolicy,
+        clock,
+        idempotencyTtl,
+        lockLease,
         List.of(ALLOWED_ORIGIN));
   }
 
@@ -120,7 +135,10 @@ class ForgotPasswordOtpResendProtectedOperationTest {
   }
 
   private AuthFlowSession sessionWith(
-      AuthFlowScenario scenario, AuthFlowStatus status, Instant expiresAt, String activeChallengeId) {
+      AuthFlowScenario scenario,
+      AuthFlowStatus status,
+      Instant expiresAt,
+      String activeChallengeId) {
     return new AuthFlowSession(
         sid,
         scenario,
@@ -141,7 +159,10 @@ class ForgotPasswordOtpResendProtectedOperationTest {
 
   private AuthFlowSession validSession() {
     return sessionWith(
-        AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, NOW.plusSeconds(1800), "challenge-1");
+        AuthFlowScenario.FORGOT_PASSWORD,
+        AuthFlowStatus.OTP_SENT,
+        NOW.plusSeconds(1800),
+        "challenge-1");
   }
 
   private AuthFlowSessionSnapshot snapshotOf(AuthFlowSession session) {
@@ -230,9 +251,23 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 new ForgotPasswordOtpResendProtectedOperation(
-                    null, locks, sessions, protector, foundation, otp, challengeState, delivery,
-                    masker, commitStates, retention, templates, otpPolicy, clock, idempotencyTtl,
-                    lockLease, List.of(ALLOWED_ORIGIN)))
+                    null,
+                    locks,
+                    sessions,
+                    protector,
+                    foundation,
+                    otp,
+                    challengeState,
+                    delivery,
+                    masker,
+                    commitStates,
+                    retention,
+                    templates,
+                    otpPolicy,
+                    clock,
+                    idempotencyTtl,
+                    lockLease,
+                    List.of(ALLOWED_ORIGIN)))
         .isInstanceOf(NullPointerException.class);
   }
 
@@ -369,7 +404,10 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     givenLockAcquired();
     givenSession(
         sessionWith(
-            AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, NOW.plusSeconds(1800), null));
+            AuthFlowScenario.FORGOT_PASSWORD,
+            AuthFlowStatus.OTP_SENT,
+            NOW.plusSeconds(1800),
+            null));
     givenContext();
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
@@ -527,7 +565,8 @@ class ForgotPasswordOtpResendProtectedOperationTest {
                     ForgotPasswordOtpResendEligibilityStatus.ELIGIBLE, null, 0)));
     when(otp.createChallenge(any()))
         .thenReturn(
-            Mono.just(new CreateOtpChallengeResult("candidate-1", "123456", NOW.plusSeconds(300), 300)));
+            Mono.just(
+                new CreateOtpChallengeResult("candidate-1", "123456", NOW.plusSeconds(300), 300)));
     when(protector.protect(any()))
         .thenReturn(new ForgotPasswordAuthFlowEncryptedContext("ct-2", "kv-2", "AES_GCM_V1"));
 
@@ -540,15 +579,12 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     // port method the private invalidateChallenge(...)/similar helpers
     // actually call. ---
     when(otp.invalidateChallenge(any())).thenReturn(Mono.empty());
-    when(otp.verifyChallenge(any()))
-        .thenReturn(Mono.just(mock(VerifyOtpChallengeResult.class)));
-    when(otp.replaceChallenge(any()))
-        .thenReturn(Mono.just(mock(ReplaceOtpChallengeResult.class)));
+    when(otp.verifyChallenge(any())).thenReturn(Mono.just(mock(VerifyOtpChallengeResult.class)));
+    when(otp.replaceChallenge(any())).thenReturn(Mono.just(mock(ReplaceOtpChallengeResult.class)));
     when(challengeState.save(any())).thenReturn(Mono.empty());
     when(challengeState.update(any())).thenReturn(Mono.empty());
     when(challengeState.delete(any())).thenReturn(Mono.empty());
   }
-
 
   @Test
   void eligibleWithDeliveryAcceptedYieldsResent() {
@@ -557,7 +593,11 @@ class ForgotPasswordOtpResendProtectedOperationTest {
         .thenReturn(
             Mono.just(
                 new MessageDeliveryResult(
-                    MessageDeliveryStatus.ACCEPTED, MessageDeliveryChannel.EMAIL, "provider-1", null, null)));
+                    MessageDeliveryStatus.ACCEPTED,
+                    MessageDeliveryChannel.EMAIL,
+                    "provider-1",
+                    null,
+                    null)));
     when(commitStates.saveIfAbsent(any(), any(), any())).thenReturn(Mono.just(true));
     when(commitStates.load(any()))
         .thenAnswer(
@@ -583,7 +623,11 @@ class ForgotPasswordOtpResendProtectedOperationTest {
         .thenReturn(
             Mono.just(
                 new MessageDeliveryResult(
-                    MessageDeliveryStatus.FAILED, MessageDeliveryChannel.EMAIL, null, "err", "boom")));
+                    MessageDeliveryStatus.FAILED,
+                    MessageDeliveryChannel.EMAIL,
+                    null,
+                    "err",
+                    "boom")));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
             r ->
@@ -599,7 +643,11 @@ class ForgotPasswordOtpResendProtectedOperationTest {
         .thenReturn(
             Mono.just(
                 new MessageDeliveryResult(
-                    MessageDeliveryStatus.UNKNOWN_OUTCOME, MessageDeliveryChannel.EMAIL, null, null, null)));
+                    MessageDeliveryStatus.UNKNOWN_OUTCOME,
+                    MessageDeliveryChannel.EMAIL,
+                    null,
+                    null,
+                    null)));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
             r ->

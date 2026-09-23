@@ -1,12 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.out.registration;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationEligibleTrustSet;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -44,9 +42,15 @@ class RegistrationEligibleTrustSessionAdapterTest {
 
   private AuthFlowSession session() {
     return new AuthFlowSession(
-        sid, AuthFlowScenario.REGISTRATION, AuthFlowStatus.STARTED, "csrfhash", null,
+        sid,
+        AuthFlowScenario.REGISTRATION,
+        AuthFlowStatus.STARTED,
+        "csrfhash",
+        null,
         new AuthFlowSessionData("email", "j***@example.com", Map.of()),
-        NOW.minusSeconds(120), NOW.minusSeconds(60), NOW.plusSeconds(1800));
+        NOW.minusSeconds(120),
+        NOW.minusSeconds(60),
+        NOW.plusSeconds(1800));
   }
 
   private AuthFlowSessionSnapshot snapshotOf(AuthFlowSession session) {
@@ -95,7 +99,8 @@ class RegistrationEligibleTrustSessionAdapterTest {
     // - and compares snapshot.session() against the SAME "current" session
     // object for equality. Both stubs must return data consistent with the
     // SAME session instance.
-    when(sessions.loadSnapshot(any())).thenReturn(Mono.just(Optional.of(snapshotOf(currentSession))));
+    when(sessions.loadSnapshot(any()))
+        .thenReturn(Mono.just(Optional.of(snapshotOf(currentSession))));
     when(sessions.updateRevisioned(any()))
         .thenReturn(
             Mono.just(
@@ -108,8 +113,15 @@ class RegistrationEligibleTrustSessionAdapterTest {
   void storeSucceedsWithNullSessionData() {
     AuthFlowSession sessionWithNullData =
         new AuthFlowSession(
-            sid, AuthFlowScenario.REGISTRATION, AuthFlowStatus.STARTED, "csrfhash", null, null,
-            NOW.minusSeconds(120), NOW.minusSeconds(60), NOW.plusSeconds(1800));
+            sid,
+            AuthFlowScenario.REGISTRATION,
+            AuthFlowStatus.STARTED,
+            "csrfhash",
+            null,
+            null,
+            NOW.minusSeconds(120),
+            NOW.minusSeconds(60),
+            NOW.plusSeconds(1800));
     when(sessions.load(any())).thenReturn(Mono.just(Optional.of(sessionWithNullData)));
     when(sessions.loadSnapshot(any()))
         .thenReturn(Mono.just(Optional.of(snapshotOf(sessionWithNullData))));
@@ -127,7 +139,8 @@ class RegistrationEligibleTrustSessionAdapterTest {
   void storeRevisionConflictErrors() {
     AuthFlowSession currentSession = session();
     when(sessions.load(any())).thenReturn(Mono.just(Optional.of(currentSession)));
-    when(sessions.loadSnapshot(any())).thenReturn(Mono.just(Optional.of(snapshotOf(currentSession))));
+    when(sessions.loadSnapshot(any()))
+        .thenReturn(Mono.just(Optional.of(snapshotOf(currentSession))));
     when(sessions.updateRevisioned(any()))
         .thenReturn(
             Mono.just(

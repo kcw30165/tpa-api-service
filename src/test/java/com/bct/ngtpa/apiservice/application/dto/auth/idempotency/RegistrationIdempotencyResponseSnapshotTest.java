@@ -3,14 +3,13 @@ package com.bct.ngtpa.apiservice.application.dto.auth.idempotency;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Branch-oriented tests for {@link RegistrationIdempotencyResponseSnapshot}'s compact constructor
- * - near-identical sibling of {@code ForgotPasswordIdempotencyReplaySnapshotTest} (round 81),
+ * Branch-oriented tests for {@link RegistrationIdempotencyResponseSnapshot}'s compact constructor -
+ * near-identical sibling of {@code ForgotPasswordIdempotencyReplaySnapshotTest} (round 81),
  * confirmed via direct source comparison (round 82).
  */
 class RegistrationIdempotencyResponseSnapshotTest {
@@ -38,7 +37,8 @@ class RegistrationIdempotencyResponseSnapshotTest {
   void blankHeaderNameThrows() {
     Map<String, String> headers = new LinkedHashMap<>();
     headers.put("", "value");
-    assertThatThrownBy(() -> new RegistrationIdempotencyResponseSnapshot("SUCCESS", "body", headers))
+    assertThatThrownBy(
+            () -> new RegistrationIdempotencyResponseSnapshot("SUCCESS", "body", headers))
         .isInstanceOf(IllegalArgumentException.class);
   }
 

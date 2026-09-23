@@ -1,15 +1,13 @@
 package com.bct.ngtpa.apiservice.adapter.out.registration;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.OtpPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.OtpEmailPolicy;
+import com.bct.ngtpa.apiservice.application.dto.auth.OtpPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryChannel;
@@ -55,7 +53,11 @@ class RegistrationMessageDeliveryAdapterTest {
             () ->
                 newAdapter()
                     .deliverRegistrationOtp(
-                        RegistrationContactType.EMAIL, "user@example.com", "123456", 300, "en",
+                        RegistrationContactType.EMAIL,
+                        "user@example.com",
+                        "123456",
+                        300,
+                        "en",
                         "req-1")
                     .block())
         .isInstanceOf(IllegalStateException.class);
@@ -70,7 +72,11 @@ class RegistrationMessageDeliveryAdapterTest {
             () ->
                 newAdapter()
                     .deliverRegistrationOtp(
-                        RegistrationContactType.EMAIL, "user@example.com", "123456", 300, "en",
+                        RegistrationContactType.EMAIL,
+                        "user@example.com",
+                        "123456",
+                        300,
+                        "en",
                         "req-1")
                     .block())
         .isInstanceOf(IllegalStateException.class);
@@ -88,7 +94,9 @@ class RegistrationMessageDeliveryAdapterTest {
   void mobileContactTypeRoutesToSmsChannel() {
     givenPolicy(mock(OtpPolicy.class));
     when(delivery.deliver(any()))
-        .thenReturn(Mono.just(new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
+        .thenReturn(
+            Mono.just(
+                new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
     StepVerifier.create(
             newAdapter()
                 .deliverRegistrationOtp(
@@ -105,11 +113,18 @@ class RegistrationMessageDeliveryAdapterTest {
   void emailContactTypeRoutesToEmailChannel() {
     givenPolicy(mock(OtpPolicy.class));
     when(delivery.deliver(any()))
-        .thenReturn(Mono.just(new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
+        .thenReturn(
+            Mono.just(
+                new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
     StepVerifier.create(
             newAdapter()
                 .deliverRegistrationOtp(
-                    RegistrationContactType.EMAIL, "user@example.com", "123456", 300, "en", "req-1"))
+                    RegistrationContactType.EMAIL,
+                    "user@example.com",
+                    "123456",
+                    300,
+                    "en",
+                    "req-1"))
         .expectNext(true)
         .verifyComplete();
     verify(delivery)
@@ -125,11 +140,17 @@ class RegistrationMessageDeliveryAdapterTest {
     givenPolicy(mock(OtpPolicy.class));
     when(delivery.deliver(any()))
         .thenReturn(
-            Mono.just(new MessageDeliveryResult(MessageDeliveryStatus.FAILED, null, null, null, null)));
+            Mono.just(
+                new MessageDeliveryResult(MessageDeliveryStatus.FAILED, null, null, null, null)));
     StepVerifier.create(
             newAdapter()
                 .deliverRegistrationOtp(
-                    RegistrationContactType.EMAIL, "user@example.com", "123456", 300, "en", "req-1"))
+                    RegistrationContactType.EMAIL,
+                    "user@example.com",
+                    "123456",
+                    300,
+                    "en",
+                    "req-1"))
         .expectNext(false)
         .verifyComplete();
   }
@@ -140,7 +161,9 @@ class RegistrationMessageDeliveryAdapterTest {
   void ttlSecondsBelowOneMinuteClampsToOneMinute() {
     givenPolicy(mock(OtpPolicy.class));
     when(delivery.deliver(any()))
-        .thenReturn(Mono.just(new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
+        .thenReturn(
+            Mono.just(
+                new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
     StepVerifier.create(
             newAdapter()
                 .deliverRegistrationOtp(
@@ -150,7 +173,8 @@ class RegistrationMessageDeliveryAdapterTest {
     verify(delivery)
         .deliver(
             org.mockito.ArgumentMatchers.argThat(
-                (MessageDeliveryCommand cmd) -> "1".equals(cmd.templateVariables().get("ttlValue"))));
+                (MessageDeliveryCommand cmd) ->
+                    "1".equals(cmd.templateVariables().get("ttlValue"))));
   }
 
   // ----- email subject/body fallback logic --------------------------------------------
@@ -164,15 +188,19 @@ class RegistrationMessageDeliveryAdapterTest {
     when(otpPolicy.email()).thenReturn(emailPolicy);
     givenPolicy(otpPolicy);
     when(delivery.deliver(any()))
-        .thenReturn(Mono.just(new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
+        .thenReturn(
+            Mono.just(
+                new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
     newAdapter()
-        .deliverRegistrationOtp(RegistrationContactType.EMAIL, "user@example.com", "123456", 300, "en", "req-1")
+        .deliverRegistrationOtp(
+            RegistrationContactType.EMAIL, "user@example.com", "123456", 300, "en", "req-1")
         .block();
     verify(delivery)
         .deliver(
             org.mockito.ArgumentMatchers.argThat(
                 (MessageDeliveryCommand cmd) ->
-                    "Custom Subject".equals(cmd.subject()) && "Custom Body {code}".equals(cmd.body())));
+                    "Custom Subject".equals(cmd.subject())
+                        && "Custom Body {code}".equals(cmd.body())));
   }
 
   @Test
@@ -185,9 +213,12 @@ class RegistrationMessageDeliveryAdapterTest {
     when(otpPolicy.smsTemplate()).thenReturn(null);
     givenPolicy(otpPolicy);
     when(delivery.deliver(any()))
-        .thenReturn(Mono.just(new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
+        .thenReturn(
+            Mono.just(
+                new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
     newAdapter()
-        .deliverRegistrationOtp(RegistrationContactType.EMAIL, "user@example.com", "123456", 300, "en", "req-1")
+        .deliverRegistrationOtp(
+            RegistrationContactType.EMAIL, "user@example.com", "123456", 300, "en", "req-1")
         .block();
     verify(delivery)
         .deliver(
@@ -203,9 +234,12 @@ class RegistrationMessageDeliveryAdapterTest {
     when(otpPolicy.smsTemplate()).thenReturn("Your code: {code}");
     givenPolicy(otpPolicy);
     when(delivery.deliver(any()))
-        .thenReturn(Mono.just(new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
+        .thenReturn(
+            Mono.just(
+                new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
     newAdapter()
-        .deliverRegistrationOtp(RegistrationContactType.MOBILE, "91234567", "123456", 300, "en", "req-1")
+        .deliverRegistrationOtp(
+            RegistrationContactType.MOBILE, "91234567", "123456", 300, "en", "req-1")
         .block();
     verify(delivery)
         .deliver(

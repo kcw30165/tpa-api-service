@@ -20,8 +20,8 @@ import reactor.test.StepVerifier;
 
 /**
  * Branch-oriented tests for {@link ForgotPasswordDetailsOtpReplayCodec}. Note: {@code capture()}'s
- * {@code validateCapturable(...)} call throws SYNCHRONOUSLY (not wrapped in {@code Mono.error}),
- * so malformed-result tests use {@code assertThatThrownBy} around the {@code capture(...)} call
+ * {@code validateCapturable(...)} call throws SYNCHRONOUSLY (not wrapped in {@code Mono.error}), so
+ * malformed-result tests use {@code assertThatThrownBy} around the {@code capture(...)} call
  * itself, not {@code StepVerifier}. Dead-code finding (documented, not acted on): {@code
  * IdempotentTerminalResponseSnapshot}'s compact constructor FORCES {@code schemaVersion==1} and
  * {@code mediaType=="application/json"}, so those two sub-conditions inside {@code hydrate()}'s
@@ -70,7 +70,11 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
   void captureRejectionWithoutReferenceSucceeds() {
     ForgotPasswordDetailsOtpResult result =
         new ForgotPasswordDetailsOtpResult(
-            ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED, null, 0, 0, List.of("dateOfBirth"));
+            ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED,
+            null,
+            0,
+            0,
+            List.of("dateOfBirth"));
     int status = ForgotPasswordDetailsOtpReplayCodec.httpStatus(result.status());
     when(envelope.encode(any(), any())).thenReturn("{}");
     StepVerifier.create(newCodec().capture(result, response(status, Map.of()), null))
@@ -112,7 +116,8 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
 
   private IdempotentTerminalResponseSnapshot snapshot(
       int httpStatus, Map<String, String> headers, ProtectedReplayReference reference) {
-    return new IdempotentTerminalResponseSnapshot(1, httpStatus, MEDIA_TYPE, "{}", headers, reference);
+    return new IdempotentTerminalResponseSnapshot(
+        1, httpStatus, MEDIA_TYPE, "{}", headers, reference);
   }
 
   @Test
@@ -124,8 +129,10 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
 
   @Test
   void hydrateUnsupportedStatusErrors() {
-    when(envelope.decodePayload(any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
-        .thenReturn(new ForgotPasswordDetailsOtpReplayCodec.SafePayload("GARBAGE_STATUS", List.of()));
+    when(envelope.decodePayload(
+            any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
+        .thenReturn(
+            new ForgotPasswordDetailsOtpReplayCodec.SafePayload("GARBAGE_STATUS", List.of()));
     StepVerifier.create(newCodec().hydrate(snapshot(200, Map.of(), reference())))
         .expectError(IllegalArgumentException.class)
         .verify();
@@ -133,7 +140,8 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
 
   @Test
   void hydrateHttpStatusMismatchErrors() {
-    when(envelope.decodePayload(any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
+    when(envelope.decodePayload(
+            any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
         .thenReturn(
             new ForgotPasswordDetailsOtpReplayCodec.SafePayload(
                 ForgotPasswordDetailsOtpResult.Status.SUCCESS.name(), List.of()));
@@ -144,7 +152,8 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
 
   @Test
   void hydrateSuccessMissingProtectedReplayErrors() {
-    when(envelope.decodePayload(any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
+    when(envelope.decodePayload(
+            any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
         .thenReturn(
             new ForgotPasswordDetailsOtpReplayCodec.SafePayload(
                 ForgotPasswordDetailsOtpResult.Status.SUCCESS.name(), List.of()));
@@ -155,11 +164,14 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
 
   @Test
   void hydrateRejectionCarryingProtectedReplayErrors() {
-    when(envelope.decodePayload(any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
+    when(envelope.decodePayload(
+            any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
         .thenReturn(
             new ForgotPasswordDetailsOtpReplayCodec.SafePayload(
                 ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED.name(), List.of()));
-    int status = ForgotPasswordDetailsOtpReplayCodec.httpStatus(ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED);
+    int status =
+        ForgotPasswordDetailsOtpReplayCodec.httpStatus(
+            ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED);
     StepVerifier.create(newCodec().hydrate(snapshot(status, Map.of(), reference())))
         .expectError(IllegalArgumentException.class)
         .verify();
@@ -167,24 +179,33 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
 
   @Test
   void hydrateRejectionWithoutProtectedReplaySucceeds() {
-    when(envelope.decodePayload(any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
+    when(envelope.decodePayload(
+            any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
         .thenReturn(
             new ForgotPasswordDetailsOtpReplayCodec.SafePayload(
-                ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED.name(), List.of("dateOfBirth")));
-    int status = ForgotPasswordDetailsOtpReplayCodec.httpStatus(ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED);
+                ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED.name(),
+                List.of("dateOfBirth")));
+    int status =
+        ForgotPasswordDetailsOtpReplayCodec.httpStatus(
+            ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED);
     StepVerifier.create(newCodec().hydrate(snapshot(status, Map.of(), null)))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED))
         .verifyComplete();
   }
 
   @Test
   void hydrateSuccessDelegatesToProtectedReplay() {
-    when(envelope.decodePayload(any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
+    when(envelope.decodePayload(
+            any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
         .thenReturn(
             new ForgotPasswordDetailsOtpReplayCodec.SafePayload(
                 ForgotPasswordDetailsOtpResult.Status.SUCCESS.name(), List.of()));
-    int status = ForgotPasswordDetailsOtpReplayCodec.httpStatus(ForgotPasswordDetailsOtpResult.Status.SUCCESS);
+    int status =
+        ForgotPasswordDetailsOtpReplayCodec.httpStatus(
+            ForgotPasswordDetailsOtpResult.Status.SUCCESS);
     ForgotPasswordDetailsOtpResult delegated =
         new ForgotPasswordDetailsOtpResult(
             ForgotPasswordDetailsOtpResult.Status.SUCCESS, "j***@example.com", 200, 45, List.of());

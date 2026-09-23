@@ -6,7 +6,9 @@ import com.bct.ngtpa.apiservice.application.port.out.GeneralMetadataObservabilit
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-/** Branch-oriented tests for {@link GeneralMetadataObservabilityLogger}. Uses a REAL ObjectMapper. */
+/**
+ * Branch-oriented tests for {@link GeneralMetadataObservabilityLogger}. Uses a REAL ObjectMapper.
+ */
 class GeneralMetadataObservabilityLoggerTest {
 
   private final GeneralMetadataObservabilityLogger logger =

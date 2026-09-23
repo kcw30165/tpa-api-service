@@ -21,7 +21,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.Verify
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
@@ -31,7 +30,8 @@ import reactor.test.StepVerifier;
  */
 class RegistrationOtpVerifySharedExecutionBridgeTest {
 
-  private final RegistrationOtpVerifyReplayCodec codec = mock(RegistrationOtpVerifyReplayCodec.class);
+  private final RegistrationOtpVerifyReplayCodec codec =
+      mock(RegistrationOtpVerifyReplayCodec.class);
 
   private RegistrationOtpVerifySharedExecutionBridge newBridge() {
     return new RegistrationOtpVerifySharedExecutionBridge(codec);
@@ -39,14 +39,22 @@ class RegistrationOtpVerifySharedExecutionBridgeTest {
 
   private static VerifyRegistrationOtpResult verified() {
     return new VerifyRegistrationOtpResult(
-        VerifyRegistrationOtpResultStatus.VERIFIED, WorkflowNextStep.RETURN_TO_LOGIN,
-        List.of(new RegistrationUnregisteredTrust("env1", "trust1")), 3,
-        List.of(new WorkflowMessageDescriptor(WorkflowMessageType.INFO, "code1", "msg1", "target1")),
+        VerifyRegistrationOtpResultStatus.VERIFIED,
+        WorkflowNextStep.RETURN_TO_LOGIN,
+        List.of(new RegistrationUnregisteredTrust("env1", "trust1")),
+        3,
+        List.of(
+            new WorkflowMessageDescriptor(WorkflowMessageType.INFO, "code1", "msg1", "target1")),
         List.of(
             new WorkflowErrorDescriptor(
-                WorkflowErrorType.FIELD, "code2", "msg2", List.of("field1"),
-                WorkflowErrorSeverity.ERROR, "SERVER")),
-        RegistrationIdempotencyStartOutcome.STARTED, null);
+                WorkflowErrorType.FIELD,
+                "code2",
+                "msg2",
+                List.of("field1"),
+                WorkflowErrorSeverity.ERROR,
+                "SERVER")),
+        RegistrationIdempotencyStartOutcome.STARTED,
+        null);
   }
 
   // ----- constructor guard --------------------------------------------------
@@ -75,8 +83,14 @@ class RegistrationOtpVerifySharedExecutionBridgeTest {
   void toTransientResponseThrowsForLifecycleOnlyStatus() {
     VerifyRegistrationOtpResult lifecycleOnly =
         new VerifyRegistrationOtpResult(
-            VerifyRegistrationOtpResultStatus.COMPLETED_REPLAY, WorkflowNextStep.RETURN_TO_LOGIN,
-            List.of(), null, List.of(), List.of(), null, null);
+            VerifyRegistrationOtpResultStatus.COMPLETED_REPLAY,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            List.of(),
+            null,
+            List.of(),
+            List.of(),
+            null,
+            null);
     assertThatThrownBy(() -> newBridge().toTransientResponse(lifecycleOnly))
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -102,8 +116,14 @@ class RegistrationOtpVerifySharedExecutionBridgeTest {
     RegistrationOtpVerifySharedExecutionBridge bridge = newBridge();
     VerifyRegistrationOtpResult minimal =
         new VerifyRegistrationOtpResult(
-            VerifyRegistrationOtpResultStatus.VALIDATION_FAILED, WorkflowNextStep.SELECT_OTP_DESTINATION,
-            List.of(), null, List.of(), List.of(), null, null);
+            VerifyRegistrationOtpResultStatus.VALIDATION_FAILED,
+            WorkflowNextStep.SELECT_OTP_DESTINATION,
+            List.of(),
+            null,
+            List.of(),
+            List.of(),
+            null,
+            null);
     HydratedIdempotentResponse response = bridge.toTransientResponse(minimal);
     VerifyRegistrationOtpResult roundTripped = bridge.fromTransientResponse(response);
     assertThat(roundTripped.remainingVerifyAttempts()).isNull();

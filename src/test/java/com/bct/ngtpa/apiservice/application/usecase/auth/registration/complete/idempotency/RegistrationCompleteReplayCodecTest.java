@@ -19,8 +19,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Branch-oriented tests for {@link RegistrationCompleteReplayCodec}. Both internal collaborators
  * ({@code RegistrationSharedResponseEnvelope}/{@code RegistrationSharedResponseBridge}) are
- * constructed internally (round 102 verbatim confirmation) - exercised for real, since they
- * cannot be substituted.
+ * constructed internally (round 102 verbatim confirmation) - exercised for real, since they cannot
+ * be substituted.
  */
 class RegistrationCompleteReplayCodecTest {
 
@@ -44,8 +44,12 @@ class RegistrationCompleteReplayCodecTest {
 
   private static WorkflowErrorDescriptor error() {
     return new WorkflowErrorDescriptor(
-        WorkflowErrorType.FIELD, "code1", "message1", List.of("field1"),
-        WorkflowErrorSeverity.ERROR, "SERVER");
+        WorkflowErrorType.FIELD,
+        "code1",
+        "message1",
+        List.of("field1"),
+        WorkflowErrorSeverity.ERROR,
+        "SERVER");
   }
 
   // ----- capture(): guards + lifecycle-only rejection --------------------------------
@@ -59,8 +63,12 @@ class RegistrationCompleteReplayCodecTest {
   void captureCompletedReplayStatusThrows() {
     CompleteRegistrationResult lifecycleOnly =
         result(
-            CompleteRegistrationResultStatus.COMPLETED_REPLAY, WorkflowNextStep.RETURN_TO_LOGIN,
-            true, true, List.of(), List.of());
+            CompleteRegistrationResultStatus.COMPLETED_REPLAY,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            true,
+            true,
+            List.of(),
+            List.of());
     assertThatThrownBy(() -> codec.capture(lifecycleOnly))
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -69,8 +77,12 @@ class RegistrationCompleteReplayCodecTest {
   void captureUnknownOutcomeStatusThrows() {
     CompleteRegistrationResult lifecycleOnly =
         result(
-            CompleteRegistrationResultStatus.UNKNOWN_OUTCOME, WorkflowNextStep.RETURN_TO_LOGIN,
-            true, true, List.of(), List.of());
+            CompleteRegistrationResultStatus.UNKNOWN_OUTCOME,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            true,
+            true,
+            List.of(),
+            List.of());
     assertThatThrownBy(() -> codec.capture(lifecycleOnly))
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -82,7 +94,11 @@ class RegistrationCompleteReplayCodecTest {
     CompleteRegistrationResult original =
         result(
             CompleteRegistrationResultStatus.REGISTERED_WITH_REMAINING_TRUSTS,
-            WorkflowNextStep.RETURN_TO_LOGIN, true, false, List.of(trust()), List.of(error()));
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            true,
+            false,
+            List.of(trust()),
+            List.of(error()));
     IdempotentCapturedResponse captured = codec.capture(original);
     assertThat(captured.response().httpStatus()).isEqualTo(200);
 
@@ -102,8 +118,12 @@ class RegistrationCompleteReplayCodecTest {
   void captureAndHydrateRoundTripsSimpleRegisteredWithNoTrustsOrErrors() {
     CompleteRegistrationResult original =
         result(
-            CompleteRegistrationResultStatus.REGISTERED, WorkflowNextStep.RETURN_TO_LOGIN, true,
-            true, List.of(), List.of());
+            CompleteRegistrationResultStatus.REGISTERED,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            true,
+            true,
+            List.of(),
+            List.of());
     IdempotentCapturedResponse captured = codec.capture(original);
     CompleteRegistrationResult rehydrated = codec.hydrate(captured.snapshot());
     assertThat(rehydrated.status()).isEqualTo(CompleteRegistrationResultStatus.REGISTERED);
@@ -117,8 +137,12 @@ class RegistrationCompleteReplayCodecTest {
   void captureValidationFailedYields400() {
     CompleteRegistrationResult r =
         result(
-            CompleteRegistrationResultStatus.VALIDATION_FAILED, WorkflowNextStep.SELECT_OTP_DESTINATION,
-            false, false, List.of(), List.of(error()));
+            CompleteRegistrationResultStatus.VALIDATION_FAILED,
+            WorkflowNextStep.SELECT_OTP_DESTINATION,
+            false,
+            false,
+            List.of(),
+            List.of(error()));
     IdempotentCapturedResponse captured = codec.capture(r);
     assertThat(captured.response().httpStatus()).isEqualTo(400);
   }
@@ -128,7 +152,11 @@ class RegistrationCompleteReplayCodecTest {
     CompleteRegistrationResult r =
         result(
             CompleteRegistrationResultStatus.IDEMPOTENCY_KEY_REUSED,
-            WorkflowNextStep.SELECT_OTP_DESTINATION, false, false, List.of(), List.of());
+            WorkflowNextStep.SELECT_OTP_DESTINATION,
+            false,
+            false,
+            List.of(),
+            List.of());
     IdempotentCapturedResponse captured = codec.capture(r);
     assertThat(captured.response().httpStatus()).isEqualTo(409);
   }
@@ -137,8 +165,12 @@ class RegistrationCompleteReplayCodecTest {
   void captureDownstreamRejectedYields422() {
     CompleteRegistrationResult r =
         result(
-            CompleteRegistrationResultStatus.DOWNSTREAM_REJECTED, WorkflowNextStep.SELECT_OTP_DESTINATION,
-            false, false, List.of(), List.of(error()));
+            CompleteRegistrationResultStatus.DOWNSTREAM_REJECTED,
+            WorkflowNextStep.SELECT_OTP_DESTINATION,
+            false,
+            false,
+            List.of(),
+            List.of(error()));
     IdempotentCapturedResponse captured = codec.capture(r);
     assertThat(captured.response().httpStatus()).isEqualTo(422);
   }
@@ -147,8 +179,12 @@ class RegistrationCompleteReplayCodecTest {
   void captureSystemFailedYields500() {
     CompleteRegistrationResult r =
         result(
-            CompleteRegistrationResultStatus.SYSTEM_FAILED, WorkflowNextStep.SELECT_OTP_DESTINATION,
-            false, false, List.of(), List.of());
+            CompleteRegistrationResultStatus.SYSTEM_FAILED,
+            WorkflowNextStep.SELECT_OTP_DESTINATION,
+            false,
+            false,
+            List.of(),
+            List.of());
     IdempotentCapturedResponse captured = codec.capture(r);
     assertThat(captured.response().httpStatus()).isEqualTo(500);
   }
@@ -163,9 +199,9 @@ class RegistrationCompleteReplayCodecTest {
   @Test
   void hydrateMalformedJsonThrows() {
     IdempotentTerminalResponseSnapshot snapshot =
-        new IdempotentTerminalResponseSnapshot(1, 200, "application/json", "{not valid json", Map.of(), null);
-    assertThatThrownBy(() -> codec.hydrate(snapshot))
-        .isInstanceOf(IllegalArgumentException.class);
+        new IdempotentTerminalResponseSnapshot(
+            1, 200, "application/json", "{not valid json", Map.of(), null);
+    assertThatThrownBy(() -> codec.hydrate(snapshot)).isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
@@ -179,18 +215,18 @@ class RegistrationCompleteReplayCodecTest {
             + "\"nextStep\":\"RETURN_TO_LOGIN\",\"registered\":true,\"clearAuthFlowCookie\":true,"
             + "\"remainingTrusts\":[],\"errors\":[]}}";
     IdempotentTerminalResponseSnapshot snapshot =
-        new IdempotentTerminalResponseSnapshot(1, 200, "application/json", wrongActionJson, Map.of(), null);
-    assertThatThrownBy(() -> codec.hydrate(snapshot))
-        .isInstanceOf(IllegalArgumentException.class);
+        new IdempotentTerminalResponseSnapshot(
+            1, 200, "application/json", wrongActionJson, Map.of(), null);
+    assertThatThrownBy(() -> codec.hydrate(snapshot)).isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void hydrateNullPayloadThrows() {
     String nullPayloadJson = "{\"idempotencyAction\":\"COMPLETE\",\"payload\":null}";
     IdempotentTerminalResponseSnapshot snapshot =
-        new IdempotentTerminalResponseSnapshot(1, 200, "application/json", nullPayloadJson, Map.of(), null);
-    assertThatThrownBy(() -> codec.hydrate(snapshot))
-        .isInstanceOf(IllegalArgumentException.class);
+        new IdempotentTerminalResponseSnapshot(
+            1, 200, "application/json", nullPayloadJson, Map.of(), null);
+    assertThatThrownBy(() -> codec.hydrate(snapshot)).isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
@@ -198,10 +234,19 @@ class RegistrationCompleteReplayCodecTest {
     CompleteRegistrationResult withBadTrust =
         result(
             CompleteRegistrationResultStatus.REGISTERED_WITH_REMAINING_TRUSTS,
-            WorkflowNextStep.RETURN_TO_LOGIN, true, true,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            true,
+            true,
             List.of(
                 new RegistrationLookupAccount(
-                    "", "trust1", "SCHEME_A", "policy1", "cert1", "ACTIVE", "2026-01-01", true,
+                    "",
+                    "trust1",
+                    "SCHEME_A",
+                    "policy1",
+                    "cert1",
+                    "ACTIVE",
+                    "2026-01-01",
+                    true,
                     "cust1")),
             List.of());
     // capture() itself does not validate trust blankness (only hydrate()'s

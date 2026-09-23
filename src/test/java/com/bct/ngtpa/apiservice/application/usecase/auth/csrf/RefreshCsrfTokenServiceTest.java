@@ -8,8 +8,8 @@ import static org.mockito.Mockito.when;
 import com.bct.ngtpa.apiservice.application.dto.auth.csrf.CsrfRefreshSessionType;
 import com.bct.ngtpa.apiservice.application.dto.auth.csrf.RefreshCsrfTokenCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.csrf.RefreshCsrfTokenStatus;
-import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidator;
 import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidationResult;
+import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidator;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -51,7 +51,10 @@ class RefreshCsrfTokenServiceTest {
   @Test
   void invalidOriginYieldsOriginRejected() {
     when(provenanceValidator.validate(any(), any(), any()))
-        .thenReturn(OriginRefererValidationResult.failure(com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidationStatus.ORIGIN_NOT_ALLOWED));
+        .thenReturn(
+            OriginRefererValidationResult.failure(
+                com.bct.ngtpa.apiservice.application.service.security.csrf
+                    .OriginRefererValidationStatus.ORIGIN_NOT_ALLOWED));
     StepVerifier.create(newService().refresh(command("sid_abcdefghijklmnopqrstuvwx", null)))
         .assertNext(r -> assertThat(r.status()).isEqualTo(RefreshCsrfTokenStatus.ORIGIN_REJECTED))
         .verifyComplete();
@@ -63,9 +66,7 @@ class RefreshCsrfTokenServiceTest {
   void authenticatedSessionSuccessDelegates() {
     givenOriginValid();
     when(authenticatedRefresh.refresh(any(), any()))
-        .thenReturn(
-            Mono.just(
-                AuthenticatedSessionCsrfRefreshService.Outcome.success("raw-token")));
+        .thenReturn(Mono.just(AuthenticatedSessionCsrfRefreshService.Outcome.success("raw-token")));
     StepVerifier.create(newService().refresh(command("sid_abcdefghijklmnopqrstuvwx", null)))
         .assertNext(
             r -> {

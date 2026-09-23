@@ -36,9 +36,9 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Branch-oriented reactive tests for {@link VerifyForgotPasswordIdentityService}. Uses the
- * standard loadSnapshot -> loader -> RevisionAwareAuthFlowSessionWriter pattern (rounds 09/11/25).
- * {@code expiry} (AuthFlowSessionExpiryRefreshPort) is a constructed-but-unused field in the real
+ * Branch-oriented reactive tests for {@link VerifyForgotPasswordIdentityService}. Uses the standard
+ * loadSnapshot -> loader -> RevisionAwareAuthFlowSessionWriter pattern (rounds 09/11/25). {@code
+ * expiry} (AuthFlowSessionExpiryRefreshPort) is a constructed-but-unused field in the real
  * production source (confirmed) - wired but never stubbed.
  */
 class VerifyForgotPasswordIdentityServiceTest {
@@ -59,7 +59,8 @@ class VerifyForgotPasswordIdentityServiceTest {
   private final AuthFlowSessionId sid = new AuthFlowSessionId("afs-identity-1");
 
   private VerifyForgotPasswordIdentityService newService() {
-    return new VerifyForgotPasswordIdentityService(loader, protector, sessions, locks, expiry, clock, lease);
+    return new VerifyForgotPasswordIdentityService(
+        loader, protector, sessions, locks, expiry, clock, lease);
   }
 
   // ----- fixtures ------------------------------------------------------------
@@ -67,13 +68,20 @@ class VerifyForgotPasswordIdentityServiceTest {
   private AuthFlowSession sessionWith(
       AuthFlowScenario scenario, AuthFlowStatus status, Instant expiresAt) {
     return new AuthFlowSession(
-        sid, scenario, status, "csrfhash", null,
+        sid,
+        scenario,
+        status,
+        "csrfhash",
+        null,
         new AuthFlowSessionData("email", "j***@example.com", Map.of()),
-        NOW.minusSeconds(120), NOW.minusSeconds(60), expiresAt);
+        NOW.minusSeconds(120),
+        NOW.minusSeconds(60),
+        expiresAt);
   }
 
   private AuthFlowSession startedSession() {
-    return sessionWith(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.STARTED, NOW.plusSeconds(1800));
+    return sessionWith(
+        AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.STARTED, NOW.plusSeconds(1800));
   }
 
   private AuthFlowSessionSnapshot snapshotOf(AuthFlowSession session) {
@@ -83,14 +91,29 @@ class VerifyForgotPasswordIdentityServiceTest {
   private ForgotPasswordAuthFlowContext contextAtPhase(
       ForgotPasswordProtectedPhase phase, String identityType, String identityValue) {
     return new ForgotPasswordAuthFlowContext(
-        "john", identityValue, identityType, true, "subj-1", "email", "john@example.com",
-        "j***@example.com", null, null, "v1", phase);
+        "john",
+        identityValue,
+        identityType,
+        true,
+        "subj-1",
+        "email",
+        "john@example.com",
+        "j***@example.com",
+        null,
+        null,
+        "v1",
+        phase);
   }
 
   private VerifyForgotPasswordIdentityCommand command(String identityType, String identityValue) {
     return new VerifyForgotPasswordIdentityCommand(
-        sid, "csrf-token", "https://portal.bcthk.com", "https://portal.bcthk.com/identity",
-        "req-1", identityType, identityValue);
+        sid,
+        "csrf-token",
+        "https://portal.bcthk.com",
+        "https://portal.bcthk.com/identity",
+        "req-1",
+        identityType,
+        identityValue);
   }
 
   private VerifyForgotPasswordIdentityCommand validCommand() {
@@ -107,7 +130,8 @@ class VerifyForgotPasswordIdentityServiceTest {
     when(sessions.loadSnapshot(any())).thenReturn(Mono.just(Optional.of(snapshotOf(session))));
   }
 
-  private void givenLoaderValid(ForgotPasswordProtectedPhase phase, String identityType, String identityValue) {
+  private void givenLoaderValid(
+      ForgotPasswordProtectedPhase phase, String identityType, String identityValue) {
     when(loader.load(any()))
         .thenReturn(
             Mono.just(
@@ -131,14 +155,18 @@ class VerifyForgotPasswordIdentityServiceTest {
   @Test
   void nullCommandYieldsInvalidAuthFlow() {
     StepVerifier.create(newService().verify(null))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
+        .assertNext(
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
   }
 
   @Test
   void unrecognizedIdentityTypeYieldsInvalidType() {
     StepVerifier.create(newService().verify(command("UNKNOWN_TYPE", "value")))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_TYPE))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_TYPE))
         .verifyComplete();
   }
 
@@ -146,7 +174,10 @@ class VerifyForgotPasswordIdentityServiceTest {
   void lockNotAcquiredYieldsInvalidAuthFlow() {
     when(locks.acquire(any(), any())).thenReturn(Mono.just(SessionLockHandle.notAcquired()));
     StepVerifier.create(newService().verify(validCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
+        .assertNext(
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
   }
 
@@ -157,25 +188,37 @@ class VerifyForgotPasswordIdentityServiceTest {
     givenLockAcquired();
     when(sessions.loadSnapshot(any())).thenReturn(Mono.just(Optional.empty()));
     StepVerifier.create(newService().verify(validCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
+        .assertNext(
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
   }
 
   @Test
   void wrongStatusYieldsInvalidAuthFlow() {
     givenLockAcquired();
-    givenSession(sessionWith(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, NOW.plusSeconds(1800)));
+    givenSession(
+        sessionWith(
+            AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, NOW.plusSeconds(1800)));
     StepVerifier.create(newService().verify(validCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
+        .assertNext(
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
   }
 
   @Test
   void expiredSessionYieldsInvalidAuthFlow() {
     givenLockAcquired();
-    givenSession(sessionWith(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.STARTED, NOW.minusSeconds(1)));
+    givenSession(
+        sessionWith(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.STARTED, NOW.minusSeconds(1)));
     StepVerifier.create(newService().verify(validCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
+        .assertNext(
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
   }
 
@@ -191,7 +234,10 @@ class VerifyForgotPasswordIdentityServiceTest {
                 ForgotPasswordProtectedAuthFlowContextResult.invalid(
                     ForgotPasswordProtectedAuthFlowContextStatus.ORIGIN_REFERER_INVALID)));
     StepVerifier.create(newService().verify(validCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SECURITY_REJECTED))
+        .assertNext(
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(VerifyForgotPasswordIdentityStatus.SECURITY_REJECTED))
         .verifyComplete();
   }
 
@@ -205,7 +251,10 @@ class VerifyForgotPasswordIdentityServiceTest {
                 ForgotPasswordProtectedAuthFlowContextResult.invalid(
                     ForgotPasswordProtectedAuthFlowContextStatus.MISSING_CONTEXT)));
     StepVerifier.create(newService().verify(validCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
+        .assertNext(
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
   }
 
@@ -215,7 +264,10 @@ class VerifyForgotPasswordIdentityServiceTest {
     givenSession(startedSession());
     givenLoaderValid(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED, "GPN", "G12345678");
     StepVerifier.create(newService().verify(validCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
+        .assertNext(
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
   }
 
@@ -227,7 +279,8 @@ class VerifyForgotPasswordIdentityServiceTest {
     givenSession(startedSession());
     givenLoaderValid(ForgotPasswordProtectedPhase.USERNAME_VERIFIED, "GPN", "DIFFERENT_VALUE");
     StepVerifier.create(newService().verify(validCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INCORRECT_ID))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INCORRECT_ID))
         .verifyComplete();
   }
 
@@ -237,7 +290,8 @@ class VerifyForgotPasswordIdentityServiceTest {
     givenSession(startedSession());
     givenLoaderValid(ForgotPasswordProtectedPhase.USERNAME_VERIFIED, "ID", "G12345678");
     StepVerifier.create(newService().verify(validCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INCORRECT_ID))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INCORRECT_ID))
         .verifyComplete();
   }
 
@@ -251,7 +305,10 @@ class VerifyForgotPasswordIdentityServiceTest {
         .thenReturn(Mono.just(Optional.of(snapshotOf(startedSession()))))
         .thenReturn(Mono.just(Optional.empty()));
     StepVerifier.create(newService().verify(validCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
+        .assertNext(
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
   }
 
@@ -264,7 +321,8 @@ class VerifyForgotPasswordIdentityServiceTest {
     givenLoaderValid(ForgotPasswordProtectedPhase.USERNAME_VERIFIED, "GPN", "G12345678");
     givenWriterSucceeds();
     StepVerifier.create(newService().verify(validCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.VERIFIED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.VERIFIED))
         .verifyComplete();
   }
 
@@ -273,7 +331,8 @@ class VerifyForgotPasswordIdentityServiceTest {
     givenLockAcquired();
     when(sessions.loadSnapshot(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newService().verify(validCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
         .verifyComplete();
   }
 }

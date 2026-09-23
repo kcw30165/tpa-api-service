@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.Forg
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsDownstreamException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupCommand;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupStatus;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -23,10 +22,10 @@ import reactor.test.StepVerifier;
 /**
  * Branch-oriented reactive tests for {@link ApimForgotPasswordDetailsLookupAdapter}. All types
  * verified verbatim (rounds 154-155). {@link ForgotPasswordTrpSearchMemberMapper}'s own complex
- * validation logic already has a dedicated existing test
- * (ForgotPasswordTrpSearchMemberMapperTest, 7 tests) - this test therefore covers only the
- * ADAPTER's own thin orchestration layer (constructor guard, request building/delegation, and the
- * null-envelope/null-response guard), using simple mapper inputs.
+ * validation logic already has a dedicated existing test (ForgotPasswordTrpSearchMemberMapperTest,
+ * 7 tests) - this test therefore covers only the ADAPTER's own thin orchestration layer
+ * (constructor guard, request building/delegation, and the null-envelope/null-response guard),
+ * using simple mapper inputs.
  */
 class ApimForgotPasswordDetailsLookupAdapterTest {
 
@@ -38,7 +37,13 @@ class ApimForgotPasswordDetailsLookupAdapterTest {
 
   private ForgotPasswordDetailsLookupCommand command() {
     return new ForgotPasswordDetailsLookupCommand(
-        "STAFF_NO", "12345", "01/01/1990", "test@example.com", "91234567", "cust1", "req-1",
+        "STAFF_NO",
+        "12345",
+        "01/01/1990",
+        "test@example.com",
+        "91234567",
+        "cust1",
+        "req-1",
         ActorUserRole.ROLE_USER_MBR);
   }
 
@@ -94,7 +99,8 @@ class ApimForgotPasswordDetailsLookupAdapterTest {
   @SuppressWarnings("unchecked")
   @Test
   void executorErrorPropagates() {
-    when(executor.postEnvelope(any())).thenReturn((Mono) Mono.error(new IllegalStateException("boom")));
+    when(executor.postEnvelope(any()))
+        .thenReturn((Mono) Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newAdapter().verify(command()))
         .expectError(IllegalStateException.class)
         .verify();
@@ -107,7 +113,8 @@ class ApimForgotPasswordDetailsLookupAdapterTest {
     givenExecutorReturns(envelopeWith(null, List.of()));
     StepVerifier.create(newAdapter().verify(command()))
         .assertNext(
-            result -> assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.NOT_FOUND))
+            result ->
+                assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.NOT_FOUND))
         .verifyComplete();
   }
 
@@ -116,7 +123,8 @@ class ApimForgotPasswordDetailsLookupAdapterTest {
     givenExecutorReturns(envelopeWith(null, null));
     StepVerifier.create(newAdapter().verify(command()))
         .assertNext(
-            result -> assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.NOT_FOUND))
+            result ->
+                assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.NOT_FOUND))
         .verifyComplete();
   }
 

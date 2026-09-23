@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempotencyKeyFactory;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyPersistenceId;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.AuthenticatedLoginHandoffReference;
@@ -39,7 +38,6 @@ import com.bct.ngtpa.apiservice.application.service.auth.otp.OtpCodeHasher;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -70,7 +68,8 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
   private final LoginIdempotencyPersistenceIdDeriver ids =
       mock(LoginIdempotencyPersistenceIdDeriver.class);
   private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
-  private final ReactiveValueOperations<String, String> values = mock(ReactiveValueOperations.class);
+  private final ReactiveValueOperations<String, String> values =
+      mock(ReactiveValueOperations.class);
 
   private final LoginIdempotencyKey publicKey = new LoginIdempotencyKey("public-key-abc12345");
   private final LoginIdempotencyPersistenceId persistenceId =
@@ -106,18 +105,37 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
 
   private OtpChallenge challenge(OtpStatus status, Instant expiresAt, int failed, int maxAttempts) {
     return new OtpChallenge(
-        "challenge-1", OtpScenario.LOGIN, "afs-1", OtpChannel.EMAIL, "destinationhash",
-        "codehash", status, failed, maxAttempts, 0, 5, Instant.now().minusSeconds(120),
-        expiresAt, Instant.now().minusSeconds(60), null, null);
+        "challenge-1",
+        OtpScenario.LOGIN,
+        "afs-1",
+        OtpChannel.EMAIL,
+        "destinationhash",
+        "codehash",
+        status,
+        failed,
+        maxAttempts,
+        0,
+        5,
+        Instant.now().minusSeconds(120),
+        expiresAt,
+        Instant.now().minusSeconds(60),
+        null,
+        null);
   }
 
-  private RevisionedLoginOtpVerifyCommand verifyCommand(String challengeId, Instant verificationTime) {
+  private RevisionedLoginOtpVerifyCommand verifyCommand(
+      String challengeId, Instant verificationTime) {
     AuthFlowSessionId sid = new AuthFlowSessionId("afs-1");
     AuthFlowSession session =
         new AuthFlowSession(
-            sid, AuthFlowScenario.LOGIN, AuthFlowStatus.OTP_SENT, "csrfhash", null,
+            sid,
+            AuthFlowScenario.LOGIN,
+            AuthFlowStatus.OTP_SENT,
+            "csrfhash",
+            null,
             new AuthFlowSessionData("email", "j***@example.com", Map.of()),
-            Instant.now().minusSeconds(300), Instant.now().minusSeconds(60),
+            Instant.now().minusSeconds(300),
+            Instant.now().minusSeconds(60),
             Instant.now().plusSeconds(1800));
     AuthFlowSessionSnapshot snapshot =
         new AuthFlowSessionSnapshot(session, new SessionRevision("0".repeat(32)));
@@ -140,7 +158,12 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
     when(values.setIfAbsent(any(), any(), any())).thenReturn(Mono.just(true));
     ReserveLoginOtpVerifyCommand cmd =
         new ReserveLoginOtpVerifyCommand(
-            publicKey, "req-hash-1", handoff, operation, Instant.now(), Instant.now().plusSeconds(600));
+            publicKey,
+            "req-hash-1",
+            handoff,
+            operation,
+            Instant.now(),
+            Instant.now().plusSeconds(600));
     StepVerifier.create(newAdapter().reserveOrLoad(cmd))
         .assertNext(
             r -> {
@@ -159,13 +182,21 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
             Mono.just(
                 json(
                     reservation(
-                        LoginOtpVerifyReservationStatus.PROCESSING, null,
-                        Instant.now().minusSeconds(10), Instant.now().plusSeconds(600)))));
+                        LoginOtpVerifyReservationStatus.PROCESSING,
+                        null,
+                        Instant.now().minusSeconds(10),
+                        Instant.now().plusSeconds(600)))));
     ReserveLoginOtpVerifyCommand cmd =
         new ReserveLoginOtpVerifyCommand(
-            publicKey, "req-hash-1", handoff, operation, Instant.now(), Instant.now().plusSeconds(600));
+            publicKey,
+            "req-hash-1",
+            handoff,
+            operation,
+            Instant.now(),
+            Instant.now().plusSeconds(600));
     StepVerifier.create(newAdapter().reserveOrLoad(cmd))
-        .assertNext(r -> assertThat(r.outcome()).isEqualTo(LoginOtpVerifyReservationOutcome.EXISTING))
+        .assertNext(
+            r -> assertThat(r.outcome()).isEqualTo(LoginOtpVerifyReservationOutcome.EXISTING))
         .verifyComplete();
   }
 
@@ -178,10 +209,13 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
             Mono.just(
                 json(
                     reservation(
-                        LoginOtpVerifyReservationStatus.PROCESSING, null,
-                        Instant.now().minusSeconds(10), Instant.now().plusSeconds(600)))));
+                        LoginOtpVerifyReservationStatus.PROCESSING,
+                        null,
+                        Instant.now().minusSeconds(10),
+                        Instant.now().plusSeconds(600)))));
     StepVerifier.create(newAdapter().loadReservation(publicKey, "req-hash-1"))
-        .assertNext(r -> assertThat(r.outcome()).isEqualTo(LoginOtpVerifyReservationOutcome.EXISTING))
+        .assertNext(
+            r -> assertThat(r.outcome()).isEqualTo(LoginOtpVerifyReservationOutcome.EXISTING))
         .verifyComplete();
   }
 
@@ -192,8 +226,10 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
             Mono.just(
                 json(
                     reservation(
-                        LoginOtpVerifyReservationStatus.PROCESSING, null,
-                        Instant.now().minusSeconds(10), Instant.now().plusSeconds(600)))));
+                        LoginOtpVerifyReservationStatus.PROCESSING,
+                        null,
+                        Instant.now().minusSeconds(10),
+                        Instant.now().plusSeconds(600)))));
     StepVerifier.create(newAdapter().loadReservation(publicKey, "different-hash"))
         .assertNext(
             r ->
@@ -223,8 +259,10 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
             Mono.just(
                 json(
                     reservation(
-                        LoginOtpVerifyReservationStatus.VERIFICATION_COMMITTED, proof,
-                        Instant.now().minusSeconds(10), Instant.now().plusSeconds(600)))));
+                        LoginOtpVerifyReservationStatus.VERIFICATION_COMMITTED,
+                        proof,
+                        Instant.now().minusSeconds(10),
+                        Instant.now().plusSeconds(600)))));
     StepVerifier.create(newAdapter().loadConsumptionProof(publicKey, "req-hash-1"))
         .assertNext(p -> assertThat(p.challengeFingerprint()).isEqualTo("fingerprint-1"))
         .verifyComplete();
@@ -237,9 +275,12 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
             Mono.just(
                 json(
                     reservation(
-                        LoginOtpVerifyReservationStatus.PROCESSING, null,
-                        Instant.now().minusSeconds(10), Instant.now().plusSeconds(600)))));
-    StepVerifier.create(newAdapter().loadConsumptionProof(publicKey, "req-hash-1")).verifyComplete();
+                        LoginOtpVerifyReservationStatus.PROCESSING,
+                        null,
+                        Instant.now().minusSeconds(10),
+                        Instant.now().plusSeconds(600)))));
+    StepVerifier.create(newAdapter().loadConsumptionProof(publicKey, "req-hash-1"))
+        .verifyComplete();
   }
 
   // ----- mutate-based methods: error paths ---------------------------------------------
@@ -249,7 +290,8 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
     when(values.get(any())).thenReturn(Mono.empty());
     StepVerifier.create(
             newAdapter()
-                .recordConclusiveFailure(publicKey, "req-hash-1", LoginOtpVerifyPersistenceOutcome.INVALID, 2))
+                .recordConclusiveFailure(
+                    publicKey, "req-hash-1", LoginOtpVerifyPersistenceOutcome.INVALID, 2))
         .expectError(IllegalStateException.class)
         .verify();
   }
@@ -261,11 +303,14 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
             Mono.just(
                 json(
                     reservation(
-                        LoginOtpVerifyReservationStatus.PROCESSING, null,
-                        Instant.now().minusSeconds(10), Instant.now().plusSeconds(600)))));
+                        LoginOtpVerifyReservationStatus.PROCESSING,
+                        null,
+                        Instant.now().minusSeconds(10),
+                        Instant.now().plusSeconds(600)))));
     StepVerifier.create(
             newAdapter()
-                .recordConclusiveFailure(publicKey, "wrong-hash", LoginOtpVerifyPersistenceOutcome.INVALID, 2))
+                .recordConclusiveFailure(
+                    publicKey, "wrong-hash", LoginOtpVerifyPersistenceOutcome.INVALID, 2))
         .expectError(IllegalStateException.class)
         .verify();
   }
@@ -277,11 +322,14 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
             Mono.just(
                 json(
                     reservation(
-                        LoginOtpVerifyReservationStatus.PROCESSING, null,
-                        Instant.now().minusSeconds(700), Instant.now().minusSeconds(1)))));
+                        LoginOtpVerifyReservationStatus.PROCESSING,
+                        null,
+                        Instant.now().minusSeconds(700),
+                        Instant.now().minusSeconds(1)))));
     StepVerifier.create(
             newAdapter()
-                .recordConclusiveFailure(publicKey, "req-hash-1", LoginOtpVerifyPersistenceOutcome.INVALID, 2))
+                .recordConclusiveFailure(
+                    publicKey, "req-hash-1", LoginOtpVerifyPersistenceOutcome.INVALID, 2))
         .expectError(IllegalStateException.class)
         .verify();
   }
@@ -295,14 +343,21 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
             Mono.just(
                 json(
                     reservation(
-                        LoginOtpVerifyReservationStatus.PROCESSING, null,
-                        Instant.now().minusSeconds(10), Instant.now().plusSeconds(600)))));
+                        LoginOtpVerifyReservationStatus.PROCESSING,
+                        null,
+                        Instant.now().minusSeconds(10),
+                        Instant.now().plusSeconds(600)))));
     when(values.set(any(), any(), any())).thenReturn(Mono.just(true));
     LoginOtpConsumptionProof proof =
-        new LoginOtpConsumptionProof("reservation-hash-1", handoff, operation, "fp-1", Instant.now());
+        new LoginOtpConsumptionProof(
+            "reservation-hash-1", handoff, operation, "fp-1", Instant.now());
     RecordLoginOtpVerifyCommittedCommand cmd =
         new RecordLoginOtpVerifyCommittedCommand(
-            publicKey, "req-hash-1", proof, LoginOtpVerifyPersistenceOutcome.VERIFIED_AND_CONSUMED, 0);
+            publicKey,
+            "req-hash-1",
+            proof,
+            LoginOtpVerifyPersistenceOutcome.VERIFIED_AND_CONSUMED,
+            0);
     StepVerifier.create(newAdapter().recordVerificationCommitted(cmd))
         .assertNext(
             r ->
@@ -318,8 +373,10 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
             Mono.just(
                 json(
                     reservation(
-                        LoginOtpVerifyReservationStatus.PROCESSING, null,
-                        Instant.now().minusSeconds(10), Instant.now().plusSeconds(600)))));
+                        LoginOtpVerifyReservationStatus.PROCESSING,
+                        null,
+                        Instant.now().minusSeconds(10),
+                        Instant.now().plusSeconds(600)))));
     when(values.set(any(), any(), any())).thenReturn(Mono.just(true));
     StepVerifier.create(newAdapter().recordUnknownOutcome(publicKey, "req-hash-1"))
         .assertNext(
@@ -330,17 +387,21 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
   @Test
   void completeWithProofSucceeds() {
     LoginOtpConsumptionProof proof =
-        new LoginOtpConsumptionProof("reservation-hash-1", handoff, operation, "fp-1", Instant.now());
+        new LoginOtpConsumptionProof(
+            "reservation-hash-1", handoff, operation, "fp-1", Instant.now());
     when(values.get(any()))
         .thenReturn(
             Mono.just(
                 json(
                     reservation(
-                        LoginOtpVerifyReservationStatus.VERIFICATION_COMMITTED, proof,
-                        Instant.now().minusSeconds(10), Instant.now().plusSeconds(600)))));
+                        LoginOtpVerifyReservationStatus.VERIFICATION_COMMITTED,
+                        proof,
+                        Instant.now().minusSeconds(10),
+                        Instant.now().plusSeconds(600)))));
     when(values.set(any(), any(), any())).thenReturn(Mono.just(true));
     StepVerifier.create(newAdapter().complete(publicKey, "req-hash-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(LoginOtpVerifyReservationStatus.COMPLETED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(LoginOtpVerifyReservationStatus.COMPLETED))
         .verifyComplete();
   }
 
@@ -351,8 +412,10 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
             Mono.just(
                 json(
                     reservation(
-                        LoginOtpVerifyReservationStatus.PROCESSING, null,
-                        Instant.now().minusSeconds(10), Instant.now().plusSeconds(600)))));
+                        LoginOtpVerifyReservationStatus.PROCESSING,
+                        null,
+                        Instant.now().minusSeconds(10),
+                        Instant.now().plusSeconds(600)))));
     StepVerifier.create(newAdapter().complete(publicKey, "req-hash-1"))
         .expectError(IllegalStateException.class)
         .verify();
@@ -365,14 +428,18 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.empty()));
     StepVerifier.create(newAdapter().verify(verifyCommand("challenge-1", Instant.now())))
         .assertNext(
-            r -> assertThat(r.outcome()).isEqualTo(LoginOtpVerifyPersistenceOutcome.CHALLENGE_NOT_FOUND))
+            r ->
+                assertThat(r.outcome())
+                    .isEqualTo(LoginOtpVerifyPersistenceOutcome.CHALLENGE_NOT_FOUND))
         .verifyComplete();
   }
 
   @Test
   void verifyVerifiedStatusYieldsExpectedStateChanged() {
     when(challenges.findById(any()))
-        .thenReturn(Mono.just(Optional.of(challenge(OtpStatus.VERIFIED, Instant.now().plusSeconds(300), 0, 5))));
+        .thenReturn(
+            Mono.just(
+                Optional.of(challenge(OtpStatus.VERIFIED, Instant.now().plusSeconds(300), 0, 5))));
     StepVerifier.create(newAdapter().verify(verifyCommand("challenge-1", Instant.now())))
         .assertNext(
             r ->
@@ -384,7 +451,9 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
   @Test
   void verifyConsumedStatusYieldsExpectedStateChanged() {
     when(challenges.findById(any()))
-        .thenReturn(Mono.just(Optional.of(challenge(OtpStatus.CONSUMED, Instant.now().plusSeconds(300), 0, 5))));
+        .thenReturn(
+            Mono.just(
+                Optional.of(challenge(OtpStatus.CONSUMED, Instant.now().plusSeconds(300), 0, 5))));
     StepVerifier.create(newAdapter().verify(verifyCommand("challenge-1", Instant.now())))
         .assertNext(
             r ->
@@ -396,7 +465,9 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
   @Test
   void verifyLockedStatusYieldsLocked() {
     when(challenges.findById(any()))
-        .thenReturn(Mono.just(Optional.of(challenge(OtpStatus.LOCKED, Instant.now().plusSeconds(300), 5, 5))));
+        .thenReturn(
+            Mono.just(
+                Optional.of(challenge(OtpStatus.LOCKED, Instant.now().plusSeconds(300), 5, 5))));
     StepVerifier.create(newAdapter().verify(verifyCommand("challenge-1", Instant.now())))
         .assertNext(r -> assertThat(r.outcome()).isEqualTo(LoginOtpVerifyPersistenceOutcome.LOCKED))
         .verifyComplete();
@@ -405,9 +476,12 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
   @Test
   void verifyExpiredStatusYieldsExpired() {
     when(challenges.findById(any()))
-        .thenReturn(Mono.just(Optional.of(challenge(OtpStatus.EXPIRED, Instant.now().plusSeconds(300), 0, 5))));
+        .thenReturn(
+            Mono.just(
+                Optional.of(challenge(OtpStatus.EXPIRED, Instant.now().plusSeconds(300), 0, 5))));
     StepVerifier.create(newAdapter().verify(verifyCommand("challenge-1", Instant.now())))
-        .assertNext(r -> assertThat(r.outcome()).isEqualTo(LoginOtpVerifyPersistenceOutcome.EXPIRED))
+        .assertNext(
+            r -> assertThat(r.outcome()).isEqualTo(LoginOtpVerifyPersistenceOutcome.EXPIRED))
         .verifyComplete();
   }
 
@@ -415,9 +489,11 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
   void verifyPastExpiryTimestampYieldsExpired() {
     when(challenges.findById(any()))
         .thenReturn(
-            Mono.just(Optional.of(challenge(OtpStatus.CREATED, Instant.now().minusSeconds(1), 0, 5))));
+            Mono.just(
+                Optional.of(challenge(OtpStatus.CREATED, Instant.now().minusSeconds(1), 0, 5))));
     StepVerifier.create(newAdapter().verify(verifyCommand("challenge-1", Instant.now())))
-        .assertNext(r -> assertThat(r.outcome()).isEqualTo(LoginOtpVerifyPersistenceOutcome.EXPIRED))
+        .assertNext(
+            r -> assertThat(r.outcome()).isEqualTo(LoginOtpVerifyPersistenceOutcome.EXPIRED))
         .verifyComplete();
   }
 
@@ -425,7 +501,9 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
   void verifyOtherStatusYieldsExpectedStateChanged() {
     when(challenges.findById(any()))
         .thenReturn(
-            Mono.just(Optional.of(challenge(OtpStatus.INVALIDATED, Instant.now().plusSeconds(300), 0, 5))));
+            Mono.just(
+                Optional.of(
+                    challenge(OtpStatus.INVALIDATED, Instant.now().plusSeconds(300), 0, 5))));
     StepVerifier.create(newAdapter().verify(verifyCommand("challenge-1", Instant.now())))
         .assertNext(
             r ->
@@ -437,7 +515,9 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
   @Test
   void verifyMatchYieldsVerifiedAndConsumed() {
     when(challenges.findById(any()))
-        .thenReturn(Mono.just(Optional.of(challenge(OtpStatus.CREATED, Instant.now().plusSeconds(300), 0, 5))));
+        .thenReturn(
+            Mono.just(
+                Optional.of(challenge(OtpStatus.CREATED, Instant.now().plusSeconds(300), 0, 5))));
     when(hasher.matches(any(), any())).thenReturn(true);
     when(challenges.update(any())).thenReturn(Mono.empty());
     StepVerifier.create(newAdapter().verify(verifyCommand("challenge-1", Instant.now())))
@@ -454,18 +534,23 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
   @Test
   void verifyMismatchNotLockedYieldsInvalid() {
     when(challenges.findById(any()))
-        .thenReturn(Mono.just(Optional.of(challenge(OtpStatus.CREATED, Instant.now().plusSeconds(300), 0, 5))));
+        .thenReturn(
+            Mono.just(
+                Optional.of(challenge(OtpStatus.CREATED, Instant.now().plusSeconds(300), 0, 5))));
     when(hasher.matches(any(), any())).thenReturn(false);
     when(challenges.update(any())).thenReturn(Mono.empty());
     StepVerifier.create(newAdapter().verify(verifyCommand("challenge-1", Instant.now())))
-        .assertNext(r -> assertThat(r.outcome()).isEqualTo(LoginOtpVerifyPersistenceOutcome.INVALID))
+        .assertNext(
+            r -> assertThat(r.outcome()).isEqualTo(LoginOtpVerifyPersistenceOutcome.INVALID))
         .verifyComplete();
   }
 
   @Test
   void verifyMismatchReachingMaxAttemptsYieldsLocked() {
     when(challenges.findById(any()))
-        .thenReturn(Mono.just(Optional.of(challenge(OtpStatus.CREATED, Instant.now().plusSeconds(300), 4, 5))));
+        .thenReturn(
+            Mono.just(
+                Optional.of(challenge(OtpStatus.CREATED, Instant.now().plusSeconds(300), 4, 5))));
     when(hasher.matches(any(), any())).thenReturn(false);
     when(challenges.update(any())).thenReturn(Mono.empty());
     StepVerifier.create(newAdapter().verify(verifyCommand("challenge-1", Instant.now())))
@@ -485,7 +570,9 @@ class RedisLoginOtpVerifyPersistenceAdapterTest {
   @Test
   void verifyUpdateErrorYieldsSystemFailure() {
     when(challenges.findById(any()))
-        .thenReturn(Mono.just(Optional.of(challenge(OtpStatus.CREATED, Instant.now().plusSeconds(300), 0, 5))));
+        .thenReturn(
+            Mono.just(
+                Optional.of(challenge(OtpStatus.CREATED, Instant.now().plusSeconds(300), 0, 5))));
     when(hasher.matches(any(), any())).thenReturn(true);
     when(challenges.update(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newAdapter().verify(verifyCommand("challenge-1", Instant.now())))

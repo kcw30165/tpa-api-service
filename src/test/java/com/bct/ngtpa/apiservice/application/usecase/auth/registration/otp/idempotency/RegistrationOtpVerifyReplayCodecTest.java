@@ -37,8 +37,14 @@ class RegistrationOtpVerifyReplayCodecTest {
       List<WorkflowMessageDescriptor> messages,
       List<WorkflowErrorDescriptor> errors) {
     return new VerifyRegistrationOtpResult(
-        status, nextStep, trusts, remainingAttempts, messages, errors,
-        RegistrationIdempotencyStartOutcome.STARTED, null);
+        status,
+        nextStep,
+        trusts,
+        remainingAttempts,
+        messages,
+        errors,
+        RegistrationIdempotencyStartOutcome.STARTED,
+        null);
   }
 
   private static RegistrationUnregisteredTrust trust() {
@@ -51,8 +57,12 @@ class RegistrationOtpVerifyReplayCodecTest {
 
   private static WorkflowErrorDescriptor error() {
     return new WorkflowErrorDescriptor(
-        WorkflowErrorType.FIELD, "code2", "message2", List.of("field1"),
-        WorkflowErrorSeverity.ERROR, "SERVER");
+        WorkflowErrorType.FIELD,
+        "code2",
+        "message2",
+        List.of("field1"),
+        WorkflowErrorSeverity.ERROR,
+        "SERVER");
   }
 
   // ----- capture(): guard --------------------------------------------------------
@@ -68,8 +78,12 @@ class RegistrationOtpVerifyReplayCodecTest {
   void captureAndHydrateRoundTripsVerifiedWithAllCollections() {
     VerifyRegistrationOtpResult original =
         result(
-            VerifyRegistrationOtpResultStatus.VERIFIED, WorkflowNextStep.RETURN_TO_LOGIN, 3,
-            List.of(trust()), List.of(message()), List.of(error()));
+            VerifyRegistrationOtpResultStatus.VERIFIED,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            3,
+            List.of(trust()),
+            List.of(message()),
+            List.of(error()));
     IdempotentCapturedResponse captured = codec.capture(original);
     assertThat(captured.response().httpStatus()).isEqualTo(200);
 
@@ -89,8 +103,12 @@ class RegistrationOtpVerifyReplayCodecTest {
   void captureAndHydrateRoundTripsWithEmptyCollections() {
     VerifyRegistrationOtpResult original =
         result(
-            VerifyRegistrationOtpResultStatus.VERIFIED, WorkflowNextStep.RETURN_TO_LOGIN, null,
-            List.of(), List.of(), List.of());
+            VerifyRegistrationOtpResultStatus.VERIFIED,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            null,
+            List.of(),
+            List.of(),
+            List.of());
     IdempotentCapturedResponse captured = codec.capture(original);
     VerifyRegistrationOtpResult rehydrated = codec.hydrate(captured.snapshot());
     assertThat(rehydrated.unregisteredTrusts()).isEmpty();
@@ -105,8 +123,12 @@ class RegistrationOtpVerifyReplayCodecTest {
   void captureValidationFailedYields400() {
     VerifyRegistrationOtpResult r =
         result(
-            VerifyRegistrationOtpResultStatus.VALIDATION_FAILED, WorkflowNextStep.SELECT_OTP_DESTINATION,
-            null, List.of(), List.of(), List.of(error()));
+            VerifyRegistrationOtpResultStatus.VALIDATION_FAILED,
+            WorkflowNextStep.SELECT_OTP_DESTINATION,
+            null,
+            List.of(),
+            List.of(),
+            List.of(error()));
     assertThat(codec.capture(r).response().httpStatus()).isEqualTo(400);
   }
 
@@ -114,8 +136,12 @@ class RegistrationOtpVerifyReplayCodecTest {
   void captureDuplicateInProgressYields409() {
     VerifyRegistrationOtpResult r =
         result(
-            VerifyRegistrationOtpResultStatus.DUPLICATE_IN_PROGRESS, WorkflowNextStep.SELECT_OTP_DESTINATION,
-            null, List.of(), List.of(), List.of());
+            VerifyRegistrationOtpResultStatus.DUPLICATE_IN_PROGRESS,
+            WorkflowNextStep.SELECT_OTP_DESTINATION,
+            null,
+            List.of(),
+            List.of(),
+            List.of());
     assertThat(codec.capture(r).response().httpStatus()).isEqualTo(409);
   }
 
@@ -123,8 +149,12 @@ class RegistrationOtpVerifyReplayCodecTest {
   void captureOtpExpiredYields422() {
     VerifyRegistrationOtpResult r =
         result(
-            VerifyRegistrationOtpResultStatus.OTP_EXPIRED, WorkflowNextStep.SELECT_OTP_DESTINATION, null,
-            List.of(), List.of(), List.of());
+            VerifyRegistrationOtpResultStatus.OTP_EXPIRED,
+            WorkflowNextStep.SELECT_OTP_DESTINATION,
+            null,
+            List.of(),
+            List.of(),
+            List.of());
     assertThat(codec.capture(r).response().httpStatus()).isEqualTo(422);
   }
 
@@ -132,8 +162,12 @@ class RegistrationOtpVerifyReplayCodecTest {
   void captureSystemFailedYields500() {
     VerifyRegistrationOtpResult r =
         result(
-            VerifyRegistrationOtpResultStatus.SYSTEM_FAILED, WorkflowNextStep.SELECT_OTP_DESTINATION, null,
-            List.of(), List.of(), List.of());
+            VerifyRegistrationOtpResultStatus.SYSTEM_FAILED,
+            WorkflowNextStep.SELECT_OTP_DESTINATION,
+            null,
+            List.of(),
+            List.of(),
+            List.of());
     assertThat(codec.capture(r).response().httpStatus()).isEqualTo(500);
   }
 
@@ -141,8 +175,12 @@ class RegistrationOtpVerifyReplayCodecTest {
   void captureCompletedReplayStatusThrows() {
     VerifyRegistrationOtpResult lifecycleOnly =
         result(
-            VerifyRegistrationOtpResultStatus.COMPLETED_REPLAY, WorkflowNextStep.RETURN_TO_LOGIN,
-            null, List.of(), List.of(), List.of());
+            VerifyRegistrationOtpResultStatus.COMPLETED_REPLAY,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            null,
+            List.of(),
+            List.of(),
+            List.of());
     assertThatThrownBy(() -> codec.capture(lifecycleOnly))
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -157,26 +195,30 @@ class RegistrationOtpVerifyReplayCodecTest {
   @Test
   void hydrateMalformedJsonThrows() {
     IdempotentTerminalResponseSnapshot snapshot =
-        new IdempotentTerminalResponseSnapshot(1, 200, "application/json", "{not valid json", Map.of(), null);
-    assertThatThrownBy(() -> codec.hydrate(snapshot))
-        .isInstanceOf(IllegalArgumentException.class);
+        new IdempotentTerminalResponseSnapshot(
+            1, 200, "application/json", "{not valid json", Map.of(), null);
+    assertThatThrownBy(() -> codec.hydrate(snapshot)).isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void hydrateNullPayloadThrows() {
     String nullPayloadJson = "{\"idempotencyAction\":\"OTP_VERIFY\",\"payload\":null}";
     IdempotentTerminalResponseSnapshot snapshot =
-        new IdempotentTerminalResponseSnapshot(1, 200, "application/json", nullPayloadJson, Map.of(), null);
-    assertThatThrownBy(() -> codec.hydrate(snapshot))
-        .isInstanceOf(IllegalArgumentException.class);
+        new IdempotentTerminalResponseSnapshot(
+            1, 200, "application/json", nullPayloadJson, Map.of(), null);
+    assertThatThrownBy(() -> codec.hydrate(snapshot)).isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void hydrateInvalidTrustInPayloadThrows() {
     VerifyRegistrationOtpResult withBlankTrustField =
         result(
-            VerifyRegistrationOtpResultStatus.VERIFIED, WorkflowNextStep.RETURN_TO_LOGIN, null,
-            List.of(new RegistrationUnregisteredTrust("", "trust1")), List.of(), List.of());
+            VerifyRegistrationOtpResultStatus.VERIFIED,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            null,
+            List.of(new RegistrationUnregisteredTrust("", "trust1")),
+            List.of(),
+            List.of());
     IdempotentCapturedResponse captured = codec.capture(withBlankTrustField);
     assertThatThrownBy(() -> codec.hydrate(captured.snapshot()))
         .isInstanceOf(IllegalArgumentException.class);

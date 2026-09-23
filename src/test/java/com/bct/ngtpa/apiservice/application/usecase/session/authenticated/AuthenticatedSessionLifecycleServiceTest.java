@@ -231,7 +231,8 @@ class AuthenticatedSessionLifecycleServiceTest {
             "csrf_hash",
             "req");
     StepVerifier.create(f.service.create(cmd))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.FAILED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.FAILED))
         .verifyComplete();
   }
 
@@ -246,7 +247,8 @@ class AuthenticatedSessionLifecycleServiceTest {
             "csrf_hash",
             "req");
     StepVerifier.create(f.service.create(cmd))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.FAILED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.FAILED))
         .verifyComplete();
   }
 
@@ -264,7 +266,8 @@ class AuthenticatedSessionLifecycleServiceTest {
             AuthenticatedSessionStatus.ACTIVE));
     StepVerifier.create(
             f.service.loadAndTouch(new LoadAndTouchAuthenticatedSessionCommand(ID, "req")))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.FAILED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.FAILED))
         .verifyComplete();
   }
 
@@ -280,8 +283,7 @@ class AuthenticatedSessionLifecycleServiceTest {
             NOW.plusSeconds(1000),
             AuthenticatedSessionStatus.ACTIVE));
     StepVerifier.create(
-            fixture.service.logout(
-                new LogoutActiveAuthenticatedSessionCommand(ID, "req")))
+            fixture.service.logout(new LogoutActiveAuthenticatedSessionCommand(ID, "req")))
         .assertNext(
             result ->
                 assertThat(result.status())
@@ -300,10 +302,10 @@ class AuthenticatedSessionLifecycleServiceTest {
             NOW.plusSeconds(1000),
             AuthenticatedSessionStatus.REVOKED));
     StepVerifier.create(
-            fixture.service.logout(
-                new LogoutActiveAuthenticatedSessionCommand(ID, "req")))
+            fixture.service.logout(new LogoutActiveAuthenticatedSessionCommand(ID, "req")))
         .assertNext(
-            result -> assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.REVOKED))
+            result ->
+                assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.REVOKED))
         .verifyComplete();
     assertThat(fixture.touched.get()).isNull();
   }
@@ -318,10 +320,10 @@ class AuthenticatedSessionLifecycleServiceTest {
             NOW.plusSeconds(100),
             AuthenticatedSessionStatus.ACTIVE));
     StepVerifier.create(
-            fixture.service.logout(
-                new LogoutActiveAuthenticatedSessionCommand(ID, "req")))
+            fixture.service.logout(new LogoutActiveAuthenticatedSessionCommand(ID, "req")))
         .assertNext(
-            result -> assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.EXPIRED))
+            result ->
+                assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.EXPIRED))
         .verifyComplete();
   }
 
@@ -343,7 +345,8 @@ class AuthenticatedSessionLifecycleServiceTest {
             public ProtectedAuthenticatedSession protect(AuthenticatedSession s) {
               loaded.set(s);
               return com.bct.ngtpa.apiservice.application.dto.session.authenticated
-                  .ProtectedAuthenticatedSessionTestFixtures.envelope("v1", "cipher", "nonce", "tag");
+                  .ProtectedAuthenticatedSessionTestFixtures.envelope(
+                  "v1", "cipher", "nonce", "tag");
             }
 
             public AuthenticatedSession unprotect(ProtectedAuthenticatedSession p) {

@@ -42,9 +42,10 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Branch-oriented reactive tests for {@link ForgotPasswordCompleteProtectedOperation}. Collaborators
- * are mocked; the {@code RevisionAwareAuthFlowSessionWriter} is driven through its port contract
- * ({@code loadSnapshot} + {@code updateRevisioned}). A fixed {@link Clock} keeps timing deterministic.
+ * Branch-oriented reactive tests for {@link ForgotPasswordCompleteProtectedOperation}.
+ * Collaborators are mocked; the {@code RevisionAwareAuthFlowSessionWriter} is driven through its
+ * port contract ({@code loadSnapshot} + {@code updateRevisioned}). A fixed {@link Clock} keeps
+ * timing deterministic.
  */
 class ForgotPasswordCompleteProtectedOperationTest {
 
@@ -172,15 +173,20 @@ class ForgotPasswordCompleteProtectedOperationTest {
     assertThatThrownBy(
             () ->
                 new ForgotPasswordCompleteProtectedOperation(
-                    null, locks, protector, completion, authValidator, passwordValidator, clock,
+                    null,
+                    locks,
+                    protector,
+                    completion,
+                    authValidator,
+                    passwordValidator,
+                    clock,
                     lease))
         .isInstanceOf(NullPointerException.class);
   }
 
   @Test
   void constructorRejectsNonPositiveLease() {
-    assertThatThrownBy(() -> newOp(Duration.ZERO))
-        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> newOp(Duration.ZERO)).isInstanceOf(IllegalArgumentException.class);
   }
 
   // ----- 1: duplicate (lock not acquired) --------------------------------
@@ -209,7 +215,8 @@ class ForgotPasswordCompleteProtectedOperationTest {
         .assertNext(
             r -> {
               assertThat(r.outcome())
-                  .isEqualTo(ForgotPasswordCompleteProtectedExecutionResult.Outcome.UNKNOWN_OUTCOME);
+                  .isEqualTo(
+                      ForgotPasswordCompleteProtectedExecutionResult.Outcome.UNKNOWN_OUTCOME);
               assertThat(r.result().status())
                   .isEqualTo(CompleteForgotPasswordStatus.UNKNOWN_OUTCOME);
             })
@@ -294,15 +301,15 @@ class ForgotPasswordCompleteProtectedOperationTest {
     givenAuthValid();
     givenPasswordValid();
     when(completion.complete(any()))
-        .thenReturn(Mono.just(ForgotPasswordCompletionResult.rejected("private.downstream.detail")));
+        .thenReturn(
+            Mono.just(ForgotPasswordCompletionResult.rejected("private.downstream.detail")));
     StepVerifier.create(newOp().execute(input()))
         .assertNext(
             r -> {
               assertThat(r.outcome())
                   .isEqualTo(
                       ForgotPasswordCompleteProtectedExecutionResult.Outcome.TECHNICAL_FAILURE);
-              assertThat(r.result().status())
-                  .isEqualTo(CompleteForgotPasswordStatus.SYSTEM_FAILED);
+              assertThat(r.result().status()).isEqualTo(CompleteForgotPasswordStatus.SYSTEM_FAILED);
             })
         .verifyComplete();
   }
@@ -390,8 +397,7 @@ class ForgotPasswordCompleteProtectedOperationTest {
     givenAuthValid();
     givenPasswordValid();
     givenWriterApplies();
-    when(completion.complete(any()))
-        .thenReturn(Mono.error(new IllegalStateException("boom")));
+    when(completion.complete(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newOp().execute(input()))
         .assertNext(
             r ->

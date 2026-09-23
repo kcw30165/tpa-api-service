@@ -98,7 +98,10 @@ class RegistrationOtpChallengeAdapterTest {
   void createOtpMobileContactTypeSucceeds() {
     givenPolicy();
     when(otp.createChallenge(any()))
-        .thenReturn(Mono.just(new CreateOtpChallengeResult("challenge-1", "raw-code", NOW.plusSeconds(300), 300)));
+        .thenReturn(
+            Mono.just(
+                new CreateOtpChallengeResult(
+                    "challenge-1", "raw-code", NOW.plusSeconds(300), 300)));
     StepVerifier.create(newAdapter().createOtp(RegistrationContactType.MOBILE, "91234567"))
         .assertNext(result -> assertThat(result.activeOtpChallengeId()).isEqualTo("challenge-1"))
         .verifyComplete();
@@ -108,7 +111,10 @@ class RegistrationOtpChallengeAdapterTest {
   void createOtpEmailContactTypeSucceeds() {
     givenPolicy();
     when(otp.createChallenge(any()))
-        .thenReturn(Mono.just(new CreateOtpChallengeResult("challenge-1", "raw-code", NOW.plusSeconds(300), 300)));
+        .thenReturn(
+            Mono.just(
+                new CreateOtpChallengeResult(
+                    "challenge-1", "raw-code", NOW.plusSeconds(300), 300)));
     StepVerifier.create(newAdapter().createOtp(RegistrationContactType.EMAIL, "user@example.com"))
         .assertNext(result -> assertThat(result.activeOtpChallengeId()).isEqualTo("challenge-1"))
         .verifyComplete();
@@ -118,7 +124,10 @@ class RegistrationOtpChallengeAdapterTest {
   void createOtpWithNullDestinationSucceeds() {
     givenPolicy();
     when(otp.createChallenge(any()))
-        .thenReturn(Mono.just(new CreateOtpChallengeResult("challenge-1", "raw-code", NOW.plusSeconds(300), 300)));
+        .thenReturn(
+            Mono.just(
+                new CreateOtpChallengeResult(
+                    "challenge-1", "raw-code", NOW.plusSeconds(300), 300)));
     StepVerifier.create(newAdapter().createOtp(RegistrationContactType.EMAIL, null))
         .assertNext(result -> assertThat(result.activeOtpChallengeId()).isEqualTo("challenge-1"))
         .verifyComplete();
@@ -128,29 +137,38 @@ class RegistrationOtpChallengeAdapterTest {
 
   private ReplaceOtpChallengeResult replaced() {
     return new ReplaceOtpChallengeResult(
-        "old-1", "new-1", "raw-code", OtpReplacementOutcome.REPLACED, NOW.plusSeconds(300), 300,
-        60, 2, null);
+        "old-1",
+        "new-1",
+        "raw-code",
+        OtpReplacementOutcome.REPLACED,
+        NOW.plusSeconds(300),
+        300,
+        60,
+        2,
+        null);
   }
 
   @Test
   void resendOtpReplacedSucceeds() {
     givenPolicy();
     when(otp.replaceChallenge(any())).thenReturn(Mono.just(replaced()));
-    StepVerifier.create(newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
+    StepVerifier.create(
+            newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
         .assertNext(result -> assertThat(result.activeOtpChallengeId()).isEqualTo("new-1"))
         .verifyComplete();
   }
 
   private ReplaceOtpChallengeResult withOutcome(OtpReplacementOutcome outcome) {
-    return new ReplaceOtpChallengeResult(
-        "old-1", null, null, outcome, null, 0, 60, 2, 30);
+    return new ReplaceOtpChallengeResult("old-1", null, null, outcome, null, 0, 60, 2, 30);
   }
 
   @Test
   void resendOtpCooldownActiveErrors() {
     givenPolicy();
-    when(otp.replaceChallenge(any())).thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.COOLDOWN_ACTIVE)));
-    StepVerifier.create(newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
+    when(otp.replaceChallenge(any()))
+        .thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.COOLDOWN_ACTIVE)));
+    StepVerifier.create(
+            newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
         .expectError(RegistrationOtpResendRejectedException.class)
         .verify();
   }
@@ -158,8 +176,10 @@ class RegistrationOtpChallengeAdapterTest {
   @Test
   void resendOtpMaxResendExceededErrors() {
     givenPolicy();
-    when(otp.replaceChallenge(any())).thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.MAX_RESEND_EXCEEDED)));
-    StepVerifier.create(newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
+    when(otp.replaceChallenge(any()))
+        .thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.MAX_RESEND_EXCEEDED)));
+    StepVerifier.create(
+            newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
         .expectError(RegistrationOtpSendRateLimitedException.class)
         .verify();
   }
@@ -167,8 +187,10 @@ class RegistrationOtpChallengeAdapterTest {
   @Test
   void resendOtpLockedErrors() {
     givenPolicy();
-    when(otp.replaceChallenge(any())).thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.LOCKED)));
-    StepVerifier.create(newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
+    when(otp.replaceChallenge(any()))
+        .thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.LOCKED)));
+    StepVerifier.create(
+            newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
         .expectError(RegistrationOtpResendRejectedException.class)
         .verify();
   }
@@ -176,8 +198,10 @@ class RegistrationOtpChallengeAdapterTest {
   @Test
   void resendOtpExpiredErrors() {
     givenPolicy();
-    when(otp.replaceChallenge(any())).thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.EXPIRED)));
-    StepVerifier.create(newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
+    when(otp.replaceChallenge(any()))
+        .thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.EXPIRED)));
+    StepVerifier.create(
+            newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
         .expectError(RegistrationOtpResendRejectedException.class)
         .verify();
   }
@@ -185,8 +209,10 @@ class RegistrationOtpChallengeAdapterTest {
   @Test
   void resendOtpInvalidatedErrors() {
     givenPolicy();
-    when(otp.replaceChallenge(any())).thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.INVALIDATED)));
-    StepVerifier.create(newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
+    when(otp.replaceChallenge(any()))
+        .thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.INVALIDATED)));
+    StepVerifier.create(
+            newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
         .expectError(RegistrationOtpResendRejectedException.class)
         .verify();
   }
@@ -194,8 +220,10 @@ class RegistrationOtpChallengeAdapterTest {
   @Test
   void resendOtpAlreadyVerifiedErrors() {
     givenPolicy();
-    when(otp.replaceChallenge(any())).thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.ALREADY_VERIFIED)));
-    StepVerifier.create(newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
+    when(otp.replaceChallenge(any()))
+        .thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.ALREADY_VERIFIED)));
+    StepVerifier.create(
+            newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
         .expectError(RegistrationOtpResendRejectedException.class)
         .verify();
   }
@@ -203,8 +231,10 @@ class RegistrationOtpChallengeAdapterTest {
   @Test
   void resendOtpNotFoundErrors() {
     givenPolicy();
-    when(otp.replaceChallenge(any())).thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.NOT_FOUND)));
-    StepVerifier.create(newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
+    when(otp.replaceChallenge(any()))
+        .thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.NOT_FOUND)));
+    StepVerifier.create(
+            newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
         .expectError(RegistrationOtpResendRejectedException.class)
         .verify();
   }
@@ -212,8 +242,10 @@ class RegistrationOtpChallengeAdapterTest {
   @Test
   void resendOtpNotReplaceableErrors() {
     givenPolicy();
-    when(otp.replaceChallenge(any())).thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.NOT_REPLACEABLE)));
-    StepVerifier.create(newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
+    when(otp.replaceChallenge(any()))
+        .thenReturn(Mono.just(withOutcome(OtpReplacementOutcome.NOT_REPLACEABLE)));
+    StepVerifier.create(
+            newAdapter().resendOtp("old-1", RegistrationContactType.EMAIL, "user@example.com"))
         .expectError(RegistrationOtpResendRejectedException.class)
         .verify();
   }
@@ -226,7 +258,8 @@ class RegistrationOtpChallengeAdapterTest {
 
   @Test
   void verifyOtpValidYieldsVerified() {
-    when(otp.verifyChallenge(any())).thenReturn(Mono.just(verifyResult(OtpVerificationOutcome.VALID)));
+    when(otp.verifyChallenge(any()))
+        .thenReturn(Mono.just(verifyResult(OtpVerificationOutcome.VALID)));
     StepVerifier.create(newAdapter().verifyOtp("challenge-1", "123456"))
         .assertNext(
             result -> assertThat(result).isEqualTo(RegistrationOtpVerificationResult.verified()))
@@ -235,33 +268,38 @@ class RegistrationOtpChallengeAdapterTest {
 
   @Test
   void verifyOtpExpiredYieldsExpired() {
-    when(otp.verifyChallenge(any())).thenReturn(Mono.just(verifyResult(OtpVerificationOutcome.EXPIRED)));
+    when(otp.verifyChallenge(any()))
+        .thenReturn(Mono.just(verifyResult(OtpVerificationOutcome.EXPIRED)));
     StepVerifier.create(newAdapter().verifyOtp("challenge-1", "123456"))
-        .assertNext(result -> assertThat(result).isEqualTo(RegistrationOtpVerificationResult.expired()))
+        .assertNext(
+            result -> assertThat(result).isEqualTo(RegistrationOtpVerificationResult.expired()))
         .verifyComplete();
   }
 
   @Test
   void verifyOtpLockedYieldsLocked() {
-    when(otp.verifyChallenge(any())).thenReturn(Mono.just(verifyResult(OtpVerificationOutcome.LOCKED)));
+    when(otp.verifyChallenge(any()))
+        .thenReturn(Mono.just(verifyResult(OtpVerificationOutcome.LOCKED)));
     StepVerifier.create(newAdapter().verifyOtp("challenge-1", "123456"))
-        .assertNext(result -> assertThat(result).isEqualTo(RegistrationOtpVerificationResult.locked()))
+        .assertNext(
+            result -> assertThat(result).isEqualTo(RegistrationOtpVerificationResult.locked()))
         .verifyComplete();
   }
 
   @Test
   void verifyOtpInvalidYieldsInvalidWithRemainingAttempts() {
-    when(otp.verifyChallenge(any())).thenReturn(Mono.just(verifyResult(OtpVerificationOutcome.INVALID)));
+    when(otp.verifyChallenge(any()))
+        .thenReturn(Mono.just(verifyResult(OtpVerificationOutcome.INVALID)));
     StepVerifier.create(newAdapter().verifyOtp("challenge-1", "wrong-code"))
         .assertNext(
-            result ->
-                assertThat(result).isEqualTo(RegistrationOtpVerificationResult.invalid(2)))
+            result -> assertThat(result).isEqualTo(RegistrationOtpVerificationResult.invalid(2)))
         .verifyComplete();
   }
 
   @Test
   void verifyOtpNotFoundYieldsInvalid() {
-    when(otp.verifyChallenge(any())).thenReturn(Mono.just(verifyResult(OtpVerificationOutcome.NOT_FOUND)));
+    when(otp.verifyChallenge(any()))
+        .thenReturn(Mono.just(verifyResult(OtpVerificationOutcome.NOT_FOUND)));
     StepVerifier.create(newAdapter().verifyOtp("challenge-1", "123456"))
         .assertNext(
             result -> assertThat(result).isEqualTo(RegistrationOtpVerificationResult.invalid(2)))

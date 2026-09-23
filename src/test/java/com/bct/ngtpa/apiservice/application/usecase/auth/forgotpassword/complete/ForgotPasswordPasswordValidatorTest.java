@@ -61,15 +61,13 @@ class ForgotPasswordPasswordValidatorTest {
 
   @Test
   void emptyPasswordIsRequired() {
-    ForgotPasswordPasswordValidationResult r =
-        validatorFor(permissive()).validate("", "x", null);
+    ForgotPasswordPasswordValidationResult r = validatorFor(permissive()).validate("", "x", null);
     assertThat(hasCode(r, ForgotPasswordCompleteErrorKeys.PASSWORD_REQUIRED)).isTrue();
   }
 
   @Test
   void emptyConfirmIsRequired() {
-    ForgotPasswordPasswordValidationResult r =
-        validatorFor(permissive()).validate("x", "", null);
+    ForgotPasswordPasswordValidationResult r = validatorFor(permissive()).validate("x", "", null);
     assertThat(hasCode(r, ForgotPasswordCompleteErrorKeys.CONFIRM_PASSWORD_REQUIRED)).isTrue();
   }
 

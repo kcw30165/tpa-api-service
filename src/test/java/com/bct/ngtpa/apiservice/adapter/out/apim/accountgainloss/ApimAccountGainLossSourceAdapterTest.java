@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.accountgainloss.AccountGainLossPeriod;
 import com.bct.ngtpa.apiservice.application.dto.accountgainloss.FetchAccountGainLossCommand;
-import com.bct.ngtpa.apiservice.application.dto.accountgainloss.RawAccountGainLossData;
 import com.bct.ngtpa.apiservice.application.exception.AccountGainLossRetrievalException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,11 +22,11 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Branch-oriented reactive tests for {@link ApimAccountGainLossSourceAdapter}. The public
- * contract ({@code fetch(FetchAccountGainLossCommand) -> Mono<RawAccountGainLossData>}) is
- * independently confirmed via the already-passing GetAccountGainLossServiceTest (rounds 125/126),
- * which mocks the same {@code AccountGainLossSourcePort} interface this adapter implements. All
- * DTO/collaborator types verified verbatim (rounds 127-128).
+ * Branch-oriented reactive tests for {@link ApimAccountGainLossSourceAdapter}. The public contract
+ * ({@code fetch(FetchAccountGainLossCommand) -> Mono<RawAccountGainLossData>}) is independently
+ * confirmed via the already-passing GetAccountGainLossServiceTest (rounds 125/126), which mocks the
+ * same {@code AccountGainLossSourcePort} interface this adapter implements. All DTO/collaborator
+ * types verified verbatim (rounds 127-128).
  */
 class ApimAccountGainLossSourceAdapterTest {
 
@@ -42,23 +41,30 @@ class ApimAccountGainLossSourceAdapterTest {
     return new ApimAccountGainLossSourceAdapter(executor, properties);
   }
 
-                                                // new FetchAccountGainLossCommand(
-                                                //     command.period(),
-                                                //     command.currency(),
-                                                //     command.accountEnv(),
-                                                //     command.policyNo(),
-                                                //     command.certNo(),
-                                                //     command.actorUserId(),
-                                                //     command.actorUserRole(),
-                                                //     date))
+  // new FetchAccountGainLossCommand(
+  //     command.period(),
+  //     command.currency(),
+  //     command.accountEnv(),
+  //     command.policyNo(),
+  //     command.certNo(),
+  //     command.actorUserId(),
+  //     command.actorUserRole(),
+  //     date))
   private FetchAccountGainLossCommand command() {
     return new FetchAccountGainLossCommand(
-        AccountGainLossPeriod.YEAR_TO_DATE,"HKD", "env1", "policy1", "cert1", "actor1",
-        ActorUserRole.ROLE_USER_MBR, LocalDate.of(2026, 1, 1));
+        AccountGainLossPeriod.YEAR_TO_DATE,
+        "HKD",
+        "env1",
+        "policy1",
+        "cert1",
+        "actor1",
+        ActorUserRole.ROLE_USER_MBR,
+        LocalDate.of(2026, 1, 1));
   }
 
   private static TrpGetInvestGlFund fund(String code, int sequence, String gainLoss) {
-    return new TrpGetInvestGlFund(code, "English " + code, "Chinese " + code, sequence, new BigDecimal(gainLoss));
+    return new TrpGetInvestGlFund(
+        code, "English " + code, "Chinese " + code, sequence, new BigDecimal(gainLoss));
   }
 
   @SuppressWarnings("unchecked")

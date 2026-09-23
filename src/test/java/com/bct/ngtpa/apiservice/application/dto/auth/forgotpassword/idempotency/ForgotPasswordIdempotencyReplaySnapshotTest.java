@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-/** Branch-oriented tests for {@link ForgotPasswordIdempotencyReplaySnapshot}'s compact constructor. */
+/**
+ * Branch-oriented tests for {@link ForgotPasswordIdempotencyReplaySnapshot}'s compact constructor.
+ */
 class ForgotPasswordIdempotencyReplaySnapshotTest {
 
   @Test
@@ -38,7 +40,8 @@ class ForgotPasswordIdempotencyReplaySnapshotTest {
   void blankHeaderNameThrows() {
     Map<String, String> headers = new java.util.LinkedHashMap<>();
     headers.put("", "value");
-    assertThatThrownBy(() -> new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "ref-1", headers))
+    assertThatThrownBy(
+            () -> new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "ref-1", headers))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -94,8 +97,7 @@ class ForgotPasswordIdempotencyReplaySnapshotTest {
   @Test
   void toStringRedactsSensitiveFields() {
     ForgotPasswordIdempotencyReplaySnapshot snapshot =
-        new ForgotPasswordIdempotencyReplaySnapshot(
-            "SUCCESS", "sensitive-ref", Map.of(), "GPN");
+        new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "sensitive-ref", Map.of(), "GPN");
     String rendered = snapshot.toString();
     assertThat(rendered).doesNotContain("sensitive-ref");
     assertThat(rendered).doesNotContain("GPN");

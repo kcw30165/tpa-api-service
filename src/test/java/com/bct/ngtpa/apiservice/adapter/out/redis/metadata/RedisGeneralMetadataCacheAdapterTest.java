@@ -140,9 +140,11 @@ class RedisGeneralMetadataCacheAdapterTest {
     var adapter = adapter(cache);
     var wrongScope = new GeneralMetadataScope("OTHER", "DBA", "00000008802");
     var expected =
-        new ResolvedGeneralMetadataSet(wrongScope, GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("1")));
+        new ResolvedGeneralMetadataSet(
+            wrongScope, GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("1")));
     var replacement =
-        new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("2")));
+        new ResolvedGeneralMetadataSet(
+            scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("2")));
     assertThatThrownBy(() -> adapter.replaceIfUnchanged(scope(), expected, replacement).block())
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -153,9 +155,11 @@ class RedisGeneralMetadataCacheAdapterTest {
     var adapter = adapter(cache);
     var wrongScope = new GeneralMetadataScope("OTHER", "DBA", "00000008802");
     var expected =
-        new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("1")));
+        new ResolvedGeneralMetadataSet(
+            scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("1")));
     var replacement =
-        new ResolvedGeneralMetadataSet(wrongScope, GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("2")));
+        new ResolvedGeneralMetadataSet(
+            wrongScope, GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("2")));
     assertThatThrownBy(() -> adapter.replaceIfUnchanged(scope(), expected, replacement).block())
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -165,13 +169,16 @@ class RedisGeneralMetadataCacheAdapterTest {
     var cache = new RecordingCache();
     var adapter = adapter(cache);
     var expected =
-        new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("1")));
+        new ResolvedGeneralMetadataSet(
+            scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("1")));
     var replacement =
-        new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("2")));
+        new ResolvedGeneralMetadataSet(
+            scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("2")));
     var result = adapter.replaceIfUnchanged(scope(), expected, replacement).block();
     assertThat(result)
         .isEqualTo(
-            com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult.APPLIED);
+            com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult
+                .APPLIED);
   }
 
   @Test
@@ -185,15 +192,18 @@ class RedisGeneralMetadataCacheAdapterTest {
             new GeneralMetadataCacheProperties(Duration.parse("PT20M")),
             (key, expectedJson, replacementJson) ->
                 Mono.just(
-                    com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult
-                        .CONFLICT));
+                    com.bct.ngtpa.apiservice.application.dto.metadata
+                        .GeneralMetadataCacheReplaceResult.CONFLICT));
     var expected =
-        new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("1")));
+        new ResolvedGeneralMetadataSet(
+            scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("1")));
     var replacement =
-        new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("2")));
+        new ResolvedGeneralMetadataSet(
+            scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("2")));
     var result = adapter.replaceIfUnchanged(scope(), expected, replacement).block();
     assertThat(result)
         .isEqualTo(
-            com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult.CONFLICT);
+            com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult
+                .CONFLICT);
   }
 }

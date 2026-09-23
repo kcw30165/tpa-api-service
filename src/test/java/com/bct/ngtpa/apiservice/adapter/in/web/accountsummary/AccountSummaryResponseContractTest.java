@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.AccountOverviewResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.AccountOverviewTotalsResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.CurrencySelectionResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.AccountSummaryDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.AccountSummaryResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.CurrencySelectionResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.GainLossBreakdownHoldingResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.GainLossBreakdownResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;

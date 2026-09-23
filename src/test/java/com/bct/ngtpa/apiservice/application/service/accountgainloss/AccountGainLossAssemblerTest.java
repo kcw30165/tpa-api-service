@@ -35,20 +35,31 @@ class AccountGainLossAssemblerTest {
 
   private static GetAccountGainLossCommand command(String language) {
     return new GetAccountGainLossCommand(
-        language, AccountGainLossPeriod.YEAR_TO_DATE, "env1", "policy1", "cert1", "trust1",
-        "SCHEME_A", "actor1", ActorUserRole.ROLE_USER_MBR);
+        language,
+        AccountGainLossPeriod.YEAR_TO_DATE,
+        "env1",
+        "policy1",
+        "cert1",
+        "trust1",
+        "SCHEME_A",
+        "actor1",
+        ActorUserRole.ROLE_USER_MBR);
   }
 
   private static ResolvedGeneralMetadataSet metadataWithPrecision(int precision) {
     ResolvedGeneralMetadata entry =
         new ResolvedGeneralMetadata(NAV_PRECISION, Integer.toString(precision));
     return ResolvedGeneralMetadataSet.normalize(
-        new GeneralMetadataScope("env1", "trust1", "policy1"), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry));
+        new GeneralMetadataScope("env1", "trust1", "policy1"),
+        GeneralMetadataResolutionSource.DEFAULT_ALL,
+        List.of(entry));
   }
 
   private static ResolvedGeneralMetadataSet metadataWithoutPrecision() {
     return ResolvedGeneralMetadataSet.normalize(
-        new GeneralMetadataScope("env1", "trust1", "policy1"), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of());
+        new GeneralMetadataScope("env1", "trust1", "policy1"),
+        GeneralMetadataResolutionSource.DEFAULT_ALL,
+        List.of());
   }
 
   private static RawFundGainLoss fund(
@@ -92,8 +103,7 @@ class AccountGainLossAssemblerTest {
   @Test
   void missingPrecisionMetadataThrowsSystemFailure() {
     RawAccountGainLossData raw = new RawAccountGainLossData(LocalDate.of(2026, 1, 1), List.of());
-    assertThatThrownBy(
-            () -> assembler.assemble(command("en"), metadataWithoutPrecision(), raw))
+    assertThatThrownBy(() -> assembler.assemble(command("en"), metadataWithoutPrecision(), raw))
         .isInstanceOf(AccountGainLossRetrievalException.class)
         .satisfies(
             ex ->
@@ -122,8 +132,7 @@ class AccountGainLossAssemblerTest {
     RawAccountGainLossData raw =
         new RawAccountGainLossData(
             LocalDate.of(2026, 1, 1),
-            List.of(
-                fund("A", "Fund A", "基金A", 1, "10.00"), fund("B", "Fund B", "基金B", 2, "5.50")));
+            List.of(fund("A", "Fund A", "基金A", 1, "10.00"), fund("B", "Fund B", "基金B", 2, "5.50")));
     var result = assembler.assemble(command("en"), metadataWithPrecision(2), raw);
     assertThat(result.totalGainLoss()).isEqualTo("15.50");
   }

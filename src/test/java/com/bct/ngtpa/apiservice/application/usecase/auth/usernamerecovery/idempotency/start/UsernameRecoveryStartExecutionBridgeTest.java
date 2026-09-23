@@ -48,7 +48,8 @@ class UsernameRecoveryStartExecutionBridgeTest {
           }
         }
       };
-  private final UsernameRecoveryStartReplayCodec codec = mock(UsernameRecoveryStartReplayCodec.class);
+  private final UsernameRecoveryStartReplayCodec codec =
+      mock(UsernameRecoveryStartReplayCodec.class);
 
   private UsernameRecoveryStartExecutionBridge newBridge() {
     return new UsernameRecoveryStartExecutionBridge(json, codec);

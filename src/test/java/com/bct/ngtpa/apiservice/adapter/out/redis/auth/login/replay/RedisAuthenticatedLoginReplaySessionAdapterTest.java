@@ -31,18 +31,22 @@ import reactor.test.StepVerifier;
 class RedisAuthenticatedLoginReplaySessionAdapterTest {
 
   private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
-  private final ReactiveValueOperations<String, String> values = mock(ReactiveValueOperations.class);
+  private final ReactiveValueOperations<String, String> values =
+      mock(ReactiveValueOperations.class);
   private final RedisCacheKeyFactory keys = mock(RedisCacheKeyFactory.class);
-  private final RedisAuthenticatedSessionJsonMapper json = mock(RedisAuthenticatedSessionJsonMapper.class);
+  private final RedisAuthenticatedSessionJsonMapper json =
+      mock(RedisAuthenticatedSessionJsonMapper.class);
 
-  private final AuthenticatedSessionId sid = new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
+  private final AuthenticatedSessionId sid =
+      new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
 
   private RedisAuthenticatedLoginReplaySessionAdapter newAdapter() {
     return new RedisAuthenticatedLoginReplaySessionAdapter(redis, keys, json);
   }
 
   private void givenKeyFactoryReady() {
-    when(keys.key(ArgumentMatchers.eq("auth:authenticated-session"), any())).thenReturn("redis-key-1");
+    when(keys.key(ArgumentMatchers.eq("auth:authenticated-session"), any()))
+        .thenReturn("redis-key-1");
   }
 
   // ----- loadForReplay() -------------------------------------------------------
@@ -86,8 +90,13 @@ class RedisAuthenticatedLoginReplaySessionAdapterTest {
 
   private RotateAuthenticatedSessionCsrfHashCommand rotateCommand() {
     return new RotateAuthenticatedSessionCsrfHashCommand(
-        sid, mock(ProtectedAuthenticatedSession.class), mock(ProtectedAuthenticatedSession.class),
-        "raw-csrf-token", "hashed-csrf-token", Duration.ofSeconds(1800), "req-1");
+        sid,
+        mock(ProtectedAuthenticatedSession.class),
+        mock(ProtectedAuthenticatedSession.class),
+        "raw-csrf-token",
+        "hashed-csrf-token",
+        Duration.ofSeconds(1800),
+        "req-1");
   }
 
   @Test
@@ -100,7 +109,8 @@ class RedisAuthenticatedLoginReplaySessionAdapterTest {
             ArgumentMatchers.<Object>anyList()))
         .thenReturn(Flux.just(1L));
     StepVerifier.create(newAdapter().rotateCsrfHashIfCurrent(rotateCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionCsrfRotationStatus.ROTATED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionCsrfRotationStatus.ROTATED))
         .verifyComplete();
   }
 
@@ -114,7 +124,8 @@ class RedisAuthenticatedLoginReplaySessionAdapterTest {
             ArgumentMatchers.<Object>anyList()))
         .thenReturn(Flux.just(0L));
     StepVerifier.create(newAdapter().rotateCsrfHashIfCurrent(rotateCommand()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionCsrfRotationStatus.CONFLICT))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionCsrfRotationStatus.CONFLICT))
         .verifyComplete();
   }
 
@@ -129,7 +140,9 @@ class RedisAuthenticatedLoginReplaySessionAdapterTest {
         .thenReturn(Flux.empty());
     StepVerifier.create(newAdapter().rotateCsrfHashIfCurrent(rotateCommand()))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionCsrfRotationStatus.SYSTEM_FAILURE))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(AuthenticatedSessionCsrfRotationStatus.SYSTEM_FAILURE))
         .verifyComplete();
   }
 
@@ -144,7 +157,9 @@ class RedisAuthenticatedLoginReplaySessionAdapterTest {
         .thenReturn(Flux.error(new IllegalStateException("boom")));
     StepVerifier.create(newAdapter().rotateCsrfHashIfCurrent(rotateCommand()))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionCsrfRotationStatus.SYSTEM_FAILURE))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(AuthenticatedSessionCsrfRotationStatus.SYSTEM_FAILURE))
         .verifyComplete();
   }
 }

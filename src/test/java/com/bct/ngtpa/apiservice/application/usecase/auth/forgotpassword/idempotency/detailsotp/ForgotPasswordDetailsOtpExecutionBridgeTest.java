@@ -74,7 +74,8 @@ class ForgotPasswordDetailsOtpExecutionBridgeTest {
   @Test
   void fromTransientResponseNonEmptyHeadersThrows() {
     HydratedIdempotentResponse response =
-        new HydratedIdempotentResponse(200, "application/json", json.write(success()), Map.of("Retry-After", "30"));
+        new HydratedIdempotentResponse(
+            200, "application/json", json.write(success()), Map.of("Retry-After", "30"));
     assertThatThrownBy(() -> newBridge().fromTransientResponse(response))
         .isInstanceOf(IllegalArgumentException.class);
   }

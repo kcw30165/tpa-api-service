@@ -433,9 +433,7 @@ class SmsSenderAdapterTest {
     SmsSenderAdapter adapter =
         adapterWith(
             baseProperties(), request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
-    StepVerifier.create(adapter.sendSms(null))
-        .expectError(IllegalArgumentException.class)
-        .verify();
+    StepVerifier.create(adapter.sendSms(null)).expectError(IllegalArgumentException.class).verify();
   }
 
   // ----- onErrorResume() error path (added round 216) -------------------------------
@@ -444,8 +442,7 @@ class SmsSenderAdapterTest {
   void providerExchangeErrorYieldsUnknownOutcome() {
     SmsSenderAdapter adapter =
         adapterWith(
-            baseProperties(),
-            request -> Mono.error(new java.io.IOException("connection reset")));
+            baseProperties(), request -> Mono.error(new java.io.IOException("connection reset")));
     StepVerifier.create(
             adapter.sendSms(new SmsMessage("91234567", "Hello Member", "HK", "req-123")))
         .assertNext(
@@ -508,7 +505,8 @@ class SmsSenderAdapterTest {
         adapterWith(
             baseProperties(),
             request ->
-                Mono.just(ClientResponse.create(HttpStatus.INTERNAL_SERVER_ERROR).body("").build()));
+                Mono.just(
+                    ClientResponse.create(HttpStatus.INTERNAL_SERVER_ERROR).body("").build()));
     StepVerifier.create(
             adapter.sendSms(new SmsMessage("91234567", "Hello Member", "HK", "req-123")))
         .assertNext(

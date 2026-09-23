@@ -187,7 +187,9 @@ class ApimPayloadCryptoServiceTest {
     ApimPayloadCryptoService service = service(disabledProperties());
     String responseJson =
         OBJECT_MAPPER.writeValueAsString(
-            Map.of("response", Map.of("err-message", "", "data", List.of(Map.of("secret", "raw-value")))));
+            Map.of(
+                "response",
+                Map.of("err-message", "", "data", List.of(Map.of("secret", "raw-value")))));
 
     ApimResponseEnvelope<Map> envelope =
         service.decryptResponseEnvelope(
@@ -197,11 +199,14 @@ class ApimPayloadCryptoServiceTest {
   }
 
   @Test
-  void decryptResponseEnvelopeReturnsParsedEnvelopeWhenNoResponseFieldsConfigured() throws Exception {
+  void decryptResponseEnvelopeReturnsParsedEnvelopeWhenNoResponseFieldsConfigured()
+      throws Exception {
     ApimPayloadCryptoService service = service(encryptionProperties(List.of(), List.of()));
     String responseJson =
         OBJECT_MAPPER.writeValueAsString(
-            Map.of("response", Map.of("err-message", "", "data", List.of(Map.of("secret", "raw-value")))));
+            Map.of(
+                "response",
+                Map.of("err-message", "", "data", List.of(Map.of("secret", "raw-value")))));
 
     ApimResponseEnvelope<Map> envelope =
         service.decryptResponseEnvelope(
@@ -225,8 +230,10 @@ class ApimPayloadCryptoServiceTest {
   }
 
   @Test
-  void decryptResponseEnvelopeWrapsDecryptionErrorsForInvalidEncryptedFieldFormat() throws Exception {
-    ApimPayloadCryptoService service = service(encryptionProperties(List.of("secret"), List.of("secret")));
+  void decryptResponseEnvelopeWrapsDecryptionErrorsForInvalidEncryptedFieldFormat()
+      throws Exception {
+    ApimPayloadCryptoService service =
+        service(encryptionProperties(List.of("secret"), List.of("secret")));
     String responseJson =
         OBJECT_MAPPER.writeValueAsString(
             Map.of(
