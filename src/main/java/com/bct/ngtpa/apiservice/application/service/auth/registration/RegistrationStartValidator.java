@@ -10,13 +10,20 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
 import java.util.ArrayList;
 import java.util.List;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 public class RegistrationStartValidator {
   private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
   private static final Pattern HK_MOBILE = Pattern.compile("^[4-9][0-9]{7}$");
   private static final Pattern SAFE_CAPTCHA = Pattern.compile("^[A-Za-z0-9_-]{6,128}$");
-  private final RegistrationContactDeriver contactDeriver = new RegistrationContactDeriver();
+  private final RegistrationContactDeriver contactDeriver;
+
+  public RegistrationStartValidator(MaskingService maskingService) {
+    this.contactDeriver =
+        new RegistrationContactDeriver(Objects.requireNonNull(maskingService, "maskingService must not be null"));
+  }
 
   public RegistrationStartValidationResult validate(RegistrationStartInput input) {
     List<RegistrationStartValidationError> errors = new ArrayList<>();

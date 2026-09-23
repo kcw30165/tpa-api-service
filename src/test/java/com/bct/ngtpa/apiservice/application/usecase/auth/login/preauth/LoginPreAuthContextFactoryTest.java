@@ -8,6 +8,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.login.CredentialAuthenticat
 import com.bct.ngtpa.apiservice.application.dto.auth.login.LoginCredentialDestination;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.LoginPreAuthDestination;
 import com.bct.ngtpa.apiservice.application.port.out.LoginDestinationIdGenerator;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -19,7 +21,8 @@ class LoginPreAuthContextFactoryTest {
   void createsOpaqueDestinationMapAndConvertsMobileToPublicSms() {
     AtomicInteger sequence = new AtomicInteger();
     LoginDestinationIdGenerator generator = () -> "dst_opaque_value_" + sequence.incrementAndGet();
-    var factory = new LoginPreAuthContextFactory(generator, new LoginDestinationMasker());
+    var factory =
+        new LoginPreAuthContextFactory(generator, new MaskingService(new MaskingProperties()));
     var result =
         new CredentialAuthenticationResult(
             CredentialAuthenticationStatus.AUTHENTICATED,
@@ -30,9 +33,7 @@ class LoginPreAuthContextFactoryTest {
                 new LoginCredentialDestination("email", "member@example.com"),
                 new LoginCredentialDestination("mobile", "91234567")),
             null);
-
     var context = factory.create(result, Instant.parse("2026-07-20T00:00:00Z"));
-
     assertThat(context.normalizedUsername()).isEqualTo("member");
     assertThat(context.destinationsById()).hasSize(2);
     assertThat(context.destinationsById().values())
@@ -40,7 +41,7 @@ class LoginPreAuthContextFactoryTest {
         .containsExactly("email", "sms");
     assertThat(context.destinationsById().values())
         .extracting(LoginPreAuthDestination::maskedDestination)
-        .containsExactly("m*****@example.com", "****4567");
+        .containsExactly("m****r@example.com", "9******7");
     assertThat(context.toString())
         .doesNotContain("member", "member@example.com", "91234567", "dst_opaque_value");
   }
@@ -48,7 +49,8 @@ class LoginPreAuthContextFactoryTest {
   @Test
   void rejectsNonAuthenticatedOrDestinationlessResults() {
     var factory =
-        new LoginPreAuthContextFactory(() -> "dst_opaque_value", new LoginDestinationMasker());
+        new LoginPreAuthContextFactory(
+            () -> "dst_opaque_value", new MaskingService(new MaskingProperties()));
     assertThatThrownBy(
             () ->
                 factory.create(
@@ -61,7 +63,6 @@ class LoginPreAuthContextFactoryTest {
                         null),
                     Instant.now()))
         .isInstanceOf(IllegalArgumentException.class);
-
     assertThatThrownBy(
             () ->
                 factory.create(

@@ -31,11 +31,12 @@ import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.SmsSenderPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupStatus;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordDestinationMasker;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpBindingResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitState;
 import com.bct.ngtpa.apiservice.application.usecase.message.MessageDeliveryAdapter;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.time.*;
 import java.util.Map;
 import java.util.Optional;
@@ -178,7 +179,7 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
             new ForgotPasswordUnderLockDetailsVerifier(lookup),
             otp,
             new MessageDeliveryAdapter(mock(SmsSenderPort.class), emailSender),
-            new ForgotPasswordDestinationMasker(),
+            new MaskingService(new MaskingProperties()),
             binding,
             commitStates,
             new ForgotPasswordOtpCommitRetentionPolicy(
@@ -204,7 +205,7 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
             execution -> {
               var result = execution.result();
               assertThat(result.status()).isEqualTo(ForgotPasswordDetailsOtpResult.Status.SUCCESS);
-              assertThat(result.maskedDestination()).isEqualTo("H*************@UC.KJI");
+              assertThat(result.maskedDestination()).isEqualTo("H************Y@UC.KJI");
               assertThat(result.expiresInSeconds()).isEqualTo(300);
               assertThat(result.resendAvailableInSeconds()).isEqualTo(60);
               assertThat(execution.replayReference()).isNotNull();

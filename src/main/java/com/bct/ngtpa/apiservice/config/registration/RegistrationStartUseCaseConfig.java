@@ -19,6 +19,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotenc
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartSharedExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.SharedStartRegistrationService;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -28,8 +29,8 @@ import org.springframework.context.annotation.Configuration;
 public class RegistrationStartUseCaseConfig {
   @Bean
   @ConditionalOnMissingBean
-  RegistrationStartValidator registrationStartValidator() {
-    return new RegistrationStartValidator();
+  RegistrationStartValidator registrationStartValidator(MaskingService maskingService) {
+    return new RegistrationStartValidator(maskingService);
   }
 
   @Bean

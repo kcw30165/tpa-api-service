@@ -50,7 +50,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempote
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartReplayCodec;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordDestinationMasker;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordInitialOtpPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpReplayResolver;
@@ -64,6 +63,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.Id
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Duration;
@@ -77,6 +77,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class ForgotPasswordApplicationConfig {
+
   @Bean
   public Map<String, MemberIdentityType> forgotPasswordTasIdentityTypeMapping(
       AuthWorkflowProperties properties) {
@@ -316,7 +317,7 @@ public class ForgotPasswordApplicationConfig {
       ForgotPasswordUnderLockDetailsVerifier details,
       OtpChallengePort otp,
       MessageDeliveryPort delivery,
-      ForgotPasswordDestinationMasker masker,
+      MaskingService masker,
       ForgotPasswordOtpSessionBindingPort binding,
       com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort commitStates,
       ForgotPasswordOtpCommitRetentionPolicy retention,
@@ -418,11 +419,6 @@ public class ForgotPasswordApplicationConfig {
   }
 
   @Bean
-  public ForgotPasswordDestinationMasker forgotPasswordDestinationMasker() {
-    return new ForgotPasswordDestinationMasker();
-  }
-
-  @Bean
   public ForgotPasswordCancelWebMapper forgotPasswordCancelWebMapper() {
     return new ForgotPasswordCancelWebMapper();
   }
@@ -455,7 +451,7 @@ public class ForgotPasswordApplicationConfig {
       OtpChallengePort otp,
       OtpChallengeStatePort challengeState,
       MessageDeliveryPort delivery,
-      ForgotPasswordDestinationMasker masker,
+      MaskingService masker,
       com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort commitStates,
       ForgotPasswordOtpCommitRetentionPolicy retention,
       ForgotPasswordOtpReplayResolver replay,

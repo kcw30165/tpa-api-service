@@ -13,6 +13,7 @@ import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.*;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.*;
@@ -35,7 +36,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
   private final OtpChallengePort otp;
   private final OtpChallengeStatePort challengeState;
   private final MessageDeliveryPort delivery;
-  private final ForgotPasswordDestinationMasker masker;
+  private final MaskingService masker;
   private final ForgotPasswordOtpCommitStatePort commitStates;
   private final ForgotPasswordOtpCommitRetentionPolicy retention;
   private final ForgotPasswordOtpTemplates templates;
@@ -57,7 +58,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
       OtpChallengePort otp,
       OtpChallengeStatePort challengeState,
       MessageDeliveryPort delivery,
-      ForgotPasswordDestinationMasker masker,
+      MaskingService masker,
       ForgotPasswordOtpCommitStatePort commitStates,
       ForgotPasswordOtpCommitRetentionPolicy retention,
       ForgotPasswordOtpTemplates templates,
@@ -201,7 +202,9 @@ public final class ForgotPasswordOtpResendProtectedOperation {
         || blank(context.protectedDestination())
         || blank(context.maskedDestination())
         || !Objects.equals(
-            masker.mask(context.contactChannel(), context.protectedDestination()),
+            "email".equalsIgnoreCase(context.contactChannel())
+                ? masker.maskEmail(context.protectedDestination())
+                : masker.maskMobile(context.protectedDestination()),
             context.maskedDestination())
         || !Objects.equals(session.data().maskedDestination(), context.maskedDestination())) {
       return Mono.just(

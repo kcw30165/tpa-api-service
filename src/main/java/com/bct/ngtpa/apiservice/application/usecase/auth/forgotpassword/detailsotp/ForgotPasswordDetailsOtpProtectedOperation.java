@@ -30,7 +30,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBin
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsStatus;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordDestinationMasker;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpBindingCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitState;
@@ -57,7 +57,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
   private final ForgotPasswordUnderLockDetailsVerifier details;
   private final OtpChallengePort otp;
   private final MessageDeliveryPort delivery;
-  private final ForgotPasswordDestinationMasker masker;
+  private final MaskingService masker;
   private final ForgotPasswordOtpSessionBindingPort binding;
   private final ForgotPasswordOtpCommitStatePort commitStates;
   private final ForgotPasswordOtpCommitRetentionPolicy retention;
@@ -73,7 +73,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
       ForgotPasswordUnderLockDetailsVerifier details,
       OtpChallengePort otp,
       MessageDeliveryPort delivery,
-      ForgotPasswordDestinationMasker masker,
+      MaskingService masker,
       ForgotPasswordOtpSessionBindingPort binding,
       ForgotPasswordOtpCommitStatePort commitStates,
       ForgotPasswordOtpCommitRetentionPolicy retention,
@@ -211,7 +211,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
             challenge.otpChallengeId(),
             channel,
             destination,
-            masker.mask(channel, destination),
+            "email".equals(channel) ? masker.maskEmail(destination) : masker.maskMobile(destination),
             challenge.expiresAt(),
             now.plusSeconds(60),
             now);
@@ -242,7 +242,9 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                                   new ForgotPasswordDetailsOtpProtectedExecutionResult(
                                       new ForgotPasswordDetailsOtpResult(
                                           ForgotPasswordDetailsOtpResult.Status.SUCCESS,
-                                          masker.mask(channel, destination),
+                                          "email".equals(channel)
+                                              ? masker.maskEmail(destination)
+                                              : masker.maskMobile(destination),
                                           challenge.expiresInSeconds(),
                                           60,
                                           List.of()),
