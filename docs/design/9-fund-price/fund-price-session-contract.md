@@ -43,6 +43,8 @@ The new port adds an equivalent opaque revision component to the authenticated-s
 
 It must not reuse the existing CSRF-specific compare-and-set port (`AuthenticatedSessionCsrfRotationPort` / `AuthenticatedLoginReplaySessionPort`) for Fund Price. That existing port and its consumer (`AuthenticatedSessionCsrfRefreshService`) are left unchanged and are not refactored onto the new generic port in this delivery, to avoid regression risk to working login code. Fund Price mode-metadata caching is the first consumer of the new generic revision-based port; future single-field authenticated-session updates should reuse it rather than introduce another feature-specific CAS mechanism.
 
+Because this project is under active development, no `AuthFlowSession`-style legacy-revision-initialization mechanism is required for the new port. There is no pre-existing authenticated-session data whose absent revision field needs graceful migration, so the port does not need a second CAS script, a mutation lock, or a startup compatibility gate analogous to `AuthFlowSessionPersistenceCompatibilityState`. A session record found with a missing or malformed revision fails the mutation closed with a generic system-failure outcome rather than being adopted on first write. All `AuthenticatedSession` creation paths must be updated to stamp an initial revision at creation time, so no session reachable through normal application flow is ever missing one.
+
 ## No hidden refresh
 
 Price and export endpoints do not silently call the mode operation. Missing or stale metadata requires FE to reload the page/mode endpoint or receives the approved system failure according to the final web policy.
