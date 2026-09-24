@@ -28,10 +28,13 @@ Sources:
 {
   "mode": "DAILY",
   "fund-price-type": "BIDOFFER PRICE",
-  "available-fund-price-dates": ["18/09/2026", "18/05/2026"],
-  "maximum-fund-price-history-months": 36
+  "maximum-fund-price-history-months": 36,
+  "max-risk-level": "5",
+  "available-fund-price-dates": ["18/09/2026", "18/05/2026"]
 }
 ```
+
+`max-risk-level` is a string holding a floating-point value (e.g. `"5"`, `"0.5"`), a sibling field of `mode`/`fund-price-type`/`maximum-fund-price-history-months`/`available-fund-price-dates` on the same data item. It is deliberately NOT validated: a blank or absent value is legitimate and does not fail the mode fetch, unlike the other four fields. Java caches it verbatim in the authenticated session at mode-fetch time. On a later `GET ?date=` response, Java echoes the cached `max-risk-level` to FE only when that specific response's fund array carries a `risk-level` field on at least one fund; if no fund in that response has a risk level, `max-risk-level` is omitted from that response regardless of what is cached.
 
 Validation requires one data item, a supported nonblank mode, a supported nonblank fund-price-type (BIDOFFER PRICE or UNIT PRICE), positive maximum months, and strictly parseable available dates. Available dates use the same dd/MM/yyyy full-date format as the FE/downstream request format; it is not an independently configured pattern.
 

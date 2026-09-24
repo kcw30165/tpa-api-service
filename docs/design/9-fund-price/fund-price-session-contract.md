@@ -45,6 +45,37 @@ It must not reuse the existing CSRF-specific compare-and-set port (`Authenticate
 
 Because this project is under active development, no `AuthFlowSession`-style legacy-revision-initialization mechanism is required for the new port. There is no pre-existing authenticated-session data whose absent revision field needs graceful migration, so the port does not need a second CAS script, a mutation lock, or a startup compatibility gate analogous to `AuthFlowSessionPersistenceCompatibilityState`. A session record found with a missing or malformed revision fails the mutation closed with a generic system-failure outcome rather than being adopted on first write. All `AuthenticatedSession` creation paths must be updated to stamp an initial revision at creation time, so no session reachable through normal application flow is ever missing one.
 
+## Cached field revision (2026-09-24 correction)
+
+The cached authenticated-session mode metadata is corrected to the following five
+mode-derived scalars only: `mode`, `fundPriceType`, `availableFundPriceDates`,
+`maximumFundPriceHistoryMonths`, `maxRiskLevel`.
+
+`accountRef`, `accountEnv`, `policyNo`, and `referenceDate` are explicitly REMOVED from
+the cached field list. They are resolver-backed and must not be duplicated in session
+state: `accountEnv`/`policyNo` resolve fresh on every request via
+`CurrentPortalAccessContextResolver.current().account()`, and `referenceDate` resolves
+fresh via `ReferenceDatePort.resolveReferenceDate(accountEnv)`. There is no
+account/environment/policy binding check on the cached mode metadata, because nothing is
+bound -- the four fields that would have required binding validation no longer live in
+the session.
+
+`maxRiskLevel` is the new fifth field, a string holding a floating-point value (e.g.
+`"5"`, `"0.5"`) sourced from `TRPGetFundPriceMode`'s `max-risk-level` field. Like its
+downstream source, it is never validated by Java; blank or absent is legitimate.
+
+### Mutation mechanism (confirmed)
+
+The generic `AuthenticatedSessionCasUpdatePort` (docs/capabilities -- see the port's own
+Javadoc) is wrapped by a new concurrency service, structurally analogous to
+`AuthFlowSessionConcurrencyService`, using the same `Retry.backoff(2,
+Duration.ofMillis(10))` pattern on revision-conflict outcomes. This is a new service, not
+a reuse of `AuthFlowSessionConcurrencyService` itself, which is hard-wired to
+`AuthFlowSessionPort` and cannot operate on `AuthenticatedSession`. The Fund Price mode
+use case is the first caller of this new service; it is written generically so future
+authenticated-session mutations can reuse it rather than re-implementing retry-on-conflict
+per feature.
+
 ## No hidden refresh
 
 Price and export endpoints do not silently call the mode operation. Missing or stale metadata requires FE to reload the page/mode endpoint or receives the approved system failure according to the final web policy.
