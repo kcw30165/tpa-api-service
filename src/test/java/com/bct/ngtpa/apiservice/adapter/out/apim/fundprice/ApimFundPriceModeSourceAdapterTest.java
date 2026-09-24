@@ -68,7 +68,7 @@ class ApimFundPriceModeSourceAdapterTest {
 
   private TrpGetFundPriceModeApimDataItem validItem() {
     return new TrpGetFundPriceModeApimDataItem(
-        "DAILY", "BIDOFFER PRICE", List.of("18/09/2026", "18/05/2026"), 36);
+        "DAILY", "BIDOFFER PRICE", List.of("18/09/2026", "18/05/2026"), 36, null);
   }
 
   // ----- exact ApimExchangeRequest captured -----------------------------------
@@ -117,7 +117,7 @@ class ApimFundPriceModeSourceAdapterTest {
   @Test
   void unitPriceFundPriceTypeIsAccepted() {
     var item =
-        new TrpGetFundPriceModeApimDataItem("MONTHLY", "UNIT PRICE", List.of("18/09/2026"), 12);
+        new TrpGetFundPriceModeApimDataItem("MONTHLY", "UNIT PRICE", List.of("18/09/2026"), 12, null);
     doReturn(Mono.just(envelopeWith("", List.of(item)))).when(executor).postEnvelope(any());
 
     StepVerifier.create(adapter.fetchMode(command()))
@@ -167,7 +167,7 @@ class ApimFundPriceModeSourceAdapterTest {
 
   @Test
   void blankModeFailsClosed() {
-    var item = new TrpGetFundPriceModeApimDataItem("", "BIDOFFER PRICE", List.of("18/09/2026"), 36);
+    var item = new TrpGetFundPriceModeApimDataItem("", "BIDOFFER PRICE", List.of("18/09/2026"), 36, null);
     doReturn(Mono.just(envelopeWith("", List.of(item)))).when(executor).postEnvelope(any());
 
     StepVerifier.create(adapter.fetchMode(command()))
@@ -180,7 +180,7 @@ class ApimFundPriceModeSourceAdapterTest {
     // Contract: Java has approved interpretation only for DAILY and MONTHLY. Java must not
     // invent WEEKLY behavior -- an unrecognized mode is an invalid downstream contract.
     var item =
-        new TrpGetFundPriceModeApimDataItem("WEEKLY", "BIDOFFER PRICE", List.of("18/09/2026"), 36);
+        new TrpGetFundPriceModeApimDataItem("WEEKLY", "BIDOFFER PRICE", List.of("18/09/2026"), 36, null);
     doReturn(Mono.just(envelopeWith("", List.of(item)))).when(executor).postEnvelope(any());
 
     StepVerifier.create(adapter.fetchMode(command()))
@@ -190,7 +190,7 @@ class ApimFundPriceModeSourceAdapterTest {
 
   @Test
   void blankFundPriceTypeFailsClosed() {
-    var item = new TrpGetFundPriceModeApimDataItem("DAILY", "", List.of("18/09/2026"), 36);
+    var item = new TrpGetFundPriceModeApimDataItem("DAILY", "", List.of("18/09/2026"), 36, null);
     doReturn(Mono.just(envelopeWith("", List.of(item)))).when(executor).postEnvelope(any());
 
     StepVerifier.create(adapter.fetchMode(command()))
@@ -201,7 +201,7 @@ class ApimFundPriceModeSourceAdapterTest {
   @Test
   void unsupportedFundPriceTypeFailsClosed() {
     var item =
-        new TrpGetFundPriceModeApimDataItem("DAILY", "SOMETHING_ELSE", List.of("18/09/2026"), 36);
+        new TrpGetFundPriceModeApimDataItem("DAILY", "SOMETHING_ELSE", List.of("18/09/2026"), 36, null);
     doReturn(Mono.just(envelopeWith("", List.of(item)))).when(executor).postEnvelope(any());
 
     StepVerifier.create(adapter.fetchMode(command()))
@@ -212,7 +212,7 @@ class ApimFundPriceModeSourceAdapterTest {
   @Test
   void zeroMaximumHistoryMonthsFailsClosed() {
     var item =
-        new TrpGetFundPriceModeApimDataItem("DAILY", "BIDOFFER PRICE", List.of("18/09/2026"), 0);
+        new TrpGetFundPriceModeApimDataItem("DAILY", "BIDOFFER PRICE", List.of("18/09/2026"), 0, null);
     doReturn(Mono.just(envelopeWith("", List.of(item)))).when(executor).postEnvelope(any());
 
     StepVerifier.create(adapter.fetchMode(command()))
@@ -223,7 +223,7 @@ class ApimFundPriceModeSourceAdapterTest {
   @Test
   void negativeMaximumHistoryMonthsFailsClosed() {
     var item =
-        new TrpGetFundPriceModeApimDataItem("DAILY", "BIDOFFER PRICE", List.of("18/09/2026"), -1);
+        new TrpGetFundPriceModeApimDataItem("DAILY", "BIDOFFER PRICE", List.of("18/09/2026"), -1, null);
     doReturn(Mono.just(envelopeWith("", List.of(item)))).when(executor).postEnvelope(any());
 
     StepVerifier.create(adapter.fetchMode(command()))
@@ -235,7 +235,7 @@ class ApimFundPriceModeSourceAdapterTest {
   void unparseableAvailableDateFailsClosed() {
     var item =
         new TrpGetFundPriceModeApimDataItem(
-            "DAILY", "BIDOFFER PRICE", List.of("2026-09-18"), 36); // wrong format on purpose
+            "DAILY", "BIDOFFER PRICE", List.of("2026-09-18"), 36, null); // wrong format on purpose
     doReturn(Mono.just(envelopeWith("", List.of(item)))).when(executor).postEnvelope(any());
 
     StepVerifier.create(adapter.fetchMode(command()))
@@ -247,7 +247,7 @@ class ApimFundPriceModeSourceAdapterTest {
   void blankAvailableDateEntryFailsClosed() {
     var item =
         new TrpGetFundPriceModeApimDataItem(
-            "DAILY", "BIDOFFER PRICE", java.util.Arrays.asList("18/09/2026", ""), 36);
+            "DAILY", "BIDOFFER PRICE", java.util.Arrays.asList("18/09/2026", ""), 36, null);
     doReturn(Mono.just(envelopeWith("", List.of(item)))).when(executor).postEnvelope(any());
 
     StepVerifier.create(adapter.fetchMode(command()))
@@ -257,7 +257,7 @@ class ApimFundPriceModeSourceAdapterTest {
 
   @Test
   void emptyAvailableDatesListFailsClosed() {
-    var item = new TrpGetFundPriceModeApimDataItem("DAILY", "BIDOFFER PRICE", List.of(), 36);
+    var item = new TrpGetFundPriceModeApimDataItem("DAILY", "BIDOFFER PRICE", List.of(), 36, null);
     doReturn(Mono.just(envelopeWith("", List.of(item)))).when(executor).postEnvelope(any());
 
     StepVerifier.create(adapter.fetchMode(command()))

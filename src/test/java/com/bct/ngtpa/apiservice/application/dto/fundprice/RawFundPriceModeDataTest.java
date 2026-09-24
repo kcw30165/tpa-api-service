@@ -16,28 +16,28 @@ class RawFundPriceModeDataTest {
 
   @Test
   void nullAvailableFundPriceDatesDefaultsToEmptyList() {
-    var data = new RawFundPriceModeData("DAILY", "BIDOFFER PRICE", null, 36);
+    var data = new RawFundPriceModeData("DAILY", "BIDOFFER PRICE", null, 36, null);
     assertThat(data.availableFundPriceDates()).isEmpty();
   }
 
   @Test
   void nonNullAvailableFundPriceDatesIsCopiedVerbatim() {
     var dates = List.of(LocalDate.of(2026, 9, 18), LocalDate.of(2026, 5, 18));
-    var data = new RawFundPriceModeData("DAILY", "BIDOFFER PRICE", dates, 36);
+    var data = new RawFundPriceModeData("DAILY", "BIDOFFER PRICE", dates, 36, null);
     assertThat(data.availableFundPriceDates()).containsExactlyElementsOf(dates);
   }
 
   @Test
   void nullModeThrows() {
     assertThatThrownBy(
-            () -> new RawFundPriceModeData(null, "BIDOFFER PRICE", List.of(), 36))
+            () -> new RawFundPriceModeData(null, "BIDOFFER PRICE", List.of(), 36, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("mode");
   }
 
   @Test
   void nullFundPriceTypeThrows() {
-    assertThatThrownBy(() -> new RawFundPriceModeData("DAILY", null, List.of(), 36))
+    assertThatThrownBy(() -> new RawFundPriceModeData("DAILY", null, List.of(), 36, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("fundPriceType");
   }

@@ -26,7 +26,7 @@ class FundPriceModeApimContentValidatorTest {
 
   private static TrpGetFundPriceModeApimDataItem item(
       String mode, String fundPriceType, List<String> dates, int maxMonths) {
-    return new TrpGetFundPriceModeApimDataItem(mode, fundPriceType, dates, maxMonths);
+    return new TrpGetFundPriceModeApimDataItem(mode, fundPriceType, dates, maxMonths, null);
   }
 
   // ----- requireSingleItem: the null-item-within-a-non-null-list branch -------

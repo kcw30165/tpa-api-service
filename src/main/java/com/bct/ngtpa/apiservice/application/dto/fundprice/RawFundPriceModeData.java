@@ -11,12 +11,18 @@ import java.util.Objects;
  * <p>{@code mode} is either {@code "DAILY"} or {@code "MONTHLY"} (contract: "Java has approved
  * interpretation only for DAILY and MONTHLY... must not invent WEEKLY behavior"). {@code
  * fundPriceType} is either {@code "BIDOFFER PRICE"} or {@code "UNIT PRICE"}.
+ *
+ * <p>{@code maxRiskLevel} is carried verbatim from the downstream response and is deliberately
+ * NOT validated or defaulted here: {@code null} and blank are both legitimate values, per
+ * fund-price-apim-contract.md. Appended last to preserve the original field order and every
+ * existing construction call site.
  */
 public record RawFundPriceModeData(
     String mode,
     String fundPriceType,
     List<LocalDate> availableFundPriceDates,
-    int maximumFundPriceHistoryMonths) {
+    int maximumFundPriceHistoryMonths,
+    String maxRiskLevel) {
 
   public RawFundPriceModeData {
     Objects.requireNonNull(mode, "mode must not be null");

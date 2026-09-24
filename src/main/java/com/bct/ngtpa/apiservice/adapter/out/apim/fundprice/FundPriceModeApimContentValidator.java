@@ -13,6 +13,10 @@ import java.util.List;
  *
  * <p>Every invalid-downstream-contract case here fails closed with the single generic {@link
  * FundPriceRetrievalException}, per fund-price-error-matrix.md's session/contract error section.
+ *
+ * <p>{@code maxRiskLevel} is deliberately EXCLUDED from validation: it is carried straight through
+ * to {@link RawFundPriceModeData} regardless of whether it is present, blank, or absent, per
+ * fund-price-apim-contract.md.
  */
 final class FundPriceModeApimContentValidator {
 
@@ -52,7 +56,7 @@ final class FundPriceModeApimContentValidator {
     List<LocalDate> parsed =
         rawDates.stream().map(raw -> parseStrict(raw, formatter)).toList();
     return new RawFundPriceModeData(
-        mode, fundPriceType, parsed, item.maximumFundPriceHistoryMonths());
+        mode, fundPriceType, parsed, item.maximumFundPriceHistoryMonths(), item.maxRiskLevel());
   }
 
   private static LocalDate parseStrict(String raw, DateTimeFormatter formatter) {
