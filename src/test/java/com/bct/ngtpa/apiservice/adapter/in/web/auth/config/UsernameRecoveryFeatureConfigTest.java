@@ -38,6 +38,8 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authflow.SecureRando
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.config.UsernameRecoveryFeatureConfig;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -98,7 +100,8 @@ class UsernameRecoveryFeatureConfigTest {
             UsernameRecoveryEffectiveDestinationPort.class,
             () -> mock(UsernameRecoveryEffectiveDestinationPort.class))
         .withBean(AuthWorkflowProperties.class, UsernameRecoveryFeatureConfigTest::validProperties)
-        .withBean(CorsProperties.class, CorsProperties::new);
+        .withBean(CorsProperties.class, CorsProperties::new)
+        .withBean(MaskingService.class, () -> new MaskingService(new MaskingProperties()));
   }
 
   @Test
