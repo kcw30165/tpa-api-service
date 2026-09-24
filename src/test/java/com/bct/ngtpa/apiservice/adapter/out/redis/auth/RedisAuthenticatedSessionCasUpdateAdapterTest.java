@@ -20,6 +20,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionJsonMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
@@ -191,6 +194,73 @@ class RedisAuthenticatedSessionCasUpdateAdapterTest {
             .map(java.lang.reflect.Method::getName)
             .toList();
     assertThat(methodNames).doesNotContain("initializeLegacyRevision", "initializeLegacy");
+  }
+
+  // ---- coverage closure (script 063): serialization must be a REAL envelope,
+  // not the placeholder (session ID only) confirmed still present in script 062 ----
+
+  @Test
+  void replacementValueIsARealSerializedEnvelopeNotABarePlaceholder() {
+    stubScriptResult(1L);
+    ArgumentCaptor<List<String>> argsCaptor = ArgumentCaptor.forClass(List.class);
+    newAdapter().updateIfCurrent(command()).block();
+    org.mockito.Mockito.verify(redis)
+        .execute(any(DefaultRedisScript.class), anyList(), argsCaptor.capture());
+
+    String serialized = argsCaptor.getValue().get(1);
+    // A bare session ID is not valid JSON; a real envelope must parse cleanly.
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode node;
+    try {
+      node = mapper.readTree(serialized);
+    } catch (Exception e) {
+      throw new AssertionError(
+          "replacement value must be a JSON envelope, but failed to parse: " + serialized, e);
+    }
+    assertThat(node.has("authenticatedSessionId")).isTrue();
+    assertThat(node.has("data")).isTrue();
+    assertThat(node.get("authenticatedSessionId").asText()).isNotEqualTo(serialized);
+  }
+
+  @Test
+  void replacementValueStampsTheReplacementRevisionNotTheSessionsOriginalRevision() {
+    stubScriptResult(1L);
+    ArgumentCaptor<List<String>> argsCaptor = ArgumentCaptor.forClass(List.class);
+    newAdapter().updateIfCurrent(command()).block();
+    org.mockito.Mockito.verify(redis)
+        .execute(any(DefaultRedisScript.class), anyList(), argsCaptor.capture());
+
+    String serialized = argsCaptor.getValue().get(1);
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode node;
+    try {
+      node = mapper.readTree(serialized);
+    } catch (Exception e) {
+      throw new AssertionError("replacement value must be parseable JSON: " + serialized, e);
+    }
+
+    // command() below builds protectedSession() carrying EXPECTED's revision value
+    // internally (see the fixture), but the command's own replacementRevision is
+    // REPLACEMENT. The serialized sessionRevision must reflect REPLACEMENT, proving
+    // the adapter reconciles the two rather than blindly re-serializing whatever
+    // revision happened to already be on replacementProtectedSession().
+    assertThat(node.get("sessionRevision").asText()).isEqualTo(REPLACEMENT.value());
+  }
+
+  @Test
+  void replacementValueRoundTripsThroughTheRealJsonMapper() {
+    stubScriptResult(1L);
+    ArgumentCaptor<List<String>> argsCaptor = ArgumentCaptor.forClass(List.class);
+    newAdapter().updateIfCurrent(command()).block();
+    org.mockito.Mockito.verify(redis)
+        .execute(any(DefaultRedisScript.class), anyList(), argsCaptor.capture());
+
+    String serialized = argsCaptor.getValue().get(1);
+    var roundTripped = new RedisAuthenticatedSessionJsonMapper().fromJson(serialized);
+
+    assertThat(roundTripped.authenticatedSessionId()).isEqualTo(ID.value());
+    assertThat(roundTripped.sessionRevision()).isEqualTo(REPLACEMENT);
+    assertThat(roundTripped.ciphertext()).isEqualTo("c");
   }
 
   // ----- correlation id never sent to Redis (no leakage into keys/values) ------

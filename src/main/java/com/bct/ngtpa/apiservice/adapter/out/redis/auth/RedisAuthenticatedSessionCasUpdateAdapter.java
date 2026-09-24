@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionCasUpdateCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionCasUpdateOutcome;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionCasUpdateResult;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSession;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionCasUpdatePort;
 import java.util.List;
 import java.util.Objects;
@@ -34,11 +35,20 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
 
   private final ReactiveStringRedisTemplate redis;
   private final RedisCacheKeyFactory keys;
+  private final RedisAuthenticatedSessionJsonMapper jsonMapper;
 
   public RedisAuthenticatedSessionCasUpdateAdapter(
       ReactiveStringRedisTemplate redis, RedisCacheKeyFactory keys) {
+    this(redis, keys, new RedisAuthenticatedSessionJsonMapper());
+  }
+
+  RedisAuthenticatedSessionCasUpdateAdapter(
+      ReactiveStringRedisTemplate redis,
+      RedisCacheKeyFactory keys,
+      RedisAuthenticatedSessionJsonMapper jsonMapper) {
     this.redis = Objects.requireNonNull(redis, "redis must not be null");
     this.keys = Objects.requireNonNull(keys, "keys must not be null");
+    this.jsonMapper = Objects.requireNonNull(jsonMapper, "jsonMapper must not be null");
   }
 
   @Override
@@ -62,12 +72,29 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
   }
 
   /**
-   * Placeholder serialization hook. The full session-JSON-plus-revision serialization is owned by
-   * the caller's JSON mapper in a later stage (the mode-metadata session mutation service); this
-   * adapter's own responsibility is strictly the CAS primitive.
+   * Builds the real JSON envelope to store, reconciling the replacement session with the
+   * command's authoritative replacement revision.
+   *
+   * <p>The caller-supplied {@code replacementProtectedSession()} may already carry a
+   * {@code sessionRevision} value (for example, if it was built by copying the currently loaded
+   * session before the new revision was known). This method does not trust that value: it always
+   * rebuilds the envelope with {@code command.replacementRevision()} as the stored revision,
+   * copying every other field verbatim, so the value actually written to Redis matches the
+   * command's own explicit intent rather than whatever happened to already be on the object.
    */
   private String serializedReplacementWithRevision(AuthenticatedSessionCasUpdateCommand command) {
-    return command.replacementProtectedSession().authenticatedSessionId();
+    ProtectedAuthenticatedSession source = command.replacementProtectedSession();
+    ProtectedAuthenticatedSession reconciled =
+        new ProtectedAuthenticatedSession(
+            source.authenticatedSessionId(),
+            source.status(),
+            source.data(),
+            source.createdAt(),
+            source.updatedAt(),
+            source.idleExpiresAt(),
+            source.absoluteExpiresAt(),
+            command.replacementRevision());
+    return jsonMapper.toJson(reconciled);
   }
 
   private static AuthenticatedSessionCasUpdateOutcome mapCode(Long code) {
