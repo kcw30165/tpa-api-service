@@ -143,7 +143,8 @@ class AuthenticatedSessionLifecycleServiceTest {
         last,
         idle,
         absolute,
-        new SessionRevision("0".repeat(32)));
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 
   static final class Fixture {

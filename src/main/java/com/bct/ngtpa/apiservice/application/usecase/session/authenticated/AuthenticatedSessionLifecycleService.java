@@ -92,7 +92,8 @@ public final class AuthenticatedSessionLifecycleService
                   now,
                   idle,
                   absolute,
-                  revisions.generate());
+                  revisions.generate(),
+                  null);
           return port.store(
                   new StoreAuthenticatedSessionCommand(
                       session.authenticatedSessionId(),
@@ -240,7 +241,8 @@ public final class AuthenticatedSessionLifecycleService
         lastAccessedAt,
         idleExpiresAt,
         source.absoluteExpiresAt(),
-        source.revision());
+        source.revision(),
+        source.fundPriceModeMetadata());
   }
 
   private AuthenticatedSessionLifecycleStatus lifecycleStatus(AuthenticatedSessionStatus status) {

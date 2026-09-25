@@ -81,6 +81,7 @@ class AuthenticatedSessionHybridEnvelopeTest {
         Instant.parse("2026-01-01T00:01:00Z"),
         Instant.parse("2026-01-01T00:16:00Z"),
         Instant.parse("2026-01-01T08:00:00Z"),
-        new SessionRevision("0".repeat(32)));
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 }

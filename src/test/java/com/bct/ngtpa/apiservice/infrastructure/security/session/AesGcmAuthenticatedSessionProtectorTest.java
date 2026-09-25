@@ -134,6 +134,7 @@ class AesGcmAuthenticatedSessionProtectorTest {
         now,
         now.plusSeconds(1800),
         now.plusSeconds(28800),
-        new SessionRevision("0".repeat(32)));
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 }

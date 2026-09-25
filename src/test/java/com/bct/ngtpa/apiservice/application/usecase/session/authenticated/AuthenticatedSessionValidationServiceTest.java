@@ -28,7 +28,8 @@ class AuthenticatedSessionValidationServiceTest {
             Instant.EPOCH,
             Instant.EPOCH.plusSeconds(300),
             Instant.EPOCH.plusSeconds(900),
-            new SessionRevision("0".repeat(32)));
+            new SessionRevision("0".repeat(32)),
+            null);
     var service =
         new AuthenticatedSessionValidationService(
             command -> Mono.just(AuthenticatedSessionLifecycleResult.active(session)), hasher);

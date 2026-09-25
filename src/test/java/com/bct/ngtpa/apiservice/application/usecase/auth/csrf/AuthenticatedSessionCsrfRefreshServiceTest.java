@@ -81,7 +81,8 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
         NOW.minusSeconds(60),
         NOW.plusSeconds(1800),
         NOW.plusSeconds(3600),
-        new SessionRevision("0".repeat(32)));
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 
   private void givenUnprotectedSessionUsable() {
@@ -138,7 +139,8 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
             NOW.minusSeconds(60),
             NOW.plusSeconds(1800),
             NOW.plusSeconds(3600),
-            new SessionRevision("0".repeat(32)));
+            new SessionRevision("0".repeat(32)),
+            null);
     when(protector.unprotect(any())).thenReturn(revoked);
     StepVerifier.create(newService().refresh(sid.value(), "req-1"))
         .assertNext(
@@ -160,7 +162,8 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
             NOW.minusSeconds(3540),
             NOW.minusSeconds(1),
             NOW.plusSeconds(3600),
-            new SessionRevision("0".repeat(32)));
+            new SessionRevision("0".repeat(32)),
+            null);
     when(protector.unprotect(any())).thenReturn(almostExpired);
     StepVerifier.create(newService().refresh(sid.value(), "req-1"))
         .assertNext(

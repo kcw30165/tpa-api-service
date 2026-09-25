@@ -40,7 +40,8 @@ class AuthenticatedSessionConcurrencyResultTest {
         NOW.minusSeconds(60),
         NOW.plusSeconds(900),
         NOW.plusSeconds(28800),
-        new SessionRevision("a".repeat(32)));
+        new SessionRevision("a".repeat(32)),
+        null);
   }
 
   // ----- constructor: valid combinations -----

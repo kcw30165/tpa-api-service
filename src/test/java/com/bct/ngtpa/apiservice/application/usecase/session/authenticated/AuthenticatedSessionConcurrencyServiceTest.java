@@ -78,7 +78,8 @@ class AuthenticatedSessionConcurrencyServiceTest {
         NOW.minusSeconds(60),
         NOW.plusSeconds(900),
         NOW.plusSeconds(28800),
-        revision);
+        revision,
+        null);
   }
 
   private static UnaryOperator<AuthenticatedSession> markingMutator(List<String> observedInputs) {
@@ -94,7 +95,8 @@ class AuthenticatedSessionConcurrencyServiceTest {
           current.lastAccessedAt(),
           current.idleExpiresAt(),
           current.absoluteExpiresAt(),
-          current.revision());
+          current.revision(),
+          null);
     };
   }
 
@@ -149,7 +151,8 @@ class AuthenticatedSessionConcurrencyServiceTest {
             NOW.minusSeconds(3600),
             NOW.minusSeconds(1), // idle-expired
             NOW.plusSeconds(28800),
-            revision);
+            revision,
+            null);
     sessionPort.enqueueLoad(protector.protect(expired));
 
     var result = newService().updateIfUsable(ID, UnaryOperator.identity(), "req-1").block();

@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedAccountRef;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceModeSessionMetadata;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionAccount;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSession;
@@ -189,13 +190,15 @@ public final class AesGcmAuthenticatedSessionProtector
       String actorUserId,
       ActorUserRole actorUserRole,
       List<WireAccount> accounts,
-      String csrfTokenHash) {
+      String csrfTokenHash,
+      FundPriceModeSessionMetadata fundPriceModeSessionMetadata) {
     static SensitiveContext from(AuthenticatedSession session) {
       return new SensitiveContext(
           session.actorContext().actorUserId(),
           session.actorContext().actorUserRole(),
           session.accounts().stream().map(WireAccount::from).toList(),
-          session.csrfTokenHash());
+          session.csrfTokenHash(),
+          session.fundPriceModeMetadata());
     }
 
     AuthenticatedSession toDomain(ProtectedAuthenticatedSession envelope) {
@@ -209,7 +212,8 @@ public final class AesGcmAuthenticatedSessionProtector
           envelope.updatedAt(),
           envelope.idleExpiresAt(),
           envelope.absoluteExpiresAt(),
-          envelope.sessionRevision());
+          envelope.sessionRevision(),
+          fundPriceModeSessionMetadata);
     }
   }
 

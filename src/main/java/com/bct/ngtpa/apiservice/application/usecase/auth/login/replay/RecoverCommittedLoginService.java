@@ -101,7 +101,8 @@ public final class RecoverCommittedLoginService
             session.lastAccessedAt(),
             session.idleExpiresAt(),
             session.absoluteExpiresAt(),
-            session.revision());
+            session.revision(),
+            session.fundPriceModeMetadata());
     Instant expiry =
         session.idleExpiresAt().isBefore(session.absoluteExpiresAt())
             ? session.idleExpiresAt()

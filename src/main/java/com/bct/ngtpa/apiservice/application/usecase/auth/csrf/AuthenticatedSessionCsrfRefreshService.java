@@ -125,7 +125,8 @@ public final class AuthenticatedSessionCsrfRefreshService {
             current.lastAccessedAt(),
             current.idleExpiresAt(),
             current.absoluteExpiresAt(),
-            current.revision());
+            current.revision(),
+            current.fundPriceModeMetadata());
 
     Instant effectiveExpiry =
         current.idleExpiresAt().isBefore(current.absoluteExpiresAt())

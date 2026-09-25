@@ -38,7 +38,8 @@ class AuthenticatedSessionRevisionFieldTest {
         NOW,
         NOW.plusSeconds(1800),
         NOW.plusSeconds(28800),
-        revision);
+        revision,
+        null);
   }
 
   @Test

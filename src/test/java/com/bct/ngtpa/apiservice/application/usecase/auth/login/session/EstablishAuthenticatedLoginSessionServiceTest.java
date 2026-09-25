@@ -84,7 +84,8 @@ class EstablishAuthenticatedLoginSessionServiceTest {
                   Instant.EPOCH,
                   Instant.EPOCH.plusSeconds(10),
                   Instant.EPOCH.plusSeconds(20),
-                  new SessionRevision("0".repeat(32)));
+                  new SessionRevision("0".repeat(32)),
+                  null);
           return Mono.just(AuthenticatedSessionLifecycleResult.active(session));
         };
     DeleteAuthFlowSessionPort cleanup =

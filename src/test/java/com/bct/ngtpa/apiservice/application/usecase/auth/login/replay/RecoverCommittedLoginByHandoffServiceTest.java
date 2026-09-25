@@ -88,7 +88,8 @@ class RecoverCommittedLoginByHandoffServiceTest {
             NOW.minusSeconds(30),
             NOW.plusSeconds(300),
             NOW.plusSeconds(600),
-            new SessionRevision("0".repeat(32)));
+            new SessionRevision("0".repeat(32)),
+            null);
 
     assertFailed(cleaned(NOW.plusSeconds(300)), mismatched);
   }
@@ -190,7 +191,8 @@ class RecoverCommittedLoginByHandoffServiceTest {
         NOW.minusSeconds(30),
         NOW.plusSeconds(300),
         NOW.plusSeconds(600),
-        new SessionRevision("0".repeat(32)));
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 
   private static AuthenticatedSession unusableSession() {
@@ -204,7 +206,8 @@ class RecoverCommittedLoginByHandoffServiceTest {
         NOW.minusSeconds(600),
         NOW.minusSeconds(1),
         NOW.plusSeconds(600),
-        new SessionRevision("0".repeat(32)));
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 
   private static final class Fixture {

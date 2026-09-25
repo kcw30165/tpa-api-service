@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.dto.session.authenticated;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceModeSessionMetadata;
 import java.time.Instant;
 import java.util.*;
 
@@ -11,6 +12,11 @@ import java.util.*;
  * deliberately excludes it from the sensitive encrypted context, mirroring how {@code status} and
  * the lifecycle timestamps are already excluded from encryption today. This class intentionally
  * does not name the concrete protector implementation, which lives outside the application layer.
+ *
+ * <p>{@code fundPriceModeMetadata} is deliberately NULLABLE: a session exists from login onward,
+ * long before any Fund Price interaction, and metadata is present only after the first successful
+ * call to the mode endpoint, per fund-price-session-contract.md's "Compatibility" clause. Unlike
+ * {@code revision}, it IS sensitive data and is persisted inside the encrypted payload.
  */
 public record AuthenticatedSession(
     AuthenticatedSessionId authenticatedSessionId,
@@ -22,7 +28,8 @@ public record AuthenticatedSession(
     Instant lastAccessedAt,
     Instant idleExpiresAt,
     Instant absoluteExpiresAt,
-    SessionRevision revision) {
+    SessionRevision revision,
+    FundPriceModeSessionMetadata fundPriceModeMetadata) {
   public AuthenticatedSession {
     Objects.requireNonNull(authenticatedSessionId);
     Objects.requireNonNull(actorContext);
@@ -69,6 +76,6 @@ public record AuthenticatedSession(
         + idleExpiresAt
         + ", absoluteExpiresAt="
         + absoluteExpiresAt
-        + ", revision=<redacted>]";
+        + ", revision=<redacted>, fundPriceModeMetadata=<redacted>]";
   }
 }

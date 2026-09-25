@@ -85,7 +85,8 @@ class AuthenticatedAccountContextResolverTest {
             NOW,
             NOW.plusSeconds(1800),
             NOW.plusSeconds(28800),
-            new SessionRevision("0".repeat(32)));
+            new SessionRevision("0".repeat(32)),
+            null);
     return AuthenticatedSessionLifecycleResult.active(session);
   }
 }

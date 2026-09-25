@@ -131,7 +131,8 @@ class PortalAccessContextWebFilterTest {
         Instant.EPOCH,
         Instant.EPOCH.plusSeconds(300),
         Instant.EPOCH.plusSeconds(900),
-        new SessionRevision("0".repeat(32)));
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 
   private PortalAccessContext context(String accountRef) {

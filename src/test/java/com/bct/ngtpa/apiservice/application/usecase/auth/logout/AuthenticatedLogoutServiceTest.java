@@ -96,6 +96,7 @@ class AuthenticatedLogoutServiceTest {
         now,
         now.plusSeconds(300),
         now.plusSeconds(300),
-        new SessionRevision("0".repeat(32)));
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 }
