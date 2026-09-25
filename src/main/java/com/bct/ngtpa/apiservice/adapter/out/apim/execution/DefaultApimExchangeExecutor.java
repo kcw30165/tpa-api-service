@@ -5,7 +5,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Objects;
@@ -52,7 +53,7 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
         cryptoService,
         properties,
         new ApimExchangeOutcomeLogger(
-            new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties()),
+            new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())),
             new ObjectMapper()));
   }
 
