@@ -167,3 +167,40 @@ Rationale:
   `masking.logging.sensitive-tokens` during the `LoggingSanitizer`
   integration phase (Phase 3); exact key relocation is confirmed in that
   phase's script, not assumed here.
+
+## 10. Why MaskingService is a concrete class, not an interface
+
+`MaskingService` is deliberately implemented as a single concrete
+`@Component`, with no `MaskingServicePort`/interface counterpart, unlike
+the ports in `application.port.out` (`EmailSenderPort`, `SmsSenderPort`,
+`RegistrationLookupPort`, `FailureEventPort`, `AuthFlowSessionPort`,
+etc.). This was raised explicitly during implementation and confirmed as
+the correct choice, for the following reasons:
+
+1. **No I/O or external-system boundary.** Every real port in this
+   codebase exists because it crosses a boundary to an external system
+   (APIM, SMTP, an SMS gateway, Redis). `MaskingService` is pure,
+   deterministic string transformation with no I/O of any kind - it does
+   not fit the definition of a port.
+2. **Architecturally closer to existing concrete pure-logic classes.**
+   It sits next to `RegistrationContactDeriver`, `CsrfTokenValidationService`,
+   and `OriginRefererValidator` - all concrete, single-implementation,
+   pure business-rule classes already in this codebase - not next to a
+   port.
+3. **Variability is already handled via configuration, not polymorphism.**
+   `MaskingProperties`/YAML already covers every axis of variation this
+   service needs (per-type `enabled` flags, `variable-length` vs
+   `fixed-length` reveal mode, configurable mask characters). An
+   interface would be a second, redundant extension mechanism for a
+   problem configuration already solves.
+4. **No test ever mocks or fakes it.** Across every call site introduced
+   in Phases 2-3b (~20+ locations), every test constructs the real
+   `MaskingService` with a custom `MaskingProperties` instance - never a
+   mock. The primary practical benefit an interface provides (test
+   doubles) is unused in practice.
+5. **The counter-argument (stylistic consistency with the codebase's
+   otherwise-hexagonal port convention) is acknowledged but weighed
+   below YAGNI here**, especially since ~20 call sites already depend on
+   the concrete type directly; retrofitting an interface later would
+   touch all of them for no functional gain, and can still be done then
+   if a genuine second implementation or mocking need ever materializes.
