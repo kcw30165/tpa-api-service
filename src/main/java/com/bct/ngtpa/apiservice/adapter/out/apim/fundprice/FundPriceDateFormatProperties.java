@@ -7,16 +7,15 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Config-backed full-date format for Fund Price FE input, the downstream {@code ref-date}/
- * {@code from-date}/{@code to-date} request fields, and the downstream {@code
- * available-fund-price-dates} response field.
+ * Config-backed full-date format for Fund Price FE input, the downstream {@code ref-date}/ {@code
+ * from-date}/{@code to-date} request fields, and the downstream {@code available-fund-price-dates}
+ * response field.
  *
- * <p>Per docs/design/9-fund-price/fund-price-date-validation-contract.md: "The format patterns
- * must not be embedded as operational Java literals... Available dates returned by
- * TRPGetFundPriceMode use the SAME configured full-date format... It is NOT an independently
- * configured pattern and must not be given its own property." Invalid configuration fails
- * startup, matching the AccountBalanceApimProperties/AccountBalanceApimValidationConfig
- * precedent.
+ * <p>Per docs/design/9-fund-price/fund-price-date-validation-contract.md: "The format patterns must
+ * not be embedded as operational Java literals... Available dates returned by TRPGetFundPriceMode
+ * use the SAME configured full-date format... It is NOT an independently configured pattern and
+ * must not be given its own property." Invalid configuration fails startup, matching the
+ * AccountBalanceApimProperties/AccountBalanceApimValidationConfig precedent.
  */
 @Getter
 @Setter

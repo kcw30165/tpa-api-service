@@ -13,8 +13,8 @@ import java.util.Map;
  *
  * <p>{@code sessionRevision} is a top-level plaintext sibling field, exactly like {@code status}
  * and the lifecycle timestamps -- NOT nested inside {@code data.attributes}. This is the exact
- * field {@code redis/authenticated-session/update-if-current.lua} reads via
- * {@code decoded['sessionRevision']} after a plain {@code cjson.decode} of the stored JSON.
+ * field {@code redis/authenticated-session/update-if-current.lua} reads via {@code
+ * decoded['sessionRevision']} after a plain {@code cjson.decode} of the stored JSON.
  */
 public record ProtectedAuthenticatedSession(
     String authenticatedSessionId,

@@ -23,16 +23,16 @@ import reactor.util.retry.Retry;
  * Generic, reusable reload-per-attempt retry wrapper around {@link
  * AuthenticatedSessionCasUpdatePort}.
  *
- * <p>Mechanism mirrors {@code AuthFlowSessionConcurrencyService} /
- * {@code RevisionAwareAuthFlowSessionWriter}'s proven pattern: the entire load, usability check,
- * mutation, protection, and CAS-write sequence is wrapped in {@code Mono.defer(...)}, so every
- * retry attempt observes freshly reloaded state (and therefore a fresh expected revision) rather
- * than blindly retrying a stale command built from earlier state.
+ * <p>Mechanism mirrors {@code AuthFlowSessionConcurrencyService} / {@code
+ * RevisionAwareAuthFlowSessionWriter}'s proven pattern: the entire load, usability check, mutation,
+ * protection, and CAS-write sequence is wrapped in {@code Mono.defer(...)}, so every retry attempt
+ * observes freshly reloaded state (and therefore a fresh expected revision) rather than blindly
+ * retrying a stale command built from earlier state.
  *
- * <p>Deliberate departures from that precedent: only a genuine revision conflict is retried
- * (other non-{@code APPLIED} CAS outcomes are immediately terminal, since retrying cannot repair
- * them), and this service returns a typed {@link AuthenticatedSessionConcurrencyResult} rather
- * than throwing, for every case the caller is expected to handle.
+ * <p>Deliberate departures from that precedent: only a genuine revision conflict is retried (other
+ * non-{@code APPLIED} CAS outcomes are immediately terminal, since retrying cannot repair them),
+ * and this service returns a typed {@link AuthenticatedSessionConcurrencyResult} rather than
+ * throwing, for every case the caller is expected to handle.
  */
 public final class AuthenticatedSessionConcurrencyService {
 
@@ -56,10 +56,10 @@ public final class AuthenticatedSessionConcurrencyService {
   }
 
   /**
-   * Loads the current session, applies {@code mutator} to it if usable, and writes the
-   * replacement via a compare-and-swap. On a genuine revision conflict, the entire sequence is
-   * retried (up to 2 additional attempts, matching the proven AuthFlowSession backoff) against
-   * freshly reloaded state.
+   * Loads the current session, applies {@code mutator} to it if usable, and writes the replacement
+   * via a compare-and-swap. On a genuine revision conflict, the entire sequence is retried (up to 2
+   * additional attempts, matching the proven AuthFlowSession backoff) against freshly reloaded
+   * state.
    */
   public Mono<AuthenticatedSessionConcurrencyResult> updateIfUsable(
       AuthenticatedSessionId authenticatedSessionId,
@@ -145,14 +145,14 @@ public final class AuthenticatedSessionConcurrencyService {
   }
 
   /**
-   * Reactor's {@code Retry.backoff(...)} does not let the original filtered exception escape
-   * when the retry budget is exhausted: it wraps it in its own {@link
+   * Reactor's {@code Retry.backoff(...)} does not let the original filtered exception escape when
+   * the retry budget is exhausted: it wraps it in its own {@link
    * reactor.core.Exceptions.RetryExhaustedException}, with the original demoted to the cause.
-   * {@link Exceptions#isRetryExhausted(Throwable)} plus a cause check is the correct way to
-   * detect "we retried a revision conflict until the budget ran out" -- checking the top-level
-   * exception's type directly (as a first pass at this method did) never matches, because the
-   * top-level type is always {@code RetryExhaustedException} on exhaustion, never {@link
-   * RevisionConflictSignal} itself.
+   * {@link Exceptions#isRetryExhausted(Throwable)} plus a cause check is the correct way to detect
+   * "we retried a revision conflict until the budget ran out" -- checking the top-level exception's
+   * type directly (as a first pass at this method did) never matches, because the top-level type is
+   * always {@code RetryExhaustedException} on exhaustion, never {@link RevisionConflictSignal}
+   * itself.
    */
   private static boolean isExhaustedRevisionConflict(Throwable error) {
     return Exceptions.isRetryExhausted(error) && error.getCause() instanceof RevisionConflictSignal;

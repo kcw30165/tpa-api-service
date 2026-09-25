@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Fail-first: {@code SessionRevision} does not exist yet at the AuthenticatedSession layer.
  * Deliberately a NEW type, not a reuse of {@code authflow.SessionRevision}, per the generic-port
- * decision recorded in fund-price-session-contract.md -- the two layers must not share a class
- * that would couple AuthFlowSession's package to AuthenticatedSession's.
+ * decision recorded in fund-price-session-contract.md -- the two layers must not share a class that
+ * would couple AuthFlowSession's package to AuthenticatedSession's.
  *
  * <p>Format mirrors the proven {@code authflow.SessionRevision}: 32-character lowercase hex,
  * confirmed in script 043's investigation.
@@ -35,7 +35,8 @@ class SessionRevisionTest {
 
   @Test
   void wrongLengthThrows() {
-    assertThatThrownBy(() -> new SessionRevision("abc")).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new SessionRevision("abc"))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test

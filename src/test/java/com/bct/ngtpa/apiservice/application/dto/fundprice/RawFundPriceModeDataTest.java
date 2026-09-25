@@ -29,8 +29,7 @@ class RawFundPriceModeDataTest {
 
   @Test
   void nullModeThrows() {
-    assertThatThrownBy(
-            () -> new RawFundPriceModeData(null, "BIDOFFER PRICE", List.of(), 36, null))
+    assertThatThrownBy(() -> new RawFundPriceModeData(null, "BIDOFFER PRICE", List.of(), 36, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("mode");
   }

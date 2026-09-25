@@ -29,8 +29,8 @@ The exact outer response wrapper must reuse the repository standard for authenti
 GET /api/v1/fund-price?date={value}
 ```
 
-- For `DAILY`, `date` follows the configured full-date request format.
-- For `MONTHLY`, `date` follows the configured month request format.
+- `date` always follows the configured full-date request format (`dd/MM/yyyy`), for both `DAILY` and `MONTHLY` mode -- there is no separate MONTHLY input format. FE must supply one of the exact `availableFundPriceDates` values Java already returned via the `/mode` endpoint.
+- For `MONTHLY` mode, Java derives the downstream range from the supplied date's calendar month (first through last calendar day of that month); for `DAILY` mode, the supplied date is used directly as both `from-date` and `to-date`.
 - Missing, malformed, unavailable, or out-of-range input is a standard HTTP 400 validation failure and must not call APIM.
 
 Conceptual returned fields per row:
@@ -66,6 +66,12 @@ and sorts last), then English fund name ascending, then unit price ascending, wh
 unit price is the downstream bid-price under both fund-price-type values. fund-seq is
 not returned and is not a sort key.
 
+maxRiskLevel is a single top-level field on the response envelope, not a per-row
+field: Java echoes the cached max-risk-level value (from the mode fetch) only when at
+least one fund in that specific response's result set carries a riskLevel; if no fund
+in the result set has a riskLevel, maxRiskLevel is omitted from the response envelope
+entirely, regardless of what is cached in session state.
+
 ## 3. Export Fund Price
 
 ```http
@@ -77,6 +83,10 @@ GET /api/v1/fund-price/export
 - Media type: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
 - Headers are always bilingual and do not vary by request language; `Accept-Language`
   does not select the workbook header language.
+- Exported rows carry `riskLevel` under the identical result-set-scoped emission rule
+  as the query response (Section 2). The workbook also carries `maxRiskLevel` as a
+  single summary value under the identical conditional-echo rule as the query
+  response's envelope field.
 
 ## Public failures
 

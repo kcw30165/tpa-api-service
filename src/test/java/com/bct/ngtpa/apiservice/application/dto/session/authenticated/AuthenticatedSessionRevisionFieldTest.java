@@ -18,9 +18,9 @@ import org.junit.jupiter.api.Test;
  * purely-mechanical stage. This stage only proves the model-level change itself.
  *
  * <p>Per script 049's finding: {@code SessionRevision} is lifecycle/concurrency metadata, not
- * sensitive data -- it must NOT be added to {@code AesGcmAuthenticatedSessionProtector}'s
- * {@code SensitiveContext}. It rides alongside {@code status}/{@code createdAt} on the plaintext
- * side, exactly like every other lifecycle field.
+ * sensitive data -- it must NOT be added to {@code AesGcmAuthenticatedSessionProtector}'s {@code
+ * SensitiveContext}. It rides alongside {@code status}/{@code createdAt} on the plaintext side,
+ * exactly like every other lifecycle field.
  */
 class AuthenticatedSessionRevisionFieldTest {
 

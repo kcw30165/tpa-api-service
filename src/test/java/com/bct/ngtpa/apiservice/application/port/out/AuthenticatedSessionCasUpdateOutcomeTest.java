@@ -6,11 +6,11 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 import org.junit.jupiter.api.Test;
 
 /**
- * Fail-first: the outcome vocabulary for the generic CAS port does not exist yet. Deliberately
- * NOT {@code AuthFlowSessionMutationOutcome} (scenario-specific) and NOT
- * {@code AuthenticatedSessionCsrfRotationStatus} (CSRF-specific) -- a new, generic set. No
- * REVISION_ALREADY_PRESENT / legacy-initialization outcome exists, per the ratified decision not
- * to build legacy-revision-initialization machinery.
+ * Fail-first: the outcome vocabulary for the generic CAS port does not exist yet. Deliberately NOT
+ * {@code AuthFlowSessionMutationOutcome} (scenario-specific) and NOT {@code
+ * AuthenticatedSessionCsrfRotationStatus} (CSRF-specific) -- a new, generic set. No
+ * REVISION_ALREADY_PRESENT / legacy-initialization outcome exists, per the ratified decision not to
+ * build legacy-revision-initialization machinery.
  */
 class AuthenticatedSessionCasUpdateOutcomeTest {
 

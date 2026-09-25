@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.application.usecase.session.authenticated;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
@@ -18,12 +17,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
- * Direct coverage of {@link AuthenticatedSessionConcurrencyResult}'s compact constructor and
- * static factories. Every existing consumer (e.g. {@code
- * AuthenticatedSessionConcurrencyServiceTest}) exercises this record only indirectly through
- * {@code applied(session)} / {@code of(terminalOutcome)}, which never independently proves the
- * constructor's own two guard branches (APPLIED requiring a non-null session, and every other
- * outcome forbidding one). This class closes that gap directly.
+ * Direct coverage of {@link AuthenticatedSessionConcurrencyResult}'s compact constructor and static
+ * factories. Every existing consumer (e.g. {@code AuthenticatedSessionConcurrencyServiceTest})
+ * exercises this record only indirectly through {@code applied(session)} / {@code
+ * of(terminalOutcome)}, which never independently proves the constructor's own two guard branches
+ * (APPLIED requiring a non-null session, and every other outcome forbidding one). This class closes
+ * that gap directly.
  */
 class AuthenticatedSessionConcurrencyResultTest {
 
@@ -48,8 +47,9 @@ class AuthenticatedSessionConcurrencyResultTest {
 
   @Test
   void appliedWithNonNullSessionConstructsSuccessfully() {
-    var result = new AuthenticatedSessionConcurrencyResult(
-        AuthenticatedSessionConcurrencyOutcome.APPLIED, session());
+    var result =
+        new AuthenticatedSessionConcurrencyResult(
+            AuthenticatedSessionConcurrencyOutcome.APPLIED, session());
 
     assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.APPLIED);
     assertThat(result.session()).isNotNull();
@@ -128,12 +128,15 @@ class AuthenticatedSessionConcurrencyResultTest {
   @Test
   void ofFactoryRejectsTheAppliedOutcomeSinceItRequiresASession() {
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> AuthenticatedSessionConcurrencyResult.of(
-            AuthenticatedSessionConcurrencyOutcome.APPLIED))
+        .isThrownBy(
+            () ->
+                AuthenticatedSessionConcurrencyResult.of(
+                    AuthenticatedSessionConcurrencyOutcome.APPLIED))
         .withMessageContaining("applied(session)");
   }
 
-  // ----- confirm every enum constant is exercised (guards against a future added constant silently skipping this test) -----
+  // ----- confirm every enum constant is exercised (guards against a future added constant silently
+  // skipping this test) -----
 
   @Test
   void everyNonAppliedEnumConstantIsCoveredByTheParameterizedTests() {

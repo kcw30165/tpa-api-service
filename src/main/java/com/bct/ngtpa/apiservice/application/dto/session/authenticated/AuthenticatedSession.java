@@ -7,11 +7,12 @@ import java.util.*;
 
 /**
  * The {@code revision} field is opaque concurrency metadata (lifecycle-tier, not sensitive), used
- * exclusively by {@link com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionCasUpdatePort}.
- * It is never persisted inside the encrypted payload -- the infrastructure-layer session protector
- * deliberately excludes it from the sensitive encrypted context, mirroring how {@code status} and
- * the lifecycle timestamps are already excluded from encryption today. This class intentionally
- * does not name the concrete protector implementation, which lives outside the application layer.
+ * exclusively by {@link
+ * com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionCasUpdatePort}. It is never
+ * persisted inside the encrypted payload -- the infrastructure-layer session protector deliberately
+ * excludes it from the sensitive encrypted context, mirroring how {@code status} and the lifecycle
+ * timestamps are already excluded from encryption today. This class intentionally does not name the
+ * concrete protector implementation, which lives outside the application layer.
  *
  * <p>{@code fundPriceModeMetadata} is deliberately NULLABLE: a session exists from login onward,
  * long before any Fund Price interaction, and metadata is present only after the first successful

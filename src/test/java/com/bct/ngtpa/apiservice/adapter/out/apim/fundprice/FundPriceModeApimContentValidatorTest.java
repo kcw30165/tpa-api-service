@@ -13,12 +13,12 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Closes the coverage gap identified by script 030's JaCoCo XML parse: every multi-condition
- * {@code ||} guard in this package-private validator had exactly one missing branch. The 023
- * adapter test exercised the blank/unsupported side of each guard but never the genuinely
- * {@code null} side, since the adapter's own DTO fields were always constructed with real string
- * values. This test exercises the validator directly with explicit nulls. DTO/validator tier:
- * targets 95% instruction / 95% branch.
+ * Closes the coverage gap identified by script 030's JaCoCo XML parse: every multi-condition {@code
+ * ||} guard in this package-private validator had exactly one missing branch. The 023 adapter test
+ * exercised the blank/unsupported side of each guard but never the genuinely {@code null} side,
+ * since the adapter's own DTO fields were always constructed with real string values. This test
+ * exercises the validator directly with explicit nulls. DTO/validator tier: targets 95% instruction
+ * / 95% branch.
  */
 class FundPriceModeApimContentValidatorTest {
 
@@ -40,9 +40,10 @@ class FundPriceModeApimContentValidatorTest {
   @Test
   void singleNullItemWithinNonNullListFailsClosed() {
     // List.of() forbids null elements, so Arrays.asList is required to construct this exact case.
-    List<TrpGetFundPriceModeApimDataItem> withNullItem = Arrays.asList((Object[]) new TrpGetFundPriceModeApimDataItem[] {null}).stream()
-        .map(o -> (TrpGetFundPriceModeApimDataItem) o)
-        .toList();
+    List<TrpGetFundPriceModeApimDataItem> withNullItem =
+        Arrays.asList((Object[]) new TrpGetFundPriceModeApimDataItem[] {null}).stream()
+            .map(o -> (TrpGetFundPriceModeApimDataItem) o)
+            .toList();
     assertThatThrownBy(() -> FundPriceModeApimContentValidator.requireSingleItem(withNullItem))
         .isInstanceOf(FundPriceRetrievalException.class);
   }
@@ -72,8 +73,7 @@ class FundPriceModeApimContentValidatorTest {
 
   @Test
   void nullSingleAvailableDateEntryFailsClosed() {
-    var withNullEntry =
-        item("DAILY", "BIDOFFER PRICE", Arrays.asList("18/09/2026", null), 36);
+    var withNullEntry = item("DAILY", "BIDOFFER PRICE", Arrays.asList("18/09/2026", null), 36);
     assertThatThrownBy(() -> FundPriceModeApimContentValidator.normalize(withNullEntry, FORMATTER))
         .isInstanceOf(FundPriceRetrievalException.class);
   }

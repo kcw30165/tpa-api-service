@@ -16,10 +16,9 @@ import reactor.core.publisher.Mono;
 /**
  * Generic, reusable Redis implementation of {@link AuthenticatedSessionCasUpdatePort}.
  *
- * <p>Uses the SAME {@code auth:authenticated-session} capability key namespace as
- * {@code RedisAuthenticatedSessionAdapter} and {@code RedisAuthenticatedLoginReplaySessionAdapter}
- * -- this is a capability-scoped additional operation on the same physical records, not a
- * separate store.
+ * <p>Uses the SAME {@code auth:authenticated-session} capability key namespace as {@code
+ * RedisAuthenticatedSessionAdapter} and {@code RedisAuthenticatedLoginReplaySessionAdapter} -- this
+ * is a capability-scoped additional operation on the same physical records, not a separate store.
  *
  * <p>Note on serialization: the CAS script reads a plaintext top-level {@code sessionRevision}
  * field from the stored JSON via {@code cjson.decode}. The caller (session mutation service) is
@@ -60,27 +59,27 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
         .execute(
             UPDATE_IF_CURRENT,
             List.of(key),
-            List.of(
-                command.expectedRevision().value(),
-                serializedReplacementWithRevision(command)))
+            List.of(command.expectedRevision().value(), serializedReplacementWithRevision(command)))
         .next()
         .map(code -> AuthenticatedSessionCasUpdateResult.of(mapCode(code)))
         .defaultIfEmpty(
-            AuthenticatedSessionCasUpdateResult.of(AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE))
+            AuthenticatedSessionCasUpdateResult.of(
+                AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE))
         .onErrorReturn(
-            AuthenticatedSessionCasUpdateResult.of(AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE));
+            AuthenticatedSessionCasUpdateResult.of(
+                AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE));
   }
 
   /**
-   * Builds the real JSON envelope to store, reconciling the replacement session with the
-   * command's authoritative replacement revision.
+   * Builds the real JSON envelope to store, reconciling the replacement session with the command's
+   * authoritative replacement revision.
    *
-   * <p>The caller-supplied {@code replacementProtectedSession()} may already carry a
-   * {@code sessionRevision} value (for example, if it was built by copying the currently loaded
-   * session before the new revision was known). This method does not trust that value: it always
-   * rebuilds the envelope with {@code command.replacementRevision()} as the stored revision,
-   * copying every other field verbatim, so the value actually written to Redis matches the
-   * command's own explicit intent rather than whatever happened to already be on the object.
+   * <p>The caller-supplied {@code replacementProtectedSession()} may already carry a {@code
+   * sessionRevision} value (for example, if it was built by copying the currently loaded session
+   * before the new revision was known). This method does not trust that value: it always rebuilds
+   * the envelope with {@code command.replacementRevision()} as the stored revision, copying every
+   * other field verbatim, so the value actually written to Redis matches the command's own explicit
+   * intent rather than whatever happened to already be on the object.
    */
   private String serializedReplacementWithRevision(AuthenticatedSessionCasUpdateCommand command) {
     ProtectedAuthenticatedSession source = command.replacementProtectedSession();

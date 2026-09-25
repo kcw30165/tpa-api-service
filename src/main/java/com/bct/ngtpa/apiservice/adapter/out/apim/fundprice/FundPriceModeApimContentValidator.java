@@ -53,8 +53,7 @@ final class FundPriceModeApimContentValidator {
     if (rawDates == null || rawDates.isEmpty()) {
       throw FundPriceRetrievalException.systemFailure();
     }
-    List<LocalDate> parsed =
-        rawDates.stream().map(raw -> parseStrict(raw, formatter)).toList();
+    List<LocalDate> parsed = rawDates.stream().map(raw -> parseStrict(raw, formatter)).toList();
     return new RawFundPriceModeData(
         mode, fundPriceType, parsed, item.maximumFundPriceHistoryMonths(), item.maxRiskLevel());
   }

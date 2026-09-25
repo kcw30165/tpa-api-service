@@ -10,11 +10,11 @@ import org.junit.jupiter.api.Test;
 /**
  * Fail-first: {@code FundPriceModeSessionMetadata} does not exist yet.
  *
- * <p>Deliberately mirrors {@link RawFundPriceModeData}'s exact 5-field shape (same names,
- * same types) -- this is a straight pass-through cache of a validated mode fetch result, not an
+ * <p>Deliberately mirrors {@link RawFundPriceModeData}'s exact 5-field shape (same names, same
+ * types) -- this is a straight pass-through cache of a validated mode fetch result, not an
  * independently-designed shape. {@code mode}/{@code fundPriceType} are required (matching
- * RawFundPriceModeData's own null-checks); {@code maxRiskLevel} is deliberately NOT validated,
- * per fund-price-apim-contract.md -- null and blank are both legitimate.
+ * RawFundPriceModeData's own null-checks); {@code maxRiskLevel} is deliberately NOT validated, per
+ * fund-price-apim-contract.md -- null and blank are both legitimate.
  */
 class FundPriceModeSessionMetadataTest {
 

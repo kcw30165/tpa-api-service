@@ -5,15 +5,15 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Normalized result of the TRPGetFundPriceMode operation, ready for authenticated-session
- * caching and eventual mapping to the public mode response.
+ * Normalized result of the TRPGetFundPriceMode operation, ready for authenticated-session caching
+ * and eventual mapping to the public mode response.
  *
  * <p>{@code mode} is either {@code "DAILY"} or {@code "MONTHLY"} (contract: "Java has approved
  * interpretation only for DAILY and MONTHLY... must not invent WEEKLY behavior"). {@code
  * fundPriceType} is either {@code "BIDOFFER PRICE"} or {@code "UNIT PRICE"}.
  *
- * <p>{@code maxRiskLevel} is carried verbatim from the downstream response and is deliberately
- * NOT validated or defaulted here: {@code null} and blank are both legitimate values, per
+ * <p>{@code maxRiskLevel} is carried verbatim from the downstream response and is deliberately NOT
+ * validated or defaulted here: {@code null} and blank are both legitimate values, per
  * fund-price-apim-contract.md. Appended last to preserve the original field order and every
  * existing construction call site.
  */

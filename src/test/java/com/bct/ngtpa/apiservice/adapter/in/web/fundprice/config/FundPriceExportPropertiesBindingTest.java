@@ -13,9 +13,9 @@ import org.springframework.core.io.ByteArrayResource;
 /**
  * Fail-first: FundPriceExportProperties does not exist yet.
  *
- * <p>Follows the {@code ConfigServicePropertiesBindingTest} pattern exactly:
- * {@link ApplicationContextRunner} + {@link YamlPropertySourceLoader} + {@code addLast}, with
- * default / override / absent cases -- and the {@code ContributionSummaryProperties} nested
+ * <p>Follows the {@code ConfigServicePropertiesBindingTest} pattern exactly: {@link
+ * ApplicationContextRunner} + {@link YamlPropertySourceLoader} + {@code addLast}, with default /
+ * override / absent cases -- and the {@code ContributionSummaryProperties} nested
  * {@code @Getter}/{@code @Setter} inner-class shape for bilingual header groups.
  *
  * <p>Pins the exact 9 leaf keys and their kebab-case paths from the implementation plan
@@ -171,7 +171,8 @@ class FundPriceExportPropertiesBindingTest {
         .run(
             context -> {
               var props = context.getBean(FundPriceExportProperties.class);
-              assertEquals("Overridden Unit Currency", props.getHeaders().getUnitPrice().getCurrency());
+              assertEquals(
+                  "Overridden Unit Currency", props.getHeaders().getUnitPrice().getCurrency());
               assertEquals("Overridden Unit Price", props.getHeaders().getUnitPrice().getPrice());
               // Sibling group must be untouched by the unit-price override.
               assertEquals(

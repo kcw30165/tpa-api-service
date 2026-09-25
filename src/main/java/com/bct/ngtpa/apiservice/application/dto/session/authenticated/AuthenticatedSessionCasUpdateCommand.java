@@ -5,9 +5,9 @@ import java.util.Objects;
 /**
  * Command for the generic AuthenticatedSession compare-and-swap update.
  *
- * <p>The caller is responsible for loading the current session, copying every field verbatim
- * except the field(s) under mutation, and supplying both the expected and replacement revisions
- * here. The port itself never inspects which field changed.
+ * <p>The caller is responsible for loading the current session, copying every field verbatim except
+ * the field(s) under mutation, and supplying both the expected and replacement revisions here. The
+ * port itself never inspects which field changed.
  */
 public record AuthenticatedSessionCasUpdateCommand(
     AuthenticatedSessionId authenticatedSessionId,

@@ -8,11 +8,11 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Fail-first: {@code ProtectedAuthenticatedSession} does not yet carry a top-level plaintext
- * {@code sessionRevision} field. This is the exact field the Lua CAS script
- * ({@code redis/authenticated-session/update-if-current.lua}) reads via
- * {@code decoded['sessionRevision']} (confirmed in script 049's dump) -- it must be a top-level
- * sibling of {@code status}/{@code createdAt}, not nested inside {@code data.attributes}.
+ * Fail-first: {@code ProtectedAuthenticatedSession} does not yet carry a top-level plaintext {@code
+ * sessionRevision} field. This is the exact field the Lua CAS script ({@code
+ * redis/authenticated-session/update-if-current.lua}) reads via {@code decoded['sessionRevision']}
+ * (confirmed in script 049's dump) -- it must be a top-level sibling of {@code status}/{@code
+ * createdAt}, not nested inside {@code data.attributes}.
  */
 class ProtectedAuthenticatedSessionRevisionFieldTest {
 

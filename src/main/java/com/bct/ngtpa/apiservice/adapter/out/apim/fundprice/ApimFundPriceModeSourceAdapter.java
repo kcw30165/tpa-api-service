@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceModeCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceModeData;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
+import com.bct.ngtpa.apiservice.application.port.out.FundPriceModeSourcePort;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
@@ -24,18 +25,20 @@ import reactor.core.publisher.Mono;
  * docs/design/9-fund-price/fund-price-apim-contract.md: {@code ApimDatabaseScope.ACCOUNT_ENV},
  * caller-supplied actor role and account environment, {@code
  * ApimRetryEligibility.SAFE_BUSINESS_CALL}. Every nonblank downstream {@code err-message} maps to
- * the single generic {@link FundPriceRetrievalException}; there is no branch on specific error
- * text (contrast with {@code ApimAccountBalanceSourceAdapter}, which does branch).
+ * the single generic {@link FundPriceRetrievalException}; there is no branch on specific error text
+ * (contrast with {@code ApimAccountBalanceSourceAdapter}, which does branch).
  */
 @Component
-public final class ApimFundPriceModeSourceAdapter {
+public final class ApimFundPriceModeSourceAdapter implements FundPriceModeSourcePort {
 
   private final ApimExchangeExecutor executor;
   private final String path;
   private final DateTimeFormatter formatter;
 
   public ApimFundPriceModeSourceAdapter(
-      ApimExchangeExecutor executor, FundPriceModeApimProperties properties, DateTimeFormatter fundPriceFullDateFormatter) {
+      ApimExchangeExecutor executor,
+      FundPriceModeApimProperties properties,
+      DateTimeFormatter fundPriceFullDateFormatter) {
     this(executor, properties.getPath(), fundPriceFullDateFormatter);
   }
 

@@ -7,8 +7,8 @@ import java.util.Objects;
 /**
  * Inbound command for the TRPGetFundPriceMode operation.
  *
- * <p>Per docs/design/9-fund-price/fund-price-apim-contract.md Operation 1: {@code policy-no}
- * comes from {@code PortalAccessContext.account().policyNo()} and {@code ref-date} from {@code
+ * <p>Per docs/design/9-fund-price/fund-price-apim-contract.md Operation 1: {@code policy-no} comes
+ * from {@code PortalAccessContext.account().policyNo()} and {@code ref-date} from {@code
  * ReferenceDatePort.resolveReferenceDate(accountEnv)}. FE never supplies these values (see
  * fund-price-master-design.md, Frontend responsibility boundary).
  */

@@ -35,7 +35,6 @@ import java.util.Optional;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 /**
  * Fail-first tests for the new generic reload-per-attempt CAS retry wrapper around {@link
@@ -43,8 +42,8 @@ import reactor.test.StepVerifier;
  *
  * <p>Mechanism confirmed in scripts 065/066 by tracing {@code AuthFlowSessionConcurrencyService}
  * -&gt; {@code RevisionAwareAuthFlowSessionWriter}: the ENTIRE load-mutate-write sequence is
- * wrapped in {@code Mono.defer(...)} so each retry attempt re-loads fresh state (a fresh
- * revision), rather than blindly retrying the same stale command.
+ * wrapped in {@code Mono.defer(...)} so each retry attempt re-loads fresh state (a fresh revision),
+ * rather than blindly retrying the same stale command.
  *
  * <p>Two deliberate departures from that precedent (see script 067's header comment for full
  * rationale): only {@code REVISION_MISMATCH} is retried (not every non-APPLIED outcome), and the
@@ -111,8 +110,7 @@ class AuthenticatedSessionConcurrencyServiceTest {
     casPort.enqueue(AuthenticatedSessionCasUpdateOutcome.APPLIED);
 
     List<String> observed = new ArrayList<>();
-    var result =
-        newService().updateIfUsable(ID, markingMutator(observed), "req-1").block();
+    var result = newService().updateIfUsable(ID, markingMutator(observed), "req-1").block();
 
     assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.APPLIED);
     assertThat(result.session().csrfTokenHash()).isEqualTo("mutated-original");
@@ -132,7 +130,8 @@ class AuthenticatedSessionConcurrencyServiceTest {
     // no queued load -> Optional.empty()
     var result = newService().updateIfUsable(ID, UnaryOperator.identity(), "req-1").block();
 
-    assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_FOUND);
+    assertThat(result.outcome())
+        .isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_FOUND);
     assertThat(result.session()).isNull();
     assertThat(casPort.receivedCommands).isEmpty();
   }
@@ -157,7 +156,8 @@ class AuthenticatedSessionConcurrencyServiceTest {
 
     var result = newService().updateIfUsable(ID, UnaryOperator.identity(), "req-1").block();
 
-    assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE);
+    assertThat(result.outcome())
+        .isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE);
     assertThat(casPort.receivedCommands).isEmpty();
   }
 
@@ -168,8 +168,7 @@ class AuthenticatedSessionConcurrencyServiceTest {
     revisions.enqueue(new SessionRevision("e".repeat(32)));
     casPort.enqueue(AuthenticatedSessionCasUpdateOutcome.NOT_FOUND);
 
-    var result =
-        newService().updateIfUsable(ID, UnaryOperator.identity(), "req-1").block();
+    var result = newService().updateIfUsable(ID, UnaryOperator.identity(), "req-1").block();
 
     assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.SYSTEM_FAILURE);
     assertThat(sessionPort.loadCount).isEqualTo(1);
@@ -183,8 +182,7 @@ class AuthenticatedSessionConcurrencyServiceTest {
     revisions.enqueue(new SessionRevision("0".repeat(32)));
     casPort.enqueue(AuthenticatedSessionCasUpdateOutcome.CORRUPT_STATE);
 
-    var result =
-        newService().updateIfUsable(ID, UnaryOperator.identity(), "req-1").block();
+    var result = newService().updateIfUsable(ID, UnaryOperator.identity(), "req-1").block();
 
     assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.SYSTEM_FAILURE);
     assertThat(sessionPort.loadCount).isEqualTo(1);
@@ -204,8 +202,7 @@ class AuthenticatedSessionConcurrencyServiceTest {
     casPort.enqueue(AuthenticatedSessionCasUpdateOutcome.APPLIED);
 
     List<String> observed = new ArrayList<>();
-    var result =
-        newService().updateIfUsable(ID, markingMutator(observed), "req-1").block();
+    var result = newService().updateIfUsable(ID, markingMutator(observed), "req-1").block();
 
     assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.APPLIED);
     // Proves the mutator saw the FRESHLY reloaded state on retry, not a stale closure.
@@ -225,8 +222,7 @@ class AuthenticatedSessionConcurrencyServiceTest {
       casPort.enqueue(AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH);
     }
 
-    var result =
-        newService().updateIfUsable(ID, UnaryOperator.identity(), "req-1").block();
+    var result = newService().updateIfUsable(ID, UnaryOperator.identity(), "req-1").block();
 
     assertThat(result.outcome())
         .isEqualTo(AuthenticatedSessionConcurrencyOutcome.REVISION_CONFLICT_EXHAUSTED);
@@ -347,7 +343,8 @@ class AuthenticatedSessionConcurrencyServiceTest {
     }
   }
 
-  private static final class FakeRevisionGenerator implements AuthenticatedSessionRevisionGenerator {
+  private static final class FakeRevisionGenerator
+      implements AuthenticatedSessionRevisionGenerator {
     private final Deque<SessionRevision> queued = new ArrayDeque<>();
 
     void enqueue(SessionRevision revision) {

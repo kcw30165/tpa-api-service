@@ -74,14 +74,16 @@ class AuthenticatedSessionCasUpdateCommandTest {
   @Test
   void nullReplacementProtectedSessionThrows() {
     assertThatThrownBy(
-            () -> new AuthenticatedSessionCasUpdateCommand(ID, EXPECTED, null, REPLACEMENT, "req-1"))
+            () ->
+                new AuthenticatedSessionCasUpdateCommand(ID, EXPECTED, null, REPLACEMENT, "req-1"))
         .isInstanceOf(NullPointerException.class);
   }
 
   @Test
   void blankCorrelationIdIsNormalizedToNull() {
     var command =
-        new AuthenticatedSessionCasUpdateCommand(ID, EXPECTED, protectedSession(), REPLACEMENT, "  ");
+        new AuthenticatedSessionCasUpdateCommand(
+            ID, EXPECTED, protectedSession(), REPLACEMENT, "  ");
     assertThat(command.correlationId()).isNull();
   }
 

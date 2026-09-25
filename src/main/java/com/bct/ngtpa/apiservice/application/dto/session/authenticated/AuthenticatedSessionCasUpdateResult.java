@@ -8,7 +8,8 @@ public record AuthenticatedSessionCasUpdateResult(AuthenticatedSessionCasUpdateO
     Objects.requireNonNull(outcome, "outcome must not be null");
   }
 
-  public static AuthenticatedSessionCasUpdateResult of(AuthenticatedSessionCasUpdateOutcome outcome) {
+  public static AuthenticatedSessionCasUpdateResult of(
+      AuthenticatedSessionCasUpdateOutcome outcome) {
     return new AuthenticatedSessionCasUpdateResult(outcome);
   }
 }

@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -14,15 +13,14 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionJsonMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
@@ -103,7 +101,8 @@ class RedisAuthenticatedSessionCasUpdateAdapterTest {
   void scriptReturnOneMapsToApplied() {
     stubScriptResult(1L);
     StepVerifier.create(newAdapter().updateIfCurrent(command()))
-        .assertNext(r -> assertThat(r.outcome()).isEqualTo(AuthenticatedSessionCasUpdateOutcome.APPLIED))
+        .assertNext(
+            r -> assertThat(r.outcome()).isEqualTo(AuthenticatedSessionCasUpdateOutcome.APPLIED))
         .verifyComplete();
   }
 
@@ -146,7 +145,8 @@ class RedisAuthenticatedSessionCasUpdateAdapterTest {
     StepVerifier.create(newAdapter().updateIfCurrent(command()))
         .assertNext(
             r ->
-                assertThat(r.outcome()).isEqualTo(AuthenticatedSessionCasUpdateOutcome.CORRUPT_STATE))
+                assertThat(r.outcome())
+                    .isEqualTo(AuthenticatedSessionCasUpdateOutcome.CORRUPT_STATE))
         .verifyComplete();
   }
 
@@ -156,7 +156,8 @@ class RedisAuthenticatedSessionCasUpdateAdapterTest {
     StepVerifier.create(newAdapter().updateIfCurrent(command()))
         .assertNext(
             r ->
-                assertThat(r.outcome()).isEqualTo(AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE))
+                assertThat(r.outcome())
+                    .isEqualTo(AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE))
         .verifyComplete();
   }
 
@@ -167,7 +168,8 @@ class RedisAuthenticatedSessionCasUpdateAdapterTest {
     StepVerifier.create(newAdapter().updateIfCurrent(command()))
         .assertNext(
             r ->
-                assertThat(r.outcome()).isEqualTo(AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE))
+                assertThat(r.outcome())
+                    .isEqualTo(AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE))
         .verifyComplete();
   }
 
@@ -178,7 +180,8 @@ class RedisAuthenticatedSessionCasUpdateAdapterTest {
     StepVerifier.create(newAdapter().updateIfCurrent(command()))
         .assertNext(
             r -> {
-              assertThat(r.outcome()).isEqualTo(AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE);
+              assertThat(r.outcome())
+                  .isEqualTo(AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE);
             })
         .verifyComplete();
   }

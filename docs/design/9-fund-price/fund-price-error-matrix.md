@@ -3,12 +3,9 @@
 ## FE input errors
 
 - Missing `date`: HTTP 400, standard validation status/code, APIM not called.
-- Malformed DAILY date: HTTP 400, field target `date`, APIM not called.
-- Malformed MONTHLY value: HTTP 400, field target `date`, APIM not called.
-- Date/month outside maximum history: HTTP 400, field target `date`, APIM not called.
-- Input shape disagrees with cached mode (a day supplied under MONTHLY, or a month
-  supplied under DAILY): HTTP 400, field target `date`, APIM not called.
-- Date unavailable or month contains no available date: HTTP 400, field target `date`, APIM not called.
+- Malformed date (either mode -- DAILY and MONTHLY share the same full-date format): HTTP 400, field target `date`, APIM not called.
+- Date outside maximum history (`R.minusMonths(M) <= D <= R`, either mode): HTTP 400, field target `date`, APIM not called.
+- Date does not exactly match one parsed available date (either mode): HTTP 400, field target `date`, APIM not called.
 
 ## Session and contract errors
 

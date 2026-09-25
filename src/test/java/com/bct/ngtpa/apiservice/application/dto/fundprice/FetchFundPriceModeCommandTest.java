@@ -10,15 +10,16 @@ import org.junit.jupiter.api.Test;
 /**
  * Closes the coverage gap identified by script 030's JaCoCo XML parse: this record's compact
  * constructor previously had no dedicated test, so both blank-guard branches were only ever
- * exercised on their non-throwing (valid-input) side via
- * {@code ApimFundPriceModeSourceAdapterTest}. Targets 95% instruction / 95% branch (DTO tier).
+ * exercised on their non-throwing (valid-input) side via {@code
+ * ApimFundPriceModeSourceAdapterTest}. Targets 95% instruction / 95% branch (DTO tier).
  */
 class FetchFundPriceModeCommandTest {
 
   private static final LocalDate REF_DATE = LocalDate.of(2026, 9, 18);
 
   private static FetchFundPriceModeCommand valid() {
-    return new FetchFundPriceModeCommand("00000008802", REF_DATE, "DB", ActorUserRole.ROLE_USER_MBR);
+    return new FetchFundPriceModeCommand(
+        "00000008802", REF_DATE, "DB", ActorUserRole.ROLE_USER_MBR);
   }
 
   @Test
@@ -70,7 +71,8 @@ class FetchFundPriceModeCommandTest {
   void blankAccountEnvThrows() {
     assertThatThrownBy(
             () ->
-                new FetchFundPriceModeCommand("00000008802", REF_DATE, "  ", ActorUserRole.ROLE_USER_MBR))
+                new FetchFundPriceModeCommand(
+                    "00000008802", REF_DATE, "  ", ActorUserRole.ROLE_USER_MBR))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("accountEnv");
   }

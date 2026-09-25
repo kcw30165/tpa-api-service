@@ -5,9 +5,8 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Fund Price XLSX export header labels, sourced from Config Service with these values as
- * {@code application.yml} defaults (precedence: Config Service -> application.yml -> these code
- * defaults).
+ * Fund Price XLSX export header labels, sourced from Config Service with these values as {@code
+ * application.yml} defaults (precedence: Config Service -> application.yml -> these code defaults).
  *
  * <p>Structure mirrors {@code ContributionSummaryProperties} exactly: a nested {@code Headers}
  * group with per-column-set inner classes ({@code UnitPrice}, {@code BidOffer}) for the two
@@ -15,11 +14,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * docs/capabilities/config-service-startup-loader/implementation-plan.md section 6 and
  * docs/design/9-fund-price/fund-price-excel-export-contract.md.
  *
- * <p>Header cells that carry no language-bearing content concatenate the English and Chinese
- * label directly, with no separator -- this is baked into the default string values themselves,
- * not computed. {@code Fund Name} and {@code 基金名稱} remain two distinct columns and are never
- * concatenated. The space before the Chinese label in {@code unit-price.currency} is deliberate
- * and must not be "normalized" to match the other headers.
+ * <p>Header cells that carry no language-bearing content concatenate the English and Chinese label
+ * directly, with no separator -- this is baked into the default string values themselves, not
+ * computed. {@code Fund Name} and {@code 基金名稱} remain two distinct columns and are never
+ * concatenated. The space before the Chinese label in {@code unit-price.currency} is deliberate and
+ * must not be "normalized" to match the other headers.
  */
 @ConfigurationProperties(prefix = "fund-price.export")
 @Getter
@@ -49,11 +48,9 @@ public class FundPriceExportProperties {
     @Getter
     @Setter
     public static class BidOffer {
-      private String bidCurrency =
-          "Bid Price Currency\u8cb7\u5165\u55ae\u4f4d\u8ca8\u5e63";
+      private String bidCurrency = "Bid Price Currency\u8cb7\u5165\u55ae\u4f4d\u8ca8\u5e63";
       private String bidPrice = "Bid Unit Price\u55ae\u4f4d\u50f9\u683c";
-      private String offerCurrency =
-          "Offer Price Currency\u8ce3\u51fa\u55ae\u4f4d\u8ca8\u5e63";
+      private String offerCurrency = "Offer Price Currency\u8ce3\u51fa\u55ae\u4f4d\u8ca8\u5e63";
       private String offerPrice = "Offer Price\u55ae\u4f4d\u50f9\u683c";
     }
   }

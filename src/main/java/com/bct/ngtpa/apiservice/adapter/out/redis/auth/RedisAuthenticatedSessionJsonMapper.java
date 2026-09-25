@@ -1,8 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.auth;
 
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionStatus;
-import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSession;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.Map;

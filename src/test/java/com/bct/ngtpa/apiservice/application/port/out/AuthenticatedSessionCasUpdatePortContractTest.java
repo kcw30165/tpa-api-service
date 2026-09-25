@@ -7,8 +7,8 @@ import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 /**
- * Fail-first: confirms the generic port's shape -- ONE method, taking the command and returning
- * the generic result. Not scenario-specific, not CSRF-specific.
+ * Fail-first: confirms the generic port's shape -- ONE method, taking the command and returning the
+ * generic result. Not scenario-specific, not CSRF-specific.
  */
 class AuthenticatedSessionCasUpdatePortContractTest {
 

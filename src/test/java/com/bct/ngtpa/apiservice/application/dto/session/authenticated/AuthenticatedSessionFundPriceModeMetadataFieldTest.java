@@ -15,15 +15,15 @@ import org.junit.jupiter.api.Test;
  * field.
  *
  * <p>Deliberately NULLABLE, confirmed by script 073's investigation and Nick's explicit
- * confirmation: per fund-price-session-contract.md's "Compatibility" clause, a session exists
- * from login onward, long before any Fund Price interaction -- metadata is present only after the
- * first successful mode fetch and absent for every other session's entire lifetime. Unlike
- * {@code revision} (always stamped, never null), this field must tolerate null both at
- * construction and round-trip through the protector.
+ * confirmation: per fund-price-session-contract.md's "Compatibility" clause, a session exists from
+ * login onward, long before any Fund Price interaction -- metadata is present only after the first
+ * successful mode fetch and absent for every other session's entire lifetime. Unlike {@code
+ * revision} (always stamped, never null), this field must tolerate null both at construction and
+ * round-trip through the protector.
  *
  * <p>This field is confirmed (script 073) to require a home on the domain record itself: the
- * protector's private SensitiveContext has no independent storage and cannot carry a value that
- * has no AuthenticatedSession counterpart to read from or write into.
+ * protector's private SensitiveContext has no independent storage and cannot carry a value that has
+ * no AuthenticatedSession counterpart to read from or write into.
  */
 class AuthenticatedSessionFundPriceModeMetadataFieldTest {
 

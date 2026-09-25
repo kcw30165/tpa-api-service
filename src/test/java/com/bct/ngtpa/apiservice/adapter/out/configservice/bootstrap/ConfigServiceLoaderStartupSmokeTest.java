@@ -12,24 +12,22 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
 /**
- * Proves D1 end to end: the application boots successfully even when Config Service is
- * completely unreachable, and does so within the plan's bootstrap timeout budget.
+ * Proves D1 end to end: the application boots successfully even when Config Service is completely
+ * unreachable, and does so within the plan's bootstrap timeout budget.
  *
- * <p>Unlike the unit tests in {@link ConfigServiceEnvironmentPostProcessorTest}, which
- * exercise the fail-soft branches against a stubbed fetcher, this test runs the REAL
- * {@link ConfigServiceBootstrapClient} against a genuinely unreachable address, proving
- * the whole chain -- HTTP client, retry/backoff, and environment registration -- degrades
- * to configured defaults rather than blocking startup.
+ * <p>Unlike the unit tests in {@link ConfigServiceEnvironmentPostProcessorTest}, which exercise the
+ * fail-soft branches against a stubbed fetcher, this test runs the REAL {@link
+ * ConfigServiceBootstrapClient} against a genuinely unreachable address, proving the whole chain --
+ * HTTP client, retry/backoff, and environment registration -- degrades to configured defaults
+ * rather than blocking startup.
  *
- * <p><strong>Isolation note (corrected in 016):</strong> {@code spring.config.name} is set
- * to a name that does not resolve to any real config file. Spring Boot otherwise loads
- * {@code application.yml} from the classpath regardless of which
- * {@code @SpringBootApplication} class is used, and that file defines the
- * {@code redis-mtls} SSL bundle pointing at a certificate that does not exist in this
- * environment -- an unrelated infrastructure dependency that has nothing to do with the
- * Config Service loader under test here. Without this override the context fails during
- * Micrometer SSL metrics binding before the environment-post-processor phase is even
- * reached.
+ * <p><strong>Isolation note (corrected in 016):</strong> {@code spring.config.name} is set to a
+ * name that does not resolve to any real config file. Spring Boot otherwise loads {@code
+ * application.yml} from the classpath regardless of which {@code @SpringBootApplication} class is
+ * used, and that file defines the {@code redis-mtls} SSL bundle pointing at a certificate that does
+ * not exist in this environment -- an unrelated infrastructure dependency that has nothing to do
+ * with the Config Service loader under test here. Without this override the context fails during
+ * Micrometer SSL metrics binding before the environment-post-processor phase is even reached.
  */
 class ConfigServiceLoaderStartupSmokeTest {
 
