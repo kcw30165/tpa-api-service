@@ -57,11 +57,11 @@ A deserialized `ApimResponseEnvelope<D>` is classified as **malformed** if any o
 
 1. `response` is absent (`envelope.getResponse() == null`).
 2. `response.err-message` is absent (`null`).
-3. `response.data` is absent (`null`) **and** `response.err-message` is empty (`""`).
+3. `response.data` is absent (`null`) **or present as an empty array** (`[]`) **and** `response.err-message` is empty (`""`).
 
-`response.data` being present as an empty array (`[]`) is **not** malformed — this remains a valid "no records" success response, unchanged from today's behavior.
+> **Corrected 2026-09-25** (see section 12 below): an earlier version of this document treated a present-but-empty `data` array as a valid "no records" success when `err-message` is empty. A production incident on `TRPMemberLogin` confirmed this is wrong: APIM returned `{"response":{"err-message":"","data":[]}}`, which the caller could not interpret as a usable result and which surfaced as an unhandled `SYSTEM_ERROR`/502 with no APIM-layer log at all. This shape is now classified as malformed, matching the project's existing Postman contract-test suite, which applies this rule generically across all TRP operations.
 
-`response.data` being absent while `response.err-message` is **non-empty** is **not** malformed — a business rejection is not required to carry a `data` array, consistent with how every current adapter (e.g. `SharedApimTrpChkCustIdTransport.toEnvelope`) already treats this case.
+`response.data` being absent **or empty** while `response.err-message` is **non-empty** is **not** malformed - a business rejection is not required to carry a non-empty `data` array, consistent with how every current adapter (e.g. `SharedApimTrpChkCustIdTransport.toEnvelope`) already treats this case.
 
 Type-mismatch cases (`err-message` present but not a JSON string, `data` present but not a JSON array) cannot be observed at this classification point: Jackson deserialization fails before an `ApimResponseEnvelope` object exists, surfacing instead as a deserialization/crypto exception inside `ApimPayloadCryptoService.decryptResponseEnvelope`. These cases are covered by the generic `apim.exchange.failed` error-signal logging (§3), not by the schema classifier.
 
@@ -157,3 +157,19 @@ reverted). Running the mutating formatter is deferred to the feature-level stabi
 consistent with the project's established convention for other features, so that any repository-
 wide formatting drift is handled as its own separate, explicit decision rather than silently
 riding along with this feature's diff.
+
+
+### 12. Correction: Empty Data Array Is Malformed (Production Incident)
+
+**Date:** 2026-09-25
+**Trigger:** A production login attempt (`TRPMemberLogin`, request ID `9381f5fd-8c87-4b73-95b7-16ff21c4f451`) received `{"response":{"err-message":"","data":[]}}` from APIM. This was classified as `SUCCESS` by the original classifier (section 5, pre-correction) and therefore intentionally logged nothing. The request subsequently failed with HTTP 502 / `SYSTEM_ERROR` inside downstream business-envelope interpretation, with **no APIM-layer log line at all** to explain why - exactly the observability gap this capability exists to close.
+
+**Root cause of the original classifier's error:** section 5 (pre-correction) treated `data: []` (present, empty) as equivalent to a legitimate "no records found" success response, based on a Javadoc comment in the legacy `ApimResponseValidator` (a class already confirmed to contain an unrelated defect, section 7). That assumption was never independently verified against TAS's real contract.
+
+**Correcting evidence:** the project's existing Postman collection contains a contract-test suite applied generically and identically across all TRP operations. Its logic requires that `err-message` and `data` (when `data` is present) must not both be empty, enforced regardless of operation - login, notifications, contribution history, etc.
+
+This confirms the "empty `data` + empty `err-message`" shape is a downstream (APIM/TAS) contract violation on every operation, not a valid representation of "no records" for any operation. Genuinely empty result sets are expected to be represented by TAS some other way (e.g. a specific business `err-message` code), not by an empty `data` array with an empty `err-message`.
+
+**Resolution:** `ApimEnvelopeSchemaClassifier` now classifies `err-message: ""` combined with `data` being either absent (`null`) or present-but-empty (`[]`) as `MALFORMED` (logged as `apim.contract.invalid` at ERROR), collapsing what were previously two separate branches (section 5, pre-correction) into one. `err-message` non-empty combined with an empty or absent `data` array remains `BUSINESS_REJECTED` (logged at WARN) - unchanged, since a business rejection is still not required to carry a `data` array.
+
+This is a **classification/logging-only change**: it does not alter what any adapter, mapper, or business use case receives from `postEnvelope`. It only changes what gets logged and at what level for this specific envelope shape.

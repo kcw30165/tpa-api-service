@@ -55,12 +55,6 @@ class ApimExchangeOutcomeLoggerTest {
   }
 
   @Test
-  void wellFormedEmptyDataSuccessEnvelopeLogsNothing() {
-    outcomeLogger.logSuccessOutcome(request(), envelope("", List.of()), "req-1");
-    assertThat(appender.list).isEmpty();
-  }
-
-  @Test
   void malformedMissingResponseLogsContractInvalidAtError() {
     outcomeLogger.logSuccessOutcome(request(), null, "req-1");
     assertThat(appender.list).hasSize(1);
@@ -80,6 +74,20 @@ class ApimExchangeOutcomeLoggerTest {
   }
 
   @Test
+  void malformedEmptyDataArrayLogsContractInvalidAtError() {
+    // Regression test for the TRPMemberLogin production incident: an empty data array combined
+    // with an empty err-message must be logged as apim.contract.invalid, not silently treated as
+    // success. See architecture-and-design.md section 12.
+    outcomeLogger.logSuccessOutcome(request(), envelope("", List.of()), "req-1");
+    assertThat(appender.list).hasSize(1);
+    ILoggingEvent event = appender.list.get(0);
+    assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(event.getFormattedMessage()).contains("apim.contract.invalid");
+    assertThat(event.getFormattedMessage())
+        .contains("response.data must be non-empty when response.err-message is empty");
+  }
+
+  @Test
   void businessRejectionLogsAtWarnWithSanitizedErrMessage() {
     outcomeLogger.logSuccessOutcome(request(), envelope("err.tpa.wrong.password", null), "req-1");
     assertThat(appender.list).hasSize(1);
@@ -87,6 +95,15 @@ class ApimExchangeOutcomeLoggerTest {
     assertThat(event.getLevel()).isEqualTo(Level.WARN);
     assertThat(event.getFormattedMessage()).contains("apim.business.rejected");
     assertThat(event.getFormattedMessage()).contains("err.tpa.wrong.password");
+  }
+
+  @Test
+  void businessRejectionWithEmptyDataArrayLogsAtWarnNotError() {
+    outcomeLogger.logSuccessOutcome(
+        request(), envelope("err.tpa.wrong.password", List.of()), "req-1");
+    assertThat(appender.list).hasSize(1);
+    assertThat(appender.list.get(0).getLevel()).isEqualTo(Level.WARN);
+    assertThat(appender.list.get(0).getFormattedMessage()).contains("apim.business.rejected");
   }
 
   @Test
