@@ -2,23 +2,31 @@ package com.bct.ngtpa.apiservice.application.usecase.fundprice;
 
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceModeSessionMetadata;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
-import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleResult;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleStatus;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LoadAndTouchAuthenticatedSessionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LoadAndTouchAuthenticatedSessionUseCase;
 import java.time.LocalDate;
 import java.util.Objects;
+import java.util.Optional;
 import reactor.core.publisher.Mono;
 
 /**
  * Shared helper for {@link FundPriceQueryUseCase} and {@link FundPriceExportUseCase}: loads the
- * session, confirms it is ACTIVE with usable {@link FundPriceModeSessionMetadata}, and (for query
- * only) validates a candidate date against the cached range and available-date membership.
+ * session and confirms it is ACTIVE with usable {@link FundPriceModeSessionMetadata}, and (for
+ * query only) validates a candidate date against the cached range and available-date membership.
  *
  * <p>Package-private collaborator class (composition), not a shared abstract base class -- this
  * codebase does not use inheritance for use cases anywhere confirmed in this session; small
  * focused collaborator classes ({@code AuthenticatedAccountContextResolver}'s style) are the
  * established pattern.
+ *
+ * <p>{@code loadUsableSession(...)} returns {@code Optional<FundPriceModeSessionMetadata>}
+ * directly: present means usable, empty means not usable. This deliberately does NOT wrap the
+ * result in a custom type -- {@link
+ * com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleResult}
+ * and {@code FundPriceModeSessionMetadata} already carry everything the caller needs; a bespoke
+ * wrapper type here would be redundant (simplification, script 113 -- an earlier version
+ * introduced 3 such types and they added no value over a plain Optional).
  */
 final class FundPriceRequestSupport {
 
@@ -28,25 +36,7 @@ final class FundPriceRequestSupport {
     this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle must not be null");
   }
 
-  /** Result of a successful session-usability check: the confirmed non-null metadata. */
-  record UsableSession(FundPriceModeSessionMetadata metadata) {}
-
-  enum SessionCheckOutcome {
-    USABLE,
-    NOT_USABLE
-  }
-
-  record SessionCheckResult(SessionCheckOutcome outcome, UsableSession usable) {
-    static SessionCheckResult usable(FundPriceModeSessionMetadata metadata) {
-      return new SessionCheckResult(SessionCheckOutcome.USABLE, new UsableSession(metadata));
-    }
-
-    static SessionCheckResult notUsable() {
-      return new SessionCheckResult(SessionCheckOutcome.NOT_USABLE, null);
-    }
-  }
-
-  Mono<SessionCheckResult> loadUsableSession(AuthenticatedSessionId sessionId) {
+  Mono<Optional<FundPriceModeSessionMetadata>> loadUsableSession(AuthenticatedSessionId sessionId) {
     return lifecycle
         .loadAndTouch(new LoadAndTouchAuthenticatedSessionCommand(sessionId, null))
         .map(
@@ -56,13 +46,12 @@ final class FundPriceRequestSupport {
               // status==ACTIVE and session==null (confirmed, script 102's dump). Once
               // status != ACTIVE is ruled out via short-circuit OR, result.session() is
               // guaranteed non-null -- an explicit null check here would be unreachable
-              // dead code. Removed (coverage-closure discipline, mirroring scripts
-              // 095/099's identical findings) rather than left permanently uncovered.
+              // dead code.
               if (result.status() != AuthenticatedSessionLifecycleStatus.ACTIVE
                   || result.session().fundPriceModeMetadata() == null) {
-                return SessionCheckResult.notUsable();
+                return Optional.<FundPriceModeSessionMetadata>empty();
               }
-              return SessionCheckResult.usable(result.session().fundPriceModeMetadata());
+              return Optional.of(result.session().fundPriceModeMetadata());
             });
   }
 

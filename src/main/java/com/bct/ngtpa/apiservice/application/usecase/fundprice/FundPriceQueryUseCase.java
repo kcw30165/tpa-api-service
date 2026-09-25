@@ -47,12 +47,12 @@ public final class FundPriceQueryUseCase {
     return requestSupport
         .loadUsableSession(sessionId)
         .flatMap(
-            sessionCheck -> {
-              if (sessionCheck.outcome() != FundPriceRequestSupport.SessionCheckOutcome.USABLE) {
+            maybeMetadata -> {
+              if (maybeMetadata.isEmpty()) {
                 return Mono.just(
                     FundPriceQueryUseCaseResult.of(FundPriceUseCaseOutcome.SYSTEM_FAILURE));
               }
-              FundPriceModeSessionMetadata metadata = sessionCheck.usable().metadata();
+              FundPriceModeSessionMetadata metadata = maybeMetadata.get();
               return referenceDatePort
                   .resolveReferenceDate(accountEnv)
                   .flatMap(
