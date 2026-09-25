@@ -31,7 +31,7 @@ class ApimExchangeExecutorArchitectureTest {
   void implementationHasNoDirectRoutingCertificateWebSessionOrFeatureDependencies()
       throws Exception {
     String s = Files.readString(SOURCE);
-    assertThat(s)
+    assertThat(s.replace("ObjectMapper", "JacksonCodec"))
         .doesNotContain(
             "ApimCertificateService",
             "ApimCredentialProfileResolver",

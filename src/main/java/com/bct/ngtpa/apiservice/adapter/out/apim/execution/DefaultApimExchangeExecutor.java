@@ -4,31 +4,77 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Objects;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Signal;
 
 /** Generic profile-aware APIM envelope orchestration without feature business interpretation. */
 @Service
 public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
+
   private final ApimWebClientFacade facade;
   private final ApimPayloadCryptoService cryptoService;
   private final ApimProperties properties;
+  private final ApimExchangeOutcomeLogger outcomeLogger;
 
+  @Autowired
+  public DefaultApimExchangeExecutor(
+      ApimWebClientFacade facade,
+      ApimPayloadCryptoService cryptoService,
+      ApimProperties properties,
+      ApimExchangeOutcomeLogger outcomeLogger) {
+    this.facade = Objects.requireNonNull(facade, "facade must not be null");
+    this.cryptoService = Objects.requireNonNull(cryptoService, "cryptoService must not be null");
+    this.properties = Objects.requireNonNull(properties, "properties must not be null");
+    this.outcomeLogger = Objects.requireNonNull(outcomeLogger, "outcomeLogger must not be null");
+  }
+
+  /**
+   * Legacy constructor retained for existing unit tests that construct this executor directly
+   * with only the original three dependencies (see {@code DefaultApimExchangeExecutorTest}).
+   * Mirrors the compatibility-constructor convention already used by {@link
+   * ApimWebClientFacade}: a real (not no-op) {@link ApimExchangeOutcomeLogger} is built with a
+   * fresh {@link ObjectMapper} and {@link LoggingSanitizer} so outcome logging still runs; it is
+   * simply not the Spring-managed singleton instance used in production.
+   */
   public DefaultApimExchangeExecutor(
       ApimWebClientFacade facade,
       ApimPayloadCryptoService cryptoService,
       ApimProperties properties) {
-    this.facade = Objects.requireNonNull(facade, "facade must not be null");
-    this.cryptoService = Objects.requireNonNull(cryptoService, "cryptoService must not be null");
-    this.properties = Objects.requireNonNull(properties, "properties must not be null");
+    this(
+        facade,
+        cryptoService,
+        properties,
+        new ApimExchangeOutcomeLogger(
+            new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties()),
+            new ObjectMapper()));
   }
 
   @Override
   public <R, D> Mono<ApimResponseEnvelope<D>> postEnvelope(ApimExchangeRequest<R, D> request) {
     Objects.requireNonNull(request, "request must not be null");
     return Mono.defer(
-        () -> properties.getEncryption().isEnabled() ? postEncrypted(request) : postPlain(request));
+            () -> properties.getEncryption().isEnabled() ? postEncrypted(request) : postPlain(request))
+        .doOnEach(signal -> logOutcome(request, signal));
+  }
+
+  private <D> void logOutcome(
+      ApimExchangeRequest<?, D> request, Signal<ApimResponseEnvelope<D>> signal) {
+    if (signal.isOnNext()) {
+      String requestId =
+          signal.getContextView().getOrDefault(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, null);
+      outcomeLogger.logSuccessOutcome(request, signal.get(), requestId);
+    } else if (signal.isOnError()) {
+      String requestId =
+          signal.getContextView().getOrDefault(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, null);
+      outcomeLogger.logExchangeFailure(request, signal.getThrowable(), requestId);
+    }
   }
 
   private <R, D> Mono<ApimResponseEnvelope<D>> postPlain(ApimExchangeRequest<R, D> request) {
