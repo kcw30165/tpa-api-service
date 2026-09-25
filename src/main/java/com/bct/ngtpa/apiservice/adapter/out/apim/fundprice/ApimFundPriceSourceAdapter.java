@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceAp
 import com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceCommand;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceRangeCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.out.FundPriceSourcePort;
@@ -74,9 +75,32 @@ public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
       toDate = command.date();
     }
 
+    return exchangeAndReconcile(
+        command.policyNo(), fromDate, toDate, command.accountEnv(), command.actorUserRole());
+  }
+
+  @Override
+  public Mono<RawFundPriceData> fetchPriceRange(FetchFundPriceRangeCommand command) {
+    Objects.requireNonNull(command, "command must not be null");
+    // NO mode logic at all -- the explicit fromDate/toDate range is passed straight through,
+    // confirmed design (export has no mode concept).
+    return exchangeAndReconcile(
+        command.policyNo(),
+        command.fromDate(),
+        command.toDate(),
+        command.accountEnv(),
+        command.actorUserRole());
+  }
+
+  private Mono<RawFundPriceData> exchangeAndReconcile(
+      String policyNo,
+      LocalDate fromDate,
+      LocalDate toDate,
+      String accountEnv,
+      com.bct.ngtpa.apiservice.application.dto.ActorUserRole actorUserRole) {
     var request =
         new TrpGetFundPriceApimRequest(
-            command.policyNo(), fromDate.format(formatter), toDate.format(formatter));
+            policyNo, fromDate.format(formatter), toDate.format(formatter));
     var exchange =
         new ApimExchangeRequest<>(
             path,
@@ -84,7 +108,7 @@ public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
             TrpGetFundPriceApimRequest.class,
             TrpGetFundPriceApimDataItem.class,
             ApimDatabaseScope.ACCOUNT_ENV,
-            new ApimCredentialResolutionContext(command.actorUserRole(), command.accountEnv()),
+            new ApimCredentialResolutionContext(actorUserRole, accountEnv),
             ApimRetryEligibility.SAFE_BUSINESS_CALL);
 
     return executor

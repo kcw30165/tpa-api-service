@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.fundprice;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
-import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceCommand;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceRangeCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceModeSessionMetadata;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRowResult;
@@ -63,11 +63,19 @@ public final class FundPriceExportUseCase {
                   .resolveReferenceDate(accountEnv)
                   .flatMap(
                       referenceDate -> {
+                        // NO mode reference anywhere in export's command construction --
+                        // confirmed design (Nick): export passes policyNo, fromDate, toDate
+                        // straight to APIM, bypassing FetchFundPriceCommand/fetchPrice's
+                        // mode-dependent single-date expansion entirely.
                         var command =
-                            new FetchFundPriceCommand(
-                                policyNo, referenceDate, metadata.mode(), accountEnv, actorUserRole);
+                            new FetchFundPriceRangeCommand(
+                                policyNo,
+                                referenceDate.minusMonths(metadata.maximumFundPriceHistoryMonths()),
+                                referenceDate,
+                                accountEnv,
+                                actorUserRole);
                         return sourcePort
-                            .fetchPrice(command)
+                            .fetchPriceRange(command)
                             .map(raw -> assembleResult(raw, metadata));
                       });
             });

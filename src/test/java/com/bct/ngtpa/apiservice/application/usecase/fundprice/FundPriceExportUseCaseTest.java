@@ -84,24 +84,38 @@ class FundPriceExportUseCaseTest {
 
   @Test
   void exportDerivesFromDateAsReferenceDateMinusMaximumHistoryMonths() {
+    // CONFIRMED (Nick): export has NO mode. It passes policyNo, fromDate, toDate directly to
+    // APIM via the NEW fetchPriceRange port method -- NOT fetchPrice/FetchFundPriceCommand's
+    // mode-dependent single-date expansion, which remains query-only. This replaces the
+    // deliberately loose assertion from script 101 now that the design is confirmed.
     var metadata =
         new FundPriceModeSessionMetadata(
             "DAILY", "BIDOFFER PRICE", List.of(REFERENCE_DATE), 36, "5");
     stubActiveSessionWithMetadata(metadata);
-    when(sourcePort.fetchPrice(any())).thenReturn(Mono.just(rawData()));
+    when(sourcePort.fetchPriceRange(any())).thenReturn(Mono.just(rawData()));
 
     newUseCase().export(SESSION_ID, "DB", "policy1", ActorUserRole.ROLE_USER_MBR).block();
 
-    var captor = org.mockito.ArgumentCaptor.forClass(FetchFundPriceCommand.class);
-    org.mockito.Mockito.verify(sourcePort).fetchPrice(captor.capture());
-    // Export's from/to derivation is a range, not a single validated date -- confirmed the
-    // command still carries a single `date` field per FetchFundPriceCommand's existing shape,
-    // meaning the adapter's own mode-dependent expansion is reused for export too via a
-    // "MONTHLY-shaped" range request spanning the full history window. This is the one open
-    // design question flagged for review: does export reuse the adapter's MONTHLY expansion by
-    // passing referenceDate with mode="MONTHLY"-equivalent semantics, or does it need its own
-    // distinct command variant? Currently asserts only that fetchPrice was called at all.
-    assertThat(captor.getValue()).isNotNull();
+    var captor =
+        org.mockito.ArgumentCaptor.forClass(
+            com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceRangeCommand.class);
+    org.mockito.Mockito.verify(sourcePort).fetchPriceRange(captor.capture());
+    assertThat(captor.getValue().policyNo()).isEqualTo("policy1");
+    assertThat(captor.getValue().fromDate()).isEqualTo(REFERENCE_DATE.minusMonths(36));
+    assertThat(captor.getValue().toDate()).isEqualTo(REFERENCE_DATE);
+  }
+
+  @Test
+  void exportNeverCallsFetchPriceOnlyFetchPriceRange() {
+    var metadata =
+        new FundPriceModeSessionMetadata(
+            "DAILY", "BIDOFFER PRICE", List.of(REFERENCE_DATE), 36, "5");
+    stubActiveSessionWithMetadata(metadata);
+    when(sourcePort.fetchPriceRange(any())).thenReturn(Mono.just(rawData()));
+
+    newUseCase().export(SESSION_ID, "DB", "policy1", ActorUserRole.ROLE_USER_MBR).block();
+
+    org.mockito.Mockito.verify(sourcePort, org.mockito.Mockito.never()).fetchPrice(any());
   }
 
   @Test
@@ -112,7 +126,7 @@ class FundPriceExportUseCaseTest {
         new FundPriceModeSessionMetadata(
             "DAILY", "BIDOFFER PRICE", List.of(LocalDate.of(2020, 1, 1)), 36, "5");
     stubActiveSessionWithMetadata(metadata);
-    when(sourcePort.fetchPrice(any())).thenReturn(Mono.just(rawData()));
+    when(sourcePort.fetchPriceRange(any())).thenReturn(Mono.just(rawData()));
 
     StepVerifier.create(
             newUseCase().export(SESSION_ID, "DB", "policy1", ActorUserRole.ROLE_USER_MBR))
@@ -142,7 +156,7 @@ class FundPriceExportUseCaseTest {
             List.of(
                 new RawFundPriceRow(
                     "DUSM", "n", "n", REFERENCE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, null)));
-    when(sourcePort.fetchPrice(any())).thenReturn(Mono.just(noRiskData));
+    when(sourcePort.fetchPriceRange(any())).thenReturn(Mono.just(noRiskData));
 
     StepVerifier.create(newUseCase().export(SESSION_ID, "DB", "policy1", ActorUserRole.ROLE_USER_MBR))
         .assertNext(

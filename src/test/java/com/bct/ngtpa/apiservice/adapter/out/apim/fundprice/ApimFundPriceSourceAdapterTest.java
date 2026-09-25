@@ -215,6 +215,47 @@ class ApimFundPriceSourceAdapterTest {
         .verify();
   }
 
+  // ----- fetchPriceRange (export redesign, script 107): NO mode, explicit fromDate/toDate --------
+
+  @Test
+  void fetchPriceRangePassesFromDateAndToDateDirectlyWithNoModeLogic() {
+    stubSuccess(validItem());
+    ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
+
+    var rangeCommand =
+        new com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceRangeCommand(
+            "00000008802",
+            LocalDate.of(2023, 9, 25),
+            LocalDate.of(2026, 9, 25),
+            "DB",
+            ActorUserRole.ROLE_USER_MBR);
+
+    newAdapter().fetchPriceRange(rangeCommand).block();
+
+    verify(executor).postEnvelope(captor.capture());
+    var request = (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
+        captor.getValue().request();
+    assertThat(request.fromDate()).isEqualTo("25/09/2023");
+    assertThat(request.toDate()).isEqualTo("25/09/2026");
+    assertThat(request.policyNo()).isEqualTo("00000008802");
+  }
+
+  @Test
+  void fetchPriceRangeDelegatesToTheSameValidatorAndErrorMapping() {
+    stubSuccess(validItem());
+    var rangeCommand =
+        new com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceRangeCommand(
+            "00000008802",
+            LocalDate.of(2023, 9, 25),
+            LocalDate.of(2026, 9, 25),
+            "DB",
+            ActorUserRole.ROLE_USER_MBR);
+
+    StepVerifier.create(newAdapter().fetchPriceRange(rangeCommand))
+        .assertNext(result -> assertThat(result.rows()).hasSize(1))
+        .verifyComplete();
+  }
+
   // ----- constructor validation --------------------------------------------------
 
   @Test
