@@ -11,7 +11,7 @@ class FundPriceExportResultTest {
 
   private FundPriceRowResult row() {
     return new FundPriceRowResult(
-        "DUSM", "n", LocalDate.of(2026, 5, 5), "HKD", BigDecimal.ONE, BigDecimal.ONE, "5");
+        "DUSM", "n", "n", LocalDate.of(2026, 5, 5), "HKD", BigDecimal.ONE, BigDecimal.ONE, "5");
   }
 
   @Test

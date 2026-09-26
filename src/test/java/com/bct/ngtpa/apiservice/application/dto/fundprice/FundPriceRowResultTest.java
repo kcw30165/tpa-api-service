@@ -13,7 +13,7 @@ class FundPriceRowResultTest {
 
   private FundPriceRowResult row(String riskLevel) {
     return new FundPriceRowResult(
-        "DUSM", "USD Fund", PRICE_DATE, "HKD", new BigDecimal("1"), new BigDecimal("1"), riskLevel);
+        "DUSM", "USD Fund", "n", PRICE_DATE, "HKD", new BigDecimal("1"), new BigDecimal("1"), riskLevel);
   }
 
   @Test
@@ -38,7 +38,7 @@ class FundPriceRowResultTest {
     assertThatThrownBy(
             () ->
                 new FundPriceRowResult(
-                    null, "n", PRICE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, "1"))
+                    null, "n", "n", PRICE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, "1"))
         .isInstanceOf(IllegalArgumentException.class);
   }
   @Test
@@ -46,7 +46,7 @@ class FundPriceRowResultTest {
     assertThatThrownBy(
             () ->
                 new FundPriceRowResult(
-                    "  ", "n", PRICE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, "1"))
+                    "  ", "n", "n", PRICE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, "1"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fundCode");
   }
@@ -56,7 +56,7 @@ class FundPriceRowResultTest {
     assertThatThrownBy(
             () ->
                 new FundPriceRowResult(
-                    "DUSM", null, PRICE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, "1"))
+                    "DUSM", null, "n", PRICE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, "1"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fundName");
   }
@@ -66,7 +66,7 @@ class FundPriceRowResultTest {
     assertThatThrownBy(
             () ->
                 new FundPriceRowResult(
-                    "DUSM", "  ", PRICE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, "1"))
+                    "DUSM", "  ", "n", PRICE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, "1"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fundName");
   }
@@ -76,7 +76,7 @@ class FundPriceRowResultTest {
     assertThatThrownBy(
             () ->
                 new FundPriceRowResult(
-                    "DUSM", "n", null, "HKD", BigDecimal.ONE, BigDecimal.ONE, "1"))
+                    "DUSM", "n", "n", null, "HKD", BigDecimal.ONE, BigDecimal.ONE, "1"))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("priceDate");
   }
@@ -86,7 +86,7 @@ class FundPriceRowResultTest {
     assertThatThrownBy(
             () ->
                 new FundPriceRowResult(
-                    "DUSM", "n", PRICE_DATE, null, BigDecimal.ONE, BigDecimal.ONE, "1"))
+                    "DUSM", "n", "n", PRICE_DATE, null, BigDecimal.ONE, BigDecimal.ONE, "1"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fundCurrency");
   }
@@ -96,7 +96,7 @@ class FundPriceRowResultTest {
     assertThatThrownBy(
             () ->
                 new FundPriceRowResult(
-                    "DUSM", "n", PRICE_DATE, "  ", BigDecimal.ONE, BigDecimal.ONE, "1"))
+                    "DUSM", "n", "n", PRICE_DATE, "  ", BigDecimal.ONE, BigDecimal.ONE, "1"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fundCurrency");
   }
@@ -104,7 +104,7 @@ class FundPriceRowResultTest {
   @Test
   void nullBidPriceThrows() {
     assertThatThrownBy(
-            () -> new FundPriceRowResult("DUSM", "n", PRICE_DATE, "HKD", null, BigDecimal.ONE, "1"))
+            () -> new FundPriceRowResult("DUSM", "n", "n", PRICE_DATE, "HKD", null, BigDecimal.ONE, "1"))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("bidPrice");
   }
@@ -112,8 +112,15 @@ class FundPriceRowResultTest {
   @Test
   void nullOfferPriceThrows() {
     assertThatThrownBy(
-            () -> new FundPriceRowResult("DUSM", "n", PRICE_DATE, "HKD", BigDecimal.ONE, null, "1"))
+            () -> new FundPriceRowResult("DUSM", "n", "n", PRICE_DATE, "HKD", BigDecimal.ONE, null, "1"))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("offerPrice");
+  }
+  @Test
+  void carriesChineseFundNameVerbatim() {
+    var row =
+        new FundPriceRowResult(
+            "DUSM", "USD Fund", "\u7f8e\u5143\u57fa\u91d1", PRICE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, "5");
+    assertThat(row.chineseFundName()).isEqualTo("\u7f8e\u5143\u57fa\u91d1");
   }
 }

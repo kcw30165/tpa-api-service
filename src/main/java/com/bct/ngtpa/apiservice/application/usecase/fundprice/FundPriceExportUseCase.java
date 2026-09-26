@@ -90,6 +90,7 @@ public final class FundPriceExportUseCase {
                     new FundPriceRowResult(
                         row.fundCode(),
                         row.fundName(),
+                        row.chineseFundName(),
                         row.priceDate(),
                         row.fundCurrency(),
                         row.bidPrice(),

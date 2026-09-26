@@ -101,7 +101,7 @@ class FundPriceControllerTest {
         new FundPriceQueryResult(
             List.of(
                 new FundPriceRowResult(
-                    "DUSM", "n", LocalDate.of(2026, 5, 5), "HKD", BigDecimal.ONE, BigDecimal.ONE, "5")),
+                    "DUSM", "n", "n", LocalDate.of(2026, 5, 5), "HKD", BigDecimal.ONE, BigDecimal.ONE, "5")),
             "BIDOFFER PRICE",
             "5");
     when(queryUseCase.query(any(), any(), any(), any(), any()))
@@ -109,7 +109,7 @@ class FundPriceControllerTest {
     var mappedResponse =
         new com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceQueryResponse(
             List.of(), "5");
-    when(webMapper.toQueryResponse(any())).thenReturn(mappedResponse);
+    when(webMapper.toQueryResponse(any(), any())).thenReturn(mappedResponse);
 
     var result =
         newController().getFundPrice("05/05/2026", null, exchangeWithSessionCookie()).block();

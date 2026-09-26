@@ -27,14 +27,15 @@ class FundPriceWebMapperTest {
 
   private FundPriceRowResult row(String riskLevel) {
     return new FundPriceRowResult(
-        "DUSM", "USD Fund", LocalDate.of(2026, 5, 5), "HKD", new BigDecimal("1.1"), new BigDecimal("1.2"), riskLevel);
+        "DUSM", "USD Fund", "\u7f8e\u5143\u57fa\u91d1", LocalDate.of(2026, 5, 5), "HKD",
+        new BigDecimal("1.1"), new BigDecimal("1.2"), riskLevel);
   }
 
   @Test
   void bidOfferPriceTypeProducesBidAndOfferFieldsNotUnitPrice() {
     var result = new FundPriceQueryResult(List.of(row("5")), "BIDOFFER PRICE", "5");
 
-    FundPriceQueryResponse response = newMapper().toQueryResponse(result);
+    FundPriceQueryResponse response = newMapper().toQueryResponse(result, "en");
 
     var mapped = response.rows().get(0);
     assertThat(mapped.bidUnitPrice()).isEqualByComparingTo("1.1");
@@ -46,7 +47,7 @@ class FundPriceWebMapperTest {
   void unitPriceTypeProducesUnitPriceFieldSourcedFromBidPriceNotOfferPrice() {
     var result = new FundPriceQueryResult(List.of(row("5")), "UNIT PRICE", "5");
 
-    FundPriceQueryResponse response = newMapper().toQueryResponse(result);
+    FundPriceQueryResponse response = newMapper().toQueryResponse(result, "en");
 
     var mapped = response.rows().get(0);
     assertThat(mapped.unitPrice()).isEqualByComparingTo("1.1"); // sourced from bid-price
@@ -58,7 +59,7 @@ class FundPriceWebMapperTest {
   void priceDateIsFormattedAsDdMmYyyyNotIso() {
     var result = new FundPriceQueryResult(List.of(row("5")), "BIDOFFER PRICE", "5");
 
-    FundPriceQueryResponse response = newMapper().toQueryResponse(result);
+    FundPriceQueryResponse response = newMapper().toQueryResponse(result, "en");
 
     assertThat(response.rows().get(0).priceDate()).isEqualTo("05/05/2026");
   }
@@ -67,14 +68,14 @@ class FundPriceWebMapperTest {
   void maxRiskLevelIsCarriedThroughVerbatim() {
     var result = new FundPriceQueryResult(List.of(row("5")), "BIDOFFER PRICE", "5");
 
-    assertThat(newMapper().toQueryResponse(result).maxRiskLevel()).isEqualTo("5");
+    assertThat(newMapper().toQueryResponse(result, "en").maxRiskLevel()).isEqualTo("5");
   }
 
   @Test
   void nullMaxRiskLevelIsCarriedThroughAsNull() {
     var result = new FundPriceQueryResult(List.of(row(null)), "BIDOFFER PRICE", null);
 
-    assertThat(newMapper().toQueryResponse(result).maxRiskLevel()).isNull();
+    assertThat(newMapper().toQueryResponse(result, "en").maxRiskLevel()).isNull();
   }
 
   @Test
@@ -83,12 +84,29 @@ class FundPriceWebMapperTest {
     // both, since the export path also needs mapped rows for the XLSX exporter (a later stage).
     var exportRow =
         new com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRowResult(
-            "DUSM", "USD Fund", LocalDate.of(2026, 5, 5), "HKD", new BigDecimal("1.1"), new BigDecimal("1.2"), "5");
+            "DUSM", "USD Fund", "n", LocalDate.of(2026, 5, 5), "HKD", new BigDecimal("1.1"), new BigDecimal("1.2"), "5");
     var result = new FundPriceExportResult(List.of(exportRow), "UNIT PRICE", "5");
 
     var mappedRows = newMapper().toExportRows(result);
 
     assertThat(mappedRows).hasSize(1);
     assertThat(mappedRows.get(0).unitPrice()).isEqualByComparingTo("1.1");
+  }
+  @Test
+  void englishLanguageSelectsEnglishFundName() {
+    var result = new FundPriceQueryResult(List.of(row("5")), "BIDOFFER PRICE", "5");
+
+    var response = newMapper().toQueryResponse(result, "en");
+
+    assertThat(response.rows().get(0).fundName()).isEqualTo("USD Fund");
+  }
+
+  @Test
+  void zhHkLanguageSelectsChineseFundName() {
+    var result = new FundPriceQueryResult(List.of(row("5")), "BIDOFFER PRICE", "5");
+
+    var response = newMapper().toQueryResponse(result, "zh_HK");
+
+    assertThat(response.rows().get(0).fundName()).isEqualTo("\u7f8e\u5143\u57fa\u91d1");
   }
 }

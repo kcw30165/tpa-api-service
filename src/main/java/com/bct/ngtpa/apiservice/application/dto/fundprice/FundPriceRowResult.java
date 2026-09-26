@@ -9,10 +9,17 @@ import java.util.Objects;
  * fundPriceType-driven field selection (the bid/offer pair vs. a single unit price) is a WEB-layer
  * concern, resolved later by the web mapper, never here. riskLevel is deliberately
  * nullable/blank-legitimate.
+ *
+ * <p>chineseFundName is carried forward from {@link RawFundPriceRow} (which already has it) but
+ * deliberately NOT validated here -- mirrors {@code RawFundPriceRow}'s own established precedent
+ * of leaving this field unvalidated, since not every fund is guaranteed to have a populated
+ * Chinese name from the downstream system. Language-based selection between fundName and
+ * chineseFundName happens in the WEB layer (FundPriceWebMapper), never here.
  */
 public record FundPriceRowResult(
     String fundCode,
     String fundName,
+    String chineseFundName,
     LocalDate priceDate,
     String fundCurrency,
     BigDecimal bidPrice,

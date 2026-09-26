@@ -81,6 +81,7 @@ public final class FundPriceQueryUseCase {
                     new FundPriceRowResult(
                         row.fundCode(),
                         row.fundName(),
+                        row.chineseFundName(),
                         row.priceDate(),
                         row.fundCurrency(),
                         row.bidPrice(),

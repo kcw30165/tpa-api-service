@@ -22,7 +22,7 @@ class FundPriceSortingSupportTest {
 
   private FundPriceRowResult row(String fundCode, String fundName, String riskLevel, String bidPrice) {
     return new FundPriceRowResult(
-        fundCode, fundName, LocalDate.of(2026, 5, 5), "HKD", new BigDecimal(bidPrice), new BigDecimal(bidPrice), riskLevel);
+        fundCode, fundName, "n", LocalDate.of(2026, 5, 5), "HKD", new BigDecimal(bidPrice), new BigDecimal(bidPrice), riskLevel);
   }
 
   @Test
