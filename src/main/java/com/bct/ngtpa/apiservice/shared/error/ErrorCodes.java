@@ -18,6 +18,8 @@ public final class ErrorCodes {
       "err.security.authentication.required";
 
   public static final String CACHE_UNEXPECTED = "err.cache.unexpected";
+  public static final String FUND_PRICE_REQUEST_INVALID = "err.fund-price.request.invalid";
+  public static final String FUND_PRICE_RETRIEVAL_UNAVAILABLE = "err.fund-price.retrieval.unavailable";
   public static final String CAPTCHA_VERIFICATION_INVALID = "err.captcha.verification.invalid";
 
   public static final String MEMBER_CONTEXT_UNAVAILABLE = "err.member.context.unavailable";

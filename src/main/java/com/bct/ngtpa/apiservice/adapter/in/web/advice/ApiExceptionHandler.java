@@ -12,6 +12,7 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequest
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
+import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
@@ -269,6 +270,24 @@ public class ApiExceptionHandler {
     // (addresses, passwords, cert paths) that must not appear in application logs.
 
     String errorCode = ErrorCodes.CACHE_UNEXPECTED;
+    ApiError error =
+        ApiError.form(
+            errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);
+    return buildMutationErrorResponse(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        ApiStatus.SYSTEM_ERROR,
+        List.of(error),
+        exchange,
+        ex,
+        ex.getMessage(),
+        true,
+        false);
+  }
+
+  @ExceptionHandler(FundPriceRetrievalException.class)
+  public ResponseEntity<MutationResponse<Void>> handleFundPriceRetrievalException(
+      FundPriceRetrievalException ex, ServerWebExchange exchange) {
+    String errorCode = ErrorCodes.FUND_PRICE_RETRIEVAL_UNAVAILABLE;
     ApiError error =
         ApiError.form(
             errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);

@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support.FundPriceSortin
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceQueryResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.FundPriceRequestInvalidException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceQueryUseCase;
@@ -101,7 +102,7 @@ public class FundPriceController {
     return switch (result.outcome()) {
       case APPLIED -> Mono.just(result.queryResult());
       case INVALID_DATE ->
-          Mono.error(new IllegalArgumentException("date is not a valid available fund price date"));
+          Mono.error(new FundPriceRequestInvalidException("date is not a valid available fund price date"));
       case SYSTEM_FAILURE -> Mono.error(FundPriceRetrievalException.systemFailure());
     };
   }
@@ -109,23 +110,23 @@ public class FundPriceController {
   private AuthenticatedSessionId resolveSessionId(ServerWebExchange exchange) {
     var cookie = exchange.getRequest().getCookies().getFirst(sessionCookies.cookieName());
     if (cookie == null || cookie.getValue().isBlank()) {
-      throw new IllegalStateException("Missing authenticated session cookie");
+      throw new FundPriceRequestInvalidException("Missing authenticated session cookie");
     }
     try {
       return new AuthenticatedSessionId(cookie.getValue().trim());
     } catch (IllegalArgumentException e) {
-      throw new IllegalStateException("Invalid authenticated session cookie", e);
+      throw new FundPriceRequestInvalidException("Invalid authenticated session cookie");
     }
   }
 
   private LocalDate parseDate(String date) {
     if (date == null || date.isBlank()) {
-      throw new IllegalArgumentException("date is required");
+      throw new FundPriceRequestInvalidException("date is required");
     }
     try {
       return LocalDate.parse(date.trim(), dateFormatter);
     } catch (DateTimeParseException e) {
-      throw new IllegalArgumentException("date must be in dd/MM/yyyy format", e);
+      throw new FundPriceRequestInvalidException("date must be in dd/MM/yyyy format");
     }
   }
 }

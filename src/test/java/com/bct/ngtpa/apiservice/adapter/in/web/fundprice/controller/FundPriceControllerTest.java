@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.fundprice.controller;
 
+import com.bct.ngtpa.apiservice.application.exception.FundPriceRequestInvalidException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -124,7 +126,7 @@ class FundPriceControllerTest {
 
     StepVerifier.create(
             newController().getFundPrice("05/05/2026", null, exchangeWithoutSessionCookie()))
-        .expectError()
+        .expectError(FundPriceRequestInvalidException.class)
         .verify();
   }
 
@@ -132,7 +134,7 @@ class FundPriceControllerTest {
   void invalidDateFormatMapsToError() {
     StepVerifier.create(
             newController().getFundPrice("not-a-date", null, exchangeWithSessionCookie()))
-        .expectError(IllegalArgumentException.class)
+        .expectError(FundPriceRequestInvalidException.class)
         .verify();
   }
   @Test
@@ -145,7 +147,7 @@ class FundPriceControllerTest {
     when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
 
     StepVerifier.create(newController().getFundPrice("05/05/2026", null, exchange))
-        .expectError()
+        .expectError(FundPriceRequestInvalidException.class)
         .verify();
   }
 
@@ -161,21 +163,21 @@ class FundPriceControllerTest {
     when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
 
     StepVerifier.create(newController().getFundPrice("05/05/2026", null, exchange))
-        .expectError()
+        .expectError(FundPriceRequestInvalidException.class)
         .verify();
   }
 
   @Test
   void blankDateParameterMapsToError() {
     StepVerifier.create(newController().getFundPrice("  ", null, exchangeWithSessionCookie()))
-        .expectError(IllegalArgumentException.class)
+        .expectError(FundPriceRequestInvalidException.class)
         .verify();
   }
 
   @Test
   void nullDateParameterMapsToError() {
     StepVerifier.create(newController().getFundPrice(null, null, exchangeWithSessionCookie()))
-        .expectError(IllegalArgumentException.class)
+        .expectError(FundPriceRequestInvalidException.class)
         .verify();
   }
 
@@ -191,7 +193,7 @@ class FundPriceControllerTest {
                             .FundPriceUseCaseOutcome.INVALID_DATE)));
 
     StepVerifier.create(newController().getFundPrice("05/05/2026", null, exchangeWithSessionCookie()))
-        .expectError(IllegalArgumentException.class)
+        .expectError(FundPriceRequestInvalidException.class)
         .verify();
   }
 
