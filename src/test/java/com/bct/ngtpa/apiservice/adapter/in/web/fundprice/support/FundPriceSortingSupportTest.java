@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support;
 
+import java.math.BigInteger;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
@@ -60,17 +62,38 @@ class FundPriceSortingSupportTest {
   }
 
   @Test
-  void sortsExportResultRowsIdentically() {
+  void sortsExportResultRowsByDateDescendingThenRiskAscendingThenNameAscending() {
+    // CORRECTED (script 139, fixing an ordering bug in script 138's own site-patch sequence):
+    // export's sort order is DISTINCT from query mode's, per
+    // fund-price-excel-export-contract.md's "Rows and sorting" section: price date descending,
+    // then risk level ascending (blank ranks last), then English fund name ascending.
     var unsorted =
         new FundPriceExportResult(
             List.of(
-                row("C", "Zebra Fund", "3", "5.0"),
-                row("A", "Alpha Fund", "1", "9.0")),
+                rowWithDate("A", "Zebra Fund", "1", "2026-05-04"),
+                rowWithDate("B", "Alpha Fund", "1", "2026-05-05"),
+                rowWithDate("C", "Beta Fund", "3", "2026-05-05")),
             "UNIT PRICE",
-            "3");
+            "3",
+            BigInteger.TWO);
 
     var sorted = new FundPriceSortingSupport().sort(unsorted);
 
-    assertThat(sorted.rows()).extracting(FundPriceRowResult::fundCode).containsExactly("A", "C");
+    assertThat(sorted.rows())
+        .extracting(FundPriceRowResult::fundCode)
+        .containsExactly("B", "C", "A");
+  }
+
+  private FundPriceRowResult rowWithDate(
+      String fundCode, String fundName, String riskLevel, String isoDate) {
+    return new FundPriceRowResult(
+        fundCode,
+        fundName,
+        "n",
+        LocalDate.parse(isoDate),
+        "HKD",
+        new BigDecimal("1.0"),
+        new BigDecimal("1.0"),
+        riskLevel);
   }
 }

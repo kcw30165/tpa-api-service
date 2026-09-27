@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.application.dto.fundprice;
 
+import java.math.BigInteger;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
@@ -16,20 +18,20 @@ class FundPriceExportResultTest {
 
   @Test
   void carriesRowsFundPriceTypeAndMaxRiskLevel() {
-    var result = new FundPriceExportResult(List.of(row()), "BIDOFFER PRICE", "5");
+    var result = new FundPriceExportResult(List.of(row()), "BIDOFFER PRICE", "5", BigInteger.TWO);
     assertThat(result.rows()).hasSize(1);
     assertThat(result.fundPriceType()).isEqualTo("BIDOFFER PRICE");
     assertThat(result.maxRiskLevel()).isEqualTo("5");
   }
   @Test
   void nullRowsDefaultsToEmptyList() {
-    var result = new FundPriceExportResult(null, "UNIT PRICE", null);
+    var result = new FundPriceExportResult(null, "UNIT PRICE", null, BigInteger.TWO);
     assertThat(result.rows()).isEmpty();
   }
 
   @Test
   void nullMaxRiskLevelIsAcceptedAndNotDefaulted() {
-    var result = new FundPriceExportResult(List.of(row()), "UNIT PRICE", null);
+    var result = new FundPriceExportResult(List.of(row()), "UNIT PRICE", null, BigInteger.TWO);
     assertThat(result.maxRiskLevel()).isNull();
   }
 }

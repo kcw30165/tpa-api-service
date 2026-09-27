@@ -6,11 +6,21 @@ import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceModeSessionMetadata;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRowResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataKey;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataName;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataPrecision;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataScope;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataType;
+import com.bct.ngtpa.apiservice.application.dto.metadata.ResolveGeneralMetadataQuery;
+import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.application.port.in.GeneralMetadataResolver;
 import com.bct.ngtpa.apiservice.application.port.out.FundPriceSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LoadAndTouchAuthenticatedSessionUseCase;
+import java.math.BigInteger;
 import java.util.Objects;
+import java.util.Set;
 import reactor.core.publisher.Mono;
 
 /**
@@ -26,30 +36,43 @@ import reactor.core.publisher.Mono;
  *
  * <p>Does NOT run {@link FundPriceRequestSupport#validateDate} -- there is no FE-supplied
  * candidate date to validate against the cached list.
+ *
+ * <p>Resolves {@code fund-pri}/{@code PRECISION} via {@link GeneralMetadataResolver}, mirroring
+ * {@code GetAccountBalanceService}'s exact established pattern (confirmed real precedent, scripts
+ * 136/137): reference date first, then metadata, then the price-range fetch, then assembly.
+ * Neither the controller nor {@code FundPriceWorkbookExporter} ever resolves metadata directly --
+ * the resolved precision is carried forward on {@link FundPriceExportResult}.
  */
 public final class FundPriceExportUseCase {
+
+  private static final GeneralMetadataKey UNIT_PRICE_PRECISION_KEY =
+      new GeneralMetadataKey(GeneralMetadataName.FUND_PRICE, GeneralMetadataType.PRECISION);
 
   private final FundPriceRequestSupport requestSupport;
   private final FundPriceSourcePort sourcePort;
   private final ReferenceDatePort referenceDatePort;
+  private final GeneralMetadataResolver generalMetadataResolver;
 
   public FundPriceExportUseCase(
       LoadAndTouchAuthenticatedSessionUseCase lifecycle,
       FundPriceSourcePort sourcePort,
-      ReferenceDatePort referenceDatePort) {
+      ReferenceDatePort referenceDatePort,
+      GeneralMetadataResolver generalMetadataResolver) {
     this.requestSupport = new FundPriceRequestSupport(lifecycle);
     this.sourcePort = Objects.requireNonNull(sourcePort, "sourcePort must not be null");
     this.referenceDatePort =
         Objects.requireNonNull(referenceDatePort, "referenceDatePort must not be null");
+    this.generalMetadataResolver =
+        Objects.requireNonNull(generalMetadataResolver, "generalMetadataResolver must not be null");
   }
 
   public Mono<FundPriceExportUseCaseResult> export(
       AuthenticatedSessionId sessionId,
       String accountEnv,
       String policyNo,
+      String trustCode,
       ActorUserRole actorUserRole) {
     Objects.requireNonNull(sessionId, "sessionId must not be null");
-
     return requestSupport
         .loadUsableSession(sessionId)
         .flatMap(
@@ -63,26 +86,42 @@ public final class FundPriceExportUseCase {
                   .resolveReferenceDate(accountEnv)
                   .flatMap(
                       referenceDate -> {
-                        // NO mode reference anywhere in export's command construction --
-                        // confirmed design (Nick): export passes policyNo, fromDate, toDate
-                        // straight to APIM, bypassing FetchFundPriceCommand/fetchPrice's
-                        // mode-dependent single-date expansion entirely.
-                        var command =
-                            new FetchFundPriceRangeCommand(
-                                policyNo,
-                                referenceDate.minusMonths(metadata.maximumFundPriceHistoryMonths()),
-                                referenceDate,
-                                accountEnv,
+                        var metadataQuery =
+                            new ResolveGeneralMetadataQuery(
+                                new GeneralMetadataScope(accountEnv, trustCode, policyNo),
+                                Set.of(UNIT_PRICE_PRECISION_KEY),
                                 actorUserRole);
-                        return sourcePort
-                            .fetchPriceRange(command)
-                            .map(raw -> assembleResult(raw, metadata));
+                        return generalMetadataResolver
+                            .resolve(metadataQuery)
+                            .flatMap(
+                                resolvedMetadata -> {
+                                  // NO mode reference anywhere in export's command construction --
+                                  // confirmed design (Nick): export passes policyNo, fromDate,
+                                  // toDate straight to APIM, bypassing
+                                  // FetchFundPriceCommand/fetchPrice's mode-dependent
+                                  // single-date expansion entirely.
+                                  var command =
+                                      new FetchFundPriceRangeCommand(
+                                          policyNo,
+                                          referenceDate.minusMonths(
+                                              metadata.maximumFundPriceHistoryMonths()),
+                                          referenceDate,
+                                          accountEnv,
+                                          actorUserRole);
+                                  return sourcePort
+                                      .fetchPriceRange(command)
+                                      .map(
+                                          raw ->
+                                              assembleResult(raw, metadata, resolvedMetadata));
+                                });
                       });
             });
   }
 
   private FundPriceExportUseCaseResult assembleResult(
-      RawFundPriceData raw, FundPriceModeSessionMetadata metadata) {
+      RawFundPriceData raw,
+      FundPriceModeSessionMetadata metadata,
+      ResolvedGeneralMetadataSet resolvedMetadata) {
     var rows =
         raw.rows().stream()
             .map(
@@ -97,9 +136,14 @@ public final class FundPriceExportUseCase {
                         row.offerPrice(),
                         row.riskLevel()))
             .toList();
-    boolean anyRiskLevel = rows.stream().anyMatch(r -> r.riskLevel() != null && !r.riskLevel().isEmpty());
+    boolean anyRiskLevel =
+        rows.stream().anyMatch(r -> r.riskLevel() != null && !r.riskLevel().isEmpty());
     String maxRiskLevel = anyRiskLevel ? metadata.maxRiskLevel() : null;
+    BigInteger unitPricePrecision =
+        GeneralMetadataPrecision.parse(
+                resolvedMetadata.find(UNIT_PRICE_PRECISION_KEY).orElseThrow().value())
+            .value();
     return FundPriceExportUseCaseResult.applied(
-        new FundPriceExportResult(rows, metadata.fundPriceType(), maxRiskLevel));
+        new FundPriceExportResult(rows, metadata.fundPriceType(), maxRiskLevel, unitPricePrecision));
   }
 }

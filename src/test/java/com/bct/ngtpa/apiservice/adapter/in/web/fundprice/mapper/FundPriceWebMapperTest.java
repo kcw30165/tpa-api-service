@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.fundprice.mapper;
 
+import java.math.BigInteger;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceQueryResponse;
@@ -85,7 +87,7 @@ class FundPriceWebMapperTest {
     var exportRow =
         new com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRowResult(
             "DUSM", "USD Fund", "n", LocalDate.of(2026, 5, 5), "HKD", new BigDecimal("1.1"), new BigDecimal("1.2"), "5");
-    var result = new FundPriceExportResult(List.of(exportRow), "UNIT PRICE", "5");
+    var result = new FundPriceExportResult(List.of(exportRow), "UNIT PRICE", "5", BigInteger.TWO);
 
     var mappedRows = newMapper().toExportRows(result);
 

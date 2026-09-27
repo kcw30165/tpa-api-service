@@ -19,6 +19,14 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.port.out.FundPriceSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataKey;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataName;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataResolutionSource;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataType;
+import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadata;
+import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet;
+import com.bct.ngtpa.apiservice.application.port.in.GeneralMetadataResolver;
+import java.math.BigInteger;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LoadAndTouchAuthenticatedSessionUseCase;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -46,9 +54,18 @@ class FundPriceExportUseCaseTest {
       mock(LoadAndTouchAuthenticatedSessionUseCase.class);
   private final FundPriceSourcePort sourcePort = mock(FundPriceSourcePort.class);
   private final ReferenceDatePort referenceDatePort = mock(ReferenceDatePort.class);
+  private final GeneralMetadataResolver metadataResolver =
+      query ->
+          reactor.core.publisher.Mono.just(
+              new ResolvedGeneralMetadataSet(
+                  query.scope(),
+                  GeneralMetadataResolutionSource.POLICY_SPECIFIC,
+                  query.requiredKeys().stream()
+                      .map(key -> new ResolvedGeneralMetadata(key, "2"))
+                      .toList()));
 
   private FundPriceExportUseCase newUseCase() {
-    return new FundPriceExportUseCase(lifecycle, sourcePort, referenceDatePort);
+    return new FundPriceExportUseCase(lifecycle, sourcePort, referenceDatePort, metadataResolver);
   }
 
   private AuthenticatedSession sessionWithMetadata(FundPriceModeSessionMetadata metadata) {
@@ -94,7 +111,7 @@ class FundPriceExportUseCaseTest {
     stubActiveSessionWithMetadata(metadata);
     when(sourcePort.fetchPriceRange(any())).thenReturn(Mono.just(rawData()));
 
-    newUseCase().export(SESSION_ID, "DB", "policy1", ActorUserRole.ROLE_USER_MBR).block();
+    newUseCase().export(SESSION_ID, "DB", "policy1", "DBA", ActorUserRole.ROLE_USER_MBR).block();
 
     var captor =
         org.mockito.ArgumentCaptor.forClass(
@@ -113,7 +130,7 @@ class FundPriceExportUseCaseTest {
     stubActiveSessionWithMetadata(metadata);
     when(sourcePort.fetchPriceRange(any())).thenReturn(Mono.just(rawData()));
 
-    newUseCase().export(SESSION_ID, "DB", "policy1", ActorUserRole.ROLE_USER_MBR).block();
+    newUseCase().export(SESSION_ID, "DB", "policy1", "DBA", ActorUserRole.ROLE_USER_MBR).block();
 
     org.mockito.Mockito.verify(sourcePort, org.mockito.Mockito.never()).fetchPrice(any());
   }
@@ -129,7 +146,7 @@ class FundPriceExportUseCaseTest {
     when(sourcePort.fetchPriceRange(any())).thenReturn(Mono.just(rawData()));
 
     StepVerifier.create(
-            newUseCase().export(SESSION_ID, "DB", "policy1", ActorUserRole.ROLE_USER_MBR))
+            newUseCase().export(SESSION_ID, "DB", "policy1", "DBA", ActorUserRole.ROLE_USER_MBR))
         .assertNext(
             result -> assertThat(result.outcome()).isEqualTo(FundPriceUseCaseOutcome.APPLIED))
         .verifyComplete();
@@ -140,7 +157,7 @@ class FundPriceExportUseCaseTest {
     stubActiveSessionWithMetadata(null);
 
     StepVerifier.create(
-            newUseCase().export(SESSION_ID, "DB", "policy1", ActorUserRole.ROLE_USER_MBR))
+            newUseCase().export(SESSION_ID, "DB", "policy1", "DBA", ActorUserRole.ROLE_USER_MBR))
         .assertNext(
             result -> assertThat(result.outcome()).isEqualTo(FundPriceUseCaseOutcome.SYSTEM_FAILURE))
         .verifyComplete();
@@ -158,12 +175,29 @@ class FundPriceExportUseCaseTest {
                     "DUSM", "n", "n", REFERENCE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, null)));
     when(sourcePort.fetchPriceRange(any())).thenReturn(Mono.just(noRiskData));
 
-    StepVerifier.create(newUseCase().export(SESSION_ID, "DB", "policy1", ActorUserRole.ROLE_USER_MBR))
+    StepVerifier.create(newUseCase().export(SESSION_ID, "DB", "policy1", "DBA", ActorUserRole.ROLE_USER_MBR))
         .assertNext(
             result -> {
               assertThat(result.outcome()).isEqualTo(FundPriceUseCaseOutcome.APPLIED);
               assertThat(result.exportResult().maxRiskLevel()).isNull();
             })
+        .verifyComplete();
+  }
+  @Test
+  void resolvesUnitPricePrecisionViaGeneralMetadataResolver() {
+    var metadata =
+        new FundPriceModeSessionMetadata(
+            "DAILY", "BIDOFFER PRICE", List.of(REFERENCE_DATE), 36, "5");
+    stubActiveSessionWithMetadata(metadata);
+    when(sourcePort.fetchPriceRange(any())).thenReturn(Mono.just(rawData()));
+
+    StepVerifier.create(
+            newUseCase()
+                .export(SESSION_ID, "DB", "policy1", "DBA", ActorUserRole.ROLE_USER_MBR))
+        .assertNext(
+            result ->
+                assertThat(result.exportResult().unitPricePrecision())
+                    .isEqualTo(BigInteger.valueOf(2)))
         .verifyComplete();
   }
 }
