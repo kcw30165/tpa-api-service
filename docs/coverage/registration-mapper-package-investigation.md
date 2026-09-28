@@ -79,3 +79,22 @@ This is INVESTIGATION ONLY. No test code and no production code
 changes have been made. This data identifies exactly which methods
 and source lines have uncovered branches, to inform test design
 once implementation begins.
+
+## Full-Source Evidence Dump
+
+- Generated: 2026-09-28T08:48:09Z
+- Purpose: full source of all 7 registration mapper
+  classes, plus full source of all 24 existing test
+  files that reference any of them (re-derived via fresh grep, not
+  reused from prior script evidence), to enable correct test design
+  once implementation begins.
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main/`, `src_test/`, and
+  `06-manifest.md` for navigation).
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. This completes the pre-implementation
+understanding phase for this package: baseline coverage (script
+007), per-method/per-line branch detail (script 008), and now full
+source of both production and test code (script 009).
