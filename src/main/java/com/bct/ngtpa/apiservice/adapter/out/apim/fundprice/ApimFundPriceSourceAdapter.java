@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -44,6 +45,7 @@ public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
   private final String path;
   private final DateTimeFormatter formatter;
 
+  @Autowired
   public ApimFundPriceSourceAdapter(
       ApimExchangeExecutor executor,
       FundPriceApimProperties properties,

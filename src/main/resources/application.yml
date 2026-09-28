@@ -294,6 +294,8 @@ auth-workflows:
       complete-ttl-seconds: 300
 
 apim:
+  fund-price:
+    path: /ws/NGTPA/v1/TRPGetFundPrice
   fund-price-mode:
     path: /ws/NGTPA/v1/TRPGetFundPriceMode
   account-balance:

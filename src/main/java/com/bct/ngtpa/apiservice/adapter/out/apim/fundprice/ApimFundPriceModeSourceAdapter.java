@@ -13,6 +13,7 @@ import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalExceptio
 import com.bct.ngtpa.apiservice.application.port.out.FundPriceModeSourcePort;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -35,6 +36,7 @@ public final class ApimFundPriceModeSourceAdapter implements FundPriceModeSource
   private final String path;
   private final DateTimeFormatter formatter;
 
+  @Autowired
   public ApimFundPriceModeSourceAdapter(
       ApimExchangeExecutor executor,
       FundPriceModeApimProperties properties,
