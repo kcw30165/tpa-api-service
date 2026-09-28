@@ -271,4 +271,87 @@ class ApimFundPriceSourceAdapterTest {
             () -> new ApimFundPriceSourceAdapter(null, PATH, FORMATTER))
         .isInstanceOf(NullPointerException.class);
   }
+
+  @Test
+  void nullPathThrows() {
+    // Confirmed real gap (script 161/162): only blankPathThrows (" ") was previously
+    // exercised; path == null was never independently tested, even though the guard
+    // clause is "path == null || path.isBlank()" -- two genuinely distinct branches.
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> new ApimFundPriceSourceAdapter(executor, (String) null, FORMATTER))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void publicProductionConstructorDelegatesToPropertiesPath() {
+    // Confirmed real gap (script 161/162): the PUBLIC constructor Spring actually uses
+    // in production -- (ApimExchangeExecutor, FundPriceApimProperties, DateTimeFormatter)
+    // -- had 0.0% instruction coverage; every other test in this file uses only the
+    // package-private test constructor.
+    var properties = mock(FundPriceApimProperties.class);
+    when(properties.getPath()).thenReturn(PATH);
+    var adapter = new ApimFundPriceSourceAdapter(executor, properties, FORMATTER);
+    stubSuccess(validItem());
+
+    ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
+    adapter.fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))).block();
+    verify(executor).postEnvelope(captor.capture());
+    assertThat(captor.getValue().path()).isEqualTo(PATH);
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void nullErrMessageIsTreatedAsNoErrorAndProceedsToReconciliation() {
+    // Confirmed real gap (script 161/162): errMessage == null was never independently
+    // tested -- every existing test stubs getErrMessage() to "" or a real string. The
+    // guard "errMessage != null && !errMessage.isEmpty()" has a genuinely distinct
+    // errMessage==null branch that short-circuits to false (no error), letting
+    // reconciliation proceed normally.
+    var envelope = mock(ApimResponseEnvelope.class);
+    var response = mock(com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody.class);
+    when(response.getErrMessage()).thenReturn(null);
+    when(response.getData()).thenReturn(List.of(validItem()));
+    when(envelope.getResponse()).thenReturn(response);
+    when(executor.postEnvelope(any())).thenReturn(Mono.just(envelope));
+
+    StepVerifier.create(newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))))
+        .assertNext(result -> assertThat(result.rows()).hasSize(1))
+        .verifyComplete();
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void nullDataMapsToSystemFailure() {
+    // Confirmed real gap (script 161/162): response.getData() returning null was never
+    // independently tested -- the guard "items == null || items.size() != 1 ||
+    // items.get(0) == null" has a genuinely distinct items==null branch.
+    var envelope = mock(ApimResponseEnvelope.class);
+    var response = mock(com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody.class);
+    when(response.getErrMessage()).thenReturn("");
+    when(response.getData()).thenReturn(null);
+    when(envelope.getResponse()).thenReturn(response);
+    when(executor.postEnvelope(any())).thenReturn(Mono.just(envelope));
+
+    StepVerifier.create(newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))))
+        .expectError(FundPriceRetrievalException.class)
+        .verify();
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void firstDataItemNullMapsToSystemFailure() {
+    // Confirmed real gap (script 161/162): a single-element data list whose sole
+    // element is itself null was never independently tested -- the guard's third
+    // OR clause, items.get(0) == null, was never exercised as true.
+    var envelope = mock(ApimResponseEnvelope.class);
+    var response = mock(com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody.class);
+    when(response.getErrMessage()).thenReturn("");
+    when(response.getData()).thenReturn(java.util.Collections.singletonList(null));
+    when(envelope.getResponse()).thenReturn(response);
+    when(executor.postEnvelope(any())).thenReturn(Mono.just(envelope));
+
+    StepVerifier.create(newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))))
+        .expectError(FundPriceRetrievalException.class)
+        .verify();
+  }
 }
