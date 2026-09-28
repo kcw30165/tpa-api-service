@@ -20,6 +20,8 @@ import com.bct.ngtpa.apiservice.application.port.in.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpCreationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.*;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
@@ -489,7 +491,7 @@ class RegistrationStartWorkflowIntegrationTest {
               new RegistrationStartReplayCodec(), protectedReplay);
       var operation =
           new RegistrationStartProtectedOperation(
-              new RegistrationStartValidator(),
+              new RegistrationStartValidator(new MaskingService(new MaskingProperties())),
               lookup,
               sessions,
               csrf,

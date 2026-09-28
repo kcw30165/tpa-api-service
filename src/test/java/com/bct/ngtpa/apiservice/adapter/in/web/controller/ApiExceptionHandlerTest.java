@@ -23,7 +23,8 @@ import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextR
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.web.PortalAccessContextKeys;
@@ -409,7 +410,7 @@ class ApiExceptionHandlerTest {
   }
 
   private static LoggingSanitizer loggingSanitizer() {
-    return new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties());
+    return new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties()));
   }
 
   private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {

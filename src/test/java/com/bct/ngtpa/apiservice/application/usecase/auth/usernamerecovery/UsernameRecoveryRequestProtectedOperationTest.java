@@ -12,6 +12,8 @@ import com.bct.ngtpa.apiservice.application.service.auth.usernamerecovery.contex
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.domain.model.*;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -107,7 +109,7 @@ class UsernameRecoveryRequestProtectedOperationTest {
               assertThat(result.completed()).isTrue();
               assertThat(result.result().outcome())
                   .isEqualTo(UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED);
-              assertThat(result.result().maskedDestination()).isEqualTo("p****c@ah.ozk");
+              assertThat(result.result().maskedDestination()).isEqualTo("p*****c@ah.ozk");
               assertThat(result.result().destinationType())
                   .isEqualTo(UsernameRecoveryDestinationType.EMAIL);
             })
@@ -212,6 +214,7 @@ class UsernameRecoveryRequestProtectedOperationTest {
         destinations,
         sessions,
         deliveries,
+        new MaskingService(new MaskingProperties()),
         origins,
         "subject",
         "body",

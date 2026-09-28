@@ -29,6 +29,7 @@ import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionCandidate;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryVerifiedDestination;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryWorkflowStatus;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -44,8 +45,7 @@ public final class UsernameRecoveryRequestProtectedOperation {
   private final MessageDeliveryPort messageDeliveryPort;
   private final OriginRefererValidator originRefererValidator = new OriginRefererValidator();
   private final List<String> allowedOrigins;
-  private final UsernameRecoveryRequestDestinationMasker destinationMasker =
-      new UsernameRecoveryRequestDestinationMasker();
+  private final MaskingService maskingService;
   private final String emailSubject;
   private final String emailBody;
   private final String smsBody;
@@ -56,6 +56,7 @@ public final class UsernameRecoveryRequestProtectedOperation {
       UsernameRecoveryEffectiveDestinationPort effectiveDestinationPort,
       AuthFlowSessionPort authFlowSessionPort,
       MessageDeliveryPort messageDeliveryPort,
+      MaskingService maskingService,
       List<String> allowedOrigins,
       String emailSubject,
       String emailBody,
@@ -65,6 +66,7 @@ public final class UsernameRecoveryRequestProtectedOperation {
     this.effectiveDestinationPort = Objects.requireNonNull(effectiveDestinationPort);
     this.authFlowSessionPort = Objects.requireNonNull(authFlowSessionPort);
     this.messageDeliveryPort = Objects.requireNonNull(messageDeliveryPort);
+    this.maskingService = Objects.requireNonNull(maskingService);
     this.allowedOrigins = allowedOrigins == null ? List.of() : List.copyOf(allowedOrigins);
     this.emailSubject = requireNonBlank(emailSubject, "emailSubject");
     this.emailBody = requireNonBlank(emailBody, "emailBody");
@@ -177,9 +179,10 @@ public final class UsernameRecoveryRequestProtectedOperation {
               }
               UsernameRecoveryEffectiveDestinationResult effective = resolution.get();
               String masked =
-                  destinationMasker.mask(
-                      context.verifiedDestination().channel(),
-                      context.verifiedDestination().value());
+                  context.verifiedDestination().channel()
+                          == UsernameRecoveryVerifiedDestination.Channel.EMAIL
+                      ? maskingService.maskEmail(context.verifiedDestination().value())
+                      : maskingService.maskMobile(context.verifiedDestination().value());
               MessageDeliveryCommand delivery =
                   buildDeliveryCommand(context, candidate, effective, correlationId);
               return messageDeliveryPort

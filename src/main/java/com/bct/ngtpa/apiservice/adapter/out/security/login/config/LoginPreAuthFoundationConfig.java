@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowPropertie
 import com.bct.ngtpa.apiservice.adapter.out.security.login.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.preauth.*;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.security.SecureRandom;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.*;
 @Configuration
 @EnableConfigurationProperties(LoginPreAuthContextProtectionProperties.class)
 public class LoginPreAuthFoundationConfig {
+
   @Bean
   LoginDestinationIdGenerator loginDestinationIdGenerator(
       LoginPreAuthContextProtectionProperties p) {
@@ -28,13 +30,8 @@ public class LoginPreAuthFoundationConfig {
   }
 
   @Bean
-  LoginDestinationMasker loginDestinationMasker() {
-    return new LoginDestinationMasker();
-  }
-
-  @Bean
   LoginPreAuthContextFactory loginPreAuthContextFactory(
-      LoginDestinationIdGenerator ids, LoginDestinationMasker masker) {
+      LoginDestinationIdGenerator ids, MaskingService masker) {
     return new LoginPreAuthContextFactory(ids, masker);
   }
 

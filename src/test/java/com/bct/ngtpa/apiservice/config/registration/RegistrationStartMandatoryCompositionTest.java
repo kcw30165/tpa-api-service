@@ -14,6 +14,8 @@ import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartProtectedReplayPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.SharedStartRegistrationService;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.time.Clock;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -48,7 +50,8 @@ class RegistrationStartMandatoryCompositionTest {
           .withBean(
               RegistrationStartProtectedReplayPort.class,
               () -> org.mockito.Mockito.mock(RegistrationStartProtectedReplayPort.class))
-          .withBean(Clock.class, Clock::systemUTC);
+          .withBean(Clock.class, Clock::systemUTC)
+          .withBean(MaskingService.class, () -> new MaskingService(new MaskingProperties()));
 
   @Test
   void composesExactlyOneSharedStartUseCaseWhenLegacyEnableFlagIsFalse() {

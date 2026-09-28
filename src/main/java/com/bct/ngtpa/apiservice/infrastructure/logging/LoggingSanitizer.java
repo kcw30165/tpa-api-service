@@ -11,19 +11,19 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import org.springframework.stereotype.Component;
 
 @Component
 public class LoggingSanitizer {
 
-  private static final String MASKED_VALUE = "***";
 
   private final ObjectMapper objectMapper;
-  private final LoggingSanitizerProperties properties;
+  private final MaskingService maskingService;
 
-  public LoggingSanitizer(ObjectMapper objectMapper, LoggingSanitizerProperties properties) {
+  public LoggingSanitizer(ObjectMapper objectMapper, MaskingService maskingService) {
     this.objectMapper = objectMapper;
-    this.properties = properties;
+    this.maskingService = maskingService;
   }
 
   public List<Object> sanitizeArguments(Object[] args) {
@@ -76,7 +76,7 @@ public class LoggingSanitizer {
 
   private Object sanitizeValue(String fieldName, Object value) {
     if (isSensitiveKey(fieldName)) {
-      return MASKED_VALUE;
+      return maskingService.loggingPlaceholder();
     }
     if (value == null) {
       return null;
@@ -134,7 +134,7 @@ public class LoggingSanitizer {
 
   private Object sanitizeJsonNode(String fieldName, JsonNode node) {
     if (isSensitiveKey(fieldName)) {
-      return MASKED_VALUE;
+      return maskingService.loggingPlaceholder();
     }
     if (node == null || node.isNull()) {
       return null;
@@ -168,7 +168,7 @@ public class LoggingSanitizer {
     }
 
     String normalized = key.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
-    return properties.getSensitiveTokens().stream()
+    return maskingService.sensitiveTokens().stream()
         .map(token -> token.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT))
         .anyMatch(normalized::contains);
   }
@@ -185,7 +185,7 @@ public class LoggingSanitizer {
 
   private String maskSensitiveAssignments(String value) {
     String sanitized = value;
-    for (String sensitiveToken : properties.getSensitiveTokens()) {
+    for (String sensitiveToken : maskingService.sensitiveTokens()) {
       sanitized = maskTokenAssignment(sanitized, sensitiveToken);
     }
     return sanitized;
@@ -213,7 +213,8 @@ public class LoggingSanitizer {
     Matcher matcher = pattern.matcher(value);
     StringBuffer buffer = new StringBuffer();
     while (matcher.find()) {
-      String maskedValue = matcher.group(2).startsWith("\"") ? "\"***\"" : "***";
+      String placeholder = maskingService.loggingPlaceholder();
+      String maskedValue = matcher.group(2).startsWith("\"") ? "\"" + placeholder + "\"" : placeholder;
       matcher.appendReplacement(buffer, Matcher.quoteReplacement(matcher.group(1) + maskedValue));
     }
     matcher.appendTail(buffer);

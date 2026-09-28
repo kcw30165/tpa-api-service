@@ -6,10 +6,13 @@ import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartInput;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import org.junit.jupiter.api.Test;
 
 class RegistrationStartValidatorTest {
-  private final RegistrationStartValidator validator = new RegistrationStartValidator();
+  private final RegistrationStartValidator validator =
+      new RegistrationStartValidator(new MaskingService(new MaskingProperties()));
 
   @Test
   void contactValidationRejectsBothBlank() {

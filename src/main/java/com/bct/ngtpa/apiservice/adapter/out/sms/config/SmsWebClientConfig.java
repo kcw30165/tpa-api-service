@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.sms.config;
 
 import com.bct.ngtpa.apiservice.adapter.out.sms.SmsSenderAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.SmsSenderPort;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.time.Duration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -32,8 +33,9 @@ public class SmsWebClientConfig {
   }
 
   @Bean
-  public SmsSenderPort smsSenderPort(WebClient smsWebClient, SmsProperties smsProperties) {
-    return new SmsSenderAdapter(smsWebClient, smsProperties);
+  public SmsSenderPort smsSenderPort(
+      WebClient smsWebClient, SmsProperties smsProperties, MaskingService maskingService) {
+    return new SmsSenderAdapter(smsWebClient, smsProperties, maskingService);
   }
 
   @Bean

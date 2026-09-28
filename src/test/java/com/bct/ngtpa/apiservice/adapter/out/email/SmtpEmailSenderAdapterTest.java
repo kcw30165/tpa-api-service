@@ -8,6 +8,8 @@ import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.out.email.config.EmailProperties;
 import com.bct.ngtpa.apiservice.application.dto.message.EmailMessage;
 import com.bct.ngtpa.apiservice.application.dto.message.SenderStatus;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -160,19 +162,48 @@ class SmtpEmailSenderAdapterTest {
     String logOutput = logOutput();
 
     assertThat(logOutput).doesNotContain("member@example.com", "Your code is 123456", "123456");
-    assertThat(logOutput).contains("recipientMasked=m***r@example.com", "bodyLogged=false");
+    assertThat(logOutput).contains("recipientMasked=m****r@example.com", "bodyLogged=false");
+  }
+
+  // emailMaskerMasksCommonEmailShape removed: EmailAddressMasker was deleted as part of the
+  // centralized masking policy migration (Phase 3). Equivalent and more thorough coverage
+  // now lives in MaskingServiceTest.
+
+  @Test
+  void nullMessageWithValidConfigurationErrorsWithIllegalArgumentException() {
+    SmtpEmailSenderAdapter adapter = adapterWith(baseProperties(), command -> Mono.empty());
+    StepVerifier.create(adapter.sendEmail(null))
+        .expectError(IllegalArgumentException.class)
+        .verify();
   }
 
   @Test
-  void emailMaskerMasksCommonEmailShape() {
-    assertThat(EmailAddressMasker.mask("member@example.com")).isEqualTo("m***r@example.com");
-    assertThat(EmailAddressMasker.mask("a@example.com")).isEqualTo("***@example.com");
-    assertThat(EmailAddressMasker.mask("   ")).isEqualTo("");
-    assertThat(EmailAddressMasker.mask(null)).isEqualTo("");
+  void rejectsMissingFromWhenHostConfiguredButFromMissing() {
+    EmailProperties properties = baseProperties();
+    properties.getSmtp().setFrom("");
+    SmtpEmailSenderAdapter adapter = adapterWith(properties, command -> Mono.empty());
+    StepVerifier.create(adapter.sendEmail(messageWithOtpBody()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(SenderStatus.FAILED);
+              assertThat(result.failureCode()).isEqualTo("EMAIL_CONFIG_FROM_MISSING");
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void safeErrorMessageHandlesNullErrorDefensively() throws Exception {
+    SmtpEmailSenderAdapter adapter = adapterWith(baseProperties(), command -> Mono.empty());
+    var method =
+        SmtpEmailSenderAdapter.class.getDeclaredMethod("safeErrorMessage", Throwable.class);
+    method.setAccessible(true);
+    Object result = method.invoke(adapter, new Object[] {null});
+    assertThat(result).isEqualTo("");
   }
 
   private SmtpEmailSenderAdapter adapterWith(EmailProperties properties, SmtpClient smtpClient) {
-    return new SmtpEmailSenderAdapter(smtpClient, properties);
+    return new SmtpEmailSenderAdapter(
+        smtpClient, properties, new MaskingService(new MaskingProperties()));
   }
 
   private EmailProperties baseProperties() {

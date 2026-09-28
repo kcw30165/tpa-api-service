@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.application.dto.message.EmailMessage;
 import com.bct.ngtpa.apiservice.application.dto.message.SenderResult;
 import com.bct.ngtpa.apiservice.application.dto.message.SenderStatus;
 import com.bct.ngtpa.apiservice.application.port.out.EmailSenderPort;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
@@ -19,11 +20,14 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
 
   private final SmtpClient smtpClient;
   private final EmailProperties emailProperties;
+  private final MaskingService maskingService;
 
-  public SmtpEmailSenderAdapter(SmtpClient smtpClient, EmailProperties emailProperties) {
+  public SmtpEmailSenderAdapter(
+      SmtpClient smtpClient, EmailProperties emailProperties, MaskingService maskingService) {
     this.smtpClient = Objects.requireNonNull(smtpClient, "smtpClient must not be null");
     this.emailProperties =
         Objects.requireNonNull(emailProperties, "emailProperties must not be null");
+    this.maskingService = Objects.requireNonNull(maskingService, "maskingService must not be null");
   }
 
   @Override
@@ -34,7 +38,7 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
           "Email adapter configuration incomplete hostConfigured={} port={} recipientMasked={} bodyLogged=false",
           StringUtils.hasText(smtp().getHost()),
           smtp().getPort(),
-          EmailAddressMasker.mask(message == null ? null : message.recipient()));
+          maskingService.maskEmail(message == null ? null : message.recipient()));
       return Mono.just(configurationFailure);
     }
 
@@ -42,7 +46,7 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
       return Mono.error(new IllegalArgumentException("message must not be null"));
     }
 
-    String recipientMasked = EmailAddressMasker.mask(message.recipient());
+    String recipientMasked = maskingService.maskEmail(message.recipient());
     SmtpSendCommand command = toCommand(message);
 
     log.info(

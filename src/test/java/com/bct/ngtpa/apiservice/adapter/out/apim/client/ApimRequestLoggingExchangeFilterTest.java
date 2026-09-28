@@ -8,7 +8,8 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -32,17 +33,19 @@ class ApimRequestLoggingExchangeFilterTest {
       new ApimRequestLoggingExchangeFilter(loggingSanitizer, objectMapper);
 
   private static LoggingSanitizer loggingSanitizerWithDefaults() {
-    LoggingSanitizerProperties props = new LoggingSanitizerProperties();
-    props.setSensitiveTokens(
-        java.util.List.of(
-            "authorization",
-            "token",
-            "secret",
-            "password",
-            "apiKey",
-            "Certificate",
-            "clientSecret"));
-    return new LoggingSanitizer(new ObjectMapper(), props);
+    MaskingProperties props = new MaskingProperties();
+    props
+        .getLogging()
+        .setSensitiveTokens(
+            java.util.List.of(
+                "authorization",
+                "token",
+                "secret",
+                "password",
+                "apiKey",
+                "Certificate",
+                "clientSecret"));
+    return new LoggingSanitizer(new ObjectMapper(), new MaskingService(props));
   }
 
   private ListAppender<ILoggingEvent> listAppender;

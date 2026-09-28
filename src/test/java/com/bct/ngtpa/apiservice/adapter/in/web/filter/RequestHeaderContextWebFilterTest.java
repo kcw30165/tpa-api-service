@@ -6,7 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
@@ -155,24 +156,26 @@ class RequestHeaderContextWebFilterTest {
   }
 
   private static LoggingSanitizer sanitizer() {
-    LoggingSanitizerProperties sanitizerProps = new LoggingSanitizerProperties();
-    sanitizerProps.setSensitiveTokens(
-        List.of(
-            "authorization",
-            "token",
-            "secret",
-            "password",
-            "apiKey",
-            "Certificate",
-            "clientSecret",
-            "policyNo",
-            "certNo",
-            "userId",
-            "privateKey",
-            "publicKey",
-            "policy-no",
-            "cert-no",
-            "user-id"));
-    return new LoggingSanitizer(new ObjectMapper(), sanitizerProps);
+    MaskingProperties sanitizerProps = new MaskingProperties();
+    sanitizerProps
+        .getLogging()
+        .setSensitiveTokens(
+            List.of(
+                "authorization",
+                "token",
+                "secret",
+                "password",
+                "apiKey",
+                "Certificate",
+                "clientSecret",
+                "policyNo",
+                "certNo",
+                "userId",
+                "privateKey",
+                "publicKey",
+                "policy-no",
+                "cert-no",
+                "user-id"));
+    return new LoggingSanitizer(new ObjectMapper(), new MaskingService(sanitizerProps));
   }
 }

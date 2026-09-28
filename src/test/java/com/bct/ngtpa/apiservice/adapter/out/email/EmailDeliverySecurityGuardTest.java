@@ -8,6 +8,8 @@ import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.out.email.config.EmailProperties;
 import com.bct.ngtpa.apiservice.application.dto.message.EmailMessage;
 import com.bct.ngtpa.apiservice.application.dto.message.SenderStatus;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,7 +44,8 @@ class EmailDeliverySecurityGuardTest {
                 Mono.error(
                     new IllegalStateException(
                         "provider leaked member@example.com Your code is 123456 smtp-password")),
-            baseProperties());
+            baseProperties(),
+            new MaskingService(new MaskingProperties()));
 
     StepVerifier.create(
             adapter.sendEmail(

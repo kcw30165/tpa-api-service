@@ -21,6 +21,8 @@ import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationSharedFingerprintFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationSharedIdempotencyIdentityFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartProtectedOperation;
@@ -177,7 +179,7 @@ class StartRegistrationUseCaseTest {
       this.executor = new RecordingExecutor(outcome, responses, protectedReplay);
       var operation =
           new RegistrationStartProtectedOperation(
-              new RegistrationStartValidator(),
+              new RegistrationStartValidator(new MaskingService(new MaskingProperties())),
               lookup,
               session,
               sid -> Mono.just("csrf_token_safe"),

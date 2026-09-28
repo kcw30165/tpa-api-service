@@ -8,6 +8,8 @@ import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.out.sms.config.SmsProperties;
 import com.bct.ngtpa.apiservice.application.dto.message.SenderStatus;
 import com.bct.ngtpa.apiservice.application.dto.message.SmsMessage;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -205,6 +207,80 @@ class SmsSenderAdapterTest {
     assertThat(logOutput).contains("contentLogged=false");
   }
 
+  @Test
+  void nullSmsContentIsHandledSafelyInDebugLogAndMultipartBody() {
+    AtomicReference<String> capturedBody = new AtomicReference<>();
+    SmsSenderAdapter adapter =
+        adapterWith(
+            baseProperties(),
+            request -> {
+              MockClientHttpRequest mockRequest =
+                  new MockClientHttpRequest(request.method(), request.url());
+              request.writeTo(mockRequest, ExchangeStrategies.withDefaults()).block();
+              capturedBody.set(mockRequest.getBodyAsString().block());
+              return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+            });
+    StepVerifier.create(adapter.sendSms(new SmsMessage("91234567", null, "HK", "req-123")))
+        .assertNext(result -> assertThat(result.status()).isEqualTo(SenderStatus.ACCEPTED))
+        .verifyComplete();
+    JsonNode payload = readJson(capturedBody.get());
+    assertThat(payload.get("smsContent").asText()).isEqualTo("");
+  }
+
+  @Test
+  void nullMessageWithValidConfigurationErrorsWithIllegalArgumentExceptionDirect() {
+    SmsSenderAdapter adapter =
+        adapterWith(
+            baseProperties(), request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+    StepVerifier.create(adapter.sendSms(null)).expectError(IllegalArgumentException.class).verify();
+  }
+
+  @Test
+  void safeErrorMessageHandlesNullErrorDefensively() throws Exception {
+    SmsSenderAdapter adapter =
+        adapterWith(
+            baseProperties(), request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+    var method = SmsSenderAdapter.class.getDeclaredMethod("safeErrorMessage", Throwable.class);
+    method.setAccessible(true);
+    Object result = method.invoke(adapter, new Object[] {null});
+    assertThat(result).isEqualTo("");
+  }
+
+  @Test
+  void normalizePhoneHandlesNullDefensively() throws Exception {
+    SmsSenderAdapter adapter =
+        adapterWith(
+            baseProperties(), request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+    var method = SmsSenderAdapter.class.getDeclaredMethod("normalizePhone", String.class);
+    method.setAccessible(true);
+    Object result = method.invoke(adapter, new Object[] {null});
+    assertThat(result).isNull();
+  }
+
+  @Test
+  void normalizePhoneWith852PrefixButWrongLengthIsNotStripped() throws Exception {
+    SmsSenderAdapter adapter =
+        adapterWith(
+            baseProperties(), request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+    var method = SmsSenderAdapter.class.getDeclaredMethod("normalizePhone", String.class);
+    method.setAccessible(true);
+    // starts with "852" but is not exactly 11 chars -> false branch, returned as-is
+    Object result = method.invoke(adapter, new Object[] {"8529123"});
+    assertThat(result).isEqualTo("8529123");
+  }
+
+  @Test
+  void safeProviderResponseBodyHandlesNullBodyDefensively() throws Exception {
+    SmsSenderAdapter adapter =
+        adapterWith(
+            baseProperties(), request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+    var method =
+        SmsSenderAdapter.class.getDeclaredMethod("safeProviderResponseBody", String.class);
+    method.setAccessible(true);
+    Object result = method.invoke(adapter, new Object[] {null});
+    assertThat(result).isEqualTo("");
+  }
+
   private SmsSenderAdapter adapterWith(
       SmsProperties properties, ExchangeFunction exchangeFunction) {
     WebClient webClient =
@@ -212,7 +288,8 @@ class SmsSenderAdapterTest {
             .baseUrl(properties.getBaseUrl())
             .exchangeFunction(exchangeFunction)
             .build();
-    return new SmsSenderAdapter(webClient, properties);
+    return new SmsSenderAdapter(
+        webClient, properties, new MaskingService(new MaskingProperties()));
   }
 
   private SmsProperties baseProperties() {

@@ -46,6 +46,7 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGe
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationService;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Duration;
@@ -215,6 +216,7 @@ public class UsernameRecoveryFeatureConfig {
       UsernameRecoveryEffectiveDestinationPort effectiveDestinationPort,
       AuthFlowSessionPort authFlowSessionPort,
       MessageDeliveryPort messageDeliveryPort,
+      MaskingService maskingService,
       CorsProperties corsProperties,
       AuthWorkflowProperties properties) {
     return new UsernameRecoveryRequestProtectedOperation(
@@ -223,6 +225,7 @@ public class UsernameRecoveryFeatureConfig {
         effectiveDestinationPort,
         authFlowSessionPort,
         messageDeliveryPort,
+        maskingService,
         corsProperties.getAllowedOrigins(),
         requiredUsernameRecovery(properties).getTemplate().getEmailSubject(),
         requiredUsernameRecovery(properties).getTemplate().getEmailBody(),

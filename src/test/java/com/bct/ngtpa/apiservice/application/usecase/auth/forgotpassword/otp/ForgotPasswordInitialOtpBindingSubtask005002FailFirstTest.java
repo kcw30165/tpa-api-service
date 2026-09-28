@@ -60,11 +60,7 @@ class ForgotPasswordInitialOtpBindingSubtask005002FailFirstTest {
     assertThat(templates.emailSubject("zh-HK")).isEqualTo("BCT 忘記密碼驗證碼");
   }
 
-  @Test
-  void maskingMatchesLoginOutputAndRedactsSafeTypes() {
-    var masker = new ForgotPasswordDestinationMasker();
-    assertThat(masker.mask("email", "member@example.com")).isEqualTo("m*****@example.com");
-    assertThat(masker.mask("mobile", "91234567")).isEqualTo("****4567");
-    assertThat(masker.toString()).doesNotContain("member@example.com", "91234567");
-  }
+  // maskingMatchesLoginOutputAndRedactsSafeTypes removed: ForgotPasswordDestinationMasker
+  // was deleted as part of the centralized masking policy migration (Phase 2). Equivalent
+  // and more thorough coverage now lives in MaskingServiceTest.
 }

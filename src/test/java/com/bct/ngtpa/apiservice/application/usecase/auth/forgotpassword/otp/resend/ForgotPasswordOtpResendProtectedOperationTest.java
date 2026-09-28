@@ -39,7 +39,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStat
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordDestinationMasker;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordInitialOtpPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitState;
@@ -89,7 +89,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
   private final OtpChallengePort otp = mock(OtpChallengePort.class);
   private final OtpChallengeStatePort challengeState = mock(OtpChallengeStatePort.class);
   private final MessageDeliveryPort delivery = mock(MessageDeliveryPort.class);
-  private final ForgotPasswordDestinationMasker masker = mock(ForgotPasswordDestinationMasker.class);
+  private final MaskingService masker = mock(MaskingService.class);
   private final ForgotPasswordOtpCommitStatePort commitStates =
       mock(ForgotPasswordOtpCommitStatePort.class);
   private final ForgotPasswordOtpCommitRetentionPolicy retention =
@@ -207,7 +207,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
 
   private void givenContext() {
     when(protector.unprotect(any())).thenReturn(validContext());
-    when(masker.mask(any(), any())).thenReturn(MASKED_DESTINATION);
+    when(masker.maskEmail(any())).thenReturn(MASKED_DESTINATION);
   }
 
   private void givenChallenge() {
@@ -355,7 +355,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     givenLockAcquired();
     givenSession(validSession());
     when(protector.unprotect(any())).thenReturn(validContext());
-    when(masker.mask(any(), any())).thenReturn("different-mask");
+    when(masker.maskEmail(any())).thenReturn("different-mask");
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
             r ->

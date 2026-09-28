@@ -26,6 +26,8 @@ import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartProtectedOperation;
 import java.time.Clock;
 import java.time.Duration;
@@ -70,7 +72,7 @@ class StartRegistrationCaptchaGateTest {
     captchaPort.reset();
     useCase =
         new RegistrationStartProtectedOperation(
-            new RegistrationStartValidator(),
+            new RegistrationStartValidator(new MaskingService(new MaskingProperties())),
             lookup,
             session,
             csrf,
