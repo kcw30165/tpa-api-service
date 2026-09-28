@@ -186,3 +186,29 @@ new plain unit test files, or whether their branch-coverage gaps
 must instead be closed by extending the existing
 Spring-context-backed controller test
 (AuthRegistrationCompleteCancelControllerTest).
+
+## Workflow Mutation Response Mapper Evidence Dump
+
+- Generated: 2026-09-28T09:56:02Z
+- Trigger: closing the remaining switch-statement branch gaps in
+  RegistrationOtpResendWebMapper/RegistrationOtpVerifyWebMapper
+  requires exercising enum values that map to
+  WorkflowResultStatus.BUSINESS_FAILED, but no existing test
+  confirms what ApiStatus/success() value BUSINESS_FAILED (or
+  WAITING) produces at the response level.
+- Files dumped:
+  - `WorkflowMutationResponseMapper` (`src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/workflow/WorkflowMutationResponseMapper.java`)
+  - `WorkflowResultPayload` (`src/main/java/com/bct/ngtpa/apiservice/application/dto/workflow/WorkflowResultPayload.java`)
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main_delegate/`, plus
+  `04-status-mapping-quickref.txt` and `05-manifest.md`).
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. Once reviewed, this determines exactly
+which ApiStatus/success() assertions are safe to write for
+BUSINESS_FAILED-mapped and WAITING-mapped enum values across all
+registration mapper classes that share this delegate (not just
+Resend/Verify -- also relevant to RegistrationStartWebMapper's
+own untested BUSINESS_FAILED-mapped statuses, e.g.
+VERIFICATION_FAILED, DOWNSTREAM_REJECTED, IDEMPOTENCY_KEY_REUSED).
