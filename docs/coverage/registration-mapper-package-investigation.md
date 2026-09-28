@@ -212,3 +212,23 @@ registration mapper classes that share this delegate (not just
 Resend/Verify -- also relevant to RegistrationStartWebMapper's
 own untested BUSINESS_FAILED-mapped statuses, e.g.
 VERIFICATION_FAILED, DOWNSTREAM_REJECTED, IDEMPOTENCY_KEY_REUSED).
+
+## WorkflowResult Evidence Dump
+
+- Generated: 2026-09-28T10:00:29Z
+- Trigger: script 014 showed toMutationResponse() branches on
+  `result.isSuccessLike()`, not a direct status equality check.
+  No existing test confirms this method's return value for any
+  BUSINESS_FAILED-producing status.
+- File dumped: `WorkflowResult` (`src/main/java/com/bct/ngtpa/apiservice/application/dto/workflow/WorkflowResult.java`)
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main_workflow_result/`, plus
+  `04-is-success-like-quickref.txt` and `05-manifest.md`).
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. Once reviewed, this gives the final fact
+needed to correctly assert response.success() for
+BUSINESS_FAILED-mapped enum values in the next implementation
+script extending RegistrationOtpResendWebMapperTest and
+RegistrationOtpVerifyWebMapperTest.
