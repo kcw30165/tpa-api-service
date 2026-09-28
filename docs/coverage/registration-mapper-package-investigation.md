@@ -159,3 +159,30 @@ new test code: baseline coverage (007), per-method/per-line
 branch detail (008), mapper source (009), status enum constants
 (010), and now the exact result-record shapes these mappers
 consume (011).
+
+## Page Mapper Collaborator Evidence Dump
+
+- Generated: 2026-09-28T09:04:21Z
+- Trigger: CancelRegistrationWebMapper and
+  CompleteRegistrationWebMapper have no dedicated unit test file
+  and depend on page-mapper collaborators fed by
+  `BffPagesProperties`. Before writing new unit tests, it must be
+  known whether these collaborators are safely constructible
+  outside a Spring context, or require YAML-bound configuration.
+- Files dumped:
+  - `RegistrationCancellationPageMapper` (`src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/pageconfig/registration/RegistrationCancellationPageMapper.java`)
+  - `RegistrationSuccessPageMapper` (`src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/pageconfig/registration/RegistrationSuccessPageMapper.java`)
+  - `BffPagesProperties` (`src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/pageconfig/BffPagesProperties.java`)
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main_collaborators/`, plus
+  `04-configuration-binding-risk-signals.txt` and
+  `05-manifest.md`).
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. Once reviewed, this determines whether
+CancelRegistrationWebMapper/CompleteRegistrationWebMapper can get
+new plain unit test files, or whether their branch-coverage gaps
+must instead be closed by extending the existing
+Spring-context-backed controller test
+(AuthRegistrationCompleteCancelControllerTest).
