@@ -13,6 +13,12 @@ import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextR
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceQueryUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceQueryUseCaseResult;
+import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support.FundPriceWorkbookExporter;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
+import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCaseResult;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -46,6 +52,10 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/v1")
 public class FundPriceController {
 
+  static final String EXCEL_MEDIA_TYPE =
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  private static final String EXPORT_FILE_NAME = "fund_price_info.xlsx";
+
   private final FundPriceQueryUseCase queryUseCase;
   private final FundPriceExportUseCase exportUseCase;
   private final FundPriceWebMapper webMapper;
@@ -53,6 +63,7 @@ public class FundPriceController {
   private final CurrentPortalAccessContextResolver contextResolver;
   private final AuthenticatedSessionCookieWriter sessionCookies;
   private final DateTimeFormatter dateFormatter;
+  private final FundPriceWorkbookExporter workbookExporter;
 
   public FundPriceController(
       FundPriceQueryUseCase queryUseCase,
@@ -61,7 +72,8 @@ public class FundPriceController {
       FundPriceSortingSupport sortingSupport,
       CurrentPortalAccessContextResolver contextResolver,
       AuthenticatedSessionCookieWriter sessionCookies,
-      DateTimeFormatter fundPriceFullDateFormatter) {
+      DateTimeFormatter fundPriceFullDateFormatter,
+      FundPriceWorkbookExporter workbookExporter) {
     this.queryUseCase = Objects.requireNonNull(queryUseCase);
     this.exportUseCase = Objects.requireNonNull(exportUseCase);
     this.webMapper = Objects.requireNonNull(webMapper);
@@ -69,6 +81,7 @@ public class FundPriceController {
     this.contextResolver = Objects.requireNonNull(contextResolver);
     this.sessionCookies = Objects.requireNonNull(sessionCookies);
     this.dateFormatter = Objects.requireNonNull(fundPriceFullDateFormatter);
+    this.workbookExporter = Objects.requireNonNull(workbookExporter);
   }
 
   @GetMapping(value = "/fund-price", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -128,5 +141,47 @@ public class FundPriceController {
     } catch (DateTimeParseException e) {
       throw new FundPriceRequestInvalidException("date must be in dd/MM/yyyy format");
     }
+  }
+  @GetMapping(value = "/fund-price/export", produces = EXCEL_MEDIA_TYPE)
+  public Mono<ResponseEntity<byte[]>> exportFundPrice(ServerWebExchange exchange) {
+    return Mono.defer(
+        () -> {
+          AuthenticatedSessionId sessionId = resolveSessionId(exchange);
+          return contextResolver
+              .current()
+              .flatMap(
+                  ctx ->
+                      exportUseCase.export(
+                          sessionId,
+                          ctx.account().accountEnv(),
+                          ctx.account().policyNo(),
+                          ctx.account().trustCode(),
+                          ctx.actor().actorUserRole()))
+              .flatMap(this::toExportResultOrError)
+              .map(workbookExporter::write)
+              .map(
+                  body ->
+                      ResponseEntity.ok()
+                          .contentType(org.springframework.http.MediaType.parseMediaType(EXCEL_MEDIA_TYPE))
+                          .header(
+                              HttpHeaders.CONTENT_DISPOSITION,
+                              ContentDisposition.attachment()
+                                  .filename(EXPORT_FILE_NAME)
+                                  .build()
+                                  .toString())
+                          .body(body));
+        });
+  }
+
+  private Mono<FundPriceExportResult> toExportResultOrError(FundPriceExportUseCaseResult result) {
+    return switch (result.outcome()) {
+      case APPLIED -> Mono.just(result.exportResult());
+      case SYSTEM_FAILURE -> Mono.error(FundPriceRetrievalException.systemFailure());
+      // INVALID_DATE is structurally unreachable for export -- FundPriceExportUseCase never
+      // validates a candidate date (there is no FE-supplied date for export). Handled
+      // defensively rather than silently ignored, since Java requires exhaustive switch
+      // coverage over the shared FundPriceUseCaseOutcome enum.
+      case INVALID_DATE -> Mono.error(FundPriceRetrievalException.systemFailure());
+    };
   }
 }

@@ -20,6 +20,12 @@ import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextR
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceQueryUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceQueryUseCaseResult;
+import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support.FundPriceWorkbookExporter;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
+import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCaseResult;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import java.math.BigInteger;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -48,6 +54,7 @@ class FundPriceControllerTest {
 
   private final FundPriceQueryUseCase queryUseCase = mock(FundPriceQueryUseCase.class);
   private final FundPriceExportUseCase exportUseCase = mock(FundPriceExportUseCase.class);
+  private final FundPriceWorkbookExporter workbookExporter = mock(FundPriceWorkbookExporter.class);
   private final FundPriceWebMapper webMapper = mock(FundPriceWebMapper.class);
   private final FundPriceSortingSupport sortingSupport = new FundPriceSortingSupport();
   private final CurrentPortalAccessContextResolver contextResolver =
@@ -73,7 +80,8 @@ class FundPriceControllerTest {
         sortingSupport,
         contextResolver,
         sessionCookies,
-        FORMATTER);
+        FORMATTER,
+        workbookExporter);
   }
 
   private PortalAccessContext validPortalAccessContext() {
@@ -210,6 +218,40 @@ class FundPriceControllerTest {
 
     StepVerifier.create(newController().getFundPrice("05/05/2026", null, exchangeWithSessionCookie()))
         .expectError()
+        .verify();
+  }
+  @Test
+  void exportEndpointReturnsExcelBytesWithCorrectContentTypeAndFilename() {
+    when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
+    var exportResult =
+        new FundPriceExportResult(List.of(), "UNIT PRICE", "5", BigInteger.TWO);
+    when(exportUseCase.export(any(), any(), any(), any(), any()))
+        .thenReturn(
+            Mono.just(
+                com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCaseResult
+                    .applied(exportResult)));
+    byte[] fakeBytes = new byte[] {1, 2, 3};
+    when(workbookExporter.write(any())).thenReturn(fakeBytes);
+
+    ResponseEntity<byte[]> response =
+        newController().exportFundPrice(exchangeWithSessionCookie()).block();
+
+    assertThat(response).isNotNull();
+    assertThat(response.getBody()).isEqualTo(fakeBytes);
+    assertThat(response.getHeaders().getContentType())
+        .isEqualTo(
+            org.springframework.http.MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+    assertThat(response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION))
+        .contains("fund_price_info.xlsx");
+  }
+
+  @Test
+  void exportEndpointMissingSessionCookieMapsToError() {
+    when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
+
+    StepVerifier.create(newController().exportFundPrice(exchangeWithoutSessionCookie()))
+        .expectError(FundPriceRequestInvalidException.class)
         .verify();
   }
 }
