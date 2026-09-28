@@ -26,10 +26,14 @@ MONTHLY validates the requested day `D` identically to DAILY above -- the same
 `R.minusMonths(M) <= D <= R` bound and the same requirement that `D` exactly match one
 parsed available date. There is no independent month-level bound check.
 
-MONTHLY differs from DAILY only in how the downstream range is derived from the
-now-validated `D`: Java derives the calendar month containing `D` and uses that
-month's first and last calendar day as the downstream `from-date` and `to-date`, both
-formatted using the configured full-date request formatter.
+MONTHLY does not differ from DAILY in downstream range derivation. In both modes,
+Java sends the single validated date `D` as both the downstream `from-date` and
+`to-date`, formatted using the configured full-date request formatter. Mode has no
+effect on how Java shapes the downstream request; mode exists solely so FE can decide
+whether to render a day selector (DAILY) or a month selector (MONTHLY) -- FE still
+submits one exact date value from `availableFundPriceDates` in both cases. (Correction,
+Nick: an earlier version of this contract incorrectly specified a first/last-calendar-day
+expansion for MONTHLY; there is no such expansion.)
 
 ## Boundary semantics
 
@@ -40,10 +44,12 @@ formatted using the configured full-date request formatter.
 
 ## Downstream range derivation
 
-The cached mode governs only how the validated date `D` maps to the downstream
-request range -- not what shape FE sends, since FE always sends the same full-date
-format in both modes:
-
+Mode does not affect the downstream request range at all. In both modes, Java sends
+the single validated date `D` as both `from-date` and `to-date`:
 - DAILY: `from-date` = `to-date` = `D`.
-- MONTHLY: `from-date` = first calendar day of `D`'s month, `to-date` = last calendar
-  day of `D`'s month, both formatted with the configured full-date request format.
+- MONTHLY: `from-date` = `to-date` = `D` (identical to DAILY; there is NO calendar-month
+expansion). This corrects an earlier version of this contract that incorrectly derived
+a first/last-calendar-day range for MONTHLY: FE always submits one specific date (one of
+the exact values in `availableFundPriceDates`) regardless of mode, and Java's only
+MONTHLY-specific responsibility is validating that date against `availableFundPriceDates`,
+identically to DAILY.

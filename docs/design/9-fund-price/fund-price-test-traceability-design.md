@@ -43,7 +43,10 @@
   not zero-pad "1" into "1.0".
 - Mode/input-shape disagreement: a MONTHLY-shaped value under DAILY and a DAILY-shaped
   value under MONTHLY both return HTTP 400 with zero APIM invocations.
-- MONTHLY range derivation to first and last calendar day, including a leap-February.
+- MONTHLY sends the identical single validated date D as both from-date and to-date,
+exactly like DAILY -- confirmed there is NO calendar-month expansion. A regression
+test must assert this explicitly, including for dates in leap-February, to guard
+against any future reintroduction of the incorrect expansion.
 - fund-seq is not present anywhere in the web response or the workbook.
 - All nonblank downstream errors return 503 `SYSTEM_ERROR`.
 - Session metadata old-session readability, account mismatch, stale reference date, persistence error, and concurrent update behavior.

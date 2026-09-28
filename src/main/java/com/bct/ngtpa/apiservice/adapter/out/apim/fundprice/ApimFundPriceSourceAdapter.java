@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.out.FundPriceSourcePort;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,17 +29,17 @@ import reactor.core.publisher.Mono;
  * ApimRetryEligibility#SAFE_BUSINESS_CALL}. Every nonblank downstream {@code err-message} maps to
  * the single generic {@link FundPriceRetrievalException}.
  *
- * <p>The command carries ONE FE-validated date, unmanipulated -- THIS adapter (not the command,
- * not any use case) decides how to expand that date into the downstream request's from-date/
- * to-date, based on {@code command.mode()}: DAILY sets both equal to the date; MONTHLY expands to
- * the first/last calendar day of the date's month via {@link YearMonth}, which correctly handles
- * leap-year February without any special-casing.
+ * <p>The command carries ONE FE-validated date, unmanipulated. Both DAILY and MONTHLY modes
+ * send that exact date as both the downstream request's from-date and to-date -- mode
+ * has no effect on this adapter's downstream request shape (corrected, Nick: an earlier
+ * version of this adapter incorrectly expanded MONTHLY into a first/last-calendar-day
+ * range; there is no such expansion). Mode exists solely so FE can choose the correct
+ * picker UI.
  */
 @Component
 public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
 
-  private static final String MONTHLY = "MONTHLY";
-
+  
   private final ApimExchangeExecutor executor;
   private final String path;
   private final DateTimeFormatter formatter;
@@ -68,14 +67,13 @@ public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
 
     LocalDate fromDate;
     LocalDate toDate;
-    if (MONTHLY.equals(command.mode())) {
-      YearMonth month = YearMonth.from(command.date());
-      fromDate = month.atDay(1);
-      toDate = month.atEndOfMonth();
-    } else {
-      fromDate = command.date();
-      toDate = command.date();
-    }
+    // MONTHLY does not differ from DAILY in downstream range derivation (corrected,
+    // Nick): FE always submits one exact validated date regardless of mode; Java sends
+    // that same date as both from-date and to-date. mode has no effect on this
+    // adapter's downstream request shape and exists only so FE can choose the correct
+    // picker UI.
+    fromDate = command.date();
+    toDate = command.date();
 
     return exchangeAndReconcile(
         command.policyNo(), fromDate, toDate, command.accountEnv(), command.actorUserRole());

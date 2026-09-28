@@ -30,7 +30,12 @@ GET /api/v1/fund-price?date={value}
 ```
 
 - `date` always follows the configured full-date request format (`dd/MM/yyyy`), for both `DAILY` and `MONTHLY` mode -- there is no separate MONTHLY input format. FE must supply one of the exact `availableFundPriceDates` values Java already returned via the `/mode` endpoint.
-- For `MONTHLY` mode, Java derives the downstream range from the supplied date's calendar month (first through last calendar day of that month); for `DAILY` mode, the supplied date is used directly as both `from-date` and `to-date`.
+- For both `DAILY` and `MONTHLY` mode, the supplied date is used directly as both
+`from-date` and `to-date` -- there is no calendar-month range expansion for MONTHLY.
+Mode affects only which FE picker (day vs month) is rendered and which cached
+available-date list the date is validated against; it has no effect on the downstream
+TRPGetFundPrice request shape. (Correction, Nick: an earlier version of this contract
+incorrectly specified month-range derivation for MONTHLY.)
 - Missing, malformed, unavailable, or out-of-range input is a standard HTTP 400 validation failure and must not call APIM.
 
 Conceptual returned fields per row:

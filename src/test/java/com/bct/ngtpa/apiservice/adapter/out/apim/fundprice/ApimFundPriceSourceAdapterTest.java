@@ -30,10 +30,11 @@ import reactor.test.StepVerifier;
  * ApimExchangeExecutor}, capture the built {@link ApimExchangeRequest}, assert on its from-date/
  * to-date/err-message-mapping behavior.
  *
- * <p>Confirmed design under test: the command carries ONE unmanipulated FE date plus {@code
- * mode}; THIS ADAPTER (not the command, not any use case) decides how to expand that date into
- * the downstream request's from-date/to-date -- DAILY: both equal the date; MONTHLY: first/last
- * calendar day of the date's month.
+ * <p>Confirmed design under test (corrected, Nick): the command carries ONE unmanipulated FE
+ * date plus {@code mode}. BOTH DAILY and MONTHLY send that exact date as both the
+ * downstream request's from-date and to-date -- mode has no effect on this adapter's
+ * downstream request shape (an earlier version incorrectly expanded MONTHLY into a
+ * first/last-calendar-day range; there is no such expansion).
  */
 class ApimFundPriceSourceAdapterTest {
 
@@ -83,29 +84,36 @@ class ApimFundPriceSourceAdapterTest {
   }
 
   @Test
-  void monthlyModeExpandsToFirstAndLastCalendarDayOfTheCommandDatesMonth() {
+  void monthlyModeSetsFromDateAndToDateBothEqualToTheCommandDateJustLikeDaily() {
+    // Corrected (Nick): MONTHLY does NOT expand into a first/last-calendar-day range.
+    // FE always submits one exact date; Java sends that same date as both from-date
+    // and to-date, identically to DAILY. mode has no effect on this adapter's
+    // downstream request shape.
     stubSuccess(validItem());
-    ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
-
+    ArgumentCaptor<ApimExchangeRequest<?, ?>> captor =
+        ArgumentCaptor.forClass(ApimExchangeRequest.class);
     newAdapter().fetchPrice(command("MONTHLY", LocalDate.of(2026, 2, 15))).block();
-
     verify(executor).postEnvelope(captor.capture());
-    var request = (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
-        captor.getValue().request();
-    assertThat(request.fromDate()).isEqualTo("01/02/2026");
-    assertThat(request.toDate()).isEqualTo("28/02/2026"); // 2026 is not a leap year
+    var request =
+        (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
+            captor.getValue().request();
+    assertThat(request.fromDate()).isEqualTo("15/02/2026");
+    assertThat(request.toDate()).isEqualTo("15/02/2026");
   }
 
   @Test
-  void monthlyModeHandlesLeapYearFebruaryCorrectly() {
+  void monthlyModeDoesNotExpandEvenAroundLeapFebruaryDates() {
+    // Regression guard against reintroducing the incorrect first/last-calendar-day
+    // expansion: a leap-February date must still pass through unexpanded.
     stubSuccess(validItem());
-    ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
-
-    newAdapter().fetchPrice(command("MONTHLY", LocalDate.of(2028, 2, 10))).block();
-
+    ArgumentCaptor<ApimExchangeRequest<?, ?>> captor =
+        ArgumentCaptor.forClass(ApimExchangeRequest.class);
+    newAdapter().fetchPrice(command("MONTHLY", LocalDate.of(2028, 2, 29))).block();
     verify(executor).postEnvelope(captor.capture());
-    var request = (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
-        captor.getValue().request();
+    var request =
+        (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
+            captor.getValue().request();
+    assertThat(request.fromDate()).isEqualTo("29/02/2028");
     assertThat(request.toDate()).isEqualTo("29/02/2028");
   }
 
