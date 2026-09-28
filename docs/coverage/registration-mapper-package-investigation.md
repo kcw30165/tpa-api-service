@@ -126,3 +126,36 @@ coverage (007), per-method/per-line branch detail (008), mapper
 source (009), and now the complete enum constant lists these
 mappers switch over (010). Test design can now proceed against
 the real, complete set of enum values for each status type.
+
+## Result Record Evidence Dump
+
+- Generated: 2026-09-28T08:59:06Z
+- Trigger: comparing existing test call sites for
+  `ResendRegistrationOtpResult` revealed inconsistent constructor
+  argument counts (10 vs 11) across two different test files,
+  which could not be resolved without seeing the real record
+  definition. Writing new test code against a guessed constructor
+  shape would risk producing code that does not compile.
+- Purpose: full source of the 6 *Result record
+  classes that the 7 registration mapper classes consume.
+  Locations found via a fresh `find` by filename, not assumed.
+- Records dumped:
+  - `ResendRegistrationOtpResult` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/otp/ResendRegistrationOtpResult.java`)
+  - `VerifyRegistrationOtpResult` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/otp/VerifyRegistrationOtpResult.java`)
+  - `StartRegistrationResult` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationResult.java`)
+  - `CheckRegistrationUsernameResult` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/username/CheckRegistrationUsernameResult.java`)
+  - `CancelRegistrationResult` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/cancel/CancelRegistrationResult.java`)
+  - `CompleteRegistrationResult` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/CompleteRegistrationResult.java`)
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main_records/`, plus
+  `04-record-components-quickref.txt` and `05-manifest.md`).
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. This resolves the constructor-shape
+ambiguity discovered while preparing to design new test cases,
+and completes the full set of evidence needed before writing any
+new test code: baseline coverage (007), per-method/per-line
+branch detail (008), mapper source (009), status enum constants
+(010), and now the exact result-record shapes these mappers
+consume (011).
