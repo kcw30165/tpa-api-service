@@ -204,3 +204,64 @@ the correct choice, for the following reasons:
    the concrete type directly; retrofitting an interface later would
    touch all of them for no functional gain, and can still be done then
    if a genuine second implementation or mocking need ever materializes.
+
+## 11. Why the YAML schema has 5 top-level keys instead of 2 usage-context groups
+
+The `masking.*` schema (§6) is organized around `MaskingService`'s 5
+public masking capabilities (`email`, `mobile`, `identity`,
+`date-of-birth`, `logging`), not around *where* a masked value ends up
+(e.g. a single `destination:` group vs a single `log-redaction:` group).
+This was questioned during implementation; confirmed correct after an
+exhaustive grep of every production call site, for the following
+reasons:
+
+1. **`email`/`mobile` are genuinely dual-purpose, not destination-only.**
+   Confirmed 7 distinct production call sites use the identical
+   `maskEmail`/`maskMobile` rule for two different purposes:
+   - **Destination display** (masked value flows into an FE-facing
+     response field): `LoginPreAuthContextFactory`,
+     `ForgotPasswordDetailsOtpProtectedOperation`,
+     `ForgotPasswordOtpResendProtectedOperation`,
+     `RegistrationContactDeriver`,
+     `UsernameRecoveryRequestProtectedOperation`.
+   - **Adapter/log redaction** (masked value only ever appears in a log
+     statement): `SmtpEmailSenderAdapter`, `SmsSenderAdapter`,
+     `ApimRegistrationLookupAdapter`.
+
+   Since both usages share one algorithm and one config, there is
+   nothing to gain from duplicating `email`/`mobile` config under two
+   separate usage-context groups - and every reason not to (duplicated
+   config invites the exact per-context format drift this whole
+   workstream exists to eliminate; see §1's problem statement).
+
+2. **`identity`/`date-of-birth` are logging-only in practice, but
+   `logging:` refers to a different algorithm, not "any masking used
+   for logging."** Confirmed via `ApimRegistrationLookupAdapter
+   .safeDimensions()`: both calls feed a `LinkedHashMap` that is passed
+   into a `FailureEvent` (structured downstream-rejection logging),
+   never a response DTO - so in practice they are exclusively a
+   logging concern. They nonetheless remain top-level siblings of
+   `logging:` rather than nested inside it, because `logging:`
+   specifically configures `LoggingSanitizer`'s **key-name-matching**
+   generic redaction (masks a field by matching its *name* against
+   `sensitive-tokens`, e.g. `password`, `token`) - an entirely
+   different mechanism from `identity`/`date-of-birth`'s **shape-based
+   full-redaction** masking (masks a field by its *semantic type*,
+   regardless of field name). Nesting them under `logging:` would
+   incorrectly imply they share `LoggingSanitizer`'s algorithm.
+
+3. **The schema therefore reflects 3 algorithm families, not 2 usage
+   contexts:**
+
+   | Algorithm family | YAML keys | Shared by |
+   |---|---|---|
+   | Shape-based partial reveal | `email`, `mobile` | Destination display AND adapter logging (dual-purpose) |
+   | Shape-based full redaction | `identity`, `date-of-birth` | Structured failure-logging only |
+   | Key-name-based generic redaction | `logging` | `LoggingSanitizer`'s field-name matching only |
+
+   A usage-context-first restructuring (e.g. `destination:` /
+   `log-redaction:` groups) remains a legitimate alternative for a
+   future revision if usage patterns change, but was not adopted here
+   because it would require either duplicating `email`/`mobile` config
+   across two groups or introducing an awkward "shared primitive"
+   escape hatch, for no corresponding configurability benefit today.
