@@ -91,6 +91,19 @@ class FetchFundPriceCommandTest {
   }
 
   @Test
+  void blankAccountEnvThrows() {
+    // Confirmed real gap (script 159/160): only accountEnv==null was previously exercised;
+    // accountEnv.isBlank()==true was never independently tested, unlike every other field's
+    // blank-vs-null distinction (policyNo, mode already have both).
+    assertThatThrownBy(
+            () ->
+                new FetchFundPriceCommand(
+                    "00000008802", DATE, "DAILY", " ", ActorUserRole.ROLE_USER_MBR))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("accountEnv");
+  }
+
+  @Test
   void nullActorUserRoleThrows() {
     assertThatThrownBy(
             () -> new FetchFundPriceCommand("00000008802", DATE, "DAILY", "DB", null))

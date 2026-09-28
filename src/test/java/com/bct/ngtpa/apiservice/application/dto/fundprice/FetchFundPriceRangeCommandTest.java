@@ -90,6 +90,19 @@ class FetchFundPriceRangeCommandTest {
   }
 
   @Test
+  void blankAccountEnvThrows() {
+    // Confirmed real gap (script 159/160): only accountEnv==null was previously exercised;
+    // accountEnv.isBlank()==true was never independently tested, unlike policyNo's own
+    // blank-vs-null distinction (blankPolicyNoThrows already exists above).
+    assertThatThrownBy(
+            () ->
+                new FetchFundPriceRangeCommand(
+                    "00000008802", FROM, TO, " ", ActorUserRole.ROLE_USER_MBR))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("accountEnv");
+  }
+
+  @Test
   void nullActorUserRoleThrows() {
     assertThatThrownBy(
             () -> new FetchFundPriceRangeCommand("00000008802", FROM, TO, "DB", null))
