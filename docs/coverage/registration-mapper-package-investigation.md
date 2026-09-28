@@ -98,3 +98,31 @@ changes have been made. This completes the pre-implementation
 understanding phase for this package: baseline coverage (script
 007), per-method/per-line branch detail (script 008), and now full
 source of both production and test code (script 009).
+
+## Status Enum Evidence Dump
+
+- Generated: 2026-09-28T08:53:52Z
+- Purpose: full source of the 6 *ResultStatus
+  enums that the 7 registration mapper classes switch over (found
+  via script 009's source dump, but not themselves captured
+  there). Enum locations were found via a fresh `find` by
+  filename, not assumed.
+- Enums dumped:
+  - `ResendRegistrationOtpResultStatus` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/otp/ResendRegistrationOtpResultStatus.java`)
+  - `VerifyRegistrationOtpResultStatus` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/otp/VerifyRegistrationOtpResultStatus.java`)
+  - `StartRegistrationResultStatus` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationResultStatus.java`)
+  - `CheckRegistrationUsernameResultStatus` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/username/CheckRegistrationUsernameResultStatus.java`)
+  - `CancelRegistrationResultStatus` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/cancel/CancelRegistrationResultStatus.java`)
+  - `CompleteRegistrationResultStatus` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/CompleteRegistrationResultStatus.java`)
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main_enums/`, plus
+  `04-enum-constants-quickref.txt` and `05-manifest.md`).
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. This closes the last gap in
+pre-implementation understanding for this package: baseline
+coverage (007), per-method/per-line branch detail (008), mapper
+source (009), and now the complete enum constant lists these
+mappers switch over (010). Test design can now proceed against
+the real, complete set of enum values for each status type.
