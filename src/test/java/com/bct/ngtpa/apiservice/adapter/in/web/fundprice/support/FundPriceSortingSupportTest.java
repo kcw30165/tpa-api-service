@@ -3,6 +3,9 @@ package com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support;
 import java.math.BigInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceQueryResult;
@@ -95,5 +98,30 @@ class FundPriceSortingSupportTest {
         new BigDecimal("1.0"),
         new BigDecimal("1.0"),
         riskLevel);
+  }
+  @Test
+  void applySelfAnnotationWrapsNoSuchMethodExceptionAsIllegalStateException() throws Exception {
+    // Confirmed (script 157): the catch block wrapping NoSuchMethodException into
+    // IllegalStateException is structurally unreachable via the 2 real public sort()
+    // overloads, since paramType is always one of 2 hardcoded literals matching this
+    // class's own declared methods. Reached here via reflection (established technique
+    // elsewhere in this codebase, e.g. ApimAdapterReflectionBranchProbeTest), invoking the
+    // private applySelfAnnotation method directly with a deliberately mismatched paramType
+    // to force the real getMethod(...) lookup to genuinely fail.
+    var support = new FundPriceSortingSupport();
+    Method applySelfAnnotation =
+        FundPriceSortingSupport.class.getDeclaredMethod(
+            "applySelfAnnotation", Object.class, Class.class);
+    applySelfAnnotation.setAccessible(true);
+
+    InvocationTargetException thrown =
+        catchThrowableOfType(
+            () -> applySelfAnnotation.invoke(support, "unused", String.class),
+            InvocationTargetException.class);
+
+    assertThat(thrown.getCause())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("FundPriceSortingSupport: failed to resolve own sort annotation")
+        .hasCauseInstanceOf(NoSuchMethodException.class);
   }
 }
