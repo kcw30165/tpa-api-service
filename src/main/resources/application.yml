@@ -538,4 +538,11 @@ masking:
       - policy-no
       - certificate
       - cert
+      - authorization
+      - certNo
+      - userId
+      - privateKey
+      - publicKey
+      - cert-no
+      - user-id
   disabled-placeholder: "<masked>"
