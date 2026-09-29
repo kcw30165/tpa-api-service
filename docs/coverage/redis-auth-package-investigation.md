@@ -475,3 +475,101 @@ have been made. Once reviewed, this identifies the exact
 statement(s) needing a new test (if the hypothesis is confirmed)
 to close the remaining gap and bring this class to the Tier-B
 gate.
+
+## Documented Gap: RedisUsernameRecoveryStartProtectedReplayJsonMapper's toJson() Catch Block
+
+- Generated: 2026-09-29T08:10:33Z
+- Class: `RedisUsernameRecoveryStartProtectedReplayJsonMapper`
+- Location: `toJson()`, lines 14-15 (the catch block: `} catch
+  (Exception exception) { throw new IllegalStateException(...); }`)
+- Coverage impact: this class sits at 86.36% instruction / 100.00%
+  branch (confirmed script 039's real `mvn test` run, root-caused
+  in script 040's per-line jacoco investigation). This is the only
+  remaining gap preventing it from meeting the full Tier-B gate
+  (>=95% instruction).
+
+### Root cause
+
+The class hard-wires its own `ObjectMapper` dependency directly on
+the field declaration (`private final ObjectMapper mapper = new
+ObjectMapper()...`), with no constructor parameter, setter, or
+factory seam to influence it from outside. `toJson()`'s catch block
+exists purely as a defensive guard against Jackson genuinely
+failing to serialize the wrapped record -- but
+`ProtectedUsernameRecoveryStartReplay` is a plain record of
+`String`/`int` fields with no cycles or unsupported types, so
+there is no legitimate input that causes this to fail through
+normal usage.
+
+### Options considered and explicitly declined
+
+1. **Add a package-private test-seam constructor** accepting an
+   injectable `ObjectMapper`. Declined: introduces a production-
+   code change whose only purpose is enabling a test, for a branch
+   that guards against an practically-unreachable failure mode.
+2. **Reflection-based field swap** (a broken `ObjectMapper`
+   subclass injected via reflection into the private `mapper`
+   field). CONFIRMED WORKING via a verbatim-copy harness -- the
+   real production catch block genuinely executes this way, with
+   zero production code changes. Declined anyway: couples the test
+   to the private field's exact name (`mapper`), meaning a future
+   rename would silently break the test with a
+   `NoSuchFieldException` at runtime rather than a compile error --
+   an accepted but genuinely fragile technique.
+3. **Leave uncovered and undocumented.** Declined -- not an
+   acceptable resolution; every remaining gap in this workstream
+   is either closed or explicitly justified.
+
+### Resolution
+
+Per this project's own Tier-B coverage-tiering policy, this branch
+is documented as **defensive, not independently testable** without
+either a production-code change or a fragile reflection-based
+test, both of which were evaluated and declined as disproportionate
+to the value of covering a practically-unreachable failure path.
+No further test-writing is planned for this specific gap.
+
+A future, INDEPENDENTLY-JUSTIFIED refactor (constructor-injecting
+`ObjectMapper` instead of hard-wiring it, matching the pattern
+already used by other classes in this codebase, e.g. those
+accepting `RedisCacheKeyFactory`) would resolve this cleanly as a
+side effect -- but should be undertaken for its own architectural
+merit (loose coupling, consistency with sibling classes), not
+solely to chase a coverage percentage.
+
+### Flagged (not confirmed, not fixed): likely-identical gap in 2 sibling classes
+
+Based on script 035's test-file evidence, re-confirmed fresh in
+this script (see `02-sibling-recheck.txt`), the following 2
+sibling classes appear to share the IDENTICAL hard-wired-
+`ObjectMapper` construction pattern, and neither of their existing
+tests attempts to force their own `toJson()` to throw:
+- `RedisForgotPasswordStartProtectedReplayJsonMapper`
+- `RedisRegistrationStartProtectedReplayJsonMapper`
+
+This is an INFERENCE from test-file content, NOT a confirmed
+per-line jacoco finding -- their aggregate coverage was high enough
+that script 034's 0%-instruction baseline scan never surfaced
+them for investigation. Confirming this would require pulling
+fresh per-line jacoco data for both classes specifically (same
+method as script 040), which has NOT been done here. If confirmed
+in a future round, the same documented-gap resolution above would
+likely apply identically.
+
+```
+=== Fresh re-check: do sibling JsonMapper tests attempt to force toJson() to throw? ===
+
+--- src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/forgotpassword/replay/RedisForgotPasswordStartProtectedReplayJsonMapperTest.java ---
+Test method names:
+  void roundTripsStrictWireRecord() {
+  void rejectsUnknownFieldsMalformedJsonAndUnsupportedSchema() {
+Any mention of a broken/mock ObjectMapper or forced-failure scenario:
+  (none found)
+
+--- src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/registration/replay/RedisRegistrationStartProtectedReplayJsonMapperTest.java ---
+Test method names:
+  void roundTripsStrictWireRecord() {
+  void rejectsUnknownFieldsMalformedJsonAndUnsupportedSchema() {
+Any mention of a broken/mock ObjectMapper or forced-failure scenario:
+  (none found)
+```
