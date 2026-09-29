@@ -427,3 +427,51 @@ highest-confidence scope identified in the original baseline;
 the remaining redis-auth sub-packages (per script 034's ranking:
 `.login`, `.login.replay`, `.forgotpassword`,
 `.usernamerecovery.replay`, etc.) remain open for a future round.
+
+## Investigation: RedisUsernameRecoveryStartProtectedReplayJsonMapper's Instruction Gap
+
+- Generated: 2026-09-29T07:15:06Z
+- Trigger: script 039's real mvn test run confirmed this class at
+  86.36% instruction / 100.00% branch coverage -- the only one of
+  the 4 newly-tested classes not yet meeting the Tier-B gate.
+- Working hypothesis (confirmed/refuted below with real per-line
+  jacoco data, not assumed): toJson()'s catch block
+  (IllegalStateException path) was never exercised, since none of
+  the 3 existing tests supply a value causing serialization to
+  genuinely fail. A catch block's body is typically a purely
+  sequential instruction sequence with no internal branch point
+  for JaCoCo to track, which would explain instruction loss
+  without any branch-coverage loss -- exactly the pattern
+  observed.
+
+### Per-method rollup (re-confirms script 039's class-level numbers)
+
+```
+=== com.bct.ngtpa.apiservice.adapter.out.redis.auth.usernamerecovery.replay.RedisUsernameRecoveryStartProtectedReplayJsonMapper rollup (re-confirms script 039's numbers) ===
+instruction: 86.36% (38/44)
+branch: 100.00% (4/4)
+Lines with ANY missed instruction or branch: 2
+  line 14: instructions_missed=1, instructions_covered=0, branches_missed=0, branches_covered=0
+  line 15: instructions_missed=5, instructions_covered=0, branches_missed=0, branches_covered=0
+```
+
+### Annotated missed lines (real source cross-referenced)
+
+```
+=== Source lines with missed instructions/branches, annotated with actual code ===
+  line 14: instructions_missed=1, instructions_covered=0, branches_missed=0, branches_covered=0
+    SOURCE:     } catch (Exception exception) {
+  line 15: instructions_missed=5, instructions_covered=0, branches_missed=0, branches_covered=0
+    SOURCE:       throw new IllegalStateException("Username Recovery START replay serialization failed");
+```
+
+Full per-line detail (every line, not just gaps): see evidence
+file `06-per-line-full-detail.csv`.
+
+### Status
+
+This is INVESTIGATION ONLY. No test or production code changes
+have been made. Once reviewed, this identifies the exact
+statement(s) needing a new test (if the hypothesis is confirmed)
+to close the remaining gap and bring this class to the Tier-B
+gate.
