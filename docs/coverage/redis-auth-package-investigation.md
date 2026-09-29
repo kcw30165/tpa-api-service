@@ -770,3 +770,40 @@ Test code committed. A follow-up verification script is still
 needed to confirm via a REAL mvn test run (not just compile)
 that these pass against the actual repo, and to measure the
 real resulting coverage for this class via a fresh jacoco report.
+
+## FINAL Verification: RedisLoginIdempotencyKeyFactory Test (Script 044)
+
+- Generated: 2026-09-29T08:57:44Z
+- Stage A: `mvn test -Dtest=RedisLoginIdempotencyKeyFactoryTest` -- PASS
+  (all 6 new test methods executed for the first time against the
+  real repo here, confirming script 044's reflective-harness
+  pre-validation held true)
+- Stage B: `mvn clean test` (full suite) -- PASS
+
+### Coverage delta (baseline -> TRUE final)
+
+```
+=== Coverage Delta: baseline (script 034) -> TRUE final (script 045) ===
+
+Class: RedisLoginIdempotencyKeyFactory
+Baseline (script 034, before any test existed): instruction=60.00%, branch=50.00%
+FINAL (this script, real mvn test run):         instruction=100.00%, branch=100.00%
+Delta: instruction=+40.00, branch=+50.00
+
+RESULT: RedisLoginIdempotencyKeyFactory now meets the full Tier-B gate (>=95% instruction AND >=85% branch).
+```
+
+Full final per-method coverage: see evidence file
+`07-final-class-coverage.csv`.
+
+### Status
+
+RedisLoginIdempotencyKeyFactory's coverage gap is now closed and
+verified via a real `mvn test` execution (not just compile), with
+the entire test suite confirmed still passing. This closes the
+`.login` sub-package investigation (script 034's ranking's
+worst-covered sub-package). Remaining redis-auth sub-packages per
+script 034's original ranking: `.login.replay`,
+`.forgotpassword`, `.usernamerecovery.replay`, etc., plus
+`RedisAuthenticatedSessionAdapter`'s notably low branch coverage,
+remain open for a future round.
