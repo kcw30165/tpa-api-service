@@ -513,3 +513,23 @@ changes have been made. Once reviewed, this gives the exact
 current method bodies needed to correctly design new tests or
 write justifications for all 16 methods / 29 lines identified
 as gaps in script 025's re-audit.
+
+## CompleteRegistrationRequest Evidence Dump
+
+- Generated: 2026-09-29T03:50:32Z
+- Trigger: script 026's full-source dump revealed
+  CompleteRegistrationWebMapper.toCommand() is NEVER called by any
+  of its 10 existing tests, leaving both
+  `request == null ? null : request.password()/.confirmPassword()`
+  ternary branches untested. Only the 2 accessor names had been
+  directly observed via the mapper's own usage -- the record's full
+  constructor shape was never seen.
+- File dumped: `CompleteRegistrationRequest` (`src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/dto/CompleteRegistrationRequest.java`)
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main/`).
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. Once reviewed, this gives the final fact
+needed to safely construct CompleteRegistrationRequest instances
+(both null and non-null) for the next implementation script.
