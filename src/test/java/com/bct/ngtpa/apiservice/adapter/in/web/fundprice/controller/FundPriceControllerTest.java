@@ -131,7 +131,7 @@ class FundPriceControllerTest {
         newController().getFundPrice("05/05/2026", null, exchangeWithSessionCookie()).block();
 
     assertThat(result).isNotNull();
-    assertThat(result.maxRiskLevel()).isEqualTo("5");
+    assertThat(result.result().data().maxRiskLevel()).isEqualTo("5");
   }
 
   @Test

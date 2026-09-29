@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSession
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.mapper.FundPriceWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceQueryResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceQueryResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support.FundPriceSortingSupport;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceQueryResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
@@ -100,7 +101,7 @@ public class FundPriceController {
   }
 
   @GetMapping(value = "/fund-price", produces = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<FundPriceQueryResponse> getFundPrice(
+  public Mono<MutationResponse<FundPriceQueryResultResponse>> getFundPrice(
       @RequestParam("date") String date,
       @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false)
           String acceptLanguage,
@@ -122,7 +123,16 @@ public class FundPriceController {
                           ctx.actor().actorUserRole()))
               .flatMap(this::toQueryResultOrError)
               .map(sortingSupport::sort)
-              .map(result -> webMapper.toQueryResponse(result, lang));
+              .map(
+                  result -> {
+                    MutationResponse<FundPriceQueryResultResponse> response =
+                        MutationResponse.success(
+                            ApiStatus.SUCCESS,
+                            new FundPriceQueryResultResponse(
+                                webMapper.toQueryResponse(result, lang)),
+                            List.of());
+                    return response;
+                  });
         });
   }
 

@@ -100,3 +100,17 @@ GET /api/v1/fund-price/export
 - Any downstream nonblank `err-message`: HTTP 503 `SYSTEM_ERROR`.
 - Malformed or inconsistent downstream success data: HTTP 503 `SYSTEM_ERROR`.
 - Raw downstream errors must not be exposed.
+
+## Response envelope (query and mode endpoints)
+
+`GET /api/v1/fund-price/mode` and `GET /api/v1/fund-price` both return the repository-standard
+`MutationResponse` envelope; the payload sits under `result.data`:
+
+```json
+{"success": true, "status": "SUCCESS", "result": {"data": {"rows": []}}, "messages": [], "errors": []}
+```
+
+For the query endpoint `result.data` is the rows object described in Section 2 (with the
+conditional top-level `maxRiskLevel`); for the mode endpoint it is the mode metadata in
+Section 1. Failures use the same envelope with `success: false` and populated `errors`.
+`GET /api/v1/fund-price/export` is a binary XLSX download and is not wrapped.
