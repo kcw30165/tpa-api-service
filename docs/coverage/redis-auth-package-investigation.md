@@ -942,3 +942,40 @@ have been made. This confirms the last unknown dependency shape
 needed to write real, validation-passing tests for
 RedisAuthenticatedSessionAdapter's branch gap in the next
 implementation script.
+
+## Implementation: RedisAuthenticatedSessionAdapter's Branch Gap Closed
+
+- Generated: 2026-09-29T09:44:16Z
+- Extended the EXISTING test file (no new file created) with 5
+  new test methods, closing both real branch gaps identified in
+  script 046's investigation:
+  1. `deleteRemovesExistingSessionWhenFound` -- closes line 58's
+     `v.isEmpty()` false branch (delete() on a session that
+     still exists, previously only tested via already-evicted
+     keys).
+  2-5. Four new tests targeting `safe()` (line 79, previously
+     0% covered): pass-through for `IllegalArgumentException`,
+     `IllegalStateException`, and `CacheException` (same
+     instance), plus wrap-unrelated-exception with a generic
+     message while preserving the raw cause on `getCause()`.
+- ZERO production code changes: `CachePort` was already
+  constructor-injected, and the existing test's `MemoryCache`
+  fake already had the exact seam needed -- only extended with
+  an optional forced-error field, no adapter changes.
+- `CacheException`'s real shape (script 047 dump) and the
+  known-safe literal `"Cache get operation failed"` (already
+  used elsewhere in this codebase) were used directly, not
+  invented.
+- Pre-validated via a stub classpath using the exact real
+  dumped source for the adapter and `CacheException`, plus a
+  functionally-real synchronous `Mono` stub supporting the
+  exact operator chain used -- then ACTUALLY EXECUTED (not just
+  compiled) all 5 planned test scenarios via a reflective-style
+  harness. All 5 passed against the real verbatim adapter code.
+
+### Status
+
+Test code committed. A follow-up verification script is still
+needed to confirm via a REAL mvn test run (not just compile)
+that these pass against the actual repo, and to measure the
+real resulting branch coverage via a fresh jacoco report.
