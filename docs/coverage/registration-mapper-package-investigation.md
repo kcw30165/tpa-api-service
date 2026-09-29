@@ -360,3 +360,36 @@ methods/lines needed to safely extend this test file.
   (script 018).
 - Intentionally NOT force-tested, per this project's own
   coverage-tiering escape hatch.
+
+## RegistrationWorkflowMutationResponseMapper Investigation
+
+- Generated: 2026-09-29T02:37:10Z
+- Trigger: this is the LAST class in the 7-class package still
+  needing test work, and had ZERO dedicated test file (re-verified
+  here via fresh grep, not trusted blindly from script 007's now-
+  stale evidence). Only aggregate numbers were known previously.
+- File located and dumped:
+  - `RegistrationWorkflowMutationResponseMapper` (`src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationWorkflowMutationResponseMapper.java`)
+- Indirect test-file references found (grep, dumped for context):
+  - (none)
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main/`, `src_test/`, plus
+  `06-per-method-branch-detail.csv` and
+  `07-uncovered-instruction-branch-lines.csv`).
+
+### Per-class rollup (from existing jacoco.xml, no mvn re-run)
+
+```
+=== com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationWorkflowMutationResponseMapper rollup ===
+instruction: 84.00% (42/50)
+branch: 50.00% (1/2)
+methods: 3
+lines with any missed instruction/branch: 4
+```
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. Once reviewed, this gives the exact
+constructor/method signatures and the exact uncovered
+methods/lines needed to write this class's first-ever dedicated
+unit test file.
