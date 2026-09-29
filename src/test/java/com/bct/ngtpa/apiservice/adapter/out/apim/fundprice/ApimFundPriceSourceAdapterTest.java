@@ -38,7 +38,7 @@ import reactor.test.StepVerifier;
  */
 class ApimFundPriceSourceAdapterTest {
 
-  private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+  private static final DateTimeFormatter FORMATTER = new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties().fullDateFormatter();
   private static final String PATH = "/ws/NGTPA/v1/TRPGetFundPrice";
 
   private final ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);

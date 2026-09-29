@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
  */
 class FundPriceWorkbookExporterTest {
 
-  private static final DateTimeFormatter FULL_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+  private static final DateTimeFormatter FULL_DATE_FORMATTER = new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties().fullDateFormatter();
 
   private FundPriceWorkbookExporter newExporter() {
     return new FundPriceWorkbookExporter(new FundPriceExportProperties(), FULL_DATE_FORMATTER);

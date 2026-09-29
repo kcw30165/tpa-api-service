@@ -503,7 +503,7 @@ shared-idempotency:
 
 fund-price:
   date-format:
-    full-date: "dd/MM/yyyy"
+    full-date: "dd/MM/uuuu"
   export:
     headers:
       fund-price-date: "Fund Price Date基金價格日期"

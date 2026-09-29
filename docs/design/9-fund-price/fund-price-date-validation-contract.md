@@ -53,3 +53,22 @@ a first/last-calendar-day range for MONTHLY: FE always submits one specific date
 the exact values in `availableFundPriceDates`) regardless of mode, and Java's only
 MONTHLY-specific responsibility is validating that date against `availableFundPriceDates`,
 identically to DAILY.
+
+## Java pattern for the full-date format
+
+The wire/display format is `dd/MM/yyyy` text (for example `10/07/2026`), but the Java
+`DateTimeFormatter` pattern configured in `fund-price.date-format.full-date` MUST be
+`dd/MM/uuuu`. Parsing is `ResolverStyle.STRICT`, and under STRICT the `yyyy` letter
+(year-of-era) cannot resolve a `LocalDate` without an era field, so a `dd/MM/yyyy`
+pattern formats correctly but rejects every input -- which previously made every
+`/fund-price/mode` call fail with 503 and every FE `date` fail with 400. `uuuu`
+(proleptic year) parses correctly and still rejects impossible dates such as
+`31/02/2026` and `29/02/2026`. This matches every other STRICT date formatter in the
+service.
+
+`FundPriceDateFormatProperties.validate()` enforces this at startup with a strict
+format-then-parse round trip of a probe date; a pattern that cannot parse back, or that
+does not reproduce the same date (for example a two-digit `uu` year), fails startup
+instead of failing per request. Tests use the production formatter
+(`new FundPriceDateFormatProperties().fullDateFormatter()`) rather than a lenient
+locally built `ofPattern(...)`, so this class of defect is covered by unit tests.

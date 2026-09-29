@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.fundprice;
 
+import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
 import lombok.Getter;
@@ -22,15 +24,34 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "fund-price.date-format")
 public class FundPriceDateFormatProperties {
 
-  private String fullDate = "dd/MM/yyyy";
+  private static final LocalDate ROUND_TRIP_PROBE = LocalDate.of(1999, 12, 31);
+
+  private String fullDate = "dd/MM/uuuu";
 
   public void validate() {
     if (fullDate == null || fullDate.isBlank()) {
       throw new IllegalStateException("fund-price.date-format.full-date must not be blank");
     }
     fullDate = fullDate.trim();
-    // Fail fast on an invalid pattern rather than at first use.
-    DateTimeFormatter.ofPattern(fullDate);
+    // Fail fast on an invalid pattern rather than at first use. ofPattern (via
+    // fullDateFormatter) rejects unknown pattern letters; the strict round-trip below
+    // rejects patterns that format but cannot parse back -- notably "yyyy" (year-of-era)
+    // without an era field, which under ResolverStyle.STRICT never resolves a LocalDate --
+    // and reduced two-digit years that silently shift the century. Use "uuuu".
+    DateTimeFormatter strict = fullDateFormatter();
+    LocalDate parsed;
+    try {
+      parsed = LocalDate.parse(ROUND_TRIP_PROBE.format(strict), strict);
+    } catch (DateTimeException exception) {
+      throw new IllegalStateException(
+          "fund-price.date-format.full-date '" + fullDate + "' cannot be parsed back under"
+              + " strict resolution; use 'uuuu' for the year instead of 'yyyy'",
+          exception);
+    }
+    if (!ROUND_TRIP_PROBE.equals(parsed)) {
+      throw new IllegalStateException(
+          "fund-price.date-format.full-date '" + fullDate + "' does not round-trip a full date");
+    }
   }
 
   public DateTimeFormatter fullDateFormatter() {

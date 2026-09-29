@@ -50,7 +50,7 @@ import reactor.test.StepVerifier;
  */
 class FundPriceControllerTest {
 
-  private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+  private static final DateTimeFormatter FORMATTER = new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties().fullDateFormatter();
 
   private final FundPriceQueryUseCase queryUseCase = mock(FundPriceQueryUseCase.class);
   private final FundPriceExportUseCase exportUseCase = mock(FundPriceExportUseCase.class);

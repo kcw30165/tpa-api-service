@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
  */
 class FundPriceWebMapperTest {
 
-  private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+  private static final DateTimeFormatter FORMATTER = new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties().fullDateFormatter();
 
   private FundPriceWebMapper newMapper() {
     return new FundPriceWebMapper(FORMATTER);
