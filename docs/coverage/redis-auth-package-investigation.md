@@ -573,3 +573,73 @@ Test method names:
 Any mention of a broken/mock ObjectMapper or forced-failure scenario:
   (none found)
 ```
+
+## Investigation: com.bct.ngtpa.apiservice.adapter.out.redis.auth.login (Worst-Coverage Sub-Package)
+
+- Generated: 2026-09-29T08:30:38Z
+- Scope chosen: per script 034's baseline, this sub-package has the
+  WORST combined coverage of any sub-package under the whole
+  redis.auth prefix (instruction=60.00% (27/45), branch=50.00%
+  (5/10)), and contains only 1-2 classes, making it a clean,
+  contained next target.
+- Fresh non-recursive inventory (re-verified, not trusted blindly
+  from script 034's older baseline): 1 class(es) found.
+
+### Per-class source, existing test, and call-site investigation
+
+```
+======================================================================
+CLASS: RedisLoginIdempotencyKeyFactory
+======================================================================
+Located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/RedisLoginIdempotencyKeyFactory.java (19 lines)
+
+--- Existing dedicated test file ---
+NOT FOUND (RedisLoginIdempotencyKeyFactoryTest.java does not exist)
+
+--- Call sites in src/main/java (grep -rn, excluding self) ---
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginOtpVerifyApplicationConfig.java:5:import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempotencyKeyFactory;
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginOtpVerifyApplicationConfig.java:48:      RedisLoginIdempotencyKeyFactory keyFactory,
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginOtpVerifyApplicationConfig.java:59:      RedisLoginIdempotencyKeyFactory keyFactory,
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginSharedIdempotencyConfig.java:4:import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempotencyKeyFactory;
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginSharedIdempotencyConfig.java:42:  RedisLoginIdempotencyKeyFactory redisLoginIdempotencyKeyFactory(
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginSharedIdempotencyConfig.java:45:    return new RedisLoginIdempotencyKeyFactory(keyPrefix);
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/config/RedisAdapterConfig.java:140:  // public RedisLoginIdempotencyKeyFactory redisLoginIdempotencyKeyFactory(
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/config/RedisAdapterConfig.java:142:  //   return new RedisLoginIdempotencyKeyFactory(keyPrefix);
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/config/RedisAdapterConfig.java:166:  //     RedisLoginIdempotencyKeyFactory keyFactory,
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/otp/verify/RedisLoginOtpVerifyPersistenceAdapter.java:3:import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempotencyKeyFactory;
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/otp/verify/RedisLoginOtpVerifyPersistenceAdapter.java:21:  private final RedisLoginIdempotencyKeyFactory keys;
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/otp/verify/RedisLoginOtpVerifyPersistenceAdapter.java:32:      RedisLoginIdempotencyKeyFactory k,
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/handoff/RedisAuthenticatedLoginHandoffAdapter.java:3:import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempotencyKeyFactory;
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/handoff/RedisAuthenticatedLoginHandoffAdapter.java:16:  private final RedisLoginIdempotencyKeyFactory keys;
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/handoff/RedisAuthenticatedLoginHandoffAdapter.java:22:      RedisLoginIdempotencyKeyFactory keys,
+
+--- Call sites in src/test/java (grep -rln, all referencing files) ---
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/idempotency/LoginStartIdempotencyNamespaceIsolationTest.java
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/otp/verify/RedisLoginOtpVerifyPersistenceAdapterTest.java
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/handoff/RedisAuthenticatedLoginHandoffAdapterTest.java
+src/test/java/com/bct/ngtpa/apiservice/architecture/SharedIdempotencyNoFeatureLocalLifecycleArchitectureTest.java
+
+```
+
+### Real per-method/per-line coverage detail (from existing jacoco.xml)
+
+```
+Found 1 class(es) with method data: ['RedisLoginIdempotencyKeyFactory']
+
+=== RedisLoginIdempotencyKeyFactory: lines with any missed instruction/branch ===
+  line 9: instructions_missed=0, instructions_covered=5, branches_missed=2, branches_covered=2
+  line 10: instructions_missed=5, instructions_covered=0, branches_missed=0, branches_covered=0
+  line 11: instructions_missed=8, instructions_covered=7, branches_missed=1, branches_covered=1
+  line 15: instructions_missed=0, instructions_covered=4, branches_missed=2, branches_covered=2
+  line 16: instructions_missed=5, instructions_covered=0, branches_missed=0, branches_covered=0
+```
+
+Full source of all classes and any existing tests preserved in the
+evidence zip under `src_dumps/` and `test_dumps/`.
+
+### Status
+
+This is INVESTIGATION ONLY. No test or production code changes
+have been made. Once reviewed, this gives the real source, real
+existing test coverage, and exact uncovered lines/branches needed
+to design a correct, validation-passing test for this class.
