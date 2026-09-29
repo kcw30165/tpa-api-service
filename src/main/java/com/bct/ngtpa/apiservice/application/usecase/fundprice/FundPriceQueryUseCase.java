@@ -88,8 +88,11 @@ public final class FundPriceQueryUseCase {
                         row.offerPrice(),
                         row.riskLevel()))
             .toList();
-    boolean anyRiskLevel = rows.stream().anyMatch(r -> r.riskLevel() != null && !r.riskLevel().isEmpty());
-    String maxRiskLevel = anyRiskLevel ? metadata.maxRiskLevel() : null;
+    boolean anyRiskLevel = rows.stream().anyMatch(r -> com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels.isAssigned(r.riskLevel()));
+    String maxRiskLevel =
+        anyRiskLevel && com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels.isAssigned(metadata.maxRiskLevel())
+            ? metadata.maxRiskLevel()
+            : null;
     return FundPriceQueryUseCaseResult.applied(
         new FundPriceQueryResult(rows, metadata.fundPriceType(), maxRiskLevel));
   }

@@ -137,8 +137,11 @@ public final class FundPriceExportUseCase {
                         row.riskLevel()))
             .toList();
     boolean anyRiskLevel =
-        rows.stream().anyMatch(r -> r.riskLevel() != null && !r.riskLevel().isEmpty());
-    String maxRiskLevel = anyRiskLevel ? metadata.maxRiskLevel() : null;
+        rows.stream().anyMatch(r -> com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels.isAssigned(r.riskLevel()));
+    String maxRiskLevel =
+        anyRiskLevel && com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels.isAssigned(metadata.maxRiskLevel())
+            ? metadata.maxRiskLevel()
+            : null;
     BigInteger unitPricePrecision =
         GeneralMetadataPrecision.parse(
                 resolvedMetadata.find(UNIT_PRICE_PRECISION_KEY).orElseThrow().value())

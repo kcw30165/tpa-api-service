@@ -242,4 +242,36 @@ class FundPriceQueryUseCaseTest {
             })
         .verifyComplete();
   }
+
+  @Test
+  void zeroRiskLevelRowsDoNotTriggerMaxRiskLevelEcho() {
+    stubActiveSessionWithMetadata(validMetadata());
+    var zeroRisk =
+        new RawFundPriceData(
+            List.of(
+                new RawFundPriceRow(
+                    "DUSM", "n", "n", AVAILABLE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, "0")));
+    when(sourcePort.fetchPrice(any())).thenReturn(Mono.just(zeroRisk));
+
+    StepVerifier.create(
+            newUseCase()
+                .query(SESSION_ID, AVAILABLE_DATE, "DB", "policy1", ActorUserRole.ROLE_USER_MBR))
+        .assertNext(result -> assertThat(result.queryResult().maxRiskLevel()).isNull())
+        .verifyComplete();
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(strings = {"0", ""})
+  void unassignedCachedMaxRiskLevelIsOmitted(String cachedMax) {
+    stubActiveSessionWithMetadata(
+        new FundPriceModeSessionMetadata(
+            "DAILY", "BIDOFFER PRICE", List.of(AVAILABLE_DATE), 36, cachedMax));
+    when(sourcePort.fetchPrice(any())).thenReturn(Mono.just(rawData()));
+
+    StepVerifier.create(
+            newUseCase()
+                .query(SESSION_ID, AVAILABLE_DATE, "DB", "policy1", ActorUserRole.ROLE_USER_MBR))
+        .assertNext(result -> assertThat(result.queryResult().maxRiskLevel()).isNull())
+        .verifyComplete();
+  }
 }

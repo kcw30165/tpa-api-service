@@ -300,4 +300,35 @@ class FundPriceControllerTest {
         .expectError(FundPriceRequestInvalidException.class)
         .verify();
   }
+
+  @Test
+  void exportEndpointSortsRowsBeforeWritingWorkbook() {
+    when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
+    var older =
+        new FundPriceRowResult(
+            "OLD", "Alpha Fund", null, LocalDate.of(2026, 5, 4), "HKD",
+            BigDecimal.ONE, BigDecimal.ONE, "1");
+    var zeroRisk =
+        new FundPriceRowResult(
+            "ZRO", "Alpha Fund", null, LocalDate.of(2026, 5, 5), "HKD",
+            BigDecimal.ONE, BigDecimal.ONE, "0");
+    var lowRisk =
+        new FundPriceRowResult(
+            "LOW", "Zeta Fund", null, LocalDate.of(2026, 5, 5), "HKD",
+            BigDecimal.ONE, BigDecimal.ONE, "1");
+    var exportResult =
+        new FundPriceExportResult(
+            List.of(older, zeroRisk, lowRisk), "UNIT PRICE", "5", BigInteger.TWO);
+    when(exportUseCase.export(any(), any(), any(), any(), any()))
+        .thenReturn(Mono.just(FundPriceExportUseCaseResult.applied(exportResult)));
+    when(workbookExporter.write(any())).thenReturn(new byte[] {1});
+
+    newController().exportFundPrice(exchangeWithSessionCookie()).block();
+
+    var captor = org.mockito.ArgumentCaptor.forClass(FundPriceExportResult.class);
+    org.mockito.Mockito.verify(workbookExporter).write(captor.capture());
+    assertThat(captor.getValue().rows())
+        .extracting(FundPriceRowResult::fundCode)
+        .containsExactly("LOW", "ZRO", "OLD");
+  }
 }

@@ -38,7 +38,7 @@ final class FundPriceApimContentValidator {
   private static final Logger LOGGER = LoggerFactory.getLogger(FundPriceApimContentValidator.class);
 
   private static final List<String> SUPPORTED_RISK_LEVELS =
-      List.of("0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5");
+      List.of("0", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5");
 
   private FundPriceApimContentValidator() {}
 

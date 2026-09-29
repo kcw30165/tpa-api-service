@@ -111,4 +111,27 @@ class FundPriceWebMapperTest {
 
     assertThat(response.rows().get(0).fundName()).isEqualTo("\u7f8e\u5143\u57fa\u91d1");
   }
+
+  @Test
+  void zhHkFallsBackToEnglishNameWhenChineseNameMissing() {
+    var noChinese =
+        new FundPriceRowResult(
+            "DUSM", "USD Fund", null, LocalDate.of(2026, 5, 5), "HKD",
+            new BigDecimal("1.1"), new BigDecimal("1.2"), "5");
+    var result = new FundPriceQueryResult(List.of(noChinese), "BIDOFFER PRICE", "5");
+
+    assertThat(newMapper().toQueryResponse(result, "zh_HK").rows().get(0).fundName())
+        .isEqualTo("USD Fund");
+  }
+
+  @Test
+  void displayFundNameUsesEnglishForBlankChineseName() {
+    var blankChinese =
+        new FundPriceRowResult(
+            "DUSM", "USD Fund", "  ", LocalDate.of(2026, 5, 5), "HKD",
+            BigDecimal.ONE, BigDecimal.ONE, "5");
+
+    assertThat(FundPriceWebMapper.displayFundName(blankChinese, "zh_HK")).isEqualTo("USD Fund");
+    assertThat(FundPriceWebMapper.displayFundName(row("5"), "en")).isEqualTo("USD Fund");
+  }
 }

@@ -322,4 +322,15 @@ class FundPriceApimContentValidatorTest {
 
     assertThat(result.rows().get(0).riskLevel()).isNull();
   }
+
+  @Test
+  void zeroRiskLevelIsAcceptedAsNoRiskLevel() {
+    var item =
+        new TrpGetFundPriceApimDataItem(
+            List.of(price("DUSM", "2026-05-05", "1", "1")), List.of(info("DUSM", "0")));
+
+    var result = FundPriceApimContentValidator.reconcile(item);
+
+    assertThat(result.rows().get(0).riskLevel()).isEqualTo("0");
+  }
 }

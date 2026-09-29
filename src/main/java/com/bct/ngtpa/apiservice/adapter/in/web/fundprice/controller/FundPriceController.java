@@ -122,7 +122,7 @@ public class FundPriceController {
                           ctx.account().policyNo(),
                           ctx.actor().actorUserRole()))
               .flatMap(this::toQueryResultOrError)
-              .map(sortingSupport::sort)
+              .map(result -> sortingSupport.sort(result, lang))
               .map(
                   result -> {
                     MutationResponse<FundPriceQueryResultResponse> response =
@@ -183,6 +183,7 @@ public class FundPriceController {
                           ctx.account().trustCode(),
                           ctx.actor().actorUserRole()))
               .flatMap(this::toExportResultOrError)
+              .map(sortingSupport::sort)
               .map(workbookExporter::write)
               .map(
                   body ->

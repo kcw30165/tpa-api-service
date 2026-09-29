@@ -79,10 +79,19 @@ public class FundPriceWebMapper {
         row.riskLevel());
   }
 
-  private String resolveFundName(FundPriceRowResult row, String lang) {
+  /**
+   * Fund name shown to the user: zh_HK uses the Chinese name when present, otherwise the English
+   * name; any other language uses the English name. Shared with FundPriceSortingSupport so the
+   * query sort orders by exactly the name the user sees.
+   */
+  public static String displayFundName(FundPriceRowResult row, String lang) {
     if (RequestLanguageResolver.isZhHk(lang)) {
       return StringUtils.hasText(row.chineseFundName()) ? row.chineseFundName() : row.fundName();
     }
     return row.fundName();
+  }
+
+  private String resolveFundName(FundPriceRowResult row, String lang) {
+    return displayFundName(row, lang);
   }
 }
