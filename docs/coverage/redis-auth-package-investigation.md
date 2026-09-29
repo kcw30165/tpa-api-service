@@ -106,3 +106,130 @@ classes) rather than attempting the entire prefix at once --
 mirroring the lesson learned from the registration-mapper
 workstream, where scope was manageable (7 classes) but even then
 required multiple correction rounds.
+
+## Deep-Dive: Four Zero-Coverage Classes
+
+- Generated: 2026-09-29T06:15:15Z
+- Scope chosen per script 034's ranked recommendation: smallest,
+  self-contained, likely-fastest path to closing gaps.
+- Targets:
+  - `RedisForgotPasswordStartProtectedReplayKeyFactory`
+  - `RedisLoginStartReplayKeyFactory`
+  - `RedisRegistrationStartProtectedReplayKeyFactory`
+  - `RedisUsernameRecoveryStartProtectedReplayJsonMapper`
+
+### Per-class call-site investigation
+
+```
+======================================================================
+TARGET: RedisForgotPasswordStartProtectedReplayKeyFactory
+======================================================================
+Located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/forgotpassword/replay/RedisForgotPasswordStartProtectedReplayKeyFactory.java
+Full source copied to: src_dumps/RedisForgotPasswordStartProtectedReplayKeyFactory.java (18 lines)
+
+--- Call sites in src/main/java (grep -rn "RedisForgotPasswordStartProtectedReplayKeyFactory") ---
+src/main/java/com/bct/ngtpa/apiservice/config/auth/forgotpassword/ForgotPasswordStartProtectedReplayConfig.java:6:import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.replay.RedisForgotPasswordStartProtectedReplayKeyFactory;
+src/main/java/com/bct/ngtpa/apiservice/config/auth/forgotpassword/ForgotPasswordStartProtectedReplayConfig.java:43:        new RedisForgotPasswordStartProtectedReplayKeyFactory(keyFactory),
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/forgotpassword/replay/RedisForgotPasswordStartProtectedReplayAdapter.java:17:  private final RedisForgotPasswordStartProtectedReplayKeyFactory keys;
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/forgotpassword/replay/RedisForgotPasswordStartProtectedReplayAdapter.java:24:      RedisForgotPasswordStartProtectedReplayKeyFactory keys,
+
+--- Call sites in src/test/java (grep -rn "RedisForgotPasswordStartProtectedReplayKeyFactory") ---
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/forgotpassword/replay/RedisForgotPasswordStartProtectedReplayAdapterTest.java
+
+======================================================================
+TARGET: RedisLoginStartReplayKeyFactory
+======================================================================
+Located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayKeyFactory.java
+Full source copied to: src_dumps/RedisLoginStartReplayKeyFactory.java (16 lines)
+
+--- Call sites in src/main/java (grep -rn "RedisLoginStartReplayKeyFactory") ---
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginStartReplayConfig.java:28:  RedisLoginStartReplayKeyFactory redisLoginStartReplayKeyFactory(
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginStartReplayConfig.java:30:    return new RedisLoginStartReplayKeyFactory(prefix);
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginStartReplayConfig.java:35:      RedisLoginStartReplayKeyFactory keys,
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayAdapter.java:12:  private final RedisLoginStartReplayKeyFactory keys;
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayAdapter.java:17:      RedisLoginStartReplayKeyFactory keys,
+
+--- Call sites in src/test/java (grep -rn "RedisLoginStartReplayKeyFactory") ---
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayAdapterTest.java
+src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043LoginStartReplayArchitectureTest.java
+
+======================================================================
+TARGET: RedisRegistrationStartProtectedReplayKeyFactory
+======================================================================
+Located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/registration/replay/RedisRegistrationStartProtectedReplayKeyFactory.java
+Full source copied to: src_dumps/RedisRegistrationStartProtectedReplayKeyFactory.java (18 lines)
+
+--- Call sites in src/main/java (grep -rn "RedisRegistrationStartProtectedReplayKeyFactory") ---
+src/main/java/com/bct/ngtpa/apiservice/config/registration/RegistrationStartProtectedReplayConfig.java:6:import com.bct.ngtpa.apiservice.adapter.out.redis.auth.registration.replay.RedisRegistrationStartProtectedReplayKeyFactory;
+src/main/java/com/bct/ngtpa/apiservice/config/registration/RegistrationStartProtectedReplayConfig.java:43:        new RedisRegistrationStartProtectedReplayKeyFactory(keyFactory),
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/registration/replay/RedisRegistrationStartProtectedReplayAdapter.java:17:  private final RedisRegistrationStartProtectedReplayKeyFactory keys;
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/registration/replay/RedisRegistrationStartProtectedReplayAdapter.java:24:      RedisRegistrationStartProtectedReplayKeyFactory keys,
+
+--- Call sites in src/test/java (grep -rn "RedisRegistrationStartProtectedReplayKeyFactory") ---
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/registration/replay/RedisRegistrationStartProtectedReplayAdapterTest.java
+
+======================================================================
+TARGET: RedisUsernameRecoveryStartProtectedReplayJsonMapper
+======================================================================
+Located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/usernamerecovery/replay/RedisUsernameRecoveryStartProtectedReplayJsonMapper.java
+Full source copied to: src_dumps/RedisUsernameRecoveryStartProtectedReplayJsonMapper.java (29 lines)
+
+--- Call sites in src/main/java (grep -rn "RedisUsernameRecoveryStartProtectedReplayJsonMapper") ---
+src/main/java/com/bct/ngtpa/apiservice/config/auth/usernamerecovery/UsernameRecoveryStartProtectedReplayConfig.java:5:import com.bct.ngtpa.apiservice.adapter.out.redis.auth.usernamerecovery.replay.RedisUsernameRecoveryStartProtectedReplayJsonMapper;
+src/main/java/com/bct/ngtpa/apiservice/config/auth/usernamerecovery/UsernameRecoveryStartProtectedReplayConfig.java:54:        new RedisUsernameRecoveryStartProtectedReplayJsonMapper(),
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/usernamerecovery/replay/RedisUsernameRecoveryStartProtectedReplayAdapter.java:28:  private final RedisUsernameRecoveryStartProtectedReplayJsonMapper json;
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/usernamerecovery/replay/RedisUsernameRecoveryStartProtectedReplayAdapter.java:39:      RedisUsernameRecoveryStartProtectedReplayJsonMapper json,
+
+--- Call sites in src/test/java (grep -rn "RedisUsernameRecoveryStartProtectedReplayJsonMapper") ---
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/usernamerecovery/replay/RedisUsernameRecoveryStartProtectedReplayAdapterTest.java
+
+```
+
+### Sibling reference classes (already tested, pattern templates)
+
+```
+======================================================================
+SIBLINGS for: RedisForgotPasswordStartProtectedReplayKeyFactory
+======================================================================
+sibling located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/usernamerecovery/replay/RedisUsernameRecoveryStartProtectedReplayKeyFactory.java
+  test file dumped: sibling_test_dumps/RedisUsernameRecoveryStartProtectedReplayKeyFactoryTest.java (20 lines)
+sibling located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/registration/replay/RedisRegistrationStartProtectedReplayKeyFactory.java
+  (no RedisRegistrationStartProtectedReplayKeyFactoryTest.java found -- sibling may be covered only indirectly)
+
+======================================================================
+SIBLINGS for: RedisLoginStartReplayKeyFactory
+======================================================================
+sibling located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/usernamerecovery/replay/RedisUsernameRecoveryStartProtectedReplayKeyFactory.java
+  test file dumped: sibling_test_dumps/RedisUsernameRecoveryStartProtectedReplayKeyFactoryTest.java (20 lines)
+sibling located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/registration/replay/RedisRegistrationStartProtectedReplayKeyFactory.java
+  (no RedisRegistrationStartProtectedReplayKeyFactoryTest.java found -- sibling may be covered only indirectly)
+
+======================================================================
+SIBLINGS for: RedisRegistrationStartProtectedReplayKeyFactory
+======================================================================
+sibling located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/usernamerecovery/replay/RedisUsernameRecoveryStartProtectedReplayKeyFactory.java
+  test file dumped: sibling_test_dumps/RedisUsernameRecoveryStartProtectedReplayKeyFactoryTest.java (20 lines)
+
+======================================================================
+SIBLINGS for: RedisUsernameRecoveryStartProtectedReplayJsonMapper
+======================================================================
+sibling located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/forgotpassword/replay/RedisForgotPasswordStartProtectedReplayJsonMapper.java
+  test file dumped: sibling_test_dumps/RedisForgotPasswordStartProtectedReplayJsonMapperTest.java (35 lines)
+sibling located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/registration/replay/RedisRegistrationStartProtectedReplayJsonMapper.java
+  test file dumped: sibling_test_dumps/RedisRegistrationStartProtectedReplayJsonMapperTest.java (35 lines)
+
+```
+
+Full source of all 4 targets and their siblings (plus siblings'
+existing test files where found) preserved in the evidence zip
+under `src_dumps/`, `sibling_dumps/`, and `sibling_test_dumps/`.
+
+### Status
+
+This is INVESTIGATION ONLY. No test or production code changes
+have been made. Next step: use this evidence (real source +
+sibling test patterns) to write real, validation-passing tests
+for these 4 classes, following the same reflective/pre-validation
+discipline established after the earlier registration-mapper
+stub-fabrication incident (scripts 029/031/032) -- i.e. base new
+tests strictly on the real dumped source, never on assumed shapes.
