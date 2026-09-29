@@ -1016,3 +1016,96 @@ redis-auth sub-packages per script 034's original ranking:
 `.login.replay`, `.forgotpassword`,
 `.usernamerecovery.replay`, etc., remain open for a future
 round.
+
+## Investigation: com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.replay
+
+- Generated: 2026-09-29T10:03:15Z
+- Scope chosen: worst-performing UNTOUCHED sub-package per script
+  034's original baseline (instruction=79.45%, branch=61.11%,
+  3 classes). NOTE: one of its 3 classes
+  (RedisLoginStartReplayKeyFactory) was already closed to
+  100.00%/100.00% via script 037 -- this investigation
+  re-confirms the CURRENT true state of all 3 classes fresh,
+  rather than assuming the other 2 are unchanged.
+- Fresh non-recursive inventory: 3 class(es) found.
+
+### Per-class source, existing test, and call-site investigation
+
+```
+======================================================================
+CLASS: RedisAuthenticatedLoginReplaySessionAdapter
+======================================================================
+Located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisAuthenticatedLoginReplaySessionAdapter.java (70 lines)
+
+--- Existing dedicated test file ---
+found: src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisAuthenticatedLoginReplaySessionAdapterTest.java (150 lines)
+
+--- Call sites in src/main/java (grep -rn, excluding self) ---
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/replay/AuthenticatedLoginReplayConfig.java:5:import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.replay.RedisAuthenticatedLoginReplaySessionAdapter;
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/replay/AuthenticatedLoginReplayConfig.java:20:    return new RedisAuthenticatedLoginReplaySessionAdapter(redis, keys, json);
+
+--- Call sites in src/test/java (grep -rln, all referencing files) ---
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisAuthenticatedLoginReplaySessionAdapterTest.java
+
+======================================================================
+CLASS: RedisLoginStartReplayAdapter
+======================================================================
+Located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayAdapter.java (59 lines)
+
+--- Existing dedicated test file ---
+found: src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayAdapterTest.java (125 lines)
+
+--- Call sites in src/main/java (grep -rn, excluding self) ---
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginStartReplayConfig.java:38:    return new RedisLoginStartReplayAdapter(keys, redis, mapper);
+
+--- Call sites in src/test/java (grep -rln, all referencing files) ---
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayAdapterTest.java
+
+======================================================================
+CLASS: RedisLoginStartReplayKeyFactory
+======================================================================
+Located: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayKeyFactory.java (16 lines)
+
+--- Existing dedicated test file ---
+found: src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayKeyFactoryTest.java (34 lines)
+
+--- Call sites in src/main/java (grep -rn, excluding self) ---
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginStartReplayConfig.java:28:  RedisLoginStartReplayKeyFactory redisLoginStartReplayKeyFactory(
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginStartReplayConfig.java:30:    return new RedisLoginStartReplayKeyFactory(prefix);
+src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginStartReplayConfig.java:35:      RedisLoginStartReplayKeyFactory keys,
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayAdapter.java:12:  private final RedisLoginStartReplayKeyFactory keys;
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayAdapter.java:17:      RedisLoginStartReplayKeyFactory keys,
+
+--- Call sites in src/test/java (grep -rln, all referencing files) ---
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayAdapterTest.java
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/replay/RedisLoginStartReplayKeyFactoryTest.java
+src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043LoginStartReplayArchitectureTest.java
+
+```
+
+### Real, CURRENT per-method/per-line coverage detail (from existing jacoco.xml)
+
+```
+=== CURRENT per-class rollups for com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.replay ===
+RedisAuthenticatedLoginReplaySessionAdapter: instruction=100.00% (111/111), branch=75.00% (3/4)
+RedisLoginStartReplayAdapter: instruction=83.33% (90/108), branch=100.00% (8/8)
+RedisLoginStartReplayKeyFactory: instruction=100.00% (34/34), branch=100.00% (6/6)
+
+=== RedisLoginStartReplayAdapter: lines with any missed instruction/branch ===
+  line 36: instructions_missed=5, instructions_covered=1, branches_missed=0, branches_covered=0
+  line 47: instructions_missed=1, instructions_covered=0, branches_missed=0, branches_covered=0
+  line 48: instructions_missed=5, instructions_covered=0, branches_missed=0, branches_covered=0
+  line 54: instructions_missed=7, instructions_covered=0, branches_missed=0, branches_covered=0
+=== RedisAuthenticatedLoginReplaySessionAdapter: lines with any missed instruction/branch ===
+  line 56: instructions_missed=0, instructions_covered=7, branches_missed=1, branches_covered=3
+```
+
+Full source of all classes and any existing tests preserved in the
+evidence zip under `src_dumps/` and `test_dumps/`.
+
+### Status
+
+This is INVESTIGATION ONLY. No test or production code changes
+have been made. Once reviewed, this identifies which of the
+remaining classes in this sub-package genuinely need attention,
+and the exact uncovered lines/branches for each.
