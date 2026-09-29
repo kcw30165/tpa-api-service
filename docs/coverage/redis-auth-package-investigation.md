@@ -735,3 +735,38 @@ have been made. Once reviewed, this gives the real dependency
 shapes and known-safe literal/construction values needed to write
 a correct, validation-passing dedicated test for
 RedisLoginIdempotencyKeyFactory in the next implementation script.
+
+## Implementation: RedisLoginIdempotencyKeyFactory Now Has Dedicated Tests
+
+- Generated: 2026-09-29T08:45:36Z
+- New test file: `RedisLoginIdempotencyKeyFactoryTest` (6 tests),
+  the FIRST-EVER dedicated test for this class (previously only
+  60.00% instruction / 50.00% branch, the worst combined coverage
+  of any sub-package under the whole redis.auth prefix per
+  script 034's baseline).
+- All 6 tests directly target the 3 real gaps identified in
+  script 042's per-line jacoco data: (1) constructor's null/
+  blank-prefix rejection, (2) the trailing-colon-stripping
+  ternary's untested branch, (3) keyFor's null-action/null-id
+  rejection.
+- Fresh re-verified (not trusted blindly from script 043's older
+  evidence): RedisLoginIdempotencyKeyFactory's real import
+  confirms it uses `dto.auth.login.idempotency.LoginIdempotencyAction`,
+  resolving the name-collision flagged in script 043 (a second,
+  unrelated `LoginIdempotencyAction` exists in
+  `usecase.auth.login.idempotency`).
+- Known-safe persistence-id literal (`"a".repeat(43)`) copied
+  directly from 2 existing indirect-caller tests (script 043),
+  not invented.
+- Pre-validated via a stub classpath using the exact real dumped
+  source for all 3 classes involved -- then ACTUALLY EXECUTED
+  (not just compiled) all 6 new test methods via a reflective
+  runner. All 6 passed, with each of the 3 real gaps explicitly
+  confirmed to map to a specific passing test.
+
+### Status
+
+Test code committed. A follow-up verification script is still
+needed to confirm via a REAL mvn test run (not just compile)
+that these pass against the actual repo, and to measure the
+real resulting coverage for this class via a fresh jacoco report.
