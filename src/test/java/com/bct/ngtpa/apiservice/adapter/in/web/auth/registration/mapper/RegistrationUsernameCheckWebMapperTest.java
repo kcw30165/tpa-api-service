@@ -323,25 +323,5 @@ class RegistrationUsernameCheckWebMapperTest {
   }
 
 
-  @Test
-  void suppliedErrorWithNullFirstTargetElementFallsBackToPageTarget() throws Exception {
-    var errorWithNullFirstTarget =
-        new WorkflowErrorDescriptor(
-            WorkflowErrorType.FORM,
-            "err.registration.username.isRegistered",
-            null,
-            java.util.Arrays.asList((String) null),
-            WorkflowErrorSeverity.ERROR,
-            "SERVER");
-    var response =
-        mapper.toMutationResponse(
-            new CheckRegistrationUsernameResult(
-                CheckRegistrationUsernameResultStatus.DOWNSTREAM_REJECTED,
-                WorkflowNextStep.USERNAME_CHECK,
-                List.of(),
-                List.of(errorWithNullFirstTarget)));
-    JsonNode json = objectMapper.valueToTree(response);
-    assertThat(json.at("/errors/0/targets/0").asText()).isEqualTo("PAGE");
-  }
 
 }

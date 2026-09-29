@@ -663,3 +663,49 @@ replace the 3 failing tests with real, validation-passing
 versions). Once reviewed, this gives the exact real validation
 logic and known-safe literal values needed to fix all 3 failures
 correctly this time.
+
+## Fix: Two Real Test Failures Corrected, Fifth Unreachable Branch Documented
+
+- Generated: 2026-09-29T05:15:56Z
+- `RegistrationUsernameCheckWebMapper.firstTarget`'s
+  first-target-element-is-null case: REMOVED the test that
+  attempted to exercise this (script 029's
+  `suppliedErrorWithNullFirstTargetElementFallsBackToPageTarget`)
+  and documented it as a 5th unreachable-given-upstream-validation
+  branch instead. `WorkflowErrorDescriptor`'s own compact
+  constructor (confirmed via script 031's real dump:
+  `targets = targets == null ? List.of() : List.copyOf(targets)`)
+  makes it structurally impossible to construct an instance whose
+  `targets()` list contains a null element -- `List.copyOf`
+  throws `NullPointerException` on any null element. Confirmed
+  via an executed Java harness against the exact real class
+  definition, not just static analysis.
+- `CompleteRegistrationWebMapper.toCommand`'s idempotency-key
+  construction: FIXED script 029's test literals `"idem-1"` and
+  `"idem-2"` (both only 6 characters) to `"idem-request-001"`
+  and `"idem-request-002"` (17 characters each), which satisfy
+  `RegistrationIdempotencyKey`'s real validation (confirmed via
+  script 031's dump: `^[A-Za-z0-9_-]{8,128}$` plus an
+  unsafe-substring blocklist). Verified via an executed Java
+  harness against the exact real class definition.
+
+### Process-failure acknowledgment
+Both of the above were caused by script 029's reflective-harness
+pre-validation using FABRICATED (not dumped-from-source) shapes
+for `WorkflowErrorDescriptor` and `RegistrationIdempotencyKey`.
+This violated the zero-assumption rule that was otherwise
+followed throughout this workstream. The fabricated stubs
+happened to accept inputs the real classes reject, producing a
+false-positive pre-validation result. Script 031 dumped the real
+source for both classes; this script's fixes are grounded in
+that real evidence, and were themselves re-verified via an
+executed harness against the real definitions before being
+applied here.
+
+### Status
+All 3 real test failures from script 030's first actual test run
+are now addressed: 1 removed (genuinely unreachable), 2 fixed
+(invalid literals replaced with valid ones). A follow-up
+verification script is still needed to confirm via a REAL mvn
+test run (not just compile) that these fixes resolve the
+failures, and to obtain the final true coverage numbers.

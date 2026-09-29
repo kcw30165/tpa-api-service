@@ -187,7 +187,7 @@ class CompleteRegistrationWebMapperTest {
   @Test
   void toCommandWithNullRequestLeavesPasswordFieldsNullAndNormalizesBlankOptionalFields() {
     var command =
-        mapper.toCommand(null, "session-1", "csrf-1", "idem-1", null, "   ", "en", null);
+        mapper.toCommand(null, "session-1", "csrf-1", "idem-request-001", null, "   ", "en", null);
     assertThat(command.password()).isNull();
     assertThat(command.confirmPassword()).isNull();
     assertThat(command.origin()).isNull();
@@ -203,7 +203,7 @@ class CompleteRegistrationWebMapperTest {
     var request = new CompleteRegistrationRequest("pw1", "pw1");
     var command =
         mapper.toCommand(
-            request, "session-2", "csrf-2", "idem-2", "https://x", null, null, "req-2");
+            request, "session-2", "csrf-2", "idem-request-002", "https://x", null, null, "req-2");
     assertThat(command.password()).isEqualTo("pw1");
     assertThat(command.confirmPassword()).isEqualTo("pw1");
     assertThat(command.origin()).isEqualTo("https://x");
