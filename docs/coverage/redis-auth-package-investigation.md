@@ -643,3 +643,95 @@ This is INVESTIGATION ONLY. No test or production code changes
 have been made. Once reviewed, this gives the real source, real
 existing test coverage, and exact uncovered lines/branches needed
 to design a correct, validation-passing test for this class.
+
+## Dependency-Shape Investigation for RedisLoginIdempotencyKeyFactory
+
+- Generated: 2026-09-29T08:38:12Z
+- Trigger: script 042's real source dump showed
+  RedisLoginIdempotencyKeyFactory.keyFor() takes
+  `LoginIdempotencyAction` and `LoginIdempotencyPersistenceId`,
+  both imported via a wildcard import and never yet directly
+  observed. Unlike the earlier JsonMapper gap, script 042's
+  per-line jacoco data shows EVERY remaining gap in this class is
+  a straightforward, easily-testable defensive guard clause (null/
+  blank prefix rejection, one untested ternary branch, null
+  action/id rejection) -- a normal dedicated unit test should
+  close this cleanly, once the real dependency shapes are known.
+- Dependency classes dumped (real source, not inferred from usage):
+  - `LoginIdempotencyAction`
+  - `LoginIdempotencyPersistenceId`
+
+### Dependency source dumps and locations
+
+```
+======================================================================
+DEPENDENCY: LoginIdempotencyAction
+======================================================================
+WARNING: multiple matches for LoginIdempotencyAction.java:
+  - src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/idempotency/LoginIdempotencyAction.java
+  - src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginIdempotencyAction.java
+Located (primary): src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/idempotency/LoginIdempotencyAction.java
+Full source copied to: dependency_src_dumps/LoginIdempotencyAction.java (18 lines)
+
+======================================================================
+DEPENDENCY: LoginIdempotencyPersistenceId
+======================================================================
+Located (primary): src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/idempotency/LoginIdempotencyPersistenceId.java
+Full source copied to: dependency_src_dumps/LoginIdempotencyPersistenceId.java (17 lines)
+
+```
+
+Full source of both dependency classes preserved in the evidence
+zip under `dependency_src_dumps/`.
+
+### Existing test usage cross-reference
+
+```
+======================================================================
+EXISTING TEST USAGE for: LoginIdempotencyAction
+======================================================================
+--- Dedicated test file (find -name "LoginIdempotencyActionTest.java") ---
+
+--- Construction/reference call sites in tests (grep -rn) ---
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/idempotency/LoginStartIdempotencyNamespaceIsolationTest.java:7:import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyAction;
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/idempotency/LoginStartIdempotencyNamespaceIsolationTest.java:42:            .derive(LoginIdempotencyAction.CREDENTIALS, new LoginIdempotencyKey(rawClientKey));
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/idempotency/LoginStartIdempotencyNamespaceIsolationTest.java:45:            .keyFor(LoginIdempotencyAction.CREDENTIALS, legacyId);
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/otp/verify/RedisLoginOtpVerifyPersistenceAdapterTest.java:10:import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyAction;
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/verify/SharedLoginOtpVerifyServiceTest.java:23:import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyAction;
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/verify/SharedLoginOtpVerifyServiceTest.java:48:    verify(f.identities).create(LoginIdempotencyAction.OTP_VERIFY, "afs-secret", "idem-verify");
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/resend/SharedLoginOtpResendServiceTest.java:20:import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyAction;
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/resend/SharedLoginOtpResendServiceTest.java:42:    verify(f.identities).create(LoginIdempotencyAction.OTP_RESEND, "afs-secret", "idem-key-0001");
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/SharedLoginOtpSendServiceTest.java:20:import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyAction;
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/SharedLoginOtpSendServiceTest.java:40:    verify(f.identities).create(LoginIdempotencyAction.OTP_SEND, "afs", "idem");
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginResponseEnvelopeTest.java:13:    for (LoginIdempotencyAction action : LoginIdempotencyAction.values()) {
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginResponseEnvelopeTest.java:37:                    LoginIdempotencyAction.CREDENTIALS,
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginResponseEnvelopeTest.java:50:                    LoginIdempotencyAction.CREDENTIALS,
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginResponseEnvelopeTest.java:60:        envelope.encode(LoginIdempotencyAction.OTP_RESEND, new TestPayload("credentials", null));
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginResponseEnvelopeTest.java:64:                envelope.decodePayload(LoginIdempotencyAction.CREDENTIALS, json, TestPayload.class))
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginOtpVerifyReplayCodecTest.java:145:                LoginIdempotencyAction.OTP_SEND,
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginOtpResendReplayCodecTest.java:123:                LoginIdempotencyAction.OTP_SEND,
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginStartReplayCodecTest.java:126:                LoginIdempotencyAction.OTP_SEND,
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginIdempotencyIntegrationTest.java:15:    assertThat(LoginIdempotencyAction.CREDENTIALS.action().value()).isEqualTo("credentials");
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginIdempotencyIntegrationTest.java:16:    assertThat(LoginIdempotencyAction.OTP_SEND.action().value()).isEqualTo("otp-send");
+
+======================================================================
+EXISTING TEST USAGE for: LoginIdempotencyPersistenceId
+======================================================================
+--- Dedicated test file (find -name "LoginIdempotencyPersistenceIdTest.java") ---
+
+--- Construction/reference call sites in tests (grep -rn) ---
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/otp/verify/RedisLoginOtpVerifyPersistenceAdapterTest.java:12:import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyPersistenceId;
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/otp/verify/RedisLoginOtpVerifyPersistenceAdapterTest.java:76:  private final LoginIdempotencyPersistenceId persistenceId =
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/otp/verify/RedisLoginOtpVerifyPersistenceAdapterTest.java:77:      new LoginIdempotencyPersistenceId("a".repeat(43));
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/handoff/RedisAuthenticatedLoginHandoffAdapterTest.java:15:import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyPersistenceId;
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/handoff/RedisAuthenticatedLoginHandoffAdapterTest.java:62:        .thenReturn(new LoginIdempotencyPersistenceId("a".repeat(43)));
+
+```
+
+### Status
+
+This is INVESTIGATION ONLY. No test or production code changes
+have been made. Once reviewed, this gives the real dependency
+shapes and known-safe literal/construction values needed to write
+a correct, validation-passing dedicated test for
+RedisLoginIdempotencyKeyFactory in the next implementation script.
