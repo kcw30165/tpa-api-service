@@ -562,3 +562,59 @@ needed to write the actual implementation script closing all
 genuinely-reachable gaps and documenting all genuinely-unreachable
 ones across CompleteRegistrationWebMapper,
 RegistrationUsernameCheckWebMapper, and RegistrationStartWebMapper.
+
+## Three-Class Remediation: Unreachable Branches And Flagged Finding
+
+- Generated: 2026-09-29T04:34:13Z
+
+### Newly documented unreachable branches (this round)
+- `RegistrationStartWebMapper.toWorkflowErrorType`'s
+  `target != null && ...` check: unreachable (3rd instance of the
+  same pattern as the 2 branches already documented in script 018).
+  `target` here always comes from `normalizeTarget()`'s return
+  value, which itself never returns null (confirmed script 018).
+- `RegistrationStartWebMapper.logFatalIfNeeded`'s
+  `result.status() == null` check (given `result != null`):
+  unreachable. `StartRegistrationResult`'s own compact constructor
+  (`Objects.requireNonNull(status, ...)`, confirmed script 028)
+  guarantees status can never be null on any constructed instance.
+- `RegistrationUsernameCheckWebMapper.toMutationResponse`'s
+  `result.errors() == null` check: unreachable.
+  `CheckRegistrationUsernameResult`'s own compact constructor
+  (confirmed script 011: `errors = errors == null ? List.of() :
+  List.copyOf(errors)`) guarantees errors() can never return null.
+- All 3 are intentionally NOT force-tested, per this project's own
+  coverage-tiering escape hatch (same pattern as the 4 branches
+  already documented in scripts 018/021).
+
+### Flagged finding requiring manual review (NOT force-fixed)
+- `RegistrationStartWebMapper` has a package-private 3-arg
+  constructor `(Duration, Object, WorkflowMutationResponseMapper)`
+  that is (a) never called by any other constructor in the class
+  (all public constructors bypass it, going directly to the
+  private 2-arg constructor), and (b) inaccessible from
+  `RegistrationStartWebMapperTest`, which lives in a DIFFERENT
+  package (`...auth.registration`, not `...auth.registration.mapper`
+  where the class itself and its sibling tests -- Cancel/Complete/
+  UsernameCheck -- all live).
+- This appears to be dead code, likely a leftover overload from a
+  prior refactor. Closing it would require either (a) deleting the
+  constructor (a production-code change), or (b) relocating
+  RegistrationStartWebMapperTest into the `.mapper` package (a
+  test-file-structure change that may have been a deliberate
+  original choice, unlike its sibling tests).
+- NOT force-fixed in this round since both options are decisions
+  beyond "add a test for an existing gap" -- flagging for your
+  review rather than unilaterally choosing one.
+
+### Status
+This closes all genuinely-reachable gaps identified in script
+025's re-audit (10 new tests across the 3 classes: 2 in
+CompleteRegistrationWebMapperTest, 1 in
+RegistrationUsernameCheckWebMapperTest, 7 in
+RegistrationStartWebMapperTest), documents all 3 newly-found
+unreachable branches, and flags the one remaining item (dead 3-arg
+constructor) that requires a manual decision rather than an
+automatic fix. A final verification round (mvn test + fresh
+jacoco report) is still needed to confirm the true resulting
+coverage numbers for all 3 classes.

@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
 
 class CompleteRegistrationWebMapperTest {
 
@@ -182,4 +183,33 @@ class CompleteRegistrationWebMapperTest {
     return new WorkflowErrorDescriptor(
         WorkflowErrorType.FORM, code, null, List.of("PAGE"), WorkflowErrorSeverity.ERROR, "SERVER");
   }
+
+  @Test
+  void toCommandWithNullRequestLeavesPasswordFieldsNullAndNormalizesBlankOptionalFields() {
+    var command =
+        mapper.toCommand(null, "session-1", "csrf-1", "idem-1", null, "   ", "en", null);
+    assertThat(command.password()).isNull();
+    assertThat(command.confirmPassword()).isNull();
+    assertThat(command.origin()).isNull();
+    assertThat(command.referer()).isNull();
+    assertThat(command.acceptLanguage()).isEqualTo("en");
+    assertThat(command.correlationId()).isNull();
+    assertThat(command.authFlowSessionId().value()).isEqualTo("session-1");
+    assertThat(command.csrfToken()).isEqualTo("csrf-1");
+  }
+
+  @Test
+  void toCommandWithNonNullRequestPopulatesPasswordFieldsAndTrimsOptionalFields() {
+    var request = new CompleteRegistrationRequest("pw1", "pw1");
+    var command =
+        mapper.toCommand(
+            request, "session-2", "csrf-2", "idem-2", "https://x", null, null, "req-2");
+    assertThat(command.password()).isEqualTo("pw1");
+    assertThat(command.confirmPassword()).isEqualTo("pw1");
+    assertThat(command.origin()).isEqualTo("https://x");
+    assertThat(command.referer()).isNull();
+    assertThat(command.acceptLanguage()).isNull();
+    assertThat(command.correlationId()).isEqualTo("req-2");
+  }
+
 }

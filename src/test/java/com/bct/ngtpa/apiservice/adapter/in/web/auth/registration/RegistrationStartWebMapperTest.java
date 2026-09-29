@@ -415,4 +415,78 @@ class RegistrationStartWebMapperTest {
     assertThat(response.csrfToken()).isEqualTo("csrf_safe_token");
   }
 
+
+  @Test
+  void toMutationResponseWithNullResultReturnsSystemErrorAndDoesNotThrow() {
+    var response = mapper.toMutationResponse(null, "en");
+    assertThat(response.success()).isFalse();
+    assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+  }
+
+  @Test
+  void toResponseWithNullResultReturnsNull() {
+    assertThat(mapper.toResponse(null)).isNull();
+  }
+
+  @Test
+  void toResponseWithFailingStatusReturnsNull() {
+    var result =
+        new StartRegistrationResult(
+            StartRegistrationResultStatus.VALIDATION_FAILED,
+            WorkflowNextStep.NONE,
+            null,
+            0,
+            0,
+            0,
+            null,
+            null,
+            List.of(),
+            List.of(),
+            RegistrationIdempotencyStartOutcome.STARTED,
+            null);
+    assertThat(mapper.toResponse(result)).isNull();
+  }
+
+  @Test
+  void toWorkflowDataWithNullResultReturnsNull() {
+    assertThat(mapper.toWorkflowData(null)).isNull();
+  }
+
+  @Test
+  void toWorkflowDataWithFailingStatusReturnsNull() {
+    var result =
+        new StartRegistrationResult(
+            StartRegistrationResultStatus.VALIDATION_FAILED,
+            WorkflowNextStep.NONE,
+            null,
+            0,
+            0,
+            0,
+            null,
+            null,
+            List.of(),
+            List.of(),
+            RegistrationIdempotencyStartOutcome.STARTED,
+            null);
+    assertThat(mapper.toWorkflowData(result)).isNull();
+  }
+
+  @Test
+  void missingIdempotencyKeyResponseWithLanguageReturnsValidationFailedIdempotencyMissingError() {
+    var response = mapper.missingIdempotencyKeyResponse("en");
+    assertThat(response.success()).isFalse();
+    assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
+    assertThat(response.errors())
+        .singleElement()
+        .satisfies(
+            error -> assertThat(error.code()).isEqualTo("err.workflow.idempotency.missing"));
+  }
+
+  @Test
+  void missingIdempotencyKeyResponseWithoutLanguageDelegatesToOverload() {
+    var response = mapper.missingIdempotencyKeyResponse();
+    assertThat(response.success()).isFalse();
+    assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
+  }
+
 }
