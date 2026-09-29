@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceModeResponse;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceModeSessionMetadata;
+import java.time.LocalDate;
 
 /**
  * Bid/offer-vs-unit field selection is driven by the cached {@code fundPriceType}; priceDate is
@@ -38,6 +41,15 @@ public class FundPriceWebMapper {
 
   public FundPriceWebMapper(DateTimeFormatter fundPriceFullDateFormatter) {
     this.formatter = Objects.requireNonNull(fundPriceFullDateFormatter, "formatter must not be null");
+  }
+
+  public FundPriceModeResponse toModeResponse(
+      FundPriceModeSessionMetadata metadata, LocalDate referenceDate) {
+    return new FundPriceModeResponse(
+        metadata.mode(),
+        metadata.availableFundPriceDates().stream().map(formatter::format).toList(),
+        metadata.maximumFundPriceHistoryMonths(),
+        referenceDate.format(formatter));
   }
 
   public FundPriceQueryResponse toQueryResponse(FundPriceQueryResult result, String lang) {

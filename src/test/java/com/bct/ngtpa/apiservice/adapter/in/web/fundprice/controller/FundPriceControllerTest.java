@@ -55,6 +55,10 @@ class FundPriceControllerTest {
   private final FundPriceQueryUseCase queryUseCase = mock(FundPriceQueryUseCase.class);
   private final FundPriceExportUseCase exportUseCase = mock(FundPriceExportUseCase.class);
   private final FundPriceWorkbookExporter workbookExporter = mock(FundPriceWorkbookExporter.class);
+  private final com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCase modeUseCase =
+      mock(com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCase.class);
+  private final com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort referenceDatePort =
+      mock(com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort.class);
   private final FundPriceWebMapper webMapper = mock(FundPriceWebMapper.class);
   private final FundPriceSortingSupport sortingSupport = new FundPriceSortingSupport();
   private final CurrentPortalAccessContextResolver contextResolver =
@@ -81,7 +85,9 @@ class FundPriceControllerTest {
         contextResolver,
         sessionCookies,
         FORMATTER,
-        workbookExporter);
+        workbookExporter,
+        modeUseCase,
+        referenceDatePort);
   }
 
   private PortalAccessContext validPortalAccessContext() {
@@ -220,6 +226,46 @@ class FundPriceControllerTest {
         .expectError()
         .verify();
   }
+  @Test
+  void modeEndpointReturnsWrappedSuccessResponse() {
+    when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
+    when(referenceDatePort.resolveReferenceDate(any()))
+        .thenReturn(Mono.just(LocalDate.of(2026, 9, 18)));
+    var metadata =
+        new com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceModeSessionMetadata(
+            "DAILY", "BIDOFFER PRICE", List.of(LocalDate.of(2026, 9, 18)), 36, "5");
+    when(modeUseCase.fetchAndCacheMode(any(), any(), any()))
+        .thenReturn(
+            Mono.just(
+                com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCaseResult
+                    .applied(metadata)));
+    when(webMapper.toModeResponse(any(), any()))
+        .thenReturn(
+            new com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceModeResponse(
+                "DAILY", List.of("18/09/2026"), 36, "18/09/2026"));
+
+    var response = newController().getFundPriceMode(exchangeWithSessionCookie()).block();
+
+    assertThat(response).isNotNull();
+    assertThat(response.result().data().mode()).isEqualTo("DAILY");
+  }
+
+  @Test
+  void modeEndpointSystemFailureOutcomeMapsToError() {
+    when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
+    when(referenceDatePort.resolveReferenceDate(any()))
+        .thenReturn(Mono.just(LocalDate.of(2026, 9, 18)));
+    when(modeUseCase.fetchAndCacheMode(any(), any(), any()))
+        .thenReturn(
+            Mono.just(
+                com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCaseResult
+                    .systemFailure()));
+
+    StepVerifier.create(newController().getFundPriceMode(exchangeWithSessionCookie()))
+        .expectError()
+        .verify();
+  }
+
   @Test
   void exportEndpointReturnsExcelBytesWithCorrectContentTypeAndFilename() {
     when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));

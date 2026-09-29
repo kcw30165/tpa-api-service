@@ -32,6 +32,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceModeResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceModeCommand;
+import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
+import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCaseResult;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
+import java.util.List;
 
 /**
  * Query endpoint only, at this stage -- the export endpoint is DEFERRED to a later stage, once
@@ -64,6 +73,8 @@ public class FundPriceController {
   private final AuthenticatedSessionCookieWriter sessionCookies;
   private final DateTimeFormatter dateFormatter;
   private final FundPriceWorkbookExporter workbookExporter;
+  private final FundPriceModeUseCase modeUseCase;
+  private final ReferenceDatePort referenceDatePort;
 
   public FundPriceController(
       FundPriceQueryUseCase queryUseCase,
@@ -73,7 +84,9 @@ public class FundPriceController {
       CurrentPortalAccessContextResolver contextResolver,
       AuthenticatedSessionCookieWriter sessionCookies,
       DateTimeFormatter fundPriceFullDateFormatter,
-      FundPriceWorkbookExporter workbookExporter) {
+      FundPriceWorkbookExporter workbookExporter,
+      FundPriceModeUseCase modeUseCase,
+      ReferenceDatePort referenceDatePort) {
     this.queryUseCase = Objects.requireNonNull(queryUseCase);
     this.exportUseCase = Objects.requireNonNull(exportUseCase);
     this.webMapper = Objects.requireNonNull(webMapper);
@@ -82,6 +95,8 @@ public class FundPriceController {
     this.sessionCookies = Objects.requireNonNull(sessionCookies);
     this.dateFormatter = Objects.requireNonNull(fundPriceFullDateFormatter);
     this.workbookExporter = Objects.requireNonNull(workbookExporter);
+    this.modeUseCase = Objects.requireNonNull(modeUseCase);
+    this.referenceDatePort = Objects.requireNonNull(referenceDatePort);
   }
 
   @GetMapping(value = "/fund-price", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -171,6 +186,53 @@ public class FundPriceController {
                                   .toString())
                           .body(body));
         });
+  }
+
+  @GetMapping(value = "/fund-price/mode", produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<MutationResponse<FundPriceModeResultResponse>> getFundPriceMode(
+      ServerWebExchange exchange) {
+    return Mono.deferContextual(
+        contextView -> {
+          AuthenticatedSessionId sessionId = resolveSessionId(exchange);
+          RequestHeaderContext headerContext =
+              contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
+          String requestId = headerContext == null ? null : headerContext.requestId();
+          return contextResolver
+              .current()
+              .flatMap(
+                  ctx ->
+                      referenceDatePort
+                          .resolveReferenceDate(ctx.account().accountEnv())
+                          .flatMap(
+                              referenceDate ->
+                                  modeUseCase
+                                      .fetchAndCacheMode(
+                                          sessionId,
+                                          new FetchFundPriceModeCommand(
+                                              ctx.account().policyNo(),
+                                              referenceDate,
+                                              ctx.account().accountEnv(),
+                                              ctx.actor().actorUserRole()),
+                                          requestId)
+                                      .flatMap(
+                                          result -> toModeResultOrError(result, referenceDate))));
+        });
+  }
+
+  private Mono<MutationResponse<FundPriceModeResultResponse>> toModeResultOrError(
+      FundPriceModeUseCaseResult result, LocalDate referenceDate) {
+    return switch (result.outcome()) {
+      case APPLIED -> {
+        MutationResponse<FundPriceModeResultResponse> response =
+            MutationResponse.success(
+                ApiStatus.SUCCESS,
+                new FundPriceModeResultResponse(
+                    webMapper.toModeResponse(result.metadata(), referenceDate)),
+                List.of());
+        yield Mono.just(response);
+      }
+      case SYSTEM_FAILURE -> Mono.error(FundPriceRetrievalException.systemFailure());
+    };
   }
 
   private Mono<FundPriceExportResult> toExportResultOrError(FundPriceExportUseCaseResult result) {
