@@ -345,3 +345,18 @@ changes have been made. Once reviewed, this gives the exact
 existing test method names (to avoid name collisions), the real
 constructor/method signatures, and the exact uncovered
 methods/lines needed to safely extend this test file.
+
+## RegistrationUsernameCheckWebMapper: One Branch Documented As Unreachable
+
+- Generated: 2026-09-29T02:16:38Z
+- `apiError`'s `target == null || target.isBlank()` ternary: both
+  call sites within this class already guarantee a non-blank
+  `target` argument before calling `apiError` -- either via
+  `firstTarget`'s own resolution (which itself always returns
+  either `TARGET_PAGE` or an already-verified non-blank string),
+  or via the `TARGET_PAGE` literal directly. Justification:
+  unreachable given upstream validation, same pattern as
+  `RegistrationStartWebMapper`'s two unreachable branches
+  (script 018).
+- Intentionally NOT force-tested, per this project's own
+  coverage-tiering escape hatch.
