@@ -255,3 +255,20 @@ changes have been made. Once reviewed, this gives the final fact
 needed to safely extend RegistrationStartWebMapperTest with
 blank-target and DOWNSTREAM_REJECTED/IDEMPOTENCY_KEY_REUSED test
 cases without risking a compile-clean-but-runtime-broken test.
+
+## RegistrationStartWebMapper: Two Branches Documented As Unreachable
+
+- Generated: 2026-09-29T01:19:53Z
+- `normalizeTarget`'s `target == null || target.isBlank()` check:
+  `StartRegistrationError`'s own compact constructor (script 017
+  dump) already normalizes a null/blank target to `"PAGE"` before
+  the object is stored. `normalizeTarget` is only ever called with
+  `error.target()`, which can therefore never be null/blank at that
+  call site. Justification: unreachable given upstream validation.
+- `toWorkflowError`'s `target == null ? List.of() : List.of(target)`
+  ternary: `normalizeTarget` itself never returns null (only
+  `TARGET_PAGE` or a trimmed non-blank string), so this ternary's
+  null-branch is unreachable for the same underlying reason.
+- Both are intentionally NOT force-tested; per this project's own
+  coverage-tiering policy, uncovered branches may be justified as
+  "unreachable given upstream validation" rather than covered.
