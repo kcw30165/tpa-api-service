@@ -10,6 +10,9 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.Resend
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpResendErrorKeys;
 
 class RegistrationOtpResendWebMapperTest {
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -95,4 +98,144 @@ class RegistrationOtpResendWebMapperTest {
     assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.WAIT);
     assertThat(response.result().data()).isNull();
   }
+
+  @Test
+  void cooldownActiveMapsToBusinessRejectedWithDistinctErrorCode() {
+    var response =
+        mapper.toMutationResponse(
+            new ResendRegistrationOtpResult(
+                ResendRegistrationOtpResultStatus.COOLDOWN_ACTIVE,
+                WorkflowNextStep.VERIFY_OTP,
+                null,
+                0,
+                0,
+                0,
+                List.of(),
+                List.of(),
+                RegistrationIdempotencyStartOutcome.STARTED,
+                null));
+    assertThat(response.success()).isFalse();
+    assertThat(response.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
+    assertThat(response.errors())
+        .singleElement()
+        .satisfies(
+            error ->
+                assertThat(error.code())
+                    .isEqualTo(RegistrationOtpResendErrorKeys.REGISTRATION_OTP_COOLDOWN_ACTIVE));
+  }
+
+  @Test
+  void sendRateLimitedMapsToDistinctErrorCode() {
+    var response =
+        mapper.toMutationResponse(
+            new ResendRegistrationOtpResult(
+                ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED,
+                WorkflowNextStep.VERIFY_OTP,
+                null,
+                0,
+                0,
+                0,
+                List.of(),
+                List.of(),
+                RegistrationIdempotencyStartOutcome.STARTED,
+                null));
+    assertThat(response.success()).isFalse();
+    assertThat(response.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
+    assertThat(response.errors())
+        .singleElement()
+        .satisfies(
+            error ->
+                assertThat(error.code())
+                    .isEqualTo(RegistrationOtpResendErrorKeys.REGISTRATION_OTP_SEND_RATE_LIMITED));
+  }
+
+  @Test
+  void maxResendAttemptsReachedMapsToDistinctErrorCode() {
+    var response =
+        mapper.toMutationResponse(
+            new ResendRegistrationOtpResult(
+                ResendRegistrationOtpResultStatus.MAX_RESEND_ATTEMPTS_REACHED,
+                WorkflowNextStep.VERIFY_OTP,
+                null,
+                0,
+                0,
+                0,
+                List.of(),
+                List.of(),
+                RegistrationIdempotencyStartOutcome.STARTED,
+                null));
+    assertThat(response.success()).isFalse();
+    assertThat(response.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
+    assertThat(response.errors())
+        .singleElement()
+        .satisfies(
+            error ->
+                assertThat(error.code())
+                    .isEqualTo(
+                        RegistrationOtpResendErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS_REACHED));
+  }
+
+  @Test
+  void systemFailedUsesDistinctSystemErrorTypeFromMessageDeliveryFailed() {
+    var response =
+        mapper.toMutationResponse(
+            new ResendRegistrationOtpResult(
+                ResendRegistrationOtpResultStatus.SYSTEM_FAILED,
+                WorkflowNextStep.NONE,
+                null,
+                0,
+                0,
+                0,
+                List.of(),
+                List.of(),
+                RegistrationIdempotencyStartOutcome.STARTED,
+                null));
+    assertThat(response.success()).isFalse();
+    assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+    assertThat(response.errors())
+        .singleElement()
+        .satisfies(
+            error ->
+                assertThat(error.code())
+                    .isEqualTo(RegistrationOtpResendErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED));
+  }
+
+  @Test
+  void invalidAuthFlowFallsThroughToDefaultResendFailedBranches() {
+    var response =
+        mapper.toMutationResponse(
+            new ResendRegistrationOtpResult(
+                ResendRegistrationOtpResultStatus.INVALID_AUTH_FLOW,
+                WorkflowNextStep.NONE,
+                null,
+                0,
+                0,
+                0,
+                List.of(),
+                List.of(),
+                RegistrationIdempotencyStartOutcome.STARTED,
+                null));
+    assertThat(response.success()).isFalse();
+    assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
+  }
+
+  @Test
+  void constructorAcceptsProvidedWorkflowMutationResponseMapperInstance() {
+    var explicitMapper = new RegistrationOtpResendWebMapper(new WorkflowMutationResponseMapper());
+    var response =
+        explicitMapper.toMutationResponse(
+            new ResendRegistrationOtpResult(
+                ResendRegistrationOtpResultStatus.RESENT,
+                WorkflowNextStep.VERIFY_OTP,
+                "s****v@hcglt.nla",
+                287,
+                47,
+                5,
+                List.of(),
+                List.of(),
+                RegistrationIdempotencyStartOutcome.STARTED,
+                null));
+    assertThat(response.success()).isTrue();
+  }
+
 }
