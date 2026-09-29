@@ -311,3 +311,37 @@ suite and reports results. Remaining work:
 RegistrationUsernameCheckWebMapper (has existing test, not yet
 extended) and RegistrationWorkflowMutationResponseMapper (zero
 dedicated test).
+
+## RegistrationUsernameCheckWebMapper Investigation
+
+- Generated: 2026-09-29T01:47:11Z
+- Trigger: preparing to extend RegistrationUsernameCheckWebMapperTest
+  (last remaining touched-existing-test class in the 7-class
+  package). Unlike RegistrationStartWebMapper, this class's real
+  source and existing test content had not been directly observed
+  in this workstream -- only aggregate numbers were known.
+- Files located and dumped:
+  - `RegistrationUsernameCheckWebMapper` (`src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationUsernameCheckWebMapper.java`)
+  - `RegistrationUsernameCheckWebMapperTest` (`src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationUsernameCheckWebMapperTest.java`)
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main/`, `src_test/`, plus
+  `04-existing-test-methods-and-imports.txt`,
+  `06-per-method-branch-detail.csv`, and
+  `07-uncovered-branch-lines.csv`).
+
+### Per-class rollup (from existing jacoco.xml, no mvn re-run)
+
+```
+=== com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper rollup ===
+instruction: 80.62% (208/258)
+branch: 51.11% (23/45)
+methods: 16
+lines with missed branches: 11
+```
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. Once reviewed, this gives the exact
+existing test method names (to avoid name collisions), the real
+constructor/method signatures, and the exact uncovered
+methods/lines needed to safely extend this test file.
