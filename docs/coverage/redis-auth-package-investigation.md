@@ -979,3 +979,40 @@ Test code committed. A follow-up verification script is still
 needed to confirm via a REAL mvn test run (not just compile)
 that these pass against the actual repo, and to measure the
 real resulting branch coverage via a fresh jacoco report.
+
+## FINAL Verification: RedisAuthenticatedSessionAdapter Tests (Script 048)
+
+- Generated: 2026-09-29T09:57:52Z
+- Stage A: `mvn test -Dtest=RedisAuthenticatedSessionAdapterTest` -- PASS
+  (all 9 test methods -- 4 original + 5 new -- executed against
+  the real repo, confirming script 048's byte-exact-verified
+  stub-harness pre-validation held true)
+- Stage B: `mvn clean test` (full suite) -- PASS
+
+### Coverage delta (baseline -> TRUE final)
+
+```
+=== Coverage Delta: baseline (script 034/046) -> TRUE final (script 050) ===
+
+Class: RedisAuthenticatedSessionAdapter
+Baseline (before script 048's new tests): instruction=88.36%, branch=12.50%
+FINAL (this script, real mvn test run):    instruction=100.00%, branch=100.00%
+Delta: instruction=+11.64, branch=+87.50
+
+RESULT: RedisAuthenticatedSessionAdapter now meets the full Tier-B gate (>=95% instruction AND >=85% branch).
+```
+
+Full final per-method coverage: see evidence file
+`07-final-class-coverage.csv`.
+
+### Status
+
+RedisAuthenticatedSessionAdapter's branch-coverage gap -- the
+worst branch-to-instruction ratio in the entire redis.auth
+prefix per script 034's original baseline -- is now closed and
+verified via a real `mvn test` execution (not just compile),
+with the entire test suite confirmed still passing. Remaining
+redis-auth sub-packages per script 034's original ranking:
+`.login.replay`, `.forgotpassword`,
+`.usernamerecovery.replay`, etc., remain open for a future
+round.
