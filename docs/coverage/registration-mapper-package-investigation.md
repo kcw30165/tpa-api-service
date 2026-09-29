@@ -437,3 +437,51 @@ unreachable given upstream validation (see the dedicated
 'Documented As Unreachable' sections above for
 RegistrationStartWebMapper and RegistrationUsernameCheckWebMapper),
 or represent remaining opportunities for a future round.
+
+## CORRECTION: Three Classes Do Not Actually Meet Tiering Criteria
+
+- Generated: 2026-09-29T03:19:27Z
+- Script 024's final summary incorrectly reported
+  `CompleteRegistrationWebMapper`, `RegistrationUsernameCheckWebMapper`,
+  and `RegistrationStartWebMapper` as meeting the 85% Tier-B branch
+  target. Per this project's own coverage-tiering policy, sitting
+  inside the 85-90% branch band is NOT sufficient on its own --
+  every remaining uncovered branch in a Tier-B class must have its
+  own one-line justification. This was only done for a SUBSET of
+  branches in 2 of these 3 classes, and NONE in the third:
+  - `RegistrationStartWebMapper`: instruction 91.36% additionally
+    fails the 95% instruction gate outright (independent of branch
+    justification). Only 2 branches were ever documented (script
+    018); remaining gaps unexamined.
+  - `RegistrationUsernameCheckWebMapper`: instruction 97.67% passes;
+    branch 88.89% is in-band, but only 1 branch was documented
+    (script 021); 4 more remain unexamined.
+  - `CompleteRegistrationWebMapper`: instruction 98.24% passes;
+    branch 86.36% is in-band, but ZERO branches were ever
+    individually examined or justified.
+
+### Re-audit: remaining uncovered methods/lines (fresh jacoco.xml,
+    no mvn re-run -- same report as script 024's Stage B)
+
+```
+=== Per-class rollup (cross-check against script 024's final numbers) ===
+CompleteRegistrationWebMapper: instruction=98.24% (223/227), branch=86.36% (19/22)
+RegistrationStartWebMapper: instruction=91.36% (391/428), branch=80.88% (55/68)
+RegistrationUsernameCheckWebMapper: instruction=97.67% (252/258), branch=88.89% (40/45)
+
+Total methods with any remaining gap: 16
+Total lines with any remaining gap: 29
+```
+
+### Evidence files
+- Full per-method detail (only methods with remaining gaps, all 3
+  classes): see evidence file `03-per-method-branch-detail.csv`.
+- Full per-line detail (only lines with remaining gaps): see
+  evidence file `05-uncovered-lines-three-classes.csv`.
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. Once reviewed, each remaining gap needs
+either a new test or an explicit one-line justification before
+any of these 3 classes can be truthfully marked as meeting the
+tiering criteria.
