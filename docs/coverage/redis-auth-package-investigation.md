@@ -807,3 +807,78 @@ script 034's original ranking: `.login.replay`,
 `.forgotpassword`, `.usernamerecovery.replay`, etc., plus
 `RedisAuthenticatedSessionAdapter`'s notably low branch coverage,
 remain open for a future round.
+
+## Investigation: RedisAuthenticatedSessionAdapter's Branch Gap
+
+- Generated: 2026-09-29T09:14:29Z
+- Trigger: flagged in script 034's original baseline as a
+  priority -- 88.36% instruction but only 12.50% branch (1/8),
+  the worst branch-to-instruction coverage ratio in the entire
+  redis.auth prefix, and core session management (higher
+  business risk than the small KeyFactory/JsonMapper classes
+  already closed in this workstream).
+
+### Location and existing test
+
+```
+=== Located target class ===
+Primary: src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisAuthenticatedSessionAdapter.java (84 lines)
+
+=== Located existing test file(s) ===
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisAuthenticatedSessionAdapterTest.java (113 lines)
+```
+
+### Call-site cross-reference
+
+```
+=== Call sites in src/main/java (grep -rn, excluding self) ===
+src/main/java/com/bct/ngtpa/apiservice/config/auth/session/AuthenticatedSessionConfig.java:5:import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter;
+src/main/java/com/bct/ngtpa/apiservice/config/auth/session/AuthenticatedSessionConfig.java:51:    return new RedisAuthenticatedSessionAdapter(cachePort, keyFactory, jsonMapper);
+
+=== Call sites in src/test/java (grep -rln, all referencing files) ===
+src/test/java/com/bct/ngtpa/apiservice/config/auth/session/AuthenticatedSessionConfigTest.java
+src/test/java/com/bct/ngtpa/apiservice/session/P4BAuthFlowSessionFoundationIntegrationTest.java
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisAuthenticatedSessionAdapterTest.java
+src/test/java/com/bct/ngtpa/apiservice/architecture/AuthFlowSessionArchitectureGuardTest.java
+src/test/java/com/bct/ngtpa/apiservice/architecture/RedisAuthFlowSessionArchitectureGuardTest.java
+src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043AuthenticatedSessionPersistenceContractArchitectureTest.java
+src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043AuthenticatedSessionProtectionArchitectureTest.java
+src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043AuthenticatedSessionCompositionArchitectureTest.java
+src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043AuthenticatedLogoutRuntimeCompositionArchitectureTest.java
+src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043RedisAuthenticatedSessionArchitectureTest.java
+```
+
+### Per-method rollup (re-confirms script 034's class-level numbers)
+
+```
+=== com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter rollup (re-confirms script 034's baseline numbers) ===
+instruction: 88.36% (167/189)
+branch: 12.50% (1/8)
+
+Lines with a missed branch (the focus of this investigation): 2
+  line 58: instructions_missed=0, instructions_covered=4, branches_missed=1, branches_covered=1
+  line 79: instructions_missed=9, instructions_covered=0, branches_missed=6, branches_covered=0
+```
+
+### Annotated missed-branch lines (real source cross-referenced)
+
+```
+=== Source lines with missed branches, annotated with actual code ===
+  line 58: instructions_missed=0, instructions_covered=4, branches_missed=1, branches_covered=1
+    SOURCE:                 v.isEmpty()
+  line 79: instructions_missed=9, instructions_covered=0, branches_missed=6, branches_covered=0
+    SOURCE:     if (t instanceof IllegalArgumentException
+```
+
+Full source of the target class (and existing test, if found)
+preserved in the evidence zip under `src_dumps/` and
+`test_dumps/`. Full per-method detail: see evidence file
+`05-per-method-detail.csv`.
+
+### Status
+
+This is INVESTIGATION ONLY. No test or production code changes
+have been made. Once reviewed, this identifies the exact
+uncovered branch conditions needing new tests (or, if any prove
+structurally unreachable, documentation) to close this class's
+branch-coverage gap.
