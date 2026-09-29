@@ -233,3 +233,126 @@ for these 4 classes, following the same reflective/pre-validation
 discipline established after the earlier registration-mapper
 stub-fabrication incident (scripts 029/031/032) -- i.e. base new
 tests strictly on the real dumped source, never on assumed shapes.
+
+## Dependency-Shape Investigation for Four Zero-Coverage Classes
+
+- Generated: 2026-09-29T06:19:36Z
+- Trigger: script 035's evidence showed the JsonMapper targets/
+  siblings apparently reject schemaVersion=2 in their sibling
+  tests, but that validation is not present in the JsonMapper
+  source itself -- meaning it must live in the wrapped record's
+  own compact constructor, which had never been dumped.
+- Dependency classes dumped (real source, not inferred from call
+  sites or assumed identical to a same-shaped sibling):
+  - `ProtectedUsernameRecoveryStartReplay`
+  - `LoginStartReplayCommitRef`
+  - `RedisCacheKeyFactory`
+  - `ProtectedReplayReference`
+
+### Dependency source dumps and locations
+
+```
+======================================================================
+DEPENDENCY: ProtectedUsernameRecoveryStartReplay
+======================================================================
+Located (primary): src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/idempotency/start/ProtectedUsernameRecoveryStartReplay.java
+Full source copied to: dependency_src_dumps/ProtectedUsernameRecoveryStartReplay.java (35 lines)
+
+======================================================================
+DEPENDENCY: LoginStartReplayCommitRef
+======================================================================
+Located (primary): src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/replay/LoginStartReplayCommitRef.java
+Full source copied to: dependency_src_dumps/LoginStartReplayCommitRef.java (18 lines)
+
+======================================================================
+DEPENDENCY: RedisCacheKeyFactory
+======================================================================
+Located (primary): src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/RedisCacheKeyFactory.java
+Full source copied to: dependency_src_dumps/RedisCacheKeyFactory.java (68 lines)
+
+======================================================================
+DEPENDENCY: ProtectedReplayReference
+======================================================================
+Located (primary): src/main/java/com/bct/ngtpa/apiservice/application/idempotency/ProtectedReplayReference.java
+Full source copied to: dependency_src_dumps/ProtectedReplayReference.java (21 lines)
+
+```
+
+Full source of all 4 dependency classes preserved in the
+evidence zip under `dependency_src_dumps/`.
+
+### Existing test usage cross-reference
+
+```
+======================================================================
+EXISTING TEST USAGE for: ProtectedUsernameRecoveryStartReplay
+======================================================================
+--- Dedicated test file (find -name "ProtectedUsernameRecoveryStartReplayTest.java") ---
+
+--- Construction call sites in tests (grep -rn "new ProtectedUsernameRecoveryStartReplay(") ---
+
+======================================================================
+EXISTING TEST USAGE for: LoginStartReplayCommitRef
+======================================================================
+--- Dedicated test file (find -name "LoginStartReplayCommitRefTest.java") ---
+
+--- Construction call sites in tests (grep -rn "new LoginStartReplayCommitRef(") ---
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/replay/LoginStartProtectedReplayCommitterTest.java:155:        new LoginStartReplayCommitRef("rpl_opaque_commit_reference");
+
+======================================================================
+EXISTING TEST USAGE for: RedisCacheKeyFactory
+======================================================================
+--- Dedicated test file (find -name "RedisCacheKeyFactoryTest.java") ---
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/RedisCacheKeyFactoryTest.java
+
+--- Construction call sites in tests (grep -rn "new RedisCacheKeyFactory(") ---
+src/test/java/com/bct/ngtpa/apiservice/config/idempotency/SharedIdempotencyRuntimeConfigTest.java:19:          .withBean(RedisCacheKeyFactory.class, () -> new RedisCacheKeyFactory("ngtpa"))
+src/test/java/com/bct/ngtpa/apiservice/config/auth/session/AuthenticatedSessionConfigTest.java:42:            cache, new RedisCacheKeyFactory("ngtpa"), config.redisAuthenticatedSessionJsonMapper());
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/config/RedisAdapterConfigTest.java:195:    RedisCacheKeyFactory keyFactory = new RedisCacheKeyFactory("ngtpa");
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/config/RedisAdapterConfigTest.java:217:    RedisCacheKeyFactory keyFactory = new RedisCacheKeyFactory("ngtpa");
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/idempotency/LoginStartIdempotencyNamespaceIsolationTest.java:36:                new RedisCacheKeyFactory("ngtpa"),
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/idempotency/RedisIdempotencyPersistenceFoundationTest.java:95:        new RedisCacheKeyFactory("ngtpa"), new HmacSha256IdempotencyPersistenceIdDeriver(secret));
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/idempotency/RedisIdempotencyAdapterTest.java:88:            new RedisCacheKeyFactory("ngtpa"),
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/usernamerecovery/replay/RedisUsernameRecoveryStartProtectedReplayKeyFactoryTest.java:13:        new RedisUsernameRecoveryStartProtectedReplayKeyFactory(new RedisCacheKeyFactory("ngtpa"))
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RegistrationRedisSensitiveDataSafetyIntegrationTest.java:25:            new RedisCacheKeyFactory("ngtpa"), new AuthFlowSessionId("afs_abc123"));
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisRateLimitAdapterTest.java:41:        new RedisRateLimitAdapter(redisTemplate, new RedisCacheKeyFactory("ngtpa"), FIXED_CLOCK);
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisCaptchaConsumptionAtomicityTest.java:77:        new RedisCacheKeyFactory("ngtpa"), json, operations, CLOCK);
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisAuthFlowSessionKeyFactoryTest.java:13:    var keyFactory = new RedisCacheKeyFactory("ngtpa");
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisAuthenticatedSessionAdapterTest.java:19:          cache, new RedisCacheKeyFactory("ngtpa"), new RedisAuthenticatedSessionJsonMapper());
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisOtpChallengeStateAdapterTest.java:44:            new RedisCacheKeyFactory("ngtpa"),
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisAuthFlowSessionCompletionLockAdapterTest.java:28:        new RedisAuthFlowSessionCompletionLockAdapter(redis, new RedisCacheKeyFactory("ngtpa"));
+
+======================================================================
+EXISTING TEST USAGE for: ProtectedReplayReference
+======================================================================
+--- Dedicated test file (find -name "ProtectedReplayReferenceTest.java") ---
+
+--- Construction call sites in tests (grep -rn "new ProtectedReplayReference(") ---
+src/test/java/com/bct/ngtpa/apiservice/integration/registration/RegistrationStartWorkflowIntegrationTest.java:691:          new ProtectedReplayReference(
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/idempotency/RedisIdempotencyPersistenceFoundationTest.java:107:            new ProtectedReplayReference("protectedReplay01"));
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/usernamerecovery/replay/RedisUsernameRecoveryStartProtectedReplayAdapterTest.java:75:      new ProtectedReplayReference("replay-ref-1234567890abcd");
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/usernamerecovery/replay/RedisUsernameRecoveryStartProtectedReplayKeyFactoryTest.java:14:            .keyFor(new ProtectedReplayReference("usernameRecoveryStartReplayReference001"));
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/forgotpassword/replay/RedisForgotPasswordStartProtectedReplayAdapterTest.java:39:      new ProtectedReplayReference("replay-ref-1234567890abcd");
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/registration/replay/RedisRegistrationStartProtectedReplayAdapterTest.java:40:      new ProtectedReplayReference("replay-ref-abcdefghijklmn");
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/security/usernamerecovery/replay/AesGcmUsernameRecoveryStartReplayProtectorTest.java:19:    var ref = new ProtectedReplayReference("usernameRecoveryStartReplayReference001");
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/security/usernamerecovery/replay/AesGcmUsernameRecoveryStartReplayProtectorTest.java:30:                    new ProtectedReplayReference("usernameRecoveryStartReplayReference002"),
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/security/forgotpassword/replay/AesGcmForgotPasswordStartReplayProtectorTest.java:18:    var reference = new ProtectedReplayReference("forgotPasswordStartReplayReference001");
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/security/forgotpassword/replay/AesGcmForgotPasswordStartReplayProtectorTest.java:30:                    new ProtectedReplayReference("forgotPasswordStartReplayReference002"),
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/security/registration/replay/AesGcmRegistrationStartReplayProtectorTest.java:17:    var reference = new ProtectedReplayReference("registrationStartReplayReference001");
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/security/registration/replay/AesGcmRegistrationStartReplayProtectorTest.java:31:    var original = new ProtectedReplayReference("registrationStartReplayReference001");
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/security/registration/replay/AesGcmRegistrationStartReplayProtectorTest.java:32:    var substituted = new ProtectedReplayReference("registrationStartReplayReference002");
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/security/registration/replay/AesGcmRegistrationStartReplayProtectorTest.java:45:    var reference = new ProtectedReplayReference("registrationStartReplayReference001");
+src/test/java/com/bct/ngtpa/apiservice/application/idempotency/SharedIdempotencyContractTest.java:34:    var reference = new ProtectedReplayReference("protectedReplay01");
+
+```
+
+### Status
+
+This is INVESTIGATION ONLY. No test or production code changes
+have been made. All 4 target classes' real dependency shapes are
+now confirmed. Next step: write real, validation-passing tests
+for the 4 zero-coverage classes from script 035, grounded
+strictly in the real dumped source of both the targets
+themselves and every dependency type they construct or accept,
+per the zero-assumption discipline established in this
+workstream.
