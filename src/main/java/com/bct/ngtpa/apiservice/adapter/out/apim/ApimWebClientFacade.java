@@ -327,6 +327,7 @@ public class ApimWebClientFacade {
                       .baseUrl(baseUrl)
                       .filter(contextPropagationExchangeFilter.filter())
                       .filter(requestLoggingExchangeFilter.filter())
+                      .codecs(responseSizeLimit(apimProperties))
                       .build();
 
               WebClient.RequestBodySpec request =
@@ -348,6 +349,16 @@ public class ApimWebClientFacade {
               return req.exchangeToMono(
                   response -> handleResponse(response, profile, path, requestBody, retryContext));
             });
+  }
+
+  /**
+   * Codec limit for buffered APIM response bodies, from apim.max-response-size. Applied to the
+   * cloned builder only, so the shared WebClient.Builder (token, certificate, SMS) is unchanged.
+   */
+  static java.util.function.Consumer<org.springframework.http.codec.ClientCodecConfigurer>
+      responseSizeLimit(ApimProperties properties) {
+    int maxBytes = properties.maxResponseSizeBytes();
+    return codecs -> codecs.defaultCodecs().maxInMemorySize(maxBytes);
   }
 
   protected String getCertificateHeaderValue() {

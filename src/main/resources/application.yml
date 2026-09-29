@@ -369,6 +369,7 @@ apim:
       max-attempts: ${APIM_BUSINESS_RETRY_MAX_ATTEMPTS:3}
       backoff-milliseconds: ${APIM_BUSINESS_RETRY_BACKOFF_MILLISECONDS:100}
   timeout-milliseconds: ${APIM_TIMEOUT_MILLISECONDS:${APIM_TIMEOUTMILLISECONDS:10000}}
+  max-response-size: ${APIM_MAX_RESPONSE_SIZE:16MB}
   encryption:
     enabled: ${APIM_ENCRYPTION_ENABLED:true}
     certificate-path: ${APIM_CERTIFICATE_PATH:/api/wssupport/v1/encryption/certificate}

@@ -239,3 +239,12 @@ Resolves fund price decimal precision. Confirmed request/response shape (env-sco
 ```
 
 Precision varies by environment, trust-code, and policy-no and must be cached in Redis following the existing Account Balance acbal-pcnt pattern; implementation must confirm the exact key shape and TTL from that precedent before coding. fund-price-type governs which price fields are returned and precision governs decimal formatting; both are internal-only and are never returned to FE.
+
+## Response size limit
+
+APIM response bodies are buffered in memory before decryption and parsing. The limit is
+`apim.max-response-size` (env `APIM_MAX_RESPONSE_SIZE`, default `16MB`), applied to APIM
+business calls in `ApimWebClientFacade`. Spring's 256 KB codec default is too small for the
+36-month `TRPGetFundPrice` export range, which previously failed with
+`DataBufferLimitException` and surfaced as HTTP 503 `SYSTEM_ERROR`. A response larger than the
+configured limit fails the same way and is logged as `apim.exchange.failed`.
