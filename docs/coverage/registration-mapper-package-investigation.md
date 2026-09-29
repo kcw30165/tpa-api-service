@@ -232,3 +232,26 @@ needed to correctly assert response.success() for
 BUSINESS_FAILED-mapped enum values in the next implementation
 script extending RegistrationOtpResendWebMapperTest and
 RegistrationOtpVerifyWebMapperTest.
+
+## Start Registration Error Key Evidence Dump
+
+- Generated: 2026-09-29T01:05:17Z
+- Trigger: extending RegistrationStartWebMapperTest requires
+  constructing StartRegistrationError with a blank target and
+  with error keys for DOWNSTREAM_REJECTED/IDEMPOTENCY_KEY_REUSED
+  statuses. Only 4 real call sites (none with a blank target)
+  have been observed across existing tests.
+- Files dumped:
+  - `StartRegistrationError` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationError.java`)
+  - `RegistrationErrorKey` (`src/main/java/com/bct/ngtpa/apiservice/application/dto/workflow/RegistrationErrorKey.java`)
+  - `SharedWorkflowErrorKey` (`src/main/java/com/bct/ngtpa/apiservice/application/dto/workflow/SharedWorkflowErrorKey.java`)
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main_error_key/`, plus
+  `04-error-key-quickref.txt` and `05-manifest.md`).
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. Once reviewed, this gives the final fact
+needed to safely extend RegistrationStartWebMapperTest with
+blank-target and DOWNSTREAM_REJECTED/IDEMPOTENCY_KEY_REUSED test
+cases without risking a compile-clean-but-runtime-broken test.
