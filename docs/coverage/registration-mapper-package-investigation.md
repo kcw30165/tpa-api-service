@@ -272,3 +272,42 @@ cases without risking a compile-clean-but-runtime-broken test.
 - Both are intentionally NOT force-tested; per this project's own
   coverage-tiering policy, uncovered branches may be justified as
   "unreachable given upstream validation" rather than covered.
+
+## Test Execution & Coverage Delta Verification
+
+- Generated: 2026-09-29T01:33:58Z
+- Stage A: `mvn test -Dtest=CancelRegistrationWebMapperTest,CompleteRegistrationWebMapperTest,RegistrationOtpResendWebMapperTest,RegistrationOtpVerifyWebMapperTest,RegistrationStartWebMapperTest` -- PASS
+  (confirms all new/extended tests from scripts 013, 016, 018 pass
+  at runtime, not just compile)
+- Stage B: `mvn clean test` (full suite) -- PASS
+  (fresh jacoco.xml, same methodology as script 007's baseline)
+
+### Coverage delta vs. script-007 baseline
+
+```
+=== Coverage Delta: script-007 baseline -> current (post scripts 013/016/018) ===
+
+Class                                         Inst% (old->new)       Branch% (old->new)     Touched this round?
+--------------------------------------------------------------------------------------------------------------
+CancelRegistrationWebMapper                   55.84->100.00 (+44.16) 40.00->90.00 (+50.00)  YES
+CompleteRegistrationWebMapper                 63.88->98.24 (+34.36)  40.91->86.36 (+45.45)  YES
+RegistrationOtpResendWebMapper                93.92->98.48 (+4.56)   70.73->95.12 (+24.39)  YES
+RegistrationOtpVerifyWebMapper                76.12->98.13 (+22.01)  55.26->97.37 (+42.11)  YES
+RegistrationStartWebMapper                    85.75->91.36 (+5.61)   66.18->80.88 (+14.70)  YES
+RegistrationUsernameCheckWebMapper            80.62->80.62 (+0.00)   51.11->51.11 (+0.00)   no
+RegistrationWorkflowMutationResponseMapper    84.00->84.00 (+0.00)   50.00->50.00 (+0.00)   no
+
+All 7 baseline classes accounted for in current report.
+```
+
+Full current per-class coverage: see evidence file
+`07-current-package-coverage.csv`.
+
+### Status
+Verification complete for the 5 classes touched so far (Cancel,
+Complete, OtpResend, OtpVerify, Start). No production or test code
+changes were made by this script -- it only runs the existing
+suite and reports results. Remaining work:
+RegistrationUsernameCheckWebMapper (has existing test, not yet
+extended) and RegistrationWorkflowMutationResponseMapper (zero
+dedicated test).
