@@ -618,3 +618,48 @@ constructor) that requires a manual decision rather than an
 automatic fix. A final verification round (mvn test + fresh
 jacoco report) is still needed to confirm the true resulting
 coverage numbers for all 3 classes.
+
+## Post-Implementation Test-Execution Failure: Root Cause Investigation
+
+- Generated: 2026-09-29T05:08:18Z
+- Trigger: script 030's real `mvn test` run (the FIRST actual
+  execution of script 029's 10 new tests) surfaced 3 failures that
+  the reflective-harness pre-validation did NOT catch, because that
+  harness used FABRICATED (not verified) shapes for 2 classes that
+  had never actually been dumped in this workstream:
+  - `WorkflowErrorDescriptor`: real NullPointerException at its
+    constructor (`java.util.List.copyOf`), meaning its real compact
+    constructor null-validates/copies the `targets` list -- which
+    rejects null elements outright. This means
+    `suppliedErrorWithNullFirstTargetElementFallsBackToPageTarget`
+    (script 029) can never construct a valid instance in the first
+    place; the branch it targets may be a 5th unreachable-given-
+    upstream-validation case (same pattern as scripts 011/018/021/028).
+  - `RegistrationIdempotencyKey`: real `IllegalArgumentException:
+    Invalid registration idempotency key` thrown for test literals
+    "idem-1"/"idem-2" (script 029), meaning this record validates
+    its value against a real format constraint that was never seen
+    or accounted for.
+- This is an acknowledged process failure: both shapes were
+  fabricated for stub-based pre-validation rather than dumped from
+  real source, violating the zero-assumption rule that was
+  otherwise followed throughout this workstream. All PRIOR uses of
+  these 2 classes across scripts 013-029 happened to use literal
+  values that satisfied the real (unseen) validation by chance,
+  masking the gap until script 029 introduced new argument shapes.
+- Files dumped:
+  - `WorkflowErrorDescriptor` (`src/main/java/com/bct/ngtpa/apiservice/application/dto/workflow/WorkflowErrorDescriptor.java`)
+  - `RegistrationIdempotencyKey` (`src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/idempotency/RegistrationIdempotencyKey.java`)
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main/`, plus
+  `04-validation-logic-quickref.txt` and
+  `05-existing-safe-usage-crossref.txt`).
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made (script 029's commit, with its 3 failing
+tests, remains as-is; a follow-up fix script will correct or
+replace the 3 failing tests with real, validation-passing
+versions). Once reviewed, this gives the exact real validation
+logic and known-safe literal values needed to fix all 3 failures
+correctly this time.
