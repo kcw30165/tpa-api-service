@@ -533,3 +533,32 @@ This is INVESTIGATION ONLY. No test code and no production code
 changes have been made. Once reviewed, this gives the final fact
 needed to safely construct CompleteRegistrationRequest instances
 (both null and non-null) for the next implementation script.
+
+## Final Two Unknowns Evidence Dump: Three-Class Remediation
+
+- Generated: 2026-09-29T03:59:38Z
+- Trigger: tracing through the real logic of all 16 gap methods
+  (scripts 025/026) left exactly 2 unknowns before safe test design
+  could proceed:
+  - `CompleteRegistrationCommand`: only seen via its constructor
+    CALL SITE inside CompleteRegistrationWebMapper.toCommand(),
+    never the record definition itself. Needed for meaningful
+    assertions in a new null-request / non-null-request test pair.
+  - `StartRegistrationResult`: needed to determine whether its
+    compact constructor permits a null status field, which
+    determines whether logFatalIfNeeded's second missing branch
+    is genuinely reachable or a 4th structurally-unreachable case.
+- Files dumped:
+  - `CompleteRegistrationCommand` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/CompleteRegistrationCommand.java`)
+  - `StartRegistrationResult` (`src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationResult.java`)
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main/`, plus
+  `04-start-result-null-validation-quickref.txt`).
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. Once reviewed, this gives everything
+needed to write the actual implementation script closing all
+genuinely-reachable gaps and documenting all genuinely-unreachable
+ones across CompleteRegistrationWebMapper,
+RegistrationUsernameCheckWebMapper, and RegistrationStartWebMapper.
