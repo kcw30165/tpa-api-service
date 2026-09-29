@@ -356,3 +356,36 @@ strictly in the real dumped source of both the targets
 themselves and every dependency type they construct or accept,
 per the zero-assumption discipline established in this
 workstream.
+
+## Implementation: Four Zero-Coverage Classes Now Have Dedicated Tests
+
+- Generated: 2026-09-29T06:33:15Z
+- New test files added (8 tests total):
+  - `RedisForgotPasswordStartProtectedReplayKeyFactoryTest` (1 test)
+  - `RedisRegistrationStartProtectedReplayKeyFactoryTest` (1 test)
+  - `RedisLoginStartReplayKeyFactoryTest` (3 tests)
+  - `RedisUsernameRecoveryStartProtectedReplayJsonMapperTest` (3 tests)
+- All 4 previously had 0.00% instruction coverage (script 034
+  baseline). Each new test file directly mirrors the pattern of
+  an already-passing sibling test dumped in script 035, adapted
+  only for each target's own capability/package/literal values,
+  all confirmed against the real dependency shapes dumped in
+  script 036 (RedisCacheKeyFactory's real varargs `.key()`
+  signature, ProtectedReplayReference's and
+  LoginStartReplayCommitRef's real validation regexes, and
+  ProtectedUsernameRecoveryStartReplay's real compact
+  constructor).
+- Pre-validated via a stub classpath built from the exact real
+  dumped source of all 4 targets and all 4 dependencies,
+  including a genuinely-behaving Jackson stub that invokes the
+  real record's canonical constructor via reflection during
+  deserialization -- then ACTUALLY EXECUTED (not just compiled)
+  all 8 new test methods via a reflective runner. All 8 passed.
+
+### Status
+
+Test code committed. A follow-up verification script is still
+needed to confirm via a REAL `mvn test` run (not just compile)
+that these pass against the actual repo, and to measure the
+real resulting coverage for these 4 classes via a fresh jacoco
+report.
