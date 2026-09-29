@@ -783,3 +783,39 @@ failure fixed (scripts 031/032), final verification passed
 (script 030), and this last flagged dead-code finding resolved.
 A full `mvn test` should still be run manually to give final
 confidence before merging, per standing workflow.
+
+## FINAL Merge-Readiness Verification (Post Script 033's Constructor Deletion)
+
+- Generated: 2026-09-29T06:45:26Z
+- Trigger: script 033 deleted the dead 3-arg constructor in
+  RegistrationStartWebMapper (the FIRST and ONLY production-
+  source change in this entire workstream) but was only
+  validated with mvn -DskipTests compile + test-compile, per
+  standing instruction for implementation scripts. This script
+  closes that gap with a real full-suite test run before the
+  branch is recommended for merge.
+- Stage A: `mvn test -Dtest=RegistrationStartWebMapperTest` -- PASS
+- Stage B: `mvn clean test` (full suite) -- PASS
+
+### Final coverage snapshot (post-deletion, fresh jacoco.xml)
+
+```
+Found 7 class(es) for package 'com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper'.
+OVERALL: instruction=98.84% (1624/1643), branch=93.81% (212/226)
+```
+
+Full final per-class coverage: see evidence file
+`07-final-package-coverage.csv`.
+
+### Merge-readiness conclusion
+
+This branch (`chore/registration-mapper-coverage-investigation`) is now considered fully
+merge-ready:
+- All 7 classes in the registration mapper package meet the
+  Tier-B coverage gate (confirmed script 030).
+- The one production-source change on this branch (script 033's
+  dead-constructor deletion) is now confirmed, via a real full
+  `mvn clean test` run (not just compile), to not have broken
+  anything anywhere in the suite.
+- No further action is required before merge from a
+  coverage/correctness standpoint.
