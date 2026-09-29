@@ -485,3 +485,31 @@ changes have been made. Once reviewed, each remaining gap needs
 either a new test or an explicit one-line justification before
 any of these 3 classes can be truthfully marked as meeting the
 tiering criteria.
+
+## Full Current Source Dump: Three Remaining Classes
+
+- Generated: 2026-09-29T03:23:17Z
+- Trigger: script 025's re-audit revealed far more unexamined
+  gaps than previously known, including 2 completely-dark methods
+  in RegistrationStartWebMapper never before identified in this
+  workstream. Reliable, freshly-verified full source for these 3
+  classes (and their now heavily-extended test files) was needed
+  before designing any new tests or justifications.
+- Files dumped (production + test, current on-disk state,
+  reflecting all prior implementation rounds):
+  - `CompleteRegistrationWebMapper` (`src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/CompleteRegistrationWebMapper.java`)
+  - `CompleteRegistrationWebMapperTest` (`src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/CompleteRegistrationWebMapperTest.java`)
+  - `RegistrationUsernameCheckWebMapper` (`src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationUsernameCheckWebMapper.java`)
+  - `RegistrationUsernameCheckWebMapperTest` (`src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationUsernameCheckWebMapperTest.java`)
+  - `RegistrationStartWebMapper` (`src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationStartWebMapper.java`)
+  - `RegistrationStartWebMapperTest` (`src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationStartWebMapperTest.java`)
+- Source content is NOT committed to git history. It exists only
+  in the evidence zip (`src_main/`, `src_test/`, plus
+  `04-existing-test-methods.txt`).
+
+### Status
+This is INVESTIGATION ONLY. No test code and no production code
+changes have been made. Once reviewed, this gives the exact
+current method bodies needed to correctly design new tests or
+write justifications for all 16 methods / 29 lines identified
+as gaps in script 025's re-audit.
