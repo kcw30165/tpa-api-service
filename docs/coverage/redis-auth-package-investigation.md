@@ -882,3 +882,63 @@ have been made. Once reviewed, this identifies the exact
 uncovered branch conditions needing new tests (or, if any prove
 structurally unreachable, documentation) to close this class's
 branch-coverage gap.
+
+## Dependency-Shape Investigation: CacheException
+
+- Generated: 2026-09-29T09:23:52Z
+- Trigger: script 046's investigation of
+  RedisAuthenticatedSessionAdapter's branch gap identified that
+  `safe()` (the error-mapping method, 0% covered -- 0/17
+  instructions, 0/6 branches) needs a test that forces the cache
+  to throw, distinguishing pass-through exception types
+  (`IllegalArgumentException`, `IllegalStateException`,
+  `CacheException`) from wrapped ones. `CacheException`'s real
+  constructor signature and superclass were not yet confirmed.
+
+### Real source
+
+```java
+package com.bct.ngtpa.apiservice.exception;
+
+/**
+ * Runtime exception for Redis cache outbound adapter failures.
+ *
+ * <p>The message is always a generic, safe description of the operation that failed (e.g. {@code
+ * "Cache get operation failed"}). Raw Redis error messages, connection details, passwords,
+ * certificate paths, and Sentinel addresses are never included in the message — they are only
+ * present on the wrapped {@link #getCause()}.
+ *
+ * <p>The web exception handler should map this to an appropriate HTTP status code (typically 503
+ * Service Unavailable) when it propagates to the web layer.
+ */
+public class CacheException extends RuntimeException {
+
+  public CacheException(String message) {
+    super(message);
+  }
+
+  public CacheException(String message, Throwable cause) {
+    super(message, cause);
+  }
+}
+```
+
+### Existing test usage cross-reference
+
+```
+=== Dedicated test file (find -name "CacheExceptionTest.java") ===
+
+=== Construction call sites in tests (grep -rn) ===
+src/test/java/com/bct/ngtpa/apiservice/adapter/out/referencedate/ReferenceDateAdapterTest.java:61:            Mono.<Optional<String>>error(new CacheException("Cache get operation failed")))) {
+src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ApiExceptionHandlerLoggingTest.java:147:        new CacheException(
+src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ApiExceptionHandlerTest.java:343:            new CacheException(
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/RefreshReferenceDateServiceTest.java:120:                new CacheException(
+```
+
+### Status
+
+This is INVESTIGATION ONLY. No test or production code changes
+have been made. This confirms the last unknown dependency shape
+needed to write real, validation-passing tests for
+RedisAuthenticatedSessionAdapter's branch gap in the next
+implementation script.
