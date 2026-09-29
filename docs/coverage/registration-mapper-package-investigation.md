@@ -755,3 +755,31 @@ fully accounted for by the documented-unreachable branches (see
 the dedicated sections above) or the flagged dead 3-arg
 constructor in RegistrationStartWebMapper (requires a manual
 delete-vs-relocate-test decision, not force-fixable).
+
+## Flagged Finding Resolved: Dead 3-Arg Constructor Deleted
+
+- Generated: 2026-09-29T05:57:44Z
+- The package-private 3-arg constructor in `RegistrationStartWebMapper`
+  (`Duration, Object, WorkflowMutationResponseMapper`), flagged in script
+  029 as dead code requiring a manual decision, has been DELETED --
+  first production-source change in this workstream.
+- Re-confirmed dead via fresh grep (not assumed from prior chat
+  history) immediately before deletion: both public constructors
+  call the private 2-arg constructor directly
+  (`this(defaultIdempotencyTtl, new WorkflowMutationResponseMapper())`),
+  bypassing the 3-arg one entirely.
+- Confirmed via `mvn -DskipTests compile` AND `test-compile` both
+  succeeding that no code anywhere in the tree (main or test)
+  referenced this constructor.
+- This closes the class's previously-dark 0%-instruction
+  constructor (5 always-uncovered instructions), slightly
+  improving `RegistrationStartWebMapper`'s instruction coverage
+  percentage further above its already-passing 97.90%.
+
+### Status
+All findings from the 3-class remediation workstream are now
+closed: coverage gaps fixed (script 029), stub-fabrication process
+failure fixed (scripts 031/032), final verification passed
+(script 030), and this last flagged dead-code finding resolved.
+A full `mvn test` should still be run manually to give final
+confidence before merging, per standing workflow.

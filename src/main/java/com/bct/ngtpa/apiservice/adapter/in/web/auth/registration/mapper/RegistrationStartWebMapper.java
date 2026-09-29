@@ -41,12 +41,6 @@ public class RegistrationStartWebMapper {
     this(defaultIdempotencyTtl, new WorkflowMutationResponseMapper());
   }
 
-  RegistrationStartWebMapper(
-      Duration defaultIdempotencyTtl,
-      Object ignoredMessageResolver,
-      WorkflowMutationResponseMapper workflowMutationResponseMapper) {
-    this(defaultIdempotencyTtl, workflowMutationResponseMapper);
-  }
 
   private RegistrationStartWebMapper(
       Duration defaultIdempotencyTtl,
