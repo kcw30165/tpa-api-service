@@ -1267,3 +1267,49 @@ own coverage-tiering policy
 script is still needed to confirm via a REAL mvn test run
 (not just compile) that the new test passes against the
 actual repo, and to measure the real resulting coverage.
+
+## FINAL Verification: Login Replay Package Tests (Script 054)
+
+- Generated: 2026-09-30T03:53:35Z (run via Windows Git Bash port of script 056, WSL was down)
+- Stage A: `mvn test -Dtest=RedisLoginStartReplayAdapterTest` -- PASS
+  (all 9 test methods -- 8 original + 1 new -- executed against
+  the real repo, confirming script 054's byte-exact-verified
+  stub-harness pre-validation held true)
+- Stage B: `mvn clean test` (full suite) -- PASS
+
+### Coverage delta (baseline -> TRUE final, all 3 classes in the sub-package)
+
+```
+=== Coverage Delta: baseline (script 034) -> TRUE final (script 056), per-class ===
+
+Class                                              Instruction  Branch       Meets Tier-B gate?
+--------------------------------------------------------------------------------------------------------------
+RedisAuthenticatedLoginReplaySessionAdapter        100.00%      75.00%     NO (inst_ok=True, branch_ok=False) -- EXPECTED, documented gap: v != null branch (Reactive Streams Rule 2.13 forbids null onNext)
+RedisLoginStartReplayAdapter                        94.44%     100.00%     NO (inst_ok=False, branch_ok=True) -- EXPECTED, documented gap: json()'s catch block (hard-wired ObjectMapper, same pattern as JsonMapper class)
+RedisLoginStartReplayKeyFactory                    100.00%     100.00%     YES
+
+Package baseline (script 034): instruction=79.45%, branch=61.11%
+Package TRUE final (this script): instruction=97.63% (247/253), branch=94.44% (17/18)
+Delta: instruction=+18.18, branch=+33.33
+
+NOTE: RedisLoginStartReplayAdapter and RedisAuthenticatedLoginReplaySessionAdapter
+      are EXPECTED to show a small remaining gap even in this final state -- both
+      have one branch/instruction path explicitly documented (script 054) as
+      defensive/unreachable per this project's own Tier-B coverage-tiering policy,
+      not a leftover TODO.
+```
+
+Full final per-class coverage: see evidence file
+`07-final-package-coverage.csv`.
+
+### Status
+
+This closes the `.login.replay` sub-package investigation --
+the worst-performing untouched sub-package identified in script
+034's original baseline. All 3 classes are now in their final,
+correct disposition: fully covered where genuinely testable,
+and with the 2 remaining branch/instruction gaps explicitly
+documented (not silently left) as defensive/unreachable per
+this project's own Tier-B coverage-tiering policy. Verified via
+a real `mvn test` execution (not just compile), with the
+entire test suite confirmed still passing.
