@@ -1,11 +1,9 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.fundprice.mapper;
 
-import java.math.BigInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceQueryResponse;
-import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceQueryResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRowResult;
 import java.math.BigDecimal;
@@ -80,20 +78,6 @@ class FundPriceWebMapperTest {
     assertThat(newMapper().toQueryResponse(result, "en").maxRiskLevel()).isNull();
   }
 
-  @Test
-  void exportResultAlsoMapsRowsCorrectly() {
-    // FundPriceExportResult mirrors FundPriceQueryResult's shape exactly; the mapper must handle
-    // both, since the export path also needs mapped rows for the XLSX exporter (a later stage).
-    var exportRow =
-        new com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRowResult(
-            "DUSM", "USD Fund", "n", LocalDate.of(2026, 5, 5), "HKD", new BigDecimal("1.1"), new BigDecimal("1.2"), "5");
-    var result = new FundPriceExportResult(List.of(exportRow), "UNIT PRICE", "5", BigInteger.TWO);
-
-    var mappedRows = newMapper().toExportRows(result);
-
-    assertThat(mappedRows).hasSize(1);
-    assertThat(mappedRows.get(0).unitPrice()).isEqualByComparingTo("1.1");
-  }
   @Test
   void englishLanguageSelectsEnglishFundName() {
     var result = new FundPriceQueryResult(List.of(row("5")), "BIDOFFER PRICE", "5");

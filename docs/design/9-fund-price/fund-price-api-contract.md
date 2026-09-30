@@ -88,10 +88,10 @@ GET /api/v1/fund-price/export
 - Media type: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
 - Headers are always bilingual and do not vary by request language; `Accept-Language`
   does not select the workbook header language.
-- Exported rows carry `riskLevel` under the identical result-set-scoped emission rule
-  as the query response (Section 2). The workbook also carries `maxRiskLevel` as a
-  single summary value under the identical conditional-echo rule as the query
-  response's envelope field.
+- Risk level is a sort key only for export, per fund-price-excel-export-contract.md: rows are
+  not exported with a `riskLevel` field, and the workbook does not carry `maxRiskLevel`. This
+  corrects an earlier version of this contract, which incorrectly stated the export carries
+  both fields under the same emission rule as the query response.
 
 ## Public failures
 

@@ -44,10 +44,8 @@ import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import java.util.List;
 
 /**
- * Query endpoint only, at this stage -- the export endpoint is DEFERRED to a later stage, once
- * {@code FundPriceWorkbookExporter} exists (mirroring how {@code ContributionSummaryWorkbookExporter}
- * is a genuinely separate concern from the web mapper). {@code exportUseCase} is wired now for
- * that upcoming stage, unused within this one.
+ * Exposes all three Fund Price endpoints: {@code GET /fund-price} (query), {@code GET
+ * /fund-price/export} (XLSX download), and {@code GET /fund-price/mode} (calendar metadata).
  *
  * <p>Session-id cookie resolution mirrors {@code LogoutController}'s exact, already-proven
  * pattern (confirmed, script 116's investigation): {@code exchange.getRequest().getCookies()

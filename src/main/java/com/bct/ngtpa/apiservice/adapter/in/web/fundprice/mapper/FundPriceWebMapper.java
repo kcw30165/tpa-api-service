@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.adapter.in.web.fundprice.mapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceQueryResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceRowResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
-import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceQueryResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRowResult;
 import java.time.format.DateTimeFormatter;
@@ -25,17 +24,11 @@ import java.time.LocalDate;
  * ContributionSummaryWebMapper.resolveLabel}'s exact fallback-safe pattern (confirmed, script
  * 120's investigation): zh_HK requests use {@code chineseFundName} when populated, falling back to
  * the English {@code fundName} otherwise; any other language always uses the English name.
- *
- * <p>{@code toExportRows(...)} deliberately KEEPS its existing single-argument signature -- export
- * has no controller endpoint yet (confirmed, {@code FundPriceController}'s own Javadoc), so its own
- * language-selection design is a separate, deferred question. It defaults to English internally
- * rather than guessing an export-specific language rule.
  */
 @Component
 public class FundPriceWebMapper {
 
   private static final String BIDOFFER_PRICE_TYPE = "BIDOFFER PRICE";
-  private static final String DEFAULT_LANGUAGE = "en";
 
   private final DateTimeFormatter formatter;
 
@@ -55,10 +48,6 @@ public class FundPriceWebMapper {
   public FundPriceQueryResponse toQueryResponse(FundPriceQueryResult result, String lang) {
     return new FundPriceQueryResponse(
         mapRows(result.rows(), result.fundPriceType(), lang), result.maxRiskLevel());
-  }
-
-  public List<FundPriceRowResponse> toExportRows(FundPriceExportResult result) {
-    return mapRows(result.rows(), result.fundPriceType(), DEFAULT_LANGUAGE);
   }
 
   private List<FundPriceRowResponse> mapRows(

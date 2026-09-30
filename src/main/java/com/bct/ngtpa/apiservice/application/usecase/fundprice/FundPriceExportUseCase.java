@@ -25,14 +25,12 @@ import reactor.core.publisher.Mono;
 
 /**
  * Fetches TRPGetFundPrice for the full cached history window -- NO FE date parameter, per
- * fund-price-api-contract.md Section 3 ("No FE date-range parameters"). Passes the authoritative
- * referenceDate itself as the command's date, with mode="MONTHLY" always, so
- * ApimFundPriceSourceAdapter's existing MONTHLY expansion derives the calendar-month range; the
- * confirmed maximumFundPriceHistoryMonths window beyond a single month is intentionally NOT
- * re-derived here, since the adapter's from-date/to-date expansion is a single-month operation by
- * design (mirrors TRPGetFundPriceMode's own month-at-a-time contract) -- export's full-history
- * behavior over multiple months, if required beyond a single calendar month, is a downstream
- * design question flagged for the web/controller stage, not resolved in this use case.
+ * fund-price-api-contract.md Section 3 ("No FE date-range parameters"). Derives {@code fromDate =
+ * referenceDate.minusMonths(maximumFundPriceHistoryMonths)} and {@code toDate = referenceDate},
+ * and passes both directly as an explicit range via {@link FetchFundPriceRangeCommand} -- there
+ * is no {@code mode} field and no adapter-side expansion anywhere on the export path (the
+ * MONTHLY calendar-month expansion this Javadoc previously described was removed from {@code
+ * ApimFundPriceSourceAdapter}; see fund-price-date-validation-contract.md).
  *
  * <p>Does NOT run {@link FundPriceRequestSupport#validateDate} -- there is no FE-supplied
  * candidate date to validate against the cached list.
