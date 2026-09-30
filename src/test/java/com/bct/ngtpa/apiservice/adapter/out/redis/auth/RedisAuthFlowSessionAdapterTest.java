@@ -3,12 +3,22 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.revision.RevisionedAuthFlowSessionRedisOperations;
+import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCreateCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.InitializeLegacyAuthFlowSessionRevisionCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.LegacyAuthFlowSessionRevisionInitializationOutcome;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionDeleteCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevisionGenerator;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import java.time.Clock;
 import java.time.Duration;
@@ -20,17 +30,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.revision.RevisionedAuthFlowSessionRedisOperations;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.InitializeLegacyAuthFlowSessionRevisionCommand;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.LegacyAuthFlowSessionRevisionInitializationOutcome;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionDeleteCommand;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevisionGenerator;
-import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 
 class RedisAuthFlowSessionAdapterTest {
 
@@ -241,10 +240,11 @@ class RedisAuthFlowSessionAdapterTest {
   void createRevisionedSucceedsOnFirstAttempt() {
     org.mockito.Mockito.when(revisionGenerator.generate())
         .thenReturn(new SessionRevision("1".repeat(32)));
-    org.mockito.Mockito.when(revisionOps.createIfAbsent(
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any()))
+    org.mockito.Mockito.when(
+            revisionOps.createIfAbsent(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
         .thenReturn(Mono.just(true));
     StepVerifier.create(revisionedAdapter().createRevisioned(createCommand(NOW.plusSeconds(1800))))
         .assertNext(
@@ -259,10 +259,11 @@ class RedisAuthFlowSessionAdapterTest {
   void createRevisionedAlreadyExistsErrors() {
     org.mockito.Mockito.when(revisionGenerator.generate())
         .thenReturn(new SessionRevision("1".repeat(32)));
-    org.mockito.Mockito.when(revisionOps.createIfAbsent(
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any()))
+    org.mockito.Mockito.when(
+            revisionOps.createIfAbsent(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
         .thenReturn(Mono.just(false));
     StepVerifier.create(revisionedAdapter().createRevisioned(createCommand(NOW.plusSeconds(1800))))
         .expectError(IllegalStateException.class)
@@ -297,10 +298,11 @@ class RedisAuthFlowSessionAdapterTest {
   void loadSnapshotRoundTripsAfterCreateRevisioned() {
     org.mockito.Mockito.when(revisionGenerator.generate())
         .thenReturn(new SessionRevision("1".repeat(32)));
-    org.mockito.Mockito.when(revisionOps.createIfAbsent(
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any()))
+    org.mockito.Mockito.when(
+            revisionOps.createIfAbsent(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
         .thenReturn(Mono.just(true));
     var adapter = revisionedAdapter();
     var command = createCommand(NOW.plusSeconds(1800));
@@ -374,7 +376,8 @@ class RedisAuthFlowSessionAdapterTest {
         snapshotOf(session(AuthFlowStatus.OTP_SENT, NOW, NOW.plusSeconds(1800), "otp_abc"));
     var updated = session(AuthFlowStatus.OTP_VERIFIED, NOW, NOW.plusSeconds(1800), "otp_abc");
     StepVerifier.create(
-            adapter.updateRevisioned(new RevisionedAuthFlowSessionMutationCommand(expected, updated)))
+            adapter.updateRevisioned(
+                new RevisionedAuthFlowSessionMutationCommand(expected, updated)))
         .assertNext(
             r -> assertThat(r.outcome()).isEqualTo(AuthFlowSessionMutationOutcome.SYSTEM_FAILURE))
         .verifyComplete();
@@ -462,7 +465,8 @@ class RedisAuthFlowSessionAdapterTest {
             cachePort, new RedisCacheKeyFactory("ngtpa"), new RedisAuthFlowSessionJsonMapper());
     var expected =
         snapshotOf(session(AuthFlowStatus.OTP_SENT, NOW, NOW.plusSeconds(1800), "otp_abc"));
-    StepVerifier.create(adapter.deleteRevisioned(new RevisionedAuthFlowSessionDeleteCommand(expected)))
+    StepVerifier.create(
+            adapter.deleteRevisioned(new RevisionedAuthFlowSessionDeleteCommand(expected)))
         .assertNext(
             r -> assertThat(r.outcome()).isEqualTo(AuthFlowSessionMutationOutcome.SYSTEM_FAILURE))
         .verifyComplete();
@@ -476,7 +480,9 @@ class RedisAuthFlowSessionAdapterTest {
         .thenReturn(Mono.just(1L));
     var expected =
         snapshotOf(session(AuthFlowStatus.OTP_SENT, NOW, NOW.plusSeconds(1800), "otp_abc"));
-    StepVerifier.create(revisionedAdapter().deleteRevisioned(new RevisionedAuthFlowSessionDeleteCommand(expected)))
+    StepVerifier.create(
+            revisionedAdapter()
+                .deleteRevisioned(new RevisionedAuthFlowSessionDeleteCommand(expected)))
         .assertNext(r -> assertThat(r.outcome()).isEqualTo(AuthFlowSessionMutationOutcome.APPLIED))
         .verifyComplete();
   }
@@ -509,7 +515,8 @@ class RedisAuthFlowSessionAdapterTest {
         .assertNext(
             r ->
                 assertThat(r.outcome())
-                    .isEqualTo(LegacyAuthFlowSessionRevisionInitializationOutcome.SESSION_NOT_FOUND))
+                    .isEqualTo(
+                        LegacyAuthFlowSessionRevisionInitializationOutcome.SESSION_NOT_FOUND))
         .verifyComplete();
   }
 

@@ -23,8 +23,8 @@ import org.junit.jupiter.api.Test;
  * Branch-oriented tests for {@link PersonalInformationUpdateYamlValidator}. Uses REAL {@link
  * ConfigVariantCandidateGenerator} and {@link PageDisplayTextResolver} instances (not mocked) -
  * confirmed (rounds 105/106) that {@code ConfigLookupContext}'s real 4-arg constructor exactly
- * matches the validator's own reflective {@code instantiateContext()} logic, so real
- * collaborators exercise the reflection call site naturally.
+ * matches the validator's own reflective {@code instantiateContext()} logic, so real collaborators
+ * exercise the reflection call site naturally.
  */
 class PersonalInformationUpdateYamlValidatorTest {
 
@@ -91,7 +91,8 @@ class PersonalInformationUpdateYamlValidatorTest {
   void missingPageConfigurationYieldsEmptyList() {
     BffPagesProperties emptyProperties = new BffPagesProperties();
     List<ApiError> errors =
-        newValidator(emptyProperties).validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+        newValidator(emptyProperties)
+            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).isEmpty();
   }
 
@@ -113,8 +114,10 @@ class PersonalInformationUpdateYamlValidatorTest {
   @Test
   void nullRequestFieldsMapUsesEmptyDefaultAndStillEvaluatesRequired() {
     PageSchemaProperties page = pageOf(section(field("f1", rule("v1", "required", null))));
-    UpdatePersonalInformationRequest request = new UpdatePersonalInformationRequest("1.0", false, null);
-    List<ApiError> errors = newValidator(propertiesOf(page)).validate(request, "en", "env1", "trust1", "SCHEME_A");
+    UpdatePersonalInformationRequest request =
+        new UpdatePersonalInformationRequest("1.0", false, null);
+    List<ApiError> errors =
+        newValidator(propertiesOf(page)).validate(request, "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).hasSize(1);
   }
 
@@ -127,7 +130,8 @@ class PersonalInformationUpdateYamlValidatorTest {
     field.setValidations(null);
     PageSchemaProperties page = pageOf(section(field));
     List<ApiError> errors =
-        newValidator(propertiesOf(page)).validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).isEmpty();
   }
 
@@ -135,7 +139,8 @@ class PersonalInformationUpdateYamlValidatorTest {
   void fieldWithBlankIdIsSkipped() {
     PageSchemaProperties page = pageOf(section(field("  ", rule("v1", "required", null))));
     List<ApiError> errors =
-        newValidator(propertiesOf(page)).validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).isEmpty();
   }
 
@@ -143,7 +148,8 @@ class PersonalInformationUpdateYamlValidatorTest {
   void nonRequiredRuleSkippedWhenFieldNotSubmitted() {
     PageSchemaProperties page = pageOf(section(field("f1", rule("v1", "minLength", 5))));
     List<ApiError> errors =
-        newValidator(propertiesOf(page)).validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).isEmpty();
   }
 
@@ -154,7 +160,8 @@ class PersonalInformationUpdateYamlValidatorTest {
     field.setValidations(Arrays.asList((ValidationRuleProperties) null));
     PageSchemaProperties page = pageOf(section(field));
     List<ApiError> errors =
-        newValidator(propertiesOf(page)).validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).isEmpty();
   }
 
@@ -182,7 +189,8 @@ class PersonalInformationUpdateYamlValidatorTest {
   void requiredRuleFailsWhenFieldMissingEntirely() {
     PageSchemaProperties page = pageOf(section(field("f1", rule("v1", "required", null))));
     List<ApiError> errors =
-        newValidator(propertiesOf(page)).validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).hasSize(1);
     assertThat(errors.get(0).type()).isEqualTo("FIELD");
     assertThat(errors.get(0).targets()).containsExactly("f1");
@@ -247,7 +255,8 @@ class PersonalInformationUpdateYamlValidatorTest {
     PageSchemaProperties page = pageOf(section(field("f1", rule("v1", "email", null))));
     List<ApiError> errors =
         newValidator(propertiesOf(page))
-            .validate(requestOf(Map.of("f1", "user@example.com")), "en", "env1", "trust1", "SCHEME_A");
+            .validate(
+                requestOf(Map.of("f1", "user@example.com")), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).isEmpty();
   }
 
@@ -267,7 +276,8 @@ class PersonalInformationUpdateYamlValidatorTest {
         pageOf(section(field("f1", rule("v1", "blockedAddress", "P\\.?O\\.?\\s*BOX"))));
     List<ApiError> errors =
         newValidator(propertiesOf(page))
-            .validate(requestOf(Map.of("f1", "123 Main Street")), "en", "env1", "trust1", "SCHEME_A");
+            .validate(
+                requestOf(Map.of("f1", "123 Main Street")), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).isEmpty();
   }
 
@@ -311,7 +321,12 @@ class PersonalInformationUpdateYamlValidatorTest {
     page.setValidations(List.of(pageRule));
     List<ApiError> errors =
         newValidator(propertiesOf(page))
-            .validate(requestOf(Map.of("f1", "value", "f3", "present")), "en", "env1", "trust1", "SCHEME_A");
+            .validate(
+                requestOf(Map.of("f1", "value", "f3", "present")),
+                "en",
+                "env1",
+                "trust1",
+                "SCHEME_A");
     assertThat(errors).hasSize(1);
     assertThat(errors.get(0).targets()).containsExactly("f2");
   }
@@ -323,7 +338,8 @@ class PersonalInformationUpdateYamlValidatorTest {
     PageSchemaProperties page = pageOf(section(field("f1")));
     page.setValidations(Arrays.asList(pageRule, (ValidationRuleProperties) null));
     List<ApiError> errors =
-        newValidator(propertiesOf(page)).validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).isEmpty();
   }
 
@@ -359,7 +375,8 @@ class PersonalInformationUpdateYamlValidatorTest {
   void allGroupsEmptyOperatorMatchesWhenEveryGroupHasNoSubmittedFields() {
     var condition = new RuleConditionProperties();
     condition.setOperator("allGroupsEmpty");
-    condition.setGroups(List.of(Map.of("fields", List.of("f1", "f2")), Map.of("fields", List.of("f3"))));
+    condition.setGroups(
+        List.of(Map.of("fields", List.of("f1", "f2")), Map.of("fields", List.of("f3"))));
     assertConditionMatches(condition, Map.of());
     assertConditionDoesNotMatch(condition, Map.of("f1", "value"));
   }
@@ -390,11 +407,13 @@ class PersonalInformationUpdateYamlValidatorTest {
     PageSchemaProperties page = pageOf(section(field("f1"), field("f2")));
     page.setValidations(List.of(pageRule));
     List<ApiError> errors =
-        newValidator(propertiesOf(page)).validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).isEmpty();
   }
 
-  private void assertConditionMatches(RuleConditionProperties condition, Map<String, Object> submitted) {
+  private void assertConditionMatches(
+      RuleConditionProperties condition, Map<String, Object> submitted) {
     var action = new RuleActionProperties();
     action.setTargets(List.of("target1"));
     var pageRule = new ValidationRuleProperties();
@@ -404,11 +423,13 @@ class PersonalInformationUpdateYamlValidatorTest {
     PageSchemaProperties page = pageOf(section(field("f1"), field("f2"), field("f3")));
     page.setValidations(List.of(pageRule));
     List<ApiError> errors =
-        newValidator(propertiesOf(page)).validate(requestOf(submitted), "en", "env1", "trust1", "SCHEME_A");
+        newValidator(propertiesOf(page))
+            .validate(requestOf(submitted), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).hasSize(1);
   }
 
-  private void assertConditionDoesNotMatch(RuleConditionProperties condition, Map<String, Object> submitted) {
+  private void assertConditionDoesNotMatch(
+      RuleConditionProperties condition, Map<String, Object> submitted) {
     var action = new RuleActionProperties();
     action.setTargets(List.of("target1"));
     var pageRule = new ValidationRuleProperties();
@@ -418,7 +439,8 @@ class PersonalInformationUpdateYamlValidatorTest {
     PageSchemaProperties page = pageOf(section(field("f1"), field("f2"), field("f3")));
     page.setValidations(List.of(pageRule));
     List<ApiError> errors =
-        newValidator(propertiesOf(page)).validate(requestOf(submitted), "en", "env1", "trust1", "SCHEME_A");
+        newValidator(propertiesOf(page))
+            .validate(requestOf(submitted), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).isEmpty();
   }
 
@@ -457,7 +479,8 @@ class PersonalInformationUpdateYamlValidatorTest {
     PageSchemaProperties page = pageOf(section(field("f1", validationRule)));
     page.setDisplay(Map.of("myMessageCode", Map.of("en", "Resolved via display config")));
     List<ApiError> errors =
-        newValidator(propertiesOf(page)).validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).hasSize(1);
     assertThat(errors.get(0).message()).isEqualTo("Resolved via display config");
   }
@@ -531,7 +554,8 @@ class PersonalInformationUpdateYamlValidatorTest {
     PageSchemaProperties page = pageOf(section(field("f1"), field("f2")));
     page.setValidations(List.of(pageRule1, pageRule2));
     List<ApiError> errors =
-        newValidator(propertiesOf(page)).validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).hasSize(1);
   }
 }

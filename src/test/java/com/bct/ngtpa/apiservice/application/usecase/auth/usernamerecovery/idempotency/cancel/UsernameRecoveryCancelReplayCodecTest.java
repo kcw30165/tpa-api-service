@@ -54,7 +54,8 @@ class UsernameRecoveryCancelReplayCodecTest {
     return new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SUCCESS);
   }
 
-  private static HydratedIdempotentResponse response(String mediaType, Map<String, String> headers) {
+  private static HydratedIdempotentResponse response(
+      String mediaType, Map<String, String> headers) {
     return new HydratedIdempotentResponse(200, mediaType, "body", headers);
   }
 
@@ -126,7 +127,8 @@ class UsernameRecoveryCancelReplayCodecTest {
   @Test
   void hydrateMalformedPayloadErrors() {
     IdempotentTerminalResponseSnapshot snapshot =
-        new IdempotentTerminalResponseSnapshot(1, 200, "application/json", "{not valid", Map.of(), null);
+        new IdempotentTerminalResponseSnapshot(
+            1, 200, "application/json", "{not valid", Map.of(), null);
     StepVerifier.create(newCodec().hydrate(snapshot))
         .expectError(IllegalArgumentException.class)
         .verify();

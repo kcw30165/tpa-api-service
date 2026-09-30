@@ -16,13 +16,13 @@ import reactor.test.StepVerifier;
 /**
  * Branch-oriented reactive tests for {@link RedisAuthFlowSessionPersistenceCompatibilityAdapter}.
  *
- * <p>Note (round 112/113/114): {@code establish()}'s {@code .switchIfEmpty(initialize())} passes
- * an ALREADY-INVOKED {@code Mono} (a plain method call, not {@code Mono.defer(...)}), so {@code
+ * <p>Note (round 112/113/114): {@code establish()}'s {@code .switchIfEmpty(initialize())} passes an
+ * ALREADY-INVOKED {@code Mono} (a plain method call, not {@code Mono.defer(...)}), so {@code
  * initialize()}'s body - including {@code redis.opsForValue().setIfAbsent(...)} - executes EAGERLY
  * on every single call to {@code establish()}, regardless of which branch is ultimately taken.
  * {@link #newAdapter()} therefore ALWAYS stubs {@code setIfAbsent(...)} with a safe default of
- * {@code true}; the two "concurrent conflict" tests below explicitly override this to {@code
- * false} to exercise the "someone else won the race" branches.
+ * {@code true}; the two "concurrent conflict" tests below explicitly override this to {@code false}
+ * to exercise the "someone else won the race" branches.
  */
 @SuppressWarnings("unchecked")
 class RedisAuthFlowSessionPersistenceCompatibilityAdapterTest {
@@ -31,7 +31,8 @@ class RedisAuthFlowSessionPersistenceCompatibilityAdapterTest {
       RedisAuthFlowSessionPersistenceCompatibilityAdapter.SUPPORTED_VERSION;
 
   private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
-  private final ReactiveValueOperations<String, String> values = mock(ReactiveValueOperations.class);
+  private final ReactiveValueOperations<String, String> values =
+      mock(ReactiveValueOperations.class);
   private final RedisCacheKeyFactory keys = mock(RedisCacheKeyFactory.class);
 
   private RedisAuthFlowSessionPersistenceCompatibilityAdapter newAdapter() {
@@ -50,7 +51,8 @@ class RedisAuthFlowSessionPersistenceCompatibilityAdapterTest {
             r ->
                 assertThat(r.status())
                     .isEqualTo(
-                        AuthFlowSessionPersistenceCompatibilityStatus.CONFIGURATION_VERSION_UNSUPPORTED))
+                        AuthFlowSessionPersistenceCompatibilityStatus
+                            .CONFIGURATION_VERSION_UNSUPPORTED))
         .verifyComplete();
   }
 
@@ -62,7 +64,9 @@ class RedisAuthFlowSessionPersistenceCompatibilityAdapterTest {
     when(values.get(any())).thenReturn(Mono.just(Integer.toString(SUPPORTED_VERSION)));
     StepVerifier.create(adapter.establish(SUPPORTED_VERSION))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(AuthFlowSessionPersistenceCompatibilityStatus.COMPATIBLE))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(AuthFlowSessionPersistenceCompatibilityStatus.COMPATIBLE))
         .verifyComplete();
   }
 
@@ -74,7 +78,8 @@ class RedisAuthFlowSessionPersistenceCompatibilityAdapterTest {
         .assertNext(
             r ->
                 assertThat(r.status())
-                    .isEqualTo(AuthFlowSessionPersistenceCompatibilityStatus.EXISTING_VERSION_MISMATCH))
+                    .isEqualTo(
+                        AuthFlowSessionPersistenceCompatibilityStatus.EXISTING_VERSION_MISMATCH))
         .verifyComplete();
   }
 
@@ -84,7 +89,9 @@ class RedisAuthFlowSessionPersistenceCompatibilityAdapterTest {
     when(values.get(any())).thenReturn(Mono.just("   "));
     StepVerifier.create(adapter.establish(SUPPORTED_VERSION))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(AuthFlowSessionPersistenceCompatibilityStatus.MARKER_CORRUPT))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(AuthFlowSessionPersistenceCompatibilityStatus.MARKER_CORRUPT))
         .verifyComplete();
   }
 
@@ -94,7 +101,9 @@ class RedisAuthFlowSessionPersistenceCompatibilityAdapterTest {
     when(values.get(any())).thenReturn(Mono.just("not-a-number"));
     StepVerifier.create(adapter.establish(SUPPORTED_VERSION))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(AuthFlowSessionPersistenceCompatibilityStatus.MARKER_CORRUPT))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(AuthFlowSessionPersistenceCompatibilityStatus.MARKER_CORRUPT))
         .verifyComplete();
   }
 
@@ -106,7 +115,9 @@ class RedisAuthFlowSessionPersistenceCompatibilityAdapterTest {
     when(values.get(any())).thenReturn(Mono.empty());
     StepVerifier.create(adapter.establish(SUPPORTED_VERSION))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(AuthFlowSessionPersistenceCompatibilityStatus.INITIALIZED))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(AuthFlowSessionPersistenceCompatibilityStatus.INITIALIZED))
         .verifyComplete();
   }
 
@@ -121,7 +132,9 @@ class RedisAuthFlowSessionPersistenceCompatibilityAdapterTest {
     when(values.setIfAbsent(any(), any())).thenReturn(Mono.just(false));
     StepVerifier.create(adapter.establish(SUPPORTED_VERSION))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(AuthFlowSessionPersistenceCompatibilityStatus.COMPATIBLE))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(AuthFlowSessionPersistenceCompatibilityStatus.COMPATIBLE))
         .verifyComplete();
   }
 
@@ -137,7 +150,8 @@ class RedisAuthFlowSessionPersistenceCompatibilityAdapterTest {
         .assertNext(
             r ->
                 assertThat(r.status())
-                    .isEqualTo(AuthFlowSessionPersistenceCompatibilityStatus.INITIALIZATION_CONFLICT))
+                    .isEqualTo(
+                        AuthFlowSessionPersistenceCompatibilityStatus.INITIALIZATION_CONFLICT))
         .verifyComplete();
   }
 

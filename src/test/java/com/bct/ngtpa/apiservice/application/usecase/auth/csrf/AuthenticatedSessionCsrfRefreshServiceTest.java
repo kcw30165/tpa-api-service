@@ -14,6 +14,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSession;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionCsrfRotationPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionProtectorPort;
@@ -43,7 +44,8 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
   private final CsrfTokenGenerator tokenGenerator = mock(CsrfTokenGenerator.class);
   private final CsrfTokenHasher tokenHasher = mock(CsrfTokenHasher.class);
 
-  private final AuthenticatedSessionId sid = new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
+  private final AuthenticatedSessionId sid =
+      new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
 
   private AuthenticatedSessionCsrfRefreshService newService() {
     return new AuthenticatedSessionCsrfRefreshService(
@@ -52,7 +54,8 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
 
   private ProtectedAuthenticatedSession protectedSession() {
     return new ProtectedAuthenticatedSession(
-        sid.value(), AuthenticatedSessionStatus.ACTIVE,
+        sid.value(),
+        AuthenticatedSessionStatus.ACTIVE,
         new ProtectedAuthenticatedSession.Data(
             Map.of(
                 ProtectedAuthenticatedSession.CIPHERTEXT, "ct",
@@ -60,14 +63,26 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
                 ProtectedAuthenticatedSession.NONCE, "nonce",
                 ProtectedAuthenticatedSession.AUTHENTICATION_TAG, "tag",
                 ProtectedAuthenticatedSession.KEY_VERSION, "kv1")),
-        NOW.minusSeconds(300), NOW.minusSeconds(60), NOW.plusSeconds(1800), NOW.plusSeconds(3600));
+        NOW.minusSeconds(300),
+        NOW.minusSeconds(60),
+        NOW.plusSeconds(1800),
+        NOW.plusSeconds(3600),
+        new SessionRevision("0".repeat(32)));
   }
 
   private AuthenticatedSession usableSession() {
     return new AuthenticatedSession(
-        sid, new ActorContext("actor-1", ActorUserRole.ROLE_USER_MBR), List.of(),
-        AuthenticatedSessionStatus.ACTIVE, "csrfhash", NOW.minusSeconds(300),
-        NOW.minusSeconds(60), NOW.plusSeconds(1800), NOW.plusSeconds(3600));
+        sid,
+        new ActorContext("actor-1", ActorUserRole.ROLE_USER_MBR),
+        List.of(),
+        AuthenticatedSessionStatus.ACTIVE,
+        "csrfhash",
+        NOW.minusSeconds(300),
+        NOW.minusSeconds(60),
+        NOW.plusSeconds(1800),
+        NOW.plusSeconds(3600),
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 
   private void givenUnprotectedSessionUsable() {
@@ -115,12 +130,21 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
     when(sessions.load(any())).thenReturn(Mono.just(Optional.of(protectedSession())));
     AuthenticatedSession revoked =
         new AuthenticatedSession(
-            sid, new ActorContext("actor-1", ActorUserRole.ROLE_USER_MBR), List.of(),
-            AuthenticatedSessionStatus.REVOKED, "csrfhash", NOW.minusSeconds(300),
-            NOW.minusSeconds(60), NOW.plusSeconds(1800), NOW.plusSeconds(3600));
+            sid,
+            new ActorContext("actor-1", ActorUserRole.ROLE_USER_MBR),
+            List.of(),
+            AuthenticatedSessionStatus.REVOKED,
+            "csrfhash",
+            NOW.minusSeconds(300),
+            NOW.minusSeconds(60),
+            NOW.plusSeconds(1800),
+            NOW.plusSeconds(3600),
+            new SessionRevision("0".repeat(32)),
+            null);
     when(protector.unprotect(any())).thenReturn(revoked);
     StepVerifier.create(newService().refresh(sid.value(), "req-1"))
-        .assertNext(o -> assertThat(o.status()).isEqualTo(RefreshCsrfTokenStatus.SESSION_NOT_USABLE))
+        .assertNext(
+            o -> assertThat(o.status()).isEqualTo(RefreshCsrfTokenStatus.SESSION_NOT_USABLE))
         .verifyComplete();
   }
 
@@ -129,12 +153,21 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
     when(sessions.load(any())).thenReturn(Mono.just(Optional.of(protectedSession())));
     AuthenticatedSession almostExpired =
         new AuthenticatedSession(
-            sid, new ActorContext("actor-1", ActorUserRole.ROLE_USER_MBR), List.of(),
-            AuthenticatedSessionStatus.ACTIVE, "csrfhash", NOW.minusSeconds(3600),
-            NOW.minusSeconds(3540), NOW.minusSeconds(1), NOW.plusSeconds(3600));
+            sid,
+            new ActorContext("actor-1", ActorUserRole.ROLE_USER_MBR),
+            List.of(),
+            AuthenticatedSessionStatus.ACTIVE,
+            "csrfhash",
+            NOW.minusSeconds(3600),
+            NOW.minusSeconds(3540),
+            NOW.minusSeconds(1),
+            NOW.plusSeconds(3600),
+            new SessionRevision("0".repeat(32)),
+            null);
     when(protector.unprotect(any())).thenReturn(almostExpired);
     StepVerifier.create(newService().refresh(sid.value(), "req-1"))
-        .assertNext(o -> assertThat(o.status()).isEqualTo(RefreshCsrfTokenStatus.SESSION_NOT_USABLE))
+        .assertNext(
+            o -> assertThat(o.status()).isEqualTo(RefreshCsrfTokenStatus.SESSION_NOT_USABLE))
         .verifyComplete();
   }
 
@@ -186,7 +219,8 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
   void expiredYieldsSessionNotUsable() {
     givenRotationOutcome(AuthenticatedSessionCsrfRotationStatus.EXPIRED);
     StepVerifier.create(newService().refresh(sid.value(), "req-1"))
-        .assertNext(o -> assertThat(o.status()).isEqualTo(RefreshCsrfTokenStatus.SESSION_NOT_USABLE))
+        .assertNext(
+            o -> assertThat(o.status()).isEqualTo(RefreshCsrfTokenStatus.SESSION_NOT_USABLE))
         .verifyComplete();
   }
 
@@ -203,7 +237,8 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
     when(sessions.load(any())).thenReturn(Mono.just(Optional.of(protectedSession())));
     givenUnprotectedSessionUsable();
     givenTokenGeneration();
-    when(rotations.rotateCsrfHashIfCurrent(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    when(rotations.rotateCsrfHashIfCurrent(any()))
+        .thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newService().refresh(sid.value(), "req-1"))
         .assertNext(o -> assertThat(o.status()).isEqualTo(RefreshCsrfTokenStatus.SYSTEM_FAILURE))
         .verifyComplete();

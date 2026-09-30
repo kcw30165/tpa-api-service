@@ -27,6 +27,7 @@ public final class AuthenticatedSessionLifecycleService
   private final AuthenticatedSessionPort port;
   private final AuthenticatedSessionProtectorPort protector;
   private final AuthenticatedSessionIdGenerator ids;
+  private final AuthenticatedSessionRevisionGenerator revisions;
   private final Duration idleTimeout;
   private final Duration absoluteTtl;
   private final Duration terminalRetention;
@@ -40,9 +41,30 @@ public final class AuthenticatedSessionLifecycleService
       Duration absoluteTtl,
       Duration terminalRetention,
       Clock clock) {
+    this(
+        port,
+        protector,
+        ids,
+        new SecureAuthenticatedSessionRevisionGenerator(),
+        idleTimeout,
+        absoluteTtl,
+        terminalRetention,
+        clock);
+  }
+
+  public AuthenticatedSessionLifecycleService(
+      AuthenticatedSessionPort port,
+      AuthenticatedSessionProtectorPort protector,
+      AuthenticatedSessionIdGenerator ids,
+      AuthenticatedSessionRevisionGenerator revisions,
+      Duration idleTimeout,
+      Duration absoluteTtl,
+      Duration terminalRetention,
+      Clock clock) {
     this.port = Objects.requireNonNull(port);
     this.protector = Objects.requireNonNull(protector);
     this.ids = Objects.requireNonNull(ids);
+    this.revisions = Objects.requireNonNull(revisions);
     this.idleTimeout = positive(idleTimeout, "idleTimeout");
     this.absoluteTtl = positive(absoluteTtl, "absoluteTtl");
     this.terminalRetention = positive(terminalRetention, "terminalRetention");
@@ -69,7 +91,9 @@ public final class AuthenticatedSessionLifecycleService
                   now,
                   now,
                   idle,
-                  absolute);
+                  absolute,
+                  revisions.generate(),
+                  null);
           return port.store(
                   new StoreAuthenticatedSessionCommand(
                       session.authenticatedSessionId(),
@@ -202,6 +226,11 @@ public final class AuthenticatedSessionLifecycleService
       AuthenticatedSessionStatus status,
       Instant lastAccessedAt,
       Instant idleExpiresAt) {
+    // Deliberately carries the SOURCE session's existing revision forward unchanged. This
+    // touch/terminal-transition path is the existing blind-overwrite mutation (store/touch), not
+    // a CAS-protected mutation via AuthenticatedSessionCasUpdatePort. Advancing the revision here
+    // would silently invalidate a concurrent CAS caller's expected-revision even though that
+    // caller never attempted a conflicting write.
     return new AuthenticatedSession(
         source.authenticatedSessionId(),
         source.actorContext(),
@@ -211,7 +240,9 @@ public final class AuthenticatedSessionLifecycleService
         source.createdAt(),
         lastAccessedAt,
         idleExpiresAt,
-        source.absoluteExpiresAt());
+        source.absoluteExpiresAt(),
+        source.revision(),
+        source.fundPriceModeMetadata());
   }
 
   private AuthenticatedSessionLifecycleStatus lifecycleStatus(AuthenticatedSessionStatus status) {

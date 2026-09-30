@@ -44,22 +44,45 @@ class ForgotPasswordOtpReplayResolverTest {
   }
 
   private ForgotPasswordOtpCommitState commitState(Instant challengeExpiresAt) {
-    return new ForgotPasswordOtpCommitState(sid.value(), "challenge-1", NOW.minusSeconds(60), challengeExpiresAt);
+    return new ForgotPasswordOtpCommitState(
+        sid.value(), "challenge-1", NOW.minusSeconds(60), challengeExpiresAt);
   }
 
   private AuthFlowSession sessionWith(
-      AuthFlowScenario scenario, AuthFlowStatus status, String activeChallengeId, Map<String, String> attrs) {
+      AuthFlowScenario scenario,
+      AuthFlowStatus status,
+      String activeChallengeId,
+      Map<String, String> attrs) {
     return new AuthFlowSession(
-        sid, scenario, status, "csrfhash", activeChallengeId,
+        sid,
+        scenario,
+        status,
+        "csrfhash",
+        activeChallengeId,
         new AuthFlowSessionData("email", "j***@example.com", attrs),
-        NOW.minusSeconds(120), NOW.minusSeconds(60), NOW.plusSeconds(1800));
+        NOW.minusSeconds(120),
+        NOW.minusSeconds(60),
+        NOW.plusSeconds(1800));
   }
 
   private OtpChallenge challengeMatching(ForgotPasswordOtpCommitState state) {
     return new OtpChallenge(
-        state.otpChallengeId(), OtpScenario.FORGOT_PASSWORD, state.authFlowSessionId(), OtpChannel.EMAIL,
-        "destinationhash", "codehash", OtpStatus.CREATED, 0, 5, 0, 5,
-        NOW.minusSeconds(120), state.challengeExpiresAt(), NOW.minusSeconds(90), null, null);
+        state.otpChallengeId(),
+        OtpScenario.FORGOT_PASSWORD,
+        state.authFlowSessionId(),
+        OtpChannel.EMAIL,
+        "destinationhash",
+        "codehash",
+        OtpStatus.CREATED,
+        0,
+        5,
+        0,
+        5,
+        NOW.minusSeconds(120),
+        state.challengeExpiresAt(),
+        NOW.minusSeconds(90),
+        null,
+        null);
   }
 
   // ----- guards ------------------------------------------------------------
@@ -67,14 +90,18 @@ class ForgotPasswordOtpReplayResolverTest {
   @Test
   void nullRefYieldsSystemError() {
     StepVerifier.create(newResolver().resolve(null))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
         .verifyComplete();
   }
 
   @Test
   void blankRefYieldsSystemError() {
     StepVerifier.create(newResolver().resolve("   "))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
         .verifyComplete();
   }
 
@@ -82,7 +109,9 @@ class ForgotPasswordOtpReplayResolverTest {
   void commitStateMissingYieldsSystemError() {
     when(commitStates.load(any())).thenReturn(Mono.just(Optional.empty()));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
         .verifyComplete();
   }
 
@@ -90,7 +119,9 @@ class ForgotPasswordOtpReplayResolverTest {
   void commitStatesLoadErrorYieldsSystemError() {
     when(commitStates.load(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
         .verifyComplete();
   }
 
@@ -102,7 +133,9 @@ class ForgotPasswordOtpReplayResolverTest {
     when(commitStates.load(any())).thenReturn(Mono.just(Optional.of(state)));
     when(sessions.load(any())).thenReturn(Mono.just(Optional.empty()));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
         .verifyComplete();
   }
 
@@ -114,9 +147,15 @@ class ForgotPasswordOtpReplayResolverTest {
         .thenReturn(
             Mono.just(
                 Optional.of(
-                    sessionWith(AuthFlowScenario.LOGIN, AuthFlowStatus.OTP_SENT, "challenge-1", Map.of()))));
+                    sessionWith(
+                        AuthFlowScenario.LOGIN,
+                        AuthFlowStatus.OTP_SENT,
+                        "challenge-1",
+                        Map.of()))));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
         .verifyComplete();
   }
 
@@ -129,10 +168,14 @@ class ForgotPasswordOtpReplayResolverTest {
             Mono.just(
                 Optional.of(
                     sessionWith(
-                        AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.RESET_AUTHORIZED, "challenge-1",
+                        AuthFlowScenario.FORGOT_PASSWORD,
+                        AuthFlowStatus.RESET_AUTHORIZED,
+                        "challenge-1",
                         Map.of()))));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
         .verifyComplete();
   }
 
@@ -145,10 +188,14 @@ class ForgotPasswordOtpReplayResolverTest {
             Mono.just(
                 Optional.of(
                     sessionWith(
-                        AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, "different-challenge",
+                        AuthFlowScenario.FORGOT_PASSWORD,
+                        AuthFlowStatus.OTP_SENT,
+                        "different-challenge",
                         Map.of()))));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
         .verifyComplete();
   }
 
@@ -162,10 +209,16 @@ class ForgotPasswordOtpReplayResolverTest {
         .thenReturn(
             Mono.just(
                 Optional.of(
-                    sessionWith(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, "challenge-1", Map.of()))));
+                    sessionWith(
+                        AuthFlowScenario.FORGOT_PASSWORD,
+                        AuthFlowStatus.OTP_SENT,
+                        "challenge-1",
+                        Map.of()))));
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.empty()));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
         .verifyComplete();
   }
 
@@ -177,15 +230,34 @@ class ForgotPasswordOtpReplayResolverTest {
         .thenReturn(
             Mono.just(
                 Optional.of(
-                    sessionWith(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, "challenge-1", Map.of()))));
+                    sessionWith(
+                        AuthFlowScenario.FORGOT_PASSWORD,
+                        AuthFlowStatus.OTP_SENT,
+                        "challenge-1",
+                        Map.of()))));
     OtpChallenge mismatched =
         new OtpChallenge(
-            "challenge-1", OtpScenario.LOGIN, sid.value(), OtpChannel.EMAIL, "destinationhash",
-            "codehash", OtpStatus.CREATED, 0, 5, 0, 5, NOW.minusSeconds(120), state.challengeExpiresAt(),
-            NOW.minusSeconds(90), null, null);
+            "challenge-1",
+            OtpScenario.LOGIN,
+            sid.value(),
+            OtpChannel.EMAIL,
+            "destinationhash",
+            "codehash",
+            OtpStatus.CREATED,
+            0,
+            5,
+            0,
+            5,
+            NOW.minusSeconds(120),
+            state.challengeExpiresAt(),
+            NOW.minusSeconds(90),
+            null,
+            null);
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.of(mismatched)));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
         .verifyComplete();
   }
 
@@ -197,10 +269,16 @@ class ForgotPasswordOtpReplayResolverTest {
         .thenReturn(
             Mono.just(
                 Optional.of(
-                    sessionWith(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, "challenge-1", Map.of()))));
+                    sessionWith(
+                        AuthFlowScenario.FORGOT_PASSWORD,
+                        AuthFlowStatus.OTP_SENT,
+                        "challenge-1",
+                        Map.of()))));
     when(challenges.findById(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
         .verifyComplete();
   }
 
@@ -214,10 +292,15 @@ class ForgotPasswordOtpReplayResolverTest {
         .thenReturn(
             Mono.just(
                 Optional.of(
-                    sessionWith(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, "challenge-1", Map.of()))));
+                    sessionWith(
+                        AuthFlowScenario.FORGOT_PASSWORD,
+                        AuthFlowStatus.OTP_SENT,
+                        "challenge-1",
+                        Map.of()))));
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.of(challengeMatching(state))));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.EXPIRED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.EXPIRED))
         .verifyComplete();
   }
 
@@ -232,10 +315,14 @@ class ForgotPasswordOtpReplayResolverTest {
             Mono.just(
                 Optional.of(
                     sessionWith(
-                        AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, "challenge-1", attrs))));
+                        AuthFlowScenario.FORGOT_PASSWORD,
+                        AuthFlowStatus.OTP_SENT,
+                        "challenge-1",
+                        attrs))));
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.of(challengeMatching(state))));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.ACTIVE))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.ACTIVE))
         .verifyComplete();
   }
 
@@ -247,10 +334,15 @@ class ForgotPasswordOtpReplayResolverTest {
         .thenReturn(
             Mono.just(
                 Optional.of(
-                    sessionWith(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, "challenge-1", Map.of()))));
+                    sessionWith(
+                        AuthFlowScenario.FORGOT_PASSWORD,
+                        AuthFlowStatus.OTP_SENT,
+                        "challenge-1",
+                        Map.of()))));
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.of(challengeMatching(state))));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.ACTIVE))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.ACTIVE))
         .verifyComplete();
   }
 
@@ -264,10 +356,15 @@ class ForgotPasswordOtpReplayResolverTest {
             Mono.just(
                 Optional.of(
                     sessionWith(
-                        AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, "challenge-1", attrs))));
+                        AuthFlowScenario.FORGOT_PASSWORD,
+                        AuthFlowStatus.OTP_SENT,
+                        "challenge-1",
+                        attrs))));
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.of(challengeMatching(state))));
     StepVerifier.create(newResolver().resolve("ref-1"))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(ForgotPasswordOtpReplayResult.Status.SYSTEM_ERROR))
         .verifyComplete();
   }
 }

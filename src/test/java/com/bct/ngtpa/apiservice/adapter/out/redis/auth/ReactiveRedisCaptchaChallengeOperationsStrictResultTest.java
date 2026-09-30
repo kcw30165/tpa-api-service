@@ -125,7 +125,8 @@ class ReactiveRedisCaptchaChallengeOperationsStrictResultTest {
     when(redis.opsForValue()).thenReturn(values);
     when(values.set("k", "v", java.time.Duration.ofSeconds(60)))
         .thenReturn(reactor.core.publisher.Mono.just(true));
-    StepVerifier.create(operations.set("k", "v", java.time.Duration.ofSeconds(60))).verifyComplete();
+    StepVerifier.create(operations.set("k", "v", java.time.Duration.ofSeconds(60)))
+        .verifyComplete();
   }
 
   @Test
@@ -150,7 +151,8 @@ class ReactiveRedisCaptchaChallengeOperationsStrictResultTest {
 
   @Test
   void ttlReturnsPresentOptionalWhenPositive() {
-    when(redis.getExpire("k")).thenReturn(reactor.core.publisher.Mono.just(java.time.Duration.ofSeconds(30)));
+    when(redis.getExpire("k"))
+        .thenReturn(reactor.core.publisher.Mono.just(java.time.Duration.ofSeconds(30)));
     StepVerifier.create(operations.ttl("k"))
         .expectNext(java.util.Optional.of(java.time.Duration.ofSeconds(30)))
         .verifyComplete();
@@ -167,7 +169,8 @@ class ReactiveRedisCaptchaChallengeOperationsStrictResultTest {
     // production defect (same category as the Map.copyOf defect logged in
     // round 87), NOT a test-design mistake. Logged in the coverage plan doc;
     // production code is intentionally NOT modified in this test-only phase.
-    when(redis.getExpire("k")).thenReturn(reactor.core.publisher.Mono.just(java.time.Duration.ZERO));
+    when(redis.getExpire("k"))
+        .thenReturn(reactor.core.publisher.Mono.just(java.time.Duration.ZERO));
     StepVerifier.create(operations.ttl("k"))
         .expectErrorMatches(e -> e instanceof NullPointerException)
         .verify();
@@ -176,7 +179,9 @@ class ReactiveRedisCaptchaChallengeOperationsStrictResultTest {
   @Test
   void ttlReturnsEmptyOptionalWhenKeyMissingEntirely() {
     when(redis.getExpire("k")).thenReturn(reactor.core.publisher.Mono.empty());
-    StepVerifier.create(operations.ttl("k")).expectNext(java.util.Optional.empty()).verifyComplete();
+    StepVerifier.create(operations.ttl("k"))
+        .expectNext(java.util.Optional.empty())
+        .verifyComplete();
   }
 
   @Test

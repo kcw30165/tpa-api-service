@@ -671,7 +671,8 @@ class SortEngineTest {
     // rebuildWithSort(...), which no other existing test reaches.
     var item = new Item("not-a-list-value", null, null, null, null);
     var ex =
-        assertThrows(IllegalStateException.class, () -> engine.sort(item, annotation("leafIsNotAList")));
+        assertThrows(
+            IllegalStateException.class, () -> engine.sort(item, annotation("leafIsNotAList")));
     assertTrue(
         ex.getMessage().contains("name"),
         "Error message should mention the leaf field name that did not resolve to a list");

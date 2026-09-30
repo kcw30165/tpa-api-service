@@ -1,0 +1,36 @@
+package com.bct.ngtpa.apiservice.application.dto.fundprice;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+class FundPriceQueryResultTest {
+
+  private FundPriceRowResult row() {
+    return new FundPriceRowResult(
+        "DUSM", "n", "n", LocalDate.of(2026, 5, 5), "HKD", BigDecimal.ONE, BigDecimal.ONE, "5");
+  }
+
+  @Test
+  void carriesRowsFundPriceTypeAndMaxRiskLevel() {
+    var result = new FundPriceQueryResult(List.of(row()), "BIDOFFER PRICE", "5");
+    assertThat(result.rows()).hasSize(1);
+    assertThat(result.fundPriceType()).isEqualTo("BIDOFFER PRICE");
+    assertThat(result.maxRiskLevel()).isEqualTo("5");
+  }
+
+  @Test
+  void nullMaxRiskLevelIsAcceptedAndNotDefaulted() {
+    var result = new FundPriceQueryResult(List.of(row()), "UNIT PRICE", null);
+    assertThat(result.maxRiskLevel()).isNull();
+  }
+
+  @Test
+  void nullRowsDefaultsToEmptyList() {
+    var result = new FundPriceQueryResult(null, "UNIT PRICE", null);
+    assertThat(result.rows()).isEmpty();
+  }
+}

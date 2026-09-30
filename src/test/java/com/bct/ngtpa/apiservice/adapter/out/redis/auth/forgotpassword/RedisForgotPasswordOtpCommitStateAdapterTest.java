@@ -23,17 +23,21 @@ class RedisForgotPasswordOtpCommitStateAdapterTest {
   private final RedisForgotPasswordOtpCommitStateJsonMapper mapper =
       new RedisForgotPasswordOtpCommitStateJsonMapper();
   private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
-  private final ReactiveValueOperations<String, String> values = mock(ReactiveValueOperations.class);
+  private final ReactiveValueOperations<String, String> values =
+      mock(ReactiveValueOperations.class);
 
   private RedisForgotPasswordOtpCommitStateAdapter newAdapter() {
     return new RedisForgotPasswordOtpCommitStateAdapter(keys, mapper, redis);
   }
 
-  private static final String REF = "0123456789012345678901"; // 22 chars, matches key factory's regex
+  private static final String REF =
+      "0123456789012345678901"; // 22 chars, matches key factory's regex
 
   private ForgotPasswordOtpCommitState state() {
     return new ForgotPasswordOtpCommitState(
-        "afs-1", "challenge-1", Instant.parse("2026-09-14T00:00:00Z"),
+        "afs-1",
+        "challenge-1",
+        Instant.parse("2026-09-14T00:00:00Z"),
         Instant.parse("2026-09-14T00:10:00Z"));
   }
 

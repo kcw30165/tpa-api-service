@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Branch-oriented tests for {@link AesGcmRegistrationUsernameCheckProtectorAdapter}. Performs REAL
- * AES-GCM protect/unprotect round-trips (no mocking) since this is a self-contained crypto
- * adapter; all fixture types (UsernameCheckState/SelectedTrust) verified verbatim (round 80).
+ * AES-GCM protect/unprotect round-trips (no mocking) since this is a self-contained crypto adapter;
+ * all fixture types (UsernameCheckState/SelectedTrust) verified verbatim (round 80).
  */
 class AesGcmRegistrationUsernameCheckProtectorAdapterTest {
 
@@ -24,7 +24,9 @@ class AesGcmRegistrationUsernameCheckProtectorAdapterTest {
 
   private UsernameCheckState state() {
     return new UsernameCheckState(
-        new SelectedTrust("trust1", "env1"), "myusername", Instant.parse("2026-09-14T00:00:00Z"),
+        new SelectedTrust("trust1", "env1"),
+        "myusername",
+        Instant.parse("2026-09-14T00:00:00Z"),
         Instant.parse("2026-09-14T01:00:00Z"));
   }
 
@@ -53,8 +55,10 @@ class AesGcmRegistrationUsernameCheckProtectorAdapterTest {
     assertThat(encrypted.ciphertext()).isNotBlank();
     UsernameCheckState roundTripped = adapter.unprotect(encrypted);
     assertThat(roundTripped.username()).isEqualTo(original.username());
-    assertThat(roundTripped.selectedTrust().trustCode()).isEqualTo(original.selectedTrust().trustCode());
-    assertThat(roundTripped.selectedTrust().accountEnv()).isEqualTo(original.selectedTrust().accountEnv());
+    assertThat(roundTripped.selectedTrust().trustCode())
+        .isEqualTo(original.selectedTrust().trustCode());
+    assertThat(roundTripped.selectedTrust().accountEnv())
+        .isEqualTo(original.selectedTrust().accountEnv());
     assertThat(roundTripped.checkedAt()).isEqualTo(original.checkedAt());
     assertThat(roundTripped.expiresAt()).isEqualTo(original.expiresAt());
   }
@@ -64,7 +68,9 @@ class AesGcmRegistrationUsernameCheckProtectorAdapterTest {
     AesGcmRegistrationUsernameCheckProtectorAdapter adapter = newAdapter();
     UsernameCheckState original =
         new UsernameCheckState(
-            new SelectedTrust("trust1", "env1"), "myusername", Instant.parse("2026-09-14T00:00:00Z"),
+            new SelectedTrust("trust1", "env1"),
+            "myusername",
+            Instant.parse("2026-09-14T00:00:00Z"),
             null);
     RegistrationUsernameCheckEncryptedState encrypted = adapter.protect(original);
     UsernameCheckState roundTripped = adapter.unprotect(encrypted);
@@ -106,7 +112,8 @@ class AesGcmRegistrationUsernameCheckProtectorAdapterTest {
     AesGcmRegistrationUsernameCheckProtectorAdapter adapter = newAdapter();
     RegistrationUsernameCheckEncryptedState encrypted = adapter.protect(state());
     AesGcmRegistrationUsernameCheckProtectorAdapter differentKeyAdapter =
-        new AesGcmRegistrationUsernameCheckProtectorAdapter("kv2", "fedcba9876543210fedcba9876543210");
+        new AesGcmRegistrationUsernameCheckProtectorAdapter(
+            "kv2", "fedcba9876543210fedcba9876543210");
     assertThatThrownBy(() -> differentKeyAdapter.unprotect(encrypted))
         .isInstanceOf(RegistrationAuthFlowContextProtectionException.class);
   }

@@ -46,9 +46,14 @@ class RegistrationAuthFlowSessionAdapterTest {
 
   private AuthFlowSession session() {
     return new AuthFlowSession(
-        new AuthFlowSessionId("afs-reg-session-1"), AuthFlowScenario.REGISTRATION,
-        AuthFlowStatus.OTP_SENT, "csrfhash", null,
-        new AuthFlowSessionData("email", "j***@example.com", Map.of()), NOW, NOW,
+        new AuthFlowSessionId("afs-reg-session-1"),
+        AuthFlowScenario.REGISTRATION,
+        AuthFlowStatus.OTP_SENT,
+        "csrfhash",
+        null,
+        new AuthFlowSessionData("email", "j***@example.com", Map.of()),
+        NOW,
+        NOW,
         NOW.plusSeconds(1800));
   }
 
@@ -57,7 +62,9 @@ class RegistrationAuthFlowSessionAdapterTest {
   @Test
   void nonPositiveTtlThrows() {
     assertThatThrownBy(
-            () -> new RegistrationAuthFlowSessionAdapter(lifecycleService, 0, "reg_", 16, contextProtector))
+            () ->
+                new RegistrationAuthFlowSessionAdapter(
+                    lifecycleService, 0, "reg_", 16, contextProtector))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -92,7 +99,9 @@ class RegistrationAuthFlowSessionAdapterTest {
   void createRegistrationSessionExtractsRealSessionIdViaReflection() {
     when(lifecycleService.start(any()))
         .thenReturn(Mono.just(new StartAuthFlowSessionResult(session(), 1800)));
-    StepVerifier.create(newAdapter().createRegistrationSession("j***@example.com", RegistrationContactType.EMAIL))
+    StepVerifier.create(
+            newAdapter()
+                .createRegistrationSession("j***@example.com", RegistrationContactType.EMAIL))
         .assertNext(sessionId -> assertThat(sessionId).isEqualTo("afs-reg-session-1"))
         .verifyComplete();
   }
@@ -114,7 +123,9 @@ class RegistrationAuthFlowSessionAdapterTest {
     StepVerifier.create(
             newAdapter()
                 .updateOtpChallenge(
-                    "afs-reg-session-1", "challenge-1", RegistrationContactType.EMAIL,
+                    "afs-reg-session-1",
+                    "challenge-1",
+                    RegistrationContactType.EMAIL,
                     "j***@example.com"))
         .verifyComplete();
   }
@@ -135,11 +146,15 @@ class RegistrationAuthFlowSessionAdapterTest {
         .thenReturn(Mono.just(new StartAuthFlowSessionResult(session(), 1800)));
     RegistrationAuthFlowContext context =
         new RegistrationAuthFlowContext(
-            MemberIdentityType.GPN, "G12345678", "01/01/1990", RegistrationContactType.EMAIL,
+            MemberIdentityType.GPN,
+            "G12345678",
+            "01/01/1990",
+            RegistrationContactType.EMAIL,
             "test@example.com");
     StepVerifier.create(
             newAdapter()
-                .createRegistrationSession("j***@example.com", RegistrationContactType.EMAIL, context))
+                .createRegistrationSession(
+                    "j***@example.com", RegistrationContactType.EMAIL, context))
         .assertNext(sessionId -> assertThat(sessionId).isEqualTo("afs-reg-session-1"))
         .verifyComplete();
   }

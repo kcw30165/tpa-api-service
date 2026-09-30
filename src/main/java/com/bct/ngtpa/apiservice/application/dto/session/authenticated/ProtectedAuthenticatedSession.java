@@ -10,6 +10,11 @@ import java.util.Map;
  * <p>Lifecycle metadata is readable for operations/support. Sensitive actor, account, and CSRF
  * state remains encrypted under {@code data.attributes}. The protector authenticates all readable
  * metadata as AES-GCM AAD.
+ *
+ * <p>{@code sessionRevision} is a top-level plaintext sibling field, exactly like {@code status}
+ * and the lifecycle timestamps -- NOT nested inside {@code data.attributes}. This is the exact
+ * field {@code redis/authenticated-session/update-if-current.lua} reads via {@code
+ * decoded['sessionRevision']} after a plain {@code cjson.decode} of the stored JSON.
  */
 public record ProtectedAuthenticatedSession(
     String authenticatedSessionId,
@@ -18,7 +23,8 @@ public record ProtectedAuthenticatedSession(
     Instant createdAt,
     Instant updatedAt,
     Instant idleExpiresAt,
-    Instant absoluteExpiresAt) {
+    Instant absoluteExpiresAt,
+    SessionRevision sessionRevision) {
 
   public static final String CIPHERTEXT = "authenticatedContext.ciphertext";
   public static final String ALGORITHM = "authenticatedContext.algorithm";
@@ -43,6 +49,7 @@ public record ProtectedAuthenticatedSession(
         || absoluteExpiresAt.isBefore(createdAt)) {
       throw new IllegalArgumentException("invalid authenticated session lifecycle metadata");
     }
+    java.util.Objects.requireNonNull(sessionRevision, "sessionRevision must not be null");
     requiredAttribute(CIPHERTEXT, data.attributes());
     requiredAttribute(ALGORITHM, data.attributes());
     requiredAttribute(NONCE, data.attributes());
@@ -93,7 +100,7 @@ public record ProtectedAuthenticatedSession(
         + idleExpiresAt
         + ", absoluteExpiresAt="
         + absoluteExpiresAt
-        + "]";
+        + ", sessionRevision=<redacted>]";
   }
 
   public record Data(Map<String, String> attributes) {

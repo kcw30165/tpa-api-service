@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.ForgotPasswordResetAuthorization;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
@@ -73,7 +72,10 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
   // ----- fixtures -----------------------------------------------------------
 
   private AuthFlowSession sessionWith(
-      AuthFlowScenario scenario, AuthFlowStatus status, Instant expiresAt, String activeChallengeId) {
+      AuthFlowScenario scenario,
+      AuthFlowStatus status,
+      Instant expiresAt,
+      String activeChallengeId) {
     return new AuthFlowSession(
         sid,
         scenario,
@@ -88,7 +90,10 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
 
   private AuthFlowSession validSession() {
     return sessionWith(
-        AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, NOW.plusSeconds(1800), "challenge-1");
+        AuthFlowScenario.FORGOT_PASSWORD,
+        AuthFlowStatus.OTP_SENT,
+        NOW.plusSeconds(1800),
+        "challenge-1");
   }
 
   private AuthFlowSessionSnapshot snapshotOf(AuthFlowSession session) {
@@ -113,8 +118,15 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
 
   private VerifyForgotPasswordOtpCommand command(String code) {
     return new VerifyForgotPasswordOtpCommand(
-        sid, "csrf-token", code, "https://portal.bcthk.com", "https://portal.bcthk.com/reset",
-        "idem-1", "en", "req-1", Duration.ofMinutes(5));
+        sid,
+        "csrf-token",
+        code,
+        "https://portal.bcthk.com",
+        "https://portal.bcthk.com/reset",
+        "idem-1",
+        "en",
+        "req-1",
+        Duration.ofMinutes(5));
   }
 
   private VerifyForgotPasswordOtpCommand validCommand() {
@@ -136,7 +148,8 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
   private void givenLoaderValid() {
     when(loader.load(any()))
         .thenReturn(
-            Mono.just(ForgotPasswordProtectedAuthFlowContextResult.valid("challenge-1", validContext())));
+            Mono.just(
+                ForgotPasswordProtectedAuthFlowContextResult.valid("challenge-1", validContext())));
   }
 
   private void givenWriterAndExpirySucceed() {
@@ -162,7 +175,8 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
     StepVerifier.create(newOp().execute(null))
         .assertNext(
             r -> {
-              assertThat(r.result().status()).isEqualTo(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID);
+              assertThat(r.result().status())
+                  .isEqualTo(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID);
               assertThat(r.result().nextStep()).isEqualTo(WorkflowNextStep.NONE);
             })
         .verifyComplete();
@@ -183,7 +197,9 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
   void shortOtpFormatYieldsOtpInvalid() {
     StepVerifier.create(newOp().execute(command("12345")))
         .assertNext(
-            r -> assertThat(r.result().status()).isEqualTo(VerifyForgotPasswordOtpStatus.OTP_INVALID))
+            r ->
+                assertThat(r.result().status())
+                    .isEqualTo(VerifyForgotPasswordOtpStatus.OTP_INVALID))
         .verifyComplete();
   }
 
@@ -217,7 +233,10 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
     givenLockAcquired();
     givenInitialSession(
         sessionWith(
-            AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, NOW.minusSeconds(1), "challenge-1"));
+            AuthFlowScenario.FORGOT_PASSWORD,
+            AuthFlowStatus.OTP_SENT,
+            NOW.minusSeconds(1),
+            "challenge-1"));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
             r ->
@@ -230,7 +249,8 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
   void initialSessionWrongScenarioYieldsAuthFlowInvalid() {
     givenLockAcquired();
     givenInitialSession(
-        sessionWith(AuthFlowScenario.LOGIN, AuthFlowStatus.OTP_SENT, NOW.plusSeconds(1800), "challenge-1"));
+        sessionWith(
+            AuthFlowScenario.LOGIN, AuthFlowStatus.OTP_SENT, NOW.plusSeconds(1800), "challenge-1"));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
             r ->
@@ -269,7 +289,9 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
                     ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID)));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r -> assertThat(r.result().status()).isEqualTo(VerifyForgotPasswordOtpStatus.CSRF_INVALID))
+            r ->
+                assertThat(r.result().status())
+                    .isEqualTo(VerifyForgotPasswordOtpStatus.CSRF_INVALID))
         .verifyComplete();
   }
 
@@ -284,7 +306,9 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
                     ForgotPasswordProtectedAuthFlowContextStatus.ORIGIN_REFERER_INVALID)));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r -> assertThat(r.result().status()).isEqualTo(VerifyForgotPasswordOtpStatus.CSRF_INVALID))
+            r ->
+                assertThat(r.result().status())
+                    .isEqualTo(VerifyForgotPasswordOtpStatus.CSRF_INVALID))
         .verifyComplete();
   }
 
@@ -313,11 +337,22 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
     givenInitialSession(validSession());
     ForgotPasswordAuthFlowContext wrongPhase =
         new ForgotPasswordAuthFlowContext(
-            "john", "idv-1", "CUSTID", true, "subj-1", "email", "john@example.com",
-            "j***@example.com", null, null, "v1", ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
+            "john",
+            "idv-1",
+            "CUSTID",
+            true,
+            "subj-1",
+            "email",
+            "john@example.com",
+            "j***@example.com",
+            null,
+            null,
+            "v1",
+            ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
     when(loader.load(any()))
         .thenReturn(
-            Mono.just(ForgotPasswordProtectedAuthFlowContextResult.valid("challenge-1", wrongPhase)));
+            Mono.just(
+                ForgotPasswordProtectedAuthFlowContextResult.valid("challenge-1", wrongPhase)));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
             r ->
@@ -349,7 +384,6 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
                     .isEqualTo(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID))
         .verifyComplete();
   }
-
 
   // ----- tests: re-loaded session gate ----------------------------------------
 
@@ -428,7 +462,9 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
         .thenReturn(Mono.just(challengeResult(OtpVerificationOutcome.NOT_FOUND, 0)));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r -> assertThat(r.result().status()).isEqualTo(VerifyForgotPasswordOtpStatus.OTP_INVALID))
+            r ->
+                assertThat(r.result().status())
+                    .isEqualTo(VerifyForgotPasswordOtpStatus.OTP_INVALID))
         .verifyComplete();
   }
 

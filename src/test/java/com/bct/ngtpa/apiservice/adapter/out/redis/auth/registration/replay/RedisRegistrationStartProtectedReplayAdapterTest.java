@@ -1,5 +1,4 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.auth.registration.replay;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.ProtectedRegistrationStartReplay;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -7,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.ProtectedRegistrationStartReplay;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartProtectedReplayProtectorPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartProtectedReplayReferenceGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartProtectedReplayState;
@@ -26,7 +26,8 @@ import reactor.test.StepVerifier;
 class RedisRegistrationStartProtectedReplayAdapterTest {
 
   private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
-  private final ReactiveValueOperations<String, String> values = mock(ReactiveValueOperations.class);
+  private final ReactiveValueOperations<String, String> values =
+      mock(ReactiveValueOperations.class);
   private final RedisRegistrationStartProtectedReplayKeyFactory keys =
       mock(RedisRegistrationStartProtectedReplayKeyFactory.class);
   private final RedisRegistrationStartProtectedReplayJsonMapper json =
@@ -40,7 +41,8 @@ class RedisRegistrationStartProtectedReplayAdapterTest {
       new ProtectedReplayReference("replay-ref-abcdefghijklmn");
 
   private RedisRegistrationStartProtectedReplayAdapter newAdapter() {
-    return new RedisRegistrationStartProtectedReplayAdapter(redis, keys, json, protector, references);
+    return new RedisRegistrationStartProtectedReplayAdapter(
+        redis, keys, json, protector, references);
   }
 
   private void givenRedisReady() {
@@ -85,7 +87,9 @@ class RedisRegistrationStartProtectedReplayAdapterTest {
     when(references.generate()).thenReturn(reference);
     when(protector.protect(any(), any())).thenReturn(mock(ProtectedRegistrationStartReplay.class));
     when(json.toJson(any())).thenReturn("{}");
-    when(values.setIfAbsent(any(), any(), any())).thenReturn(Mono.just(false)).thenReturn(Mono.just(true));
+    when(values.setIfAbsent(any(), any(), any()))
+        .thenReturn(Mono.just(false))
+        .thenReturn(Mono.just(true));
     StepVerifier.create(
             newAdapter()
                 .store(mock(RegistrationStartProtectedReplayState.class), Duration.ofMinutes(5)))

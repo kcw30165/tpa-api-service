@@ -182,6 +182,15 @@ class ApimRoutingLedgerCharacterizationTest {
               "command.scope().accountEnv()",
               "SAFE_BUSINESS_CALL",
               "EXECUTOR",
+              "ACCOUNT_ENV"),
+          e(
+              "TRPGetFundPriceMode",
+              "fundprice/ApimFundPriceModeSourceAdapter.java",
+              "ACCOUNT_ENV",
+              "command.actorUserRole()",
+              "command.accountEnv()",
+              "SAFE_BUSINESS_CALL",
+              "EXECUTOR",
               "ACCOUNT_ENV"));
 
   @Test
@@ -189,7 +198,7 @@ class ApimRoutingLedgerCharacterizationTest {
     assertThat(LEDGER)
         .extracting(Entry::operation)
         .doesNotHaveDuplicates()
-        .hasSize(18)
+        .hasSize(19)
         .containsExactlyInAnyOrder(
             "TRPGetInvestGL",
             "TRPGetMemberAccBal",
@@ -208,7 +217,8 @@ class ApimRoutingLedgerCharacterizationTest {
             "TRPSearchMemberRegistration",
             "TRPChkCustId",
             "TRPSearchMember",
-            "TRPGetGeneralMetaData");
+            "TRPGetGeneralMetaData",
+            "TRPGetFundPriceMode");
   }
 
   @Test

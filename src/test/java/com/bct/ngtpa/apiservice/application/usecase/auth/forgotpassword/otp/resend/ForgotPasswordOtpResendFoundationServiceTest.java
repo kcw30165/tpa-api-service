@@ -33,15 +33,22 @@ class ForgotPasswordOtpResendFoundationServiceTest {
 
   private ForgotPasswordOtpResendCommand command(SessionLockHandle lock, AuthFlowSession session) {
     return new ForgotPasswordOtpResendCommand(
-        lock, session, mock(OtpChallenge.class), ForgotPasswordProtectedPhase.OTP_SENT, 0,
-        "idem-1", Instant.parse("2026-09-14T00:00:00Z"));
+        lock,
+        session,
+        mock(OtpChallenge.class),
+        ForgotPasswordProtectedPhase.OTP_SENT,
+        0,
+        "idem-1",
+        Instant.parse("2026-09-14T00:00:00Z"));
   }
 
   @Test
   void nullCommandYieldsSessionInvalid() {
     StepVerifier.create(newService().evaluate(null))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpResendEligibilityStatus.SESSION_INVALID))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(ForgotPasswordOtpResendEligibilityStatus.SESSION_INVALID))
         .verifyComplete();
   }
 
@@ -49,7 +56,9 @@ class ForgotPasswordOtpResendFoundationServiceTest {
   void nullMutationLockYieldsSessionInvalid() {
     StepVerifier.create(newService().evaluate(command(null, mock(AuthFlowSession.class))))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpResendEligibilityStatus.SESSION_INVALID))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(ForgotPasswordOtpResendEligibilityStatus.SESSION_INVALID))
         .verifyComplete();
   }
 
@@ -58,7 +67,9 @@ class ForgotPasswordOtpResendFoundationServiceTest {
     SessionLockHandle unacquired = new SessionLockHandle(false, null, null);
     StepVerifier.create(newService().evaluate(command(unacquired, mock(AuthFlowSession.class))))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpResendEligibilityStatus.SESSION_INVALID))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(ForgotPasswordOtpResendEligibilityStatus.SESSION_INVALID))
         .verifyComplete();
   }
 
@@ -67,7 +78,9 @@ class ForgotPasswordOtpResendFoundationServiceTest {
     SessionLockHandle acquired = new SessionLockHandle(true, "lock-key", "lock-token");
     StepVerifier.create(newService().evaluate(command(acquired, null)))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpResendEligibilityStatus.SESSION_INVALID))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(ForgotPasswordOtpResendEligibilityStatus.SESSION_INVALID))
         .verifyComplete();
   }
 
@@ -77,7 +90,9 @@ class ForgotPasswordOtpResendFoundationServiceTest {
     AuthFlowSessionId sid = new AuthFlowSessionId("afs-1");
     AuthFlowSession session = mock(AuthFlowSession.class);
     when(session.authFlowSessionId()).thenReturn(sid);
-    when(session.status()).thenReturn(com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT);
+    when(session.status())
+        .thenReturn(
+            com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT);
 
     ForgotPasswordOtpResendEligibilityResult validatorResult =
         new ForgotPasswordOtpResendEligibilityResult(

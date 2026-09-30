@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import java.time.Instant;
 import java.util.List;
@@ -26,7 +27,9 @@ class AuthenticatedSessionValidationServiceTest {
             Instant.EPOCH,
             Instant.EPOCH,
             Instant.EPOCH.plusSeconds(300),
-            Instant.EPOCH.plusSeconds(900));
+            Instant.EPOCH.plusSeconds(900),
+            new SessionRevision("0".repeat(32)),
+            null);
     var service =
         new AuthenticatedSessionValidationService(
             command -> Mono.just(AuthenticatedSessionLifecycleResult.active(session)), hasher);

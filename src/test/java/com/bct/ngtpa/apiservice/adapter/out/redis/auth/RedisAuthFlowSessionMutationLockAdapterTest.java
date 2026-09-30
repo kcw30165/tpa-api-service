@@ -32,7 +32,8 @@ import reactor.test.StepVerifier;
 class RedisAuthFlowSessionMutationLockAdapterTest {
 
   private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
-  private final ReactiveValueOperations<String, String> values = mock(ReactiveValueOperations.class);
+  private final ReactiveValueOperations<String, String> values =
+      mock(ReactiveValueOperations.class);
   private final RedisCacheKeyFactory keys = mock(RedisCacheKeyFactory.class);
 
   private final AuthFlowSessionId sid = new AuthFlowSessionId("afs-lock-1");
@@ -127,7 +128,8 @@ class RedisAuthFlowSessionMutationLockAdapterTest {
     StepVerifier.create(newAdapter().release(SessionLockHandle.notAcquired()))
         .expectNext(false)
         .verifyComplete();
-    verify(redis, never()).execute(any(DefaultRedisScript.class), any(List.class), new Object[] {any()});
+    verify(redis, never())
+        .execute(any(DefaultRedisScript.class), any(List.class), new Object[] {any()});
   }
 
   // ----- release(): success / mismatch / error -------------------------------------
@@ -135,7 +137,10 @@ class RedisAuthFlowSessionMutationLockAdapterTest {
   @Test
   void releaseSucceedsWhenScriptReturnsPositive() {
     SessionLockHandle handle = new SessionLockHandle(true, "redis-key-1", "token-1");
-    when(redis.execute(any(DefaultRedisScript.class), eq(List.of("redis-key-1")), new Object[] {eq("token-1")}))
+    when(redis.execute(
+            any(DefaultRedisScript.class),
+            eq(List.of("redis-key-1")),
+            new Object[] {eq("token-1")}))
         .thenReturn(Flux.just(1L));
     StepVerifier.create(newAdapter().release(handle)).expectNext(true).verifyComplete();
   }
@@ -151,7 +156,8 @@ class RedisAuthFlowSessionMutationLockAdapterTest {
   @Test
   void releaseYieldsFalseWhenScriptReturnsEmpty() {
     SessionLockHandle handle = new SessionLockHandle(true, "redis-key-1", "token-1");
-    when(redis.execute(any(DefaultRedisScript.class), any(List.class), new Object[] {any()})).thenReturn(Flux.empty());
+    when(redis.execute(any(DefaultRedisScript.class), any(List.class), new Object[] {any()}))
+        .thenReturn(Flux.empty());
     StepVerifier.create(newAdapter().release(handle)).expectNext(false).verifyComplete();
   }
 
@@ -160,8 +166,6 @@ class RedisAuthFlowSessionMutationLockAdapterTest {
     SessionLockHandle handle = new SessionLockHandle(true, "redis-key-1", "token-1");
     when(redis.execute(any(DefaultRedisScript.class), any(List.class), new Object[] {any()}))
         .thenReturn(Flux.error(new IllegalStateException("boom")));
-    StepVerifier.create(newAdapter().release(handle))
-        .expectError(CacheException.class)
-        .verify();
+    StepVerifier.create(newAdapter().release(handle)).expectError(CacheException.class).verify();
   }
 }

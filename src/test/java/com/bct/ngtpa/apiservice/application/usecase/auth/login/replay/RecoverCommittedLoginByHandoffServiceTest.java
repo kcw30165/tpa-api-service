@@ -22,6 +22,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSession;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedLoginHandoffPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedLoginReplaySessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionProtectorPort;
@@ -86,7 +87,9 @@ class RecoverCommittedLoginByHandoffServiceTest {
             NOW.minusSeconds(60),
             NOW.minusSeconds(30),
             NOW.plusSeconds(300),
-            NOW.plusSeconds(600));
+            NOW.plusSeconds(600),
+            new SessionRevision("0".repeat(32)),
+            null);
 
     assertFailed(cleaned(NOW.plusSeconds(300)), mismatched);
   }
@@ -187,7 +190,9 @@ class RecoverCommittedLoginByHandoffServiceTest {
         NOW.minusSeconds(60),
         NOW.minusSeconds(30),
         NOW.plusSeconds(300),
-        NOW.plusSeconds(600));
+        NOW.plusSeconds(600),
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 
   private static AuthenticatedSession unusableSession() {
@@ -200,7 +205,9 @@ class RecoverCommittedLoginByHandoffServiceTest {
         NOW.minusSeconds(600),
         NOW.minusSeconds(600),
         NOW.minusSeconds(1),
-        NOW.plusSeconds(600));
+        NOW.plusSeconds(600),
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 
   private static final class Fixture {

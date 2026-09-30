@@ -47,7 +47,8 @@ class RedisAuthenticatedLoginHandoffAdapterTest {
   private final LoginIdempotencyPersistenceIdDeriver ids =
       mock(LoginIdempotencyPersistenceIdDeriver.class);
   private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
-  private final ReactiveValueOperations<String, String> values = mock(ReactiveValueOperations.class);
+  private final ReactiveValueOperations<String, String> values =
+      mock(ReactiveValueOperations.class);
 
   private final AuthenticatedLoginHandoffReference handoffRef =
       new AuthenticatedLoginHandoffReference("a".repeat(32));
@@ -58,8 +59,7 @@ class RedisAuthenticatedLoginHandoffAdapterTest {
 
   private RedisAuthenticatedLoginHandoffAdapter newAdapter() {
     when(redis.opsForValue()).thenReturn(values);
-    when(ids.derive(any(), any()))
-        .thenReturn(new LoginIdempotencyPersistenceId("a".repeat(43)));
+    when(ids.derive(any(), any())).thenReturn(new LoginIdempotencyPersistenceId("a".repeat(43)));
     when(keys.keyFor(any(), any())).thenReturn("redis-key-1");
     return new RedisAuthenticatedLoginHandoffAdapter(keys, ids, redis, MAPPER);
   }
@@ -79,15 +79,26 @@ class RedisAuthenticatedLoginHandoffAdapterTest {
 
   private AuthenticatedLoginHandoff reservedHandoff() {
     return new AuthenticatedLoginHandoff(
-        handoffRef, operationRef, "reservation-hash-1", AuthenticatedLoginHandoffStatus.RESERVED,
-        null, null, Instant.now(), Instant.now().plusSeconds(600));
+        handoffRef,
+        operationRef,
+        "reservation-hash-1",
+        AuthenticatedLoginHandoffStatus.RESERVED,
+        null,
+        null,
+        Instant.now(),
+        Instant.now().plusSeconds(600));
   }
 
   private AuthenticatedLoginHandoff committedHandoff() {
     return new AuthenticatedLoginHandoff(
-        handoffRef, operationRef, "reservation-hash-1",
+        handoffRef,
+        operationRef,
+        "reservation-hash-1",
         AuthenticatedLoginHandoffStatus.AUTHENTICATED_SESSION_COMMITTED,
-        sessionId, null, Instant.now(), Instant.now().plusSeconds(600));
+        sessionId,
+        null,
+        Instant.now(),
+        Instant.now().plusSeconds(600));
   }
 
   // ----- createIfAbsent ---------------------------------------------------------
@@ -96,7 +107,8 @@ class RedisAuthenticatedLoginHandoffAdapterTest {
   void createIfAbsentNewYieldsCreated() {
     when(values.setIfAbsent(any(), any(), any())).thenReturn(Mono.just(true));
     CreateAuthenticatedLoginHandoffCommand cmd =
-        new CreateAuthenticatedLoginHandoffCommand(proof(), sessionId, Instant.now().plusSeconds(600));
+        new CreateAuthenticatedLoginHandoffCommand(
+            proof(), sessionId, Instant.now().plusSeconds(600));
     StepVerifier.create(newAdapter().createIfAbsent(cmd))
         .assertNext(
             r -> {
@@ -111,9 +123,11 @@ class RedisAuthenticatedLoginHandoffAdapterTest {
     when(values.setIfAbsent(any(), any(), any())).thenReturn(Mono.just(false));
     when(values.get(any())).thenReturn(Mono.just(json(reservedHandoff())));
     CreateAuthenticatedLoginHandoffCommand cmd =
-        new CreateAuthenticatedLoginHandoffCommand(proof(), sessionId, Instant.now().plusSeconds(600));
+        new CreateAuthenticatedLoginHandoffCommand(
+            proof(), sessionId, Instant.now().plusSeconds(600));
     StepVerifier.create(newAdapter().createIfAbsent(cmd))
-        .assertNext(r -> assertThat(r.outcome()).isEqualTo(AuthenticatedLoginHandoffCreateOutcome.EXISTING))
+        .assertNext(
+            r -> assertThat(r.outcome()).isEqualTo(AuthenticatedLoginHandoffCreateOutcome.EXISTING))
         .verifyComplete();
   }
 
@@ -122,13 +136,21 @@ class RedisAuthenticatedLoginHandoffAdapterTest {
     when(values.setIfAbsent(any(), any(), any())).thenReturn(Mono.just(false));
     AuthenticatedLoginHandoff different =
         new AuthenticatedLoginHandoff(
-            handoffRef, operationRef, "different-hash", AuthenticatedLoginHandoffStatus.RESERVED,
-            null, null, Instant.now(), Instant.now().plusSeconds(600));
+            handoffRef,
+            operationRef,
+            "different-hash",
+            AuthenticatedLoginHandoffStatus.RESERVED,
+            null,
+            null,
+            Instant.now(),
+            Instant.now().plusSeconds(600));
     when(values.get(any())).thenReturn(Mono.just(json(different)));
     CreateAuthenticatedLoginHandoffCommand cmd =
-        new CreateAuthenticatedLoginHandoffCommand(proof(), sessionId, Instant.now().plusSeconds(600));
+        new CreateAuthenticatedLoginHandoffCommand(
+            proof(), sessionId, Instant.now().plusSeconds(600));
     StepVerifier.create(newAdapter().createIfAbsent(cmd))
-        .assertNext(r -> assertThat(r.outcome()).isEqualTo(AuthenticatedLoginHandoffCreateOutcome.CONFLICT))
+        .assertNext(
+            r -> assertThat(r.outcome()).isEqualTo(AuthenticatedLoginHandoffCreateOutcome.CONFLICT))
         .verifyComplete();
   }
 
@@ -137,9 +159,11 @@ class RedisAuthenticatedLoginHandoffAdapterTest {
     when(values.setIfAbsent(any(), any(), any())).thenReturn(Mono.just(false));
     when(values.get(any())).thenReturn(Mono.empty());
     CreateAuthenticatedLoginHandoffCommand cmd =
-        new CreateAuthenticatedLoginHandoffCommand(proof(), sessionId, Instant.now().plusSeconds(600));
+        new CreateAuthenticatedLoginHandoffCommand(
+            proof(), sessionId, Instant.now().plusSeconds(600));
     StepVerifier.create(newAdapter().createIfAbsent(cmd))
-        .assertNext(r -> assertThat(r.outcome()).isEqualTo(AuthenticatedLoginHandoffCreateOutcome.CONFLICT))
+        .assertNext(
+            r -> assertThat(r.outcome()).isEqualTo(AuthenticatedLoginHandoffCreateOutcome.CONFLICT))
         .verifyComplete();
   }
 
@@ -161,7 +185,8 @@ class RedisAuthenticatedLoginHandoffAdapterTest {
         .verify();
   }
 
-  // ----- recordAuthenticatedSessionCommitted ---------------------------------------------------------
+  // ----- recordAuthenticatedSessionCommitted
+  // ---------------------------------------------------------
 
   @Test
   void recordAuthenticatedSessionCommittedSucceeds() {
@@ -220,8 +245,14 @@ class RedisAuthenticatedLoginHandoffAdapterTest {
     // in the past, with expiresAt only 1 second after createdAt.
     AuthenticatedLoginHandoff almostExpired =
         new AuthenticatedLoginHandoff(
-            handoffRef, operationRef, "reservation-hash-1", AuthenticatedLoginHandoffStatus.RESERVED,
-            null, null, Instant.now().minusSeconds(2), Instant.now().minusSeconds(1));
+            handoffRef,
+            operationRef,
+            "reservation-hash-1",
+            AuthenticatedLoginHandoffStatus.RESERVED,
+            null,
+            null,
+            Instant.now().minusSeconds(2),
+            Instant.now().minusSeconds(1));
     when(values.get(any())).thenReturn(Mono.just(json(almostExpired)));
     RecordAuthenticatedSessionCommittedCommand cmd =
         new RecordAuthenticatedSessionCommittedCommand(
@@ -238,9 +269,12 @@ class RedisAuthenticatedLoginHandoffAdapterTest {
     when(values.get(any())).thenReturn(Mono.just(json(committedHandoff())));
     when(values.set(any(), any(), any())).thenReturn(Mono.just(true));
     RecordAuthFlowCleanupProofCommand cmd =
-        new RecordAuthFlowCleanupProofCommand(handoffRef, sessionId, "cleanup-proof-1", Instant.now());
+        new RecordAuthFlowCleanupProofCommand(
+            handoffRef, sessionId, "cleanup-proof-1", Instant.now());
     StepVerifier.create(newAdapter().recordCleanupProof(cmd))
-        .assertNext(h -> assertThat(h.status()).isEqualTo(AuthenticatedLoginHandoffStatus.AUTH_FLOW_DELETED))
+        .assertNext(
+            h ->
+                assertThat(h.status()).isEqualTo(AuthenticatedLoginHandoffStatus.AUTH_FLOW_DELETED))
         .verifyComplete();
   }
 
@@ -250,7 +284,8 @@ class RedisAuthenticatedLoginHandoffAdapterTest {
     AuthenticatedSessionId differentSession =
         new AuthenticatedSessionId("sid_yxwvutsrqponmlkjihgfedcb");
     RecordAuthFlowCleanupProofCommand cmd =
-        new RecordAuthFlowCleanupProofCommand(handoffRef, differentSession, "cleanup-proof-1", Instant.now());
+        new RecordAuthFlowCleanupProofCommand(
+            handoffRef, differentSession, "cleanup-proof-1", Instant.now());
     StepVerifier.create(newAdapter().recordCleanupProof(cmd))
         .expectError(IllegalStateException.class)
         .verify();
@@ -260,7 +295,8 @@ class RedisAuthenticatedLoginHandoffAdapterTest {
   void recordCleanupProofUncommittedHandoffErrors() {
     when(values.get(any())).thenReturn(Mono.just(json(reservedHandoff())));
     RecordAuthFlowCleanupProofCommand cmd =
-        new RecordAuthFlowCleanupProofCommand(handoffRef, sessionId, "cleanup-proof-1", Instant.now());
+        new RecordAuthFlowCleanupProofCommand(
+            handoffRef, sessionId, "cleanup-proof-1", Instant.now());
     StepVerifier.create(newAdapter().recordCleanupProof(cmd))
         .expectError(IllegalStateException.class)
         .verify();

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import java.time.*;
@@ -82,7 +83,9 @@ class EstablishAuthenticatedLoginSessionServiceTest {
                   Instant.EPOCH,
                   Instant.EPOCH,
                   Instant.EPOCH.plusSeconds(10),
-                  Instant.EPOCH.plusSeconds(20));
+                  Instant.EPOCH.plusSeconds(20),
+                  new SessionRevision("0".repeat(32)),
+                  null);
           return Mono.just(AuthenticatedSessionLifecycleResult.active(session));
         };
     DeleteAuthFlowSessionPort cleanup =

@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSession
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.usecase.auth.logout.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.ValidateAuthenticatedSessionUseCase;
 import java.time.Instant;
@@ -136,6 +137,8 @@ class AuthLogoutControllerTest {
         Instant.EPOCH,
         Instant.EPOCH,
         Instant.EPOCH.plusSeconds(300),
-        Instant.EPOCH.plusSeconds(900));
+        Instant.EPOCH.plusSeconds(900),
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 }

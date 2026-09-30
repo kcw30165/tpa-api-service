@@ -41,7 +41,8 @@ class IdempotentResendForgotPasswordOtpServiceTest {
   private final AuthFlowSessionId sid = new AuthFlowSessionId("afs-idem-resend-1");
 
   private IdempotentResendForgotPasswordOtpService newService() {
-    return new IdempotentResendForgotPasswordOtpService(executor, operation, responses, policy, ttl);
+    return new IdempotentResendForgotPasswordOtpService(
+        executor, operation, responses, policy, ttl);
   }
 
   @Test
@@ -55,8 +56,13 @@ class IdempotentResendForgotPasswordOtpServiceTest {
 
   private ResendForgotPasswordOtpCommand command() {
     return new ResendForgotPasswordOtpCommand(
-        sid, "csrf-token", "https://portal.bcthk.com", "https://portal.bcthk.com/resend",
-        "req-1", "en", "idem-1");
+        sid,
+        "csrf-token",
+        "https://portal.bcthk.com",
+        "https://portal.bcthk.com/resend",
+        "req-1",
+        "en",
+        "idem-1");
   }
 
   @Test
@@ -66,7 +72,9 @@ class IdempotentResendForgotPasswordOtpServiceTest {
 
   private void stubPolicyIdentity() {
     when(policy.operationId(any(), any(), any())).thenReturn(mock(IdempotencyOperationId.class));
-    when(policy.otpResend()).thenReturn(mock(com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint.class));
+    when(policy.otpResend())
+        .thenReturn(
+            mock(com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint.class));
   }
 
   /** Captures the command passed to executor.execute(...) and returns it. */
@@ -78,7 +86,8 @@ class IdempotentResendForgotPasswordOtpServiceTest {
         .thenReturn(
             Mono.just(
                 new IdempotentExecutionResult(
-                    IdempotencyReservationOutcome.ACQUIRED, mock(HydratedIdempotentResponse.class))));
+                    IdempotencyReservationOutcome.ACQUIRED,
+                    mock(HydratedIdempotentResponse.class))));
     newService().resend(command()).block();
     return captor.getValue();
   }
@@ -88,11 +97,10 @@ class IdempotentResendForgotPasswordOtpServiceTest {
   @Test
   void protectedOperationSystemFailedErrors() {
     ResendForgotPasswordOtpResult failed =
-        new ResendForgotPasswordOtpResult(ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null);
+        new ResendForgotPasswordOtpResult(
+            ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null);
     when(operation.execute(any()))
-        .thenReturn(
-            Mono.just(
-                new ForgotPasswordOtpResendProtectedExecutionResult(failed, null)));
+        .thenReturn(Mono.just(new ForgotPasswordOtpResendProtectedExecutionResult(failed, null)));
     IdempotentExecutionCommand cmd = captureExecutionCommand();
     StepVerifier.create(cmd.protectedOperation().get())
         .expectError(IllegalStateException.class)
@@ -102,7 +110,8 @@ class IdempotentResendForgotPasswordOtpServiceTest {
   @Test
   void protectedOperationSuccessWithReplayReferenceAttaches() {
     ResendForgotPasswordOtpResult resent =
-        new ResendForgotPasswordOtpResult(ResendForgotPasswordOtpStatus.RESENT, "j***@example.com", 300, 60, 4, null);
+        new ResendForgotPasswordOtpResult(
+            ResendForgotPasswordOtpStatus.RESENT, "j***@example.com", 300, 60, 4, null);
     ProtectedReplayReference reference = new ProtectedReplayReference("replay-ref-1234567890abcd");
     when(operation.execute(any()))
         .thenReturn(
@@ -137,9 +146,11 @@ class IdempotentResendForgotPasswordOtpServiceTest {
     HydratedIdempotentResponse response = mock(HydratedIdempotentResponse.class);
     when(executor.execute(any()))
         .thenReturn(
-            Mono.just(new IdempotentExecutionResult(IdempotencyReservationOutcome.ACQUIRED, response)));
+            Mono.just(
+                new IdempotentExecutionResult(IdempotencyReservationOutcome.ACQUIRED, response)));
     ResendForgotPasswordOtpResult expected =
-        new ResendForgotPasswordOtpResult(ResendForgotPasswordOtpStatus.RESENT, "j***@example.com", 300, 60, 4, null);
+        new ResendForgotPasswordOtpResult(
+            ResendForgotPasswordOtpStatus.RESENT, "j***@example.com", 300, 60, 4, null);
     when(responses.fromTransientResponse(response)).thenReturn(expected);
     StepVerifier.create(newService().resend(command())).expectNext(expected).verifyComplete();
   }
@@ -153,7 +164,8 @@ class IdempotentResendForgotPasswordOtpServiceTest {
                 new IdempotentExecutionResult(
                     IdempotencyReservationOutcome.DUPLICATE_IN_PROGRESS, null)));
     StepVerifier.create(newService().resend(command()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
         .verifyComplete();
   }
 
@@ -167,7 +179,9 @@ class IdempotentResendForgotPasswordOtpServiceTest {
                     IdempotencyReservationOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST, null)));
     StepVerifier.create(newService().resend(command()))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.IDEMPOTENCY_KEY_REUSED))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(ResendForgotPasswordOtpStatus.IDEMPOTENCY_KEY_REUSED))
         .verifyComplete();
   }
 
@@ -176,9 +190,12 @@ class IdempotentResendForgotPasswordOtpServiceTest {
     stubPolicyIdentity();
     when(executor.execute(any()))
         .thenReturn(
-            Mono.just(new IdempotentExecutionResult(IdempotencyReservationOutcome.FAILED_EXISTING, null)));
+            Mono.just(
+                new IdempotentExecutionResult(
+                    IdempotencyReservationOutcome.FAILED_EXISTING, null)));
     StepVerifier.create(newService().resend(command()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.PREVIOUS_FAILED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.PREVIOUS_FAILED))
         .verifyComplete();
   }
 
@@ -191,7 +208,8 @@ class IdempotentResendForgotPasswordOtpServiceTest {
                 new IdempotentExecutionResult(
                     IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING, null)));
     StepVerifier.create(newService().resend(command()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.UNKNOWN_OUTCOME))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.UNKNOWN_OUTCOME))
         .verifyComplete();
   }
 
@@ -200,7 +218,8 @@ class IdempotentResendForgotPasswordOtpServiceTest {
     stubPolicyIdentity();
     when(executor.execute(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newService().resend(command()))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
         .verifyComplete();
   }
 }

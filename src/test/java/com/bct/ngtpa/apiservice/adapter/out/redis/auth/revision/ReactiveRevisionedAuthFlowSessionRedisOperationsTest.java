@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.auth.revision;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -8,7 +7,6 @@ import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import java.time.Duration;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
@@ -18,13 +16,13 @@ import reactor.test.StepVerifier;
 
 /**
  * Branch-oriented reactive tests for {@link ReactiveRevisionedAuthFlowSessionRedisOperations}.
- * Mocks {@link ReactiveStringRedisTemplate} directly (single confirmed dependency, round 96).
- * Uses {@link ArgumentMatchers#anyList()} with an explicit {@code <Object>} type witness for the
+ * Mocks {@link ReactiveStringRedisTemplate} directly (single confirmed dependency, round 96). Uses
+ * {@link ArgumentMatchers#anyList()} with an explicit {@code <Object>} type witness for the
  * script-args stub to force compile-time binding to the {@code List<?>} overload of {@code
  * execute(...)} - the production code always packs multiple Lua script arguments into a single
  * {@code List.of(...)}, which only makes semantic sense (as separate {@code ARGV[1]}/{@code
- * ARGV[2]} entries) if it binds to that overload rather than varargs (which would instead wrap
- * the whole list as one opaque argument).
+ * ARGV[2]} entries) if it binds to that overload rather than varargs (which would instead wrap the
+ * whole list as one opaque argument).
  */
 @SuppressWarnings("unchecked")
 class ReactiveRevisionedAuthFlowSessionRedisOperationsTest {
@@ -63,8 +61,7 @@ class ReactiveRevisionedAuthFlowSessionRedisOperationsTest {
 
   @Test
   void createIfAbsentBlankKeyErrors() {
-    assertThatThrownBy(
-            () -> newOperations().createIfAbsent("  ", "json", Duration.ofSeconds(60)))
+    assertThatThrownBy(() -> newOperations().createIfAbsent("  ", "json", Duration.ofSeconds(60)))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -88,8 +85,7 @@ class ReactiveRevisionedAuthFlowSessionRedisOperationsTest {
 
   @Test
   void createIfAbsentNegativeTtlErrors() {
-    assertThatThrownBy(
-            () -> newOperations().createIfAbsent("key", "json", Duration.ofSeconds(-1)))
+    assertThatThrownBy(() -> newOperations().createIfAbsent("key", "json", Duration.ofSeconds(-1)))
         .isInstanceOf(IllegalArgumentException.class);
   }
 

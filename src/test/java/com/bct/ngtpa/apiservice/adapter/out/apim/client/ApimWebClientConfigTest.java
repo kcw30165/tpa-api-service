@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.client;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -51,6 +52,20 @@ class ApimWebClientConfigTest {
         config.apimWebClient(apimProperties(), certProvider, authorizedClientManager());
 
     assertNotNull(webClient);
+  }
+
+  @Test
+  void failsFastWhenTimeoutIsInvalid() {
+    ApimCertificateHeaderProvider certProvider = mock(ApimCertificateHeaderProvider.class);
+    when(certProvider.getCertificateHeaderValue()).thenReturn(null);
+
+    ApimProperties invalid = apimProperties();
+    invalid.setTimeoutMilliseconds(0);
+
+    assertThatThrownBy(
+            () -> config.apimWebClient(invalid, certProvider, authorizedClientManager()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("greater than zero");
   }
 
   private static ApimProperties apimProperties() {

@@ -47,9 +47,9 @@ import reactor.test.StepVerifier;
  *
  * <p>{@code policy} is a mocked collaborator; {@link #stubPolicyBuildsOperationIdentity()} stubs
  * {@code operationId(...)}/{@code complete()} on EVERY test (confirmed round 57: the real
- * production {@code complete()} method builds an {@link IdempotentExecutionCommand} from these
- * two policy calls BEFORE ever reaching the executor - an unstubbed mock returns null for both,
- * which {@code IdempotentExecutionCommand}'s constructor rejects).
+ * production {@code complete()} method builds an {@link IdempotentExecutionCommand} from these two
+ * policy calls BEFORE ever reaching the executor - an unstubbed mock returns null for both, which
+ * {@code IdempotentExecutionCommand}'s constructor rejects).
  */
 class IdempotentCompleteForgotPasswordServiceTest {
 
@@ -84,15 +84,29 @@ class IdempotentCompleteForgotPasswordServiceTest {
 
   private CompleteForgotPasswordCommand command() {
     return new CompleteForgotPasswordCommand(
-        sid, "csrf", new ForgotPasswordIdempotencyKey("idem-1"), "Password1!", "Password1!",
-        "https://origin", "https://ref", "en", "corr-1", Duration.ofMinutes(5));
+        sid,
+        "csrf",
+        new ForgotPasswordIdempotencyKey("idem-1"),
+        "Password1!",
+        "Password1!",
+        "https://origin",
+        "https://ref",
+        "en",
+        "corr-1",
+        Duration.ofMinutes(5));
   }
 
   private AuthFlowSession sessionWith(Map<String, String> attributes) {
     return new AuthFlowSession(
-        sid, AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.RESET_AUTHORIZED, "csrfhash", null,
+        sid,
+        AuthFlowScenario.FORGOT_PASSWORD,
+        AuthFlowStatus.RESET_AUTHORIZED,
+        "csrfhash",
+        null,
         new AuthFlowSessionData("email", "j***@example.com", attributes),
-        NOW.minusSeconds(120), NOW.minusSeconds(60), NOW.plusSeconds(1800));
+        NOW.minusSeconds(120),
+        NOW.minusSeconds(60),
+        NOW.plusSeconds(1800));
   }
 
   private AuthFlowSessionSnapshot snapshotOf(AuthFlowSession session) {
@@ -101,19 +115,35 @@ class IdempotentCompleteForgotPasswordServiceTest {
 
   private ForgotPasswordAuthFlowContext contextWithPhase(ForgotPasswordProtectedPhase phase) {
     return new ForgotPasswordAuthFlowContext(
-        "john", "idv-1", "CUSTID", true, "subj-1", "email", "john@example.com",
-        "j***@example.com", null, null, "v1", phase);
+        "john",
+        "idv-1",
+        "CUSTID",
+        true,
+        "subj-1",
+        "email",
+        "john@example.com",
+        "j***@example.com",
+        null,
+        null,
+        "v1",
+        phase);
   }
 
   private static CompleteForgotPasswordResult successResult() {
     return new CompleteForgotPasswordResult(
-        CompleteForgotPasswordStatus.SUCCESS, WorkflowNextStep.RETURN_TO_LOGIN, true, true,
+        CompleteForgotPasswordStatus.SUCCESS,
+        WorkflowNextStep.RETURN_TO_LOGIN,
+        true,
+        true,
         List.of());
   }
 
   private static CompleteForgotPasswordResult systemFailedResult() {
     return new CompleteForgotPasswordResult(
-        CompleteForgotPasswordStatus.SYSTEM_FAILED, WorkflowNextStep.PASSWORD_SETUP, false, false,
+        CompleteForgotPasswordStatus.SYSTEM_FAILED,
+        WorkflowNextStep.PASSWORD_SETUP,
+        false,
+        false,
         List.of());
   }
 
@@ -125,7 +155,8 @@ class IdempotentCompleteForgotPasswordServiceTest {
         .thenReturn(
             Mono.just(
                 new IdempotentExecutionResult(
-                    IdempotencyReservationOutcome.ACQUIRED, mock(HydratedIdempotentResponse.class))));
+                    IdempotencyReservationOutcome.ACQUIRED,
+                    mock(HydratedIdempotentResponse.class))));
     newService().complete(command()).block();
     return captor.getValue();
   }
@@ -158,7 +189,11 @@ class IdempotentCompleteForgotPasswordServiceTest {
   void protectedOperationWithValidContextInvokesOperationAndReturnsTerminal() {
     Map<String, String> attrs =
         Map.of(
-            CONTEXT_CIPHERTEXT_KEY, "ct", CONTEXT_KEY_VERSION_KEY, "kv", CONTEXT_ALGORITHM_KEY,
+            CONTEXT_CIPHERTEXT_KEY,
+            "ct",
+            CONTEXT_KEY_VERSION_KEY,
+            "kv",
+            CONTEXT_ALGORITHM_KEY,
             ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM);
     when(sessions.loadSnapshot(any()))
         .thenReturn(Mono.just(Optional.of(snapshotOf(sessionWith(attrs)))));
@@ -179,7 +214,11 @@ class IdempotentCompleteForgotPasswordServiceTest {
   void protectedOperationTechnicalFailureErrors() {
     Map<String, String> attrs =
         Map.of(
-            CONTEXT_CIPHERTEXT_KEY, "ct", CONTEXT_KEY_VERSION_KEY, "kv", CONTEXT_ALGORITHM_KEY,
+            CONTEXT_CIPHERTEXT_KEY,
+            "ct",
+            CONTEXT_KEY_VERSION_KEY,
+            "kv",
+            CONTEXT_ALGORITHM_KEY,
             ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM);
     when(sessions.loadSnapshot(any()))
         .thenReturn(Mono.just(Optional.of(snapshotOf(sessionWith(attrs)))));
@@ -247,7 +286,8 @@ class IdempotentCompleteForgotPasswordServiceTest {
     when(executor.execute(any()))
         .thenReturn(
             Mono.just(
-                new IdempotentExecutionResult(IdempotencyReservationOutcome.FAILED_EXISTING, null)));
+                new IdempotentExecutionResult(
+                    IdempotencyReservationOutcome.FAILED_EXISTING, null)));
     StepVerifier.create(newService().complete(command()))
         .assertNext(
             r -> {

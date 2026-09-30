@@ -1,9 +1,24 @@
 package com.bct.ngtpa.apiservice.application.dto.session.authenticated;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceModeSessionMetadata;
 import java.time.Instant;
 import java.util.*;
 
+/**
+ * The {@code revision} field is opaque concurrency metadata (lifecycle-tier, not sensitive), used
+ * exclusively by {@link
+ * com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionCasUpdatePort}. It is never
+ * persisted inside the encrypted payload -- the infrastructure-layer session protector deliberately
+ * excludes it from the sensitive encrypted context, mirroring how {@code status} and the lifecycle
+ * timestamps are already excluded from encryption today. This class intentionally does not name the
+ * concrete protector implementation, which lives outside the application layer.
+ *
+ * <p>{@code fundPriceModeMetadata} is deliberately NULLABLE: a session exists from login onward,
+ * long before any Fund Price interaction, and metadata is present only after the first successful
+ * call to the mode endpoint, per fund-price-session-contract.md's "Compatibility" clause. Unlike
+ * {@code revision}, it IS sensitive data and is persisted inside the encrypted payload.
+ */
 public record AuthenticatedSession(
     AuthenticatedSessionId authenticatedSessionId,
     ActorContext actorContext,
@@ -13,7 +28,9 @@ public record AuthenticatedSession(
     Instant createdAt,
     Instant lastAccessedAt,
     Instant idleExpiresAt,
-    Instant absoluteExpiresAt) {
+    Instant absoluteExpiresAt,
+    SessionRevision revision,
+    FundPriceModeSessionMetadata fundPriceModeMetadata) {
   public AuthenticatedSession {
     Objects.requireNonNull(authenticatedSessionId);
     Objects.requireNonNull(actorContext);
@@ -23,6 +40,7 @@ public record AuthenticatedSession(
     Objects.requireNonNull(lastAccessedAt);
     Objects.requireNonNull(idleExpiresAt);
     Objects.requireNonNull(absoluteExpiresAt);
+    Objects.requireNonNull(revision, "revision must not be null");
     if (!createdAt.equals(lastAccessedAt) && createdAt.isAfter(lastAccessedAt))
       throw new IllegalArgumentException("lastAccessedAt precedes createdAt");
     if (idleExpiresAt.isBefore(lastAccessedAt) || absoluteExpiresAt.isBefore(createdAt))
@@ -59,6 +77,6 @@ public record AuthenticatedSession(
         + idleExpiresAt
         + ", absoluteExpiresAt="
         + absoluteExpiresAt
-        + "]";
+        + ", revision=<redacted>, fundPriceModeMetadata=<redacted>]";
   }
 }

@@ -21,9 +21,9 @@ import reactor.test.StepVerifier;
 /**
  * Branch-oriented tests for {@link PlainSocketSmtpClient}. This class has ZERO constructor
  * dependencies and opens a raw {@link Socket} directly, so there is no injectable seam to mock.
- * Instead, an in-process, background-thread {@link ServerSocket} fake SMTP server is used to
- * speak the real line protocol (response codes 220/250/354/221) against the real client. This is
- * an integration-style test (real socket I/O), not a pure Mockito unit test.
+ * Instead, an in-process, background-thread {@link ServerSocket} fake SMTP server is used to speak
+ * the real line protocol (response codes 220/250/354/221) against the real client. This is an
+ * integration-style test (real socket I/O), not a pure Mockito unit test.
  */
 class PlainSocketSmtpClientTest {
 
@@ -46,7 +46,8 @@ class PlainSocketSmtpClientTest {
                           new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
                   BufferedWriter out =
                       new BufferedWriter(
-                          new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
+                          new OutputStreamWriter(
+                              socket.getOutputStream(), StandardCharsets.UTF_8))) {
                 script.run(in, out);
               } catch (IOException ignored) {
                 // Protocol mismatches surface as client-side assertion failures instead.

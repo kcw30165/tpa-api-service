@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.login;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -21,10 +20,10 @@ import reactor.test.StepVerifier;
 
 /**
  * Branch-oriented reactive tests for {@link SharedApimTrpMemberLoginTransport}. All types verified
- * verbatim (rounds 175-176). The existing
- * TrpMemberLoginAuthenticatedExecutorBoundaryTest (confirmed round 176) is a PURE
- * textual/architectural check (reads source as strings, asserts on substrings) - it never invokes
- * {@code .post()} or exercises real behavior, so this test is genuinely new, not a duplicate.
+ * verbatim (rounds 175-176). The existing TrpMemberLoginAuthenticatedExecutorBoundaryTest
+ * (confirmed round 176) is a PURE textual/architectural check (reads source as strings, asserts on
+ * substrings) - it never invokes {@code .post()} or exercises real behavior, so this test is
+ * genuinely new, not a duplicate.
  */
 class SharedApimTrpMemberLoginTransportTest {
 
@@ -103,7 +102,8 @@ class SharedApimTrpMemberLoginTransportTest {
     verify(executor)
         .postEnvelope(
             org.mockito.ArgumentMatchers.argThat(
-                (ApimExchangeRequest<TrpMemberLoginApimRequest, TrpMemberLoginApimDataItem> req) -> "/ws/login".equals(req.path())));
+                (ApimExchangeRequest<TrpMemberLoginApimRequest, TrpMemberLoginApimDataItem> req) ->
+                    "/ws/login".equals(req.path())));
   }
 
   // ----- post(): executor error propagates ---------------------------------------

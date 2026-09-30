@@ -34,7 +34,9 @@ class AuthenticatedSessionModelTest {
             NOW,
             NOW,
             NOW.plusSeconds(1800),
-            NOW.plusSeconds(28800));
+            NOW.plusSeconds(28800),
+            new SessionRevision("0".repeat(32)),
+            null);
     assertThat(s.accounts()).containsExactly(account);
     assertThat(s.findAccount(account.accountRef())).contains(account);
     assertThat(s.isUsable(NOW.plusSeconds(10))).isTrue();
@@ -86,6 +88,8 @@ class AuthenticatedSessionModelTest {
         NOW,
         NOW,
         expires,
-        NOW.plusSeconds(100));
+        NOW.plusSeconds(100),
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 }

@@ -8,13 +8,21 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.util.unit.DataSize;
 
 @ConfigurationProperties(prefix = "apim")
 @Getter
 @Setter
 public class ApimProperties {
   private String baseUrl;
-  private int timeoutMilliseconds;
+  private int timeoutMilliseconds = 10000;
+
+  /**
+   * Maximum APIM response body buffered in memory per call (apim.max-response-size). Spring's
+   * codec default is 256 KB, which large responses such as the 36-month TRPGetFundPrice export
+   * exceed.
+   */
+  private DataSize maxResponseSize = DataSize.ofMegabytes(16);
   private String apiKeyHeaderName = "Ocp-Apim-Subscription-Key";
   private final Oauth oauth = new Oauth();
   private final Encryption encryption = new Encryption();
@@ -73,6 +81,26 @@ public class ApimProperties {
       throw new IllegalStateException(
           "apim.retry.business-call-backoff-milliseconds must not be negative");
     }
+  }
+
+  /** Validated apim.max-response-size in bytes: greater than zero and at most Integer.MAX_VALUE. */
+  public int maxResponseSizeBytes() {
+    if (maxResponseSize == null || maxResponseSize.toBytes() <= 0) {
+      throw new IllegalStateException("apim.max-response-size must be greater than zero");
+    }
+    if (maxResponseSize.toBytes() > Integer.MAX_VALUE) {
+      throw new IllegalStateException(
+          "apim.max-response-size must not exceed " + Integer.MAX_VALUE + " bytes");
+    }
+    return (int) maxResponseSize.toBytes();
+  }
+
+  /** Validated apim.timeout-milliseconds: must be greater than zero. */
+  public int validatedTimeoutMilliseconds() {
+    if (timeoutMilliseconds <= 0) {
+      throw new IllegalStateException("apim.timeout-milliseconds must be greater than zero");
+    }
+    return timeoutMilliseconds;
   }
 
   @Getter

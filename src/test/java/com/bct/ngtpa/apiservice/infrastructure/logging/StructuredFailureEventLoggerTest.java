@@ -28,8 +28,16 @@ class StructuredFailureEventLoggerTest {
     when(sanitizer.toSafeString(any())).thenReturn("{}");
     FailureEvent failure =
         new FailureEvent(
-            "event1", "req-1", "capability1", "operation1", FailureOrigin.LOCAL_VALIDATION,
-            "internal.code", "public.code", 500, true, Map.of("k", "v"));
+            "event1",
+            "req-1",
+            "capability1",
+            "operation1",
+            FailureOrigin.LOCAL_VALIDATION,
+            "internal.code",
+            "public.code",
+            500,
+            true,
+            Map.of("k", "v"));
     logger.record(failure);
     verify(sanitizer).toSafeString(any());
   }

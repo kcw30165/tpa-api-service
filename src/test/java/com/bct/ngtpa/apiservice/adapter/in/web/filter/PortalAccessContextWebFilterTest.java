@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowPropertie
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.*;
 import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import com.bct.ngtpa.apiservice.shared.web.*;
@@ -129,7 +130,9 @@ class PortalAccessContextWebFilterTest {
         Instant.EPOCH,
         Instant.EPOCH,
         Instant.EPOCH.plusSeconds(300),
-        Instant.EPOCH.plusSeconds(900));
+        Instant.EPOCH.plusSeconds(900),
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 
   private PortalAccessContext context(String accountRef) {

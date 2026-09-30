@@ -92,21 +92,52 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
 
   private ForgotPasswordAuthFlowContext contextAtPhase(ForgotPasswordProtectedPhase phase) {
     return new ForgotPasswordAuthFlowContext(
-        "john", "idv-1", "CUSTID", true, "subj-1", "email", "john@example.com",
-        "j***@example.com", null, null, "v1", phase);
+        "john",
+        "idv-1",
+        "CUSTID",
+        true,
+        "subj-1",
+        "email",
+        "john@example.com",
+        "j***@example.com",
+        null,
+        null,
+        "v1",
+        phase);
   }
 
   private ForgotPasswordOtpBindingCommand command(MessageDeliveryStatus status) {
     return new ForgotPasswordOtpBindingCommand(
-        sid, acquiredLock, status, "challenge-1", "email", "john@example.com",
-        "j***@example.com", NOW.plusSeconds(300), NOW.plusSeconds(60), NOW);
+        sid,
+        acquiredLock,
+        status,
+        "challenge-1",
+        "email",
+        "john@example.com",
+        "j***@example.com",
+        NOW.plusSeconds(300),
+        NOW.plusSeconds(60),
+        NOW);
   }
 
   private OtpChallenge validChallenge() {
     return new OtpChallenge(
-        "challenge-1", OtpScenario.FORGOT_PASSWORD, sid.value(), OtpChannel.EMAIL,
-        "destinationhash", "codehash", OtpStatus.CREATED, 0, 5, 0, 5,
-        NOW.minusSeconds(120), NOW.plusSeconds(300), NOW.minusSeconds(120), null, null);
+        "challenge-1",
+        OtpScenario.FORGOT_PASSWORD,
+        sid.value(),
+        OtpChannel.EMAIL,
+        "destinationhash",
+        "codehash",
+        OtpStatus.CREATED,
+        0,
+        5,
+        0,
+        5,
+        NOW.minusSeconds(120),
+        NOW.plusSeconds(300),
+        NOW.minusSeconds(120),
+        null,
+        null);
   }
 
   private void givenSession(AuthFlowSession session) {
@@ -134,7 +165,8 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
   @Test
   void nullCommandYieldsRejected() {
     StepVerifier.create(newAdapter().apply(null))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -142,11 +174,19 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
   void lockNotAcquiredYieldsRejected() {
     ForgotPasswordOtpBindingCommand cmd =
         new ForgotPasswordOtpBindingCommand(
-            sid, SessionLockHandle.notAcquired(), MessageDeliveryStatus.ACCEPTED, "challenge-1",
-            "email", "john@example.com", "j***@example.com", NOW.plusSeconds(300),
-            NOW.plusSeconds(60), NOW);
+            sid,
+            SessionLockHandle.notAcquired(),
+            MessageDeliveryStatus.ACCEPTED,
+            "challenge-1",
+            "email",
+            "john@example.com",
+            "j***@example.com",
+            NOW.plusSeconds(300),
+            NOW.plusSeconds(60),
+            NOW);
     StepVerifier.create(newAdapter().apply(cmd))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -156,7 +196,8 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
   void sessionMissingYieldsRejected() {
     when(sessions.loadSnapshot(any())).thenReturn(Mono.just(Optional.empty()));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -164,31 +205,43 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
   void sessionLoadErrorYieldsRejected() {
     when(sessions.loadSnapshot(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
   @Test
   void wrongScenarioYieldsRejected() {
-    givenSession(sessionWith(AuthFlowScenario.LOGIN, AuthFlowStatus.IDENTITY_VERIFIED, NOW.plusSeconds(1800)));
+    givenSession(
+        sessionWith(
+            AuthFlowScenario.LOGIN, AuthFlowStatus.IDENTITY_VERIFIED, NOW.plusSeconds(1800)));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
   @Test
   void wrongStatusYieldsRejected() {
-    givenSession(sessionWith(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, NOW.plusSeconds(1800)));
+    givenSession(
+        sessionWith(
+            AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT, NOW.plusSeconds(1800)));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
   @Test
   void expiredSessionYieldsRejected() {
-    givenSession(sessionWith(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.IDENTITY_VERIFIED, NOW.minusSeconds(1)));
+    givenSession(
+        sessionWith(
+            AuthFlowScenario.FORGOT_PASSWORD,
+            AuthFlowStatus.IDENTITY_VERIFIED,
+            NOW.minusSeconds(1)));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -199,7 +252,8 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
     givenSession(identityVerifiedSession());
     givenContext(ForgotPasswordProtectedPhase.OTP_SENT);
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -211,7 +265,9 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
     givenContext(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.FAILED)))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.CONFIRMED_FAILED))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(ForgotPasswordOtpBindingResult.Status.CONFIRMED_FAILED))
         .verifyComplete();
   }
 
@@ -222,7 +278,9 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
     givenWriterSucceeds();
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.UNKNOWN_OUTCOME)))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.UNKNOWN_OUTCOME))
+            r ->
+                assertThat(r.status())
+                    .isEqualTo(ForgotPasswordOtpBindingResult.Status.UNKNOWN_OUTCOME))
         .verifyComplete();
   }
 
@@ -234,10 +292,19 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
     givenContext(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
     ForgotPasswordOtpBindingCommand cmd =
         new ForgotPasswordOtpBindingCommand(
-            sid, acquiredLock, MessageDeliveryStatus.ACCEPTED, "", "email", "john@example.com",
-            "j***@example.com", NOW.plusSeconds(300), NOW.plusSeconds(60), NOW);
+            sid,
+            acquiredLock,
+            MessageDeliveryStatus.ACCEPTED,
+            "",
+            "email",
+            "john@example.com",
+            "j***@example.com",
+            NOW.plusSeconds(300),
+            NOW.plusSeconds(60),
+            NOW);
     StepVerifier.create(newAdapter().apply(cmd))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -249,7 +316,8 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
     givenContext(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.empty()));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -259,12 +327,26 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
     givenContext(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
     OtpChallenge wrong =
         new OtpChallenge(
-            "challenge-1", OtpScenario.LOGIN, sid.value(), OtpChannel.EMAIL, "destinationhash",
-            "codehash", OtpStatus.CREATED, 0, 5, 0, 5, NOW.minusSeconds(120),
-            NOW.plusSeconds(300), NOW.minusSeconds(120), null, null);
+            "challenge-1",
+            OtpScenario.LOGIN,
+            sid.value(),
+            OtpChannel.EMAIL,
+            "destinationhash",
+            "codehash",
+            OtpStatus.CREATED,
+            0,
+            5,
+            0,
+            5,
+            NOW.minusSeconds(120),
+            NOW.plusSeconds(300),
+            NOW.minusSeconds(120),
+            null,
+            null);
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.of(wrong)));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -274,12 +356,26 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
     givenContext(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
     OtpChallenge mismatchedExpiry =
         new OtpChallenge(
-            "challenge-1", OtpScenario.FORGOT_PASSWORD, sid.value(), OtpChannel.EMAIL,
-            "destinationhash", "codehash", OtpStatus.CREATED, 0, 5, 0, 5, NOW.minusSeconds(120),
-            NOW.plusSeconds(999), NOW.minusSeconds(120), null, null);
+            "challenge-1",
+            OtpScenario.FORGOT_PASSWORD,
+            sid.value(),
+            OtpChannel.EMAIL,
+            "destinationhash",
+            "codehash",
+            OtpStatus.CREATED,
+            0,
+            5,
+            0,
+            5,
+            NOW.minusSeconds(120),
+            NOW.plusSeconds(999),
+            NOW.minusSeconds(120),
+            null,
+            null);
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.of(mismatchedExpiry)));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -289,16 +385,38 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
     givenContext(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
     OtpChallenge expired =
         new OtpChallenge(
-            "challenge-1", OtpScenario.FORGOT_PASSWORD, sid.value(), OtpChannel.EMAIL,
-            "destinationhash", "codehash", OtpStatus.CREATED, 0, 5, 0, 5, NOW.minusSeconds(500),
-            NOW.minusSeconds(1), NOW.minusSeconds(500), null, null);
+            "challenge-1",
+            OtpScenario.FORGOT_PASSWORD,
+            sid.value(),
+            OtpChannel.EMAIL,
+            "destinationhash",
+            "codehash",
+            OtpStatus.CREATED,
+            0,
+            5,
+            0,
+            5,
+            NOW.minusSeconds(500),
+            NOW.minusSeconds(1),
+            NOW.minusSeconds(500),
+            null,
+            null);
     ForgotPasswordOtpBindingCommand cmd =
         new ForgotPasswordOtpBindingCommand(
-            sid, acquiredLock, MessageDeliveryStatus.ACCEPTED, "challenge-1", "email",
-            "john@example.com", "j***@example.com", NOW.minusSeconds(1), NOW.plusSeconds(60), NOW);
+            sid,
+            acquiredLock,
+            MessageDeliveryStatus.ACCEPTED,
+            "challenge-1",
+            "email",
+            "john@example.com",
+            "j***@example.com",
+            NOW.minusSeconds(1),
+            NOW.plusSeconds(60),
+            NOW);
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.of(expired)));
     StepVerifier.create(newAdapter().apply(cmd))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -311,7 +429,8 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
     givenWriterSucceeds();
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.of(validChallenge())));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.BOUND))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.BOUND))
         .verifyComplete();
   }
 
@@ -321,7 +440,8 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
     givenContext(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
     when(challenges.findById(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 }

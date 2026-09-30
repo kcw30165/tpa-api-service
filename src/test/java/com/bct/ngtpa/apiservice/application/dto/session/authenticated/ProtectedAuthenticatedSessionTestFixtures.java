@@ -22,6 +22,7 @@ public final class ProtectedAuthenticatedSessionTestFixtures {
         created,
         created,
         created.plusSeconds(900),
-        created.plusSeconds(3600));
+        created.plusSeconds(3600),
+        new SessionRevision("0".repeat(32)));
   }
 }

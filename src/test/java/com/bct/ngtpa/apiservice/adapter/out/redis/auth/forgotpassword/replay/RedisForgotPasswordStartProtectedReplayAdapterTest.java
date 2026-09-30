@@ -1,5 +1,4 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.replay;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ProtectedForgotPasswordStartReplay;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,6 +9,7 @@ import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayProtectorPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayReferenceGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayState;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ProtectedForgotPasswordStartReplay;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
@@ -25,7 +25,8 @@ import reactor.test.StepVerifier;
 class RedisForgotPasswordStartProtectedReplayAdapterTest {
 
   private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
-  private final ReactiveValueOperations<String, String> values = mock(ReactiveValueOperations.class);
+  private final ReactiveValueOperations<String, String> values =
+      mock(ReactiveValueOperations.class);
   private final RedisForgotPasswordStartProtectedReplayKeyFactory keys =
       mock(RedisForgotPasswordStartProtectedReplayKeyFactory.class);
   private final RedisForgotPasswordStartProtectedReplayJsonMapper json =
@@ -39,7 +40,8 @@ class RedisForgotPasswordStartProtectedReplayAdapterTest {
       new ProtectedReplayReference("replay-ref-1234567890abcd");
 
   private RedisForgotPasswordStartProtectedReplayAdapter newAdapter() {
-    return new RedisForgotPasswordStartProtectedReplayAdapter(redis, keys, json, protector, references);
+    return new RedisForgotPasswordStartProtectedReplayAdapter(
+        redis, keys, json, protector, references);
   }
 
   private void givenRedisReady() {
@@ -51,7 +53,8 @@ class RedisForgotPasswordStartProtectedReplayAdapterTest {
 
   @Test
   void storeWithNullTtlErrors() {
-    StepVerifier.create(newAdapter().store(mock(ForgotPasswordStartProtectedReplayState.class), null))
+    StepVerifier.create(
+            newAdapter().store(mock(ForgotPasswordStartProtectedReplayState.class), null))
         .expectError(IllegalArgumentException.class)
         .verify();
   }
@@ -68,7 +71,8 @@ class RedisForgotPasswordStartProtectedReplayAdapterTest {
   void storeSucceedsOnFirstAttempt() {
     givenRedisReady();
     when(references.generate()).thenReturn(reference);
-    when(protector.protect(any(), any())).thenReturn(mock(ProtectedForgotPasswordStartReplay.class));
+    when(protector.protect(any(), any()))
+        .thenReturn(mock(ProtectedForgotPasswordStartReplay.class));
     when(json.toJson(any())).thenReturn("{}");
     when(values.setIfAbsent(any(), any(), any())).thenReturn(Mono.just(true));
     StepVerifier.create(
@@ -82,9 +86,12 @@ class RedisForgotPasswordStartProtectedReplayAdapterTest {
   void storeRetriesOnCollisionThenSucceeds() {
     givenRedisReady();
     when(references.generate()).thenReturn(reference);
-    when(protector.protect(any(), any())).thenReturn(mock(ProtectedForgotPasswordStartReplay.class));
+    when(protector.protect(any(), any()))
+        .thenReturn(mock(ProtectedForgotPasswordStartReplay.class));
     when(json.toJson(any())).thenReturn("{}");
-    when(values.setIfAbsent(any(), any(), any())).thenReturn(Mono.just(false)).thenReturn(Mono.just(true));
+    when(values.setIfAbsent(any(), any(), any()))
+        .thenReturn(Mono.just(false))
+        .thenReturn(Mono.just(true));
     StepVerifier.create(
             newAdapter()
                 .store(mock(ForgotPasswordStartProtectedReplayState.class), Duration.ofMinutes(5)))
@@ -96,7 +103,8 @@ class RedisForgotPasswordStartProtectedReplayAdapterTest {
   void storeExhaustsCollisionAttemptsAndErrors() {
     givenRedisReady();
     when(references.generate()).thenReturn(reference);
-    when(protector.protect(any(), any())).thenReturn(mock(ProtectedForgotPasswordStartReplay.class));
+    when(protector.protect(any(), any()))
+        .thenReturn(mock(ProtectedForgotPasswordStartReplay.class));
     when(json.toJson(any())).thenReturn("{}");
     when(values.setIfAbsent(any(), any(), any())).thenReturn(Mono.just(false));
     StepVerifier.create(
@@ -121,9 +129,11 @@ class RedisForgotPasswordStartProtectedReplayAdapterTest {
   void loadSucceeds() {
     givenRedisReady();
     when(values.get(any())).thenReturn(Mono.just("{}"));
-    ProtectedForgotPasswordStartReplay protectedValue = mock(ProtectedForgotPasswordStartReplay.class);
+    ProtectedForgotPasswordStartReplay protectedValue =
+        mock(ProtectedForgotPasswordStartReplay.class);
     when(json.fromJson(any())).thenReturn(protectedValue);
-    ForgotPasswordStartProtectedReplayState state = mock(ForgotPasswordStartProtectedReplayState.class);
+    ForgotPasswordStartProtectedReplayState state =
+        mock(ForgotPasswordStartProtectedReplayState.class);
     when(protector.unprotect(any(), any())).thenReturn(state);
     StepVerifier.create(newAdapter().load(reference)).expectNext(state).verifyComplete();
   }

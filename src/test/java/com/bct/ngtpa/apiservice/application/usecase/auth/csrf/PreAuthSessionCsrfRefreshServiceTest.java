@@ -36,7 +36,9 @@ class PreAuthSessionCsrfRefreshServiceTest {
   @Test
   void successDelegatesToken() {
     when(delegate.rotateForSession(any()))
-        .thenReturn(Mono.just(new CreateAuthFlowSessionCsrfResult("raw-token", NOW.plusSeconds(1800), 1800)));
+        .thenReturn(
+            Mono.just(
+                new CreateAuthFlowSessionCsrfResult("raw-token", NOW.plusSeconds(1800), 1800)));
     StepVerifier.create(newService().refresh("afs-preauth-1", "req-1"))
         .assertNext(
             o -> {
@@ -60,7 +62,8 @@ class PreAuthSessionCsrfRefreshServiceTest {
     when(delegate.rotateForSession(any()))
         .thenReturn(Mono.error(new IllegalStateException("Auth flow session is not usable")));
     StepVerifier.create(newService().refresh("afs-preauth-1", "req-1"))
-        .assertNext(o -> assertThat(o.status()).isEqualTo(RefreshCsrfTokenStatus.SESSION_NOT_USABLE))
+        .assertNext(
+            o -> assertThat(o.status()).isEqualTo(RefreshCsrfTokenStatus.SESSION_NOT_USABLE))
         .verifyComplete();
   }
 
@@ -85,7 +88,8 @@ class PreAuthSessionCsrfRefreshServiceTest {
 
   @Test
   void unrecognizedErrorYieldsSystemFailure() {
-    when(delegate.rotateForSession(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    when(delegate.rotateForSession(any()))
+        .thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newService().refresh("afs-preauth-1", "req-1"))
         .assertNext(o -> assertThat(o.status()).isEqualTo(RefreshCsrfTokenStatus.SYSTEM_FAILURE))
         .verifyComplete();

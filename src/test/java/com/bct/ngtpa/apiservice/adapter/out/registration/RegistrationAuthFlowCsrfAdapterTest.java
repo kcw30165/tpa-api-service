@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.out.registration;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -46,12 +45,15 @@ class RegistrationAuthFlowCsrfAdapterTest {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
-  // ----- bindCsrfToken(): success via real accessor (CreateAuthFlowSessionCsrfResult.rawToken()) --
+  // ----- bindCsrfToken(): success via real accessor (CreateAuthFlowSessionCsrfResult.rawToken())
+  // --
 
   @Test
   void bindCsrfTokenExtractsRawTokenFromRealResult() {
     when(csrfService.createForSession(any()))
-        .thenReturn(Mono.just(new CreateAuthFlowSessionCsrfResult("raw-token-123", NOW.plusSeconds(1800), 1800)));
+        .thenReturn(
+            Mono.just(
+                new CreateAuthFlowSessionCsrfResult("raw-token-123", NOW.plusSeconds(1800), 1800)));
     StepVerifier.create(newAdapter().bindCsrfToken("afs-reg-1"))
         .expectNext("raw-token-123")
         .verifyComplete();
@@ -72,10 +74,10 @@ class RegistrationAuthFlowCsrfAdapterTest {
   // §9b/§9c dead-code findings recorded elsewhere in
   // docs/coverage/code-coverage-95-plan.md).
 
-
   @Test
   void bindCsrfTokenServiceErrorPropagates() {
-    when(csrfService.createForSession(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    when(csrfService.createForSession(any()))
+        .thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newAdapter().bindCsrfToken("afs-reg-1"))
         .expectError(IllegalStateException.class)
         .verify();

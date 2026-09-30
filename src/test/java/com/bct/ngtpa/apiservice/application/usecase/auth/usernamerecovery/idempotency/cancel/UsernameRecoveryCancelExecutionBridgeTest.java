@@ -45,7 +45,8 @@ class UsernameRecoveryCancelExecutionBridgeTest {
           }
         }
       };
-  private final UsernameRecoveryCancelReplayCodec codec = mock(UsernameRecoveryCancelReplayCodec.class);
+  private final UsernameRecoveryCancelReplayCodec codec =
+      mock(UsernameRecoveryCancelReplayCodec.class);
 
   private UsernameRecoveryCancelExecutionBridge newBridge() {
     return new UsernameRecoveryCancelExecutionBridge(json, codec);
@@ -92,7 +93,8 @@ class UsernameRecoveryCancelExecutionBridgeTest {
   @Test
   void fromTransientResponseNonEmptyHeadersThrows() {
     HydratedIdempotentResponse response =
-        new HydratedIdempotentResponse(200, MEDIA_TYPE, json.write(success()), Map.of("Retry-After", "30"));
+        new HydratedIdempotentResponse(
+            200, MEDIA_TYPE, json.write(success()), Map.of("Retry-After", "30"));
     assertThatThrownBy(() -> newBridge().fromTransientResponse(response))
         .isInstanceOf(IllegalArgumentException.class);
   }

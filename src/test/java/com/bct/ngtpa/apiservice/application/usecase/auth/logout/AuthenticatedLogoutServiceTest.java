@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import java.time.Instant;
 import java.util.List;
@@ -94,6 +95,8 @@ class AuthenticatedLogoutServiceTest {
         now.minusSeconds(60),
         now,
         now.plusSeconds(300),
-        now.plusSeconds(300));
+        now.plusSeconds(300),
+        new SessionRevision("0".repeat(32)),
+        null);
   }
 }

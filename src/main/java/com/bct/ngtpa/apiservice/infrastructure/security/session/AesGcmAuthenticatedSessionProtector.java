@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.infrastructure.security.session;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceModeSessionMetadata;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedAccountRef;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionAccount;
@@ -80,7 +81,8 @@ public final class AesGcmAuthenticatedSessionProtector
           session.createdAt(),
           session.lastAccessedAt(),
           session.idleExpiresAt(),
-          session.absoluteExpiresAt());
+          session.absoluteExpiresAt(),
+          session.revision());
     } catch (Exception exception) {
       throw new IllegalStateException("Unable to protect authenticated session");
     }
@@ -188,13 +190,15 @@ public final class AesGcmAuthenticatedSessionProtector
       String actorUserId,
       ActorUserRole actorUserRole,
       List<WireAccount> accounts,
-      String csrfTokenHash) {
+      String csrfTokenHash,
+      FundPriceModeSessionMetadata fundPriceModeSessionMetadata) {
     static SensitiveContext from(AuthenticatedSession session) {
       return new SensitiveContext(
           session.actorContext().actorUserId(),
           session.actorContext().actorUserRole(),
           session.accounts().stream().map(WireAccount::from).toList(),
-          session.csrfTokenHash());
+          session.csrfTokenHash(),
+          session.fundPriceModeMetadata());
     }
 
     AuthenticatedSession toDomain(ProtectedAuthenticatedSession envelope) {
@@ -207,7 +211,9 @@ public final class AesGcmAuthenticatedSessionProtector
           envelope.createdAt(),
           envelope.updatedAt(),
           envelope.idleExpiresAt(),
-          envelope.absoluteExpiresAt());
+          envelope.absoluteExpiresAt(),
+          envelope.sessionRevision(),
+          fundPriceModeSessionMetadata);
     }
   }
 

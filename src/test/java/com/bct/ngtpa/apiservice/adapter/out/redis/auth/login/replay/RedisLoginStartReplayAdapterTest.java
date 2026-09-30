@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.replay;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -21,7 +20,8 @@ class RedisLoginStartReplayAdapterTest {
 
   private final RedisLoginStartReplayKeyFactory keys = mock(RedisLoginStartReplayKeyFactory.class);
   private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
-  private final ReactiveValueOperations<String, String> values = mock(ReactiveValueOperations.class);
+  private final ReactiveValueOperations<String, String> values =
+      mock(ReactiveValueOperations.class);
   private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
 
   private final LoginStartReplayCommitRef ref = mock(LoginStartReplayCommitRef.class);
@@ -117,9 +117,7 @@ class RedisLoginStartReplayAdapterTest {
     givenKeyFactoryReady();
     when(redis.opsForValue()).thenReturn(values);
     when(values.get(any())).thenReturn(Mono.just("{not valid json"));
-    StepVerifier.create(newAdapter().load(ref))
-        .expectError(IllegalStateException.class)
-        .verify();
+    StepVerifier.create(newAdapter().load(ref)).expectError(IllegalStateException.class).verify();
   }
 
   // ----- delete() ---------------------------------------------------------------

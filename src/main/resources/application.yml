@@ -10,9 +10,6 @@ spring:
       - optional:classpath:application-registration-errors.yml
   application:
     name: ngtpa-api-server
-  cloud:
-    config:
-      enabled: ${SPRING_CLOUD_CONFIG_ENABLED:false}
   ssl:
     bundle:
       pem:
@@ -297,6 +294,10 @@ auth-workflows:
       complete-ttl-seconds: 300
 
 apim:
+  fund-price:
+    path: /ws/NGTPA/v1/TRPGetFundPrice
+  fund-price-mode:
+    path: /ws/NGTPA/v1/TRPGetFundPriceMode
   account-balance:
     path: ${APIM_ACCOUNT_BALANCE_PATH:/ws/NGTPA/v1/TRPGetMemberAccBal}
   account-gain-loss:
@@ -368,6 +369,7 @@ apim:
       max-attempts: ${APIM_BUSINESS_RETRY_MAX_ATTEMPTS:3}
       backoff-milliseconds: ${APIM_BUSINESS_RETRY_BACKOFF_MILLISECONDS:100}
   timeout-milliseconds: ${APIM_TIMEOUT_MILLISECONDS:${APIM_TIMEOUTMILLISECONDS:10000}}
+  max-response-size: ${APIM_MAX_RESPONSE_SIZE:16MB}
   encryption:
     enabled: ${APIM_ENCRYPTION_ENABLED:true}
     certificate-path: ${APIM_CERTIFICATE_PATH:/api/wssupport/v1/encryption/certificate}
@@ -499,6 +501,28 @@ shared-idempotency:
   forgot-password-start-replay:
     key-version: ${SHARED_IDEMPOTENCY_FORGOT_PASSWORD_START_REPLAY_KEY_VERSION:}
     secret: ${SHARED_IDEMPOTENCY_FORGOT_PASSWORD_START_REPLAY_SECRET:}
+
+fund-price:
+  date-format:
+    full-date: "dd/MM/uuuu"
+    month: "MM/uuuu"
+  export:
+    # Sheet name per fund-price-type. Keys contain a space, so they must stay bracketed.
+    sheet-names:
+      "[BIDOFFER PRICE]": "BIDOFFER PRICE"
+      "[UNIT PRICE]": "UNIT PRICE"
+    headers:
+      fund-price-date: "Fund Price Date基金價格日期"
+      fund-name: "Fund Name"
+      chinese-fund-name: "基金名稱"
+      unit-price:
+        currency: "Unit Price Currency 單位貨幣"
+        price: "Unit Price單位價格"
+      bid-offer:
+        bid-currency: "Bid Price Currency買入單位貨幣"
+        bid-price: "Bid Unit Price單位價格"
+        offer-currency: "Offer Price Currency賣出單位貨幣"
+        offer-price: "Offer Price單位價格"
 
 # Centralized masking policy (email/mobile/identity/date-of-birth destination
 # masking and generic logging redaction). See MaskingService for the contract.

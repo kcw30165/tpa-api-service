@@ -5,7 +5,9 @@ import com.bct.ngtpa.apiservice.application.port.out.AccountBalanceObservability
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-/** Branch-oriented tests for {@link AccountBalanceObservabilityLogger}. Uses a REAL ObjectMapper. */
+/**
+ * Branch-oriented tests for {@link AccountBalanceObservabilityLogger}. Uses a REAL ObjectMapper.
+ */
 class AccountBalanceObservabilityLoggerTest {
 
   private final AccountBalanceObservabilityLogger logger =

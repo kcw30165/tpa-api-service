@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -84,7 +83,9 @@ class AuthFlowSessionPersistenceCompatibilityStartupGateTest {
         .thenReturn(
             Mono.just(
                 new AuthFlowSessionPersistenceCompatibilityResult(
-                    AuthFlowSessionPersistenceCompatibilityStatus.EXISTING_VERSION_MISMATCH, 2, 5)));
+                    AuthFlowSessionPersistenceCompatibilityStatus.EXISTING_VERSION_MISMATCH,
+                    2,
+                    5)));
     assertThatThrownBy(() -> newGate(2).run(mock(ApplicationArguments.class)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("actualVersion=5");

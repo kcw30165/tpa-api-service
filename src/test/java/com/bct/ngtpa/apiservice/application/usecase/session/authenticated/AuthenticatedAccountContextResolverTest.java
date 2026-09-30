@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import java.time.*;
 import java.util.*;
@@ -83,7 +84,9 @@ class AuthenticatedAccountContextResolverTest {
             NOW,
             NOW,
             NOW.plusSeconds(1800),
-            NOW.plusSeconds(28800));
+            NOW.plusSeconds(28800),
+            new SessionRevision("0".repeat(32)),
+            null);
     return AuthenticatedSessionLifecycleResult.active(session);
   }
 }

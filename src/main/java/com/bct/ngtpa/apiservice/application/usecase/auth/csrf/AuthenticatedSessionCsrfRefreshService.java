@@ -110,6 +110,11 @@ public final class AuthenticatedSessionCsrfRefreshService {
 
     String rawToken = tokenGenerator.generate();
     String replacementHash = tokenHasher.hash(rawToken);
+    // Carries the loaded session's existing revision forward unchanged: this mutation goes
+    // through the existing CSRF-specific compare-and-set port
+    // (AuthenticatedSessionCsrfRotationPort),
+    // not the new generic AuthenticatedSessionCasUpdatePort, per the ratified decision not to
+    // refactor working login/CSRF code in this delivery.
     AuthenticatedSession replacement =
         new AuthenticatedSession(
             current.authenticatedSessionId(),
@@ -120,7 +125,9 @@ public final class AuthenticatedSessionCsrfRefreshService {
             current.createdAt(),
             current.lastAccessedAt(),
             current.idleExpiresAt(),
-            current.absoluteExpiresAt());
+            current.absoluteExpiresAt(),
+            current.revision(),
+            current.fundPriceModeMetadata());
 
     Instant effectiveExpiry =
         current.idleExpiresAt().isBefore(current.absoluteExpiresAt())
