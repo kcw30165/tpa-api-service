@@ -227,4 +227,32 @@ class FundPriceExportPropertiesBindingTest {
   @Configuration(proxyBeanMethods = false)
   @EnableConfigurationProperties(FundPriceExportProperties.class)
   static class TestConfig {}
+
+  @Test
+  void defaultSheetNamesMatchFundPriceTypes() {
+    contextRunner.run(
+        context -> {
+          var props = context.getBean(FundPriceExportProperties.class);
+          assertEquals("BIDOFFER PRICE", props.sheetName("BIDOFFER PRICE"));
+          assertEquals("UNIT PRICE", props.sheetName("UNIT PRICE"));
+        });
+  }
+
+  @Test
+  void bracketedYamlKeysKeepTheSpaceInFundPriceType() {
+    withYaml(
+            """
+            fund-price:
+              export:
+                sheet-names:
+                  "[BIDOFFER PRICE]": "Bid Offer"
+                  "[UNIT PRICE]": "Unit"
+            """)
+        .run(
+            context -> {
+              var props = context.getBean(FundPriceExportProperties.class);
+              assertEquals("Bid Offer", props.sheetName("BIDOFFER PRICE"));
+              assertEquals("Unit", props.sheetName("UNIT PRICE"));
+            });
+  }
 }

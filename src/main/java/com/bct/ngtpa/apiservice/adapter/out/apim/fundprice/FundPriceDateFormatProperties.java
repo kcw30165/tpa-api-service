@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.fundprice;
 
 import java.time.DateTimeException;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
 import lombok.Getter;
@@ -9,14 +10,17 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Config-backed full-date format for Fund Price FE input, the downstream {@code ref-date}/ {@code
- * from-date}/{@code to-date} request fields, and the downstream {@code available-fund-price-dates}
- * response field.
+ * Config-backed date formats for Fund Price.
  *
- * <p>Per docs/design/9-fund-price/fund-price-date-validation-contract.md: "The format patterns must
- * not be embedded as operational Java literals... Available dates returned by TRPGetFundPriceMode
- * use the SAME configured full-date format... It is NOT an independently configured pattern and
- * must not be given its own property." Invalid configuration fails startup, matching the
+ * <p>{@code full-date}: FE input, the downstream {@code ref-date}/{@code from-date}/{@code
+ * to-date} request fields, and the downstream {@code available-fund-price-dates} response field.
+ * Per docs/design/9-fund-price/fund-price-date-validation-contract.md, available dates use this
+ * SAME pattern and must not get their own property.
+ *
+ * <p>{@code month}: display-only year-month pattern for the export's Fund Price Date column when
+ * the cached mode is MONTHLY. It is never used to parse FE input or build downstream requests.
+ *
+ * <p>Invalid configuration fails startup, matching the
  * AccountBalanceApimProperties/AccountBalanceApimValidationConfig precedent.
  */
 @Getter
@@ -28,7 +32,14 @@ public class FundPriceDateFormatProperties {
 
   private String fullDate = "dd/MM/uuuu";
 
+  private String month = "MM/uuuu";
+
   public void validate() {
+    validateFullDate();
+    validateMonth();
+  }
+
+  private void validateFullDate() {
     if (fullDate == null || fullDate.isBlank()) {
       throw new IllegalStateException("fund-price.date-format.full-date must not be blank");
     }
@@ -54,7 +65,39 @@ public class FundPriceDateFormatProperties {
     }
   }
 
+  private void validateMonth() {
+    if (month == null || month.isBlank()) {
+      throw new IllegalStateException("fund-price.date-format.month must not be blank");
+    }
+    month = month.trim();
+    // Same strict round trip as full-date, against YearMonth. The pattern must not render
+    // the day of month: two dates in the same month must produce identical text.
+    DateTimeFormatter strict = monthFormatter();
+    YearMonth parsed;
+    try {
+      String text = ROUND_TRIP_PROBE.format(strict);
+      if (!text.equals(ROUND_TRIP_PROBE.withDayOfMonth(1).format(strict))) {
+        throw new IllegalStateException(
+            "fund-price.date-format.month '" + month + "' must not include the day of month");
+      }
+      parsed = YearMonth.parse(text, strict);
+    } catch (DateTimeException exception) {
+      throw new IllegalStateException(
+          "fund-price.date-format.month '" + month + "' cannot be parsed back under strict"
+              + " resolution; use 'uuuu' for the year instead of 'yyyy'",
+          exception);
+    }
+    if (!YearMonth.from(ROUND_TRIP_PROBE).equals(parsed)) {
+      throw new IllegalStateException(
+          "fund-price.date-format.month '" + month + "' does not round-trip a year and month");
+    }
+  }
+
   public DateTimeFormatter fullDateFormatter() {
     return DateTimeFormatter.ofPattern(fullDate).withResolverStyle(ResolverStyle.STRICT);
+  }
+
+  public DateTimeFormatter monthFormatter() {
+    return DateTimeFormatter.ofPattern(month).withResolverStyle(ResolverStyle.STRICT);
   }
 }

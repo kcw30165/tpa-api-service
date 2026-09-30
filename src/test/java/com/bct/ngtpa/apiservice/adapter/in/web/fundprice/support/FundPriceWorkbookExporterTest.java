@@ -31,7 +31,8 @@ class FundPriceWorkbookExporterTest {
   private static final DateTimeFormatter FULL_DATE_FORMATTER = new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties().fullDateFormatter();
 
   private FundPriceWorkbookExporter newExporter() {
-    return new FundPriceWorkbookExporter(new FundPriceExportProperties(), FULL_DATE_FORMATTER);
+    return new FundPriceWorkbookExporter(
+        new FundPriceExportProperties(), FULL_DATE_FORMATTER, MONTH_FORMATTER);
   }
 
   private FundPriceRowResult row(
@@ -163,6 +164,89 @@ class FundPriceWorkbookExporterTest {
       var sheet = workbook.getSheetAt(0);
       assertThat(sheet.getRow(1).getCell(1).getStringCellValue()).isEqualTo("Zebra Fund");
       assertThat(sheet.getRow(2).getCell(1).getStringCellValue()).isEqualTo("Alpha Fund");
+    }
+  }
+
+  private static final DateTimeFormatter MONTH_FORMATTER =
+      new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties()
+          .monthFormatter();
+
+  private static XSSFWorkbook read(byte[] bytes) throws Exception {
+    return new XSSFWorkbook(new ByteArrayInputStream(bytes));
+  }
+
+  private FundPriceExportResult resultOf(String type, String mode) {
+    return new FundPriceExportResult(
+        List.of(row("DUSM", "USD Fund", "n", "HKD", "1.0", "1.0", "5")),
+        type,
+        "5",
+        BigInteger.TWO,
+        mode);
+  }
+
+  @Test
+  void unitPriceSheetUsesConfiguredDefaultName() throws Exception {
+    try (var workbook = read(newExporter().write(resultOf("UNIT PRICE", "DAILY")))) {
+      assertThat(workbook.getNumberOfSheets()).isEqualTo(1);
+      assertThat(workbook.getSheetName(0)).isEqualTo("UNIT PRICE");
+    }
+  }
+
+  @Test
+  void bidOfferSheetUsesConfiguredDefaultName() throws Exception {
+    try (var workbook = read(newExporter().write(resultOf("BIDOFFER PRICE", "DAILY")))) {
+      assertThat(workbook.getSheetName(0)).isEqualTo("BIDOFFER PRICE");
+    }
+  }
+
+  @Test
+  void configuredSheetNameIsUsed() throws Exception {
+    var properties = new FundPriceExportProperties();
+    properties.getSheetNames().put("UNIT PRICE", "Unit Price List");
+    var exporter = new FundPriceWorkbookExporter(properties, FULL_DATE_FORMATTER, MONTH_FORMATTER);
+    try (var workbook = read(exporter.write(resultOf("UNIT PRICE", "DAILY")))) {
+      assertThat(workbook.getSheetName(0)).isEqualTo("Unit Price List");
+    }
+  }
+
+  @Test
+  void unknownFundPriceTypeFailsAsRetrievalFailure() {
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> newExporter().write(resultOf("OTHER PRICE", "DAILY")))
+        .isInstanceOf(
+            com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException.class);
+  }
+
+  @Test
+  void invalidSheetNameConfigurationFailsConstruction() {
+    var properties = new FundPriceExportProperties();
+    properties.getSheetNames().put("UNIT PRICE", "Bad/Name");
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> new FundPriceWorkbookExporter(properties, FULL_DATE_FORMATTER, MONTH_FORMATTER))
+        .isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  void monthlyModeWritesMonthAndYearOnly() throws Exception {
+    try (var workbook = read(newExporter().write(resultOf("UNIT PRICE", "MONTHLY")))) {
+      assertThat(workbook.getSheetAt(0).getRow(1).getCell(0).getStringCellValue())
+          .isEqualTo("09/2026");
+    }
+  }
+
+  @Test
+  void dailyModeWritesFullDate() throws Exception {
+    try (var workbook = read(newExporter().write(resultOf("UNIT PRICE", "DAILY")))) {
+      assertThat(workbook.getSheetAt(0).getRow(1).getCell(0).getStringCellValue())
+          .isEqualTo("02/09/2026");
+    }
+  }
+
+  @Test
+  void resultWithoutModeWritesFullDate() throws Exception {
+    try (var workbook = read(newExporter().write(resultOf("UNIT PRICE", null)))) {
+      assertThat(workbook.getSheetAt(0).getRow(1).getCell(0).getStringCellValue())
+          .isEqualTo("02/09/2026");
     }
   }
 }

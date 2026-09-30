@@ -12,14 +12,28 @@ import java.util.List;
  * downstream {@code FundPriceWorkbookExporter} never needs to resolve metadata itself -- mirrors
  * how {@code AccountBalanceAssembler} receives an already-resolved {@code
  * ResolvedGeneralMetadataSet}, never resolving it itself.
+ *
+ * <p>{@code mode} is the cached TRPGetFundPriceMode mode ({@code DAILY}/{@code MONTHLY}); the
+ * exporter shows the Fund Price Date as year-month when it is {@code MONTHLY}. {@code null} means
+ * the full date is shown.
  */
 public record FundPriceExportResult(
     List<FundPriceRowResult> rows,
     String fundPriceType,
     String maxRiskLevel,
-    BigInteger unitPricePrecision) {
+    BigInteger unitPricePrecision,
+    String mode) {
 
   public FundPriceExportResult {
     rows = rows == null ? List.of() : List.copyOf(rows);
+  }
+
+  /** Result without a mode: the exporter shows the full Fund Price Date. */
+  public FundPriceExportResult(
+      List<FundPriceRowResult> rows,
+      String fundPriceType,
+      String maxRiskLevel,
+      BigInteger unitPricePrecision) {
+    this(rows, fundPriceType, maxRiskLevel, unitPricePrecision, null);
   }
 }

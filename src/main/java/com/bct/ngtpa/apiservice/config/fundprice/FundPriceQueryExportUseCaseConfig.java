@@ -59,7 +59,14 @@ public class FundPriceQueryExportUseCaseConfig {
 
   @Bean
   public FundPriceWorkbookExporter fundPriceWorkbookExporter(
-      FundPriceExportProperties properties, DateTimeFormatter fundPriceFullDateFormatter) {
-    return new FundPriceWorkbookExporter(properties, fundPriceFullDateFormatter);
+      FundPriceExportProperties properties,
+      DateTimeFormatter fundPriceFullDateFormatter,
+      com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties
+          dateFormatProperties) {
+    // Month formatter is passed directly rather than exposed as a second DateTimeFormatter
+    // bean, which would make by-type injection of fundPriceFullDateFormatter ambiguous.
+    dateFormatProperties.validate();
+    return new FundPriceWorkbookExporter(
+        properties, fundPriceFullDateFormatter, dateFormatProperties.monthFormatter());
   }
 }

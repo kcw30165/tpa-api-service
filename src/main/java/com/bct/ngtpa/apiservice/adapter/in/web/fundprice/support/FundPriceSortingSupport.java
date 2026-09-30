@@ -63,7 +63,8 @@ public class FundPriceSortingSupport {
         result.rows().stream().sorted(order).toList(),
         result.fundPriceType(),
         result.maxRiskLevel(),
-        result.unitPricePrecision());
+        result.unitPricePrecision(),
+        result.mode());
   }
 
   private static String caseless(String value) {

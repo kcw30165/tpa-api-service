@@ -505,7 +505,12 @@ shared-idempotency:
 fund-price:
   date-format:
     full-date: "dd/MM/uuuu"
+    month: "MM/uuuu"
   export:
+    # Sheet name per fund-price-type. Keys contain a space, so they must stay bracketed.
+    sheet-names:
+      "[BIDOFFER PRICE]": "BIDOFFER PRICE"
+      "[UNIT PRICE]": "UNIT PRICE"
     headers:
       fund-price-date: "Fund Price Date基金價格日期"
       fund-name: "Fund Name"

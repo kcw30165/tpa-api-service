@@ -147,6 +147,7 @@ public final class FundPriceExportUseCase {
                 resolvedMetadata.find(UNIT_PRICE_PRECISION_KEY).orElseThrow().value())
             .value();
     return FundPriceExportUseCaseResult.applied(
-        new FundPriceExportResult(rows, metadata.fundPriceType(), maxRiskLevel, unitPricePrecision));
+        new FundPriceExportResult(
+            rows, metadata.fundPriceType(), maxRiskLevel, unitPricePrecision, metadata.mode()));
   }
 }

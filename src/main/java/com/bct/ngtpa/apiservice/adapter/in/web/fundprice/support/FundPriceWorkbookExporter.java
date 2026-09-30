@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.config.FundPriceExportProperties;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRowResult;
+import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -14,53 +15,62 @@ import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormat;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 /**
- * Generates the Fund Price XLSX export, per fund-price-excel-export-contract.md (confirmed
- * byte-exact, script 134). Consumes {@link FundPriceExportResult} DIRECTLY -- deliberately
- * bypasses {@code FundPriceWebMapper} entirely (confirmed design, script 141), since the web
- * mapper collapses bid/offer into a single field and resolves fundName to one language, both of
- * which contradict this contract: currency and price always stay separate columns, and Fund Name
- * / 基金名稱 are always two permanently separate columns, never collapsed by language.
+ * Generates the Fund Price XLSX export, per fund-price-excel-export-contract.md. Consumes {@link
+ * FundPriceExportResult} DIRECTLY -- deliberately bypasses {@code FundPriceWebMapper} entirely,
+ * since the web mapper collapses bid/offer into a single field and resolves fundName to one
+ * language, both of which contradict this contract: currency and price always stay separate
+ * columns, and Fund Name / 基金名稱 are always two permanently separate columns.
  *
- * <p>ONE sheet. Column set is selected by the cached {@code fundPriceType}: UNIT PRICE = 5
- * columns, BIDOFFER PRICE = 7 columns, byte-exact order per the contract. Price cells are NUMERIC;
- * currency is a separate TEXT column. Decimal scale comes from {@code unitPricePrecision}
- * (resolved once, upstream, by {@code FundPriceExportUseCase} -- this class never resolves
- * metadata itself). The Chinese fund name cell is left BLANK when absent, never backfilled from
- * the English name.
+ * <p>ONE sheet, named from {@code fund-price.export.sheet-names} by the cached {@code
+ * fundPriceType}; a type with no configured sheet name fails as {@link
+ * FundPriceRetrievalException#systemFailure()} (503). The sheet-name configuration is validated
+ * in the constructor, so a bad value fails application startup.
  *
- * <p>Rows are written in the exact order received -- sorting is already applied upstream by
- * {@code FundPriceSortingSupport} (confirmed, script 140); this class does not re-sort.
+ * <p>Column set is selected by {@code fundPriceType}: UNIT PRICE = 5 columns, BIDOFFER PRICE = 7
+ * columns. Price cells are NUMERIC; currency is a separate TEXT column. Decimal scale comes from
+ * {@code unitPricePrecision}. The Chinese fund name cell is left BLANK when absent, never
+ * backfilled from the English name. The Fund Price Date cell uses the configured month format when
+ * the cached mode is MONTHLY, otherwise the configured full-date format.
  *
- * <p>Mirrors {@code ContributionSummaryWorkbookExporter}'s exact POI skeleton: {@code @Component},
- * try-with-resources {@code XSSFWorkbook}+{@code ByteArrayOutputStream}, one {@link CellStyle}
- * built once and reused.
+ * <p>Rows are written in the exact order received -- sorting is applied upstream by {@code
+ * FundPriceSortingSupport}; this class does not re-sort.
  */
-@Component
 public class FundPriceWorkbookExporter {
 
   private static final String BIDOFFER_PRICE_TYPE = "BIDOFFER PRICE";
-  private static final String SHEET_NAME = "Fund Price";
+  private static final String MONTHLY_MODE = "MONTHLY";
 
   private final FundPriceExportProperties properties;
   private final DateTimeFormatter dateFormatter;
+  private final DateTimeFormatter monthFormatter;
 
   public FundPriceWorkbookExporter(
-      FundPriceExportProperties properties, DateTimeFormatter fundPriceFullDateFormatter) {
+      FundPriceExportProperties properties,
+      DateTimeFormatter fundPriceFullDateFormatter,
+      DateTimeFormatter fundPriceMonthFormatter) {
     this.properties = Objects.requireNonNull(properties, "properties must not be null");
     this.dateFormatter =
         Objects.requireNonNull(fundPriceFullDateFormatter, "dateFormatter must not be null");
+    this.monthFormatter =
+        Objects.requireNonNull(fundPriceMonthFormatter, "monthFormatter must not be null");
+    properties.validate();
   }
 
   public byte[] write(FundPriceExportResult result) {
     Objects.requireNonNull(result, "result must not be null");
+    String sheetName = properties.sheetName(result.fundPriceType());
+    if (sheetName == null) {
+      throw FundPriceRetrievalException.systemFailure();
+    }
     boolean bidOffer = BIDOFFER_PRICE_TYPE.equals(result.fundPriceType());
+    DateTimeFormatter priceDateFormatter =
+        MONTHLY_MODE.equals(result.mode()) ? monthFormatter : dateFormatter;
     try (var workbook = new XSSFWorkbook();
         var outputStream = new ByteArrayOutputStream()) {
-      var sheet = workbook.createSheet(SHEET_NAME);
+      var sheet = workbook.createSheet(sheetName);
       var priceStyle = numericPriceStyle(workbook, result.unitPricePrecision());
       int scale = result.unitPricePrecision().intValueExact();
 
@@ -68,7 +78,8 @@ public class FundPriceWorkbookExporter {
 
       int rowIndex = 1;
       for (FundPriceRowResult row : result.rows()) {
-        writeDataRow(sheet.createRow(rowIndex++), row, bidOffer, priceStyle, scale);
+        writeDataRow(
+            sheet.createRow(rowIndex++), row, bidOffer, priceStyle, scale, priceDateFormatter);
       }
 
       workbook.write(outputStream);
@@ -95,8 +106,13 @@ public class FundPriceWorkbookExporter {
   }
 
   private void writeDataRow(
-      Row row, FundPriceRowResult data, boolean bidOffer, CellStyle priceStyle, int scale) {
-    row.createCell(0).setCellValue(data.priceDate().format(dateFormatter));
+      Row row,
+      FundPriceRowResult data,
+      boolean bidOffer,
+      CellStyle priceStyle,
+      int scale,
+      DateTimeFormatter priceDateFormatter) {
+    row.createCell(0).setCellValue(data.priceDate().format(priceDateFormatter));
     row.createCell(1).setCellValue(data.fundName());
     writeChineseFundNameCell(row, data.chineseFundName());
     if (bidOffer) {

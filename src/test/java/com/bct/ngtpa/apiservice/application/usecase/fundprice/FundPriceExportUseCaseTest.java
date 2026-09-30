@@ -232,4 +232,17 @@ class FundPriceExportUseCaseTest {
         .assertNext(result -> assertThat(result.exportResult().maxRiskLevel()).isNull())
         .verifyComplete();
   }
+
+  @Test
+  void exportResultCarriesCachedMode() {
+    stubActiveSessionWithMetadata(
+        new FundPriceModeSessionMetadata(
+            "MONTHLY", "UNIT PRICE", List.of(REFERENCE_DATE), 36, "5"));
+    when(sourcePort.fetchPriceRange(any())).thenReturn(Mono.just(rawData()));
+
+    StepVerifier.create(
+            newUseCase().export(SESSION_ID, "DB", "policy1", "DBA", ActorUserRole.ROLE_USER_MBR))
+        .assertNext(result -> assertThat(result.exportResult().mode()).isEqualTo("MONTHLY"))
+        .verifyComplete();
+  }
 }

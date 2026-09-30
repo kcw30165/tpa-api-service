@@ -133,4 +133,16 @@ class FundPriceSortingSupportTest {
     assertThat(sorted.maxRiskLevel()).isEqualTo("5");
     assertThat(sorted.unitPricePrecision()).isEqualTo(BigInteger.TWO);
   }
+
+  @Test
+  void exportSortKeepsMode() {
+    var result =
+        new FundPriceExportResult(
+            List.of(row("A", "Alpha Fund", null, "1", "1", DAY)),
+            "UNIT PRICE",
+            "5",
+            BigInteger.TWO,
+            "MONTHLY");
+    assertThat(support.sort(result).mode()).isEqualTo("MONTHLY");
+  }
 }

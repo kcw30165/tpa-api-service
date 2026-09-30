@@ -34,4 +34,17 @@ class FundPriceExportResultTest {
     var result = new FundPriceExportResult(List.of(row()), "UNIT PRICE", null, BigInteger.TWO);
     assertThat(result.maxRiskLevel()).isNull();
   }
+
+  @Test
+  void carriesModeWhenProvided() {
+    var result =
+        new FundPriceExportResult(List.of(row()), "UNIT PRICE", null, BigInteger.TWO, "MONTHLY");
+    assertThat(result.mode()).isEqualTo("MONTHLY");
+  }
+
+  @Test
+  void fourArgumentConstructorLeavesModeNull() {
+    var result = new FundPriceExportResult(List.of(row()), "UNIT PRICE", null, BigInteger.TWO);
+    assertThat(result.mode()).isNull();
+  }
 }

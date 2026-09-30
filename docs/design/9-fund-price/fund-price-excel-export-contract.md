@@ -79,3 +79,20 @@ workbook header language. No `lang` query parameter is added.
 ## Safety
 
 Workbook bytes, downstream response bodies, account identifiers, and session metadata must not be logged. Export failure returns the standard public 503 system response where the web stack can negotiate the error response.
+
+## Sheet name
+
+The workbook has one sheet, named from `fund-price.export.sheet-names` by the cached
+fund-price-type. Defaults: `BIDOFFER PRICE` -> `BIDOFFER PRICE`, `UNIT PRICE` -> `UNIT PRICE`.
+The keys contain a space, so YAML must bracket them (`"[BIDOFFER PRICE]"`). Startup fails when
+either type is missing, or a name is blank, longer than 31 characters, or contains any of
+`[ ] : * ? / \`. An export whose fund-price-type has no configured sheet name fails with the
+standard 503 system response.
+
+## Fund Price Date in MONTHLY mode
+
+When the cached mode is `MONTHLY`, the Fund Price Date column shows year and month only, using
+`fund-price.date-format.month` (default Java pattern `MM/uuuu`, rendered `MM/yyyy`, e.g.
+`09/2026`). Otherwise it shows the full date (`fund-price.date-format.full-date`). The month
+pattern is display-only, validated at startup (no day of month, strict year-month round
+trip), and rows are still sorted by the full price date.
