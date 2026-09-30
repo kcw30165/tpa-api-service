@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.adapter.in.web.fundprice.controller;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.mapper.FundPriceWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceQueryResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceQueryResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support.FundPriceSortingSupport;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceQueryResult;
