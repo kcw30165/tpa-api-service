@@ -10,6 +10,7 @@ import java.util.*;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import com.bct.ngtpa.apiservice.exception.CacheException;
 
 class RedisAuthenticatedSessionAdapterTest {
   private static final Instant NOW = Instant.parse("2026-07-20T00:00:00Z");
@@ -90,21 +91,77 @@ class RedisAuthenticatedSessionAdapterTest {
         .verifyComplete();
   }
 
+
+  @Test
+  void deleteRemovesExistingSessionWhenFound() {
+    adapter
+        .store(
+            new StoreAuthenticatedSessionCommand(id, payload, Duration.ofMinutes(30), NOW, "req"))
+        .block();
+    StepVerifier.create(adapter.delete(new DeleteAuthenticatedSessionCommand(id, "req")))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionPersistenceStatus.DELETED))
+        .verifyComplete();
+    assertThat(cache.values).doesNotContainKey("ngtpa:auth:authenticated-session:sid_abcdefghijklmnopqrstuvwx");
+  }
+
+  @Test
+  void safePassesThroughIllegalArgumentExceptionUnchanged() {
+    cache.forcedError = new IllegalArgumentException("bad argument");
+    StepVerifier.create(adapter.load(new LoadAuthenticatedSessionCommand(id, "req")))
+        .expectErrorMatches(t -> t instanceof IllegalArgumentException)
+        .verify();
+  }
+
+  @Test
+  void safePassesThroughIllegalStateExceptionUnchanged() {
+    cache.forcedError = new IllegalStateException("bad state");
+    StepVerifier.create(adapter.load(new LoadAuthenticatedSessionCommand(id, "req")))
+        .expectErrorMatches(t -> t instanceof IllegalStateException)
+        .verify();
+  }
+
+  @Test
+  void safePassesThroughCacheExceptionUnchangedSameInstance() {
+    var original = new CacheException("Cache get operation failed");
+    cache.forcedError = original;
+    StepVerifier.create(adapter.load(new LoadAuthenticatedSessionCommand(id, "req")))
+        .expectErrorMatches(t -> t == original)
+        .verify();
+  }
+
+  @Test
+  void safeWrapsUnrelatedExceptionWithGenericMessagePreservingCause() {
+    var rawCause = new RuntimeException("raw redis connection refused at 10.0.0.5:6379");
+    cache.forcedError = rawCause;
+    StepVerifier.create(adapter.load(new LoadAuthenticatedSessionCommand(id, "req")))
+        .expectErrorMatches(
+            t ->
+                t instanceof CacheException
+                    && t.getCause() == rawCause
+                    && "Authenticated session persistence operation failed".equals(t.getMessage()))
+        .verify();
+  }
+
   static final class MemoryCache implements CachePort {
     final Map<String, String> values = new HashMap<>();
     final Map<String, Duration> ttls = new HashMap<>();
+    Throwable forcedError;
 
     public Mono<Void> set(String k, String v, Duration ttl) {
+      if (forcedError != null) return Mono.error(forcedError);
       values.put(k, v);
       ttls.put(k, ttl);
       return Mono.empty();
     }
 
     public Mono<Optional<String>> get(String k) {
+      if (forcedError != null) return Mono.error(forcedError);
       return Mono.just(Optional.ofNullable(values.get(k)));
     }
 
     public Mono<Boolean> evict(String k) {
+      if (forcedError != null) return Mono.error(forcedError);
       boolean removed = values.remove(k) != null;
       ttls.remove(k);
       return Mono.just(removed);
