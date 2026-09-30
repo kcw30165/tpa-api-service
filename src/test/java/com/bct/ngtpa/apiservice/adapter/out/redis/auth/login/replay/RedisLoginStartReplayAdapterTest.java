@@ -88,6 +88,21 @@ class RedisLoginStartReplayAdapterTest {
   // ----- load() ---------------------------------------------------------------
 
   @Test
+  void loadSucceedsWithValidJson() {
+    givenKeyFactoryReady();
+    when(redis.opsForValue()).thenReturn(values);
+    var original = new ProtectedLoginStartReplay("v1", "AES/GCM/NoPadding", "iv", "cipher");
+    try {
+      when(values.get(any())).thenReturn(Mono.just(mapper.writeValueAsString(original)));
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    StepVerifier.create(newAdapter().load(ref))
+        .assertNext(loaded -> assertThat(loaded).contains(original))
+        .verifyComplete();
+  }
+
+  @Test
   void loadMissingYieldsEmpty() {
     givenKeyFactoryReady();
     when(redis.opsForValue()).thenReturn(values);

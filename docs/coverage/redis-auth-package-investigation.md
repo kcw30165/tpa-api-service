@@ -1192,3 +1192,78 @@ have been made. This confirms the last unknown dependency shape
 needed to write a real, validation-passing test for read()'s
 genuinely-uncovered success path in the next implementation
 script.
+
+## Implementation: Login Replay Package Remaining Gaps Closed
+
+- Generated: 2026-09-30T01:35:20Z
+- New test added: `loadSucceedsWithValidJson` in the EXISTING
+  `RedisLoginStartReplayAdapterTest` (no new file). Closes the
+  genuinely-untested `read()` success path (line 54) and the
+  `lambda$load$0` wrapping (line 36) -- the only prior test
+  exercising `read()` deliberately supplied invalid JSON, so
+  the success path had 0 covered instructions per script 051's
+  real per-line jacoco data.
+- Uses `ProtectedLoginStartReplay`'s real confirmed shape
+  (script 053 dump) and the known-safe literal
+  `("v1", "AES/GCM/NoPadding", "iv", "cipher")`,
+  already proven safe by 2 existing indirect-caller tests
+  (script 053 dump), not invented.
+- Pre-validated via a stub classpath using the exact real
+  dumped source for the adapter and all 3 dependency types,
+  plus a genuinely-behaving Jackson stub invoking the real
+  record's canonical constructor via reflection -- then
+  ACTUALLY EXECUTED (not just compiled) the full save()-then-
+  load() round-trip via a reflective harness against the real
+  verbatim adapter code. It genuinely passed.
+
+### Documented gap 1: RedisLoginStartReplayAdapter.json()'s catch block
+
+Lines 47-48 (`} catch (Exception e) { throw new
+IllegalStateException(...); }`) remain uncovered. Root cause:
+the SAME hard-wired-`ObjectMapper` defensive-gap pattern
+already documented earlier in this workstream for the
+JsonMapper class. The EXISTING
+`saveSerializationFailureErrors` test (already in this file
+before this script ran) already proves a Mockito mock
+serializes successfully via real Jackson -- confirming this
+catch block is structurally just as hard to trigger through
+legitimate input as the earlier-documented case. Per this
+project's Tier-B coverage policy, this is documented as
+**defensive, not independently testable**.
+
+### Documented gap 2: RedisAuthenticatedLoginReplaySessionAdapter's `v != null` branch
+
+Line 56, inside `rotateCsrfHashIfCurrent`'s ternary
+(`v != null && v > 0 ? ROTATED : CONFLICT`), the `v != null`
+check is documented as **genuinely unreachable**: Reactive
+Streams Rule 2.13 (enforced by Reactor) forbids `onNext` from
+ever signaling a null element -- `Flux.just(null)` throws
+`NullPointerException` immediately at construction, before the
+adapter code under test even runs. This corrects an EARLIER
+STATED PLAN in this workstream's conversation: the branch was
+initially assumed "straightforward to fix directly" with
+`Flux.just((Long) null)`, but on reflection this technique
+would not test the adapter's logic at all -- it would only
+assert `Flux.just()` itself throwing at test-setup time. The
+Lua script backing this adapter
+(`if redis.call('get',KEYS[1])==ARGV[1] then
+redis.call('psetex',...); return 1 else return 0 end`) only
+ever returns `0` or `1` (both non-null Long values),
+consistent with this branch being defensive/unreachable via
+any legitimate reactive pipeline. Per this project's Tier-B
+coverage policy, this is documented as **unreachable given
+upstream reactive-streams guarantees**.
+
+### Status
+
+This closes the `.login.replay` sub-package: all 3 classes
+either meet the full Tier-B gate (`RedisLoginStartReplayKeyFactory`
+at 100%/100%, and `RedisAuthenticatedLoginReplaySessionAdapter`
+at 100% instruction with its one remaining branch gap
+explicitly justified as unreachable) or have their remaining
+gap(s) explicitly, individually justified per this project's
+own coverage-tiering policy
+(`RedisLoginStartReplayAdapter`). A follow-up verification
+script is still needed to confirm via a REAL mvn test run
+(not just compile) that the new test passes against the
+actual repo, and to measure the real resulting coverage.
