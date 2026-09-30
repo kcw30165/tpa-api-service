@@ -1109,3 +1109,86 @@ This is INVESTIGATION ONLY. No test or production code changes
 have been made. Once reviewed, this identifies which of the
 remaining classes in this sub-package genuinely need attention,
 and the exact uncovered lines/branches for each.
+
+## Dependency-Shape Investigation: ProtectedLoginStartReplay
+
+- Generated: 2026-09-30T01:12:10Z
+- Trigger: script 052's byte-exact dump of
+  RedisLoginStartReplayAdapter resolved an earlier per-line
+  jacoco discrepancy and confirmed two distinct findings for the
+  `.login.replay` sub-package's second-worst class:
+  1. `json()`'s catch block (lines 47-48) is the SAME
+     hard-wired-ObjectMapper defensive-gap pattern already
+     documented earlier in this workstream for the JsonMapper
+     class -- the existing
+     `saveSerializationFailureErrors` test already proves a
+     Mockito mock serializes successfully via real Jackson.
+  2. `read()`'s success path (line 54) and the
+     `lambda$load$0` call site (line 36, the
+     `Optional.of(read(v))` wrapping) are GENUINELY testable
+     and currently untested -- the only existing test exercising
+     `read()` deliberately supplies invalid JSON.
+- To write a correct test for finding #2,
+  `ProtectedLoginStartReplay`'s real shape was confirmed here
+  (not assumed, per the zero-assumption discipline established
+  after the earlier registration-mapper stub-fabrication
+  incident).
+
+### Real source
+
+```java
+package com.bct.ngtpa.apiservice.application.dto.auth.login.replay;
+
+import java.util.Objects;
+
+public record ProtectedLoginStartReplay(
+    String keyVersion, String algorithm, String iv, String ciphertext) {
+  public ProtectedLoginStartReplay {
+    Objects.requireNonNull(keyVersion);
+    Objects.requireNonNull(algorithm);
+    Objects.requireNonNull(iv);
+    Objects.requireNonNull(ciphertext);
+  }
+
+  public ProtectedLoginStartReplay withKeyVersion(String value) {
+    return new ProtectedLoginStartReplay(value, algorithm, iv, ciphertext);
+  }
+
+  public ProtectedLoginStartReplay withCiphertext(String value) {
+    return new ProtectedLoginStartReplay(keyVersion, algorithm, iv, value);
+  }
+
+  @Override
+  public String toString() {
+    return "ProtectedLoginStartReplay[keyVersion="
+        + keyVersion
+        + ", algorithm="
+        + algorithm
+        + ", iv=<redacted>, ciphertext=<redacted>]";
+  }
+}
+```
+
+### Existing test usage cross-reference
+
+```
+=== Dedicated test file (find -name "ProtectedLoginStartReplayTest.java") ===
+
+=== Construction call sites in tests (grep -rn) ===
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginStartExecutionBridgeTest.java:142:          Optional.of(new ProtectedLoginStartReplay("v1", "AES/GCM/NoPadding", "iv", "cipher")));
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/idempotency/LoginStartReplayCodecTest.java:241:        Optional.of(new ProtectedLoginStartReplay("v1", "AES/GCM/NoPadding", "iv", "cipher"));
+src/test/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/replay/LoginStartProtectedReplayCommitterTest.java:157:        new ProtectedLoginStartReplay("v1", "test", "iv", "cipher");
+
+=== Construction call sites in main (grep -rn) ===
+src/main/java/com/bct/ngtpa/apiservice/adapter/out/security/login/replay/AesGcmLoginStartReplayProtector.java:38:      return new ProtectedLoginStartReplay(
+src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/replay/ProtectedLoginStartReplay.java:15:    return new ProtectedLoginStartReplay(value, algorithm, iv, ciphertext);
+src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/replay/ProtectedLoginStartReplay.java:19:    return new ProtectedLoginStartReplay(keyVersion, algorithm, iv, value);
+```
+
+### Status
+
+This is INVESTIGATION ONLY. No test or production code changes
+have been made. This confirms the last unknown dependency shape
+needed to write a real, validation-passing test for read()'s
+genuinely-uncovered success path in the next implementation
+script.
