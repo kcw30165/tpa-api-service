@@ -331,4 +331,87 @@ class FundPriceControllerTest {
         .extracting(FundPriceRowResult::fundCode)
         .containsExactly("LOW", "ZRO", "OLD");
   }
+
+
+  @Test
+  void exportEndpointSystemFailureOutcomeMapsToError() {
+    // Confirms toExportResultOrError's SYSTEM_FAILURE branch (script 206's
+    // confirmed missed branch at FundPriceController.java line 249).
+    when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
+    when(exportUseCase.export(any(), any(), any(), any(), any()))
+        .thenReturn(
+            Mono.just(
+                com.bct.ngtpa.apiservice.application.usecase.fundprice
+                    .FundPriceExportUseCaseResult.of(
+                        com.bct.ngtpa.apiservice.application.usecase.fundprice
+                            .FundPriceUseCaseOutcome.SYSTEM_FAILURE)));
+
+    StepVerifier.create(newController().exportFundPrice(exchangeWithSessionCookie()))
+        .expectError()
+        .verify();
+  }
+
+  @Test
+  void exportEndpointInvalidDateOutcomeMapsToError() {
+    // Confirms toExportResultOrError's INVALID_DATE branch (script 206's
+    // confirmed missed branch at FundPriceController.java line 254). This
+    // outcome is structurally unreachable from real production use-case
+    // logic for export, but is defensively handled since Java requires
+    // exhaustive switch coverage over the shared FundPriceUseCaseOutcome
+    // enum; still directly testable via the mocked use-case result.
+    when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
+    when(exportUseCase.export(any(), any(), any(), any(), any()))
+        .thenReturn(
+            Mono.just(
+                com.bct.ngtpa.apiservice.application.usecase.fundprice
+                    .FundPriceExportUseCaseResult.of(
+                        com.bct.ngtpa.apiservice.application.usecase.fundprice
+                            .FundPriceUseCaseOutcome.INVALID_DATE)));
+
+    StepVerifier.create(newController().exportFundPrice(exchangeWithSessionCookie()))
+        .expectError()
+        .verify();
+  }
+
+  @Test
+  void modeEndpointPropagatesRequestIdFromReactorContextToUseCase() {
+    // Confirms the non-null branch of "headerContext == null ? null :
+    // headerContext.requestId()" (script 206's confirmed missed branch at
+    // FundPriceController.java line 207). Every other existing test in this
+    // file calls getFundPriceMode(...) without populating the Reactor
+    // context, so only the null-branch was ever exercised before this test.
+    // Follows the exact .contextWrite(...) idiom confirmed already proven in
+    // PersonalInformationControllerTest, ReferenceDataControllerTest, and
+    // others (script 207 investigation).
+    when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
+    when(referenceDatePort.resolveReferenceDate(any()))
+        .thenReturn(Mono.just(LocalDate.of(2026, 9, 18)));
+    var metadata =
+        new com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceModeSessionMetadata(
+            "DAILY", "BIDOFFER PRICE", List.of(LocalDate.of(2026, 9, 18)), 36, "5");
+    when(modeUseCase.fetchAndCacheMode(any(), any(), any()))
+        .thenReturn(
+            Mono.just(
+                com.bct.ngtpa.apiservice.application.usecase.fundprice
+                    .FundPriceModeUseCaseResult.applied(metadata)));
+    when(webMapper.toModeResponse(any(), any()))
+        .thenReturn(
+            new com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceModeResponse(
+                "DAILY", List.of("18/09/2026"), 36, "18/09/2026"));
+
+    newController()
+        .getFundPriceMode(exchangeWithSessionCookie())
+        .contextWrite(
+            ctx ->
+                ctx.put(
+                    com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys.CONTEXT_KEY,
+                    new com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext(
+                        "ACC-123", "req-header-987", "en")))
+        .block();
+
+    var requestIdCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+    org.mockito.Mockito.verify(modeUseCase)
+        .fetchAndCacheMode(any(), any(), requestIdCaptor.capture());
+    assertThat(requestIdCaptor.getValue()).isEqualTo("req-header-987");
+  }
 }
