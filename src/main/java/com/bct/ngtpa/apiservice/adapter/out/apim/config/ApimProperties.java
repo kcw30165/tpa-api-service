@@ -15,7 +15,7 @@ import org.springframework.util.unit.DataSize;
 @Setter
 public class ApimProperties {
   private String baseUrl;
-  private int timeoutMilliseconds;
+  private int timeoutMilliseconds = 10000;
 
   /**
    * Maximum APIM response body buffered in memory per call (apim.max-response-size). Spring's
@@ -93,6 +93,14 @@ public class ApimProperties {
           "apim.max-response-size must not exceed " + Integer.MAX_VALUE + " bytes");
     }
     return (int) maxResponseSize.toBytes();
+  }
+
+  /** Validated apim.timeout-milliseconds: must be greater than zero. */
+  public int validatedTimeoutMilliseconds() {
+    if (timeoutMilliseconds <= 0) {
+      throw new IllegalStateException("apim.timeout-milliseconds must be greater than zero");
+    }
+    return timeoutMilliseconds;
   }
 
   @Getter
