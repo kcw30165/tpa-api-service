@@ -4,6 +4,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.fundprice.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceQueryResponse;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceModeSessionMetadata;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceQueryResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRowResult;
 import java.math.BigDecimal;
@@ -29,6 +30,25 @@ class FundPriceWebMapperTest {
     return new FundPriceRowResult(
         "DUSM", "USD Fund", "\u7f8e\u5143\u57fa\u91d1", LocalDate.of(2026, 5, 5), "HKD",
         new BigDecimal("1.1"), new BigDecimal("1.2"), riskLevel);
+  }
+
+  @Test
+  void toModeResponseMapsMetadataAndFormatsEveryAvailableDateAndTheReferenceDate() {
+    var metadata =
+        new FundPriceModeSessionMetadata(
+            "MONTHLY",
+            "UNIT PRICE",
+            List.of(LocalDate.of(2026, 5, 5), LocalDate.of(2026, 4, 5)),
+            36,
+            "5");
+
+    var response = newMapper().toModeResponse(metadata, LocalDate.of(2026, 9, 18));
+
+    assertThat(response.mode()).isEqualTo("MONTHLY");
+    assertThat(response.availableFundPriceDates())
+        .containsExactly("05/05/2026", "05/04/2026");
+    assertThat(response.maximumFundPriceHistoryMonths()).isEqualTo(36);
+    assertThat(response.referenceDate()).isEqualTo("18/09/2026");
   }
 
   @Test
