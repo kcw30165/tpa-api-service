@@ -154,6 +154,47 @@ applicable tiered coverage targets; exact classification (validator-tier 95% bra
 orchestration-tier 85-90%) to be confirmed against the already-agreed tiering rules at
 implementation time.
 
+## DefaultAccountBalanceAssembler branch coverage closure
+A full-suite coverage run showed `DefaultAccountBalanceAssembler` at 50.0% branch
+coverage against this workstream's 85-90% orchestration-tier target. JaCoCo's
+per-line branch detail identified exactly 7 uncovered branch sites (11 missed
+branch-slots) across lines 68, 78, 98, 104, 133, 216, and 249.
+
+**Closed via new tests** (9 of 11 missed branch-slots):
+- Line 78 (4-operand `c == null || d == null || m == null || r == null` null-guard
+  in `build()`): closed by four new tests, each passing `null` for exactly one of
+  `command`/`date`/`metadata`/`raw` and asserting the resulting
+  `AccountBalanceRetrievalException` has reason `SYSTEM_FAILURE`.
+- Line 68 (`x instanceof AccountBalanceRetrievalException ? x : systemFailure()` in
+  `assemble()`'s `onErrorMap`): the TRUE branch is closed as a side effect of the
+  four null-argument tests above, since `build()` throws exactly this exception
+  type for each of them.
+- Lines 98, 104, 133, 216 (`vestedBalanceVisible`/`pendingSwitchInVisible`/
+  `fxRateVisible` ternaries): closed by one new test using
+  `RawAccountBalanceDisplayOptions(false, false, false)`, asserting the
+  corresponding `vestedBalance()`, `pendingSwitchIn()`, and both fund-level and
+  sub-display-level `fxRate()` fields render as `null`. The TRUE side of each
+  ternary was already covered by the pre-existing passing tests, which use
+  all-`true` display options.
+
+**Remaining justified-uncovered** (2 of 11 missed branch-slots, per this
+workstream's tiered policy allowance for a one-line justification on
+orchestration-tier classes):
+- Line 68 FALSE branch (the generic non-`AccountBalanceRetrievalException`
+  catch-all in `onErrorMap`): defensive, not independently testable without
+  injecting a non-domain `RuntimeException` via a test-only seam. Every
+  realistic failure path through this pipeline (`DefaultAccountBalanceNormalizer`,
+  `DefaultAccountOverviewAggregator`, the fund/sub-display portfolio builders,
+  `DefaultAccountBalancePresentationTransformer`, `AccountBalancePrecisionRenderer`)
+  deliberately throws `AccountBalanceRetrievalException` by design; this branch
+  exists solely as a defensive catch-all for truly unexpected non-domain bugs.
+- Line 249 (`subName()`'s `x == null` check): defensive, not independently
+  testable. `DefaultFundLevelPortfolioBuilder` and
+  `DefaultSubDisplayLevelPortfolioBuilder` (both audited in full earlier in this
+  document) already guard the identical `DisplaySourceKey` lookup before
+  `subName()` is ever invoked, so this key is guaranteed present by construction
+  whenever `subName()` runs against real builder output.
+
 ## Second blocking point discovered post-fix: subName() description resolution
 After the `DefaultAccountBalanceNormalizer` fix above, a full audit of the description-
 resolution layer (`AccountBalanceDynamicDescriptionResolver` and the shared

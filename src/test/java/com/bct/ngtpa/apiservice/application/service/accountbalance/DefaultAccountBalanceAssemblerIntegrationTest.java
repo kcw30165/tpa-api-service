@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.accountbalance.raw.*;
 import com.bct.ngtpa.apiservice.application.dto.metadata.*;
+import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -125,6 +126,154 @@ class DefaultAccountBalanceAssemblerIntegrationTest {
               assertThat(sub.subDisplayAccounts().getFirst().subDisplayAccountName()).isEmpty();
             })
         .verifyComplete();
+  }
+
+  @Test
+  void allDisplayOptionsFalseRendersNullForHiddenAmountsAndFxRate() {
+    var raw =
+        new RawAccountBalanceData(
+            LocalDate.of(2026, 8, 27),
+            new RawAccountBalanceDisplayOptions(false, false, false),
+            new RawAccountBalanceCurrency(List.of("HKD", "USD"), "HKD"),
+            List.of(
+                new RawAccountBalanceDisplaySource(
+                    "EE", "Employee", "\u50c7\u54e1", "OE", "Own", "\u81ea\u9078", 1)),
+            List.of(
+                new RawAccountBalanceFundDetail(
+                    "F1",
+                    "Fund One",
+                    "\u57fa\u91d1\u4e00",
+                    1,
+                    new BigDecimal("10.5000"),
+                    "HKD",
+                    new BigDecimal("1.0000"),
+                    "https://example.test/f1")),
+            List.of(
+                new RawAccountBalanceHolding(
+                    "EE",
+                    "OE",
+                    "F1",
+                    new BigDecimal("2.000"),
+                    new BigDecimal("21.00"),
+                    new BigDecimal("20.00"),
+                    new BigDecimal("1.00"))));
+    var assembler = DefaultAccountBalanceAssembler.createForTests(() -> {});
+
+    StepVerifier.create(
+            assembler.assemble(
+                new GetAccountBalanceCommand(
+                    "en", null, "JP", "P", "1", "T", "S", "U", ActorUserRole.ROLE_USER_MBR),
+                LocalDate.of(2026, 8, 28),
+                metadata(),
+                raw))
+        .assertNext(
+            r -> {
+              assertThat(r.accountOverview().displayAccounts().getFirst().vestedBalance()).isNull();
+              assertThat(r.accountOverview().accountTotals().pendingSwitchIn()).isNull();
+              var fund = r.investmentPortfolio().fundLevelView().getFirst().funds().getFirst();
+              assertThat(fund.fxRate()).isNull();
+              var subFund =
+                  r.investmentPortfolio()
+                      .subDisplayAccountLevelView()
+                      .getFirst()
+                      .subDisplayAccounts()
+                      .getFirst()
+                      .funds()
+                      .getFirst();
+              assertThat(subFund.fxRate()).isNull();
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void nullCommandFailsTechnically() {
+    StepVerifier.create(
+            assembler().assemble(null, LocalDate.of(2026, 8, 28), metadata(), validRaw()))
+        .expectErrorSatisfies(
+            ex ->
+                assertThat(ex)
+                    .isInstanceOf(AccountBalanceRetrievalException.class)
+                    .extracting("reason")
+                    .isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE))
+        .verify();
+  }
+
+  @Test
+  void nullDateFailsTechnically() {
+    var command =
+        new GetAccountBalanceCommand(
+            "en", null, "JP", "P", "1", "T", "S", "U", ActorUserRole.ROLE_USER_MBR);
+    StepVerifier.create(assembler().assemble(command, null, metadata(), validRaw()))
+        .expectErrorSatisfies(
+            ex ->
+                assertThat(ex)
+                    .isInstanceOf(AccountBalanceRetrievalException.class)
+                    .extracting("reason")
+                    .isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE))
+        .verify();
+  }
+
+  @Test
+  void nullMetadataFailsTechnically() {
+    var command =
+        new GetAccountBalanceCommand(
+            "en", null, "JP", "P", "1", "T", "S", "U", ActorUserRole.ROLE_USER_MBR);
+    StepVerifier.create(assembler().assemble(command, LocalDate.of(2026, 8, 28), null, validRaw()))
+        .expectErrorSatisfies(
+            ex ->
+                assertThat(ex)
+                    .isInstanceOf(AccountBalanceRetrievalException.class)
+                    .extracting("reason")
+                    .isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE))
+        .verify();
+  }
+
+  @Test
+  void nullRawDataFailsTechnically() {
+    var command =
+        new GetAccountBalanceCommand(
+            "en", null, "JP", "P", "1", "T", "S", "U", ActorUserRole.ROLE_USER_MBR);
+    StepVerifier.create(assembler().assemble(command, LocalDate.of(2026, 8, 28), metadata(), null))
+        .expectErrorSatisfies(
+            ex ->
+                assertThat(ex)
+                    .isInstanceOf(AccountBalanceRetrievalException.class)
+                    .extracting("reason")
+                    .isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE))
+        .verify();
+  }
+
+  private static DefaultAccountBalanceAssembler assembler() {
+    return DefaultAccountBalanceAssembler.createForTests(() -> {});
+  }
+
+  private static RawAccountBalanceData validRaw() {
+    return new RawAccountBalanceData(
+        LocalDate.of(2026, 8, 27),
+        new RawAccountBalanceDisplayOptions(true, true, true),
+        new RawAccountBalanceCurrency(List.of("HKD"), "HKD"),
+        List.of(
+            new RawAccountBalanceDisplaySource(
+                "EE", "Employee", "\u50c7\u54e1", "OE", "Own", "\u81ea\u9078", 1)),
+        List.of(
+            new RawAccountBalanceFundDetail(
+                "F1",
+                "Fund One",
+                "\u57fa\u91d1\u4e00",
+                1,
+                new BigDecimal("10.5000"),
+                "HKD",
+                new BigDecimal("1.0000"),
+                "https://example.test/f1")),
+        List.of(
+            new RawAccountBalanceHolding(
+                "EE",
+                "OE",
+                "F1",
+                new BigDecimal("2.000"),
+                new BigDecimal("21.00"),
+                new BigDecimal("20.00"),
+                new BigDecimal("1.00"))));
   }
 
   private static ResolvedGeneralMetadataSet metadata() {
