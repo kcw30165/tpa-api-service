@@ -77,3 +77,48 @@ of work is **Phase II, Stage II-1** (Username Recovery migration) -
 investigate the full current send path first (per the established
 investigate-before-implement pattern), before changing any production
 code in that workflow.
+
+## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
+
+Investigation (scripts 031–033) traced the full current send path and
+confirmed the following before any implementation:
+
+- **Gap confirmed:** `schemeName`/`schemeNameChi` (added to the three APIM
+  DTOs in Phase I, stage I-3) do **not** yet flow through
+  `TrpSearchMemberApimResultMapper` into `UsernameRecoveryLookupCandidate`,
+  `UsernameRecoveryCandidate` (domain), or `UsernameRecoverySessionCandidate`.
+  Additive plumbing is required end-to-end.
+- **Confirmed available:** `trustCode` already survives the full chain
+  (`UsernameRecoveryCandidate.trustCode()` is accessible at
+  `buildDeliveryCommand()` time). `context.language()` is a required,
+  non-null field populated once at session-start time from
+  `command.language()`, reliably present for every session.
+- **Confirmed behavior change (user-approved):** today,
+  `UsernameRecoveryFeatureConfig` wires `emailSubject`/`emailBody`/
+  `smsBody` as fixed strings **once at Spring startup** from
+  `AuthWorkflowProperties.UsernameRecovery.getTemplate()` (a single,
+  locale-agnostic YAML value). This migration changes that to **per-request
+  resolution** via `NoticeTemplateRegistryPort.resolve(USERNAME_RECOVERY,
+  channel, locale)`, using the member's actual `context.language()` at
+  request time. This is an intended improvement (matches the BRD's
+  per-locale requirement), not an unapproved scope expansion.
+
+Because this migration spans three layers (APIM DTO → domain model →
+feature wiring → request-time resolution), it is split into four
+sub-stages, each independently compiled, tested, and committed:
+
+| Sub-stage | Change | Files touched |
+|---|---|---|
+| II-1.a | Add `schemeName`/`schemeNameChi` to `UsernameRecoveryLookupCandidate` (DTO) and `UsernameRecoveryCandidate` (domain), both via compatibility constructors so existing call sites are untouched. Wire `TrpSearchMemberApimResultMapper` to read `item.schemeName()`/`item.schemeNameChi()` from the APIM DTO and populate the new fields. | `UsernameRecoveryLookupCandidate.java`, `UsernameRecoveryCandidate.java`, `TrpSearchMemberApimResultMapper.java` + tests |
+| II-1.b | Add `schemeName()`/`schemeNameChi()` accessor methods to `UsernameRecoverySessionCandidate` (delegating to the wrapped `candidate`). Thread the new fields through `UsernameRecoveryStartProtectedOperation.createRevisioned()`'s candidate construction so they survive into the session. **Known landmine to fix in this sub-stage:** `UsernameRecoverySessionCandidate.withState()` currently rebuilds its wrapped `UsernameRecoveryCandidate` via the old 6-arg constructor; once that becomes a compatibility constructor (II-1.a), every state transition (reserve/markRequested/markFailed/markUnknownOutcome) would silently null out `schemeName`/`schemeNameChi`. `withState()` must be updated to use the canonical 8-arg constructor, carrying forward `candidate.schemeName()`/`candidate.schemeNameChi()`. | `UsernameRecoverySessionCandidate.java`, `UsernameRecoveryStartProtectedOperation.java` + tests |
+| II-1.c | Replace `UsernameRecoveryFeatureConfig`'s static-string constructor wiring with injecting `NoticeTemplateRegistryPort` directly. Update `UsernameRecoveryRequestProtectedOperation`'s constructor signature accordingly (drops `emailSubject`/`emailBody`/`smsBody` parameters, adds the port). | `UsernameRecoveryFeatureConfig.java`, `UsernameRecoveryRequestProtectedOperation.java` + tests |
+| II-1.d | Update `UsernameRecoveryRequestProtectedOperation.buildDeliveryCommand()` to resolve content per request via `NoticeTemplateRegistryPort.resolve(MessageDeliveryType.USERNAME_RECOVERY, channel, context.language().toLanguageTag())`, apply the confirmed business rule (empty `schemeNameChi` falls back to `schemeName`), and populate the `MessageDeliveryCommand` variables map with `username`, `trustCode`, `schemeName`/`schemeNameChi`. | `UsernameRecoveryRequestProtectedOperation.java` + tests |
+
+**Cleanup note:** the old `auth-workflows.username-recovery.template.*`
+YAML block remains in place but unused after II-1.c/d completes — per the
+Phase III gate, removal is deferred until **all four** workflows are
+migrated, not performed per-workflow.
+
+Each sub-stage follows: confirm no further assumptions needed → implement
+→ `mvn -DskipTests compile` + `test-compile` → scoped `mvn test` for the
+affected classes → commit → proceed to the next sub-stage.
