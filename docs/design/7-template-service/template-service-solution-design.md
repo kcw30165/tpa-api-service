@@ -278,53 +278,87 @@ BRD notices (and therefore all four `MessageDeliveryType` values once
 Login/Forgot Password are split per §5), the central schema closes this
 gap uniformly rather than perpetuating it.
 
+### 8.1 Binding Shape (revised to match house `@ConfigurationProperties` precedent)
+
+Investigation (script 011) found no precedent in the codebase for a
+`@ConfigurationProperties` class binding directly onto a root-level
+`Map` (e.g. `FundPriceExportProperties`, `ApimProperties.Routing`, and
+`BffPagesProperties` all nest their `Map<String, ...>` field under a
+named property, such as `fund-price.export.sheet-names.*` or
+`bff-pages.pages.*`). To stay consistent with this house style, the
+config is nested one level under an explicit `definitions` key rather
+than binding directly at the `notice-templates` root:
+
 ```yaml
 notice-templates:
-  registration-otp:
-    sms:
-      en: "BCT Pension: Your One-Time Password (OTP) for Account Registration: {code}"
-      zh_HK: "BCT 退休金: 有關您的帳戶登記的一次性密碼為: {code}"
-    email:
-      en:
-        subject: "..."
-        body: "..."
-      zh_HK:
-        subject: "..."
-        body: "..."
-  login-otp:
-    sms:
-      en: "BCT {trustCode}: Your One-Time Password (OTP) : {code}"
-      zh_HK: "BCT - {trustCode} : 您的一次性密碼為: {code}"
-    email:
-      en:
-        subject: "..."
-        body: "..."
-      zh_HK:
-        subject: "..."
-        body: "..."
-  forgot-password-otp:         # content intentionally identical to login-otp (§5)
-    sms:
-      en: "BCT {trustCode}: Your One-Time Password (OTP) : {code}"
-      zh_HK: "BCT - {trustCode} : 您的一次性密碼為: {code}"
-    email:
-      en:
-        subject: "..."
-        body: "..."
-      zh_HK:
-        subject: "..."
-        body: "..."
-  username-recovery:
-    sms:
-      en: "BCT {trustCode}: Your Username is {username}. Please login our Member Portal to view your account details"
-      zh_HK: "BCT - {trustCode} : 您的用戶名稱是 {username} 。 請登入會員網站查閱您的賬戶資料。"
-    email:
-      en:
-        subject: "..."
-        body: "..."
-      zh_HK:
-        subject: "..."
-        body: "..."
+  definitions:
+    registration-otp:
+      sms:
+        en: "..."
+        zh_HK: "..."
+      email:
+        en:
+          subject: "..."
+          body: "..."
+        zh_HK:
+          subject: "..."
+          body: "..."
+    login-otp:
+      # ...
+    forgot-password-otp:
+      # ...
+    username-recovery:
+      # ...
 ```
+
+`NoticeTemplateProperties` (prefix `notice-templates`) holds a single
+`Map<String, NoticeDefinition> definitions` field; `NoticeDefinition`
+holds `Map<String, String> sms` (locale → body) and
+`Map<String, EmailContent> email` (locale → {subject, body}), mirroring
+`FundPriceExportProperties`'s `Map<String, String> sheetNames` pattern.
+
+### 8.2 Required Placeholders Per Message Type (grounded in source documents)
+
+Fetching the actual body text of the three email template documents
+(not just metadata) confirms the placeholder sets per BRD notice:
+
+| Message type | SMS placeholders | Email placeholders |
+|---|---|---|
+| `REGISTRATION_OTP` | `{code}` | `{code}` (subject has none) |
+| `LOGIN_OTP` / `FORGOT_PASSWORD_OTP` | `{trustCode}`, `{code}` | `{code}`, `{schemeName}` / `{schemeNameChi}` (email body only; subject carries `{trustCode}`) |
+| `USERNAME_RECOVERY` | `{trustCode}`, `{username}` | `{username}`, `{schemeName}` / `{schemeNameChi}` (email body only; subject carries `{trustCode}`) |
+
+**New finding, not previously documented:** `{schemeName}`/
+`{schemeNameChi}` are BRD-required email-body placeholders that have
+**no equivalent today** in `LoginOtpSendPolicy`, `ForgotPasswordOtpTemplates`,
+or `UsernameRecoveryTemplate` — none of those classes currently accept or
+render a scheme name. Supplying this variable at the call site (i.e.
+sourcing the scheme name per account/trust when a workflow adapter calls
+`NoticeTemplateRegistryPort.resolve(...)` and renders the result) is
+migration-phase work (§9, steps 2–4), not part of this round's registry
+scaffolding.
+
+### 8.3 Open Item: TTL Wording Discrepancy (content decision deferred, not resolved here)
+
+Fetching the literal docx body text also surfaced a wording conflict
+that is a business-content decision, not an engineering one:
+
+- The BRD docx bodies (E0001/E0002/E0003) hardcode "5 minutes" /
+  "5分鐘" as **plain text**, with no TTL placeholder.
+- The **current production** SMS templates (e.g.
+  `auth-workflows.registration.otp.sms-template`) use
+  `{ttlValue} {ttlUnit}` as live, config-driven placeholders.
+
+Because resolving which wording is authoritative (static BRD copy vs.
+dynamic current-production copy) is a content decision requiring
+business/PS sign-off, this design does **not** assume an answer. As a
+result, **this round populates the registry mechanism only** —
+`NoticeTemplateProperties` and `YamlNoticeTemplateRegistryAdapter` are
+scaffolded and tested using clearly-marked non-production example
+content. Populating `application.yml` with final, approved literal
+subject/body text for all four message types × two channels × two
+locales is an explicit follow-up step, gated on resolving this TTL
+wording question first.
 
 This replaces the four scattered `auth-workflows.*.otp.*` /
 `auth-workflows.username-recovery.template.*` blocks (plus the hardcoded
@@ -381,6 +415,15 @@ Per your existing tiered policy:
 3. ~~`NoticeCode` closed-enum vs. open-ended~~ — **Moot/resolved**: the
    design now reuses the existing `MessageDeliveryType` enum directly
    instead of introducing a new type (§7.0).
+4. **TTL wording in OTP messages** (§8.3): should the BRD's static "5
+   minutes" copy be used verbatim (dropping the `{ttlValue}`/`{ttlUnit}`
+   placeholders), or should current production's dynamic TTL wording be
+   preserved and the BRD docs treated as needing a copy update? This
+   gates when `application.yml` can be populated with final content.
+5. **`{schemeName}`/`{schemeNameChi}` sourcing** (§8.2): confirm where
+   the scheme name per account/trust will be sourced from at the call
+   site, since no current workflow policy class renders this value
+   today.
 
 ## 12. Appendix: Investigation Inventory
 
