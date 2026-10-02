@@ -18,7 +18,7 @@ public final class DefaultAccountBalanceNormalizer implements AccountBalanceNorm
       if (source == null) throw systemFailure();
       var key =
           new DisplaySourceKey(
-              required(source.displaySource()), required(source.subDisplaySource()));
+              required(source.displaySource()), requiredAllowingBlank(source.subDisplaySource()));
       if (displaySources.putIfAbsent(key, source) != null) throw systemFailure();
     }
     Map<FundKey, RawAccountBalanceFundDetail> funds = new LinkedHashMap<>();
@@ -31,7 +31,7 @@ public final class DefaultAccountBalanceNormalizer implements AccountBalanceNorm
     for (RawAccountBalanceHolding holding : rawData.holdings()) {
       if (holding == null) throw systemFailure();
       String displaySource = required(holding.displaySource());
-      String subDisplaySource = required(holding.subDisplaySource());
+      String subDisplaySource = requiredAllowingBlank(holding.subDisplaySource());
       String fundCode = required(holding.fundCode());
       var displayKey = new DisplaySourceKey(displaySource, subDisplaySource);
       var fundKey = new FundKey(fundCode);
@@ -46,6 +46,18 @@ public final class DefaultAccountBalanceNormalizer implements AccountBalanceNorm
 
   private static String required(String value) {
     if (value == null || value.trim().isEmpty()) throw systemFailure();
+    return value;
+  }
+
+  /**
+   * Sub-display-source is a secondary grouping key that some trusts legitimately report as blank
+   * (no further sub-grouping beneath the primary display source) - confirmed by the downstream team
+   * as an expected shape, not malformed data. Unlike {@link #required(String)}, a blank value here
+   * is accepted and preserved as-is; only {@code null} is rejected, since APIM has never been
+   * observed to omit the field outright - only to send an empty string.
+   */
+  private static String requiredAllowingBlank(String value) {
+    if (value == null) throw systemFailure();
     return value;
   }
 

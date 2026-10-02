@@ -1,8 +1,9 @@
 # Account Summary (SINCE_SCHEME_INCEPTION) 500 SYSTEM_ERROR — Root Cause & Fix Design
 
 ## Status
-Root cause confirmed. Fix not yet implemented (this document precedes implementation per
-workstream documentation policy).
+Implemented. Downstream developer confirmed `sub-disp-src` can legitimately be empty for
+some trusts/accounts; the fix below has been applied in
+`DefaultAccountBalanceNormalizer`.
 
 ## Symptom
 `GET /api/v1/account/summary?period=SINCE_SCHEME_INCEPTION` returns HTTP 500 with
@@ -152,6 +153,34 @@ branches introduced by this fix (blank-vs-non-blank sub-display-source) must rea
 applicable tiered coverage targets; exact classification (validator-tier 95% branch vs.
 orchestration-tier 85-90%) to be confirmed against the already-agreed tiering rules at
 implementation time.
+
+## Confirmation & builder-level audit (pre-implementation)
+- The downstream developer confirmed `sub-disp-src` can legitimately be empty for some
+  trusts/accounts; this is expected data, not malformed input.
+- `DefaultFundLevelPortfolioBuilder` and `DefaultSubDisplayLevelPortfolioBuilder` were
+  audited in full. Both consume `subDisplaySource` only as a `DisplaySourceKey`/`HoldingKey`
+  map-key component and as a plain id string on the output records; neither performs any
+  blank/empty rejection of its own.
+- A package-wide scan for `.trim().isEmpty()` / `.isBlank()` across
+  `application/service/accountbalance` and `application/dto/accountbalance` confirmed that
+  `DefaultAccountBalanceNormalizer.required()` is the only blocking check affecting
+  sub-display-source in the entire account-balance pipeline. The other two blank-rejection
+  sites found (`AccountBalanceFactsheetResolver`, `AccountBalanceCurrencySelectionMapper`)
+  guard unrelated fields (factsheet URL, currency selection) and are unaffected by this fix.
+- Coverage classification confirmed: `DefaultAccountBalanceNormalizer` is a pure
+  validation/orchestration function in the application service tier, so the new
+  blank-vs-null branch introduced by `requiredAllowingBlank()` is held to the 95%
+  instruction / 95% branch tier, consistent with this workstream's validator-tier policy.
+
+## Implementation summary
+- `required(String)` is unchanged and still used for `displaySource` and `fundCode`.
+- New `requiredAllowingBlank(String)` is used for `subDisplaySource` in both the
+  display-sources loop and the holdings loop. It rejects only `null`; an empty string is
+  accepted and preserved as-is in `DisplaySourceKey` / `HoldingKey`.
+- Regression tests added to `DefaultAccountBalanceNormalizerTest`: a blank
+  `subDisplaySource` on both a display source and a holding normalizes successfully and
+  joins correctly; a `null` `subDisplaySource` on a holding still throws
+  `SYSTEM_FAILURE`, mirroring the existing display-source-loop null guard.
 
 ## Out of scope
 - No other APIM operations (`TRPGetInvestGL`, `TRPGetContSumy`, etc.) are affected;
