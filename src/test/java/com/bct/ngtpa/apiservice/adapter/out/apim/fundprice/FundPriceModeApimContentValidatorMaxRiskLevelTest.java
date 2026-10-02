@@ -28,7 +28,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class FundPriceModeApimContentValidatorMaxRiskLevelTest {
 
-  private static final DateTimeFormatter FORMATTER = new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties().fullDateFormatter();
+  private static final DateTimeFormatter FORMATTER =
+      new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties()
+          .fullDateFormatter();
 
   private TrpGetFundPriceModeApimDataItem item(
       String mode, String fundPriceType, int months, String maxRiskLevel) {

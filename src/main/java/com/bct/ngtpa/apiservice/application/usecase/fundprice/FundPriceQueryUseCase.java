@@ -15,8 +15,8 @@ import java.util.Objects;
 import reactor.core.publisher.Mono;
 
 /**
- * Fetches TRPGetFundPrice for an FE-supplied date, validated against cached
- * {@link FundPriceModeSessionMetadata} (range + exact membership in availableFundPriceDates).
+ * Fetches TRPGetFundPrice for an FE-supplied date, validated against cached {@link
+ * FundPriceModeSessionMetadata} (range + exact membership in availableFundPriceDates).
  * Framework-free (no Spring annotation), matching {@code FundPriceModeUseCase}'s precedent.
  */
 public final class FundPriceQueryUseCase {
@@ -88,9 +88,16 @@ public final class FundPriceQueryUseCase {
                         row.offerPrice(),
                         row.riskLevel()))
             .toList();
-    boolean anyRiskLevel = rows.stream().anyMatch(r -> com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels.isAssigned(r.riskLevel()));
+    boolean anyRiskLevel =
+        rows.stream()
+            .anyMatch(
+                r ->
+                    com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels
+                        .isAssigned(r.riskLevel()));
     String maxRiskLevel =
-        anyRiskLevel && com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels.isAssigned(metadata.maxRiskLevel())
+        anyRiskLevel
+                && com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels
+                    .isAssigned(metadata.maxRiskLevel())
             ? metadata.maxRiskLevel()
             : null;
     return FundPriceQueryUseCaseResult.applied(

@@ -5,12 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
+import com.bct.ngtpa.apiservice.exception.CacheException;
 import java.time.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-import com.bct.ngtpa.apiservice.exception.CacheException;
 
 class RedisAuthenticatedSessionAdapterTest {
   private static final Instant NOW = Instant.parse("2026-07-20T00:00:00Z");
@@ -91,7 +91,6 @@ class RedisAuthenticatedSessionAdapterTest {
         .verifyComplete();
   }
 
-
   @Test
   void deleteRemovesExistingSessionWhenFound() {
     adapter
@@ -102,7 +101,8 @@ class RedisAuthenticatedSessionAdapterTest {
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionPersistenceStatus.DELETED))
         .verifyComplete();
-    assertThat(cache.values).doesNotContainKey("ngtpa:auth:authenticated-session:sid_abcdefghijklmnopqrstuvwx");
+    assertThat(cache.values)
+        .doesNotContainKey("ngtpa:auth:authenticated-session:sid_abcdefghijklmnopqrstuvwx");
   }
 
   @Test

@@ -3,16 +3,16 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 
 class RegistrationOtpVerifyWebMapperTest {
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -340,5 +340,4 @@ class RegistrationOtpVerifyWebMapperTest {
         .satisfies(
             error -> assertThat(error.code()).isEqualTo("err.registration.otp.customSuppliedCode"));
   }
-
 }
