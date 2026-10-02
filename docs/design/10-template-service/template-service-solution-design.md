@@ -338,10 +338,9 @@ sourcing the scheme name per account/trust when a workflow adapter calls
 migration-phase work (§9, steps 2–4), not part of this round's registry
 scaffolding.
 
-### 8.3 Open Item: TTL Wording Discrepancy (content decision deferred, not resolved here)
+### 8.3 Resolved: TTL Wording Keeps Dynamic Placeholders
 
-Fetching the literal docx body text also surfaced a wording conflict
-that is a business-content decision, not an engineering one:
+Fetching the literal docx body text surfaced a wording conflict:
 
 - The BRD docx bodies (E0001/E0002/E0003) hardcode "5 minutes" /
   "5分鐘" as **plain text**, with no TTL placeholder.
@@ -349,16 +348,17 @@ that is a business-content decision, not an engineering one:
   `auth-workflows.registration.otp.sms-template`) use
   `{ttlValue} {ttlUnit}` as live, config-driven placeholders.
 
-Because resolving which wording is authoritative (static BRD copy vs.
-dynamic current-production copy) is a content decision requiring
-business/PS sign-off, this design does **not** assume an answer. As a
-result, **this round populates the registry mechanism only** —
-`NoticeTemplateProperties` and `YamlNoticeTemplateRegistryAdapter` are
-scaffolded and tested using clearly-marked non-production example
-content. Populating `application.yml` with final, approved literal
-subject/body text for all four message types × two channels × two
-locales is an explicit follow-up step, gated on resolving this TTL
-wording question first.
+**Decision (confirmed):** the dynamic `{ttlValue}`/`{ttlUnit}`
+placeholders are kept, matching current production behavior. The BRD
+docs' static "5 minutes" copy is treated as needing a documentation
+update to reflect the dynamic wording, not the reverse. All four message
+types' templates in `notice-templates.definitions.*` that include a TTL
+reference use `{ttlValue}`/`{ttlUnit}` rather than a hardcoded value.
+
+Populating `application.yml` with final, approved literal subject/body
+text for all four message types × two channels × two locales remains a
+follow-up step, now gated only on the `{schemeName}`/`{schemeNameChi}`
+sourcing question (§11, item 5), which is still pending.
 
 This replaces the four scattered `auth-workflows.*.otp.*` /
 `auth-workflows.username-recovery.template.*` blocks (plus the hardcoded
@@ -407,23 +407,24 @@ Per your existing tiered policy:
 
 1. ~~Login vs. Forgot Password content~~ — **Resolved** (§5): two
    distinct `NoticeCode` values with synchronized identical content.
-2. **Forgot Password YAML wiring**: the commented-out validation in
-   `AuthWorkflowProperties.validateForgotPasswordOtpPolicy` suggests this
-   was deliberately deferred. Confirm whether centralizing Forgot
-   Password content is in-scope for this initiative or a separate
-   follow-up.
+2. ~~Forgot Password YAML wiring~~ — **Resolved**: centralizing Forgot
+   Password content is confirmed **in scope** for this initiative, to be
+   implemented now (not deferred). `ForgotPasswordOtpTemplates` and the
+   orphaned `localized-template` YAML node (§8.0) will be replaced by a
+   `forgot-password-otp` entry in the central registry, per the existing
+   migration plan (§9, step 4).
 3. ~~`NoticeCode` closed-enum vs. open-ended~~ — **Moot/resolved**: the
    design now reuses the existing `MessageDeliveryType` enum directly
    instead of introducing a new type (§7.0).
-4. **TTL wording in OTP messages** (§8.3): should the BRD's static "5
-   minutes" copy be used verbatim (dropping the `{ttlValue}`/`{ttlUnit}`
-   placeholders), or should current production's dynamic TTL wording be
-   preserved and the BRD docs treated as needing a copy update? This
-   gates when `application.yml` can be populated with final content.
+4. ~~TTL wording in OTP messages~~ (§8.3) — **Resolved**: the dynamic
+   `{ttlValue}`/`{ttlUnit}` placeholders are kept (current production
+   wording), not the BRD's static "5 minutes" copy. The BRD docs are
+   treated as needing a copy/documentation update to reflect this, not
+   the other way around.
 5. **`{schemeName}`/`{schemeNameChi}` sourcing** (§8.2): confirm where
    the scheme name per account/trust will be sourced from at the call
    site, since no current workflow policy class renders this value
-   today.
+   today. **Status: pending — still being checked.**
 
 ## 12. Appendix: Investigation Inventory
 
