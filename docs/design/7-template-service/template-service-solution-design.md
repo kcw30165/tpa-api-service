@@ -62,20 +62,25 @@ Additional duplication found: the `ttlUnit(String language)` helper
 `ForgotPasswordOtpResendProtectedOperation`. This is exactly the kind of
 scattering a central service should eliminate.
 
-## 5. Key Discrepancy Requiring a Decision
+## 5. Resolved Decision: Login vs. Forgot Password Templates
 
 The BRD defines **one** notice (S0002/E0002, "Login_ForgotPassword") for
-both the Login OTP and Forgot Password OTP flows. The current code,
-however, implements them as **two independently configured templates**
-with **different wording**:
+both the Login OTP and Forgot Password OTP flows, while the current code
+implements them as two independently configured templates with
+**different wording** (Login: *"Your BCT login verification code is
+{code}..."*; Forgot Password: *"Your BCT forgot password verification
+code is {code}..."*).
 
-- Login (EN): *"Your BCT login verification code is {code}. It is valid
-  for {ttlValue} {ttlUnit}."*
-- Forgot Password (EN): *"Your BCT forgot password verification code is
-  {code}. It is valid for {ttlValue} {ttlUnit}."*
-
-This is a **business content decision**, not an engineering one. I am not
-assuming an answer. See §11, item 1.
+**Decision (confirmed):** `LOGIN_OTP` and `FORGOT_PASSWORD_OTP` remain
+**two separate notice codes with two separate YAML config entries** —
+they are not merged into a single config key, since they originate from
+different workflows and may need to diverge independently in the future.
+However, **their content (subject/body text, per channel/locale) must be
+synchronized to be identical**, reconciling the current wording
+discrepancy. In practice this means both config entries are populated
+with the same literal template strings at rollout, and any future content
+change to one must be mirrored to the other unless a future BRD update
+explicitly splits them.
 
 ## 6. Existing Reusable Building Blocks (do not redesign)
 
@@ -100,19 +105,17 @@ design closes.
 
 ### 7.1 `NoticeCode`
 
-A closed enum (matching the three BRD notices currently in scope):
+A closed enum. Per §5, Login and Forgot Password remain two distinct
+codes with synchronized (identical) content:
 
 ```java
 public enum NoticeCode {
   ACCOUNT_REGISTRATION,       // E0001 / S0001
-  LOGIN_FORGOT_PASSWORD,      // E0002 / S0002 (pending §11 decision)
+  LOGIN_OTP,                  // E0002 / S0002 content, login-specific config key
+  FORGOT_PASSWORD_OTP,        // E0002 / S0002 content, forgot-password-specific config key
   USERNAME_RECOVERY           // E0003 / S0003
 }
 ```
-
-If §11 item 1 is resolved as "keep them distinct," this would instead be
-two codes (`LOGIN_OTP`, `FORGOT_PASSWORD_OTP`); the registry design below
-is unaffected either way.
 
 ### 7.2 `NoticeTemplateDefinition`
 
@@ -200,7 +203,14 @@ notice-templates:
       zh_HK:
         subject: "..."
         body: "..."
-  login-forgot-password:      # pending §11 decision
+  login-otp:
+    sms:
+      en: "BCT {trustCode}: Your One-Time Password (OTP) : {code}"
+    email:
+      en:
+        subject: "..."
+        body: "..."
+  forgot-password-otp:         # content intentionally identical to login-otp (§5)
     sms:
       en: "BCT {trustCode}: Your One-Time Password (OTP) : {code}"
     email:
@@ -232,8 +242,8 @@ where it is — this design only centralizes **content**, not the entire
    `UsernameRecoveryFeatureConfig`).
 3. Migrate Registration, then Login.
 4. Migrate Forgot Password **last**, since it currently has no YAML
-   wiring at all — this is the highest-risk migration and should only
-   proceed after §11 item 1 is resolved.
+   wiring at all — this is the highest-risk migration. As part of this
+   step, reconcile its content to match `login-otp` verbatim (§5).
 5. Remove the four old template config blocks and the duplicated
    `ttlUnit()` helpers once all four call sites are migrated.
 
@@ -253,11 +263,8 @@ Per your existing tiered policy:
 
 ## 11. Open Decisions Requiring Sign-off
 
-1. **Login vs. Forgot Password content** (§5): should these share one
-   notice template (per BRD S0002/E0002), or remain two distinct notices
-   as currently implemented? This determines whether `NoticeCode` has 3
-   or 4 values and whether current Login/Forgot Password wording is
-   intentionally kept or reconciled.
+1. ~~Login vs. Forgot Password content~~ — **Resolved** (§5): two
+   distinct `NoticeCode` values with synchronized identical content.
 2. **Forgot Password YAML wiring**: the commented-out validation in
    `AuthWorkflowProperties.validateForgotPasswordOtpPolicy` suggests this
    was deliberately deferred. Confirm whether centralizing Forgot
