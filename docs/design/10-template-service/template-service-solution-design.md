@@ -160,6 +160,30 @@ public record NoticeTemplateDefinition(
     Set<String> requiredPlaceholders) {}
 ```
 
+### 7.1.1 OCP Correction: Channel-Conditional Validation Removed
+
+On review, the original `NoticeTemplateDefinition` compact constructor
+hardcoded a channel-conditional rule ("subject required when `channel ==
+EMAIL`"), which meant adding a future channel (WhatsApp, WeChat) would
+require modifying this class — an Open/Closed Principle violation, and
+inconsistent with the actual house precedent: re-fetching
+`MessageDeliveryCommand`'s real source confirms its compact constructor
+performs only a defensive map copy, with **zero** channel-conditional
+branching. Channel-specific rules live in the port implementation that
+consumes the data (`MessageDeliveryAdapter.validate()`), not in the data
+type itself.
+
+**Fix (applied):** the EMAIL-requires-subject branch is removed from
+`NoticeTemplateDefinition`'s compact constructor entirely. Only
+channel-agnostic structural checks remain (non-null `messageType`/
+`channel`, non-blank `locale`/`body`, immutable `requiredPlaceholders`).
+Safety is not weakened: the same rule is already enforced twice
+elsewhere — `NoticeTemplateProperties.validate()` at config load time,
+and `MessageDeliveryAdapter.validate()` at dispatch time, which runs on
+every `MessageDeliveryCommand` built from a resolved
+`NoticeTemplateDefinition` before any message is sent. Adding a future
+channel now requires zero changes to `NoticeTemplateDefinition`.
+
 ### 7.2 `NoticeTemplateRegistryPort` (single resolution port — no separate resolver layer)
 
 An earlier draft of this design proposed a second port,
