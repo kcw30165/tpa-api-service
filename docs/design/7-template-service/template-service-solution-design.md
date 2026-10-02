@@ -160,7 +160,14 @@ public record NoticeTemplateDefinition(
     Set<String> requiredPlaceholders) {}
 ```
 
-### 7.2 `NoticeTemplateRegistryPort`
+### 7.2 `NoticeTemplateRegistryPort` (single resolution port — no separate resolver layer)
+
+An earlier draft of this design proposed a second port,
+`NoticeContentResolverPort`, sitting in front of the registry. On review,
+that port added no behavior of its own — it was a pure passthrough with
+an identical signature to `NoticeTemplateRegistryPort.resolve(...)`. Per
+decision, **this is collapsed into a single port**; workflow adapters
+depend on `NoticeTemplateRegistryPort` directly:
 
 ```java
 public interface NoticeTemplateRegistryPort {
@@ -175,7 +182,14 @@ the existing `@ConfigurationProperties` pattern already used throughout
 `AuthWorkflowProperties`, but under one new, centralized config root
 (see §8) instead of being split per-workflow.
 
-### 7.3 `NoticeContentResolverPort` (replaces the previously proposed `NoticeDeliveryPort`)
+If a future need arises for caching, fallback-locale resolution, or
+similar cross-cutting behavior, the standard extension path is a
+decorator implementing the same `NoticeTemplateRegistryPort` interface
+(e.g. `CachingNoticeTemplateRegistryAdapter` wrapping
+`YamlNoticeTemplateRegistryAdapter`) — callers depend on the interface,
+not the concrete class, so no workflow adapter changes would be needed.
+This is not being built now, since there is no current requirement for
+it.
 
 Investigation also found that the four workflow adapters do not call
 `MessageDeliveryPort` with blank commands — each already resolves its own
@@ -186,23 +200,11 @@ constructing `MessageDeliveryCommand`, then calls the existing
 `MessageDeliveryAdapter` already renders `{placeholder}` templates
 in-line via `MessageTemplateRenderer` as part of `deliver()`.
 
-To minimize disruption and avoid wrapping the already-correct delivery
-path, this design introduces a narrower port that **only** resolves
-content — it does not replace or wrap `MessageDeliveryPort`:
-
-```java
-public interface NoticeContentResolverPort {
-  NoticeTemplateDefinition resolveContent(MessageDeliveryType messageType,
-                                           MessageDeliveryChannel channel,
-                                           String locale);
-}
-```
-
 Each of the four `*MessageDeliveryAdapter` classes (Registration today;
 Login, Forgot Password, Username Recovery once migrated) changes its
 internal `subject()`/`body()`-equivalent logic to call
-`NoticeContentResolverPort.resolveContent(...)` instead of reading from
-its own `AuthWorkflowProperties` sub-tree, then still builds
+`NoticeTemplateRegistryPort.resolve(...)` instead of reading from its own
+`AuthWorkflowProperties` sub-tree, then still builds
 `MessageDeliveryCommand` and calls `MessageDeliveryPort.deliver(command)`
 exactly as today. **No changes to `MessageDeliveryPort`,
 `MessageDeliveryAdapter`, `MessageTemplateRenderer`, `SmsSenderAdapter`,
@@ -213,7 +215,7 @@ validation happens in `YamlNoticeTemplateRegistryAdapter` at startup
 `IllegalArgumentException` on a missing variable at render time as a
 second line of defense.
 
-### 7.4 Extensibility Path for Future Channels (WhatsApp, WeChat, ...)
+### 7.3 Extensibility Path for Future Channels (WhatsApp, WeChat, ...)
 
 Per your explicit requirement, adding a channel must not require reworking
 workflow logic. With the design above:
@@ -231,7 +233,7 @@ workflow logic. With the design above:
 
 Steps 1–4 touch **transport/config wiring only** — zero changes to any of
 the four workflow adapter classes' delivery logic, because they will
-depend only on `NoticeContentResolverPort` with the existing
+depend only on `NoticeTemplateRegistryPort` with the existing
 `MessageDeliveryType` + `MessageDeliveryChannel`, never on template
 literals.
 
@@ -282,14 +284,14 @@ where it is — this design only centralizes **content**, not the entire
 
 ## 9. Migration Plan (future phases — not in this round's scope)
 
-1. Introduce `NoticeTemplateDefinition`, `NoticeTemplateRegistryPort`,
-   `NoticeContentResolverPort` + `YamlNoticeTemplateRegistryAdapter`
-   (additive, no existing code touched).
+1. Introduce `NoticeTemplateDefinition`, `NoticeTemplateRegistryPort` +
+   `YamlNoticeTemplateRegistryAdapter` (additive, no existing code
+   touched).
 2. Migrate Username Recovery first (simplest — single call site in
    `UsernameRecoveryFeatureConfig`).
 3. Migrate Registration (replace `RegistrationMessageDeliveryAdapter`'s
    `subject()`/`body()` policy lookup with
-   `NoticeContentResolverPort.resolveContent(...)`), then Login.
+   `NoticeTemplateRegistryPort.resolve(...)`), then Login.
 4. Migrate Forgot Password **last**, since it currently has no YAML
    wiring at all — this is the highest-risk migration. As part of this
    step, reconcile its content to match `login-otp` verbatim (§5).
