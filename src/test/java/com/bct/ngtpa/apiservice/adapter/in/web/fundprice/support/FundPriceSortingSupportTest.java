@@ -31,8 +31,12 @@ class FundPriceSortingSupportTest {
   }
 
   private List<String> queryOrder(String lang, FundPriceRowResult... rows) {
-    return support.sort(new FundPriceQueryResult(List.of(rows), "BIDOFFER PRICE", "5"), lang)
-        .rows().stream().map(FundPriceRowResult::fundCode).toList();
+    return support
+        .sort(new FundPriceQueryResult(List.of(rows), "BIDOFFER PRICE", "5"), lang)
+        .rows()
+        .stream()
+        .map(FundPriceRowResult::fundCode)
+        .toList();
   }
 
   @Test
@@ -103,7 +107,8 @@ class FundPriceSortingSupportTest {
   void queryKeepsTypeAndMaxRiskLevel() {
     var sorted =
         support.sort(
-            new FundPriceQueryResult(List.of(row("A", "Alpha", "1", "1")), "UNIT PRICE", "4"), "en");
+            new FundPriceQueryResult(List.of(row("A", "Alpha", "1", "1")), "UNIT PRICE", "4"),
+            "en");
     assertThat(sorted.fundPriceType()).isEqualTo("UNIT PRICE");
     assertThat(sorted.maxRiskLevel()).isEqualTo("4");
   }

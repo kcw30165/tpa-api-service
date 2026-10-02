@@ -21,11 +21,11 @@ import java.util.List;
  *       business rejection is not required to carry a data array.
  * </ul>
  *
- * <p>This classifier never throws and is used only to decide what {@link
- * ApimExchangeOutcomeLogger} should log. It must not be used to change adapter, mapper, or
- * business-envelope-interpretation behavior. See {@code
- * docs/capabilities/apim-error-logging/architecture-and-design.md} section 5 (and section 12 for
- * the production-incident-driven correction) for the full rationale and worked examples.
+ * <p>This classifier never throws and is used only to decide what {@link ApimExchangeOutcomeLogger}
+ * should log. It must not be used to change adapter, mapper, or business-envelope-interpretation
+ * behavior. See {@code docs/capabilities/apim-error-logging/architecture-and-design.md} section 5
+ * (and section 12 for the production-incident-driven correction) for the full rationale and worked
+ * examples.
  */
 public final class ApimEnvelopeSchemaClassifier {
 

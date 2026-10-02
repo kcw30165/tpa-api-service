@@ -23,23 +23,21 @@ import reactor.core.publisher.Mono;
  * TRPGetFundPrice outbound adapter.
  *
  * <p>Mirrors {@link ApimFundPriceModeSourceAdapter}'s exact structure: build a typed {@link
- * ApimExchangeRequest} and call {@link ApimExchangeExecutor#postEnvelope(ApimExchangeRequest)}.
- * Per docs/design/9-fund-price/fund-price-apim-contract.md: {@link ApimDatabaseScope#ACCOUNT_ENV},
+ * ApimExchangeRequest} and call {@link ApimExchangeExecutor#postEnvelope(ApimExchangeRequest)}. Per
+ * docs/design/9-fund-price/fund-price-apim-contract.md: {@link ApimDatabaseScope#ACCOUNT_ENV},
  * caller-supplied actor role and account environment, {@link
  * ApimRetryEligibility#SAFE_BUSINESS_CALL}. Every nonblank downstream {@code err-message} maps to
  * the single generic {@link FundPriceRetrievalException}.
  *
- * <p>The command carries ONE FE-validated date, unmanipulated. Both DAILY and MONTHLY modes
- * send that exact date as both the downstream request's from-date and to-date -- mode
- * has no effect on this adapter's downstream request shape (corrected, Nick: an earlier
- * version of this adapter incorrectly expanded MONTHLY into a first/last-calendar-day
- * range; there is no such expansion). Mode exists solely so FE can choose the correct
- * picker UI.
+ * <p>The command carries ONE FE-validated date, unmanipulated. Both DAILY and MONTHLY modes send
+ * that exact date as both the downstream request's from-date and to-date -- mode has no effect on
+ * this adapter's downstream request shape (corrected, Nick: an earlier version of this adapter
+ * incorrectly expanded MONTHLY into a first/last-calendar-day range; there is no such expansion).
+ * Mode exists solely so FE can choose the correct picker UI.
  */
 @Component
 public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
 
-  
   private final ApimExchangeExecutor executor;
   private final String path;
   private final DateTimeFormatter formatter;
@@ -52,7 +50,8 @@ public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
     this(executor, properties.getPath(), fundPriceFullDateFormatter);
   }
 
-  ApimFundPriceSourceAdapter(ApimExchangeExecutor executor, String path, DateTimeFormatter formatter) {
+  ApimFundPriceSourceAdapter(
+      ApimExchangeExecutor executor, String path, DateTimeFormatter formatter) {
     this.executor = Objects.requireNonNull(executor, "executor must not be null");
     if (path == null || path.isBlank()) {
       throw new IllegalArgumentException("path must not be blank");

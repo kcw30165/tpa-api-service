@@ -8,9 +8,9 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationSt
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartValidationResult;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.util.ArrayList;
 import java.util.List;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -22,7 +22,8 @@ public class RegistrationStartValidator {
 
   public RegistrationStartValidator(MaskingService maskingService) {
     this.contactDeriver =
-        new RegistrationContactDeriver(Objects.requireNonNull(maskingService, "maskingService must not be null"));
+        new RegistrationContactDeriver(
+            Objects.requireNonNull(maskingService, "maskingService must not be null"));
   }
 
   public RegistrationStartValidationResult validate(RegistrationStartInput input) {

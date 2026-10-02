@@ -26,8 +26,8 @@ import org.springframework.util.StringUtils;
  *
  * <p>ONE sheet, named from {@code fund-price.export.sheet-names} by the cached {@code
  * fundPriceType}; a type with no configured sheet name fails as {@link
- * FundPriceRetrievalException#systemFailure()} (503). The sheet-name configuration is validated
- * in the constructor, so a bad value fails application startup.
+ * FundPriceRetrievalException#systemFailure()} (503). The sheet-name configuration is validated in
+ * the constructor, so a bad value fails application startup.
  *
  * <p>Column set is selected by {@code fundPriceType}: UNIT PRICE = 5 columns, BIDOFFER PRICE = 7
  * columns. Price cells are NUMERIC; currency is a separate TEXT column. Decimal scale comes from
@@ -134,7 +134,8 @@ public class FundPriceWorkbookExporter {
     }
   }
 
-  private void writePriceCell(Row row, int columnIndex, BigDecimal price, CellStyle style, int scale) {
+  private void writePriceCell(
+      Row row, int columnIndex, BigDecimal price, CellStyle style, int scale) {
     var cell = row.createCell(columnIndex);
     cell.setCellValue(price.setScale(scale, RoundingMode.HALF_UP).doubleValue());
     cell.setCellStyle(style);

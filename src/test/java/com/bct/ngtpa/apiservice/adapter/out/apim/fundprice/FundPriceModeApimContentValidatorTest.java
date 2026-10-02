@@ -22,7 +22,9 @@ import org.junit.jupiter.api.Test;
  */
 class FundPriceModeApimContentValidatorTest {
 
-  private static final DateTimeFormatter FORMATTER = new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties().fullDateFormatter();
+  private static final DateTimeFormatter FORMATTER =
+      new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties()
+          .fullDateFormatter();
 
   private static TrpGetFundPriceModeApimDataItem item(
       String mode, String fundPriceType, List<String> dates, int maxMonths) {

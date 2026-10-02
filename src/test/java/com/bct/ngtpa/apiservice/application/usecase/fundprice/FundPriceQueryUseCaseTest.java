@@ -13,13 +13,12 @@ import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceRow;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
-import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleResult;
-import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionStatus;
-import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LoadAndTouchAuthenticatedSessionCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.port.out.FundPriceSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleResult;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleStatus;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LoadAndTouchAuthenticatedSessionUseCase;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -136,7 +135,8 @@ class FundPriceQueryUseCaseTest {
             newUseCase()
                 .query(SESSION_ID, AVAILABLE_DATE, "DB", "policy1", ActorUserRole.ROLE_USER_MBR))
         .assertNext(
-            result -> assertThat(result.outcome()).isEqualTo(FundPriceUseCaseOutcome.SYSTEM_FAILURE))
+            result ->
+                assertThat(result.outcome()).isEqualTo(FundPriceUseCaseOutcome.SYSTEM_FAILURE))
         .verifyComplete();
   }
 
@@ -148,7 +148,8 @@ class FundPriceQueryUseCaseTest {
             newUseCase()
                 .query(SESSION_ID, AVAILABLE_DATE, "DB", "policy1", ActorUserRole.ROLE_USER_MBR))
         .assertNext(
-            result -> assertThat(result.outcome()).isEqualTo(FundPriceUseCaseOutcome.SYSTEM_FAILURE))
+            result ->
+                assertThat(result.outcome()).isEqualTo(FundPriceUseCaseOutcome.SYSTEM_FAILURE))
         .verifyComplete();
   }
 
@@ -185,7 +186,11 @@ class FundPriceQueryUseCaseTest {
     StepVerifier.create(
             newUseCase()
                 .query(
-                    SESSION_ID, LocalDate.of(2020, 1, 1), "DB", "policy1", ActorUserRole.ROLE_USER_MBR))
+                    SESSION_ID,
+                    LocalDate.of(2020, 1, 1),
+                    "DB",
+                    "policy1",
+                    ActorUserRole.ROLE_USER_MBR))
         .assertNext(
             result -> assertThat(result.outcome()).isEqualTo(FundPriceUseCaseOutcome.INVALID_DATE))
         .verifyComplete();
@@ -201,6 +206,7 @@ class FundPriceQueryUseCaseTest {
 
     org.mockito.Mockito.verifyNoInteractions(sourcePort);
   }
+
   @Test
   void dateAfterReferenceDateMapsToInvalidDateEvenIfPresentInAvailableList() {
     // Defense-in-depth: even if a future date somehow appears in the cached available list
@@ -210,8 +216,7 @@ class FundPriceQueryUseCaseTest {
     // isBefore(lowerBound) branch.
     var futureDate = REFERENCE_DATE.plusDays(1);
     var metadata =
-        new FundPriceModeSessionMetadata(
-            "DAILY", "BIDOFFER PRICE", List.of(futureDate), 36, "5");
+        new FundPriceModeSessionMetadata("DAILY", "BIDOFFER PRICE", List.of(futureDate), 36, "5");
     stubActiveSessionWithMetadata(metadata);
 
     StepVerifier.create(
@@ -229,7 +234,14 @@ class FundPriceQueryUseCaseTest {
         new RawFundPriceData(
             List.of(
                 new RawFundPriceRow(
-                    "DUSM", "n", "n", AVAILABLE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, null)));
+                    "DUSM",
+                    "n",
+                    "n",
+                    AVAILABLE_DATE,
+                    "HKD",
+                    BigDecimal.ONE,
+                    BigDecimal.ONE,
+                    null)));
     when(sourcePort.fetchPrice(any())).thenReturn(Mono.just(noRiskData));
 
     StepVerifier.create(
