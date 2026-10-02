@@ -22,11 +22,13 @@ to depend on it.
 | I-3 | APIM DTO extension: `schemeName`/`schemeNameChi` (`sch-name`/`chin-sch-name`) added to `TrpGetAccountListApimDataItem`, `ForgotPasswordTrpSearchMemberDataItem`, `TrpSearchMemberApimDataItem` (usernamerecovery) | DONE (script 018) |
 | I-4 | **Spring wiring**: `NoticeTemplateServiceConfig` class with `@EnableConfigurationProperties(NoticeTemplateProperties.class)`, a constructor that calls `properties.validate()` at startup (fail-fast), and a `@Bean NoticeTemplateRegistryPort` factory method. Confirmed precedent via investigation (script 024): mirrors `FundPriceDateFormatValidationConfig` exactly (validate-in-constructor + single `@Bean` producing what the properties back), not merely `TrpGetAccountListAdapterConfig`'s more elaborate multi-bean shape. Covered by a context-loading test using Spring Boot's `ApplicationContextRunner` | DONE |
 | I-5 | **Populate `application.yml`** under `notice-templates.definitions.*` with real content for all 4 message types x 2 channels x 2 locales, sourced verbatim from the BRD SMS sheet and the full literal text of the 3 email docx files, with `{ttlValue}`/`{ttlUnit}` placeholders (confirmed: keep dynamic TTL wording for SMS and email, consistent with current production; NOT applied to `username-recovery`, which the BRD defines with no OTP/expiry). Generic Chinese SMS templates for `login-otp`/`forgot-password-otp` and `username-recovery` reconstructed from the BRD's filled-in examples by substituting example values back to placeholders. **Known content gap, transcribed faithfully and flagged for business review, not altered:** the Chinese email subject for `login-otp`/`forgot-password-otp` and `username-recovery` has no trust-code placeholder in the source docx, unlike the English subject. | DONE |
-| I-6 | Startup validation / smoke test: confirm `NoticeTemplateRegistryPort.resolve(...)` returns a correct `NoticeTemplateDefinition` for all 4×2×2 combinations once the app context loads, and that `NoticeTemplateProperties.validate()` fails fast on any gap | PENDING |
+| I-6 | Startup validation / smoke test: `NoticeTemplateRegistryFullMatrixSmokeTest` confirms `YamlNoticeTemplateRegistryAdapter.resolve(...)` returns correct content for all 4x2x2 combinations against the real `application.yml`, including per-type required-placeholder sets, non-blank EMAIL subjects, null SMS subjects, `login-otp`/`forgot-password-otp` byte-for-byte content synchronization (§5), and that `en`/`zh_HK` content genuinely differs (guards against a silent locale-fallback regression) | DONE |
 
-**Gate before Phase II begins:** I-4, I-5, and I-6 must all be complete
-and validated. No workflow migration starts until the service is
-confirmed live end-to-end.
+**Gate before Phase II begins:** I-4, I-5, and I-6 are all complete and
+validated. **Phase I is now closed.** The Template Service is live,
+Spring-wired, populated with real content, and correctness-tested across
+the full 4x2x2 matrix. Phase II (workflow migration) may now begin,
+starting with Stage II-1 (Username Recovery).
 
 ---
 
@@ -70,6 +72,8 @@ depending on a config block that has already been removed.
 
 ## Current Position
 
-As of this document, Phase I stages I-1 through I-3 are complete. The
-next piece of work is **Phase I, Stage I-4** (Spring wiring), not any
-Phase II migration stage.
+Phase I (stages I-1 through I-6) is complete and closed. The next piece
+of work is **Phase II, Stage II-1** (Username Recovery migration) -
+investigate the full current send path first (per the established
+investigate-before-implement pattern), before changing any production
+code in that workflow.
