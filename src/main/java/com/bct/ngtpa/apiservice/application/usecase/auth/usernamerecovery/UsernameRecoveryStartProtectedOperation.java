@@ -170,7 +170,9 @@ public final class UsernameRecoveryStartProtectedOperation {
                             candidate.trustCode(),
                             candidate.registered(),
                             candidate.registered() ? candidate.userName() : null,
-                            UsernameRecoveryDeliveryState.AVAILABLE),
+                            UsernameRecoveryDeliveryState.AVAILABLE,
+                            candidate.schemeName(),
+                            candidate.schemeNameChi()),
                         null,
                         null))
             .toList();

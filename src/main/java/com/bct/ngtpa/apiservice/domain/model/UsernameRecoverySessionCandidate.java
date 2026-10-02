@@ -24,14 +24,19 @@ import java.util.Objects;
  * Task 006 projection does not carry, and additionally requires a session-bound (non-null)
  * Scheme-Ref.
  *
+ * <p>{@code schemeName()}/{@code schemeNameChi()} delegate to the wrapped {@link
+ * UsernameRecoveryCandidate}, carried through from the APIM lookup boundary (see
+ * docs/design/10-template-service/template-service-solution-design.md section 8.2) so the
+ * centralized Template Service can render the {schemeName}/{schemeNameChi} placeholders at
+ * request-delivery time.
+ *
  * <p>Invariants: {@code candidate} is non-null with a non-null Scheme-Ref; a {@code REQUESTED}
  * candidate requires a non-null {@code requestedAt} and a nonblank {@code senderReference}; any
  * other delivery state must not retain delivery metadata. {@link #toString()} never discloses the
- * Scheme-Ref, username, or sender reference.
+ * Scheme-Ref, username, sender reference, schemeName, or schemeNameChi.
  */
 public record UsernameRecoverySessionCandidate(
     UsernameRecoveryCandidate candidate, Instant requestedAt, String senderReference) {
-
   public UsernameRecoverySessionCandidate {
     Objects.requireNonNull(candidate, "candidate must not be null");
     if (candidate.schemeRef() == null) {
@@ -73,9 +78,24 @@ public record UsernameRecoverySessionCandidate(
     return candidate.deliveryState();
   }
 
+  public String schemeName() {
+    return candidate.schemeName();
+  }
+
+  public String schemeNameChi() {
+    return candidate.schemeNameChi();
+  }
+
   /**
    * Rebuilds this candidate with a new delivery state and optional delivery metadata, preserving
-   * all Task 006 candidate fields.
+   * all Task 006 candidate fields <b>and</b> schemeName/schemeNameChi.
+   *
+   * <p><b>Fixed field-loss landmine:</b> this previously rebuilt the wrapped {@link
+   * UsernameRecoveryCandidate} via its 6-arg compatibility constructor, which defaults
+   * schemeName/schemeNameChi to {@code null} - silently discarding those values on every state
+   * transition (reserve/markRequested/markFailed/markUnknownOutcome). Now uses the canonical 8-arg
+   * constructor, explicitly carrying forward {@code candidate.schemeName()}/{@code
+   * candidate.schemeNameChi()}.
    */
   public UsernameRecoverySessionCandidate withState(
       UsernameRecoveryDeliveryState state, Instant requestedAt, String senderReference) {
@@ -86,7 +106,9 @@ public record UsernameRecoverySessionCandidate(
             candidate.trustCode(),
             candidate.registered(),
             candidate.userName(),
-            state);
+            state,
+            candidate.schemeName(),
+            candidate.schemeNameChi());
     return new UsernameRecoverySessionCandidate(rebuilt, requestedAt, senderReference);
   }
 
