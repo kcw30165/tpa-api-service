@@ -328,15 +328,42 @@ Fetching the actual body text of the three email template documents
 | `LOGIN_OTP` / `FORGOT_PASSWORD_OTP` | `{trustCode}`, `{code}` | `{code}`, `{schemeName}` / `{schemeNameChi}` (email body only; subject carries `{trustCode}`) |
 | `USERNAME_RECOVERY` | `{trustCode}`, `{username}` | `{username}`, `{schemeName}` / `{schemeNameChi}` (email body only; subject carries `{trustCode}`) |
 
-**New finding, not previously documented:** `{schemeName}`/
-`{schemeNameChi}` are BRD-required email-body placeholders that have
-**no equivalent today** in `LoginOtpSendPolicy`, `ForgotPasswordOtpTemplates`,
-or `UsernameRecoveryTemplate` — none of those classes currently accept or
-render a scheme name. Supplying this variable at the call site (i.e.
-sourcing the scheme name per account/trust when a workflow adapter calls
-`NoticeTemplateRegistryPort.resolve(...)` and renders the result) is
-migration-phase work (§9, steps 2–4), not part of this round's registry
-scaffolding.
+**Resolved: `{schemeName}`/`{schemeNameChi}` sourcing (§11, item 5).**
+These values are sourced from the **`sch-name`** / **`chin-sch-name`**
+fields of the APIM `TRPGetAccountList` and `TRPSearchMember` responses.
+Both fields are **newly added by the downstream API** and do not yet
+exist on any of the corresponding Java response DTOs. Investigation
+(script 016) identified exactly three DTOs that need the new fields
+added, matching the existing `@JsonProperty("kebab-case")` record
+convention used throughout the `adapter.out.apim.*.dto` packages:
+
+| DTO | Package | Feeds workflow |
+|---|---|---|
+| `TrpGetAccountListApimDataItem` | `adapter.out.apim.login.account.dto` | Login |
+| `ForgotPasswordTrpSearchMemberDataItem` | `adapter.out.apim.forgotpassword.details.dto` | Forgot Password |
+| `TrpSearchMemberApimDataItem` | `adapter.out.apim.usernamerecovery.dto` | Username Recovery |
+
+A fourth, same-named class, `TrpSearchMemberApimDataItem` in
+`adapter.out.apim.registration.dto`, feeds **Registration** and does
+**not** need these fields, since `REGISTRATION_OTP` has no scheme-name
+placeholder (§8.2 table above).
+
+**Business rule (confirmed):** when `chin-sch-name` is empty, the zh_HK
+`{schemeNameChi}` value falls back to `sch-name` (the English scheme
+name), rather than rendering blank.
+
+Each DTO gains two new record components, `@JsonProperty("sch-name")
+String schemeName` and `@JsonProperty("chin-sch-name") String
+schemeNameChi`, plus a secondary positional constructor preserving
+backward compatibility for existing call sites that construct these
+records positionally in tests — mirroring the existing compatibility-
+constructor precedent already present on
+`adapter.out.apim.registration.dto.TrpSearchMemberApimDataItem`. The
+empty-`chin-sch-name`-falls-back-to-`sch-name` rule is applied at the
+point where a workflow adapter renders the notice template (i.e. when
+building the `variables` map passed to `NoticeTemplateRegistryPort`
+output rendering), not inside the DTOs themselves, since the DTOs are
+a pure wire-contract mirror and must not contain business logic.
 
 ### 8.3 Resolved: TTL Wording Keeps Dynamic Placeholders
 
@@ -357,8 +384,7 @@ reference use `{ttlValue}`/`{ttlUnit}` rather than a hardcoded value.
 
 Populating `application.yml` with final, approved literal subject/body
 text for all four message types × two channels × two locales remains a
-follow-up step, now gated only on the `{schemeName}`/`{schemeNameChi}`
-sourcing question (§11, item 5), which is still pending.
+follow-up step (now unblocked — see §11, all items resolved).
 
 This replaces the four scattered `auth-workflows.*.otp.*` /
 `auth-workflows.username-recovery.template.*` blocks (plus the hardcoded
@@ -374,18 +400,21 @@ where it is — this design only centralizes **content**, not the entire
 1. Introduce `NoticeTemplateDefinition`, `NoticeTemplateRegistryPort` +
    `YamlNoticeTemplateRegistryAdapter` (additive, no existing code
    touched).
-2. Migrate Username Recovery first (simplest — single call site in
+2. Add `sch-name`/`chin-sch-name` fields to the three APIM response DTOs
+   identified in §8.2 (additive, backward-compatible via secondary
+   constructor).
+3. Migrate Username Recovery first (simplest — single call site in
    `UsernameRecoveryFeatureConfig`).
-3. Migrate Registration (replace `RegistrationMessageDeliveryAdapter`'s
+4. Migrate Registration (replace `RegistrationMessageDeliveryAdapter`'s
    `subject()`/`body()` policy lookup with
    `NoticeTemplateRegistryPort.resolve(...)`), then Login.
-4. Migrate Forgot Password **last**, since it currently has no live YAML
+5. Migrate Forgot Password **last**, since it currently has no live YAML
    wiring at all — this is the highest-risk migration. As part of this
    step, reconcile its content to match `login-otp` verbatim (§5), and
    remove `ForgotPasswordOtpTemplates` plus the orphaned
    `auth-workflows.forgot-password.otp.localized-template.*` YAML node
    (§8.0) rather than migrating it, since it has no live binding today.
-5. Remove the four old template config blocks and the duplicated
+6. Remove the four old template config blocks and the duplicated
    `ttlUnit()` helpers once all four call sites are migrated.
 
 Each phase should land as its own branch/MR per your existing workflow
@@ -402,6 +431,11 @@ Per your existing tiered policy:
   including fail-fast required-placeholder validation) — ≥95%
   instruction, 85–90% branch, with one-line justification comments for
   any defensive/unreachable branch.
+- The three updated APIM response DTOs (`TrpGetAccountListApimDataItem`,
+  `ForgotPasswordTrpSearchMemberDataItem`,
+  `TrpSearchMemberApimDataItem` in `usernamerecovery.dto`) — ≥95%
+  instruction and branch coverage, since these are pure DTOs/records per
+  the tier policy.
 
 ## 11. Open Decisions Requiring Sign-off
 
@@ -412,7 +446,7 @@ Per your existing tiered policy:
    implemented now (not deferred). `ForgotPasswordOtpTemplates` and the
    orphaned `localized-template` YAML node (§8.0) will be replaced by a
    `forgot-password-otp` entry in the central registry, per the existing
-   migration plan (§9, step 4).
+   migration plan (§9, step 5).
 3. ~~`NoticeCode` closed-enum vs. open-ended~~ — **Moot/resolved**: the
    design now reuses the existing `MessageDeliveryType` enum directly
    instead of introducing a new type (§7.0).
@@ -421,10 +455,15 @@ Per your existing tiered policy:
    wording), not the BRD's static "5 minutes" copy. The BRD docs are
    treated as needing a copy/documentation update to reflect this, not
    the other way around.
-5. **`{schemeName}`/`{schemeNameChi}` sourcing** (§8.2): confirm where
-   the scheme name per account/trust will be sourced from at the call
-   site, since no current workflow policy class renders this value
-   today. **Status: pending — still being checked.**
+5. ~~`{schemeName}`/`{schemeNameChi}` sourcing~~ (§8.2) — **Resolved**:
+   sourced from `sch-name`/`chin-sch-name` on the `TRPGetAccountList` and
+   `TRPSearchMember` APIM responses. Both fields are newly added and
+   require adding `schemeName`/`schemeNameChi` record components to three
+   Java DTOs (§8.2) before the Template Service can consume them. Empty
+   `chin-sch-name` falls back to `sch-name`.
+
+All open decisions are now resolved; this document is ready to move from
+DRAFT status once the §9 migration plan is executed.
 
 ## 12. Appendix: Investigation Inventory
 
