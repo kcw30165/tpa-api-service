@@ -1,0 +1,276 @@
+# Centralized Template Service — Solution Design (Draft v0.1)
+
+Status: DRAFT — pending sign-off on open decisions in §11
+Scope: SMS + Email channels only. Designed to be extensible to future
+message-transport channels (WhatsApp, WeChat, etc.) without reworking
+workflow/use-case logic.
+Out of scope: In-app Notice Board (BRD §6.1 / 7 message types with
+trigger + expiry fields) — structurally distinct channel, not covered here.
+
+---
+
+## 1. Purpose
+
+`api-service` currently sends notification content (OTP codes, username
+recovery messages, etc.) for Registration, Login, Forgot Password, and
+Username Recovery from four independent, non-uniform places. This document
+defines a centralized Template Service so that:
+
+- All notice content (subject/body per channel/locale) is defined once,
+  keyed by a notice code.
+- Workflow use-cases stop embedding literal template strings and instead
+  ask the Template Service to render content for `(noticeCode, channel,
+  locale, variables)`.
+- Adding a new channel (WhatsApp, WeChat, ...) in the future requires
+  adding a sender adapter and template content — not touching the four
+  workflow use-cases.
+
+## 2. Source of Truth
+
+- BRD: `BRD for TPA ORSO Web Revamp_Content Management.xlsx`, sheets
+  `SMS` and `Email`.
+- Email template docs: `E0001_Registration_OTP.docx`,
+  `E0002_Login_ForgotPassword_OTP.docx`, `E0003_UsernameRecovery_Email.docx`.
+- Code investigation evidence: scripts 001–003 (branch
+  `chore/centralize-notification-template-investigation`,
+  baseline `dev`@`632dd2150055fce00244d3f401854e42ef24215d`).
+
+## 3. BRD Notice Inventory
+
+| Notice ID | Function | Channels | Dynamic fields | OTP / Expiry |
+|---|---|---|---|---|
+| E0001 / S0001 | AccountRegistration | Email, SMS | none (static copy) | OTP, 5 min expiry |
+| E0002 / S0002 | Login_ForgotPassword | Email, SMS | `<trust code>`, `<Scheme Name>` (email only) | OTP, 5 min expiry |
+| E0003 / S0003 | UsernameRecovery | Email, SMS | `<trust code>`, `<Scheme Name>`, `<Username>` | none |
+
+The BRD treats **Login and Forgot Password as the same notice** (one
+template, S0002/E0002), differentiated only by trust code, not by
+workflow origin.
+
+## 4. Current-State Findings (as-is wiring)
+
+| Workflow | Template literal location | Config-driven? | Class(es) |
+|---|---|---|---|
+| Registration | `AuthWorkflowProperties.Registration.Otp` (`sms-template`, `email-template.subject/body`) | Yes — YAML under `auth-workflows.registration.otp.*` | `OtpPolicy`, `OtpEmailPolicy`, `RegistrationAuthWorkflowPolicy`, consumed by `RegistrationMessageDeliveryAdapter` |
+| Login | `AuthWorkflowProperties.Login.LoginOtp` (`sms-template`, `email-template.subject/body`) | Yes — YAML under `auth-workflows.login.otp.*` | `LoginOtpSendPolicy` (validates `{code}` placeholder at construction), consumed by `LoginOtpSendService` / `LoginOtpResendService` |
+| Forgot Password | **Hardcoded Java static factory**, not YAML | No — `ForgotPasswordOtpTemplates.approved()` returns literal EN/ZH strings; the YAML validation path (`validateForgotPasswordOtpPolicy`) has its sms/email-template checks **commented out**, confirming no live YAML wiring for this workflow's content | `ForgotPasswordOtpTemplates`, consumed by `ForgotPasswordDetailsOtpProtectedOperation` and `ForgotPasswordOtpResendProtectedOperation` |
+| Username Recovery | `AuthWorkflowProperties.UsernameRecovery.UsernameRecoveryTemplate` (`email-subject`, `email-body`, `sms-body`) | Yes — YAML under `auth-workflows.username-recovery.template.*`, with placeholder validation (`{username}` required) | `UsernameRecoveryTemplate`, injected as raw strings into `UsernameRecoveryRequestProtectedOperation` via `UsernameRecoveryFeatureConfig` |
+
+Additional duplication found: the `ttlUnit(String language)` helper
+(translating "minutes" ↔ "分鐘") is implemented **twice**, identically, in
+`ForgotPasswordDetailsOtpProtectedOperation` and
+`ForgotPasswordOtpResendProtectedOperation`. This is exactly the kind of
+scattering a central service should eliminate.
+
+## 5. Key Discrepancy Requiring a Decision
+
+The BRD defines **one** notice (S0002/E0002, "Login_ForgotPassword") for
+both the Login OTP and Forgot Password OTP flows. The current code,
+however, implements them as **two independently configured templates**
+with **different wording**:
+
+- Login (EN): *"Your BCT login verification code is {code}. It is valid
+  for {ttlValue} {ttlUnit}."*
+- Forgot Password (EN): *"Your BCT forgot password verification code is
+  {code}. It is valid for {ttlValue} {ttlUnit}."*
+
+This is a **business content decision**, not an engineering one. I am not
+assuming an answer. See §11, item 1.
+
+## 6. Existing Reusable Building Blocks (do not redesign)
+
+The channel-transport layer is already in good shape and should be reused
+as-is:
+
+- `MessageDeliveryChannel` (enum: `SMS`, `EMAIL`)
+- `MessageDeliveryCommand` (channel-agnostic: recipient, subject, body,
+  templateCode, templateVariables, locale, correlationId)
+- `MessageDeliveryPort` / `MessageDeliveryAdapter` — routes by channel to
+  `SmsSenderPort` / `EmailSenderPort`, both of which are already
+  provider-agnostic at the transport level
+- `DefaultMessageTemplateRenderer` — already does `{placeholder}`
+  substitution generically
+
+**What's missing** is a layer *above* `MessageDeliveryCommand` that
+resolves "which notice, which channel, which locale" into the actual
+subject/body string and required-variable contract. That is the gap this
+design closes.
+
+## 7. Proposed Architecture
+
+### 7.1 `NoticeCode`
+
+A closed enum (matching the three BRD notices currently in scope):
+
+```java
+public enum NoticeCode {
+  ACCOUNT_REGISTRATION,       // E0001 / S0001
+  LOGIN_FORGOT_PASSWORD,      // E0002 / S0002 (pending §11 decision)
+  USERNAME_RECOVERY           // E0003 / S0003
+}
+```
+
+If §11 item 1 is resolved as "keep them distinct," this would instead be
+two codes (`LOGIN_OTP`, `FORGOT_PASSWORD_OTP`); the registry design below
+is unaffected either way.
+
+### 7.2 `NoticeTemplateDefinition`
+
+```java
+public record NoticeTemplateDefinition(
+    NoticeCode noticeCode,
+    MessageDeliveryChannel channel,
+    String locale,
+    String subject,          // null for SMS
+    String body,
+    Set<String> requiredPlaceholders) {}
+```
+
+### 7.3 `NoticeTemplateRegistryPort`
+
+```java
+public interface NoticeTemplateRegistryPort {
+  NoticeTemplateDefinition resolve(NoticeCode noticeCode,
+                                    MessageDeliveryChannel channel,
+                                    String locale);
+}
+```
+
+A YAML-backed implementation (`YamlNoticeTemplateRegistryAdapter`) mirrors
+the existing `@ConfigurationProperties` pattern already used throughout
+`AuthWorkflowProperties`, but under one new, centralized config root
+(see §8) instead of being split per-workflow.
+
+### 7.4 `NoticeDeliveryService` (new orchestration layer)
+
+Workflow use-cases stop building `MessageDeliveryCommand` directly with
+literal subject/body strings. Instead:
+
+```java
+public interface NoticeDeliveryPort {
+  Mono<MessageDeliveryResult> deliver(NoticeCode noticeCode,
+                                       MessageDeliveryChannel channel,
+                                       String recipient,
+                                       Map<String, String> variables,
+                                       String locale,
+                                       String correlationId);
+}
+```
+
+`NoticeDeliveryAdapter` implements this by: resolving the template via
+`NoticeTemplateRegistryPort`, validating that all `requiredPlaceholders`
+are present in `variables` (fail-fast, not silent), rendering via the
+existing `MessageTemplateRenderer`, and delegating to the existing
+`MessageDeliveryPort`. **No changes to `MessageDeliveryPort`,
+`SmsSenderAdapter`, or `SmtpEmailSenderAdapter` are required.**
+
+### 7.5 Extensibility Path for Future Channels (WhatsApp, WeChat, ...)
+
+Per your explicit requirement, adding a channel must not require reworking
+workflow logic. With the design above:
+
+1. Add the new value to `MessageDeliveryChannel` (e.g., `WHATSAPP`).
+2. Implement a new `*SenderPort` adapter (mirrors `SmsSenderAdapter`).
+3. Add a `case WHATSAPP ->` arm in `MessageDeliveryAdapter` and the five
+   other exhaustive channel switches found in investigation (§12 lists
+   all six call sites: `MessageDeliveryAdapter`,
+   `UsernameRecoveryEffectiveDestinationConfigAdapter`,
+   `RegistrationMessageDestinationOverrideAdapter`,
+   `Sha256DestinationBucketIdGenerator`, plus two others).
+4. Add template content for the new channel under each notice code in
+   config (§8).
+
+Steps 1–4 touch **transport/config wiring only** — zero changes to any of
+the four workflow use-case classes, because they will depend only on
+`NoticeDeliveryPort` and a `NoticeCode` + `MessageDeliveryChannel`, never
+on template literals.
+
+## 8. Proposed Config Schema (illustrative, not final)
+
+```yaml
+notice-templates:
+  account-registration:
+    sms:
+      en: "BCT Pension: Your One-Time Password (OTP) for Account Registration: {code}"
+      zh_HK: "BCT 退休金: 有關您的帳戶登記的一次性密碼為: {code}"
+    email:
+      en:
+        subject: "..."
+        body: "..."
+      zh_HK:
+        subject: "..."
+        body: "..."
+  login-forgot-password:      # pending §11 decision
+    sms:
+      en: "BCT {trustCode}: Your One-Time Password (OTP) : {code}"
+    email:
+      en:
+        subject: "..."
+        body: "..."
+  username-recovery:
+    sms:
+      en: "BCT {trustCode}: Your Username is {username}. Please login our Member Portal to view your account details"
+    email:
+      en:
+        subject: "..."
+        body: "..."
+```
+
+This replaces the four scattered `auth-workflows.*.otp.*` /
+`auth-workflows.username-recovery.template.*` blocks with one coherent,
+notice-keyed structure, while `auth-workflows.*` config for non-template
+concerns (OTP length, TTL, resend limits, destination overrides) remains
+where it is — this design only centralizes **content**, not the entire
+`AuthWorkflowProperties` tree.
+
+## 9. Migration Plan (future phases — not in this round's scope)
+
+1. Introduce `NoticeCode`, `NoticeTemplateDefinition`,
+   `NoticeTemplateRegistryPort`, `NoticeDeliveryPort` + adapters (additive,
+   no existing code touched).
+2. Migrate Username Recovery first (simplest — single call site in
+   `UsernameRecoveryFeatureConfig`).
+3. Migrate Registration, then Login.
+4. Migrate Forgot Password **last**, since it currently has no YAML
+   wiring at all — this is the highest-risk migration and should only
+   proceed after §11 item 1 is resolved.
+5. Remove the four old template config blocks and the duplicated
+   `ttlUnit()` helpers once all four call sites are migrated.
+
+Each phase should land as its own branch/MR per your existing workflow
+conventions, with its own investigation-first validation before any code
+is written.
+
+## 10. Test Coverage Strategy
+
+Per your existing tiered policy:
+
+- `NoticeCode`, `NoticeTemplateDefinition` (record/DTO) — ≥95% instruction
+  and branch coverage.
+- `YamlNoticeTemplateRegistryAdapter`, `NoticeDeliveryAdapter`
+  (orchestration) — ≥95% instruction, 85–90% branch, with one-line
+  justification comments for any defensive/unreachable branch.
+
+## 11. Open Decisions Requiring Sign-off
+
+1. **Login vs. Forgot Password content** (§5): should these share one
+   notice template (per BRD S0002/E0002), or remain two distinct notices
+   as currently implemented? This determines whether `NoticeCode` has 3
+   or 4 values and whether current Login/Forgot Password wording is
+   intentionally kept or reconciled.
+2. **Forgot Password YAML wiring**: the commented-out validation in
+   `AuthWorkflowProperties.validateForgotPasswordOtpPolicy` suggests this
+   was deliberately deferred. Confirm whether centralizing Forgot
+   Password content is in-scope for this initiative or a separate
+   follow-up.
+3. **`NoticeCode` closed-enum vs. open-ended**: this draft keeps
+   `NoticeCode` as a closed Java enum (consistent with
+   `MessageDeliveryType`/`MessageDeliveryChannel` elsewhere in the
+   codebase). Confirm this is acceptable versus a fully config-driven,
+   string-keyed registry.
+
+## 12. Appendix: Investigation Inventory
+
+Full file/class inventory, channel-switch call sites, and YAML line
+references are preserved in the evidence zips from investigation scripts
+001–003 (branch `chore/centralize-notification-template-investigation`).
