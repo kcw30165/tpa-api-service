@@ -118,23 +118,12 @@ class NoticeTemplateDefinitionTest {
   }
 
   @Test
-  void rejectsBlankSubjectForEmailChannel() {
-    assertThatThrownBy(
-            () ->
-                new NoticeTemplateDefinition(
-                    MessageDeliveryType.LOGIN_OTP,
-                    MessageDeliveryChannel.EMAIL,
-                    "en",
-                    "   ",
-                    "body",
-                    Set.of()))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("subject");
-  }
-
-  @Test
-  void allowsNullSubjectForSmsChannel() {
-    NoticeTemplateDefinition definition =
+  void allowsNullSubjectRegardlessOfChannel() {
+    // OCP: this record must never branch on which channel value is present, so that adding a
+    // future channel (WhatsApp, WeChat, ...) never requires modifying this class. The
+    // "subject required for EMAIL" rule is enforced elsewhere (NoticeTemplateProperties.validate()
+    // at config load, and MessageDeliveryAdapter.validate() at dispatch time), not here.
+    NoticeTemplateDefinition smsDefinition =
         new NoticeTemplateDefinition(
             MessageDeliveryType.LOGIN_OTP,
             MessageDeliveryChannel.SMS,
@@ -142,7 +131,32 @@ class NoticeTemplateDefinitionTest {
             null,
             "body",
             Set.of());
+    NoticeTemplateDefinition emailDefinitionWithNullSubject =
+        new NoticeTemplateDefinition(
+            MessageDeliveryType.LOGIN_OTP,
+            MessageDeliveryChannel.EMAIL,
+            "en",
+            null,
+            "body",
+            Set.of());
 
-    assertThat(definition.subject()).isNull();
+    assertThat(smsDefinition.subject()).isNull();
+    assertThat(emailDefinitionWithNullSubject.subject()).isNull();
+  }
+
+  @Test
+  void allowsBlankSubjectForEmailChannel() {
+    // Locked in deliberately: this DTO does not enforce EMAIL-requires-subject (see
+    // allowsNullSubjectRegardlessOfChannel for rationale).
+    NoticeTemplateDefinition definition =
+        new NoticeTemplateDefinition(
+            MessageDeliveryType.LOGIN_OTP,
+            MessageDeliveryChannel.EMAIL,
+            "en",
+            "   ",
+            "body",
+            Set.of());
+
+    assertThat(definition.subject()).isEqualTo("   ");
   }
 }
