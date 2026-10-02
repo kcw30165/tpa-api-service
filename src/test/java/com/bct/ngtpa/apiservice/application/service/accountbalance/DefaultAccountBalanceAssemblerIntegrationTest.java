@@ -70,6 +70,63 @@ class DefaultAccountBalanceAssemblerIntegrationTest {
         .verifyComplete();
   }
 
+  @Test
+  void assemblesSuccessfullyWhenTrustHasNoSubDisplayGroupingAtAll() {
+    // Reproduces the real jpjpm02 / policy-no 00000000118 / cert-no 0070 payload shape:
+    // sub-disp-src, sub-src-desc, and sub-src-chin-desc are ALL blank for every display
+    // source and every holding - a legitimate "no sub-grouping" trust, not malformed data.
+    var raw =
+        new RawAccountBalanceData(
+            LocalDate.of(2026, 8, 27),
+            new RawAccountBalanceDisplayOptions(true, true, true),
+            new RawAccountBalanceCurrency(List.of("HKD"), "HKD"),
+            List.of(
+                new RawAccountBalanceDisplaySource(
+                    "EE", "Employee", "\u50c7\u54e1", "", "", "", 1)),
+            List.of(
+                new RawAccountBalanceFundDetail(
+                    "F1",
+                    "Fund One",
+                    "\u57fa\u91d1\u4e00",
+                    1,
+                    new BigDecimal("10.5000"),
+                    "HKD",
+                    new BigDecimal("1.0000"),
+                    "https://example.test/f1")),
+            List.of(
+                new RawAccountBalanceHolding(
+                    "EE",
+                    "",
+                    "F1",
+                    new BigDecimal("2.000"),
+                    new BigDecimal("21.00"),
+                    new BigDecimal("20.00"),
+                    new BigDecimal("1.00"))));
+    var assembler = DefaultAccountBalanceAssembler.createForTests(() -> {});
+
+    StepVerifier.create(
+            assembler.assemble(
+                new GetAccountBalanceCommand(
+                    "en", null, "JP", "P", "1", "T", "S", "U", ActorUserRole.ROLE_USER_MBR),
+                LocalDate.of(2026, 8, 28),
+                metadata(),
+                raw))
+        .assertNext(
+            r -> {
+              var fund = r.investmentPortfolio().fundLevelView().getFirst();
+              assertThat(
+                      fund.funds()
+                          .getFirst()
+                          .subDisplayAccounts()
+                          .getFirst()
+                          .subDisplayAccountName())
+                  .isEmpty();
+              var sub = r.investmentPortfolio().subDisplayAccountLevelView().getFirst();
+              assertThat(sub.subDisplayAccounts().getFirst().subDisplayAccountName()).isEmpty();
+            })
+        .verifyComplete();
+  }
+
   private static ResolvedGeneralMetadataSet metadata() {
     var s = new GeneralMetadataScope("JP", "T", "P");
     return ResolvedGeneralMetadataSet.normalize(

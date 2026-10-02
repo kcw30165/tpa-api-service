@@ -154,6 +154,29 @@ applicable tiered coverage targets; exact classification (validator-tier 95% bra
 orchestration-tier 85-90%) to be confirmed against the already-agreed tiering rules at
 implementation time.
 
+## Second blocking point discovered post-fix: subName() description resolution
+After the `DefaultAccountBalanceNormalizer` fix above, a full audit of the description-
+resolution layer (`AccountBalanceDynamicDescriptionResolver` and the shared
+`DynamicDescriptionResolver`) surfaced a second blocking point that would still 500 for
+this exact account:
+
+`DynamicDescriptionResolver.resolve()` throws `IllegalArgumentException` (wrapped as
+`SYSTEM_FAILURE` by `AccountBalanceDynamicDescriptionResolver`) whenever **both** the
+English and Chinese descriptions passed to it are blank. The real `TRPGetMemberAccBal`
+payload for this account has `sub-src-desc: ""` and `sub-src-chin-desc: ""` for both the
+EE and ER display sources - exactly where `sub-disp-src` is also blank. Once the
+normalizer accepts the blank sub-display-source, `DefaultAccountBalanceAssembler.subName()`
+unconditionally calls `descriptions.resolve(...)` with these two blank values while
+building the fund-level and sub-display-level portfolio views, which throws.
+
+**Fix**: `subName()` now returns the (empty) sub-display-source key directly, without
+attempting description resolution, whenever that key is blank - there is no sub-grouping
+to label. This is scoped to `subName()`'s call site only. `displayName()` (the primary
+display-source label) is unaffected: `src-desc`/`src-chin-desc` are always populated in
+the real payload, and the shared `DynamicDescriptionResolver` contract ("at least one
+description required") remains correct and unchanged for every other caller, such as fund
+name resolution in `AccountSummaryAssembler`/`AccountGainLossAssembler`.
+
 ## Confirmation & builder-level audit (pre-implementation)
 - The downstream developer confirmed `sub-disp-src` can legitimately be empty for some
   trusts/accounts; this is expected data, not malformed input.
