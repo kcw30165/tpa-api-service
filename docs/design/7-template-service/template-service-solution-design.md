@@ -85,43 +85,74 @@ explicitly splits them.
 ## 6. Existing Reusable Building Blocks (do not redesign)
 
 The channel-transport layer is already in good shape and should be reused
-as-is:
+as-is (confirmed by full-source review in investigation scripts 006–007,
+not just grep snippets):
 
 - `MessageDeliveryChannel` (enum: `SMS`, `EMAIL`)
-- `MessageDeliveryCommand` (channel-agnostic: recipient, subject, body,
-  templateCode, templateVariables, locale, correlationId)
+- `MessageDeliveryType` (enum: `REGISTRATION_OTP`, `LOGIN_OTP`,
+  `FORGOT_PASSWORD_OTP`, `USERNAME_RECOVERY`) — **this is reused directly
+  as the notice key** (see §7.0); no new enum is introduced
+- `MessageDeliveryScenario` (enum: `REGISTRATION`, `LOGIN`,
+  `FORGOT_PASSWORD`, `USERNAME_RECOVERY`) — used only by
+  `MessageDeliveryRuntimeConfig` for non-prod destination-override
+  routing; unrelated to template content and left untouched
+- `MessageDeliveryCommand` (record: messageType, scenario, channel,
+  recipient, subject, body, templateCode, templateVariables, locale,
+  correlationId)
 - `MessageDeliveryPort` / `MessageDeliveryAdapter` — routes by channel to
-  `SmsSenderPort` / `EmailSenderPort`, both of which are already
-  provider-agnostic at the transport level
+  `SmsSenderPort` / `EmailSenderPort` and already renders `{placeholder}`
+  templates in-line via `MessageTemplateRenderer` as part of `deliver()`
+- `SmsSenderPort`/`EmailSenderPort` + `SmsSenderAdapter`/
+  `SmtpEmailSenderAdapter` — provider-agnostic at the transport level,
+  already handle masking, config validation, and safe error logging
 - `DefaultMessageTemplateRenderer` — already does `{placeholder}`
-  substitution generically
+  substitution generically and fails fast (`IllegalArgumentException`)
+  on a missing variable
+- `RegistrationMessageDeliveryAdapter` — confirms the real end-to-end
+  pattern: resolve subject/body from policy → build
+  `MessageDeliveryCommand` → call `MessageDeliveryPort.deliver(command)`.
+  This is the exact seam the Template Service plugs into (§7.3)
 
-**What's missing** is a layer *above* `MessageDeliveryCommand` that
-resolves "which notice, which channel, which locale" into the actual
-subject/body string and required-variable contract. That is the gap this
-design closes.
+**What's missing** is a layer that resolves "which notice (messageType),
+which channel, which locale" into the actual subject/body string and
+required-variable contract, replacing each workflow's own scattered
+policy lookup. That is the gap this design closes — it does **not**
+replace or wrap `MessageDeliveryPort` itself.
 
 ## 7. Proposed Architecture
 
-### 7.1 `NoticeCode`
+### 7.0 Revised After Further Investigation: Reuse `MessageDeliveryType`, No New `NoticeCode`
 
-A closed enum. Per §5, Login and Forgot Password remain two distinct
-codes with synchronized (identical) content:
+Investigation (script 007) found that `MessageDeliveryType` **already
+exists** in `application.dto.message` with exactly these four values:
 
 ```java
-public enum NoticeCode {
-  ACCOUNT_REGISTRATION,       // E0001 / S0001
-  LOGIN_OTP,                  // E0002 / S0002 content, login-specific config key
-  FORGOT_PASSWORD_OTP,        // E0002 / S0002 content, forgot-password-specific config key
-  USERNAME_RECOVERY           // E0003 / S0003
+public enum MessageDeliveryType {
+  REGISTRATION_OTP,
+  LOGIN_OTP,
+  FORGOT_PASSWORD_OTP,
+  USERNAME_RECOVERY
 }
 ```
 
-### 7.2 `NoticeTemplateDefinition`
+This is identical, value-for-value, to the `NoticeCode` enum proposed in
+the previous draft of this document (§5's resolved decision). Introducing
+a second, parallel enum would duplicate an identifier that already flows
+through every `MessageDeliveryCommand` today (`RegistrationMessageDeliveryAdapter`
+already passes `MessageDeliveryType.REGISTRATION_OTP` when building its
+command). **This design therefore drops `NoticeCode` entirely and uses
+`MessageDeliveryType` as the notice key.** There is also an existing,
+separate `MessageDeliveryScenario` enum (`REGISTRATION`, `LOGIN`,
+`FORGOT_PASSWORD`, `USERNAME_RECOVERY`) used by `MessageDeliveryRuntimeConfig`
+for non-prod destination-override lookups — this is a different concern
+(deployment-environment destination routing) and is unrelated to template
+content resolution; it is left untouched.
+
+### 7.1 `NoticeTemplateDefinition`
 
 ```java
 public record NoticeTemplateDefinition(
-    NoticeCode noticeCode,
+    MessageDeliveryType messageType,
     MessageDeliveryChannel channel,
     String locale,
     String subject,          // null for SMS
@@ -129,11 +160,11 @@ public record NoticeTemplateDefinition(
     Set<String> requiredPlaceholders) {}
 ```
 
-### 7.3 `NoticeTemplateRegistryPort`
+### 7.2 `NoticeTemplateRegistryPort`
 
 ```java
 public interface NoticeTemplateRegistryPort {
-  NoticeTemplateDefinition resolve(NoticeCode noticeCode,
+  NoticeTemplateDefinition resolve(MessageDeliveryType messageType,
                                     MessageDeliveryChannel channel,
                                     String locale);
 }
@@ -144,30 +175,45 @@ the existing `@ConfigurationProperties` pattern already used throughout
 `AuthWorkflowProperties`, but under one new, centralized config root
 (see §8) instead of being split per-workflow.
 
-### 7.4 `NoticeDeliveryService` (new orchestration layer)
+### 7.3 `NoticeContentResolverPort` (replaces the previously proposed `NoticeDeliveryPort`)
 
-Workflow use-cases stop building `MessageDeliveryCommand` directly with
-literal subject/body strings. Instead:
+Investigation also found that the four workflow adapters do not call
+`MessageDeliveryPort` with blank commands — each already resolves its own
+subject/body from scattered policy objects (e.g.
+`RegistrationMessageDeliveryAdapter.subject()/body()`) **before**
+constructing `MessageDeliveryCommand`, then calls the existing
+`MessageDeliveryPort.deliver(command)` directly. The existing
+`MessageDeliveryAdapter` already renders `{placeholder}` templates
+in-line via `MessageTemplateRenderer` as part of `deliver()`.
+
+To minimize disruption and avoid wrapping the already-correct delivery
+path, this design introduces a narrower port that **only** resolves
+content — it does not replace or wrap `MessageDeliveryPort`:
 
 ```java
-public interface NoticeDeliveryPort {
-  Mono<MessageDeliveryResult> deliver(NoticeCode noticeCode,
-                                       MessageDeliveryChannel channel,
-                                       String recipient,
-                                       Map<String, String> variables,
-                                       String locale,
-                                       String correlationId);
+public interface NoticeContentResolverPort {
+  NoticeTemplateDefinition resolveContent(MessageDeliveryType messageType,
+                                           MessageDeliveryChannel channel,
+                                           String locale);
 }
 ```
 
-`NoticeDeliveryAdapter` implements this by: resolving the template via
-`NoticeTemplateRegistryPort`, validating that all `requiredPlaceholders`
-are present in `variables` (fail-fast, not silent), rendering via the
-existing `MessageTemplateRenderer`, and delegating to the existing
-`MessageDeliveryPort`. **No changes to `MessageDeliveryPort`,
-`SmsSenderAdapter`, or `SmtpEmailSenderAdapter` are required.**
+Each of the four `*MessageDeliveryAdapter` classes (Registration today;
+Login, Forgot Password, Username Recovery once migrated) changes its
+internal `subject()`/`body()`-equivalent logic to call
+`NoticeContentResolverPort.resolveContent(...)` instead of reading from
+its own `AuthWorkflowProperties` sub-tree, then still builds
+`MessageDeliveryCommand` and calls `MessageDeliveryPort.deliver(command)`
+exactly as today. **No changes to `MessageDeliveryPort`,
+`MessageDeliveryAdapter`, `MessageTemplateRenderer`, `SmsSenderAdapter`,
+or `SmtpEmailSenderAdapter` are required.** Required-placeholder
+validation happens in `YamlNoticeTemplateRegistryAdapter` at startup
+(fail-fast on misconfiguration) rather than per-request, since
+`DefaultMessageTemplateRenderer` already throws
+`IllegalArgumentException` on a missing variable at render time as a
+second line of defense.
 
-### 7.5 Extensibility Path for Future Channels (WhatsApp, WeChat, ...)
+### 7.4 Extensibility Path for Future Channels (WhatsApp, WeChat, ...)
 
 Per your explicit requirement, adding a channel must not require reworking
 workflow logic. With the design above:
@@ -184,9 +230,10 @@ workflow logic. With the design above:
    config (§8).
 
 Steps 1–4 touch **transport/config wiring only** — zero changes to any of
-the four workflow use-case classes, because they will depend only on
-`NoticeDeliveryPort` and a `NoticeCode` + `MessageDeliveryChannel`, never
-on template literals.
+the four workflow adapter classes' delivery logic, because they will
+depend only on `NoticeContentResolverPort` with the existing
+`MessageDeliveryType` + `MessageDeliveryChannel`, never on template
+literals.
 
 ## 8. Proposed Config Schema (illustrative, not final)
 
@@ -235,12 +282,14 @@ where it is — this design only centralizes **content**, not the entire
 
 ## 9. Migration Plan (future phases — not in this round's scope)
 
-1. Introduce `NoticeCode`, `NoticeTemplateDefinition`,
-   `NoticeTemplateRegistryPort`, `NoticeDeliveryPort` + adapters (additive,
-   no existing code touched).
+1. Introduce `NoticeTemplateDefinition`, `NoticeTemplateRegistryPort`,
+   `NoticeContentResolverPort` + `YamlNoticeTemplateRegistryAdapter`
+   (additive, no existing code touched).
 2. Migrate Username Recovery first (simplest — single call site in
    `UsernameRecoveryFeatureConfig`).
-3. Migrate Registration, then Login.
+3. Migrate Registration (replace `RegistrationMessageDeliveryAdapter`'s
+   `subject()`/`body()` policy lookup with
+   `NoticeContentResolverPort.resolveContent(...)`), then Login.
 4. Migrate Forgot Password **last**, since it currently has no YAML
    wiring at all — this is the highest-risk migration. As part of this
    step, reconcile its content to match `login-otp` verbatim (§5).
@@ -255,11 +304,12 @@ is written.
 
 Per your existing tiered policy:
 
-- `NoticeCode`, `NoticeTemplateDefinition` (record/DTO) — ≥95% instruction
-  and branch coverage.
-- `YamlNoticeTemplateRegistryAdapter`, `NoticeDeliveryAdapter`
-  (orchestration) — ≥95% instruction, 85–90% branch, with one-line
-  justification comments for any defensive/unreachable branch.
+- `NoticeTemplateDefinition` (record/DTO) — ≥95% instruction and branch
+  coverage.
+- `YamlNoticeTemplateRegistryAdapter` (orchestration/config-binding,
+  including fail-fast required-placeholder validation) — ≥95%
+  instruction, 85–90% branch, with one-line justification comments for
+  any defensive/unreachable branch.
 
 ## 11. Open Decisions Requiring Sign-off
 
@@ -270,11 +320,9 @@ Per your existing tiered policy:
    was deliberately deferred. Confirm whether centralizing Forgot
    Password content is in-scope for this initiative or a separate
    follow-up.
-3. **`NoticeCode` closed-enum vs. open-ended**: this draft keeps
-   `NoticeCode` as a closed Java enum (consistent with
-   `MessageDeliveryType`/`MessageDeliveryChannel` elsewhere in the
-   codebase). Confirm this is acceptable versus a fully config-driven,
-   string-keyed registry.
+3. ~~`NoticeCode` closed-enum vs. open-ended~~ — **Moot/resolved**: the
+   design now reuses the existing `MessageDeliveryType` enum directly
+   instead of introducing a new type (§7.0).
 
 ## 12. Appendix: Investigation Inventory
 
