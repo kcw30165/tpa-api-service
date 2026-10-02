@@ -18,8 +18,8 @@ JAVA_MAJOR="$(java -version 2>&1 | awk -F '[".]' '/version/ {print $2; exit}')"
 }
 
 MAVEN_VERSION="$(mvn -v | awk '/Apache Maven/ {print $3; exit}')"
-[[ "$MAVEN_VERSION" == "3.9.15" ]] || {
-  printf 'ERROR: Maven 3.9.15 is required; detected %s.\n' "${MAVEN_VERSION:-unknown}" >&2
+[[ "$MAVEN_VERSION" == 3.9.* ]] || {
+  printf 'ERROR: Maven 3.9.x is required; detected %s.\n' "${MAVEN_VERSION:-unknown}" >&2
   exit 1
 }
 
