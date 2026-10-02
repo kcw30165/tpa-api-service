@@ -239,9 +239,48 @@ literals.
 
 ## 8. Proposed Config Schema (illustrative, not final)
 
+### 8.0 Key Naming and Locale Scope (revised after investigation)
+
+YAML keys are the kebab-case form of the `MessageDeliveryType` enum
+values themselves (not a separate `NoticeCode`-style name), so the
+mapping from enum to config key is mechanical and unambiguous:
+
+| `MessageDeliveryType` | YAML key |
+|---|---|
+| `REGISTRATION_OTP` | `registration-otp` |
+| `LOGIN_OTP` | `login-otp` |
+| `FORGOT_PASSWORD_OTP` | `forgot-password-otp` |
+| `USERNAME_RECOVERY` | `username-recovery` |
+
+**Decision (confirmed):** the new schema supports **per-locale (`en` +
+`zh_HK`) content for all four message types**, not just Forgot Password.
+Investigation (script 011) found the current state is inconsistent and a
+locale gap, not a deliberate design:
+
+- Only `ForgotPasswordOtpTemplates` (hardcoded Java, not YAML) actually
+  varies content by locale today (`en`/`zh_HK` maps).
+- Registration's `Otp`/`OtpEmail` and Login's `LoginOtp`/`LoginOtpEmail`
+  each bind only a **single**, locale-agnostic `sms-template`/
+  `subject`/`body` in YAML — no locale split exists.
+- `UsernameRecoveryTemplate` likewise binds only a single
+  `email-subject`/`email-body`/`sms-body` — no locale split exists.
+- `application.yml` additionally contains an **orphaned** YAML block,
+  `auth-workflows.forgot-password.otp.localized-template.{en,zh_HK}.*`,
+  which does not bind to any field on `AuthWorkflowProperties.Otp` and is
+  silently ignored by Spring's relaxed binding. This confirms Forgot
+  Password's real locale-varying content comes only from
+  `ForgotPasswordOtpTemplates.approved()` today, and that stray YAML node
+  will be removed (not migrated) as part of cleanup once the central
+  schema is live.
+
+Since the BRD requires both English and Chinese content for all three
+BRD notices (and therefore all four `MessageDeliveryType` values once
+Login/Forgot Password are split per §5), the central schema closes this
+gap uniformly rather than perpetuating it.
+
 ```yaml
 notice-templates:
-  account-registration:
+  registration-otp:
     sms:
       en: "BCT Pension: Your One-Time Password (OTP) for Account Registration: {code}"
       zh_HK: "BCT 退休金: 有關您的帳戶登記的一次性密碼為: {code}"
@@ -255,29 +294,43 @@ notice-templates:
   login-otp:
     sms:
       en: "BCT {trustCode}: Your One-Time Password (OTP) : {code}"
+      zh_HK: "BCT - {trustCode} : 您的一次性密碼為: {code}"
     email:
       en:
+        subject: "..."
+        body: "..."
+      zh_HK:
         subject: "..."
         body: "..."
   forgot-password-otp:         # content intentionally identical to login-otp (§5)
     sms:
       en: "BCT {trustCode}: Your One-Time Password (OTP) : {code}"
+      zh_HK: "BCT - {trustCode} : 您的一次性密碼為: {code}"
     email:
       en:
+        subject: "..."
+        body: "..."
+      zh_HK:
         subject: "..."
         body: "..."
   username-recovery:
     sms:
       en: "BCT {trustCode}: Your Username is {username}. Please login our Member Portal to view your account details"
+      zh_HK: "BCT - {trustCode} : 您的用戶名稱是 {username} 。 請登入會員網站查閱您的賬戶資料。"
     email:
       en:
+        subject: "..."
+        body: "..."
+      zh_HK:
         subject: "..."
         body: "..."
 ```
 
 This replaces the four scattered `auth-workflows.*.otp.*` /
-`auth-workflows.username-recovery.template.*` blocks with one coherent,
-notice-keyed structure, while `auth-workflows.*` config for non-template
+`auth-workflows.username-recovery.template.*` blocks (plus the hardcoded
+`ForgotPasswordOtpTemplates` Java class and the orphaned
+`localized-template` YAML node) with one coherent, notice-keyed,
+per-locale structure, while `auth-workflows.*` config for non-template
 concerns (OTP length, TTL, resend limits, destination overrides) remains
 where it is — this design only centralizes **content**, not the entire
 `AuthWorkflowProperties` tree.
@@ -292,9 +345,12 @@ where it is — this design only centralizes **content**, not the entire
 3. Migrate Registration (replace `RegistrationMessageDeliveryAdapter`'s
    `subject()`/`body()` policy lookup with
    `NoticeTemplateRegistryPort.resolve(...)`), then Login.
-4. Migrate Forgot Password **last**, since it currently has no YAML
+4. Migrate Forgot Password **last**, since it currently has no live YAML
    wiring at all — this is the highest-risk migration. As part of this
-   step, reconcile its content to match `login-otp` verbatim (§5).
+   step, reconcile its content to match `login-otp` verbatim (§5), and
+   remove `ForgotPasswordOtpTemplates` plus the orphaned
+   `auth-workflows.forgot-password.otp.localized-template.*` YAML node
+   (§8.0) rather than migrating it, since it has no live binding today.
 5. Remove the four old template config blocks and the duplicated
    `ttlUnit()` helpers once all four call sites are migrated.
 
