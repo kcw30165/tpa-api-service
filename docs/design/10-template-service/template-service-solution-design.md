@@ -465,6 +465,92 @@ Confirmed during Stage II-1 (2026-10-05):
   starting with `zh` to `zh-HK`, so a workflow that takes its language from that context can never
   select a future `zh_CN` entry. Adding one requires revisiting that normalization.
 
+### 8.6 Per-Locale TTL Unit (Stage II-2, Decision D6)
+
+Status: confirmed by Nick on 2026-10-05 (decision D6, option A, and decision D7). It is implemented in
+sub-stage II-2.b0 of the implementation plan (Appendix C, C.11); nothing in this section is implemented yet.
+
+**Problem (evidence: scripts 059, 060, 062 and 063).** The placeholder `{ttlUnit}` is supplied by the callers,
+and three workflows supply it three different ways: Registration writes the literal `minutes`; Login writes the
+literal `seconds` next to a value in seconds; Forgot Password has two identical `ttlUnit(language)` helpers that
+return `分鐘` only when the language equals `zh_HK` after replacing `-` with `_`, and `minutes` otherwise. The
+registry content writes the two placeholders next to each other in zh_HK without a space (for example
+`有效期為{ttlValue}{ttlUnit}。`) and with a space in en. A caller that derives the unit from the request tag
+therefore disagrees with the registry, which selects zh_HK content for `zh`, `zh-TW` and `zh-Hant` as well
+(section 8.4). Migrating Registration unchanged would render zh_HK text such as `5minutes`.
+
+**Decision.** The unit word is a property of the locale, not of the message type and not of the caller. It is
+configured once per locale in the registry YAML, looked up with the locale key that the registry SELECTED for
+the content, and returned inside the resolved definition. A caller passes the number (`ttlValue`) and the unit
+that the definition carries, and never translates the unit itself. Adding a locale remains a YAML-only change.
+
+**Configuration.** A new sibling key of `definitions`:
+
+```yaml
+notice-templates:
+  ttl-units:
+    en: "minutes"
+    zh_HK: "分鐘"
+  definitions:
+    registration-otp:
+      # unchanged
+```
+
+The two values are the words that the two identical `ttlUnit(language)` helpers return today.
+
+**Rules.**
+
+1. **Selection.** The unit is looked up in `ttl-units` with the same key that section 8.4 selected for the
+   content (`NoticeTemplateDefinition.locale()`), never with the request tag. `zh`, `zh-TW` and `zh-Hant` get
+   `分鐘` exactly when they get zh_HK content.
+2. **Validation at startup (fail fast).** `NoticeTemplateProperties.validate()` requires, for every locale key of
+   every definition (SMS entry, or EMAIL entry whose subject or body) whose text contains `{ttlUnit}`, a non-blank
+   `ttl-units` entry under that exact key, and the error names the key. Content that does not contain
+   `{ttlUnit}` imposes nothing. No locale list is hard-coded.
+3. **Definition.** `NoticeTemplateDefinition` gains a nullable last component `ttlUnit`. A blank value is
+   rejected (null is allowed), like the existing blank checks on `locale` and `body`. The record keeps a public
+   constructor of the current six-argument shape that delegates with `null`, the same compatibility pattern as
+   the APIM DTOs (section 8.2). The evidence shows 14 test constructions of the six-argument shape in 2 test files
+   and 2 main constructions, so the secondary constructor keeps all of them compiling.
+4. **Registry.** `YamlNoticeTemplateRegistryAdapter` attaches `ttl-units.get(selectedKey)` to the definition it
+   returns. If the definition requires `ttlUnit` and no unit is configured for the selected key, it throws
+   `IllegalStateException` naming the message type, channel and key. That branch is defensive: it is reachable
+   only for properties that skipped `validate()` (the same class of branch as the justified `placeholders(null)`
+   branch of the plan).
+5. **Port.** `NoticeTemplateRegistryPort.resolve(type, channel, locale)` does not change. The one test fake and
+   the one mock of the port stay valid.
+6. **Callers.** A workflow passes `ttlValue` and `ttlUnit = definition.ttlUnit()`. The two `ttlUnit(language)`
+   helpers of Forgot Password and the literals of Registration and Login disappear when those workflows migrate
+   (II-2, II-3, II-4 and stage III-3).
+7. **Missing definition (decision D7).** `resolve` throws `IllegalStateException` for a missing definition, as it
+   does today. `RegistrationMessageDeliveryAdapter` resolves inside `deliverRegistrationOtp`, does not catch the
+   exception and does not fall back to a built-in subject or body. Today a missing policy fails in the same
+   place. How START and RESEND surface the exception is checked in II-2.b before the adapter is edited.
+
+**Ordering constraint.** The `ttl-units` entries in `application.yml` and the validation of rule 2 must land in the
+same commit. With the validation but without the entries, the application would not start and
+`ApplicationYamlNoticeTemplatesBindingTest` would fail.
+
+**Not changed here.** English plural wording (a value of 1 is still written with `minutes`). Login passes
+seconds today and must pass minutes once the unit is configured as minutes (confirmed at II-3). Forgot Password
+passes a literal `5` from its details OTP (II-4).
+
+**Tests required by this design** (tiers of the plan: records and DTOs 95% instruction and 95% branch; adapters
+95% instruction and 85-90% branch with a one-line justification per uncovered branch):
+
+- `NoticeTemplateDefinition`: the six-argument constructor yields a null unit; a unit is retained; a blank unit is
+  rejected; `null` is accepted.
+- `NoticeTemplateProperties.validate()`: rejects a missing and a blank unit for a content key that contains
+  `{ttlUnit}` (SMS and EMAIL); accepts content without `{ttlUnit}` and an empty `ttl-units`; accepts a complete
+  configuration; the message names the key.
+- `YamlNoticeTemplateRegistryAdapter`: returns the unit of the selected key for an exact match and for a
+  same-language fallback (a `zh` request returns the zh_HK unit); returns the unit of `en` when the request falls
+  back to `en`; throws for a required but unconfigured unit.
+- `NoticeTemplateRegistryFullMatrixSmokeTest`: the unit is non-blank for every message type, channel and locale
+  combination of the real `application.yml`.
+- Rendering with the real registry and renderer (II-2.c): zh_HK Registration content renders the number directly
+  followed by `分鐘`; en renders a space and `minutes`.
+
 ## 9. Migration Plan (future phases — not in this round's scope)
 
 1. Introduce `NoticeTemplateDefinition`, `NoticeTemplateRegistryPort` +

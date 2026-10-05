@@ -76,12 +76,15 @@ Phase I (stages I-1 through I-6) is complete and closed. Phase II, Stage II-1 (U
 Recovery) is DONE: sub-stages II-1.a to II-1.d are committed (Appendix A.1) and the stage gate is
 met on the final code, with a passing full `mvn test` and an application startup smoke test with
 no bean or configuration errors, both evidenced (Appendix A.3). Stage II-2 (Registration) is IN
-PROGRESS: its read-only investigation (scripts 059, 060 and 062) is recorded in Appendix C, where
-sub-stage II-2.a is done, and no code has been changed for it. Decision D6 (how the `{ttlUnit}`
-placeholder is supplied) and decision D7 are OPEN. The next steps are the confirmation of D6 and
-D7 and the design update (II-2.0), then the implementation (II-2.b). Stages II-3 (Login), II-4
-(Forgot Password) and Phase III remain PENDING. Decisions and open items for II-1 are in Appendix
-A.2. Work that is deliberately outside this workstream is listed in Appendix B.
+PROGRESS: its read-only investigation is recorded in Appendix C (sub-stage II-2.a is done) and
+decisions D6 (option A: the per-locale TTL unit is configured in the registry YAML and returned
+with the resolved definition) and D7 (a missing definition fails) are confirmed by Nick. The
+design is solution design section 8.6 and the updated sub-plan is in C.11. No code has been
+changed for II-2. The next steps are a read-only script that prints the real Phase I sources that
+II-2.b0 amends, then II-2.b0 (Template Service extension), II-2.b (adapter migration), II-2.c and
+the stage gate II-2.d. Stages II-3 (Login), II-4 (Forgot Password) and Phase III remain PENDING.
+Decisions and open items for II-1 are in Appendix A.2. Work that is deliberately outside this
+workstream is listed in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
 
@@ -408,8 +411,8 @@ with a space in en. Consequences:
 
 | # | Topic | Options | Status |
 | --- | --- | --- | --- |
-| D6 | How the unit word reaches the template | A: configure the unit word per locale in the `notice-templates` YAML and return it with the resolved definition, so a caller passes only the number; every workflow and locale is then YAML only. B: a small helper inside the Registration adapter that picks the unit from `definition.locale()`; smallest change, but a third copy of the logic and a locale-to-word map in code. C: write `分鐘` literally into the zh_HK content and drop `{ttlUnit}` there; YAML only, but it breaks the confirmed rule to keep dynamic `{ttlValue}` / `{ttlUnit}` wording. | OPEN. Option A is the assistant's proposal and is not confirmed by Nick. A touches Phase I classes (`NoticeTemplateDefinition`, `NoticeTemplateProperties`, the registry adapter) and their tests, and needs a design update first. |
-| D7 | Failure when the definition is missing | Resolve inside `deliverRegistrationOtp` as the policy lookup is resolved today, so a missing definition throws `IllegalStateException` at the call, as a missing policy does now. | Proposed, not yet confirmed. |
+| D6 | How the unit word reaches the template | A: configure the unit word per locale in the `notice-templates` YAML and return it with the resolved definition, so a caller passes only the number; every workflow and locale is then YAML only. B: a small helper inside the Registration adapter that picks the unit from `definition.locale()`; smallest change, but a third copy of the logic and a locale-to-word map in code. C: write `分鐘` literally into the zh_HK content and drop `{ttlUnit}` there; YAML only, but it breaks the confirmed rule to keep dynamic `{ttlValue}` / `{ttlUnit}` wording. | Confirmed by Nick, 2026-10-05 (option A; design: solution design section 8.6; C.11). |
+| D7 | Failure when the definition is missing | Resolve inside `deliverRegistrationOtp` as the policy lookup is resolved today, so a missing definition throws `IllegalStateException` at the call, as a missing policy does now. | Confirmed by Nick, 2026-10-05 (C.11). |
 
 ### C.5 Behaviour changes to record
 
@@ -437,8 +440,9 @@ with a space in en. Consequences:
 
 | Sub-stage | Change | Status |
 | --- | --- | --- |
-| II-2.0 | Confirm D6 and D7. Update the solution design (a new section for the unit) and this appendix before any code. | PENDING (needs Nick's decision) |
+| II-2.0 | Confirm D6 and D7. Update the solution design (a new section for the unit) and this appendix before any code. | DONE (D6 option A and D7 confirmed; design: solution design section 8.6; script 065) |
 | II-2.a | Read-only investigation of the three tests that name the gateway config (`RegistrationMessageDestinationOverrideWiringTest`, `RegistrationHardcodedPolicyArchitectureGuardTest`, `RegistrationSharedCoreMigrationArchitectureTest`) and of the tests that build the adapter or mention `RegistrationMessagePort` (17 files in main and test). | DONE (script 062; findings in C.9) |
+| II-2.b0 | Template Service extension (an amendment to Phase I; design: solution design section 8.6). `NoticeTemplateDefinition` gains a nullable last component `ttlUnit` and keeps a public six-argument constructor; `NoticeTemplateProperties` gains `ttlUnits` and validates it; `YamlNoticeTemplateRegistryAdapter` attaches the unit that belongs to the locale key it selected; `application.yml` gains `notice-templates.ttl-units` (en `minutes`, zh_HK `分鐘`) in the SAME commit as the validation, because the validation would otherwise fail the application at startup. Tests per section 8.6. II-2.b depends on it. | PENDING |
 | II-2.b | `RegistrationMessageDeliveryAdapter` resolves content through `NoticeTemplateRegistryPort.resolve(REGISTRATION_OTP, channel, acceptLanguage)`, builds `code`, `ttlValue` and `ttlUnit` as decided in D6, and no longer takes `AuthWorkflowPolicyPort`. `RegistrationStartGatewayConfig.registrationMessageGateway` injects the registry port. Rewrite `RegistrationMessageDeliveryAdapterTest`, and adjust whichever test from II-2.a pins the old wiring. | PENDING |
 | II-2.c | A test with the real `YamlNoticeTemplateRegistryAdapter` and `DefaultMessageTemplateRenderer` that renders START and RESEND content for SMS and EMAIL in en and zh_HK and asserts that no placeholder is left unreplaced and that the unit follows the selected locale. | PENDING |
 | II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING |
@@ -606,3 +610,45 @@ Consequences:
    is called for Registration (it is not, C.10.1).
 3. Not designed yet: the shape of the per-locale unit configuration if option A is chosen, and the
    unit wording per locale. They are the content of II-2.0 once D6 is confirmed.
+
+### C.11 Decisions D6 and D7 confirmed; design and sub-plan update (script 065)
+
+Recorded 2026-10-05. Nick confirmed decision D6 option A and decision D7 on 2026-10-05. The design is
+recorded in the solution design, section 8.6 (Per-Locale TTL Unit). Nothing is implemented yet.
+
+#### C.11.1 Decisions
+
+| # | Decision | Status |
+| --- | --- | --- |
+| D6 | Option A. The unit word for `{ttlUnit}` is configured per locale in the `notice-templates` YAML (`notice-templates.ttl-units`), looked up by the locale key that the registry selected for the content, and returned in the resolved `NoticeTemplateDefinition`. A caller passes only the number and never translates the unit. | Confirmed by Nick, 2026-10-05 |
+| D7 | A missing Registration definition fails: `NoticeTemplateRegistryPort.resolve` throws `IllegalStateException` inside `deliverRegistrationOtp`, as a missing policy does today, and the adapter does not fall back to the old subject `registration-otp` and body `{code}`. | Confirmed by Nick, 2026-10-05 |
+
+#### C.11.2 Updated sub-plan
+
+| Sub-stage | Change | Status |
+| --- | --- | --- |
+| II-2.0 | Confirm D6 and D7; write the design (solution design section 8.6) and this section. | DONE (script 065) |
+| II-2.a | Tests named in C.7. | DONE (script 062; findings in C.9) |
+| II-2.a2 | Read-only script that prints the real sources and tests that II-2.b0 amends (`NoticeTemplateDefinition`, `NoticeTemplateProperties`, `YamlNoticeTemplateRegistryAdapter`, their tests, the `notice-templates` block of `application.yml`), so that the patch anchors come from the real files. Script 065 already collects a first copy of this evidence. | PENDING (review of the 065 evidence) |
+| II-2.b0 | Template Service extension (a Phase I amendment), see the II-2.b0 row in C.7 and solution design section 8.6. | PENDING |
+| II-2.b | `RegistrationMessageDeliveryAdapter` migration, as in C.7. Before editing, read how START and RESEND treat an exception thrown synchronously by `deliverRegistrationOtp` (D7), and add a test that a missing definition surfaces as an error and not as the value `false`. | PENDING |
+| II-2.c | Rendering test with the real registry and renderer, extended by C.10.1: assert the placeholders and the rendered text of the zh_HK Registration content as well, including the unit (for example `有效期為5分鐘。`). | PENDING |
+| II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING |
+
+#### C.11.3 Carried to later stages (not part of II-2)
+
+- II-3 (Login): `LoginOtpSendService` and `LoginOtpResendService` pass the policy value in seconds with the
+  unit `seconds` (C.3). With the unit configured as minutes, Login must pass the value in minutes. That changes
+  what Login sends today and is confirmed at II-3.
+- II-4 (Forgot Password): the two `ttlUnit(language)` helpers are replaced by `definition.ttlUnit()`; the details
+  OTP passes a literal `5`. Stage III-3 then deletes the helpers.
+- English plural wording is unchanged: a value of 1 is still written with the unit `minutes`.
+
+#### C.11.4 Open items
+
+1. How START and RESEND surface an exception thrown by `deliverRegistrationOtp` (D7) was not read in full;
+   script 065 collects the `onError*` lines of the callers. It is settled in II-2.b.
+2. Whether `application-local.yml` overrides any `notice-templates` key is not established; script 065 collects
+   the files that define the key.
+3. The exact current text of the three Phase I classes and their tests is taken from the evidence of script 055
+   and, again, from script 065. II-2.b0 is patched against the real files, not against this section.
