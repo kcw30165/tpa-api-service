@@ -266,11 +266,9 @@ class PlainSocketSmtpClientTest {
     int port =
         startFakeServer(
             (in, out) -> {
-              try {
-                Thread.sleep(2000);
-              } catch (InterruptedException interrupted) {
-                Thread.currentThread().interrupt();
-              }
+              // Send nothing and hold the connection open: readLine() blocks until the client times
+              // out and closes its socket, so no sleep is needed.
+              in.readLine();
             });
 
     SmtpSendCommand cmd =
