@@ -169,7 +169,7 @@ This document, plus one link in `README.md` of this folder. The status table in 
 | 1 | This decision record and the README link | `mvn spotless:apply`; link check | Done |
 | 2 | `ApimPayloadCryptoServiceWireContractTest` (section 6.2) | `mvn spotless:apply`; `mvn -DskipTests compile`; `mvn -DskipTests test-compile` | Done (script 007; compiled, executed in stage 3) |
 | 3 | Targeted run of the crypto tests and a fresh class-level JaCoCo measurement | Instruction >= 95%; branch not below 85% | Done (script 008: 4 test classes, 22 tests passed; instruction 96.08% (490/510); branch 96.15% (25/26)) |
-| 4 | `@SuppressWarnings("java:S5542")` and comments (section 6.1) | `mvn spotless:apply`; compile; test-compile | Not started |
+| 4 | `@SuppressWarnings("java:S5542")` and comments (section 6.1) | `mvn spotless:apply`; compile; test-compile | Done (script 009; spotless, compile and test-compile passed) |
 | 5 | Full validation | Full `mvn test` with JaCoCo report (run manually); `spotless:check` clean; application startup smoke test | Not started |
 | 6 | SonarQube verification after merge | Both issue keys in section 2 no longer reported | Not started |
 

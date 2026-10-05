@@ -31,6 +31,7 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class ApimPayloadCryptoService {
 
+  // APIM wire contract: AES/CBC/PKCS5Padding. See apim-payload-aes-cbc-sonar-s5542-decision.md
   private static final String AES_TRANSFORMATION = "AES/CBC/PKCS5Padding";
   private static final String AES_ALGORITHM = "AES";
   private static final int AES_IV_LENGTH_BYTES = 16;
@@ -173,6 +174,8 @@ public class ApimPayloadCryptoService {
     return apimRsaPayloadCrypto.verifyAndExtractValue(signedJwt, publicKey);
   }
 
+  // Accepted java:S5542 risk (APIM wire contract): apim-payload-aes-cbc-sonar-s5542-decision.md
+  @SuppressWarnings("java:S5542")
   private String encryptAes(String plainText, SecretKey aesKey) {
     try {
       byte[] iv = new byte[AES_IV_LENGTH_BYTES];
@@ -189,6 +192,8 @@ public class ApimPayloadCryptoService {
     }
   }
 
+  // Accepted java:S5542 risk (APIM wire contract): apim-payload-aes-cbc-sonar-s5542-decision.md
+  @SuppressWarnings("java:S5542")
   private String decryptAes(String encryptedValue, String aesKeyHex) {
     try {
       byte[] aesKeyBytes = hexStringToByteArray(aesKeyHex);
