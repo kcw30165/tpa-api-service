@@ -100,7 +100,7 @@ The 95% instruction target needs 485 covered of 510, i.e. at least 16 more instr
 | `decryptAes` catch block (lines 202-203) | 7 | reached when AES decryption throws |
 | `normalizeApiKey` | 6 | private, no direct caller; invoked only by reflection in `ApimAdapterReflectionBranchProbeTest` |
 
-Covering the three catch blocks adds 21 instructions: 490 of 510, about 96.08% (expected, to be measured in stage 3). The branch figure is already above the 85 to 90% tier for orchestration classes and must not drop.
+Covering the three catch blocks adds 21 instructions: 490 of 510, about 96.08% (expected). Measured in stage 3 (script 008) with the wire-contract tests: instruction 490 of 510 (96.08%), branch 25 of 26 (96.15%). The branch figure is already above the 85 to 90% tier for orchestration classes and must not drop.
 
 ### 3.6 Suppression conventions at this baseline
 
@@ -168,7 +168,7 @@ This document, plus one link in `README.md` of this folder. The status table in 
 | 0 | Investigation (scripts 001 to 005) | Evidence artifacts reviewed | Done |
 | 1 | This decision record and the README link | `mvn spotless:apply`; link check | Done |
 | 2 | `ApimPayloadCryptoServiceWireContractTest` (section 6.2) | `mvn spotless:apply`; `mvn -DskipTests compile`; `mvn -DskipTests test-compile` | Done (script 007; compiled, executed in stage 3) |
-| 3 | Targeted run of the crypto tests and a fresh class-level JaCoCo measurement | Instruction >= 95%; branch not below 85% | Not started |
+| 3 | Targeted run of the crypto tests and a fresh class-level JaCoCo measurement | Instruction >= 95%; branch not below 85% | Done (script 008: 4 test classes, 22 tests passed; instruction 96.08% (490/510); branch 96.15% (25/26)) |
 | 4 | `@SuppressWarnings("java:S5542")` and comments (section 6.1) | `mvn spotless:apply`; compile; test-compile | Not started |
 | 5 | Full validation | Full `mvn test` with JaCoCo report (run manually); `spotless:check` clean; application startup smoke test | Not started |
 | 6 | SonarQube verification after merge | Both issue keys in section 2 no longer reported | Not started |
@@ -202,7 +202,7 @@ Rollback: revert the commit. The change has no runtime or configuration effect.
 | O1 | No rendered PROD or DR output was found, so the APIM URL scheme for those environments is not evidenced. | Confirm both use `https` before the security reviewer accepts section 5. |
 | O2 | It has not been confirmed that this SonarQube server honours `@SuppressWarnings("java:S5542")` for these two issues. | Verified in stage 6; the fallback in section 8 applies otherwise. |
 | O3 | Owner of the security risk acceptance is not named. | Nick to name the reviewer. |
-| O4 | The three-argument `decryptResponseEnvelope` is reported uncovered although `ApimPayloadCryptoServiceTest` contains a three-argument call. | Re-measure in stage 3; investigate only if it affects the 95% target. |
+| O4 | The three-argument `decryptResponseEnvelope` is reported uncovered although `ApimPayloadCryptoServiceTest` contains a three-argument call. | Re-measured in stage 3 (script 008): the three-argument overload is still reported uncovered; instruction coverage is 96.08%, so the 95% target is not affected. Left open for a separate coverage investigation. |
 
 ---
 
