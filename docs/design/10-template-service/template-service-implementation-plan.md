@@ -43,7 +43,7 @@ still build `MessageDeliveryCommand` and call
 
 | Stage | Workflow | Notes | Status |
 |---|---|---|---|
-| II-1 | Username Recovery | Simplest — single call site in `UsernameRecoveryFeatureConfig` / `UsernameRecoveryRequestProtectedOperation`. First to confirm whether `schemeName`/`schemeNameChi` already flow from the DTO through `TrpSearchMemberApimResultMapper` → `UsernameRecoveryLookupCandidate`, or need additive plumbing. | PENDING |
+| II-1 | Username Recovery | Simplest — single call site in `UsernameRecoveryFeatureConfig` / `UsernameRecoveryRequestProtectedOperation`. First to confirm whether `schemeName`/`schemeNameChi` already flow from the DTO through `TrpSearchMemberApimResultMapper` → `UsernameRecoveryLookupCandidate`, or need additive plumbing. | IN PROGRESS |
 | II-2 | Registration | Replace `RegistrationMessageDeliveryAdapter`'s `subject()`/`body()` policy lookup with `NoticeTemplateRegistryPort.resolve(...)`. No scheme-name placeholder needed (§8.2). | PENDING |
 | II-3 | Login | Replace `LoginOtpSendPolicy`-based lookup. Requires scheme-name plumbing from `TrpGetAccountListApimDataItem`. | PENDING |
 | II-4 | Forgot Password | **Last** — highest risk, since it currently has no live YAML wiring at all. Reconcile content to match `login-otp` verbatim (§5). Requires scheme-name plumbing from `ForgotPasswordTrpSearchMemberDataItem`. | PENDING |
@@ -122,3 +122,43 @@ migrated, not performed per-workflow.
 Each sub-stage follows: confirm no further assumptions needed → implement
 → `mvn -DskipTests compile` + `test-compile` → scoped `mvn test` for the
 affected classes → commit → proceed to the next sub-stage.
+
+## Appendix A.1: Stage II-1 Progress and Gate Status
+
+| Sub-stage | Status | Reference |
+|---|---|---|
+| II-1.a schemeName/schemeNameChi through lookup candidate and domain candidate | DONE | b3c1289c |
+| II-1.b session candidate accessors, withState() field-loss fix, StartProtectedOperation threading | DONE | dd1aa4fd |
+| II-1.b addendum: protected session context serializer | DONE | 8889c0a1 |
+| II-1.c NoticeTemplateRegistryPort injected into UsernameRecoveryFeatureConfig | DONE | 8889c0a1 |
+| II-1.d per-request resolution in UsernameRecoveryRequestProtectedOperation | DONE | 8889c0a1 |
+
+**Finding added during implementation (not in the original sub-plan).**
+`AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter` keeps a private `Candidate` payload
+record that serializes fields explicitly and rebuilt the domain candidate through the 6-argument
+compatibility constructor. `schemeName`/`schemeNameChi` were therefore dropped whenever the session
+context was protected after START and unprotected at REQUEST, so REQUEST never saw them. The
+payload now carries both fields and a round-trip test guards it. Any future field added to
+`UsernameRecoveryCandidate` must also be added to that payload.
+
+**Carry into II-3 (Login) and II-4 (Forgot Password).** Both workflows keep protected session
+contexts. Before changing their send paths, read their context serializers in full and confirm
+whether they serialize candidate or account fields explicitly. `schemeName`/`schemeNameChi` must
+survive that round trip, the same way they now do for Username Recovery.
+
+**Test-scope finding.** Script 034 changed `UsernameRecoveryCandidate.toString()` to list the new
+fields and ran only a hand-picked test list, which missed two existing exact-string guards
+(`UsernameRecoveryCandidateTest`, `UsernameRecoverySessionCandidateTest`). The wide pattern run
+in script 044 caught them. `toString()` now omits `schemeName`/`schemeNameChi` again, so the
+redaction format those tests pin is unchanged and the values are still never disclosed.
+Scoped runs for this workstream use wildcard patterns, not named lists.
+
+**Known behaviour, decision pending.** EMAIL templates for `username-recovery` require
+`{schemeName}`. If the APIM response has a blank or absent `sch-name`, rendering throws and
+`MessageDeliveryAdapter` reports FAILED for that email. SMS content has no scheme placeholder and
+is unaffected. The business rule implemented is only: blank `chin-sch-name` falls back to `sch-name`.
+
+**Stage gate (not yet satisfied, so II-1 is not marked DONE).** The standing convention requires,
+before a stage transition, evidence that the full Maven test suite passed and that an application
+startup smoke test confirmed the Spring application starts without bean or configuration errors.
+Both are run manually. Stage II-1 becomes DONE only after that evidence exists.
