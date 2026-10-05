@@ -170,7 +170,7 @@ This document, plus one link in `README.md` of this folder. The status table in 
 | 2 | `ApimPayloadCryptoServiceWireContractTest` (section 6.2) | `mvn spotless:apply`; `mvn -DskipTests compile`; `mvn -DskipTests test-compile` | Done (script 007; compiled, executed in stage 3) |
 | 3 | Targeted run of the crypto tests and a fresh class-level JaCoCo measurement | Instruction >= 95%; branch not below 85% | Done (script 008: 4 test classes, 22 tests passed; instruction 96.08% (490/510); branch 96.15% (25/26)) |
 | 4 | `@SuppressWarnings("java:S5542")` and comments (section 6.1) | `mvn spotless:apply`; compile; test-compile | Done (script 009; spotless, compile and test-compile passed) |
-| 5 | Full validation | Full `mvn test` with JaCoCo report (run manually); `spotless:check` clean; application startup smoke test | Not started |
+| 5 | Full validation | Full `mvn test` with JaCoCo report (run manually); `spotless:check` clean; application startup smoke test | Done (scripts 010, 015 and 018 on commit ef4250c9: full `mvn test` BUILD SUCCESS in 06:27 min, 5435 tests, 0 failures, 0 errors, 10 skipped (Maven total = surefire testcase elements = Maven per-class lines; the XML `tests` attribute is 10 lower than the testcase count in 6 architecture-guard classes); `ApimPayloadCryptoService` instruction 96.08% (490/510) and branch 96.15% (25/26) in the full-suite JaCoCo report; `spotless:check` clean; startup smoke through `ngtpa-runtime-start dev` (local profile): application started in 11.411 s, health, liveness and readiness UP, alive and UP for a 20 s window, no bean or configuration failure markers, clean SIGTERM stop) |
 | 6 | SonarQube verification after merge | Both issue keys in section 2 no longer reported | Not started |
 
 ---
