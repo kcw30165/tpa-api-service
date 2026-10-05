@@ -419,7 +419,7 @@ with a space in en. Consequences:
 - The locale passed to the registry is the raw `acceptLanguage`; a null or blank value selects en
   (design section 8.4), and the front end sends a single tag (D3).
 - The old `auth-workflows.registration.otp.sms-template` and `email-template` stay until stage
-  III-1, and `AuthWorkflowProperties` still validates their placeholders (line 497).
+  III-1. (Corrected in C.10.1: `AuthWorkflowProperties` does not validate them.)
 
 ### C.6 Test and coverage baseline
 
@@ -532,3 +532,77 @@ II-2.b as a read-only investigation, but II-2.b is the implementation sub-stage.
 3. Not yet established: the number of test sites that construct `NoticeTemplateDefinition` or
    `NoticeTemplateProperties.NoticeDefinition`; the Forgot Password and Login tests that pin
    `ttlUnit`; whether `requireTemplate` is called for Registration. Script 063 collects all three.
+
+### C.10 Findings of script 063 and a correction
+
+Recorded 2026-10-05 from the evidence of script 063 (read-only; HEAD 55caa2b0; `src/` and `pom.xml`
+identical to 211f3702). It closes open item 3 of C.9.6 and corrects one statement in C.5. Decisions
+D6 and D7 are unchanged and still open; this section records facts and does not choose an option.
+
+#### C.10.1 Correction to C.5: no live validation of the Registration templates
+
+C.5 said that `AuthWorkflowProperties` still validates the placeholders of the old Registration
+`sms-template` and `email-template` (line 497). That was inferred from one matching line and is
+wrong. Line 497 is inside the private method `requireTemplate` (lines 493-502). Its only two call
+sites (lines 484 and 489, in `validateForgotPasswordOtpPolicy`) are commented out, so the method has
+no live caller. The methods of `AuthWorkflowProperties` whose names start with `validate` are
+`validateRequiredDestinations` (lines 221 and 225), `validateLoginPolicy` (313),
+`validateForgotPasswordPolicy` (379), `validateUsernameRecoveryPolicy` (441),
+`validateUsernameRecoveryTemplate` (463) and `validateForgotPasswordOtpPolicy` (473). None concerns
+Registration, and no line of the file mentions `registration.otp` or `registration.getOtp`. Other
+classes were not searched for such a validation.
+
+Consequences:
+
+- The migration does not remove a startup check of the Registration templates, because none was
+  found in that file.
+- The new registry does not check placeholders either: `NoticeTemplateProperties.validate()` rejects an
+  empty definition and blank content but does not look for `{code}` (script 055 source dump). What
+  guards `registration-otp` today is `NoticeTemplateRegistryFullMatrixSmokeTest` (lines 89-99), which
+  asserts that the English SMS and EMAIL content require exactly `code`, `ttlValue` and `ttlUnit`.
+  It does not assert the placeholder set of the zh_HK Registration content. At run time
+  `DefaultMessageTemplateRenderer` throws on a variable that the template needs and the command does
+  not carry, and ignores a variable that the template does not use.
+- II-2.c (C.7) should therefore also assert the placeholders and the rendered text of the zh_HK
+  Registration content, not only that no placeholder is left unreplaced.
+
+#### C.10.2 Sizing facts for D6 (no option chosen)
+
+- `NoticeTemplateDefinition` is constructed on 14 test lines in 2 files: 13 in
+  `NoticeTemplateDefinitionTest` and 1 in the fake registry inside
+  `UsernameRecoveryRequestProtectedOperationTest` (line 542). Main code constructs it twice, both in
+  `YamlNoticeTemplateRegistryAdapter` (lines 50 and 63). A new record component without a secondary
+  constructor of the current six-argument shape would require editing all 14 test lines; with one,
+  none. Design section 8.2 records the same secondary-constructor pattern for the APIM DTOs.
+- `NoticeTemplateProperties`, `NoticeDefinition` or `EmailContent` appear in 6 test files (matching
+  lines per file): `NoticeTemplatePropertiesTest` 21, `YamlNoticeTemplateRegistryAdapterTest` 16,
+  `YamlNoticeTemplateRegistryAdapterLocaleSelectionTest` 15, `NoticeTemplateRegistryFullMatrixSmokeTest`
+  6, `ApplicationYamlNoticeTemplatesBindingTest` 3 and `NoticeTemplateDefinitionTest` 1. They build
+  the properties through `setSms`, `setEmail` and `setDefinitions`. The classes are Lombok `@Getter`
+  and `@Setter` classes with initialised maps (script 055 source dump), so an added optional
+  property with a default value should not change those calls. That is an inference, to be
+  confirmed by compilation.
+- `NoticeTemplateRegistryPortContractShapeTest` pins one method, `resolve(MessageDeliveryType,
+  MessageDeliveryChannel, String)`, returning `NoticeTemplateDefinition`. Two tests touch the port
+  itself: a mock in `UsernameRecoveryFeatureConfigTest` (line 102) and `FakeNoticeTemplateRegistryPort`
+  in `UsernameRecoveryRequestProtectedOperationTest` (line 529), which implements it. Carrying a
+  value inside the returned definition leaves the port unchanged; a new abstract method on the port
+  would stop that one fake from compiling.
+- `DefaultMessageTemplateRendererTest` (lines 98-99) renders `有效期為 {ttlValue}{ttlUnit}` and expects
+  `有效期為 5分鐘`. The renderer therefore already produces the intended Chinese text when the unit
+  it receives is `分鐘` (line 98 is cut off in the evidence; the expected value implies the unit).
+- Other tests that mention the unit word, besides the placeholder names in the registry smoke test:
+  `AuthWorkflowPropertiesBindingTest` (lines 66-72, old Registration values; changes in III-1),
+  `ForgotPasswordWorkflowPropertiesValidationTest` (lines 34-36, old Forgot Password configuration)
+  and `ForgotPasswordInitialOtpBindingSubtask005002FailFirstTest` (line 58, which asserts that a
+  rendered Forgot Password SMS contains `minutes`; relevant to II-4 and III-2 and III-3). No test
+  pins the `ttlUnit` value that Login or Registration passes.
+
+#### C.10.3 Updated open items
+
+1. D6 and D7 are not confirmed.
+2. Closed by script 063: the number of test sites that construct `NoticeTemplateDefinition` or use
+   the properties classes, the tests that mention the unit word (C.10.2), and whether `requireTemplate`
+   is called for Registration (it is not, C.10.1).
+3. Not designed yet: the shape of the per-locale unit configuration if option A is chosen, and the
+   unit wording per locale. They are the content of II-2.0 once D6 is confirmed.
