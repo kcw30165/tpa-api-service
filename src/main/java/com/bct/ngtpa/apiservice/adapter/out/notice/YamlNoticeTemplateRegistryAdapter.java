@@ -34,10 +34,9 @@ public class YamlNoticeTemplateRegistryAdapter implements NoticeTemplateRegistry
     if (definition == null) {
       throw new IllegalStateException("No notice-templates.definitions entry for " + key);
     }
-    String resolvedLocale = resolveLocale(locale);
     return switch (channel) {
-      case SMS -> resolveSms(messageType, definition, resolvedLocale);
-      case EMAIL -> resolveEmail(messageType, definition, resolvedLocale);
+      case SMS -> resolveSms(messageType, definition, locale);
+      case EMAIL -> resolveEmail(messageType, definition, locale);
     };
   }
 
@@ -45,9 +44,11 @@ public class YamlNoticeTemplateRegistryAdapter implements NoticeTemplateRegistry
       MessageDeliveryType messageType,
       NoticeTemplateProperties.NoticeDefinition definition,
       String locale) {
-    String body = lookupWithFallback(definition.getSms(), locale, messageType, "sms");
+    Map<String, String> localized = definition.getSms();
+    String selected = selectLocale(keysOf(localized), locale, messageType, "sms");
+    String body = localized.get(selected);
     return new NoticeTemplateDefinition(
-        messageType, MessageDeliveryChannel.SMS, locale, null, body, placeholders(body));
+        messageType, MessageDeliveryChannel.SMS, selected, null, body, placeholders(body));
   }
 
   private NoticeTemplateDefinition resolveEmail(
@@ -55,48 +56,59 @@ public class YamlNoticeTemplateRegistryAdapter implements NoticeTemplateRegistry
       NoticeTemplateProperties.NoticeDefinition definition,
       String locale) {
     Map<String, NoticeTemplateProperties.EmailContent> emailMap = definition.getEmail();
-    NoticeTemplateProperties.EmailContent content = emailMap.get(locale);
-    if (content == null) {
-      content = emailMap.get(DEFAULT_LOCALE);
-    }
-    if (content == null) {
-      throw new IllegalStateException(
-          "No notice-templates.definitions."
-              + toKebabCase(messageType)
-              + ".email entry for locale "
-              + locale
-              + " or fallback "
-              + DEFAULT_LOCALE);
-    }
+    String selected = selectLocale(keysOf(emailMap), locale, messageType, "email");
+    NoticeTemplateProperties.EmailContent content = emailMap.get(selected);
     Set<String> required = new LinkedHashSet<>(placeholders(content.getSubject()));
     required.addAll(placeholders(content.getBody()));
     return new NoticeTemplateDefinition(
         messageType,
         MessageDeliveryChannel.EMAIL,
-        locale,
+        selected,
         content.getSubject(),
         content.getBody(),
         required);
   }
 
-  private String lookupWithFallback(
-      Map<String, String> localized, String locale, MessageDeliveryType messageType, String channelName) {
-    String value = localized.get(locale);
-    if (value == null) {
-      value = localized.get(DEFAULT_LOCALE);
+  /**
+   * Selects the configured locale key for the requested tag: exact match (case-insensitive, {@code
+   * _} and {@code -} treated alike), then the first configured key with the same language, then
+   * {@value #DEFAULT_LOCALE}. Nothing here lists locales, so a newly configured locale needs no code
+   * change. See docs/design/10-template-service/template-service-solution-design.md section 8.4.
+   */
+  private String selectLocale(
+      Set<String> available,
+      String requested,
+      MessageDeliveryType messageType,
+      String channelName) {
+    String wanted = requested == null ? "" : requested.trim();
+    if (!wanted.isEmpty()) {
+      String wantedCanonical = canonical(wanted);
+      for (String candidate : available) {
+        if (canonical(candidate).equals(wantedCanonical)) {
+          return candidate;
+        }
+      }
+      String wantedLanguage = languageOf(wanted);
+      if (!wantedLanguage.isEmpty()) {
+        for (String candidate : available) {
+          if (languageOf(candidate).equals(wantedLanguage)) {
+            return candidate;
+          }
+        }
+      }
     }
-    if (value == null) {
-      throw new IllegalStateException(
-          "No notice-templates.definitions."
-              + toKebabCase(messageType)
-              + "."
-              + channelName
-              + " entry for locale "
-              + locale
-              + " or fallback "
-              + DEFAULT_LOCALE);
+    if (available.contains(DEFAULT_LOCALE)) {
+      return DEFAULT_LOCALE;
     }
-    return value;
+    throw new IllegalStateException(
+        "No notice-templates.definitions."
+            + toKebabCase(messageType)
+            + "."
+            + channelName
+            + " entry for locale "
+            + (wanted.isEmpty() ? "(none)" : wanted)
+            + " or fallback "
+            + DEFAULT_LOCALE);
   }
 
   private Set<String> placeholders(String template) {
@@ -111,12 +123,16 @@ public class YamlNoticeTemplateRegistryAdapter implements NoticeTemplateRegistry
     return found;
   }
 
-  private String resolveLocale(String locale) {
-    if (locale == null || locale.isBlank()) {
-      return DEFAULT_LOCALE;
-    }
-    String normalized = locale.trim().replace('-', '_');
-    return normalized.equalsIgnoreCase("zh_HK") ? "zh_HK" : normalized.toLowerCase(Locale.ROOT);
+  private static Set<String> keysOf(Map<String, ?> localized) {
+    return localized == null ? Set.of() : localized.keySet();
+  }
+
+  private static String canonical(String tag) {
+    return tag.trim().replace('_', '-').toLowerCase(Locale.ROOT);
+  }
+
+  private static String languageOf(String tag) {
+    return Locale.forLanguageTag(tag.trim().replace('_', '-')).getLanguage();
   }
 
   private String toKebabCase(MessageDeliveryType messageType) {
