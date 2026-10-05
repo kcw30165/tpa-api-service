@@ -43,7 +43,7 @@ still build `MessageDeliveryCommand` and call
 
 | Stage | Workflow | Notes | Status |
 |---|---|---|---|
-| II-1 | Username Recovery | Simplest — single call site in `UsernameRecoveryFeatureConfig` / `UsernameRecoveryRequestProtectedOperation`. First to confirm whether `schemeName`/`schemeNameChi` already flow from the DTO through `TrpSearchMemberApimResultMapper` → `UsernameRecoveryLookupCandidate`, or need additive plumbing. | IN PROGRESS |
+| II-1 | Username Recovery | Simplest — single call site in `UsernameRecoveryFeatureConfig` / `UsernameRecoveryRequestProtectedOperation`. First to confirm whether `schemeName`/`schemeNameChi` already flow from the DTO through `TrpSearchMemberApimResultMapper` → `UsernameRecoveryLookupCandidate`, or need additive plumbing. | DONE (gate evidence: Appendix A.3) |
 | II-2 | Registration | Replace `RegistrationMessageDeliveryAdapter`'s `subject()`/`body()` policy lookup with `NoticeTemplateRegistryPort.resolve(...)`. No scheme-name placeholder needed (§8.2). | PENDING |
 | II-3 | Login | Replace `LoginOtpSendPolicy`-based lookup. Requires scheme-name plumbing from `TrpGetAccountListApimDataItem`. | PENDING |
 | II-4 | Forgot Password | **Last** — highest risk, since it currently has no live YAML wiring at all. Reconcile content to match `login-otp` verbatim (§5). Requires scheme-name plumbing from `ForgotPasswordTrpSearchMemberDataItem`. | PENDING |
@@ -73,12 +73,13 @@ depending on a config block that has already been removed.
 ## Current Position
 
 Phase I (stages I-1 through I-6) is complete and closed. Phase II, Stage II-1 (Username
-Recovery) is implemented and committed (II-1.a to II-1.d, see Appendix A.1) but remains
-**IN PROGRESS** until its stage gate is met: a passing full `mvn test` and an application
-startup smoke test with no bean or configuration errors, both evidenced. Decisions, verified
-gate inputs and open items are recorded in Appendix A.2. Stages II-2 (Registration), II-3
-(Login), II-4 (Forgot Password) and Phase III are PENDING. Work that is deliberately outside
-this workstream is listed in Appendix B.
+Recovery) is DONE: sub-stages II-1.a to II-1.d are committed (Appendix A.1) and the stage gate is
+met on the final code, with a passing full `mvn test` and an application startup smoke test with
+no bean or configuration errors, both evidenced (Appendix A.3). Decisions and open items are in
+Appendix A.2. The next stage is II-2 (Registration); it starts with a read-only investigation of
+its send path, language source and context serializer, before any code. Stages II-3 (Login),
+II-4 (Forgot Password) and Phase III remain PENDING. Work that is deliberately outside this
+workstream is listed in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
 
@@ -155,7 +156,7 @@ in script 044 caught them. `toString()` now omits `schemeName`/`schemeNameChi` a
 redaction format those tests pin is unchanged and the values are still never disclosed.
 Scoped runs for this workstream use wildcard patterns, not named lists.
 
-**Known behaviour, decision pending.** EMAIL templates for `username-recovery` require
+**Known behaviour (decided as D1 in Appendix A.2).** EMAIL templates for `username-recovery` require
 `{schemeName}`. If the APIM response has a blank or absent `sch-name`, rendering throws and
 `MessageDeliveryAdapter` reports FAILED for that email. SMS content has no scheme placeholder and
 is unaffected. The business rule implemented is only: blank `chin-sch-name` falls back to `sch-name`.
@@ -172,7 +173,7 @@ Not changed: `UsernameRecoveryController.resolveLanguage` still builds the `Loca
 header, so a multi-value header becomes `und` and selects English. Carry into II-2 to II-4: pass a
 single tag, and read each workflow's language source before changing its send path.
 
-**Stage gate (not yet satisfied, so II-1 is not marked DONE).** The standing convention requires,
+**Stage gate (satisfied on 2026-10-05; evidence in Appendix A.3).** The standing convention requires,
 before a stage transition, evidence that the full Maven test suite passed and that an application
 startup smoke test confirmed the Spring application starts without bean or configuration errors.
 Both are run manually. Stage II-1 becomes DONE only after that evidence exists.
@@ -249,6 +250,65 @@ Closure (script 056):
 Because the closure changes `src/test`, the Gate A evidence above no longer matches the final code. Gate A and Gate B are rerun once on the final code commit, with the source pin of the gate script moved to that commit.
 
 Update to Open items (Appendix A.2): item 1 is resolved. The Registration `TrpSearchMemberApimDataItem` and `ApimResponseEnvelope` both carry `@JsonIgnoreProperties(ignoreUnknown = true)` (script 052 evidence), so the new `sch-name` and `chin-sch-name` response fields do not break Registration. Item 2 is resolved: the worktree id for the runtime wrapper is `apim-profiles`, mapped in `~/.config/ngtpa/copilot-launcher/worktrees.tsv`. Items 3 and 4 remain open.
+
+## Appendix A.3: Stage II-1 Gate Result (script 057)
+
+Recorded 2026-10-05 from the evidence of script 057, which was run twice. Statements are limited to
+what that evidence shows.
+
+Pin, identical in both runs: HEAD 43209e2f, `src/` and `pom.xml` identical to the final code commit
+211f3702, working tree clean. 211f3702 differs from the earlier code commit b9012557 only by the two
+tests added to `NoticeTemplateDefinitionTest`, which is why the full-test total is 5518 and not 5516.
+
+Run 1 (evidence 20261005-151158): Gate A FAIL, Gate B PASS.
+
+- `mvn test` exited with code 1 after 07:35 min: 5518 tests, 7 failures, 1 error, 10 skipped. All eight
+  are ArchUnit tests under `architecture/`: `CaptchaFoundationArchitectureGuardTest`,
+  `ForgotPasswordCancelArchitectureGuardTest`, `MessageTemplateRendererArchitectureGuardTest`,
+  `RegistrationCancelUseCaseArchitectureGuardTest`, `UsernameRecoveryFeatureWebArchitectureGuardTest`,
+  `UsernameRecoveryStartReplayArchitectureGuardTest` (two tests) and
+  `Task0043SharedAuthFlowContractArchitectureTest` (the error).
+- The 22 workstream key classes, including every `NoticeTemplate*`, `YamlNoticeTemplate*` and
+  `UsernameRecovery*` class named in the gate, ran with at least their floor counts and 0 failures.
+- Three of the failure messages say the rule "failed to check any classes", and the error is a
+  `NoClassDefFoundError` for `AuthFlowIdempotencyPort`. That is consistent with class files being
+  missing from `target/classes` while the run executed. The cause was not established, and whether
+  another process touched this worktree or `target/` during the run was not confirmed.
+
+Run 2 (evidence 20261005-152704): Gate A PASS, Gate B PASS. No file under `src/` or `pom.xml` changed
+between the two runs.
+
+- Gate A: `mvn test` BUILD SUCCESS, exit code 0, 07:18 min, 5518 tests, 0 failures, 0 errors, 10
+  skipped (the same four classes as before). 1140 fresh reports (oldest 15:20:53, newest source
+  change 14:45:24). `NoticeTemplateDefinitionTest` ran 12 tests and JaCoCo shows 0 missed branches
+  in `NoticeTemplateDefinition`. The Maven console total equals the number of testcase elements.
+- Gate B: started through `ngtpa-runtime-start apim-profiles` (profile local) in 11.555 s. The health
+  poll was refused until attempt 41, returned HTTP 503 once, then HTTP 200 and `"status":"UP"`.
+  Readiness returned HTTP 200 and UP. After a 20 s wait the process group was alive, health was
+  HTTP 200 and the log had 0 failure markers (no bean, binding, configuration or
+  schema-incompatibility error). `ngtpa-runtime-stop` stopped it with SIGTERM: the process group was
+  gone, port 8888 was released and the log shows one graceful-shutdown line.
+- The single ERROR line in the log, in both runs, is the request log of the 503 that the wrapper's own
+  health poll received on `/actuator/health` just before the first 200. There was also one WARN line
+  per run; its content was counted and not examined. The log has no `NoticeTemplate` lines, so the
+  registry's startup is not visible there individually; the evidence is a successful start with no
+  bean or configuration failure.
+
+Run 1 is kept as a record of intermittent behaviour. The gate evidence is run 2, taken on the same code
+after run 1. Rule for future full-test runs: no other build, IDE auto-build or agent session on the
+same worktree while it runs.
+
+Whole-class coverage printed by the gate (informational; it includes older code): below the tier
+thresholds are `UsernameRecoveryCandidate` (branch 90.9%), `UsernameRecoverySessionCandidate` (branch
+91.7%), `TrpGetAccountListApimDataItem` (branch 50.0%),
+`AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter` (instruction 91.4%, branch 61.1%) and
+`UsernameRecoveryRequestProtectedOperation` (instruction 92.1%, branch 69.4%). The measure for this
+workstream is the added lines (script 054), where the only uncovered branches were the two in
+`NoticeTemplateDefinition`, now covered, and the justified adapter branch (see the section on script
+056).
+
+Result: Stage II-1 is DONE. Open items 3 (whether startup depends on the Config Service) and 4 (the
+Phase 04 document) of Appendix A.2 remain open. The next stage is II-2 (Registration).
 
 ## Appendix B: Deferred Refactors (outside the Template Service workstream)
 
