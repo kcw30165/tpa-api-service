@@ -99,10 +99,6 @@ public record UsernameRecoveryCandidate(
         + (userName == null ? null : "<redacted>")
         + ", deliveryState="
         + deliveryState
-        + ", schemeName="
-        + (schemeName == null ? null : "<redacted>")
-        + ", schemeNameChi="
-        + (schemeNameChi == null ? null : "<redacted>")
         + "]";
   }
 }

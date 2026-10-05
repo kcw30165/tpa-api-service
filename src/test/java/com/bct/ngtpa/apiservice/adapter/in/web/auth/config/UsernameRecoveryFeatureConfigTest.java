@@ -22,6 +22,7 @@ import com.bct.ngtpa.apiservice.application.port.in.StartUsernameRecoveryUseCase
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
@@ -30,6 +31,7 @@ import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCap
 import com.bct.ngtpa.apiservice.application.service.auth.usernamerecovery.context.UsernameRecoveryAuthFlowContextBinding;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.IdempotentRequestUsernameRecoveryService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.IdempotentStartUsernameRecoveryService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryRequestProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.start.UsernameRecoveryStartProtectedReplayPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenHasher;
@@ -97,6 +99,8 @@ class UsernameRecoveryFeatureConfigTest {
         .withBean(AuthFlowSessionPort.class, () -> mock(AuthFlowSessionPort.class))
         .withBean(MessageDeliveryPort.class, () -> mock(MessageDeliveryPort.class))
         .withBean(
+            NoticeTemplateRegistryPort.class, () -> mock(NoticeTemplateRegistryPort.class))
+        .withBean(
             UsernameRecoveryEffectiveDestinationPort.class,
             () -> mock(UsernameRecoveryEffectiveDestinationPort.class))
         .withBean(AuthWorkflowProperties.class, UsernameRecoveryFeatureConfigTest::validProperties)
@@ -132,6 +136,18 @@ class UsernameRecoveryFeatureConfigTest {
               assertThat(context.getBean(UsernameRecoveryRequestResponsePolicy.class)).isNotNull();
               assertThat(context.getBean(UsernameRecoveryCancelResponsePolicy.class)).isNotNull();
               assertThat(context.getBean(UsernameRecoveryCookieWriter.class)).isNotNull();
+            });
+  }
+
+  @Test
+  void requestProtectedOperationIsWiredWithTheNoticeTemplateRegistryPort() {
+    runner()
+        .run(
+            context -> {
+              assertThat(context.getStartupFailure()).isNull();
+              assertThat(context.getBean(UsernameRecoveryRequestProtectedOperation.class))
+                  .isNotNull();
+              assertThat(context.getBeansOfType(NoticeTemplateRegistryPort.class)).hasSize(1);
             });
   }
 

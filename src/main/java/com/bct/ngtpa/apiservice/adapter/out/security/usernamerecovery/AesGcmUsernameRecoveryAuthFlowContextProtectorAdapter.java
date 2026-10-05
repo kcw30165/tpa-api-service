@@ -109,7 +109,9 @@ public final class AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter
       String userName,
       String deliveryState,
       String requestedAt,
-      String senderReference) {
+      String senderReference,
+      String schemeName,
+      String schemeNameChi) {
     static Candidate from(UsernameRecoverySessionCandidate c) {
       return new Candidate(
           c.schemeRef().value(),
@@ -119,7 +121,9 @@ public final class AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter
           c.userName(),
           c.deliveryState().name(),
           c.requestedAt() == null ? null : c.requestedAt().toString(),
-          c.senderReference());
+          c.senderReference(),
+          c.schemeName(),
+          c.schemeNameChi());
     }
 
     UsernameRecoverySessionCandidate toDomain() {
@@ -130,7 +134,9 @@ public final class AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter
               trustCode,
               registered,
               userName,
-              UsernameRecoveryDeliveryState.valueOf(deliveryState)),
+              UsernameRecoveryDeliveryState.valueOf(deliveryState),
+              schemeName,
+              schemeNameChi),
           requestedAt == null ? null : Instant.parse(requestedAt),
           senderReference);
     }

@@ -12,6 +12,7 @@ import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryResult;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryScenario;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryStatus;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
+import com.bct.ngtpa.apiservice.application.dto.message.NoticeTemplateDefinition;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome;
@@ -20,6 +21,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
 import com.bct.ngtpa.apiservice.application.service.auth.usernamerecovery.context.UsernameRecoveryAuthFlowContextBinding;
 import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidator;
@@ -31,6 +33,7 @@ import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryVerifiedDestination
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryWorkflowStatus;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -46,9 +49,7 @@ public final class UsernameRecoveryRequestProtectedOperation {
   private final OriginRefererValidator originRefererValidator = new OriginRefererValidator();
   private final List<String> allowedOrigins;
   private final MaskingService maskingService;
-  private final String emailSubject;
-  private final String emailBody;
-  private final String smsBody;
+  private final NoticeTemplateRegistryPort noticeTemplateRegistryPort;
 
   public UsernameRecoveryRequestProtectedOperation(
       UsernameRecoveryAuthFlowContextBinding contextBinding,
@@ -58,9 +59,7 @@ public final class UsernameRecoveryRequestProtectedOperation {
       MessageDeliveryPort messageDeliveryPort,
       MaskingService maskingService,
       List<String> allowedOrigins,
-      String emailSubject,
-      String emailBody,
-      String smsBody) {
+      NoticeTemplateRegistryPort noticeTemplateRegistryPort) {
     this.contextBinding = Objects.requireNonNull(contextBinding);
     this.csrfTokenValidationService = Objects.requireNonNull(csrfTokenValidationService);
     this.effectiveDestinationPort = Objects.requireNonNull(effectiveDestinationPort);
@@ -68,9 +67,7 @@ public final class UsernameRecoveryRequestProtectedOperation {
     this.messageDeliveryPort = Objects.requireNonNull(messageDeliveryPort);
     this.maskingService = Objects.requireNonNull(maskingService);
     this.allowedOrigins = allowedOrigins == null ? List.of() : List.copyOf(allowedOrigins);
-    this.emailSubject = requireNonBlank(emailSubject, "emailSubject");
-    this.emailBody = requireNonBlank(emailBody, "emailBody");
-    this.smsBody = requireNonBlank(smsBody, "smsBody");
+    this.noticeTemplateRegistryPort = Objects.requireNonNull(noticeTemplateRegistryPort);
   }
 
   public Mono<UsernameRecoveryRequestProtectedExecutionResult> execute(
@@ -312,18 +309,38 @@ public final class UsernameRecoveryRequestProtectedOperation {
         effective.channel() == UsernameRecoveryVerifiedDestination.Channel.EMAIL
             ? MessageDeliveryChannel.EMAIL
             : MessageDeliveryChannel.SMS;
-    boolean email = channel == MessageDeliveryChannel.EMAIL;
+    String locale = context.language().toLanguageTag();
+    NoticeTemplateDefinition definition =
+        noticeTemplateRegistryPort.resolve(MessageDeliveryType.USERNAME_RECOVERY, channel, locale);
+    Map<String, String> variables = new LinkedHashMap<>();
+    putIfPresent(variables, "username", candidate.userName());
+    putIfPresent(variables, "trustCode", candidate.trustCode());
+    putIfPresent(variables, "schemeName", candidate.schemeName());
+    putIfPresent(variables, "schemeNameChi", resolveSchemeNameChi(candidate));
     return new MessageDeliveryCommand(
         MessageDeliveryType.USERNAME_RECOVERY,
         MessageDeliveryScenario.USERNAME_RECOVERY,
         channel,
         effective.destination(),
-        email ? emailSubject : null,
-        email ? emailBody : smsBody,
+        definition.subject(),
+        definition.body(),
         null,
-        Map.of("username", candidate.userName()),
-        context.language().toLanguageTag(),
+        variables,
+        locale,
         correlationId);
+  }
+
+  private static String resolveSchemeNameChi(UsernameRecoverySessionCandidate candidate) {
+    String schemeNameChi = candidate.schemeNameChi();
+    return (schemeNameChi == null || schemeNameChi.isBlank())
+        ? candidate.schemeName()
+        : schemeNameChi;
+  }
+
+  private static void putIfPresent(Map<String, String> variables, String key, String value) {
+    if (value != null) {
+      variables.put(key, value);
+    }
   }
 
   private static Mono<UsernameRecoveryRequestProtectedExecutionResult> completed(
@@ -358,8 +375,5 @@ public final class UsernameRecoveryRequestProtectedOperation {
     return value != null && !value.isBlank();
   }
 
-  private static String requireNonBlank(String value, String name) {
-    if (!nonBlank(value)) throw new IllegalArgumentException(name + " must not be blank");
-    return value;
-  }
+
 }
