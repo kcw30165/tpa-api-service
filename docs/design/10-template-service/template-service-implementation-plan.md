@@ -44,7 +44,7 @@ still build `MessageDeliveryCommand` and call
 | Stage | Workflow | Notes | Status |
 |---|---|---|---|
 | II-1 | Username Recovery | Simplest — single call site in `UsernameRecoveryFeatureConfig` / `UsernameRecoveryRequestProtectedOperation`. First to confirm whether `schemeName`/`schemeNameChi` already flow from the DTO through `TrpSearchMemberApimResultMapper` → `UsernameRecoveryLookupCandidate`, or need additive plumbing. | DONE (gate evidence: Appendix A.3) |
-| II-2 | Registration | Replace `RegistrationMessageDeliveryAdapter`'s `subject()`/`body()` policy lookup with `NoticeTemplateRegistryPort.resolve(...)`. No scheme-name placeholder needed (§8.2). | PENDING |
+| II-2 | Registration | Replace `RegistrationMessageDeliveryAdapter`'s `subject()`/`body()` policy lookup with `NoticeTemplateRegistryPort.resolve(...)`. No scheme-name placeholder needed (§8.2). | IN PROGRESS (investigation done; draft sub-plan: Appendix C) |
 | II-3 | Login | Replace `LoginOtpSendPolicy`-based lookup. Requires scheme-name plumbing from `TrpGetAccountListApimDataItem`. | PENDING |
 | II-4 | Forgot Password | **Last** — highest risk, since it currently has no live YAML wiring at all. Reconcile content to match `login-otp` verbatim (§5). Requires scheme-name plumbing from `ForgotPasswordTrpSearchMemberDataItem`. | PENDING |
 
@@ -75,11 +75,13 @@ depending on a config block that has already been removed.
 Phase I (stages I-1 through I-6) is complete and closed. Phase II, Stage II-1 (Username
 Recovery) is DONE: sub-stages II-1.a to II-1.d are committed (Appendix A.1) and the stage gate is
 met on the final code, with a passing full `mvn test` and an application startup smoke test with
-no bean or configuration errors, both evidenced (Appendix A.3). Decisions and open items are in
-Appendix A.2. The next stage is II-2 (Registration); it starts with a read-only investigation of
-its send path, language source and context serializer, before any code. Stages II-3 (Login),
-II-4 (Forgot Password) and Phase III remain PENDING. Work that is deliberately outside this
-workstream is listed in Appendix B.
+no bean or configuration errors, both evidenced (Appendix A.3). Stage II-2 (Registration) is IN
+PROGRESS: its read-only investigation (scripts 059 and 060) is recorded and a draft sub-plan is in
+Appendix C; no code has been changed for it. The next step is the confirmation of decision D6 in
+Appendix C (how the `{ttlUnit}` placeholder is supplied), then the design update (II-2.0), the
+read-only investigation II-2.a and II-2.b. Stages II-3 (Login), II-4 (Forgot Password) and Phase III remain PENDING. Decisions and open
+items for II-1 are in Appendix A.2. Work that is deliberately outside this workstream is listed
+in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
 
@@ -329,3 +331,123 @@ Sizing (script 050 evidence):
 Candidate names discussed for the Candidate type, none chosen: `UsernameRecoverySearchMemberCandidate`, `UsernameRecoveryTrpSearchMemberCandidate`, `UsernameRecoveryMemberMatch`. Any rename has to be decided for the whole family (Candidate, Command, Result, Port), not for one class.
 
 Before it is started: its own branch, its own investigation and plan under `docs/design/6-username-recovery`, and a pure-rename commit kept separate from behaviour changes.
+
+## Appendix C: Stage II-2 (Registration) Investigation and Draft Sub-Plan
+
+Status: DRAFT. No code has been changed for Stage II-2. Recorded 2026-10-05 from the evidence of
+scripts 059 and 060 (read-only; HEAD 78474055; `src/` and `pom.xml` identical to 211f3702).
+Statements are limited to what that evidence shows; anything not shown is listed under Open items.
+
+### C.1 Current send path
+
+- `RegistrationMessageDeliveryAdapter` (`adapter/out/registration`, 104 lines, implements
+  `RegistrationMessagePort`) is the only class that constructs a command with
+  `MessageDeliveryType.REGISTRATION_OTP`. It reads the OTP policy through
+  `AuthWorkflowPolicyPort.registrationPolicy()` for `smsTemplate` and `email.subject` /
+  `email.body`, and falls back silently to the subject `registration-otp` and the body `{code}`
+  when a value is blank or absent. MOBILE maps to SMS and every other contact type to EMAIL. The
+  template variables are `code`, `ttlValue` (`max(1, ttlSeconds / 60)`) and `ttlUnit`, which is
+  the literal `minutes`. The command carries scenario `REGISTRATION`, template code
+  `registration-otp` and the raw `acceptLanguage` as its locale.
+- The adapter is wrapped by `RegistrationMessageDestinationOverrideAdapter`, which substitutes the
+  recipient outside production-like deployments. `RegistrationStartGatewayConfig.registrationMessageGateway`
+  builds both and passes `AuthWorkflowPolicyPort` to the delivery adapter. The bean is injected
+  into START (`RegistrationStartProtectedOperation`, line 218) and RESEND
+  (`RegistrationOtpResendProtectedOperation`, line 57), which call
+  `deliverRegistrationOtp(contactType, recipient, otpCode, ttlSeconds, acceptLanguage, correlationId)`.
+- `AuthWorkflowPolicyPort` is mentioned in 17 main files. Removing it from the delivery adapter
+  changes that constructor and the bean method; the other users (OTP challenge adapter, captcha,
+  username and password validation, START) keep their own references.
+- START and RESEND take the language from the current request. The Registration protected session
+  context (`RegistrationAuthFlowContext`) holds identity type and value, date of birth, contact
+  type and contact value only, so no language is stored and no serializer change is needed. This
+  differs from Stage II-1.
+- Delivery layer: `MessageDeliveryAdapter` (`application/usecase/message`) rejects a command with
+  a blank body or, for EMAIL, a blank subject; an SMS subject is not checked. Rendering runs inside
+  its guarded block, so a missing template variable (`IllegalArgumentException` from
+  `DefaultMessageTemplateRenderer`) produces a FAILED result. The Registration adapter reports that
+  as `false`, and both callers treat `false` as a failed delivery (RESEND reports
+  `MESSAGE_DELIVERY_FAILED`).
+
+### C.2 Content
+
+`notice-templates.definitions.registration-otp` exists in `application.yml` (lines 586-612) with
+en and zh_HK SMS and EMAIL content that uses `{code}`, `{ttlValue}` and `{ttlUnit}`. Its wording
+differs from the old `auth-workflows.registration.otp` templates (lines 271-274); for example the
+SMS now opens with "BCT Pension: Your One-Time Password (OTP) for Account Registration". This is
+the BRD-sourced content of stage I-5, so the migration changes the wording that Registration
+customers receive.
+
+### C.3 Finding: the `{ttlUnit}` placeholder is supplied three different ways
+
+| Workflow | `ttlValue` | `ttlUnit` | Where |
+| --- | --- | --- | --- |
+| Registration | `max(1, ttlSeconds / 60)` | literal `minutes` | `RegistrationMessageDeliveryAdapter`, lines 46-47 |
+| Login (send and resend) | the policy value in seconds | literal `seconds` | `LoginOtpSendService`, line 157; `LoginOtpResendService`, lines 121-124 |
+| Forgot Password, details OTP | literal `5` | `ttlUnit(language)` | `ForgotPasswordDetailsOtpProtectedOperation`, lines 274 and 305 |
+| Forgot Password, resend | `max(1, ttlSeconds / 60)` | `ttlUnit(language)` | `ForgotPasswordOtpResendProtectedOperation`, lines 537-540 and 545 |
+
+The two `ttlUnit(language)` helpers are identical: they return `分鐘` when the language equals
+`zh_HK` after replacing `-` with `_` (ignoring case), and `minutes` otherwise. The registry content
+writes the two placeholders next to each other in zh_HK without a space (for example
+`有效期為{ttlValue}{ttlUnit}。` in the SMS and `此密碼於{ttlValue}{ttlUnit}內有效。` in the email) and
+with a space in en. Consequences:
+
+1. Registration migrated as it is would render zh_HK content with the English unit, for example
+   `5minutes` inside Chinese text.
+2. A unit derived from the request tag with the existing helper matches only `zh_HK` exactly, while
+   the registry selects zh_HK content for `zh`, `zh-TW` and `zh-Hant` as well (design section 8.4).
+   The unit must follow the locale the registry selected (`NoticeTemplateDefinition.locale()`), not
+   the request tag.
+3. Login supplies seconds through the same placeholder, while the BRD wording is 5 minutes
+   (design section 8.3). That belongs to II-3 and is carried there.
+4. Phase III stage III-3 deletes the two Forgot Password helpers without saying where the unit then
+   comes from.
+
+### C.4 Decisions
+
+| # | Topic | Options | Status |
+| --- | --- | --- | --- |
+| D6 | How the unit word reaches the template | A: configure the unit word per locale in the `notice-templates` YAML and return it with the resolved definition, so a caller passes only the number; every workflow and locale is then YAML only. B: a small helper inside the Registration adapter that picks the unit from `definition.locale()`; smallest change, but a third copy of the logic and a locale-to-word map in code. C: write `分鐘` literally into the zh_HK content and drop `{ttlUnit}` there; YAML only, but it breaks the confirmed rule to keep dynamic `{ttlValue}` / `{ttlUnit}` wording. | OPEN. Option A is the assistant's proposal and is not confirmed by Nick. A touches Phase I classes (`NoticeTemplateDefinition`, `NoticeTemplateProperties`, the registry adapter) and their tests, and needs a design update first. |
+| D7 | Failure when the definition is missing | Resolve inside `deliverRegistrationOtp` as the policy lookup is resolved today, so a missing definition throws `IllegalStateException` at the call, as a missing policy does now. | Proposed, not yet confirmed. |
+
+### C.5 Behaviour changes to record
+
+- The wording of the Registration SMS and EMAIL changes to the BRD content (C.2).
+- The silent fallback to the subject `registration-otp` and the body `{code}` disappears; a missing
+  definition fails (D7).
+- The locale passed to the registry is the raw `acceptLanguage`; a null or blank value selects en
+  (design section 8.4), and the front end sends a single tag (D3).
+- The old `auth-workflows.registration.otp.sms-template` and `email-template` stay until stage
+  III-1, and `AuthWorkflowProperties` still validates their placeholders (line 497).
+
+### C.6 Test and coverage baseline
+
+- `RegistrationMessageDeliveryAdapterTest` (249 lines, 11 tests) builds the adapter with a mocked
+  `AuthWorkflowPolicyPort`. Its two constructor guards, two policy-null guards and three
+  subject/body fallback tests describe behaviour that this migration removes, so it is rewritten,
+  not patched.
+- Coverage of the adapter in the last full test run (JaCoCo of script 060): 163 of 163 instructions
+  and 25 of 28 branches. The three missed branches are in the subject, body and SMS-template
+  fallback conditions (lines 85, 96 and 99), which the migration removes. The migrated adapter is in
+  the adapter tier: at least 95% instruction and 85-90% branch, with a one-line justification for
+  each uncovered branch.
+
+### C.7 Draft sub-plan
+
+| Sub-stage | Change | Status |
+| --- | --- | --- |
+| II-2.0 | Confirm D6 and D7. Update the solution design (a new section for the unit) and this appendix before any code. | PENDING (needs Nick's decision) |
+| II-2.a | Read-only investigation of the three tests that name the gateway config (`RegistrationMessageDestinationOverrideWiringTest`, `RegistrationHardcodedPolicyArchitectureGuardTest`, `RegistrationSharedCoreMigrationArchitectureTest`) and of the tests that build the adapter or mention `RegistrationMessagePort` (17 files in main and test). | PENDING |
+| II-2.b | `RegistrationMessageDeliveryAdapter` resolves content through `NoticeTemplateRegistryPort.resolve(REGISTRATION_OTP, channel, acceptLanguage)`, builds `code`, `ttlValue` and `ttlUnit` as decided in D6, and no longer takes `AuthWorkflowPolicyPort`. `RegistrationStartGatewayConfig.registrationMessageGateway` injects the registry port. Rewrite `RegistrationMessageDeliveryAdapterTest`, and adjust whichever test from II-2.a pins the old wiring. | PENDING |
+| II-2.c | A test with the real `YamlNoticeTemplateRegistryAdapter` and `DefaultMessageTemplateRenderer` that renders START and RESEND content for SMS and EMAIL in en and zh_HK and asserts that no placeholder is left unreplaced and that the unit follows the selected locale. | PENDING |
+| II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING |
+
+### C.8 Open items
+
+1. D6 and D7 are not confirmed.
+2. The contents of the three tests in II-2.a have not been read.
+3. Which tests, besides `RegistrationMessageDeliveryAdapterTest`, construct the adapter is not
+   established.
+4. Login passes seconds through `{ttlUnit}` (II-3). The Forgot Password helpers match only `zh_HK`
+   exactly and the details OTP passes a literal `5` (II-4 and III-3).
