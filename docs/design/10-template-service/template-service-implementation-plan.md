@@ -76,12 +76,12 @@ Phase I (stages I-1 through I-6) is complete and closed. Phase II, Stage II-1 (U
 Recovery) is DONE: sub-stages II-1.a to II-1.d are committed (Appendix A.1) and the stage gate is
 met on the final code, with a passing full `mvn test` and an application startup smoke test with
 no bean or configuration errors, both evidenced (Appendix A.3). Stage II-2 (Registration) is IN
-PROGRESS: its read-only investigation (scripts 059 and 060) is recorded and a draft sub-plan is in
-Appendix C; no code has been changed for it. The next step is the confirmation of decision D6 in
-Appendix C (how the `{ttlUnit}` placeholder is supplied), then the design update (II-2.0), the
-read-only investigation II-2.a and II-2.b. Stages II-3 (Login), II-4 (Forgot Password) and Phase III remain PENDING. Decisions and open
-items for II-1 are in Appendix A.2. Work that is deliberately outside this workstream is listed
-in Appendix B.
+PROGRESS: its read-only investigation (scripts 059, 060 and 062) is recorded in Appendix C, where
+sub-stage II-2.a is done, and no code has been changed for it. Decision D6 (how the `{ttlUnit}`
+placeholder is supplied) and decision D7 are OPEN. The next steps are the confirmation of D6 and
+D7 and the design update (II-2.0), then the implementation (II-2.b). Stages II-3 (Login), II-4
+(Forgot Password) and Phase III remain PENDING. Decisions and open items for II-1 are in Appendix
+A.2. Work that is deliberately outside this workstream is listed in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
 
@@ -438,7 +438,7 @@ with a space in en. Consequences:
 | Sub-stage | Change | Status |
 | --- | --- | --- |
 | II-2.0 | Confirm D6 and D7. Update the solution design (a new section for the unit) and this appendix before any code. | PENDING (needs Nick's decision) |
-| II-2.a | Read-only investigation of the three tests that name the gateway config (`RegistrationMessageDestinationOverrideWiringTest`, `RegistrationHardcodedPolicyArchitectureGuardTest`, `RegistrationSharedCoreMigrationArchitectureTest`) and of the tests that build the adapter or mention `RegistrationMessagePort` (17 files in main and test). | PENDING |
+| II-2.a | Read-only investigation of the three tests that name the gateway config (`RegistrationMessageDestinationOverrideWiringTest`, `RegistrationHardcodedPolicyArchitectureGuardTest`, `RegistrationSharedCoreMigrationArchitectureTest`) and of the tests that build the adapter or mention `RegistrationMessagePort` (17 files in main and test). | DONE (script 062; findings in C.9) |
 | II-2.b | `RegistrationMessageDeliveryAdapter` resolves content through `NoticeTemplateRegistryPort.resolve(REGISTRATION_OTP, channel, acceptLanguage)`, builds `code`, `ttlValue` and `ttlUnit` as decided in D6, and no longer takes `AuthWorkflowPolicyPort`. `RegistrationStartGatewayConfig.registrationMessageGateway` injects the registry port. Rewrite `RegistrationMessageDeliveryAdapterTest`, and adjust whichever test from II-2.a pins the old wiring. | PENDING |
 | II-2.c | A test with the real `YamlNoticeTemplateRegistryAdapter` and `DefaultMessageTemplateRenderer` that renders START and RESEND content for SMS and EMAIL in en and zh_HK and asserts that no placeholder is left unreplaced and that the unit follows the selected locale. | PENDING |
 | II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING |
@@ -451,3 +451,84 @@ with a space in en. Consequences:
    established.
 4. Login passes seconds through `{ttlUnit}` (II-3). The Forgot Password helpers match only `zh_HK`
    exactly and the details OTP passes a literal `5` (II-4 and III-3).
+
+### C.9 Sub-stage II-2.a findings (script 062)
+
+Recorded 2026-10-05 from the evidence of script 062 (read-only; HEAD 55caa2b0; `src/` and `pom.xml`
+identical to 211f3702). It closes open items 2 and 3 of C.8 for the tests named there and records
+the constraints that sub-stage II-2.b must respect. Decisions D6 and D7 are unchanged and still
+open. A wording defect is also corrected: the Current Position text written with C.7 described
+II-2.b as a read-only investigation, but II-2.b is the implementation sub-stage.
+
+#### C.9.1 The three tests named in C.7
+
+| Test | What it checks | Effect of II-2.b |
+| --- | --- | --- |
+| `RegistrationMessageDestinationOverrideWiringTest` (97 lines, 4 tests) | Calls `RegistrationStartGatewayConfig.registrationMessageGateway(mock(MessageDeliveryPort.class), mock(AuthWorkflowPolicyPort.class), DeploymentEnvironmentPolicy, AuthWorkflowProperties)` at six places (lines 21, 33, 47, 56, 68 and 75). It asserts that the result is a `RegistrationMessageDestinationOverrideAdapter` and that bean creation fails for missing override destinations. | Any change to the parameter list of `registrationMessageGateway` (the registry port is added, and `AuthWorkflowPolicyPort` leaves the delivery adapter) requires all six calls to change. The decorator and destination assertions do not depend on the adapter content. |
+| `RegistrationHardcodedPolicyArchitectureGuardTest` (72 lines, 4 tests) | Reads source files as text. Its gateway test (lines 47-58) reads `RegistrationStartGatewayConfig.java` and asserts that it contains `AuthFlowSessionProperties` and does not contain two `@Value` fallbacks. It does not name the adapter or the policy port. | None, as long as those two conditions stay true. |
+| `RegistrationSharedCoreMigrationArchitectureTest` (45 lines, 3 tests) | Its third test (lines 33-44) reads `RegistrationStartGatewayConfig.java` as text and asserts that it contains the exact strings `OtpChallengePort otpChallengePort` and `MessageDeliveryPort messageDeliveryPort` and does not contain `AuthFlowOtpPort otpChallengePort` or `AuthFlowMessagePort messageDeliveryPort`. | The two parameter declarations must stay exactly as they are in the gateway config. |
+
+#### C.9.2 Tests that construct or fake the Registration message port
+
+- `RegistrationMessageDeliveryAdapterTest` is the only test that constructs the delivery adapter
+  (lines 30, 37 and 43).
+- Nine test files mention `RegistrationMessagePort`. Eight of them implement a fake of the port or
+  mock it: `RegistrationStartWorkflowIntegrationTest` (line 900),
+  `RegistrationOtpResendServiceIntegrationTest` (239), `RegistrationStartMandatoryCompositionTest`
+  (a mock at line 43), `RegistrationDeliveryEnvironmentIntegrationTest` (183),
+  `RegistrationMessageDestinationOverrideAdapterTest` (177), `ResendRegistrationOtpUseCaseTest`
+  (193), `StartRegistrationUseCaseTest` (336) and `StartRegistrationCaptchaGateTest` (481). The
+  ninth, `SharedResendRegistrationOtpServiceTest`, defines `deliverRegistrationOtp` at line 137; the
+  pattern used by the script did not classify how.
+- None of the nine constructs the delivery adapter and the port signature does not change in II-2.b,
+  so they are not expected to change.
+
+#### C.9.3 Tests and values that pin the old configuration
+
+- `RegistrationMessageDeliveryAdapterTest` pins the fallback subject `registration-otp` and body
+  `{code}` (line 227), the SMS template used as the body (line 234) and the clamp of `ttlValue` to
+  1 (line 177). It is rewritten in II-2.b (C.6).
+- `AuthWorkflowPropertiesBindingTest` (lines 66-72) pins the old registration `sms-template` and
+  `email-template` values as bound from configuration. That is the old configuration, which stays
+  until III-1, so this test changes in III-1 and not in II-2.
+- No test asserts the `ttlUnit` value for Registration: among the test lines that mention
+  `ttlValue` or `ttlUnit` and whose path or text mentions registration, only line 177 above appears.
+- `RegistrationOtpChallengeLifecycleIntegrationTest` (lines 155-166) builds `OtpPolicy` and
+  `OtpEmailPolicy` for the OTP challenge adapter. `OtpPolicy`, `OtpEmailPolicy` and their binding
+  stay until III-1.
+
+#### C.9.4 Registry content and consumers (input for D6; no decision made)
+
+- The `notice-templates` block is lines 584-708 of `application.yml`.
+- All three OTP types (registration, login and forgot password) write the unit next to the number:
+  with a space in en (SMS lines 588, 615 and 649; EMAIL bodies 599, 625 and 659) and without one in
+  zh_HK (SMS lines 589, 616 and 650; EMAIL bodies 609, 639 and 669). Whatever supplies the zh_HK
+  unit therefore has to serve all three workflows, not only Registration.
+- `NoticeTemplateRegistryFullMatrixSmokeTest` asserts the required placeholders of `registration-otp`
+  (SMS and EMAIL, en) as exactly `code`, `ttlValue` and `ttlUnit`, and those of login and forgot
+  password as the sets in design section 8.2. A design that keeps `{ttlUnit}` in the content keeps
+  those assertions valid. The same test asserts that `definition.locale()` equals the requested
+  locale for `en` and `zh_HK`.
+- The only main-code constructions of `NoticeTemplateDefinition` are the two in
+  `YamlNoticeTemplateRegistryAdapter` (lines 50 and 63). No main code in the Username Recovery
+  package or the notice adapter package reads `requiredPlaceholders()`; Stage II-1 uses only
+  `subject()` and `body()`. The number of test constructions of `NoticeTemplateDefinition` and of
+  `NoticeTemplateProperties.NoticeDefinition` is not yet established; script 063 collects it.
+
+#### C.9.5 Old validation and policy mapping (context for III-1)
+
+- `AuthWorkflowProperties` checks the login SMS template for `{code}` (lines 340-345) and has a
+  `requireTemplate` helper that demands `{code}`, `{ttlValue}` and `{ttlUnit}` (lines 493-502); its
+  Forgot Password calls are commented out (lines 484-490). Whether `requireTemplate` is still called
+  for Registration was not read; script 063 collects the call sites.
+- `ConfigBackedAuthWorkflowPolicyAdapter` maps the registration `sms-template` and the email subject
+  and body into `OtpPolicy` (lines 48-51).
+
+#### C.9.6 Updated open items
+
+1. D6 and D7 are not confirmed.
+2. Closed by script 062: the contents of the three tests (C.9.1) and the tests that construct the
+   adapter or fake the port (C.9.2).
+3. Not yet established: the number of test sites that construct `NoticeTemplateDefinition` or
+   `NoticeTemplateProperties.NoticeDefinition`; the Forgot Password and Login tests that pin
+   `ttlUnit`; whether `requireTemplate` is called for Registration. Script 063 collects all three.
