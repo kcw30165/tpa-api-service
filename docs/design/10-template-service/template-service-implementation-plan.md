@@ -5,7 +5,7 @@ document is the "how/when": it sequences all remaining work into phases
 and stages, so no stage is skipped and migration never begins before the
 service it depends on is actually live.
 
-Status key: `DONE`, `PENDING`.
+Status key: `DONE`, `IN PROGRESS`, `PENDING`.
 
 ---
 
@@ -18,7 +18,7 @@ to depend on it.
 | Stage | Work | Status |
 |---|---|---|
 | I-1 | Core abstractions: `NoticeTemplateDefinition` (record/DTO), `NoticeTemplateRegistryPort` (interface) | DONE (script 010) |
-| I-2 | YAML-backed implementation: `NoticeTemplateProperties` (`@ConfigurationProperties`), `YamlNoticeTemplateRegistryAdapter` | DONE (script 014) — classes exist but are **not yet registered as Spring beans** |
+| I-2 | YAML-backed implementation: `NoticeTemplateProperties` (`@ConfigurationProperties`), `YamlNoticeTemplateRegistryAdapter` | DONE (script 014); registered as Spring beans in I-4 |
 | I-3 | APIM DTO extension: `schemeName`/`schemeNameChi` (`sch-name`/`chin-sch-name`) added to `TrpGetAccountListApimDataItem`, `ForgotPasswordTrpSearchMemberDataItem`, `TrpSearchMemberApimDataItem` (usernamerecovery) | DONE (script 018) |
 | I-4 | **Spring wiring**: `NoticeTemplateServiceConfig` class with `@EnableConfigurationProperties(NoticeTemplateProperties.class)`, a constructor that calls `properties.validate()` at startup (fail-fast), and a `@Bean NoticeTemplateRegistryPort` factory method. Confirmed precedent via investigation (script 024): mirrors `FundPriceDateFormatValidationConfig` exactly (validate-in-constructor + single `@Bean` producing what the properties back), not merely `TrpGetAccountListAdapterConfig`'s more elaborate multi-bean shape. Covered by a context-loading test using Spring Boot's `ApplicationContextRunner` | DONE |
 | I-5 | **Populate `application.yml`** under `notice-templates.definitions.*` with real content for all 4 message types x 2 channels x 2 locales, sourced verbatim from the BRD SMS sheet and the full literal text of the 3 email docx files, with `{ttlValue}`/`{ttlUnit}` placeholders (confirmed: keep dynamic TTL wording for SMS and email, consistent with current production; NOT applied to `username-recovery`, which the BRD defines with no OTP/expiry). Generic Chinese SMS templates for `login-otp`/`forgot-password-otp` and `username-recovery` reconstructed from the BRD's filled-in examples by substituting example values back to placeholders. **Known content gap, transcribed faithfully and flagged for business review, not altered:** the Chinese email subject for `login-otp`/`forgot-password-otp` and `username-recovery` has no trust-code placeholder in the source docx, unlike the English subject. | DONE |
@@ -72,11 +72,13 @@ depending on a config block that has already been removed.
 
 ## Current Position
 
-Phase I (stages I-1 through I-6) is complete and closed. The next piece
-of work is **Phase II, Stage II-1** (Username Recovery migration) -
-investigate the full current send path first (per the established
-investigate-before-implement pattern), before changing any production
-code in that workflow.
+Phase I (stages I-1 through I-6) is complete and closed. Phase II, Stage II-1 (Username
+Recovery) is implemented and committed (II-1.a to II-1.d, see Appendix A.1) but remains
+**IN PROGRESS** until its stage gate is met: a passing full `mvn test` and an application
+startup smoke test with no bean or configuration errors, both evidenced. Decisions, verified
+gate inputs and open items are recorded in Appendix A.2. Stages II-2 (Registration), II-3
+(Login), II-4 (Forgot Password) and Phase III are PENDING. Work that is deliberately outside
+this workstream is listed in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
 
@@ -174,3 +176,70 @@ single tag, and read each workflow's language source before changing its send pa
 before a stage transition, evidence that the full Maven test suite passed and that an application
 startup smoke test confirmed the Spring application starts without bean or configuration errors.
 Both are run manually. Stage II-1 becomes DONE only after that evidence exists.
+
+## Appendix A.2: Stage II-1 Decisions, Verified Gate Inputs and Open Items
+
+Recorded after scripts 050 and 051 (read-only evidence). Statements below are limited to what
+that evidence shows; anything not shown is listed under Open items.
+
+### Decisions and positions (2026-10-05)
+
+| # | Topic | Position | Status |
+| --- | --- | --- | --- |
+| D1 | Blank or missing `sch-name` | `sch-name` is non-empty in the source database, so EMAIL rendering keeps failing fast on a blank value and no fallback is implemented. See solution design section 8.5. | Confirmed by Nick |
+| D2 | `UsernameRecoveryLookupCandidate.toString()` | No change. It prints `<redacted>` or null for `userName`, `schemeName` and `schemeNameChi`, and `UsernameRecoveryLookupCandidateSchemeNameTest` guards that. The domain `UsernameRecoveryCandidate.toString()` omits the scheme names and its exact-string tests pin that format. Neither discloses the values. | Recorded, no change |
+| D3 | Accept-Language | The front end always sends a single tag. `UsernameRecoveryController` keeps building its `Locale` from the raw header. See solution design section 8.5. | Recorded, no code change |
+| D4 | `zh-CN` content | `zh-CN` receives `zh_HK` content until a `zh_CN` template exists. See solution design section 8.5 for the caveat. | Confirmed by Nick |
+| D5 | Rename of the `UsernameRecoveryLookup*` types | Out of scope for this workstream and larger than it looks. Deferred, see Appendix B. | Confirmed by Nick |
+
+### Verified gate inputs (scripts 050 and 051)
+
+Runtime wrapper
+- The wrapper scripts `ngtpa-runtime-start`, `ngtpa-runtime-stop` and `ngtpa-runtime-status` exist in `~/.local/bin`, outside the repository. Each takes a `<worktree-id>`. They source `~/.config/ngtpa/runtime/common.sh` (not yet read when this appendix was written) and keep state under `~/.local/state/ngtpa`.
+- Start preconditions, from its source: the worktree is clean including untracked files; `.env` exists with mode 600; `.local/redis-tls/ca.crt`, `tls.crt` and `tls.key` exist and `tls.key` is mode 600; every host:port in `REDIS_SENTINEL_NODES` accepts a TCP connection; the application port is free.
+- Start action: `mvn -B -ntp -DskipTests -Dstyle.color=never -Dspring-boot.run.arguments=--spring.output.ansi.enabled=never spring-boot:run` in its own process group, with `SPRING_PROFILES_ACTIVE` defaulting to `local`, the `.env` assignments exported, and output written to `application.log` under `target/evidence/<timestamp>-runtime-<id>/`.
+- Health: polls `http://127.0.0.1:${SERVER_PORT:-8888}/actuator/health` up to 60 times (3 s request timeout, 2 s sleep) and succeeds only on HTTP 200 with `"status":"UP"`. On failure it terminates the process group and writes `Status: FAIL`.
+- Stop: SIGTERM to the recorded process group, waits up to 30 s, never sends SIGKILL and fails if the group is still alive.
+
+Port and endpoints
+- `server.port` is `${SERVER_PORT:8888}`, `.env` sets 8888 and no `management.server.port` is configured, so the actuator is served on the application port. The 8090 in `docs/wsl/phase-04-direct-spring-runtime.md` does not match this.
+
+Startup dependencies
+- `AuthFlowSessionPersistenceCompatibilityStartupGate` (an `ApplicationRunner` registered by `RedisAdapterConfig`) blocks on Redis for `redis-cache.timeout-milliseconds` and throws `IllegalStateException` when the auth-flow schema is incompatible or unavailable. An unreachable Redis is therefore a startup failure, not a degraded start.
+- `ApimAppCertificateService.init()` (`@PostConstruct`) builds the APIM application certificate only when APIM encryption is enabled and both PEM values are present. `WorkflowErrorContractConfig` validates the workflow error contract through a `SmartInitializingSingleton`.
+- `application-local.yml` points the `redis-mtls` bundle at `.local/redis-tls/*`; all three files exist and `tls.key` is mode 600. `application.yml` points at `/etc/redis-tls/*`, which do not exist in WSL, and the `local` profile is expected to override them.
+- At the time of script 051 the Sentinel node from `.env` resolved in DNS but did not accept a TCP connection (0 of 1), and nothing answered on 127.0.0.1 ports 6379 and 26379. `docs/wsl/local-wsl-development-workstream.md` assigns Redis port forwarding to the Windows side, so the forward must be running before the gate.
+- `APIM_CERTIFICATE_PATH` and `SMS_SEND_SINGLE_PATH` are not local files. Their consumers are the `certificate-path` settings under `apim` (passed to `replacePath(...)` in `ApimCertificateService`) and `sms.send-single-path`, so they are treated as request paths and not as startup file dependencies. This is inferred from the consumers and is to be confirmed by the startup run.
+- No placeholder without a default is unresolved (script 051: missing=0, empty=0).
+- The Config Service base URL answered HTTP 401 (reachable, credentials not tested). Whether startup needs it is not verified.
+- The earlier `startup.log` (2026-09-29) shows a successful start ("Started NgtpaApiServerApplication in 8.697 seconds", Netty on 8888, one actuator endpoint exposed). It predates this branch's HEAD and is not gate evidence.
+
+Test setup
+- The repository has 1141 `*Test.java` files and no `*IT.java` or `*Tests.java`. `target/surefire-reports` holds 2278 files from earlier runs, the newest from 2026-10-05 10:37, so the gate must not read that directory without establishing freshness.
+
+### Open items
+
+1. Registration's `TrpSearchMemberApimDataItem` (package `registration.dto`) has no `sch-name` or `chin-sch-name`, by design (solution design section 8.2). Whether it tolerates the new response fields (unknown-property handling) is not yet verified. Script 052 collects that DTO and the Jackson configuration as evidence; the result is reviewed before this item is closed.
+2. The id under which this worktree is registered with the runtime wrapper is unknown, because `common.sh` had not been read. Script 052 collects it as evidence.
+3. Whether application startup depends on the Config Service is not verified.
+4. `docs/wsl/phase-04-direct-spring-runtime.md` still describes the wrapper in the future tense and names port 8090. It is outside the Template Service docs and is not edited here.
+
+## Appendix B: Deferred Refactors (outside the Template Service workstream)
+
+### B-1 Rename or restructure the `UsernameRecoveryLookup*` types
+
+Status: DEFERRED. Decision by Nick, 2026-10-05: out of scope for this workstream and larger than it looks. Nothing in this appendix has been started.
+
+Why the names confuse:
+- `UsernameRecoveryLookupCandidate` (application DTO) and `UsernameRecoveryCandidate` (domain model) differ by one word, and neither name says that the data comes from the APIM `TRPSearchMember` operation.
+- `TrpSearchMemberAdapter` (`adapter/out/apim/usernamerecovery`) implements `UsernameRecoveryLookupPort` (`application/port/out`). The port is named for what the workflow needs and the adapter for the APIM operation, so nothing in either name links them. The arrangement itself is ports and adapters: the application layer owns the port and exposes only application contracts (`UsernameRecoveryLookupCommand`, `UsernameRecoveryLookupResult`), the adapter owns APIM transport, and `CleanArchitectureDependencyTest` forbids the application layer from depending on adapter packages.
+
+Sizing (script 050 evidence):
+- 4 main files are named `UsernameRecoveryLookup*` (Candidate, Command, Result, Port) and 8 test files are named for them.
+- 30 Java and Markdown files mention the name. Identifier counts: `UsernameRecoveryLookupResult` 101, `UsernameRecoveryLookupCandidate` 43, `UsernameRecoveryLookupCommand` 40, `UsernameRecoveryLookupPort` 29.
+- Main-code users include `TrpSearchMemberAdapter`, `TrpSearchMemberApimMapper`, `TrpSearchMemberApimResultMapper`, `UsernameRecoveryStartProtectedOperation` and `UsernameRecoveryFeatureConfig`. Documents that mention it: `username-recovery-apim-integration-design.md`, `username-recovery-test-traceability-design.md` and this plan.
+- Tests that reference the names and must change with any rename include `UsernameRecoveryLookupOutboundPortArchitectureGuardTest`, `UsernameRecoveryLookupPortReconciliationTest` and `UsernameRecoveryLookupBoundaryReconciliationTest`.
+
+Candidate names discussed for the Candidate type, none chosen: `UsernameRecoverySearchMemberCandidate`, `UsernameRecoveryTrpSearchMemberCandidate`, `UsernameRecoveryMemberMatch`. Any rename has to be decided for the whole family (Candidate, Command, Result, Port), not for one class.
+
+Before it is started: its own branch, its own investigation and plan under `docs/design/6-username-recovery`, and a pure-rename commit kept separate from behaviour changes.

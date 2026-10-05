@@ -1,6 +1,6 @@
 # Centralized Template Service — Solution Design (Draft v0.1)
 
-Status: DRAFT — pending sign-off on open decisions in §11
+Status: DRAFT - all section 11 decisions are resolved; the document leaves DRAFT when the section 9 migration plan is executed (progress is tracked in template-service-implementation-plan.md)
 Scope: SMS + Email channels only. Designed to be extensible to future
 message-transport channels (WhatsApp, WeChat, etc.) without reworking
 workflow/use-case logic.
@@ -445,6 +445,26 @@ from the raw Accept-Language header with `Locale.forLanguageTag`, which cannot r
 multi-value header (`zh,en;q=0.5` becomes `und` and selects English). The public contract tests
 send a single tag (`en`, `zh-HK`). Callers must pass a single tag.
 
+### 8.5 Input Preconditions and Confirmed Decisions
+
+Confirmed during Stage II-1 (2026-10-05):
+
+- **Scheme name is always present.** `sch-name` is non-empty in the source database. EMAIL
+  templates require `{schemeName}`; rendering throws on a missing or blank value and
+  `MessageDeliveryAdapter` reports FAILED for that email. This fail-fast behaviour is kept and no
+  fallback is implemented. The only fallback is the one in section 8.2: a blank `chin-sch-name`
+  uses `sch-name`. Revisit if the source data contract changes. SMS templates carry no scheme
+  placeholder and are unaffected.
+- **One language tag per request.** The front end always sends a single `Accept-Language` tag (for
+  example `zh-HK` or `en`). Callers pass that single tag to `NoticeTemplateRegistryPort.resolve`
+  (section 8.4); a browser-style list is not supported. `UsernameRecoveryController` therefore
+  keeps building its `Locale` from the raw header. A shared resolver is the longer-term
+  alternative and is not adopted now.
+- **Simplified Chinese.** `zh-CN` receives `zh_HK` content until a `zh_CN` entry is configured,
+  as in the rest of the application. Caveat: `RequestHeaderContext` normalizes every language
+  starting with `zh` to `zh-HK`, so a workflow that takes its language from that context can never
+  select a future `zh_CN` entry. Adding one requires revisiting that normalization.
+
 ## 9. Migration Plan (future phases — not in this round's scope)
 
 1. Introduce `NoticeTemplateDefinition`, `NoticeTemplateRegistryPort` +
@@ -490,7 +510,7 @@ Per your existing tiered policy:
 ## 11. Open Decisions Requiring Sign-off
 
 1. ~~Login vs. Forgot Password content~~ — **Resolved** (§5): two
-   distinct `NoticeCode` values with synchronized identical content.
+   distinct `MessageDeliveryType` values with synchronized identical content.
 2. ~~Forgot Password YAML wiring~~ — **Resolved**: centralizing Forgot
    Password content is confirmed **in scope** for this initiative, to be
    implemented now (not deferred). `ForgotPasswordOtpTemplates` and the
