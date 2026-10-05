@@ -118,6 +118,36 @@ class NoticeTemplateDefinitionTest {
   }
 
   @Test
+  void rejectsNullLocale() {
+    assertThatThrownBy(
+            () ->
+                new NoticeTemplateDefinition(
+                    MessageDeliveryType.LOGIN_OTP,
+                    MessageDeliveryChannel.SMS,
+                    null,
+                    null,
+                    "body",
+                    Set.of()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("locale");
+  }
+
+  @Test
+  void rejectsNullBody() {
+    assertThatThrownBy(
+            () ->
+                new NoticeTemplateDefinition(
+                    MessageDeliveryType.LOGIN_OTP,
+                    MessageDeliveryChannel.SMS,
+                    "en",
+                    null,
+                    null,
+                    Set.of()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("body");
+  }
+
+  @Test
   void allowsNullSubjectRegardlessOfChannel() {
     // OCP: this record must never branch on which channel value is present, so that adding a
     // future channel (WhatsApp, WeChat, ...) never requires modifying this class. The
