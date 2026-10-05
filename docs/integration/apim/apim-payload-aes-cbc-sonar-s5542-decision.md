@@ -142,7 +142,7 @@ Covering the three catch blocks adds 21 instructions: 490 of 510, about 96.08% (
 
 ### 6.2 Tests (stage 2)
 
-New test class `ApimPayloadCryptoServiceWireContractTest` in `src/test/java/.../adapter/out/apim/`. Exact method names are settled during stage 2; the cases are:
+New test class `ApimPayloadCryptoServiceWireContractTest` in `src/test/java/.../adapter/out/apim/`. The test methods, in the order of the cases below, are `fieldIsDecryptableWithIndependentAesCbcPkcs5Implementation`, `fieldBuiltWithIndependentAesCbcPkcs5ImplementationIsDecrypted`, `invalidAesKeyLengthSurfacesAsNestedApimCryptoException` and `ciphertextWithInvalidBlockLengthSurfacesAsNestedApimCryptoException`. The cases are:
 
 1. Independent decryption: encrypt a field through `encryptRequest`, then decrypt the result with `javax.crypto` directly, using the literal `"AES/CBC/PKCS5Padding"` and the RSA-OAEP step. Assert the 16-byte IV prefix, the 32-byte key, and the RS256 JWT header and `value` claim.
 2. Independent encryption: build a payload with `javax.crypto` (same layout), feed it to `decryptResponse`, and assert the clear value.
@@ -167,7 +167,7 @@ This document, plus one link in `README.md` of this folder. The status table in 
 | --- | --- | --- | --- |
 | 0 | Investigation (scripts 001 to 005) | Evidence artifacts reviewed | Done |
 | 1 | This decision record and the README link | `mvn spotless:apply`; link check | Done |
-| 2 | `ApimPayloadCryptoServiceWireContractTest` (section 6.2) | `mvn spotless:apply`; `mvn -DskipTests compile`; `mvn -DskipTests test-compile` | Not started |
+| 2 | `ApimPayloadCryptoServiceWireContractTest` (section 6.2) | `mvn spotless:apply`; `mvn -DskipTests compile`; `mvn -DskipTests test-compile` | Done (script 007; compiled, executed in stage 3) |
 | 3 | Targeted run of the crypto tests and a fresh class-level JaCoCo measurement | Instruction >= 95%; branch not below 85% | Not started |
 | 4 | `@SuppressWarnings("java:S5542")` and comments (section 6.1) | `mvn spotless:apply`; compile; test-compile | Not started |
 | 5 | Full validation | Full `mvn test` with JaCoCo report (run manually); `spotless:check` clean; application startup smoke test | Not started |
