@@ -35,6 +35,10 @@ The following historical paths are retained only as compatibility redirects:
 
 Do not use historical guidance that instructs a feature adapter to call `ApimWebClientFacade`, certificate, crypto, token, or credential-profile services directly.
 
+Decision records:
+
+- [APIM payload AES-CBC wire contract and SonarQube `java:S5542`](apim-payload-aes-cbc-sonar-s5542-decision.md)
+
 ---
 
 ## Architectural Model
