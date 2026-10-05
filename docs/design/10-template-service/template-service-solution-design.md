@@ -419,6 +419,32 @@ concerns (OTP length, TTL, resend limits, destination overrides) remains
 where it is — this design only centralizes **content**, not the entire
 `AuthWorkflowProperties` tree.
 
+### 8.4 Locale Selection Rule
+
+`NoticeTemplateRegistryPort.resolve(type, channel, locale)` selects a configured locale key for
+the requested tag, per message type and channel, in this order:
+
+1. Exact match, ignoring case and treating `_` and `-` alike (`zh-HK` selects `zh_HK`).
+2. Same language: the first configured key with that language (`zh`, `zh-TW` and `zh-Hant` select
+   `zh_HK` while `zh_HK` is the only `zh` key configured).
+3. `en`.
+
+If none exists the call fails with `IllegalStateException` naming the message type and channel.
+The key actually selected is returned in `NoticeTemplateDefinition.locale()`, so a fallback is
+visible to the caller. No locale list is hardcoded: a newly configured locale (for example `ja`,
+or a separate `zh_CN`) needs no code change.
+
+Rationale: the shared request pipeline already maps every language starting with `zh` to
+Traditional Chinese Hong Kong content and everything else to English (`RequestHeaderContext`;
+`RequestLanguageResolver.resolve` prefers that value). This rule gives the same result for the
+locales configured today without hardcoding them. A Simplified Chinese tag therefore receives
+`zh_HK` content until a `zh_CN` entry is configured, which matches the rest of the application.
+
+Out of scope here: how each workflow derives the tag it passes in. Username Recovery builds it
+from the raw Accept-Language header with `Locale.forLanguageTag`, which cannot represent a
+multi-value header (`zh,en;q=0.5` becomes `und` and selects English). The public contract tests
+send a single tag (`en`, `zh-HK`). Callers must pass a single tag.
+
 ## 9. Migration Plan (future phases — not in this round's scope)
 
 1. Introduce `NoticeTemplateDefinition`, `NoticeTemplateRegistryPort` +

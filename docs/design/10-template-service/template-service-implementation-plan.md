@@ -158,6 +158,18 @@ Scoped runs for this workstream use wildcard patterns, not named lists.
 `MessageDeliveryAdapter` reports FAILED for that email. SMS content has no scheme placeholder and
 is unaffected. The business rule implemented is only: blank `chin-sch-name` falls back to `sch-name`.
 
+**Language finding (scripts 046-049).** Username Recovery START builds `language` with
+`Locale.forLanguageTag(Accept-Language)` and REQUEST selects the template from
+`context.language().toLanguageTag()`. The registry matched only the exact tag `zh_HK` (after `-`
+to `_`), so `zh`, `zh-TW`, `zh-Hant` and similar fell back to English content, and the returned
+definition reported the unmatched tag rather than the key used. The shared request pipeline treats
+every language starting with `zh` as Traditional Chinese (`RequestHeaderContext`). The registry now
+selects from the configured keys (exact, then same language, then `en`) and reports the selected
+key; see solution design section 8.4. Fixed in `b9012557`.
+Not changed: `UsernameRecoveryController.resolveLanguage` still builds the `Locale` from the raw
+header, so a multi-value header becomes `und` and selects English. Carry into II-2 to II-4: pass a
+single tag, and read each workflow's language source before changing its send path.
+
 **Stage gate (not yet satisfied, so II-1 is not marked DONE).** The standing convention requires,
 before a stage transition, evidence that the full Maven test suite passed and that an application
 startup smoke test confirmed the Spring application starts without bean or configuration errors.
