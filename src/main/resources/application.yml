@@ -584,6 +584,11 @@ masking:
 # to username-recovery, which the BRD defines with no OTP/expiry).
 # ============================================================================
 notice-templates:
+  # Unit word for {ttlUnit}, looked up with the locale key that was selected for the content
+  # (solution design section 8.6). Every locale key whose content uses {ttlUnit} needs an entry.
+  ttl-units:
+    en: "minutes"
+    zh_HK: "分鐘"
   definitions:
     registration-otp:
       sms:

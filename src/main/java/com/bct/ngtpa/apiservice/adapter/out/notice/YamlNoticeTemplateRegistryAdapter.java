@@ -17,6 +17,7 @@ public class YamlNoticeTemplateRegistryAdapter implements NoticeTemplateRegistry
 
   private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{([a-zA-Z0-9_]+)}");
   private static final String DEFAULT_LOCALE = "en";
+  private static final String TTL_UNIT_PLACEHOLDER = "ttlUnit";
 
   private final NoticeTemplateProperties properties;
 
@@ -47,8 +48,15 @@ public class YamlNoticeTemplateRegistryAdapter implements NoticeTemplateRegistry
     Map<String, String> localized = definition.getSms();
     String selected = selectLocale(keysOf(localized), locale, messageType, "sms");
     String body = localized.get(selected);
+    Set<String> required = placeholders(body);
     return new NoticeTemplateDefinition(
-        messageType, MessageDeliveryChannel.SMS, selected, null, body, placeholders(body));
+        messageType,
+        MessageDeliveryChannel.SMS,
+        selected,
+        null,
+        body,
+        required,
+        ttlUnitFor(messageType, "sms", selected, required));
   }
 
   private NoticeTemplateDefinition resolveEmail(
@@ -66,7 +74,8 @@ public class YamlNoticeTemplateRegistryAdapter implements NoticeTemplateRegistry
         selected,
         content.getSubject(),
         content.getBody(),
-        required);
+        required,
+        ttlUnitFor(messageType, "email", selected, required));
   }
 
   /**
@@ -133,6 +142,35 @@ public class YamlNoticeTemplateRegistryAdapter implements NoticeTemplateRegistry
 
   private static String languageOf(String tag) {
     return Locale.forLanguageTag(tag.trim().replace('_', '-')).getLanguage();
+  }
+
+  /**
+   * Returns the unit word configured for the SELECTED locale key (solution design section 8.6),
+   * never for the requested tag, so a {@code zh} request that selected {@code zh_HK} content gets
+   * the {@code zh_HK} unit. Content that contains {@code {ttlUnit}} fails when no unit is
+   * configured for that key; for other content a missing or blank unit is simply null.
+   */
+  private String ttlUnitFor(
+      MessageDeliveryType messageType,
+      String channelName,
+      String selectedKey,
+      Set<String> required) {
+    Map<String, String> units = properties.getTtlUnits();
+    String unit = units == null ? null : units.get(selectedKey);
+    if (unit != null && unit.isBlank()) {
+      unit = null;
+    }
+    if (unit == null && required.contains(TTL_UNIT_PLACEHOLDER)) {
+      throw new IllegalStateException(
+          "No notice-templates.ttl-units entry for locale "
+              + selectedKey
+              + " (required by notice-templates.definitions."
+              + toKebabCase(messageType)
+              + "."
+              + channelName
+              + ")");
+    }
+    return unit;
   }
 
   private String toKebabCase(MessageDeliveryType messageType) {

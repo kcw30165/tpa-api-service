@@ -21,6 +21,10 @@ import java.util.Set;
  * and at dispatch time ({@code MessageDeliveryAdapter.validate()}, which runs on every {@code
  * MessageDeliveryCommand} built from a resolved {@code NoticeTemplateDefinition} before any
  * message is actually sent).
+ *
+ * <p>{@code ttlUnit} is the unit word for {@code {ttlUnit}} that is configured for the locale key
+ * selected for this content (solution design section 8.6). It is null when none is configured. The
+ * six-argument constructor keeps existing call sites compiling and leaves it null.
  */
 public record NoticeTemplateDefinition(
     MessageDeliveryType messageType,
@@ -28,7 +32,8 @@ public record NoticeTemplateDefinition(
     String locale,
     String subject,
     String body,
-    Set<String> requiredPlaceholders) {
+    Set<String> requiredPlaceholders,
+    String ttlUnit) {
 
   public NoticeTemplateDefinition {
     Objects.requireNonNull(messageType, "messageType must not be null");
@@ -39,9 +44,23 @@ public record NoticeTemplateDefinition(
     if (body == null || body.isBlank()) {
       throw new IllegalArgumentException("body must not be blank");
     }
+    if (ttlUnit != null && ttlUnit.isBlank()) {
+      throw new IllegalArgumentException("ttlUnit must not be blank");
+    }
     requiredPlaceholders =
         requiredPlaceholders == null
             ? Set.of()
             : Collections.unmodifiableSet(new LinkedHashSet<>(requiredPlaceholders));
+  }
+
+  /** Compatibility constructor for callers that do not carry a unit; the unit is then null. */
+  public NoticeTemplateDefinition(
+      MessageDeliveryType messageType,
+      MessageDeliveryChannel channel,
+      String locale,
+      String subject,
+      String body,
+      Set<String> requiredPlaceholders) {
+    this(messageType, channel, locale, subject, body, requiredPlaceholders, null);
   }
 }
