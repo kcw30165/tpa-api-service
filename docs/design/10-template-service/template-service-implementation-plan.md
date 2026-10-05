@@ -224,6 +224,32 @@ Test setup
 3. Whether application startup depends on the Config Service is not verified.
 4. `docs/wsl/phase-04-direct-spring-runtime.md` still describes the wrapper in the future tense and names port 8090. It is outside the Template Service docs and is not edited here.
 
+### Gate A evidence, test count reconciliation and coverage closure (scripts 053-056)
+
+Recorded 2026-10-05 from the evidence of scripts 053, 054 and 055. Statements are limited to what that evidence shows.
+
+Gate A, first run (HEAD 8c785a2c; `src/` and `pom.xml` identical to b9012557):
+
+- Full `mvn test`: BUILD SUCCESS, exit code 0, 07:08 min. Maven reported 5516 tests run, 10 skipped, 0 failures, 0 errors. The 1140 surefire XML reports show failures=0 and errors=0; the 10 skipped tests are in `AuthenticatedLoginCommittedReplaySubtask006001a6005FailFirstTest` (4), `AuthenticatedLoginHandoffRecoverySubtask006001a6FailFirstTest` (4), `RegistrationOtpResendLifecycleOwnershipTest` (1) and `P3SecurityFoundationIntegrationTest` (1).
+- Workstream classes: `YamlNoticeTemplate*Test`, `NoticeTemplate*Test`, `ApplicationYamlNoticeTemplatesBindingTest` and `CleanArchitectureDependencyTest` (23 tests) ran with 0 failures, as did the 97 `UsernameRecovery*` classes (496 tests), 9 `TrpSearchMember*` classes and 5 `*SchemeName*` classes.
+- Count difference: the XML `tests` attributes sum to 5506, but the XML holds 5516 testcase elements, equal to Maven's total. The 10 come from six ArchUnit suites under `architecture/` whose `tests` attribute is lower than their testcase count: `EmailSenderAdapterArchitectureGuardTest` (2 vs 4), `MessageDeliveryApplicationBoundaryArchitectureTest` (1 vs 2), `MessageDeliveryArchitectureGuardTest` (3 vs 6), `MessageDeliveryServiceArchitectureGuardTest` (1 vs 2), `SenderApplicationBoundaryArchitectureTest` (1 vs 2) and `SmsSenderAdapterArchitectureGuardTest` (2 vs 4). In each, every test name appears twice, once under the fully qualified class name and once under the simple class name, and no case failed. Why these suites report this way is not established; it is outside this workstream.
+- Three test files are named differently from the class they declare: `AuthForgotPasswordControllerTest.java` declares `ForgotPasswordControllerTest` (3 tests), `ContributionSummaryResponseTest.java` declares `ContributionListResponseTest` (1) and `ReactorPortalAccessContextResolverTest.java` declares `ReactorCurrentPortalAccessContextResolverTest` (5). Each has a report under its declared class name with 0 failures, so none was skipped. Renaming them is outside this workstream.
+- Gate B was NOT RUN: the preflight found no Redis Sentinel node accepting a TCP connection (0 of 1) and nothing was started. The other preflight checks passed (wrapper scripts, registry mapping of `apim-profiles`, `.env` mode 600, Redis TLS files, port 8888 free, no application process).
+
+Coverage of the lines added since the baseline 632dd215 (script 054, JaCoCo line data): 99.61% instruction (517 of 519) and 94.00% branch (47 of 50) over 16 main files. The whole-class figures printed by script 053 include older code and are not the measure here. Three branches were not covered:
+
+- `NoticeTemplateDefinition` line 36 (`locale == null`) and line 39 (`body == null`). It is a record, so the 95% branch tier applies; it stood at 8 of 10 branches.
+- `YamlNoticeTemplateRegistryAdapter` line 116 (`template == null` in `placeholders`); the file is at 27 of 28 branches (96.4%).
+
+Closure (script 056):
+
+- Two tests were added to `NoticeTemplateDefinitionTest`: `rejectsNullLocale` and `rejectsNullBody`. The script committed them only after a scoped test run passed and JaCoCo showed no missed branch in `NoticeTemplateDefinition`. The scoped run used wildcard patterns: `NoticeTemplate*Test`, `YamlNoticeTemplate*Test`, `ApplicationYamlNoticeTemplatesBindingTest` and `CleanArchitectureDependencyTest`.
+- Justification for the remaining adapter branch (adapter tier, 85-90% branch): defensive, not reachable from the Spring-wired registry. `NoticeTemplateProperties.validate()` runs at startup (plan stage I-4) and rejects a null or blank SMS body and a null or blank email subject or body, so `placeholders(null)` cannot occur there. It is reachable only when the registry is built from properties that skipped `validate()`.
+
+Because the closure changes `src/test`, the Gate A evidence above no longer matches the final code. Gate A and Gate B are rerun once on the final code commit, with the source pin of the gate script moved to that commit.
+
+Update to Open items (Appendix A.2): item 1 is resolved. The Registration `TrpSearchMemberApimDataItem` and `ApimResponseEnvelope` both carry `@JsonIgnoreProperties(ignoreUnknown = true)` (script 052 evidence), so the new `sch-name` and `chin-sch-name` response fields do not break Registration. Item 2 is resolved: the worktree id for the runtime wrapper is `apim-profiles`, mapped in `~/.config/ngtpa/copilot-launcher/worktrees.tsv`. Items 3 and 4 remain open.
+
 ## Appendix B: Deferred Refactors (outside the Template Service workstream)
 
 ### B-1 Rename or restructure the `UsernameRecoveryLookup*` types
