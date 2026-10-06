@@ -81,9 +81,11 @@ and sub-stages II-2.0, II-2.a, II-2.a2, II-2.b0, II-2.b and II-2.c are DONE. The
 as be7294d5 (Template Service extension), ce2176e7 (Registration adapter migration) and 14c71b24
 (a test-only commit: the Registration content rendered with the real registry and renderer); each
 was validated with compile, test-compile and a scoped run with 0 failures (C.12, C.13 and C.14).
-The next step is sub-stage II-2.e (START and RESEND tests for a missing definition, requested by
-Nick on 2026-10-06; C.15), then the stage gate II-2.d on the final II-2 code commit. A gate run on
-14c71b24 passed (script 072, C.15) but does not cover II-2.e, so the gate is rerun. Stages II-3 (Login), II-4 (Forgot Password)
+The next step is the START test for a missing definition with the captcha gate on, the production
+setting (sub-stage II-2.e, C.16), and then the stage gate II-2.d on the final II-2 code commit.
+Sub-stage II-2.e is IN PROGRESS: the START (gate off) and RESEND tests are committed as 951049f8
+(script 076). A gate run on 14c71b24 passed (script 072, C.15) but does not cover II-2.e, so the
+gate is rerun. Stages II-3 (Login), II-4 (Forgot Password)
 and Phase III remain PENDING. Decisions and open items for II-1 are in Appendix A.2. Work that is
 deliberately outside this workstream is listed in Appendix B.
 
@@ -446,8 +448,8 @@ with a space in en. Consequences:
 | II-2.b0 | Template Service extension (an amendment to Phase I; design: solution design section 8.6). `NoticeTemplateDefinition` gains a nullable last component `ttlUnit` and keeps a public six-argument constructor; `NoticeTemplateProperties` gains `ttlUnits` and validates it; `YamlNoticeTemplateRegistryAdapter` attaches the unit that belongs to the locale key it selected; `application.yml` gains `notice-templates.ttl-units` (en `minutes`, zh_HK `分鐘`) in the SAME commit as the validation, because the validation would otherwise fail the application at startup. Tests per section 8.6. II-2.b depends on it. | DONE (commit be7294d5; script 066; result in C.12) |
 | II-2.b | `RegistrationMessageDeliveryAdapter` resolves content through `NoticeTemplateRegistryPort.resolve(REGISTRATION_OTP, channel, acceptLanguage)`, builds `code`, `ttlValue` and `ttlUnit` as decided in D6, and no longer takes `AuthWorkflowPolicyPort`. `RegistrationStartGatewayConfig.registrationMessageGateway` injects the registry port. Rewrite `RegistrationMessageDeliveryAdapterTest`, and adjust whichever test from II-2.a pins the old wiring. | DONE (commit ce2176e7; script 068; result in C.13) |
 | II-2.c | A test with the real `YamlNoticeTemplateRegistryAdapter` and `DefaultMessageTemplateRenderer` that renders START and RESEND content for SMS and EMAIL in en and zh_HK and asserts that no placeholder is left unreplaced and that the unit follows the selected locale. | DONE (commit 14c71b24; script 070; result in C.14) |
-| II-2.e | START and RESEND tests for a missing registration-otp definition (decision D7), requested by Nick on 2026-10-06: the missing definition surfaces to the caller as an error, nothing is sent and no delivery result is produced. A new code commit; the source pin then moves to it and II-2.d is rerun on it (C.15). | PENDING |
-| II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING (run 20261006-131109 passed on 14c71b24, script 072, C.15; it must be rerun on the II-2.e commit) |
+| II-2.e | START and RESEND tests for a missing registration-otp definition (decision D7), requested by Nick on 2026-10-06. START with the captcha gate off, and RESEND: the original IllegalStateException reaches the caller as an error signal and nothing is sent (commit 951049f8, script 076). START with the captcha gate on, the production setting: the operation turns it into a SYSTEM_FAILED result with SYSTEM_UNAVAILABLE and nothing is sent (test to follow, C.16). Each code commit moves the source pin; II-2.d is rerun on the last one (C.15, C.16). | IN PROGRESS (951049f8 done; the gate-on START test is next) |
+| II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING (run 20261006-131109 passed on 14c71b24, script 072, C.15; it must be rerun on the last II-2.e code commit) |
 
 ### C.8 Open items
 
@@ -635,8 +637,8 @@ recorded in the solution design, section 8.6 (Per-Locale TTL Unit). Nothing is i
 | II-2.b0 | Template Service extension (a Phase I amendment), see the II-2.b0 row in C.7 and solution design section 8.6. | DONE (commit be7294d5; script 066; result in C.12) |
 | II-2.b | `RegistrationMessageDeliveryAdapter` migration, as in C.7. Before editing, read how START and RESEND treat an exception thrown synchronously by `deliverRegistrationOtp` (D7), and add a test that a missing definition surfaces as an error and not as the value `false`. | DONE (commit ce2176e7; script 068; result in C.13) |
 | II-2.c | Rendering test with the real registry and renderer, extended by C.10.1: assert the placeholders and the rendered text of the zh_HK Registration content as well, including the unit (for example `有效期為5分鐘。`). | DONE (commit 14c71b24; script 070; result in C.14) |
-| II-2.e | START and RESEND tests for a missing registration-otp definition (decision D7), requested by Nick on 2026-10-06: the missing definition surfaces to the caller as an error, nothing is sent and no delivery result is produced. A new code commit; the source pin then moves to it and II-2.d is rerun on it (C.15). | PENDING |
-| II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING (run 20261006-131109 passed on 14c71b24, script 072, C.15; it must be rerun on the II-2.e commit) |
+| II-2.e | START and RESEND tests for a missing registration-otp definition (decision D7), requested by Nick on 2026-10-06. START with the captcha gate off, and RESEND: the original IllegalStateException reaches the caller as an error signal and nothing is sent (commit 951049f8, script 076). START with the captcha gate on, the production setting: the operation turns it into a SYSTEM_FAILED result with SYSTEM_UNAVAILABLE and nothing is sent (test to follow, C.16). Each code commit moves the source pin; II-2.d is rerun on the last one (C.15, C.16). | IN PROGRESS (951049f8 done; the gate-on START test is next) |
+| II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING (run 20261006-131109 passed on 14c71b24, script 072, C.15; it must be rerun on the last II-2.e code commit) |
 
 #### C.11.3 Carried to later stages (not part of II-2)
 
@@ -996,3 +998,118 @@ evidence shows; inferences are marked.
 4. Nick to confirm or change the default of C.15.1 (no assertion on the key state).
 5. Sequence: script 075 writes and commits the tests; script 076 reruns the gate on the new commit; a
    final docs commit then marks II-2.e, II-2.d and Stage II-2 DONE.
+
+
+### C.16 Result of script 076 (II-2.e, START gate off and RESEND) and the production START path
+
+Recorded 2026-10-06 from the evidence of scripts 074 and 076. Statements are limited to what that
+evidence shows; inferences are marked.
+
+#### C.16.1 Script 076 (script 075 never ran)
+
+- The saved file of script 075 ends in the middle of line 198 and bash reported "syntax error:
+  unexpected end of file", so it executed nothing. Script 076 is its reissue with a truncation
+  guard; the Java test is unchanged.
+- Commit 951049f8, subject "test(template-service): START and RESEND fail with the original error
+  when the registration-otp definition is missing": one new file,
+  `RegistrationMissingDefinitionStartResendIntegrationTest`, 389 lines added, 4 tests. Test-only: no
+  main code, no resource and no pom.xml changed.
+- The tests run the real `RegistrationMessageDeliveryAdapter` with a registry fake that throws
+  `IllegalStateException` for the missing definition and a `MessageDeliveryPort` mock, the real
+  `DefaultIdempotencyExecutor` over a port that always grants the reservation, the real shared
+  services and the real protected operations:
+  - START with the captcha gate off (policy and gate null) and a missing definition: the caller gets
+    the original `IllegalStateException` as an error signal, no result is emitted, the registry is
+    called once for `REGISTRATION_OTP` with the locale `en`, and the delivery port is never called.
+  - RESEND and a missing definition: the same; the registry is asked for the EMAIL channel.
+  - Two control tests with a configured definition: the START operation reaches `STARTED` and the
+    RESEND operation reaches `RESENT`, each with one delivery. They stop the failure tests from
+    passing for a wrong reason.
+- Not asserted, by design (C.15.1): the state of the idempotency key and the number of session
+  updates.
+
+#### C.16.2 Validation of 076
+
+- `mvn -DskipTests compile` exit 0 (22.993 s); `mvn -DskipTests test-compile` exit 0 (49.512 s).
+- Scoped run with the patterns `*Registration*Test`, `NoticeTemplate*Test`,
+  `YamlNoticeTemplate*Test`, `ApplicationYamlNoticeTemplatesBindingTest`,
+  `CleanArchitectureDependencyTest`, `*MessageDelivery*Test`, `DefaultMessageTemplateRenderer*Test`
+  and `DefaultIdempotencyExecutorTest`: BUILD SUCCESS, 952 tests, 0 failures, 0 errors, 1 skipped
+  (04:34 min). 193 fresh reports, which is every one of the 193 source classes that match a pattern;
+  954 older reports were ignored; the console total equals the XML. The new class ran 4 of 4; all 17
+  observed floors held. The one skipped test is `RegistrationOtpResendLifecycleOwnershipTest` (1),
+  as in C.14.2.
+- 952 equals 941 (script 070) + 4 (new) + 7 (`DefaultIdempotencyExecutorTest`, added to the patterns
+  in this run). That is arithmetic on the evidence, not a pass criterion.
+- The source file has two lines over 100 characters (lines 164 and 184). `mvn spotless:apply` is
+  deferred to the feature-level stabilization.
+- Not run in 076 by design: the full `mvn test`, the application startup smoke test and spotless.
+
+#### C.16.3 New source pin
+
+- `src/` and `pom.xml` now equal 951049f8; they differ from 14c71b24 by exactly the new test file
+  (the script's final check shows one `A` line for it). 951049f8 replaces 14c71b24 as the last code
+  commit. Docs-only commits do not change it.
+- The 072 gate run (C.15.2) is a record for 14c71b24 only.
+
+#### C.16.4 Production START path (evidence of scripts 073 and 074)
+
+- `application.yml` has `auth-workflows.registration.pre-start-challenge` with `enabled: true` and
+  `type: CAPTCHA` (lines 248-250); of the resource files only `application-local.yml` sets
+  `enabled: false` (lines 141-142). Unless an external configuration overrides it (not checked),
+  START therefore takes the captcha-gate-on path everywhere except the local profile.
+- With the gate on, `RegistrationStartProtectedOperation` ends the chain with
+  `onErrorResume(ignored -> failure(SYSTEM_FAILED, SYSTEM_UNAVAILABLE, "PAGE"))` (lines 123-129). A
+  missing definition, which throws while the chain is assembled, therefore does NOT reach the caller
+  as an error: START returns a `SYSTEM_FAILED` result with the error key `SYSTEM_UNAVAILABLE` on
+  target `PAGE`. The captcha has been consumed by then (it is consumed before the lookup), so the
+  member needs a new one; no OTP is sent.
+- Read in the bridge: `SYSTEM_FAILED` maps to HTTP 500 (`RegistrationStartSharedExecutionBridge`,
+  line 174). Inferred, not read: the shared executor receives a normal result, captures it and
+  completes the idempotency key; the capture of a result without a session id or a CSRF token was
+  not read.
+- The 076 tests therefore cover the local profile (gate off) for START, and RESEND everywhere. They
+  do not cover the production START path.
+- Narrowing of C.14.4: the observation that `possibleSideEffect()` marks the key unknown for an
+  error that happens before any send applies to RESEND and to START with the gate off. With the gate
+  on the protected operation converts the error to a result before it reaches the executor (inferred
+  from the printed source; no test).
+
+#### C.16.5 Where the error signal ends (074 evidence 04a)
+
+- `RegistrationController` START (line 80) and RESEND (line 252) call the use case and `.map(...)`
+  its result with no error handler. The `catch (RuntimeException)` blocks (lines 156, 200, 246, 317,
+  376) only wrap command construction or the assembly of a call, not the signal of the returned
+  `Mono`.
+- The error signal of START with the gate off, and of RESEND, therefore reaches
+  `ApiExceptionHandler.handleUnexpectedException` (`@ExceptionHandler(Exception.class)`, line 230):
+  HTTP 500, `ApiStatus.SYSTEM_ERROR`, error code `SYSTEM_UNEXPECTED`. The handler has no mention of
+  `IdempotencyExecutionException`. That the advice class is registered was not read (inferred).
+
+#### C.16.6 Design of the missing test (the next code script)
+
+- Same decision as C.15.1: Nick asked for the START and RESEND tests, and the production START path
+  is START. It is added to II-2.e. Nick can drop it.
+- New test class beside the 076 class; no existing test is edited. Fixtures are copied in shape from
+  `StartRegistrationCaptchaGateTest` (074 evidence 11a): a `RegistrationAuthWorkflowPolicy` with
+  `PreStartChallengePolicy(true, CAPTCHA)`, a `RegistrationCaptchaGateService` over a fake
+  `CaptchaChallengePort` that holds a VERIFIED, unexpired challenge, the real
+  `RegistrationMessageDeliveryAdapter` with a registry that throws, and a `MessageDeliveryPort`
+  mock.
+- It calls the START operation directly (not the service and executor), because the executor-side
+  capture of this result was not read.
+- Assertions: a result is emitted and no error; its status is `SYSTEM_FAILED` with a single error
+  with key `SYSTEM_UNAVAILABLE` on target `PAGE`; the registry is called once for
+  `REGISTRATION_OTP`; the delivery port is never called; the captcha is consumed exactly once. A
+  control test with a configured definition and the same fixtures reaches `STARTED`.
+- Still not asserted: the state of the idempotency key.
+
+#### C.16.7 Open items and sequence
+
+1. Script 078 adds the gate-on START test (a code commit; it moves the pin again). Script 079 reruns
+   the stage gate on the last code commit with a new gate script. A final docs commit then marks
+   II-2.e, II-2.d and Stage II-2 DONE. This corrects C.15.5 item 5, which numbered the scripts
+   differently.
+2. Whether production START should turn a missing definition into `SYSTEM_FAILED` after consuming
+   the captcha is the existing behaviour and is not changed by this stage (decision D7 keeps it).
+3. The two long lines of the 076 test file are left to the feature-level formatting pass.
