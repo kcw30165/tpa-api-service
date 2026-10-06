@@ -12,10 +12,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * Config-backed date formats for Fund Price.
  *
- * <p>{@code full-date}: FE input, the downstream {@code ref-date}/{@code from-date}/{@code
- * to-date} request fields, and the downstream {@code available-fund-price-dates} response field.
- * Per docs/design/9-fund-price/fund-price-date-validation-contract.md, available dates use this
- * SAME pattern and must not get their own property.
+ * <p>{@code full-date}: FE input, the downstream {@code ref-date}/{@code from-date}/{@code to-date}
+ * request fields, and the downstream {@code available-fund-price-dates} response field. Per
+ * docs/design/9-fund-price/fund-price-date-validation-contract.md, available dates use this SAME
+ * pattern and must not get their own property.
  *
  * <p>{@code month}: display-only year-month pattern for the export's Fund Price Date column when
  * the cached mode is MONTHLY. It is never used to parse FE input or build downstream requests.
@@ -55,7 +55,9 @@ public class FundPriceDateFormatProperties {
       parsed = LocalDate.parse(ROUND_TRIP_PROBE.format(strict), strict);
     } catch (DateTimeException exception) {
       throw new IllegalStateException(
-          "fund-price.date-format.full-date '" + fullDate + "' cannot be parsed back under"
+          "fund-price.date-format.full-date '"
+              + fullDate
+              + "' cannot be parsed back under"
               + " strict resolution; use 'uuuu' for the year instead of 'yyyy'",
           exception);
     }
@@ -83,7 +85,9 @@ public class FundPriceDateFormatProperties {
       parsed = YearMonth.parse(text, strict);
     } catch (DateTimeException exception) {
       throw new IllegalStateException(
-          "fund-price.date-format.month '" + month + "' cannot be parsed back under strict"
+          "fund-price.date-format.month '"
+              + month
+              + "' cannot be parsed back under strict"
               + " resolution; use 'uuuu' for the year instead of 'yyyy'",
           exception);
     }

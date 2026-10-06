@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationSuccessPageMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
@@ -17,7 +18,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
 
 class CompleteRegistrationWebMapperTest {
 
@@ -211,5 +211,4 @@ class CompleteRegistrationWebMapperTest {
     assertThat(command.acceptLanguage()).isNull();
     assertThat(command.correlationId()).isEqualTo("req-2");
   }
-
 }

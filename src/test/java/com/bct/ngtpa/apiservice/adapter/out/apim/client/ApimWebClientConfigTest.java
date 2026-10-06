@@ -62,8 +62,7 @@ class ApimWebClientConfigTest {
     ApimProperties invalid = apimProperties();
     invalid.setTimeoutMilliseconds(0);
 
-    assertThatThrownBy(
-            () -> config.apimWebClient(invalid, certProvider, authorizedClientManager()))
+    assertThatThrownBy(() -> config.apimWebClient(invalid, certProvider, authorizedClientManager()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("greater than zero");
   }

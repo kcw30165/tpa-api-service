@@ -12,10 +12,10 @@ import org.springframework.stereotype.Component;
 /**
  * Log-only observability for {@link ApimExchangeExecutor#postEnvelope} outcomes.
  *
- * <p>This component never throws and never changes the envelope or exception that flows back to
- * the calling adapter. It implements the {@code apim.contract.invalid}, {@code
- * apim.business.rejected}, and {@code apim.exchange.failed} events already named (but not
- * previously implemented anywhere) in {@code docs/integration/apim/operations-and-testing.md}.
+ * <p>This component never throws and never changes the envelope or exception that flows back to the
+ * calling adapter. It implements the {@code apim.contract.invalid}, {@code apim.business.rejected},
+ * and {@code apim.exchange.failed} events already named (but not previously implemented anywhere)
+ * in {@code docs/integration/apim/operations-and-testing.md}.
  *
  * <p>A well-formed, non-rejected success outcome is intentionally silent here - it is already
  * covered by {@code ApimRequestLoggingExchangeFilter}'s existing outbound request log.

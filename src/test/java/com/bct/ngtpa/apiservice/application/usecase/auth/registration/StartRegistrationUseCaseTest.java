@@ -21,8 +21,6 @@ import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationSharedFingerprintFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationSharedIdempotencyIdentityFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartProtectedOperation;
@@ -31,6 +29,8 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotenc
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartSharedExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.SharedStartRegistrationService;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

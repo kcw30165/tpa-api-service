@@ -6,8 +6,8 @@ import java.util.Objects;
 
 /**
  * Inbound command for the export path's TRPGetFundPrice call. Carries an EXPLICIT fromDate/toDate
- * range with NO mode field at all -- confirmed design (Nick): export has no mode concept; it
- * passes policyNo, fromDate, toDate straight to APIM, bypassing {@link FetchFundPriceCommand}'s
+ * range with NO mode field at all -- confirmed design (Nick): export has no mode concept; it passes
+ * policyNo, fromDate, toDate straight to APIM, bypassing {@link FetchFundPriceCommand}'s
  * single-date + mode-dependent expansion entirely (that remains query-only).
  */
 public record FetchFundPriceRangeCommand(

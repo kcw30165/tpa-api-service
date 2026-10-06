@@ -19,11 +19,11 @@ import org.springframework.context.annotation.Configuration;
  * dependencies, returning a direct {@code new} instance. Neither use case class carries a Spring
  * stereotype annotation itself, keeping the application layer framework-free.
  *
- * <p>Closes a real, confirmed Spring startup failure (real {@code spring-boot:run} smoke test,
- * not caught by {@code mvn test} alone, since every unit test for these classes constructs them
+ * <p>Closes a real, confirmed Spring startup failure (real {@code spring-boot:run} smoke test, not
+ * caught by {@code mvn test} alone, since every unit test for these classes constructs them
  * manually): {@link FundPriceQueryUseCase}, {@link FundPriceExportUseCase}, and {@link
- * FundPriceWorkbookExporter} previously had NO {@code @Bean} definitions anywhere in the
- * codebase, unlike their sibling {@link
+ * FundPriceWorkbookExporter} previously had NO {@code @Bean} definitions anywhere in the codebase,
+ * unlike their sibling {@link
  * com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCase}, which was already
  * correctly wired via {@code FundPriceModeApplicationConfig}.
  *
@@ -32,8 +32,8 @@ import org.springframework.context.annotation.Configuration;
  * ReferenceDatePort} ({@code ReferenceDateAdapter}), {@link GeneralMetadataResolver} ({@code
  * GeneralMetadataResolverService}), {@link LoadAndTouchAuthenticatedSessionUseCase} (already used
  * elsewhere in this feature), {@link FundPriceExportProperties} (auto-registered via {@code
- * NgtpaApiServerApplication}'s {@code @ConfigurationPropertiesScan}, no explicit {@code
- * @EnableConfigurationProperties} needed), and the {@code fundPriceFullDateFormatter} {@link
+ * NgtpaApiServerApplication}'s {@code @ConfigurationPropertiesScan}, no explicit
+ * {@code @EnableConfigurationProperties} needed), and the {@code fundPriceFullDateFormatter} {@link
  * DateTimeFormatter} bean ({@code FundPriceDateFormatValidationConfig}).
  */
 @Configuration
