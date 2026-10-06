@@ -72,8 +72,7 @@ class SmsDeliverySecurityGuardTest {
             .baseUrl(properties.getBaseUrl())
             .exchangeFunction(exchangeFunction)
             .build();
-    return new SmsSenderAdapter(
-        webClient, properties, new MaskingService(new MaskingProperties()));
+    return new SmsSenderAdapter(webClient, properties, new MaskingService(new MaskingProperties()));
   }
 
   private SmsProperties baseProperties() {

@@ -37,12 +37,12 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
   }
 
   /**
-   * Legacy constructor retained for existing unit tests that construct this executor directly
-   * with only the original three dependencies (see {@code DefaultApimExchangeExecutorTest}).
-   * Mirrors the compatibility-constructor convention already used by {@link
-   * ApimWebClientFacade}: a real (not no-op) {@link ApimExchangeOutcomeLogger} is built with a
-   * fresh {@link ObjectMapper} and {@link LoggingSanitizer} so outcome logging still runs; it is
-   * simply not the Spring-managed singleton instance used in production.
+   * Legacy constructor retained for existing unit tests that construct this executor directly with
+   * only the original three dependencies (see {@code DefaultApimExchangeExecutorTest}). Mirrors the
+   * compatibility-constructor convention already used by {@link ApimWebClientFacade}: a real (not
+   * no-op) {@link ApimExchangeOutcomeLogger} is built with a fresh {@link ObjectMapper} and {@link
+   * LoggingSanitizer} so outcome logging still runs; it is simply not the Spring-managed singleton
+   * instance used in production.
    */
   public DefaultApimExchangeExecutor(
       ApimWebClientFacade facade,
@@ -61,7 +61,10 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
   public <R, D> Mono<ApimResponseEnvelope<D>> postEnvelope(ApimExchangeRequest<R, D> request) {
     Objects.requireNonNull(request, "request must not be null");
     return Mono.defer(
-            () -> properties.getEncryption().isEnabled() ? postEncrypted(request) : postPlain(request))
+            () ->
+                properties.getEncryption().isEnabled()
+                    ? postEncrypted(request)
+                    : postPlain(request))
         .doOnEach(signal -> logOutcome(request, signal));
   }
 

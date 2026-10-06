@@ -17,8 +17,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Reconciles and validates TRPGetFundPrice's downstream content.
  *
- * <p>Structurally SEPARATE from {@link FundPriceModeApimContentValidator}: this validator joins
- * two arrays (FundPrice x FundInfo by fund-code) rather than normalizing one flat item, and its
+ * <p>Structurally SEPARATE from {@link FundPriceModeApimContentValidator}: this validator joins two
+ * arrays (FundPrice x FundInfo by fund-code) rather than normalizing one flat item, and its
  * supported risk-level value set is validated here (unlike max-risk-level on the mode side, which
  * is deliberately never validated). No shared base class -- the two operations validate genuinely
  * different shapes.
@@ -29,9 +29,9 @@ import org.slf4j.LoggerFactory;
  * record"). A FundInfo entry with no matching FundPrice row is never visited by this iteration
  * order -- it is skipped and logged at WARN, not an error.
  *
- * <p>{@code price-date} parses as ISO ({@code yyyy-MM-dd}), confirmed from the doc's own
- * byte-exact response sample -- a fixed formatter, not the configurable dd/MM/yyyy full-date
- * pattern used elsewhere in this design pack.
+ * <p>{@code price-date} parses as ISO ({@code yyyy-MM-dd}), confirmed from the doc's own byte-exact
+ * response sample -- a fixed formatter, not the configurable dd/MM/yyyy full-date pattern used
+ * elsewhere in this design pack.
  */
 final class FundPriceApimContentValidator {
 

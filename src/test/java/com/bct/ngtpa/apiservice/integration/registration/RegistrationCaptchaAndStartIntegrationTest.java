@@ -29,12 +29,12 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.captcha.CreateCaptchaCh
 import com.bct.ngtpa.apiservice.application.usecase.auth.captcha.RefreshCaptchaService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.captcha.VerifyCaptchaService;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
 import com.bct.ngtpa.apiservice.infrastructure.security.SecurityConfig;
 import com.bct.ngtpa.apiservice.integration.registration.support.RegistrationTestCase;
 import com.bct.ngtpa.apiservice.integration.registration.support.RegistrationTestResultExtension;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Duration;

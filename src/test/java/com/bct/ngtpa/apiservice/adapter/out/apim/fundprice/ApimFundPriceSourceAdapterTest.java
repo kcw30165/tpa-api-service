@@ -30,15 +30,17 @@ import reactor.test.StepVerifier;
  * ApimExchangeExecutor}, capture the built {@link ApimExchangeRequest}, assert on its from-date/
  * to-date/err-message-mapping behavior.
  *
- * <p>Confirmed design under test (corrected, Nick): the command carries ONE unmanipulated FE
- * date plus {@code mode}. BOTH DAILY and MONTHLY send that exact date as both the
- * downstream request's from-date and to-date -- mode has no effect on this adapter's
- * downstream request shape (an earlier version incorrectly expanded MONTHLY into a
- * first/last-calendar-day range; there is no such expansion).
+ * <p>Confirmed design under test (corrected, Nick): the command carries ONE unmanipulated FE date
+ * plus {@code mode}. BOTH DAILY and MONTHLY send that exact date as both the downstream request's
+ * from-date and to-date -- mode has no effect on this adapter's downstream request shape (an
+ * earlier version incorrectly expanded MONTHLY into a first/last-calendar-day range; there is no
+ * such expansion).
  */
 class ApimFundPriceSourceAdapterTest {
 
-  private static final DateTimeFormatter FORMATTER = new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties().fullDateFormatter();
+  private static final DateTimeFormatter FORMATTER =
+      new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties()
+          .fullDateFormatter();
   private static final String PATH = "/ws/NGTPA/v1/TRPGetFundPrice";
 
   private final ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);
@@ -77,8 +79,9 @@ class ApimFundPriceSourceAdapterTest {
     newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))).block();
 
     verify(executor).postEnvelope(captor.capture());
-    var request = (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
-        captor.getValue().request();
+    var request =
+        (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
+            captor.getValue().request();
     assertThat(request.fromDate()).isEqualTo("05/05/2026");
     assertThat(request.toDate()).isEqualTo("05/05/2026");
   }
@@ -125,8 +128,9 @@ class ApimFundPriceSourceAdapterTest {
     newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))).block();
 
     verify(executor).postEnvelope(captor.capture());
-    var request = (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
-        captor.getValue().request();
+    var request =
+        (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
+            captor.getValue().request();
     assertThat(request.policyNo()).isEqualTo("00000008802");
   }
 
@@ -241,8 +245,9 @@ class ApimFundPriceSourceAdapterTest {
     newAdapter().fetchPriceRange(rangeCommand).block();
 
     verify(executor).postEnvelope(captor.capture());
-    var request = (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
-        captor.getValue().request();
+    var request =
+        (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
+            captor.getValue().request();
     assertThat(request.fromDate()).isEqualTo("25/09/2023");
     assertThat(request.toDate()).isEqualTo("25/09/2026");
     assertThat(request.policyNo()).isEqualTo("00000008802");

@@ -16,17 +16,17 @@ import reactor.core.publisher.Mono;
  * query only) validates a candidate date against the cached range and available-date membership.
  *
  * <p>Package-private collaborator class (composition), not a shared abstract base class -- this
- * codebase does not use inheritance for use cases anywhere confirmed in this session; small
- * focused collaborator classes ({@code AuthenticatedAccountContextResolver}'s style) are the
- * established pattern.
+ * codebase does not use inheritance for use cases anywhere confirmed in this session; small focused
+ * collaborator classes ({@code AuthenticatedAccountContextResolver}'s style) are the established
+ * pattern.
  *
  * <p>{@code loadUsableSession(...)} returns {@code Optional<FundPriceModeSessionMetadata>}
  * directly: present means usable, empty means not usable. This deliberately does NOT wrap the
  * result in a custom type -- {@link
  * com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleResult}
  * and {@code FundPriceModeSessionMetadata} already carry everything the caller needs; a bespoke
- * wrapper type here would be redundant (simplification, script 113 -- an earlier version
- * introduced 3 such types and they added no value over a plain Optional).
+ * wrapper type here would be redundant (simplification, script 113 -- an earlier version introduced
+ * 3 such types and they added no value over a plain Optional).
  */
 final class FundPriceRequestSupport {
 

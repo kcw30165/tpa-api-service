@@ -45,7 +45,8 @@ class ApimEnvelopeSchemaClassifierTest {
     // {"response":{"err-message":"","data":[]}} for TRPMemberLogin, which the caller could not
     // interpret as a usable success and which ultimately surfaced as an unhandled SYSTEM_ERROR/502
     // with no APIM-layer log at all. An empty data array combined with an empty err-message is a
-    // downstream contract violation, not a valid "no records" success. See architecture-and-design.md
+    // downstream contract violation, not a valid "no records" success. See
+    // architecture-and-design.md
     // section 12.
     var classification = ApimEnvelopeSchemaClassifier.classify(envelope("", List.of()));
     assertThat(classification.kind()).isEqualTo(ApimEnvelopeSchemaClassification.Kind.MALFORMED);
