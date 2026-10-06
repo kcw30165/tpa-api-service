@@ -10,10 +10,10 @@ import org.junit.jupiter.api.Test;
 /**
  * Fail-first: {@code RawFundPriceRow} does not exist yet.
  *
- * <p>Carries BOTH bidPrice and offerPrice always -- fundPriceType-driven field selection (bid/offer
- * pair vs single unit price) is a display concern, resolved later in the web mapper, never here.
- * riskLevel is deliberately nullable/blank-legitimate, matching every other risk-level field in
- * this design pack.
+ * <p>Carries BOTH bidPrice and offerPrice always -- fundPriceType-driven field selection
+ * (bid/offer pair vs single unit price) is a display concern, resolved later in the web mapper,
+ * never here. riskLevel is deliberately nullable/blank-legitimate, matching every other risk-level
+ * field in this design pack.
  */
 class RawFundPriceRowTest {
 
@@ -58,7 +58,14 @@ class RawFundPriceRowTest {
     assertThatThrownBy(
             () ->
                 new RawFundPriceRow(
-                    null, "name", "name", PRICE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, "1"))
+                    null,
+                    "name",
+                    "name",
+                    PRICE_DATE,
+                    "HKD",
+                    BigDecimal.ONE,
+                    BigDecimal.ONE,
+                    "1"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fundCode");
   }
@@ -92,13 +99,19 @@ class RawFundPriceRowTest {
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("offerPrice");
   }
-
   @Test
   void blankFundCodeThrows() {
     assertThatThrownBy(
             () ->
                 new RawFundPriceRow(
-                    "  ", "name", "name", PRICE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, "1"))
+                    "  ",
+                    "name",
+                    "name",
+                    PRICE_DATE,
+                    "HKD",
+                    BigDecimal.ONE,
+                    BigDecimal.ONE,
+                    "1"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fundCode");
   }

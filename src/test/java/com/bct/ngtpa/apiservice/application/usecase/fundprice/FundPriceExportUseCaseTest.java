@@ -7,24 +7,28 @@ import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceModeSessionMetadata;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceRow;
-import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataResolutionSource;
-import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadata;
-import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
-import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionStatus;
-import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
-import com.bct.ngtpa.apiservice.application.port.in.GeneralMetadataResolver;
-import com.bct.ngtpa.apiservice.application.port.out.FundPriceSourcePort;
-import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleResult;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
+import com.bct.ngtpa.apiservice.application.port.out.FundPriceSourcePort;
+import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataKey;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataName;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataResolutionSource;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataType;
+import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadata;
+import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet;
+import com.bct.ngtpa.apiservice.application.port.in.GeneralMetadataResolver;
+import java.math.BigInteger;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LoadAndTouchAuthenticatedSessionUseCase;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -155,11 +159,9 @@ class FundPriceExportUseCaseTest {
     StepVerifier.create(
             newUseCase().export(SESSION_ID, "DB", "policy1", "DBA", ActorUserRole.ROLE_USER_MBR))
         .assertNext(
-            result ->
-                assertThat(result.outcome()).isEqualTo(FundPriceUseCaseOutcome.SYSTEM_FAILURE))
+            result -> assertThat(result.outcome()).isEqualTo(FundPriceUseCaseOutcome.SYSTEM_FAILURE))
         .verifyComplete();
   }
-
   @Test
   void noRiskLevelInAnyRowMeansMaxRiskLevelIsNullInResult() {
     var metadata =
@@ -170,18 +172,10 @@ class FundPriceExportUseCaseTest {
         new RawFundPriceData(
             List.of(
                 new RawFundPriceRow(
-                    "DUSM",
-                    "n",
-                    "n",
-                    REFERENCE_DATE,
-                    "HKD",
-                    BigDecimal.ONE,
-                    BigDecimal.ONE,
-                    null)));
+                    "DUSM", "n", "n", REFERENCE_DATE, "HKD", BigDecimal.ONE, BigDecimal.ONE, null)));
     when(sourcePort.fetchPriceRange(any())).thenReturn(Mono.just(noRiskData));
 
-    StepVerifier.create(
-            newUseCase().export(SESSION_ID, "DB", "policy1", "DBA", ActorUserRole.ROLE_USER_MBR))
+    StepVerifier.create(newUseCase().export(SESSION_ID, "DB", "policy1", "DBA", ActorUserRole.ROLE_USER_MBR))
         .assertNext(
             result -> {
               assertThat(result.outcome()).isEqualTo(FundPriceUseCaseOutcome.APPLIED);
@@ -189,7 +183,6 @@ class FundPriceExportUseCaseTest {
             })
         .verifyComplete();
   }
-
   @Test
   void resolvesUnitPricePrecisionViaGeneralMetadataResolver() {
     var metadata =
@@ -199,7 +192,8 @@ class FundPriceExportUseCaseTest {
     when(sourcePort.fetchPriceRange(any())).thenReturn(Mono.just(rawData()));
 
     StepVerifier.create(
-            newUseCase().export(SESSION_ID, "DB", "policy1", "DBA", ActorUserRole.ROLE_USER_MBR))
+            newUseCase()
+                .export(SESSION_ID, "DB", "policy1", "DBA", ActorUserRole.ROLE_USER_MBR))
         .assertNext(
             result ->
                 assertThat(result.exportResult().unitPricePrecision())

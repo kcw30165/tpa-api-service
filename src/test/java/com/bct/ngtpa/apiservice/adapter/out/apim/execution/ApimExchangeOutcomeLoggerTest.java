@@ -31,8 +31,7 @@ class ApimExchangeOutcomeLoggerTest {
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final ApimExchangeOutcomeLogger outcomeLogger =
       new ApimExchangeOutcomeLogger(
-          new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties())),
-          objectMapper);
+          new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties())), objectMapper);
 
   private ListAppender<ILoggingEvent> appender;
   private Logger logbackLogger;

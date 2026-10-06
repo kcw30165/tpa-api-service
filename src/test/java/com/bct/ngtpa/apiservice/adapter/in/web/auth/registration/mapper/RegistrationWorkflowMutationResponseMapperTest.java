@@ -18,7 +18,8 @@ class RegistrationWorkflowMutationResponseMapperTest {
   @Test
   void defaultConstructorDelegatesToRealWorkflowMutationResponseMapperAndWrapsNonNullPayload() {
     var mapper = new RegistrationWorkflowMutationResponseMapper();
-    var workflowResult = WorkflowResult.success(WorkflowNextStep.NONE, "payload-data");
+    var workflowResult =
+        WorkflowResult.success(WorkflowNextStep.NONE, "payload-data");
     var response = mapper.toMutationResponse(workflowResult);
     assertThat(response.success()).isTrue();
     assertThat(response.status()).isEqualTo(ApiStatus.SUCCESS);

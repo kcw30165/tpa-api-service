@@ -18,11 +18,11 @@ public class ApimProperties {
   private int timeoutMilliseconds = 10000;
 
   /**
-   * Maximum APIM response body buffered in memory per call (apim.max-response-size). Spring's codec
-   * default is 256 KB, which large responses such as the 36-month TRPGetFundPrice export exceed.
+   * Maximum APIM response body buffered in memory per call (apim.max-response-size). Spring's
+   * codec default is 256 KB, which large responses such as the 36-month TRPGetFundPrice export
+   * exceed.
    */
   private DataSize maxResponseSize = DataSize.ofMegabytes(16);
-
   private String apiKeyHeaderName = "Ocp-Apim-Subscription-Key";
   private final Oauth oauth = new Oauth();
   private final Encryption encryption = new Encryption();

@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>Carries ONE validated FE date, unmanipulated -- Java does not expand it into a
  * from-date/to-date range at this layer. {@code mode} rides alongside so the adapter (not this
- * command, not the use case) decides how to expand the date when building the downstream request.
- * Confirmed design decision, not an assumption.
+ * command, not the use case) decides how to expand the date when building the downstream
+ * request. Confirmed design decision, not an assumption.
  */
 class FetchFundPriceCommandTest {
 
@@ -105,7 +105,8 @@ class FetchFundPriceCommandTest {
 
   @Test
   void nullActorUserRoleThrows() {
-    assertThatThrownBy(() -> new FetchFundPriceCommand("00000008802", DATE, "DAILY", "DB", null))
+    assertThatThrownBy(
+            () -> new FetchFundPriceCommand("00000008802", DATE, "DAILY", "DB", null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("actorUserRole");
   }

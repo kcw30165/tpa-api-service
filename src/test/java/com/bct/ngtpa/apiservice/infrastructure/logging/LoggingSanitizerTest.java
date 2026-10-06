@@ -392,7 +392,8 @@ class LoggingSanitizerTest {
     // defensive branch can only be exercised by invoking the private method
     // directly with a null token, bypassing that upstream guard.
     var method =
-        LoggingSanitizer.class.getDeclaredMethod("maskTokenAssignment", String.class, String.class);
+        LoggingSanitizer.class.getDeclaredMethod(
+            "maskTokenAssignment", String.class, String.class);
     method.setAccessible(true);
     Object result = method.invoke(sanitizer, "password=secret123 other=1", null);
     assertEquals("password=secret123 other=1", result);

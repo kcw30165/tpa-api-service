@@ -136,7 +136,8 @@ class FundPriceDateFormatPropertiesTest {
 
   @Test
   void monthPatternWithoutYearFails() {
-    assertThatThrownBy(() -> withMonth("MM").validate()).isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(() -> withMonth("MM").validate())
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
@@ -144,7 +145,8 @@ class FundPriceDateFormatPropertiesTest {
     assertThatThrownBy(() -> withMonth(" ").validate())
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("fund-price.date-format.month must not be blank");
-    assertThatThrownBy(() -> withMonth(null).validate()).isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(() -> withMonth(null).validate())
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test

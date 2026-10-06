@@ -19,7 +19,8 @@ class ApimPropertiesTimeoutTest {
   @Test
   void bindsTimeoutMillisecondsFromConfiguration() {
     Binder binder =
-        new Binder(new MapConfigurationPropertySource(Map.of("apim.timeout-milliseconds", "5000")));
+        new Binder(
+            new MapConfigurationPropertySource(Map.of("apim.timeout-milliseconds", "5000")));
     ApimProperties bound =
         binder
             .bind("apim", Bindable.of(ApimProperties.class))

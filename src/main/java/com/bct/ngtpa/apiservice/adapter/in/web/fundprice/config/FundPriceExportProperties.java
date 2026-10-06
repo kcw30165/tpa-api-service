@@ -23,8 +23,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * concatenated. The space before the Chinese label in {@code unit-price.currency} is deliberate and
  * must not be "normalized" to match the other headers.
  *
- * <p>{@code sheet-names} maps each downstream fund-price-type to the workbook sheet name. The types
- * contain a space, so YAML keys must be bracketed ({@code "[BIDOFFER PRICE]"}) or Spring Boot
+ * <p>{@code sheet-names} maps each downstream fund-price-type to the workbook sheet name. The
+ * types contain a space, so YAML keys must be bracketed ({@code "[BIDOFFER PRICE]"}) or Spring Boot
  * strips the space when binding. {@link #validate()} runs at startup (via the exporter bean): both
  * supported types must be mapped to a non-blank Excel-legal sheet name.
  */

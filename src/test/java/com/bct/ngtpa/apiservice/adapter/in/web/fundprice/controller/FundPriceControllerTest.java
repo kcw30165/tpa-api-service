@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.fundprice.controller;
 
+import com.bct.ngtpa.apiservice.application.exception.FundPriceRequestInvalidException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -8,29 +10,28 @@ import static org.mockito.Mockito.when;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.mapper.FundPriceWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support.FundPriceSortingSupport;
-import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support.FundPriceWorkbookExporter;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
-import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceQueryResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRowResult;
-import com.bct.ngtpa.apiservice.application.exception.FundPriceRequestInvalidException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCaseResult;
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceQueryUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceQueryUseCaseResult;
-import java.math.BigDecimal;
+import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support.FundPriceWorkbookExporter;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
+import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCaseResult;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import java.math.BigInteger;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpCookie;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -41,24 +42,21 @@ import reactor.test.StepVerifier;
  *
  * <p>CORRECTED (script 118): script 117's original version used a nonsensical Reactor-context
  * injection trick to supply a ServerWebExchange. The real, correct Spring WebFlux idiom (confirmed
- * script 116, mirroring LogoutController/PortalAccessContextWebFilter) is for the controller method
- * to receive ServerWebExchange as a normal parameter, which Spring injects automatically -- so this
- * test now passes the mocked exchange directly as a method argument. The constructor call is also
- * corrected to 7 args (a DateTimeFormatter was added, needed to parse the FE date query parameter
- * -- this was missing from script 117's original design).
+ * script 116, mirroring LogoutController/PortalAccessContextWebFilter) is for the controller
+ * method to receive ServerWebExchange as a normal parameter, which Spring injects automatically --
+ * so this test now passes the mocked exchange directly as a method argument. The constructor call
+ * is also corrected to 7 args (a DateTimeFormatter was added, needed to parse the FE date query
+ * parameter -- this was missing from script 117's original design).
  */
 class FundPriceControllerTest {
 
-  private static final DateTimeFormatter FORMATTER =
-      new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties()
-          .fullDateFormatter();
+  private static final DateTimeFormatter FORMATTER = new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties().fullDateFormatter();
 
   private final FundPriceQueryUseCase queryUseCase = mock(FundPriceQueryUseCase.class);
   private final FundPriceExportUseCase exportUseCase = mock(FundPriceExportUseCase.class);
   private final FundPriceWorkbookExporter workbookExporter = mock(FundPriceWorkbookExporter.class);
-  private final com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCase
-      modeUseCase =
-          mock(com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCase.class);
+  private final com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCase modeUseCase =
+      mock(com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCase.class);
   private final com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort referenceDatePort =
       mock(com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort.class);
   private final FundPriceWebMapper webMapper = mock(FundPriceWebMapper.class);
@@ -119,14 +117,7 @@ class FundPriceControllerTest {
         new FundPriceQueryResult(
             List.of(
                 new FundPriceRowResult(
-                    "DUSM",
-                    "n",
-                    "n",
-                    LocalDate.of(2026, 5, 5),
-                    "HKD",
-                    BigDecimal.ONE,
-                    BigDecimal.ONE,
-                    "5")),
+                    "DUSM", "n", "n", LocalDate.of(2026, 5, 5), "HKD", BigDecimal.ONE, BigDecimal.ONE, "5")),
             "BIDOFFER PRICE",
             "5");
     when(queryUseCase.query(any(), any(), any(), any(), any()))
@@ -160,7 +151,6 @@ class FundPriceControllerTest {
         .expectError(FundPriceRequestInvalidException.class)
         .verify();
   }
-
   @Test
   void blankSessionCookieValueMapsToError() {
     var request =
@@ -216,8 +206,7 @@ class FundPriceControllerTest {
                         com.bct.ngtpa.apiservice.application.usecase.fundprice
                             .FundPriceUseCaseOutcome.INVALID_DATE)));
 
-    StepVerifier.create(
-            newController().getFundPrice("05/05/2026", null, exchangeWithSessionCookie()))
+    StepVerifier.create(newController().getFundPrice("05/05/2026", null, exchangeWithSessionCookie()))
         .expectError(FundPriceRequestInvalidException.class)
         .verify();
   }
@@ -233,12 +222,10 @@ class FundPriceControllerTest {
                         com.bct.ngtpa.apiservice.application.usecase.fundprice
                             .FundPriceUseCaseOutcome.SYSTEM_FAILURE)));
 
-    StepVerifier.create(
-            newController().getFundPrice("05/05/2026", null, exchangeWithSessionCookie()))
+    StepVerifier.create(newController().getFundPrice("05/05/2026", null, exchangeWithSessionCookie()))
         .expectError()
         .verify();
   }
-
   @Test
   void modeEndpointReturnsWrappedSuccessResponse() {
     when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
@@ -282,7 +269,8 @@ class FundPriceControllerTest {
   @Test
   void exportEndpointReturnsExcelBytesWithCorrectContentTypeAndFilename() {
     when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
-    var exportResult = new FundPriceExportResult(List.of(), "UNIT PRICE", "5", BigInteger.TWO);
+    var exportResult =
+        new FundPriceExportResult(List.of(), "UNIT PRICE", "5", BigInteger.TWO);
     when(exportUseCase.export(any(), any(), any(), any(), any()))
         .thenReturn(
             Mono.just(
@@ -318,34 +306,16 @@ class FundPriceControllerTest {
     when(contextResolver.current()).thenReturn(Mono.just(validPortalAccessContext()));
     var older =
         new FundPriceRowResult(
-            "OLD",
-            "Alpha Fund",
-            null,
-            LocalDate.of(2026, 5, 4),
-            "HKD",
-            BigDecimal.ONE,
-            BigDecimal.ONE,
-            "1");
+            "OLD", "Alpha Fund", null, LocalDate.of(2026, 5, 4), "HKD",
+            BigDecimal.ONE, BigDecimal.ONE, "1");
     var zeroRisk =
         new FundPriceRowResult(
-            "ZRO",
-            "Alpha Fund",
-            null,
-            LocalDate.of(2026, 5, 5),
-            "HKD",
-            BigDecimal.ONE,
-            BigDecimal.ONE,
-            "0");
+            "ZRO", "Alpha Fund", null, LocalDate.of(2026, 5, 5), "HKD",
+            BigDecimal.ONE, BigDecimal.ONE, "0");
     var lowRisk =
         new FundPriceRowResult(
-            "LOW",
-            "Zeta Fund",
-            null,
-            LocalDate.of(2026, 5, 5),
-            "HKD",
-            BigDecimal.ONE,
-            BigDecimal.ONE,
-            "1");
+            "LOW", "Zeta Fund", null, LocalDate.of(2026, 5, 5), "HKD",
+            BigDecimal.ONE, BigDecimal.ONE, "1");
     var exportResult =
         new FundPriceExportResult(
             List.of(older, zeroRisk, lowRisk), "UNIT PRICE", "5", BigInteger.TWO);
@@ -362,6 +332,7 @@ class FundPriceControllerTest {
         .containsExactly("LOW", "ZRO", "OLD");
   }
 
+
   @Test
   void exportEndpointSystemFailureOutcomeMapsToError() {
     // Confirms toExportResultOrError's SYSTEM_FAILURE branch (script 206's
@@ -370,8 +341,8 @@ class FundPriceControllerTest {
     when(exportUseCase.export(any(), any(), any(), any(), any()))
         .thenReturn(
             Mono.just(
-                com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCaseResult
-                    .of(
+                com.bct.ngtpa.apiservice.application.usecase.fundprice
+                    .FundPriceExportUseCaseResult.of(
                         com.bct.ngtpa.apiservice.application.usecase.fundprice
                             .FundPriceUseCaseOutcome.SYSTEM_FAILURE)));
 
@@ -392,8 +363,8 @@ class FundPriceControllerTest {
     when(exportUseCase.export(any(), any(), any(), any(), any()))
         .thenReturn(
             Mono.just(
-                com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCaseResult
-                    .of(
+                com.bct.ngtpa.apiservice.application.usecase.fundprice
+                    .FundPriceExportUseCaseResult.of(
                         com.bct.ngtpa.apiservice.application.usecase.fundprice
                             .FundPriceUseCaseOutcome.INVALID_DATE)));
 
@@ -421,8 +392,8 @@ class FundPriceControllerTest {
     when(modeUseCase.fetchAndCacheMode(any(), any(), any()))
         .thenReturn(
             Mono.just(
-                com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCaseResult
-                    .applied(metadata)));
+                com.bct.ngtpa.apiservice.application.usecase.fundprice
+                    .FundPriceModeUseCaseResult.applied(metadata)));
     when(webMapper.toModeResponse(any(), any()))
         .thenReturn(
             new com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceModeResponse(

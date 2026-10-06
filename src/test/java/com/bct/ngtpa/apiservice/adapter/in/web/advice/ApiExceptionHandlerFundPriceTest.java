@@ -15,12 +15,12 @@ import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 
 /**
- * Fail-first tests confirming Gap B's fix (script 116/118/126): FundPriceRequestInvalidException (a
- * new ApplicationException subclass) gets HTTP 400 via the EXISTING generic ApplicationException
- * handler; FundPriceRetrievalException gets a NEW dedicated @ExceptionHandler mapping to HTTP 503
- * (mirroring CacheException's exact precedent) -- fixing the confirmed pre-existing bug where it
- * previously fell through to the generic @ExceptionHandler(Exception.class) and received HTTP 500
- * instead.
+ * Fail-first tests confirming Gap B's fix (script 116/118/126): FundPriceRequestInvalidException
+ * (a new ApplicationException subclass) gets HTTP 400 via the EXISTING generic
+ * ApplicationException handler; FundPriceRetrievalException gets a NEW dedicated
+ * @ExceptionHandler mapping to HTTP 503 (mirroring CacheException's exact precedent) -- fixing the
+ * confirmed pre-existing bug where it previously fell through to the generic
+ * @ExceptionHandler(Exception.class) and received HTTP 500 instead.
  */
 class ApiExceptionHandlerFundPriceTest {
 

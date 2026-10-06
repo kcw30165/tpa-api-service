@@ -8,9 +8,9 @@ import java.util.Objects;
  * Inbound command for the TRPGetFundPrice operation.
  *
  * <p>Carries ONE FE-validated date, unmanipulated: Java does not expand it into a from-date/to-date
- * range at this layer. {@code mode} ("DAILY" or "MONTHLY", read from cached {@link
- * FundPriceModeSessionMetadata}) rides alongside so the ADAPTER -- not this command, not the
- * calling use case -- decides how to expand {@code date} into the downstream request's
+ * range at this layer. {@code mode} ("DAILY" or "MONTHLY", read from cached
+ * {@link FundPriceModeSessionMetadata}) rides alongside so the ADAPTER -- not this command, not
+ * the calling use case -- decides how to expand {@code date} into the downstream request's
  * from-date/to-date when building {@code TrpGetFundPriceApimRequest}. This mirrors exactly how
  * {@code ApimFundPriceModeSourceAdapter} alone knows how to shape its own downstream request.
  */

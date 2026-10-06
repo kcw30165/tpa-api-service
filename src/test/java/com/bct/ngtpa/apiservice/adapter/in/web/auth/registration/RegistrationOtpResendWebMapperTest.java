@@ -3,16 +3,16 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpResendErrorKeys;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResultStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpResendErrorKeys;
 
 class RegistrationOtpResendWebMapperTest {
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -197,8 +197,7 @@ class RegistrationOtpResendWebMapperTest {
         .satisfies(
             error ->
                 assertThat(error.code())
-                    .isEqualTo(
-                        RegistrationOtpResendErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED));
+                    .isEqualTo(RegistrationOtpResendErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED));
   }
 
   @Test
@@ -238,4 +237,5 @@ class RegistrationOtpResendWebMapperTest {
                 null));
     assertThat(response.success()).isTrue();
   }
+
 }

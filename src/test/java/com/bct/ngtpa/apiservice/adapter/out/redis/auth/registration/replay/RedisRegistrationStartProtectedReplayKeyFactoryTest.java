@@ -14,7 +14,8 @@ class RedisRegistrationStartProtectedReplayKeyFactoryTest {
         new RedisRegistrationStartProtectedReplayKeyFactory(new RedisCacheKeyFactory("ngtpa"))
             .keyFor(new ProtectedReplayReference("registrationStartReplayReference001"));
     assertThat(key)
-        .isEqualTo("ngtpa:registration:start-protected-replay:registrationStartReplayReference001");
+        .isEqualTo(
+            "ngtpa:registration:start-protected-replay:registrationStartReplayReference001");
     assertThat(key).doesNotContain(":idempotency:", "auth_flow_sid", "csrf", "member@example.com");
   }
 }

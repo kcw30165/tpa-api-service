@@ -141,7 +141,12 @@ class RegistrationLookupProductionPathIntegrationTest {
   private static RegistrationLookupCommand command(
       MemberIdentityType type, RegistrationContactType contactType, String contactValue) {
     return new RegistrationLookupCommand(
-        type, "1234567890", "31/01/1980", contactType, contactValue, ActorUserRole.ROLE_USER_MBR);
+        type,
+        "1234567890",
+        "31/01/1980",
+        contactType,
+        contactValue,
+        ActorUserRole.ROLE_USER_MBR);
   }
 
   private static RegistrationLookupCommand command(MemberIdentityType type) {

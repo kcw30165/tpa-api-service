@@ -9,12 +9,12 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Dedicated coverage-closure tests for FundPriceModeUseCaseResult's compact constructor. Confirmed
- * (script 154's investigation): the class's 2 factory methods (applied/systemFailure) are both
- * already fully covered via FundPriceModeUseCaseTest, but the compact constructor's 3 validation
- * guard clauses are NEVER exercised by real production code -- both real call sites always
- * construct valid combinations by design. This test constructs the record DIRECTLY, bypassing the
- * factories, to exercise each guard clause explicitly.
+ * Dedicated coverage-closure tests for FundPriceModeUseCaseResult's compact constructor.
+ * Confirmed (script 154's investigation): the class's 2 factory methods (applied/systemFailure)
+ * are both already fully covered via FundPriceModeUseCaseTest, but the compact constructor's 3
+ * validation guard clauses are NEVER exercised by real production code -- both real call sites
+ * always construct valid combinations by design. This test constructs the record DIRECTLY,
+ * bypassing the factories, to exercise each guard clause explicitly.
  */
 class FundPriceModeUseCaseResultTest {
 
@@ -58,7 +58,8 @@ class FundPriceModeUseCaseResultTest {
 
   @Test
   void systemFailureWithoutMetadataConstructsSuccessfully() {
-    var result = new FundPriceModeUseCaseResult(FundPriceModeUseCaseOutcome.SYSTEM_FAILURE, null);
+    var result =
+        new FundPriceModeUseCaseResult(FundPriceModeUseCaseOutcome.SYSTEM_FAILURE, null);
     assertThat(result.outcome()).isEqualTo(FundPriceModeUseCaseOutcome.SYSTEM_FAILURE);
     assertThat(result.metadata()).isNull();
   }

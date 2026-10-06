@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.fundprice.mapper;
 
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceQueryResponse;
@@ -19,9 +20,7 @@ import org.junit.jupiter.api.Test;
  */
 class FundPriceWebMapperTest {
 
-  private static final DateTimeFormatter FORMATTER =
-      new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties()
-          .fullDateFormatter();
+  private static final DateTimeFormatter FORMATTER = new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties().fullDateFormatter();
 
   private FundPriceWebMapper newMapper() {
     return new FundPriceWebMapper(FORMATTER);
@@ -29,14 +28,8 @@ class FundPriceWebMapperTest {
 
   private FundPriceRowResult row(String riskLevel) {
     return new FundPriceRowResult(
-        "DUSM",
-        "USD Fund",
-        "\u7f8e\u5143\u57fa\u91d1",
-        LocalDate.of(2026, 5, 5),
-        "HKD",
-        new BigDecimal("1.1"),
-        new BigDecimal("1.2"),
-        riskLevel);
+        "DUSM", "USD Fund", "\u7f8e\u5143\u57fa\u91d1", LocalDate.of(2026, 5, 5), "HKD",
+        new BigDecimal("1.1"), new BigDecimal("1.2"), riskLevel);
   }
 
   @Test
@@ -52,7 +45,8 @@ class FundPriceWebMapperTest {
     var response = newMapper().toModeResponse(metadata, LocalDate.of(2026, 9, 18));
 
     assertThat(response.mode()).isEqualTo("MONTHLY");
-    assertThat(response.availableFundPriceDates()).containsExactly("05/05/2026", "05/04/2026");
+    assertThat(response.availableFundPriceDates())
+        .containsExactly("05/05/2026", "05/04/2026");
     assertThat(response.maximumFundPriceHistoryMonths()).isEqualTo(36);
     assertThat(response.referenceDate()).isEqualTo("18/09/2026");
   }
@@ -126,14 +120,8 @@ class FundPriceWebMapperTest {
   void zhHkFallsBackToEnglishNameWhenChineseNameMissing() {
     var noChinese =
         new FundPriceRowResult(
-            "DUSM",
-            "USD Fund",
-            null,
-            LocalDate.of(2026, 5, 5),
-            "HKD",
-            new BigDecimal("1.1"),
-            new BigDecimal("1.2"),
-            "5");
+            "DUSM", "USD Fund", null, LocalDate.of(2026, 5, 5), "HKD",
+            new BigDecimal("1.1"), new BigDecimal("1.2"), "5");
     var result = new FundPriceQueryResult(List.of(noChinese), "BIDOFFER PRICE", "5");
 
     assertThat(newMapper().toQueryResponse(result, "zh_HK").rows().get(0).fundName())
@@ -144,14 +132,8 @@ class FundPriceWebMapperTest {
   void displayFundNameUsesEnglishForBlankChineseName() {
     var blankChinese =
         new FundPriceRowResult(
-            "DUSM",
-            "USD Fund",
-            "  ",
-            LocalDate.of(2026, 5, 5),
-            "HKD",
-            BigDecimal.ONE,
-            BigDecimal.ONE,
-            "5");
+            "DUSM", "USD Fund", "  ", LocalDate.of(2026, 5, 5), "HKD",
+            BigDecimal.ONE, BigDecimal.ONE, "5");
 
     assertThat(FundPriceWebMapper.displayFundName(blankChinese, "zh_HK")).isEqualTo("USD Fund");
     assertThat(FundPriceWebMapper.displayFundName(row("5"), "en")).isEqualTo("USD Fund");

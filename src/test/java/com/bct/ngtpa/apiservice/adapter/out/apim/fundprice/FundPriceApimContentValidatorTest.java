@@ -15,16 +15,16 @@ import org.junit.jupiter.api.Test;
 /**
  * Fail-first tests for {@code FundPriceApimContentValidator.reconcile(...)} -- the FundPrice x
  * FundInfo join by fund-code, confirmed byte-exact from fund-price-apim-contract.md's Operation 2
- * section (script 092): NOT a flat single-item validation like {@code
- * FundPriceModeApimContentValidator.normalize(...)}, but a real reconciliation across two arrays
- * inside one wrapper item.
+ * section (script 092): NOT a flat single-item validation like
+ * {@code FundPriceModeApimContentValidator.normalize(...)}, but a real reconciliation across two
+ * arrays inside one wrapper item.
  *
  * <p>Confirmed design decisions under test:
  *
  * <ul>
- *   <li>A FundInfo entry with no matching FundPrice row is skipped, NOT an error (the reverse -- a
- *       FundPrice row with no matching FundInfo -- fails closed, per the doc's invariant "every
- *       FundPrice record resolves to exactly one FundInfo record").
+ *   <li>A FundInfo entry with no matching FundPrice row is skipped, NOT an error (the reverse --
+ *       a FundPrice row with no matching FundInfo -- fails closed, per the doc's invariant
+ *       "every FundPrice record resolves to exactly one FundInfo record").
  *   <li>price-date is downstream ISO format ({@code yyyy-MM-dd}), confirmed from the doc's own
  *       byte-exact sample, parsed via a fixed formatter, not the configurable dd/MM/yyyy format.
  * </ul>
@@ -36,8 +36,7 @@ class FundPriceApimContentValidatorTest {
   }
 
   private static FundInfoEntry info(String fundCode, String riskLevel) {
-    return new FundInfoEntry(
-        fundCode, fundCode + " Fund", fundCode + " Fund CN", 1, "HKD", riskLevel);
+    return new FundInfoEntry(fundCode, fundCode + " Fund", fundCode + " Fund CN", 1, "HKD", riskLevel);
   }
 
   // ----- happy path: reconciliation joins correctly ---------------------------
@@ -130,7 +129,8 @@ class FundPriceApimContentValidatorTest {
   void duplicateFundCodePriceDatePairInFundPriceFailsClosed() {
     var item =
         new TrpGetFundPriceApimDataItem(
-            List.of(price("DUSM", "2026-05-05", "1", "1"), price("DUSM", "2026-05-05", "2", "2")),
+            List.of(
+                price("DUSM", "2026-05-05", "1", "1"), price("DUSM", "2026-05-05", "2", "2")),
             List.of(info("DUSM", "1")));
 
     assertThatThrownBy(() -> FundPriceApimContentValidator.reconcile(item))
@@ -143,7 +143,8 @@ class FundPriceApimContentValidatorTest {
     // across a range is explicitly legitimate per the doc's reconciliation invariants.
     var item =
         new TrpGetFundPriceApimDataItem(
-            List.of(price("DUSM", "2026-05-01", "1", "1"), price("DUSM", "2026-05-02", "2", "2")),
+            List.of(
+                price("DUSM", "2026-05-01", "1", "1"), price("DUSM", "2026-05-02", "2", "2")),
             List.of(info("DUSM", "1")));
 
     var result = FundPriceApimContentValidator.reconcile(item);
@@ -206,7 +207,8 @@ class FundPriceApimContentValidatorTest {
   @Test
   void nullFundInfoListFailsClosed() {
     var item =
-        new TrpGetFundPriceApimDataItem(List.of(price("DUSM", "2026-05-05", "1", "1")), null);
+        new TrpGetFundPriceApimDataItem(
+            List.of(price("DUSM", "2026-05-05", "1", "1")), null);
 
     assertThatThrownBy(() -> FundPriceApimContentValidator.reconcile(item))
         .isInstanceOf(FundPriceRetrievalException.class);
@@ -225,7 +227,6 @@ class FundPriceApimContentValidatorTest {
     assertThatThrownBy(() -> FundPriceApimContentValidator.reconcile(item))
         .isInstanceOf(FundPriceRetrievalException.class);
   }
-
   // ----- coverage closure (script 095): previously untested branches ----------
 
   @Test
@@ -237,7 +238,8 @@ class FundPriceApimContentValidatorTest {
   @Test
   void emptyFundInfoListFailsClosed() {
     var item =
-        new TrpGetFundPriceApimDataItem(List.of(price("DUSM", "2026-05-05", "1", "1")), List.of());
+        new TrpGetFundPriceApimDataItem(
+            List.of(price("DUSM", "2026-05-05", "1", "1")), List.of());
 
     assertThatThrownBy(() -> FundPriceApimContentValidator.reconcile(item))
         .isInstanceOf(FundPriceRetrievalException.class);

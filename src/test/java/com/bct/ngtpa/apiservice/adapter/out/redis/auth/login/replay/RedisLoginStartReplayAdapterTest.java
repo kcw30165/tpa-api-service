@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.replay;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -14,6 +13,7 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.ReactiveValueOperations;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** Branch-oriented reactive tests for {@link RedisLoginStartReplayAdapter}. */
 @SuppressWarnings("unchecked")

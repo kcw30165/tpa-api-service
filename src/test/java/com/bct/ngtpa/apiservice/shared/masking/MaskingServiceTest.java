@@ -6,14 +6,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
 
 /**
- * Branch-oriented tests for {@link MaskingService}. Each test constructs its own {@link
- * MaskingProperties} so mode/enabled/mask-length/mask-character scenarios are explicit and
- * independent of the application.yml defaults.
+ * Branch-oriented tests for {@link MaskingService}. Each test constructs its own
+ * {@link MaskingProperties} so mode/enabled/mask-length/mask-character scenarios
+ * are explicit and independent of the application.yml defaults.
  *
- * <p>Rule under test (per centralized masking policy): email and mobile masking always reveal only
- * the first and last character of the relevant segment (email: local-part before {@code @}; mobile:
- * the full number). The number of mask characters rendered between them is either length-preserving
- * ({@code variable-length}, the default) or a fixed configured count ({@code fixed-length}).
+ * <p>Rule under test (per centralized masking policy): email and mobile masking
+ * always reveal only the first and last character of the relevant segment
+ * (email: local-part before {@code @}; mobile: the full number). The number of
+ * mask characters rendered between them is either length-preserving
+ * ({@code variable-length}, the default) or a fixed configured count
+ * ({@code fixed-length}).
  */
 class MaskingServiceTest {
 
@@ -36,7 +38,8 @@ class MaskingServiceTest {
   @Test
   void maskEmailVariableLengthScalesStarCountWithLocalPartLength() {
     MaskingService service = service(defaults());
-    assertThat(service.maskEmail("supermember@example.com")).isEqualTo("s*********r@example.com");
+    assertThat(service.maskEmail("supermember@example.com"))
+        .isEqualTo("s*********r@example.com");
   }
 
   @Test

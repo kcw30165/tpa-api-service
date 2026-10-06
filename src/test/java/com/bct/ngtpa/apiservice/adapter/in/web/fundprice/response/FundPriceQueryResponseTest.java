@@ -13,14 +13,7 @@ class FundPriceQueryResponseTest {
 
   private FundPriceRowResponse row() {
     return new FundPriceRowResponse(
-        "DUSM",
-        "USD Fund",
-        "05/05/2026",
-        "HKD",
-        new BigDecimal("1"),
-        new BigDecimal("1"),
-        null,
-        "5");
+        "DUSM", "USD Fund", "05/05/2026", "HKD", new BigDecimal("1"), new BigDecimal("1"), null, "5");
   }
 
   @Test
@@ -36,7 +29,6 @@ class FundPriceQueryResponseTest {
     String json = objectMapper.writeValueAsString(response);
     assertThat(json).doesNotContain("maxRiskLevel");
   }
-
   @Test
   void nullRowsDefaultsToEmptyList() {
     var response = new FundPriceQueryResponse(null, "5");
