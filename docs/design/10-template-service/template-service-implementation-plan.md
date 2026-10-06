@@ -76,15 +76,14 @@ Phase I (stages I-1 through I-6) is complete and closed. Phase II, Stage II-1 (U
 Recovery) is DONE: sub-stages II-1.a to II-1.d are committed (Appendix A.1) and the stage gate is
 met on the final code, with a passing full `mvn test` and an application startup smoke test with
 no bean or configuration errors, both evidenced (Appendix A.3). Stage II-2 (Registration) is IN
-PROGRESS: its read-only investigation is recorded in Appendix C (sub-stage II-2.a is done) and
-decisions D6 (option A: the per-locale TTL unit is configured in the registry YAML and returned
-with the resolved definition) and D7 (a missing definition fails) are confirmed by Nick. The
-design is solution design section 8.6 and the updated sub-plan is in C.11. No code has been
-changed for II-2. The next steps are a read-only script that prints the real Phase I sources that
-II-2.b0 amends, then II-2.b0 (Template Service extension), II-2.b (adapter migration), II-2.c and
-the stage gate II-2.d. Stages II-3 (Login), II-4 (Forgot Password) and Phase III remain PENDING.
-Decisions and open items for II-1 are in Appendix A.2. Work that is deliberately outside this
-workstream is listed in Appendix B.
+PROGRESS: decisions D6 (option A) and D7 are confirmed, the design is solution design section 8.6,
+and sub-stages II-2.0, II-2.a, II-2.a2 and II-2.b0 are DONE. II-2.b0 (the Template Service
+extension) is committed as be7294d5 and validated with compile, test-compile and a scoped run of
+660 tests with 0 failures (C.12). No workflow reads the unit yet. The next steps are II-2.b
+(migrate `RegistrationMessageDeliveryAdapter` and its gateway wiring), II-2.c and the stage gate
+II-2.d. Stages II-3 (Login), II-4 (Forgot Password) and Phase III remain PENDING. Decisions and
+open items for II-1 are in Appendix A.2. Work that is deliberately outside this workstream is
+listed in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
 
@@ -442,7 +441,7 @@ with a space in en. Consequences:
 | --- | --- | --- |
 | II-2.0 | Confirm D6 and D7. Update the solution design (a new section for the unit) and this appendix before any code. | DONE (D6 option A and D7 confirmed; design: solution design section 8.6; script 065) |
 | II-2.a | Read-only investigation of the three tests that name the gateway config (`RegistrationMessageDestinationOverrideWiringTest`, `RegistrationHardcodedPolicyArchitectureGuardTest`, `RegistrationSharedCoreMigrationArchitectureTest`) and of the tests that build the adapter or mention `RegistrationMessagePort` (17 files in main and test). | DONE (script 062; findings in C.9) |
-| II-2.b0 | Template Service extension (an amendment to Phase I; design: solution design section 8.6). `NoticeTemplateDefinition` gains a nullable last component `ttlUnit` and keeps a public six-argument constructor; `NoticeTemplateProperties` gains `ttlUnits` and validates it; `YamlNoticeTemplateRegistryAdapter` attaches the unit that belongs to the locale key it selected; `application.yml` gains `notice-templates.ttl-units` (en `minutes`, zh_HK `分鐘`) in the SAME commit as the validation, because the validation would otherwise fail the application at startup. Tests per section 8.6. II-2.b depends on it. | PENDING |
+| II-2.b0 | Template Service extension (an amendment to Phase I; design: solution design section 8.6). `NoticeTemplateDefinition` gains a nullable last component `ttlUnit` and keeps a public six-argument constructor; `NoticeTemplateProperties` gains `ttlUnits` and validates it; `YamlNoticeTemplateRegistryAdapter` attaches the unit that belongs to the locale key it selected; `application.yml` gains `notice-templates.ttl-units` (en `minutes`, zh_HK `分鐘`) in the SAME commit as the validation, because the validation would otherwise fail the application at startup. Tests per section 8.6. II-2.b depends on it. | DONE (commit be7294d5; script 066; result in C.12) |
 | II-2.b | `RegistrationMessageDeliveryAdapter` resolves content through `NoticeTemplateRegistryPort.resolve(REGISTRATION_OTP, channel, acceptLanguage)`, builds `code`, `ttlValue` and `ttlUnit` as decided in D6, and no longer takes `AuthWorkflowPolicyPort`. `RegistrationStartGatewayConfig.registrationMessageGateway` injects the registry port. Rewrite `RegistrationMessageDeliveryAdapterTest`, and adjust whichever test from II-2.a pins the old wiring. | PENDING |
 | II-2.c | A test with the real `YamlNoticeTemplateRegistryAdapter` and `DefaultMessageTemplateRenderer` that renders START and RESEND content for SMS and EMAIL in en and zh_HK and asserts that no placeholder is left unreplaced and that the unit follows the selected locale. | PENDING |
 | II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING |
@@ -629,8 +628,8 @@ recorded in the solution design, section 8.6 (Per-Locale TTL Unit). Nothing is i
 | --- | --- | --- |
 | II-2.0 | Confirm D6 and D7; write the design (solution design section 8.6) and this section. | DONE (script 065) |
 | II-2.a | Tests named in C.7. | DONE (script 062; findings in C.9) |
-| II-2.a2 | Read-only script that prints the real sources and tests that II-2.b0 amends (`NoticeTemplateDefinition`, `NoticeTemplateProperties`, `YamlNoticeTemplateRegistryAdapter`, their tests, the `notice-templates` block of `application.yml`), so that the patch anchors come from the real files. Script 065 already collects a first copy of this evidence. | PENDING (review of the 065 evidence) |
-| II-2.b0 | Template Service extension (a Phase I amendment), see the II-2.b0 row in C.7 and solution design section 8.6. | PENDING |
+| II-2.a2 | Read-only script that prints the real sources and tests that II-2.b0 amends (`NoticeTemplateDefinition`, `NoticeTemplateProperties`, `YamlNoticeTemplateRegistryAdapter`, their tests, the `notice-templates` block of `application.yml`), so that the patch anchors come from the real files. Script 065 already collects a first copy of this evidence. | DONE (the real sources of the 065 evidence were reviewed; script 066 was patched against them) |
+| II-2.b0 | Template Service extension (a Phase I amendment), see the II-2.b0 row in C.7 and solution design section 8.6. | DONE (commit be7294d5; script 066; result in C.12) |
 | II-2.b | `RegistrationMessageDeliveryAdapter` migration, as in C.7. Before editing, read how START and RESEND treat an exception thrown synchronously by `deliverRegistrationOtp` (D7), and add a test that a missing definition surfaces as an error and not as the value `false`. | PENDING |
 | II-2.c | Rendering test with the real registry and renderer, extended by C.10.1: assert the placeholders and the rendered text of the zh_HK Registration content as well, including the unit (for example `有效期為5分鐘。`). | PENDING |
 | II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING |
@@ -652,3 +651,65 @@ recorded in the solution design, section 8.6 (Per-Locale TTL Unit). Nothing is i
    the files that define the key.
 3. The exact current text of the three Phase I classes and their tests is taken from the evidence of script 055
    and, again, from script 065. II-2.b0 is patched against the real files, not against this section.
+
+### C.12 Sub-stage II-2.b0 result (script 066)
+
+Recorded 2026-10-05 from the evidence of script 066 (HEAD before the script 434c2504; code commit
+be7294d5). Statements are limited to what that evidence shows.
+
+#### C.12.1 What was committed
+
+- Commit be7294d5 `feat(template-service): configure the TTL unit per locale and return it with the
+  resolved definition`: 8 files, 661 insertions and 3 deletions. Modified: `NoticeTemplateDefinition`
+  (nullable last component `ttlUnit`, blank rejected, public six-argument constructor kept),
+  `NoticeTemplateProperties` (`ttlUnits`; `validate()` split into `validateDefinitions()` and
+  `validateTtlUnits()`), `YamlNoticeTemplateRegistryAdapter` (the unit of the SELECTED locale key;
+  fails for a required but unconfigured unit) and `application.yml` (`notice-templates.ttl-units`:
+  `en` `minutes`, `zh_HK` `分鐘`). New: `NoticeTemplateDefinitionTtlUnitTest` (5 tests),
+  `NoticeTemplatePropertiesTtlUnitTest` (10), `YamlNoticeTemplateRegistryAdapterTtlUnitTest` (8) and
+  `NoticeTemplateRegistryTtlUnitMatrixTest` (3, against the real `application.yml`).
+- `NoticeTemplateRegistryPort`, the workflows and the test fakes of the port were not touched.
+- Source pin from now on: `src/` and `pom.xml` equal be7294d5, which replaces 211f3702 as the last
+  code commit. Docs-only commits do not change it.
+
+#### C.12.2 Validation
+
+- `mvn -DskipTests compile` exit 0 (33 s); `mvn -DskipTests test-compile` exit 0 (48 s).
+- Scoped run with wildcard patterns `NoticeTemplate*Test`, `YamlNoticeTemplate*Test`,
+  `ApplicationYamlNoticeTemplatesBindingTest`, `CleanArchitectureDependencyTest`,
+  `UsernameRecovery*Test` and `*MessageDelivery*Test`: 660 tests, 0 failures, 0 errors, 0 skipped
+  (216 s), 121 classes with fresh reports. All 13 narrow classes of the source ran, every observed
+  floor held, 97 `UsernameRecovery*Test` and 11 `*MessageDelivery*Test` classes were fresh, and
+  each new class ran exactly the number of `@Test` methods it declares.
+- JaCoCo of that run: `NoticeTemplateDefinition` has 0 missed instructions and 0 missed branches
+  of 14 (record tier 95% and 95%: met). `YamlNoticeTemplateRegistryAdapter` is at 99.4%
+  instruction and 97.4% branch (adapter tier 95% and 85-90%: met). Its one missed branch is the
+  defensive `template == null` branch of `placeholders`, justified in Appendix A.2 at line 116; it
+  now sits at lines 125-126 because the patch added lines above it. Nothing new is uncovered.
+- Not run in 066 by design: the full `mvn test`, the application startup smoke test (both belong
+  to the stage gate II-2.d on the final II-2 code commit) and `mvn spotless:apply` (deferred to the
+  feature-level stabilization).
+
+#### C.12.3 Observation for II-2.b (from sources already printed, not yet tested)
+
+START (`RegistrationStartProtectedOperation`, line 218) and RESEND
+(`RegistrationOtpResendProtectedOperation`, line 57) both call
+`sessions.updateOtpChallenge(...).then(messages.deliverRegistrationOtp(...))`. The argument of
+`then` is evaluated while the chain is assembled inside a `flatMap` lambda, before
+`updateOtpChallenge` is subscribed. Today a missing policy therefore throws inside
+`deliverRegistrationOtp` at assembly time: the OTP challenge already exists, the session update does
+not run, and the exception becomes an error signal of the `flatMap`. Decision D7 keeps exactly that
+place and behaviour for a missing definition. II-2.b must (a) keep the registry call eager, in the
+same place, (b) test that a missing definition surfaces as an error and not as the value `false`
+(`false` already means a failed delivery and is handled by both callers), and (c) read how the two
+operations and the web layer treat that error before editing (script 067 collects it).
+
+#### C.12.4 Open items
+
+1. II-2.b is not started. How START and RESEND, the idempotency layer and the controller surface
+   an exception thrown synchronously by `deliverRegistrationOtp` is not read yet; script 067 collects
+   the sources.
+2. Whether any test that builds a Spring context around `RegistrationStartGatewayConfig` lacks a
+   `NoticeTemplateRegistryPort` bean (the gateway method gains that parameter in II-2.b) is not
+   established; script 067 collects the candidates.
+3. The gates of II-2.d pin `src/` and `pom.xml` to the final II-2 code commit, not to be7294d5.
