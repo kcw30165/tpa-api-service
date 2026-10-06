@@ -44,7 +44,7 @@ still build `MessageDeliveryCommand` and call
 | Stage | Workflow | Notes | Status |
 |---|---|---|---|
 | II-1 | Username Recovery | Simplest — single call site in `UsernameRecoveryFeatureConfig` / `UsernameRecoveryRequestProtectedOperation`. First to confirm whether `schemeName`/`schemeNameChi` already flow from the DTO through `TrpSearchMemberApimResultMapper` → `UsernameRecoveryLookupCandidate`, or need additive plumbing. | DONE (gate evidence: Appendix A.3) |
-| II-2 | Registration | Replace `RegistrationMessageDeliveryAdapter`'s `subject()`/`body()` policy lookup with `NoticeTemplateRegistryPort.resolve(...)`. No scheme-name placeholder needed (§8.2). | IN PROGRESS (investigation done; draft sub-plan: Appendix C) |
+| II-2 | Registration | Replace `RegistrationMessageDeliveryAdapter`'s `subject()`/`body()` policy lookup with `NoticeTemplateRegistryPort.resolve(...)`. No scheme-name placeholder needed (§8.2). | DONE (gate evidence: Appendix C.17) |
 | II-3 | Login | Replace `LoginOtpSendPolicy`-based lookup. Requires scheme-name plumbing from `TrpGetAccountListApimDataItem`. | PENDING |
 | II-4 | Forgot Password | **Last** — highest risk, since it currently has no live YAML wiring at all. Reconcile content to match `login-otp` verbatim (§5). Requires scheme-name plumbing from `ForgotPasswordTrpSearchMemberDataItem`. | PENDING |
 
@@ -75,19 +75,19 @@ depending on a config block that has already been removed.
 Phase I (stages I-1 through I-6) is complete and closed. Phase II, Stage II-1 (Username
 Recovery) is DONE: sub-stages II-1.a to II-1.d are committed (Appendix A.1) and the stage gate is
 met on the final code, with a passing full `mvn test` and an application startup smoke test with
-no bean or configuration errors, both evidenced (Appendix A.3). Stage II-2 (Registration) is IN
-PROGRESS: decisions D6 (option A) and D7 are confirmed, the design is solution design section 8.6,
-and sub-stages II-2.0, II-2.a, II-2.a2, II-2.b0, II-2.b and II-2.c are DONE. The code is committed
-as be7294d5 (Template Service extension), ce2176e7 (Registration adapter migration) and 14c71b24
-(a test-only commit: the Registration content rendered with the real registry and renderer); each
-was validated with compile, test-compile and a scoped run with 0 failures (C.12, C.13 and C.14).
-The next step is the START test for a missing definition with the captcha gate on, the production
-setting (sub-stage II-2.e, C.16), and then the stage gate II-2.d on the final II-2 code commit.
-Sub-stage II-2.e is IN PROGRESS: the START (gate off) and RESEND tests are committed as 951049f8
-(script 076). A gate run on 14c71b24 passed (script 072, C.15) but does not cover II-2.e, so the
-gate is rerun. Stages II-3 (Login), II-4 (Forgot Password)
-and Phase III remain PENDING. Decisions and open items for II-1 are in Appendix A.2. Work that is
-deliberately outside this workstream is listed in Appendix B.
+no bean or configuration errors, both evidenced (Appendix A.3). Stage II-2 (Registration) is DONE:
+decisions D6 (option A) and D7 are confirmed, the design is solution design section 8.6, and all of
+its sub-stages (II-2.0, II-2.a, II-2.a2, II-2.b0, II-2.b, II-2.c, II-2.e and II-2.d) are DONE. The
+code is committed as be7294d5 (Template Service extension), ce2176e7 (Registration adapter
+migration), 14c71b24 (a rendering test with the real registry and renderer), 951049f8 (START with
+the captcha gate off, and RESEND, tests for a missing definition) and da136a8f (START with the
+captcha gate on); each was validated with compile, test-compile and a scoped run with 0 failures
+(C.12 to C.14, C.16 and C.17). The stage gate is met on the final II-2 code commit da136a8f: a
+passing full `mvn test` (5564 tests, 0 failures, 0 errors, 10 skipped) and an application startup
+smoke test with no bean or configuration errors, both evidenced (C.17). Registration now takes its
+content and its unit word from the registry. Stages II-3 (Login), II-4 (Forgot Password) and Phase
+III remain PENDING; II-3 is next. Decisions and open items for II-1 are in Appendix A.2. Work that
+is deliberately outside this workstream is listed in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
 
@@ -448,8 +448,8 @@ with a space in en. Consequences:
 | II-2.b0 | Template Service extension (an amendment to Phase I; design: solution design section 8.6). `NoticeTemplateDefinition` gains a nullable last component `ttlUnit` and keeps a public six-argument constructor; `NoticeTemplateProperties` gains `ttlUnits` and validates it; `YamlNoticeTemplateRegistryAdapter` attaches the unit that belongs to the locale key it selected; `application.yml` gains `notice-templates.ttl-units` (en `minutes`, zh_HK `分鐘`) in the SAME commit as the validation, because the validation would otherwise fail the application at startup. Tests per section 8.6. II-2.b depends on it. | DONE (commit be7294d5; script 066; result in C.12) |
 | II-2.b | `RegistrationMessageDeliveryAdapter` resolves content through `NoticeTemplateRegistryPort.resolve(REGISTRATION_OTP, channel, acceptLanguage)`, builds `code`, `ttlValue` and `ttlUnit` as decided in D6, and no longer takes `AuthWorkflowPolicyPort`. `RegistrationStartGatewayConfig.registrationMessageGateway` injects the registry port. Rewrite `RegistrationMessageDeliveryAdapterTest`, and adjust whichever test from II-2.a pins the old wiring. | DONE (commit ce2176e7; script 068; result in C.13) |
 | II-2.c | A test with the real `YamlNoticeTemplateRegistryAdapter` and `DefaultMessageTemplateRenderer` that renders START and RESEND content for SMS and EMAIL in en and zh_HK and asserts that no placeholder is left unreplaced and that the unit follows the selected locale. | DONE (commit 14c71b24; script 070; result in C.14) |
-| II-2.e | START and RESEND tests for a missing registration-otp definition (decision D7), requested by Nick on 2026-10-06. START with the captcha gate off, and RESEND: the original IllegalStateException reaches the caller as an error signal and nothing is sent (commit 951049f8, script 076). START with the captcha gate on, the production setting: the operation turns it into a SYSTEM_FAILED result with SYSTEM_UNAVAILABLE and nothing is sent (test to follow, C.16). Each code commit moves the source pin; II-2.d is rerun on the last one (C.15, C.16). | IN PROGRESS (951049f8 done; the gate-on START test is next) |
-| II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING (run 20261006-131109 passed on 14c71b24, script 072, C.15; it must be rerun on the last II-2.e code commit) |
+| II-2.e | START and RESEND tests for a missing registration-otp definition (decision D7), requested by Nick on 2026-10-06. START with the captcha gate off, and RESEND: the original IllegalStateException reaches the caller as an error signal and nothing is sent (commit 951049f8, script 076). START with the captcha gate on, the production setting: the operation turns it into a SYSTEM_FAILED result with SYSTEM_UNAVAILABLE and nothing is sent (commit da136a8f, script 078, C.17). Each code commit moves the source pin; II-2.d is rerun on the last one (C.15, C.16). | DONE (commits 951049f8 and da136a8f; scripts 076 and 078; results in C.16 and C.17) |
+| II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | DONE (script 079, run 20261006-153630 on da136a8f; result in C.17) |
 
 ### C.8 Open items
 
@@ -637,8 +637,8 @@ recorded in the solution design, section 8.6 (Per-Locale TTL Unit). Nothing is i
 | II-2.b0 | Template Service extension (a Phase I amendment), see the II-2.b0 row in C.7 and solution design section 8.6. | DONE (commit be7294d5; script 066; result in C.12) |
 | II-2.b | `RegistrationMessageDeliveryAdapter` migration, as in C.7. Before editing, read how START and RESEND treat an exception thrown synchronously by `deliverRegistrationOtp` (D7), and add a test that a missing definition surfaces as an error and not as the value `false`. | DONE (commit ce2176e7; script 068; result in C.13) |
 | II-2.c | Rendering test with the real registry and renderer, extended by C.10.1: assert the placeholders and the rendered text of the zh_HK Registration content as well, including the unit (for example `有效期為5分鐘。`). | DONE (commit 14c71b24; script 070; result in C.14) |
-| II-2.e | START and RESEND tests for a missing registration-otp definition (decision D7), requested by Nick on 2026-10-06. START with the captcha gate off, and RESEND: the original IllegalStateException reaches the caller as an error signal and nothing is sent (commit 951049f8, script 076). START with the captcha gate on, the production setting: the operation turns it into a SYSTEM_FAILED result with SYSTEM_UNAVAILABLE and nothing is sent (test to follow, C.16). Each code commit moves the source pin; II-2.d is rerun on the last one (C.15, C.16). | IN PROGRESS (951049f8 done; the gate-on START test is next) |
-| II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING (run 20261006-131109 passed on 14c71b24, script 072, C.15; it must be rerun on the last II-2.e code commit) |
+| II-2.e | START and RESEND tests for a missing registration-otp definition (decision D7), requested by Nick on 2026-10-06. START with the captcha gate off, and RESEND: the original IllegalStateException reaches the caller as an error signal and nothing is sent (commit 951049f8, script 076). START with the captcha gate on, the production setting: the operation turns it into a SYSTEM_FAILED result with SYSTEM_UNAVAILABLE and nothing is sent (commit da136a8f, script 078, C.17). Each code commit moves the source pin; II-2.d is rerun on the last one (C.15, C.16). | DONE (commits 951049f8 and da136a8f; scripts 076 and 078; results in C.16 and C.17) |
+| II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | DONE (script 079, run 20261006-153630 on da136a8f; result in C.17) |
 
 #### C.11.3 Carried to later stages (not part of II-2)
 
@@ -999,7 +999,6 @@ evidence shows; inferences are marked.
 5. Sequence: script 075 writes and commits the tests; script 076 reruns the gate on the new commit; a
    final docs commit then marks II-2.e, II-2.d and Stage II-2 DONE.
 
-
 ### C.16 Result of script 076 (II-2.e, START gate off and RESEND) and the production START path
 
 Recorded 2026-10-06 from the evidence of scripts 074 and 076. Statements are limited to what that
@@ -1113,3 +1112,143 @@ evidence shows; inferences are marked.
 2. Whether production START should turn a missing definition into `SYSTEM_FAILED` after consuming
    the captcha is the existing behaviour and is not changed by this stage (decision D7 keeps it).
 3. The two long lines of the 076 test file are left to the feature-level formatting pass.
+
+### C.17 Closure of Stage II-2: START with the captcha gate on (078) and the stage gate (079)
+
+Recorded 2026-10-06 from the evidence of scripts 078 and 079; this docs commit is script 080.
+Statements are limited to what that evidence shows; inferences are marked.
+
+#### C.17.1 Script 078 (sub-stage II-2.e, the production path of START)
+
+- Commit da136a8f, subject "test(template-service): START with the captcha gate on returns
+  SYSTEM_FAILED and sends nothing when the registration-otp definition is missing": one new file,
+  RegistrationMissingDefinitionStartCaptchaGateOnIntegrationTest, 362 lines added, 2 tests.
+  Test-only: no main code, no resource and no pom.xml changed.
+- The tests call the START operation directly with the production setting: a
+  `PreStartChallengePolicy` with enabled true and type CAPTCHA, a `RegistrationCaptchaGateService`
+  over a fake `CaptchaChallengePort` that holds one VERIFIED, unexpired challenge, the real
+  `RegistrationMessageDeliveryAdapter` with a registry fake that throws `IllegalStateException` for
+  the missing definition, and a `MessageDeliveryPort` mock. The fixtures follow the shape of
+  `StartRegistrationCaptchaGateTest`.
+- Missing definition: a result is emitted and the Mono completes without an error. Its status is
+  `SYSTEM_FAILED`, its next step is `NONE`, it has a single error with the key `SYSTEM_UNAVAILABLE`
+  on the target `PAGE`, and it has no CSRF token and no auth-flow session id. The captcha is
+  consumed exactly once, before the registry is called (the recorded order is captcha.load,
+  captcha.consume, registry.resolve). The registry is called once for `REGISTRATION_OTP` with the
+  locale en, and the delivery port is never called.
+- Control test with a configured definition and the same fixtures: the result is `STARTED`, the
+  captcha is consumed once, the registry is called once and one delivery is made.
+- Not asserted, by design (C.15.1): the state of the idempotency key, the number of session updates
+  and the contact channel.
+- Validation: `mvn -DskipTests compile` exit 0 (17.681 s); `mvn -DskipTests test-compile` exit 0
+  (31.743 s). Scoped run with the patterns of C.16.2: BUILD SUCCESS, 954 tests, 0 failures, 0
+  errors, 1 skipped (02:04 min). 194 fresh reports, which is every one of the 194 source classes
+  that match a pattern; the console total equals the XML. The new class ran 2 of 2, the 076 class
+  ran 4, `StartRegistrationCaptchaGateTest` ran 11, and all 19 observed floors held. The one skipped
+  test is `RegistrationOtpResendLifecycleOwnershipTest` (1), as before. 954 equals 952 (C.16.2) + 2.
+- 51 anchors matched in the real files, 38 imports resolved to real files, and the new file has no
+  line over 100 characters. This was the first compile of that Java and it succeeded without a
+  change.
+- Step 02 of script 078 listed one java process (pid 827143, a Java language server) whose working
+  directory is the main api-service repository, not this worktree. It did not block the script.
+
+#### C.17.2 New source pin
+
+- `src/` and `pom.xml` now equal da136a8f. They differ from 951049f8 by exactly the new test file
+  (one A line in the final check of script 078). da136a8f is the final II-2 code commit and replaces
+  951049f8 as the source pin. Docs-only commits do not change it.
+
+#### C.17.3 Stage gate II-2.d (script 079)
+
+One run on 2026-10-06 (evidence 20261006-153630), pinned to da136a8f: HEAD da136a8f, `src/` and
+`pom.xml` identical to da136a8f, working tree clean. The script changes no tracked file and makes no
+commit; HEAD, the tree and the pin were unchanged at its end.
+
+- Preflight OK: Maven 3.9.15 and Java 21.0.12.1; the wrapper scripts, the .env file (mode 600) and
+  the Redis TLS files present; 1 of 1 Redis Sentinel nodes accepted a TCP connection; port 8888
+  free; 968605 MB free. No process was tied to the worktree.
+- One WARN: a Java language server (pid 827143, up 01:00:44 at the check, working directory the main
+  api-service repository) was running and was still running after Gate A (01:05:00). It was not tied
+  to this worktree. Inferred, not established: it did not interfere, because the tree stayed clean
+  and the Maven log has no class-file error.
+
+Gate A, full `mvn test`:
+
+- `mvn -B -ntp test`: BUILD SUCCESS, exit code 0, 04:12 min (254 s). Maven reported 5564 tests, 0
+  failures, 0 errors, 10 skipped.
+- 1148 fresh surefire reports, 0 stale, 0 unparseable. The XML holds 5564 testcase elements, equal
+  to the console total. Their tests attributes sum to 5554; the difference of 10 comes from the same
+  six ArchUnit classes as in A.2 and C.15.2.
+- 5564 equals 5558 (gate 072, C.15.2) + 4 (script 076) + 2 (script 078). That is arithmetic on the
+  evidence, not a pass criterion.
+- 10 skipped, in the same four classes and with the same counts as in A.3 and C.15.2.
+- 0 lines with NoClassDefFoundError and 0 lines with "failed to check any classes" in the Maven log:
+  the class-file problem of the II-1 run 1 did not occur.
+- All 20 workstream floors held. Four of them are new in the gate script since gate 072:
+  `RegistrationMissingDefinitionStartResendIntegrationTest` 4,
+  `RegistrationMissingDefinitionStartCaptchaGateOnIntegrationTest` 2,
+  `StartRegistrationCaptchaGateTest` 11 and `DefaultIdempotencyExecutorTest` 7. The others are the
+  floors of gate 072, and every class ran with at least its floor.
+- Test source files: 1149 `*Test.java` files and 1148 reports. Gate 072 had 1147 and 1146, so both
+  counts rose by 2, the two new test classes. The difference of one file is unchanged and was not
+  examined.
+- JaCoCo, whole classes (informational; older code is included), the same figures as in gate 072,
+  C.12.2 and C.13.2: `RegistrationMessageDeliveryAdapter` 100.0% instruction and 100.0% branch;
+  `NoticeTemplateDefinition` 100.0% and 100.0%; `YamlNoticeTemplateRegistryAdapter` 99.4%
+  instruction (2 missed) and 97.4% branch (1 missed), the defensive branch justified in A.2.
+
+Gate B, application startup smoke test:
+
+- `ngtpa-runtime-start apim-profiles` exited 0 after 46 s in the wrapper, with refused health polls
+  before the first answer. The log has "Started NgtpaApiServerApplication in 6.83 seconds".
+- Right after the start: `/actuator/health` HTTP 200 and UP, readiness HTTP 200 and UP. After a 20 s
+  wait: health still HTTP 200 and UP and port 8888 listening.
+- Application log (122 lines): 0 failure markers (bean creation, unsatisfied dependency, bean
+  definition, binding, "failed to start", schema incompatibility), 0 ERROR lines, and 1 WARN line
+  from `SecurityConfig` (in-process authentication DISABLED; the scan cut the line at 200
+  characters; the same line as in C.15.2; not examined). 0 lines mention NoticeTemplate, so, as in
+  II-1, the registry's startup is not visible individually. Inferred: a clean start is consistent
+  with the startup validation of the template properties having passed.
+- `ngtpa-runtime-stop` exited 0, port 8888 was released and the log has 2 graceful-shutdown lines.
+
+Redaction: the first pass replaced the value of `SMS_SEND_SINGLE_PATH` (a request path of 25
+characters) 21 times in the local Maven log, which is not in the zip. The rescan found 0 remaining.
+
+#### C.17.4 Result
+
+- Sub-stage II-2.e is DONE: tests for a missing registration-otp definition on START with the
+  captcha gate off and on RESEND (951049f8, script 076, C.16), and on START with the captcha gate on
+  (da136a8f, script 078).
+- Sub-stage II-2.d is DONE: the stage gate is met on the final II-2 code commit da136a8f (script
+  079).
+- Stage II-2 (Registration) is DONE. Its code: be7294d5 (Template Service extension), ce2176e7
+  (Registration adapter migration), 14c71b24 (rendering test), 951049f8 (START gate-off and RESEND
+  tests) and da136a8f (START gate-on test).
+- Registration takes its content and its unit word from `NoticeTemplateRegistryPort`. The old
+  `auth-workflows.registration.otp.*` configuration stays until stage III-1.
+- Behaviour pinned by II-2.e (decision D7, unchanged): with the definition missing and nothing sent
+  in every case, RESEND and START with the captcha gate off surface the original
+  `IllegalStateException` as an error signal (to the central handler, HTTP 500, inferred in C.16.5),
+  and START with the captcha gate on, the production setting, returns a `SYSTEM_FAILED` result with
+  `SYSTEM_UNAVAILABLE` after the captcha has been consumed.
+- The next stage is II-3 (Login). The introduction of Appendix C (Status DRAFT, written on
+  2026-10-05) predates the code of this stage; this section supersedes it.
+
+#### C.17.5 Carried forward
+
+1. II-3 (Login): the policy value is passed in seconds with the unit seconds today and must pass
+   minutes (C.11.3). Before changing the send path, read the Login protected-context serializers in
+   full (A.1) and plan the scheme-name plumbing from `TrpGetAccountListApimDataItem`.
+2. II-4 (Forgot Password): the two `ttlUnit(language)` helpers are replaced by
+   `definition.ttlUnit()` and the details OTP passes a literal 5 (C.11.3); stage III-3 then deletes
+   the helpers.
+3. The observation of C.14.4 about `possibleSideEffect()` stays outside this workstream and nothing
+   was started. C.16.4 narrows it: it applies to RESEND and to START with the gate off, while START
+   with the gate on converts the error into a result before the executor sees it. No test pins the
+   key state.
+4. Not checked: whether an external configuration overrides `pre-start-challenge` in production
+   (C.16.4).
+5. The two long lines of the 076 test file (lines 164 and 184) stay for the feature-level formatting
+   pass; `mvn spotless:apply` is still deferred.
+6. Open items 3 and 4 of A.2 (whether startup depends on the Config Service, and the Phase 04
+   document) are unchanged.
