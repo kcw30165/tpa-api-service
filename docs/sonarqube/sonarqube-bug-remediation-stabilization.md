@@ -13,12 +13,16 @@ Status summary (Units 1–7 are COMMITTED):
 - Unit 7 (ExecutionLoggingAspect S6218): commit 2728632c82c3871a80c1e9c8c7f95c501042afea
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
 Stabilization-status (current):
 - Gate 0: PASSED
 - full compile: PASSED
 - full test-compile: PASSED
 - full mvn test: PASSED
 - Surefire inspection: PASSED
+<<<<<<< HEAD
 - Spring startup smoke test: PASSED (Attempt 4)
 =======
 Stabilization-status (initial):
@@ -26,6 +30,8 @@ Stabilization-status (initial):
 - full test-compile: NOT_STARTED
 - full mvn test: NOT_STARTED
 - Surefire inspection: NOT_STARTED
+=======
+>>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
 - Spring startup smoke test: BLOCKED
 >>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
 - SonarQube rescan: BLOCKED
@@ -34,6 +40,9 @@ Stabilization-status (initial):
 - CODE_SMELL comparison-only check: BLOCKED
 - branch push: BLOCKED
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
 - workstream closure: BLOCKED
 
 
@@ -66,11 +75,17 @@ Governance conclusion:
 - every skipped test is enumerated in `06-surefire-manifest.txt`;
 - every skipped test has source-backed classification evidence;
 - Gate 3 satisfies the documented pass criteria;
+<<<<<<< HEAD
 - Gates 5-6 remain BLOCKED;
 - the workstream is not closed.
 
 =======
 >>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+- Gates 4–6 remain BLOCKED;
+- the workstream is not closed.
+
+>>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
 
 Canonical repository-approved commands (do not run here):
 
@@ -88,12 +103,17 @@ Canonical repository-approved commands (do not run here):
   - mvn -Dtest=ExecutionLoggingAspectInvocationContextTest test
 - Surefire reports inspection locations (evidence):
 <<<<<<< HEAD
+<<<<<<< HEAD
   - `target/surefire-reports/*.txt`
   - `target/surefire-reports/TEST-*.xml`
 =======
   - target/surefire-reports/*.txt
   - target/surefire-reports/TEST-*.xml
 >>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+  - `target/surefire-reports/*.txt`
+  - `target/surefire-reports/TEST-*.xml`
+>>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
 - JaCoCo report artifacts (coverage evidence):
   - target/site/jacoco/jacoco.xml
 
@@ -256,11 +276,16 @@ Gate 5: branch push / CI / Sonar (ORDERED)
   - exact Sonar API query or project key usage for extracting the 10 scoped issue keys (not recorded in repository)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 Because the above facts are not present in the repository, Gate 5 is BLOCKED for Sonar execution until the missing CI/Jenkins job details and authentication method are provided by CI/ops.
 =======
   Because the above facts are not present in the repository, Gate 5 is BLOCKED for Sonar execution until the missing CI/Jenkins job details and authentication method are provided by CI/ops.
 >>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+
+Because the above facts are not present in the repository, Gate 5 is BLOCKED for Sonar execution until the missing CI/Jenkins job details and authentication method are provided by CI/ops.
+>>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
 
 Gate 6: exact issue-key verification and final documentation
 - Prerequisites: Gate 5 pass.
