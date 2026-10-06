@@ -1412,7 +1412,7 @@ listed under D.9. This appendix answers C.17.5 item 1, except for decision D8.
 |---|---|---|
 | II-3.0 | Settle D8 to D11; write the solution-design section for the Login content and update this appendix before any code. | PENDING (blocked on D8) |
 | II-3.a | Read-only investigation of the send path, the context serializers and the trust source. | DONE (scripts 081 and 082; findings in D.1 to D.7) |
-| II-3.a2 | Read-only: the send and resend endpoints and their error handling in `LoginController`, the context tests that load the two configs, and, if D8 is A or C, the callers of `LoginPreAuthContext`. | PENDING |
+| II-3.a2 | Read-only: the send and resend endpoints and their error handling in `LoginController`, the context tests that load the two configs, and, if D8 is A or C, the callers of `LoginPreAuthContext`. | DONE (script 084; findings in D.10) |
 | II-3.b0 | Only if D8 is A or C: carry the trust code and the scheme names into the pre-auth context (`ProtectedPayload`, the factory, the start operation or the send path) with a round-trip test. | PENDING (depends on D8) |
 | II-3.b | `LoginOtpSendService` and `LoginOtpResendService` resolve `LOGIN_OTP` through `NoticeTemplateRegistryPort` (D9, D10), the two configs inject the port, the two unit tests and the two composition tests are adjusted. | PENDING |
 | II-3.c | Rendering test with the real registry and renderer for SMS and EMAIL in en and zh_HK (the minutes, the unit, no placeholder left over, the content of D8). | PENDING |
@@ -1433,3 +1433,198 @@ listed under D.9. This appendix answers C.17.5 item 1, except for decision D8.
    "registration-otp". No change is proposed.
 6. The coverage baseline of the two services is not collected (D.7).
 7. The VERIFY path builds no message and is outside this stage.
+
+#### D.10 Findings of script 084 (read-only; HEAD c0e98653; src and pom.xml as at da136a8f)
+
+Recorded 2026-10-06 from the evidence of script 084. Statements are limited to what that evidence
+shows; inferences are marked. This section closes items 2 and 3 of D.9, narrows items 4, 5 and 6,
+corrects one statement each in D.4 and D.7, and adds the evidence for decision D8 (D.10.9). D8 stays
+OPEN; nothing is decided here.
+
+##### D.10.1 What the member sees when a send or a resend fails (closes D.9 item 2)
+
+- `LoginController.send` (lines 115-159) checks the cookie, the CSRF token, the idempotency key, the
+  request id and the destination id before its `try` (lines 129-135). In the `try` it builds the
+  command, calls `sendLoginOtpUseCase.send` and maps the result with
+  `loginOtpSendMapper::toMutationResponse` and `LoginHttpResponses::toResponse` (lines 137-149). It
+  ends the chain with `onErrorResume` (lines 150-155), which answers every error signal with
+  `loginOtpSendMapper.missing(SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(), "PAGE")`. The
+  `catch (RuntimeException)` (lines 156-158) returns
+  `sendMissing(LoginErrorKey.REQUEST_INVALID.value(), "PAGE")` and covers only exceptions thrown
+  while the call is assembled.
+- `LoginOtpSendWebMapper.missing` builds a failure with `ApiStatus.VALIDATION_FAILED`, the next step
+  `SELECT_OTP_DESTINATION` and one `PAGE` error from the BFF (081 evidence, lines 51-57).
+  `LoginHttpResponses.status` (lines 15-36) answers 400 for a code that is not in its list when the
+  status is neither `BUSINESS_REJECTED` nor `SYSTEM_ERROR`. Read from the printed code, not run: an
+  error signal from the send use case, for example a missing definition, reaches the member as HTTP
+  400 with the error `SYSTEM_UNAVAILABLE`, unless that code equals one of the listed `LoginErrorKey`
+  values (not read; script 085 prints `LoginErrorKey` and `SharedWorkflowErrorKey`). It does not
+  reach the central handler.
+- `LoginController.resend` (lines 161-209) has the same checks (lines 174-178) and a `try` (line
+  179) that maps the result and adds a `Retry-After` header when the retry value is positive (lines
+  192-205). It has no `onErrorResume`; its `catch` (lines 206-208) returns
+  `resendMissing(LoginErrorKey.REQUEST_INVALID.value(), "PAGE")` for assembly exceptions only. An
+  error signal from the resend use case therefore leaves the controller (inferred: it ends at the
+  central handler, as in C.16.5; the registration of that handler was not read).
+- The remaining error lines of the controller are START's own `onErrorResume` (line 73) and VERIFY's
+  `doOnError` (line 262), both outside this stage. `clean(...)` is applied to `Accept-Language` in
+  send, resend and verify (lines 146, 188 and 242); its body was not read.
+- Correction to D.4, D10: its last sentence ("ends at the central handler as HTTP 500") holds for
+  resend only. For send, a missing definition gives HTTP 400 `SYSTEM_UNAVAILABLE`, the existing
+  answer to any send error. This stage does not change it.
+
+##### D.10.2 The delivery layer (narrows D.9 item 5)
+
+- `MessageDeliveryCommand` (lines 7-17) has the components message type, scenario, channel,
+  recipient, subject, body, template code, variables, locale and correlation id.
+  `MessageDeliveryAdapter` never reads the template code. The only reader in `src/main` besides the
+  record is `MessageDeliveryRuntimeConfig` (line 68), which was not printed; script 085 prints it
+  and the Registration adapter. D.9 item 5 says that Registration passes "registration-otp"; no
+  evidence of scripts 081 to 084 shows that.
+- `MessageDeliveryAdapter.deliver` validates the command (lines 116-138): type, scenario, channel,
+  recipient and body must be present, and an EMAIL needs a subject. It renders the subject and the
+  body inside the `try` that starts at line 48, so a `RuntimeException` from rendering is caught at
+  line 62 and becomes a FAILED result with `MESSAGE_DELIVERY_REJECTED` (lines 62-64 and 102-105).
+  This confirms D.2: a placeholder without a variable (the rendering failure of C.1) does not
+  surface as an exception; it ends as a FAILED delivery. `LoginOtpSendService` then invalidates the
+  new challenge and returns `DELIVERY_FAILED` (081 evidence, lines 122-130); the send mapper turns
+  that into `SYSTEM_ERROR` and `LoginHttpResponses` into HTTP 502 (read from the code, not run).
+- Consequence for D10: the subject and the body templates are already in the command when it reaches
+  the adapter, so the lookup in the registry has to happen before the command is built.
+
+##### D.10.3 Where the context is built and used (supports II-3.b0)
+
+- `LoginStartProtectedOperation.establish` is the only place that creates the context
+  (`contexts.create`, line 79); `AesGcmLoginPreAuthContextProtector.toDomain` rebuilds it (line
+  121). `new LoginPreAuthContext(` appears twice in `src/main` and 15 times in 10 test files;
+  `new LoginPreAuthDestination(` once in `src/main` (`LoginPreAuthContextFactory` line 37) and 11
+  times in 5 test files; `new CredentialAuthenticationResult(` twice in `src/main`
+  (`TrpMemberLoginContractMapper` lines 52 and 70) and 6 times in 3 test files. Records are
+  constructed positionally, so a new component needs either a compatibility constructor, as stage
+  I-3 added for the APIM DTOs and the Username Recovery candidate, or a change at every call.
+- `AesGcmLoginPreAuthContextProtectorTest` (78 lines, 2 tests) asserts the round trip with
+  `isEqualTo(context)` (line 36) using `new ObjectMapper().findAndRegisterModules()` (line 20), but
+  its contexts have no new field. A `ProtectedPayload` that forgets a new field is caught only if
+  the test sets it, so the test must be extended with the change.
+- `LoginStartProtectedOperation` takes 10 constructor arguments (lines 39-49) and is built by
+  `LoginStartProtectedOperationTest` (262 lines, 7 tests). `LoginStartSharedRuntimeCompositionTest`
+  (lines 78-83) and `ProductionComposedLoginControllerBoundaryTest` (lines 201-206) provide mocks of
+  `LoginPreAuthContextFactory`, `CredentialAuthenticationPort` and
+  `LoginPreAuthContextProtectorPort`, so a new port on that path would need a bean in both
+  (inferred).
+
+##### D.10.4 The credential result and `TRPMemberLogin` (D8, option D)
+
+- `CredentialAuthenticationResult` has six components: status, normalized username, role, fail
+  count, destinations and downstream code (lines 6-12). `LoginCredentialDestination` has a channel
+  and a destination. Neither carries trust or scheme data. `TrpMemberLoginApimDataItem` is built
+  with four arguments (success, role, fail count, OTP list) in `TrpMemberLoginContractMapperTest`
+  (lines 36-42, among others) and `TrpMemberLoginAdapterTest` (lines 19, 46 and 60).
+- No sample or contract file of the real `TRPMemberLogin` response exists under
+  `src/test/resources`; the only contract files there are two registration CSVs. The master design
+  `docs/design/4-login/login-master-design.md` says at line 64 that Progress returns one result with
+  `cust-type`, an optional `user-role`, `fail-count` and destination entries (the script cut the
+  line there). The DTO uses `login-user-role` and has no `cust-type`, so the design and the code
+  already differ in field names. Whether the real response carries a customer type or any trust data
+  is not established.
+- The Login design documents were listed but not printed (for example `login-apim-contract.md`,
+  3,592 bytes, and `login-decisions-open-questions.md`, 2,929 bytes). Script 085 prints them.
+
+##### D.10.5 What the design documents say about the trust data and the call order (D8)
+
+- Solution design section 3 (lines 40-48) records the BRD inventory: E0002 / S0002
+  "Login_ForgotPassword" has the dynamic fields `<trust code>` and `<Scheme Name>` (email only), and
+  the BRD treats Login and Forgot Password as one notice, differentiated only by trust code. Section
+  8.2 (lines 349-353) turns that into `{trustCode}` in the SMS and in the English e-mail subject and
+  `{schemeName}` or `{schemeNameChi}` in the e-mail body, for `LOGIN_OTP` and `FORGOT_PASSWORD_OTP`
+  alike. Lines 355-357 say that the scheme names come from `sch-name` and `chin-sch-name` of the
+  `TRPGetAccountList` and `TRPSearchMember` responses, and the table at line 366 lists
+  `TrpGetAccountListApimDataItem` as the Login DTO. The design therefore names `TRPGetAccountList`
+  as the Login source of the scheme name. It does not say when the call happens, and the printed
+  lines name no source for the Login trust code (the account-list item carries one).
+- The documented Login sequence puts `TRPGetAccountList` after the OTP: `login-master-design.md`
+  line 69 ("On OTP success, Java calls TRPGetAccountList using values from protected pre-auth
+  context only") and line 25; the APIM guide
+  `apim-exchange-executor-architecture-and-developer-guide.md` lines 945 and 993 (invoked "before
+  the authenticated session and selected Account-Ref exist");
+  `authenticated-context-apim-profile-implementation-plan.md` line 975 ("after successful
+  authentication"). The request needs only the normalized username and the role
+  (`GetLoginAccountsUseCase` lines 17-26), which the context holds from START, so a call before the
+  OTP is technically possible. Whether TAS accepts it there, and returns the same list, is not
+  shown.
+- No file with "brd" in its name exists under `docs` or `src/test/resources`; section 3 is the only
+  record of the BRD in the repository. `login-decisions-open-questions.md` was not printed.
+
+##### D.10.6 The tests that load the two configs (closes D.9 item 3)
+
+- Four test files mention `LoginOtpSendApplicationConfig` or `LoginOtpResendApplicationConfig`:
+  `LoginOtpSendSharedRuntimeCompositionTest` and `LoginOtpResendSharedRuntimeCompositionTest`, which
+  load the config, and `Task0043LoginOtpSendEndpointArchitectureTest` and
+  `Task0043LoginOtpResendEndpointArchitectureTest` (one mention each; not read).
+- `ProductionComposedLoginControllerBoundaryTest` (lines 184-221) and
+  `LoginStartSharedRuntimeCompositionTest` (lines 61-98) load `LoginSharedIdempotencyConfig` and
+  `LoginApplicationConfig` only. None of their 17 matching lines names the two configs,
+  `MessageDeliveryPort` or `NoticeTemplateRegistryPort`. The doubt of D.7 about them is therefore
+  resolved: the II-3.b change does not require a registry bean there. `LoginApplicationConfig`
+  itself (96 lines) was not read.
+- No `@Import` or `@ComponentScan` in `src/main/java` names the two configs, so the application
+  picks them up by component scanning (inferred).
+
+##### D.10.7 The ObjectMapper (narrows D.9 item 4)
+
+- `src/main` has one `ObjectMapper` bean method, `JacksonConfig.objectMapper()`
+  (`infrastructure/jackson/JacksonConfig.java`, line 13); the other mappers in `src/main` are
+  `new ObjectMapper()` fields of codecs and protectors. `LoginPreAuthFoundationConfig` injects
+  `ObjectMapper mapper` without a qualifier (082 evidence, lines 24-30), so it receives that bean
+  (inferred). `src/main/resources` has no `spring.jackson` setting. The body of `JacksonConfig` was
+  not printed. The protector test builds its own mapper and does not use the bean.
+
+##### D.10.8 Coverage baseline (narrows D.9 item 6)
+
+- Script 084 took the first JaCoCo CSV that `find` returned:
+  `target/evidence/20261002-130616-009-full-suite-coverage/jacoco-report/jacoco.csv`, modified
+  2026-10-02 13:09:46. Its header said that the last full run was script 079; that wording was
+  wrong, the file predates the II-2 work. The send and resend services, their two coordinators, the
+  context loader, the protector, the destination resolver and `LoginStartProtectedOperation` were
+  last modified between 2026-09-06 and 2026-09-14, earlier than the CSV, so for them the figures
+  describe the current source. `LoginPreAuthContextFactory` was modified on 2026-10-06 and the date
+  of `LoginController` was not printed. Script 085 prints the CSV of the 079 run for comparison.
+- Figures, as instruction covered/missed, instruction percentage, branch covered/missed, branch
+  percentage: `LoginOtpSendService` 288/48, 85.7%, 11/7, 61.1%; `LoginOtpResendService` 271/54,
+  83.4%, 11/12, 47.8%; `SharedLoginOtpSendService` 142/5, 96.6%, 8/3, 72.7%;
+  `SharedLoginOtpResendService` 140/5, 96.6%, 8/3, 72.7%;
+  `DefaultLoginProtectedAuthFlowContextLoader` 225/74, 75.3%, 22/22, 50.0%;
+  `AesGcmLoginPreAuthContextProtector` 182/30, 85.8%, 7/5, 58.3%; `LoginOtpDestinationResolver`
+  60/10, 85.7%, 5/4, 55.6%; `LoginPreAuthContextFactory` 109/5, 95.6%, 11/1, 91.7%;
+  `LoginStartProtectedOperation` 254/0, 100.0%, 7/0, 100.0%; `LoginController` 269/353, 43.2%,
+  32/44, 42.1%.
+- D.7 states that the tier of 95% instruction and 85-90% branch applies to the two services. This
+  plan has no coverage section of its own; that tier is the one recorded for the Fund Price and the
+  centralized masking workstreams, so for II-3 it is an assumption. Both services are below it
+  today. Whether II-3.b must lift them, or only cover its own changes (the legacy gap belonging to
+  the code-coverage-95 workstream), is open for Nick.
+
+##### D.10.9 Evidence for D8 by option (D8 stays OPEN)
+
+| Option | What the repository supports | What it argues against | What it touches |
+|---|---|---|---|
+| A: call `TRPGetAccountList` at START and keep the result in the context | The BRD inventory (section 3) puts trust code and scheme name into the Login message; section 8.2 names `TRPGetAccountList` as the Login source of the scheme name; the request needs only values that the context holds at START (D.10.5) | `login-master-design.md` line 69 and the APIM guides put the call after the OTP; it adds an APIM call and a failure mode before any OTP is sent; nothing printed says which trust a member with several trusts is shown | `LoginPreAuthContext` (15 test constructions), `ProtectedPayload`, `LoginPreAuthContextFactory`, `LoginStartProtectedOperation` (10 arguments, 7 tests), two composition tests that mock the start ports (D.10.3) |
+| B: Login content without trust code and scheme name | The smallest code change | It contradicts the BRD inventory of section 3 as recorded; it ends the rule that `login-otp` and `forgot-password-otp` stay identical (section 5), so that rule and the BRD would have to change | The `login-otp` definition (en and zh_HK), the plan; needs BRD sign-off |
+| C: call `TRPGetAccountList` at every send and resend | As A | As A, and one APIM call per message, inside the idempotent operation whose failures are classified as possible side effects (D.10.1) | The constructors, configs and tests of `LoginOtpSendService` and `LoginOtpResendService` |
+| D: add the trust data to the `TRPMemberLogin` response | No second call and no change of the documented sequence | The real response is not documented in the repository and the master design names fields that the DTO does not have (D.10.4); it needs a change by the owners of APIM and TAS | `TrpMemberLoginApimDataItem` (4-argument uses in tests), `CredentialAuthenticationResult` (6 constructions), the context (D.10.3) |
+
+- Common to all options: the printed documents do not say which trust a member with several trusts
+  is shown. Option B is the only one that the BRD inventory as recorded contradicts.
+
+##### D.10.10 Open items after script 084
+
+1. D8, for Nick (BRD): which trust code and scheme name the Login OTP message names, and in
+   particular for a member with several trusts. No document in the repository answers it.
+2. Printed by script 085 and recorded in a later docs commit: the Login and Forgot Password design
+   documents, `LoginErrorKey` and `SharedWorkflowErrorKey` (whether `SYSTEM_UNAVAILABLE` is in the
+   status list of D.10.1), `JacksonConfig`, `MessageDeliveryRuntimeConfig` and the Registration
+   adapter (D.10.2), `LoginApplicationConfig`, the two endpoint architecture tests, the end of
+   `LoginController`, the JaCoCo CSV of the 079 run (D.10.8) and the sections of the solution design
+   that bear on D8.
+3. The coverage expectation for II-3.b (D.10.8).
+4. D.9 items 2 and 3 are closed; items 4, 5 and 6 are narrowed; items 1 and 7 are unchanged.
