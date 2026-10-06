@@ -77,13 +77,14 @@ Recovery) is DONE: sub-stages II-1.a to II-1.d are committed (Appendix A.1) and 
 met on the final code, with a passing full `mvn test` and an application startup smoke test with
 no bean or configuration errors, both evidenced (Appendix A.3). Stage II-2 (Registration) is IN
 PROGRESS: decisions D6 (option A) and D7 are confirmed, the design is solution design section 8.6,
-and sub-stages II-2.0, II-2.a, II-2.a2, II-2.b0 and II-2.b are DONE. II-2.b0 (the Template Service
-extension) is committed as be7294d5 and II-2.b (the Registration adapter migration) as ce2176e7;
-both were validated with compile, test-compile and a scoped run with 0 failures (C.12 and C.13).
-Registration now takes its content and its unit word from the registry. The next steps are II-2.c
-(a rendering test with the real registry and renderer) and the stage gate II-2.d. Stages II-3
-(Login), II-4 (Forgot Password) and Phase III remain PENDING. Decisions and open items for II-1 are
-in Appendix A.2. Work that is deliberately outside this workstream is listed in Appendix B.
+and sub-stages II-2.0, II-2.a, II-2.a2, II-2.b0, II-2.b and II-2.c are DONE. The code is committed
+as be7294d5 (Template Service extension), ce2176e7 (Registration adapter migration) and 14c71b24
+(a test-only commit: the Registration content rendered with the real registry and renderer); each
+was validated with compile, test-compile and a scoped run with 0 failures (C.12, C.13 and C.14).
+The next step is the stage gate II-2.d: the full `mvn test` and an application startup smoke test
+on the final II-2 code commit, which is 14c71b24 now. Stages II-3 (Login), II-4 (Forgot Password)
+and Phase III remain PENDING. Decisions and open items for II-1 are in Appendix A.2. Work that is
+deliberately outside this workstream is listed in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
 
@@ -443,7 +444,7 @@ with a space in en. Consequences:
 | II-2.a | Read-only investigation of the three tests that name the gateway config (`RegistrationMessageDestinationOverrideWiringTest`, `RegistrationHardcodedPolicyArchitectureGuardTest`, `RegistrationSharedCoreMigrationArchitectureTest`) and of the tests that build the adapter or mention `RegistrationMessagePort` (17 files in main and test). | DONE (script 062; findings in C.9) |
 | II-2.b0 | Template Service extension (an amendment to Phase I; design: solution design section 8.6). `NoticeTemplateDefinition` gains a nullable last component `ttlUnit` and keeps a public six-argument constructor; `NoticeTemplateProperties` gains `ttlUnits` and validates it; `YamlNoticeTemplateRegistryAdapter` attaches the unit that belongs to the locale key it selected; `application.yml` gains `notice-templates.ttl-units` (en `minutes`, zh_HK `分鐘`) in the SAME commit as the validation, because the validation would otherwise fail the application at startup. Tests per section 8.6. II-2.b depends on it. | DONE (commit be7294d5; script 066; result in C.12) |
 | II-2.b | `RegistrationMessageDeliveryAdapter` resolves content through `NoticeTemplateRegistryPort.resolve(REGISTRATION_OTP, channel, acceptLanguage)`, builds `code`, `ttlValue` and `ttlUnit` as decided in D6, and no longer takes `AuthWorkflowPolicyPort`. `RegistrationStartGatewayConfig.registrationMessageGateway` injects the registry port. Rewrite `RegistrationMessageDeliveryAdapterTest`, and adjust whichever test from II-2.a pins the old wiring. | DONE (commit ce2176e7; script 068; result in C.13) |
-| II-2.c | A test with the real `YamlNoticeTemplateRegistryAdapter` and `DefaultMessageTemplateRenderer` that renders START and RESEND content for SMS and EMAIL in en and zh_HK and asserts that no placeholder is left unreplaced and that the unit follows the selected locale. | PENDING |
+| II-2.c | A test with the real `YamlNoticeTemplateRegistryAdapter` and `DefaultMessageTemplateRenderer` that renders START and RESEND content for SMS and EMAIL in en and zh_HK and asserts that no placeholder is left unreplaced and that the unit follows the selected locale. | DONE (commit 14c71b24; script 070; result in C.14) |
 | II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING |
 
 ### C.8 Open items
@@ -631,7 +632,7 @@ recorded in the solution design, section 8.6 (Per-Locale TTL Unit). Nothing is i
 | II-2.a2 | Read-only script that prints the real sources and tests that II-2.b0 amends (`NoticeTemplateDefinition`, `NoticeTemplateProperties`, `YamlNoticeTemplateRegistryAdapter`, their tests, the `notice-templates` block of `application.yml`), so that the patch anchors come from the real files. Script 065 already collects a first copy of this evidence. | DONE (the real sources of the 065 evidence were reviewed; script 066 was patched against them) |
 | II-2.b0 | Template Service extension (a Phase I amendment), see the II-2.b0 row in C.7 and solution design section 8.6. | DONE (commit be7294d5; script 066; result in C.12) |
 | II-2.b | `RegistrationMessageDeliveryAdapter` migration, as in C.7. Before editing, read how START and RESEND treat an exception thrown synchronously by `deliverRegistrationOtp` (D7), and add a test that a missing definition surfaces as an error and not as the value `false`. | DONE (commit ce2176e7; script 068; result in C.13) |
-| II-2.c | Rendering test with the real registry and renderer, extended by C.10.1: assert the placeholders and the rendered text of the zh_HK Registration content as well, including the unit (for example `有效期為5分鐘。`). | PENDING |
+| II-2.c | Rendering test with the real registry and renderer, extended by C.10.1: assert the placeholders and the rendered text of the zh_HK Registration content as well, including the unit (for example `有效期為5分鐘。`). | DONE (commit 14c71b24; script 070; result in C.14) |
 | II-2.d | Stage gate on the final code: full `mvn test` and an application startup smoke test, then the plan is updated. | PENDING |
 
 #### C.11.3 Carried to later stages (not part of II-2)
@@ -793,7 +794,7 @@ ce2176e7). Statements are limited to what that evidence shows.
   line 83). That an `IllegalStateException` from the adapter ends as `SYSTEM_FAILED` and 500 is therefore
   the likely path, but the code between those lines was not printed and no test exercises START or
   RESEND with a missing definition. D7 keeps today's behaviour for a missing policy, so this is not a
-  regression; script 069 prints the code (evidence file 05).
+  regression. (Corrected in C.14.3: the exception is not turned into a `SYSTEM_FAILED` result there.)
 
 #### C.13.5 Open items
 
@@ -806,3 +807,112 @@ ce2176e7). Statements are limited to what that evidence shows.
    needs, so that the test is written against the real sources.
 4. The gates of II-2.d pin `src/` and `pom.xml` to the final II-2 code commit (ce2176e7 now; the commit
    of II-2.c if it adds test code).
+
+### C.14 Sub-stage II-2.c result (script 070) and the error path of decision D7
+
+Recorded 2026-10-06 from the evidence of script 070 (HEAD before the script acbb5819; code commit
+14c71b24) and from the executor and service sources that scripts 069 and 070 printed. Statements are
+limited to what that evidence shows; inferences are marked as such.
+
+#### C.14.1 What was committed
+
+- Commit 14c71b24 `test(template-service): render Registration OTP content end to end with the real
+  registry and renderer`: one new file, `RegistrationOtpRenderedContentIntegrationTest`, 297 lines
+  added and 0 removed, 11 tests. Test-only: no main code and no resource changed.
+- The test runs the whole chain with the real `application.yml`, the real
+  `YamlNoticeTemplateRegistryAdapter`, the real `RegistrationMessageDeliveryAdapter` and the real
+  `MessageDeliveryAdapter` with its default renderer; only the two senders are recorders. It asserts,
+  for SMS and EMAIL: English keeps a space and writes `minutes`; zh-HK writes the number directly
+  followed by the Chinese unit (`有效期為5分鐘。` in the SMS and `此密碼於5分鐘內有效。` in the e-mail);
+  `zh`, `zh-TW`, `zh-Hant`, `zh-Hant-HK`, `zh-CN`, `zh-Hans` and `ZH_hk` render exactly the zh-HK SMS;
+  `fr`, `und`, blank and null render the English one; the unit comes from `notice-templates.ttl-units`;
+  `ttlValue` is whole minutes with a minimum of 1; no placeholder is left in any SMS body, e-mail
+  subject or e-mail body; a missing `registration-otp` definition (D7) and a required but unconfigured
+  unit fail before anything is sent.
+- The two Chinese phrases passed against the real `application.yml`, so the wording of the BRD content
+  still has the unit directly after the number, as C.3 and C.10 describe.
+- Source pin from now on: `src/` and `pom.xml` equal 14c71b24 (they differ from ce2176e7 by exactly the
+  new test file), which replaces ce2176e7 as the last code commit. Docs-only commits do not change it.
+
+#### C.14.2 Validation
+
+- `mvn -DskipTests compile` exit 0 (20 s); `mvn -DskipTests test-compile` exit 0 (41 s).
+- Scoped run with the wildcard patterns `*Registration*Test`, `NoticeTemplate*Test`,
+  `YamlNoticeTemplate*Test`, `ApplicationYamlNoticeTemplatesBindingTest`,
+  `CleanArchitectureDependencyTest`, `*MessageDelivery*Test` and `DefaultMessageTemplateRenderer*Test`:
+  941 tests, 0 failures, 0 errors, 1 skipped (103 s). 191 classes have a fresh report, which is every one
+  of the 191 source classes that match a pattern (a class can match more than one pattern):
+  `*Registration*Test` 167 (floor 160), `*MessageDelivery*Test` 11, `NoticeTemplate*Test` 8,
+  `YamlNoticeTemplate*Test` 3, the binding test 1, the layering test 1 and the renderer test 1.
+- All 18 observed floors held, including the three guard tests of C.9.1 (4, 4 and 3), the 12 tests of
+  `RegistrationMessageDeliveryAdapterTest`, the 2 of `RegistrationStartGatewayConfigRegistryWiringTest`
+  and the 12 of `DefaultMessageTemplateRendererTest`. The new class ran 11 of its 11 tests.
+- JaCoCo: `RegistrationMessageDeliveryAdapter` stays at 100.0% instruction and 100.0% branch (0 of 6
+  missed), as expected for a test-only commit.
+- The one skipped test is not named in the 070 evidence. The 069 evidence listed
+  `RegistrationOtpResendLifecycleOwnershipTest.adapterContainsNoOverlappingDestinationSendLimiter`
+  among the skipped cases of the surefire reports, written in the 068 run; the skip is presumably that
+  one. Script 071 lists the skipped cases again (evidence file 04b).
+- Not run in 070 by design: the full `mvn test`, the application startup smoke test (the stage gate
+  II-2.d) and `mvn spotless:apply`.
+
+#### C.14.3 Correction to C.13.4: where an exception from the adapter ends
+
+C.13.4 said that an `IllegalStateException` from the adapter probably ends as `SYSTEM_FAILED` and HTTP
+500. The executor source shows that this is not the path for a request that reaches the executor.
+
+- `DefaultIdempotencyExecutor.executeProtected` (lines 67-75) runs the protected operation inside
+  `Mono.defer(...)` and sends any failure to `classifyProtectedFailureThenError` (lines 104-125). With
+  the classifier that START and RESEND use, `possibleSideEffect()` (`IdempotencyFailureClassifiers`,
+  which returns `POSSIBLE_SIDE_EFFECT` for every failure), it calls `markUnknownThenError` (lines
+  127-143): the idempotency record is marked unknown and the ORIGINAL exception is re-emitted; only a
+  failure of the marking itself becomes an `IdempotencyExecutionException`.
+- `SharedStartRegistrationService.start` (lines 41-60) and the Resend service (lines 88-104) end in
+  `executor.execute(execution).map(result -> route(...))` and have no error handler. `route` (start
+  lines 62-85, resend lines 106-126) maps only outcomes of the reservation: `FAILED_EXISTING` and
+  `UNKNOWN_OUTCOME_EXISTING` become a `SYSTEM_FAILED` result (`SYSTEM_UNAVAILABLE` for START,
+  `REGISTRATION_OTP_RESEND_FAILED` for RESEND). A thrown exception is therefore an ERROR signal that
+  leaves the use case; it is not a `SYSTEM_FAILED` result on that request. The result bridges that map
+  `SYSTEM_FAILED` to HTTP 500 (C.13.4) are not on this path.
+- The registry call is evaluated while the chain is assembled inside a `flatMap` mapper (C.12.3).
+  Reactor turns an exception thrown there into an error signal of that chain, which is why it reaches
+  the executor's handler.
+- The exception to this is START with the captcha gate on: `RegistrationStartProtectedOperation` ends
+  that branch with `onErrorResume(ignored -> failure(SYSTEM_FAILED, SYSTEM_UNAVAILABLE, "PAGE"))`
+  (067 evidence, lines 123-129), so the executor receives a `SYSTEM_FAILED` result and completes the key
+  normally. With the gate off, START returns `lookup(...)` directly (line 113) and RESEND handles only
+  `RegistrationOtpSendRateLimitedException` and `RegistrationOtpResendRejectedException`; both then
+  behave as described above.
+- Inferred, not read: a retry with the same idempotency key finds the unknown record and reaches
+  `UNKNOWN_OUTCOME_EXISTING`, which `route` maps to `SYSTEM_FAILED`. The persistence code that decides
+  that outcome was not printed.
+- What the controller and the central handler do with the error signal was not read: the 067 evidence
+  lists five `catch (RuntimeException exception)` blocks in `RegistrationController` (lines 156, 200,
+  246, 317 and 376) and an `@ExceptionHandler(Exception.class)` in `ApiExceptionHandler` (line 230) with
+  an `ApiStatus.SYSTEM_ERROR` at line 238, but not the code around them. Script 071 prints it.
+
+This is the behaviour of a missing policy before the migration (C.1: the old adapter threw
+`IllegalStateException` in the same place), so decision D7 is unchanged and nothing is regressed.
+
+#### C.14.4 Observation, outside this workstream (nothing started)
+
+`possibleSideEffect()` classifies every failure of the protected operation as possibly side-effecting.
+A configuration error that is certain to occur before anything is sent, such as a missing definition,
+therefore also marks the idempotency key unknown, as a missing policy did. A proven-before-dispatch
+classifier exists (`provenPreDispatch()` in `RegistrationSharedFailureClassifiers`) but START and RESEND
+do not use it for this call. Changing that belongs to the shared idempotency and public-error work,
+not to the Template Service, and D7 keeps today's behaviour. It is recorded here so that it is not
+rediscovered; no change is proposed in this workstream.
+
+#### C.14.5 Open items
+
+1. The controller catch blocks and the central handler of C.14.3 are not read; script 071 prints them.
+2. Proposal, not yet confirmed by Nick: no START or RESEND test for a missing definition is added in
+   II-2. The adapter test and the gateway wiring test assert the throw before anything is sent, and
+   what the shared executor does with any exception is a shared-layer matter that D7 leaves unchanged.
+   Revisit if that behaviour should be pinned by a test.
+3. II-2.d is next. Its gate pins `src/` and `pom.xml` to 14c71b24. The 066 to 070 scoped runs do not
+   replace the full `mvn test` and the startup smoke test. Script 071 collects a read-only preflight of
+   what the smoke test needs (evidence file 06); the first attempt at the II-1 gate failed because no
+   Redis Sentinel node accepted a TCP connection (A.2), so that count is the item to look at first.
+4. The skipped test of C.14.2 is named from earlier evidence, not from the 070 run.
