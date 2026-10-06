@@ -469,7 +469,8 @@ Confirmed during Stage II-1 (2026-10-05):
 
 Status: confirmed by Nick on 2026-10-05 (decision D6, option A, and decision D7). It is implemented in
 sub-stage II-2.b0 of the implementation plan (Appendix C, C.11). Rules 1 to 5 are implemented and
-committed as be7294d5; rules 6 and 7 are implemented when Registration migrates (II-2.b).
+committed as be7294d5; rules 6 and 7 are implemented for Registration in ce2176e7 (II-2.b); Login and
+Forgot Password adopt rule 6 in II-3 and II-4.
 
 **Problem (evidence: scripts 059, 060, 062 and 063).** The placeholder `{ttlUnit}` is supplied by the callers,
 and three workflows supply it three different ways: Registration writes the literal `minutes`; Login writes the
