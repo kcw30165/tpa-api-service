@@ -1359,10 +1359,10 @@ listed under D.9. This appendix answers C.17.5 item 1, except for decision D8.
 
 | # | Topic | Position or options | Status |
 |---|---|---|---|
-| D8 | Trust code and scheme name for the Login OTP content | A: call `TRPGetAccountList` at Login START after `TRPMemberLogin` succeeds, keep the trust data in the protected pre-auth context and render it; needs a rule for a member with several trusts, adds an APIM call and a failure mode before any OTP is sent, and changes `LoginPreAuthContext`, `ProtectedPayload`, `LoginPreAuthContextFactory` and `LoginStartProtectedOperation`. B: Login OTP content without trust code and scheme name (BRD sign-off needed): changes the `login-otp` definition in en and zh_HK, which then differs from `forgot-password-otp`, so the rule that the two stay identical must change too. C: call `TRPGetAccountList` at every SEND and RESEND: the same ambiguity as A and one more APIM call per message. D: extend the APIM `TRPMemberLogin` response with the trust data (the DTO ignores unknown properties, so what the real response carries is not known; the ORSO team owns APIM and TAS). | OPEN: needs Nick (BRD); not decided here |
-| D9 | The unit | Pass `ttlValue` in minutes, `max(1, policy.ttlSeconds() / 60)`, and `ttlUnit` from `definition.ttlUnit()`, as D6 does for Registration. The source of the seconds stays `policy.ttlSeconds()`. This changes what Login sends today (C.11.3). | Proposed, not confirmed |
-| D10 | Where the registry is resolved and what a missing definition does | Resolve before the challenge is created or replaced (the channel and the locale are known there), so that a missing definition has no side effect: no challenge, no cooldown, no binding. A missing definition fails with `IllegalStateException`, no fallback (as D7). Resolving inside the delivery lambda, as Registration does, would leave an un-invalidated challenge on send and a replaced challenge on resend (inferred: with its cooldown running). The error signal passes the shared executor (key marked unknown, C.14.3) and, inferred, ends at the central handler as HTTP 500; the controller catch blocks were not read. | Proposed, not confirmed |
-| D11 | The old Login configuration | Keep `LoginOtpSendPolicy` with its nine components and keep `validateLoginPolicy` until stage III-1; the two services stop reading `messageTemplate()` and `emailSubject()`. Unlike Registration (C.10.1), the Login templates have a live check (`validateLoginPolicy` lines 336-346 require `{code}` in the SMS template and a valid e-mail template), so III-1 must remove it together with the YAML. | Proposed, not confirmed |
+| D8 | Trust code and scheme name for the Login OTP content | A: call `TRPGetAccountList` at Login START after `TRPMemberLogin` succeeds, keep the trust data in the protected pre-auth context and render it; needs a rule for a member with several trusts, adds an APIM call and a failure mode before any OTP is sent, and changes `LoginPreAuthContext`, `ProtectedPayload`, `LoginPreAuthContextFactory` and `LoginStartProtectedOperation`. B: Login OTP content without trust code and scheme name (BRD sign-off needed): changes the `login-otp` definition in en and zh_HK, which then differs from `forgot-password-otp`, so the rule that the two stay identical must change too. C: call `TRPGetAccountList` at every SEND and RESEND: the same ambiguity as A and one more APIM call per message. D: extend the APIM `TRPMemberLogin` response with the trust data (the DTO ignores unknown properties, so what the real response carries is not known; the ORSO team owns APIM and TAS). | RESOLVED (option D, corrected model, 2026-10-06; see D.11.1) |
+| D9 | The unit | Pass `ttlValue` in minutes, `max(1, policy.ttlSeconds() / 60)`, and `ttlUnit` from `definition.ttlUnit()`, as D6 does for Registration. The source of the seconds stays `policy.ttlSeconds()`. This changes what Login sends today (C.11.3). | CONFIRMED (Nick, 2026-10-06; see D.11.2) |
+| D10 | Where the registry is resolved and what a missing definition does | Resolve before the challenge is created or replaced (the channel and the locale are known there), so that a missing definition has no side effect: no challenge, no cooldown, no binding. A missing definition fails with `IllegalStateException`, no fallback (as D7). Resolving inside the delivery lambda, as Registration does, would leave an un-invalidated challenge on send and a replaced challenge on resend (inferred: with its cooldown running). The error signal passes the shared executor (key marked unknown, C.14.3) and, inferred, ends at the central handler as HTTP 500; the controller catch blocks were not read. | CONFIRMED (Nick, 2026-10-06; see D.11.3) |
+| D11 | The old Login configuration | Keep `LoginOtpSendPolicy` with its nine components and keep `validateLoginPolicy` until stage III-1; the two services stop reading `messageTemplate()` and `emailSubject()`. Unlike Registration (C.10.1), the Login templates have a live check (`validateLoginPolicy` lines 336-346 require `{code}` in the SMS template and a valid e-mail template), so III-1 must remove it together with the YAML. | CONFIRMED (Nick, 2026-10-06; see D.11.4) |
 
 #### D.5 Behaviour changes to record if D9 to D11 are confirmed
 
@@ -1410,10 +1410,10 @@ listed under D.9. This appendix answers C.17.5 item 1, except for decision D8.
 
 | Sub-stage | Change | Status |
 |---|---|---|
-| II-3.0 | Settle D8 to D11; write the solution-design section for the Login content and update this appendix before any code. | PENDING (blocked on D8) |
+| II-3.0 | Settle D8 to D11; write the solution-design section for the Login content and update this appendix before any code. | DONE (D8 to D11 resolved 2026-10-06; see D.11) |
 | II-3.a | Read-only investigation of the send path, the context serializers and the trust source. | DONE (scripts 081 and 082; findings in D.1 to D.7) |
 | II-3.a2 | Read-only: the send and resend endpoints and their error handling in `LoginController`, the context tests that load the two configs, and, if D8 is A or C, the callers of `LoginPreAuthContext`. | DONE (script 084; findings in D.10) |
-| II-3.b0 | Only if D8 is A or C: carry the trust code and the scheme names into the pre-auth context (`ProtectedPayload`, the factory, the start operation or the send path) with a round-trip test. | PENDING (depends on D8) |
+| II-3.b0 | Add `trustCode`/`schemeName`/`schemeNameChi` to `TrpMemberLoginApimDataItem` (modeled ahead of the downstream TAS/APIM change) and remove them from `TrpGetAccountListApimDataItem`; carry the three fields through `CredentialAuthenticationResult`, `LoginPreAuthContext` and `ProtectedPayload` to the send and resend services, with a round-trip test. | PENDING (see D.11.1) |
 | II-3.b | `LoginOtpSendService` and `LoginOtpResendService` resolve `LOGIN_OTP` through `NoticeTemplateRegistryPort` (D9, D10), the two configs inject the port, the two unit tests and the two composition tests are adjusted. | PENDING |
 | II-3.c | Rendering test with the real registry and renderer for SMS and EMAIL in en and zh_HK (the minutes, the unit, no placeholder left over, the content of D8). | PENDING |
 | II-3.d | Tests for a missing definition on send and on resend: the error reaches the caller, nothing is created or sent. | PENDING |
@@ -1628,3 +1628,91 @@ OPEN; nothing is decided here.
    that bear on D8.
 3. The coverage expectation for II-3.b (D.10.8).
 4. D.9 items 2 and 3 are closed; items 4, 5 and 6 are narrowed; items 1 and 7 are unchanged.
+
+### D.11 Resolution of D8 to D11 and the coverage scope (Nick, 2026-10-06)
+
+Recorded after the repository was rebased onto `origin/dev` (new HEAD starts `c7c50871`). Every
+commit hash recorded earlier in this plan, including `da136a8f` and the docs commits through
+`0662dc62`, was rewritten by the rebase and no longer resolves in this repository; see D.11.6.
+
+#### D.11.1 D8 resolved: corrected model, TRPMemberLogin carries the trust and scheme data
+
+- Correction to D.10.9: stage I-3 added `sch-name`/`chin-sch-name` to
+  `TrpGetAccountListApimDataItem` for Login. Nick confirms that was the wrong DTO: the trust code
+  and the two scheme names belong on `TRPMemberLogin`, which this stage's own finding (D.10.5) shows
+  is called at START, before the OTP, unlike `TRPGetAccountList`, which the design and the code both
+  call only after OTP verification (D.10.5, D.10.1).
+- This is option D of D.10.9, modeled ahead of the downstream change: `TrpMemberLoginApimDataItem`
+  gains three components, `@JsonProperty("trust-code") String trustCode`,
+  `@JsonProperty("sch-name") String schemeName` and
+  `@JsonProperty("chin-sch-name") String schemeNameChi`, each `null` until TAS ships them in the
+  real response; `@JsonIgnoreProperties(ignoreUnknown = true)` already on the class is unaffected
+  either way. A compatibility constructor preserves the existing four-argument call sites (seven
+  found in 084 evidence), in the same shape as the compatibility constructors stage I-3 added to the
+  other three DTOs.
+- `TrpGetAccountListApimDataItem` reverts to its original seven components: `schemeName`,
+  `schemeNameChi` and the compatibility constructor that bridged seven arguments to nine are
+  removed. This is safe because `TrpGetAccountListContractMapper.toRecord` never read the two fields
+  (D.2), so no mapping code changes.
+- Not modeled here (the next code script, II-3.b0): plumbing
+  `trustCode`/`schemeName`/`schemeNameChi` from `TrpMemberLoginContractMapper.toAuthenticated`
+  through `CredentialAuthenticationResult`, `LoginPreAuthContextFactory`, `LoginPreAuthContext` and
+  `AesGcmLoginPreAuthContextProtector.ProtectedPayload` (D.10.3) down to `LoginOtpSendService` and
+  `LoginOtpResendService`.
+- Downstream dependency, unchanged by this correction: the real `TRPMemberLogin` response does not
+  carry these fields yet; TAS and the owners of APIM add them later (D.10.4). Until then the three
+  fields resolve to `null` and the template variables they feed are not populated; D.11.2 to D.11.4
+  do not change that.
+
+#### D.11.2 D9 confirmed: seconds in configuration, minutes on the wire
+
+- Nick confirms the D9 proposal as written: `auth-workflows.login.otp.ttl-seconds` stays in seconds;
+  `ttlValue` is converted to minutes at the point of use with
+  `Math.max(1, policy.ttlSeconds() / 60)`, the same expression `RegistrationMessageDeliveryAdapter`
+  already uses (line 56, D.10.2); `ttlUnit` comes from `definition.ttlUnit()`.
+
+#### D.11.3 D10 confirmed: why a missing definition is guarded against
+
+- Nick asked why a missing definition would occur. Today it would not: `application.yml` already
+  defines `login-otp` for both channels and both locales (D.5). The check is defensive for the same
+  reason Registration has one (decision D7): it guards against an operator dropping a locale or
+  channel block in a future YAML edit, a deployment where the code ships before the YAML does, or a
+  later channel (solution design section 7.3) whose content entry is forgotten. Nick confirms the
+  D10 design as proposed: resolve the registry before the challenge is created or replaced, so a
+  missing definition has no side effect, and fail with `IllegalStateException` and no fallback.
+
+#### D.11.4 D11 confirmed: LoginOtpSendPolicy's content fields are removed at stage III-1
+
+- Nick asked when. The answer is stage III-1 (Phase III: Cleanup), the same stage that removes
+  Registration's old `auth-workflows.registration.otp.*` configuration (C.17.4). Until then
+  `LoginOtpSendPolicy` stays; II-3.b only stops reading `messageTemplate()` and `emailSubject()`
+  from it. At III-1 those two components and the two `validateLoginPolicy` checks that validate them
+  (lines 340-346, D.10) are removed together with the `auth-workflows.login.otp.sms-template` and
+  `email-template.*` YAML keys. The other seven components of the policy (length, numericOnly,
+  ttlSeconds, resendCooldownSeconds, maxVerifyAttempts, resendLimitEnabled, maxResendAttempts) are
+  not content and are not touched by this workstream.
+
+#### D.11.5 Coverage confirmed: new code only
+
+- Nick confirms II-3.b covers only the lines it changes or adds; it does not have to lift
+  `LoginOtpSendService` (85.7% instruction, 61.1% branch) or `LoginOtpResendService` (83.4%
+  instruction, 47.8% branch, D.10.8) to the 95%/85-90% tier. That pre-existing gap stays with the
+  separate `code-coverage-95` workstream (branch `feature/increase-code-coverage-95`), not this one.
+
+#### D.11.6 Rebase note, read before the next script
+
+- `git rebase origin/dev` rewrites the hash of every commit on this branch, even commits whose
+  content does not change, and may carry unrelated upstream changes into files outside this
+  workstream. This script therefore verified the plan and the II-2 code by content (step 03), not by
+  diffing the whole of `src/` and `pom.xml` against a single old commit hash, and it records no new
+  source pin.
+- The next code script (II-3.b0) must establish a fresh source pin from the current `HEAD` of this
+  branch before making any change, and must not reuse `da136a8f` or any other pre-rebase hash.
+
+#### D.11.7 Updated status of the II-3 sub-plan
+
+- II-3.0 is DONE (D.8 table, this section).
+- II-3.a and II-3.a2 remain DONE (scripts 081, 082 and 084).
+- II-3.b0 is PENDING and is now unconditional (D8 is resolved as option D); its row in the D.8 table
+  is updated to name the two DTOs and the propagation path.
+- II-3.b, II-3.c, II-3.d and II-3.e remain PENDING.
