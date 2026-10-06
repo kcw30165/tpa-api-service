@@ -6,8 +6,8 @@ import static org.mockito.Mockito.mock;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationMessageDestinationOverrideAdapter;
-import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.infrastructure.environment.DeploymentEnvironmentPolicy;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
@@ -20,7 +20,7 @@ class RegistrationMessageDestinationOverrideWiringTest {
     var gateway =
         config.registrationMessageGateway(
             mock(MessageDeliveryPort.class),
-            mock(AuthWorkflowPolicyPort.class),
+            mock(NoticeTemplateRegistryPort.class),
             policy("sit"),
             properties("override-mobile", "override@example.com"));
     assertThat(gateway).isInstanceOf(RegistrationMessageDestinationOverrideAdapter.class);
@@ -32,7 +32,7 @@ class RegistrationMessageDestinationOverrideWiringTest {
             () ->
                 config.registrationMessageGateway(
                     mock(MessageDeliveryPort.class),
-                    mock(AuthWorkflowPolicyPort.class),
+                    mock(NoticeTemplateRegistryPort.class),
                     policy("uat"),
                     properties("override-mobile", null)))
         .isInstanceOf(IllegalStateException.class)
@@ -46,7 +46,7 @@ class RegistrationMessageDestinationOverrideWiringTest {
             () ->
                 config.registrationMessageGateway(
                     mock(MessageDeliveryPort.class),
-                    mock(AuthWorkflowPolicyPort.class),
+                    mock(NoticeTemplateRegistryPort.class),
                     policy("future-env"),
                     properties(null, null)))
         .isInstanceOf(IllegalStateException.class)
@@ -55,7 +55,7 @@ class RegistrationMessageDestinationOverrideWiringTest {
             () ->
                 config.registrationMessageGateway(
                     mock(MessageDeliveryPort.class),
-                    mock(AuthWorkflowPolicyPort.class),
+                    mock(NoticeTemplateRegistryPort.class),
                     new DeploymentEnvironmentPolicy(new MockEnvironment()),
                     properties(null, null)))
         .isInstanceOf(IllegalStateException.class)
@@ -67,14 +67,14 @@ class RegistrationMessageDestinationOverrideWiringTest {
     assertThat(
             config.registrationMessageGateway(
                 mock(MessageDeliveryPort.class),
-                mock(AuthWorkflowPolicyPort.class),
+                mock(NoticeTemplateRegistryPort.class),
                 policy("prod"),
                 properties(null, null)))
         .isInstanceOf(RegistrationMessageDestinationOverrideAdapter.class);
     assertThat(
             config.registrationMessageGateway(
                 mock(MessageDeliveryPort.class),
-                mock(AuthWorkflowPolicyPort.class),
+                mock(NoticeTemplateRegistryPort.class),
                 policy("DR"),
                 properties(null, null)))
         .isInstanceOf(RegistrationMessageDestinationOverrideAdapter.class);

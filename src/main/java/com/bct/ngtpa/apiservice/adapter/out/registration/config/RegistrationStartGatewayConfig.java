@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationMessageDest
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationOtpChallengeAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
@@ -65,11 +66,11 @@ public class RegistrationStartGatewayConfig {
   @ConditionalOnMissingBean
   public RegistrationMessagePort registrationMessageGateway(
       MessageDeliveryPort messageDeliveryPort,
-      AuthWorkflowPolicyPort authWorkflowPolicyPort,
+      NoticeTemplateRegistryPort noticeTemplateRegistryPort,
       DeploymentEnvironmentPolicy deploymentEnvironmentPolicy,
       AuthWorkflowProperties authWorkflowProperties) {
     var deliveryAdapter =
-        new RegistrationMessageDeliveryAdapter(messageDeliveryPort, authWorkflowPolicyPort);
+        new RegistrationMessageDeliveryAdapter(messageDeliveryPort, noticeTemplateRegistryPort);
     if (deploymentEnvironmentPolicy.isNonProductionLikeDeployment()) {
       requiredDestinationOverride(authWorkflowProperties).validateRequiredDestinations();
     }

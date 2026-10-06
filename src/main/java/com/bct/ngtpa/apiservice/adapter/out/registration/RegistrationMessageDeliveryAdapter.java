@@ -1,15 +1,14 @@
 package com.bct.ngtpa.apiservice.adapter.out.registration;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.OtpPolicy;
-import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryChannel;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryCommand;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryScenario;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryStatus;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
-import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
+import com.bct.ngtpa.apiservice.application.dto.message.NoticeTemplateDefinition;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -17,17 +16,26 @@ import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
+/**
+ * Delivers the Registration OTP. The subject, the body and the unit word of {@code {ttlUnit}} come
+ * from the notice template registry, resolved per request with the language of the request
+ * (solution design section 8.6, decisions D6 and D7). A missing definition fails inside {@link
+ * #deliverRegistrationOtp} with an {@link IllegalStateException}; there is no built-in fallback
+ * content.
+ */
 @Slf4j
 public class RegistrationMessageDeliveryAdapter implements RegistrationMessagePort {
   private final MessageDeliveryPort messageDeliveryPort;
-  private final AuthWorkflowPolicyPort authWorkflowPolicyPort;
+  private final NoticeTemplateRegistryPort noticeTemplateRegistryPort;
 
   public RegistrationMessageDeliveryAdapter(
-      MessageDeliveryPort messageDeliveryPort, AuthWorkflowPolicyPort authWorkflowPolicyPort) {
+      MessageDeliveryPort messageDeliveryPort,
+      NoticeTemplateRegistryPort noticeTemplateRegistryPort) {
     this.messageDeliveryPort =
         Objects.requireNonNull(messageDeliveryPort, "messageDeliveryPort must not be null");
-    this.authWorkflowPolicyPort =
-        Objects.requireNonNull(authWorkflowPolicyPort, "authWorkflowPolicyPort must not be null");
+    this.noticeTemplateRegistryPort =
+        Objects.requireNonNull(
+            noticeTemplateRegistryPort, "noticeTemplateRegistryPort must not be null");
   }
 
   @Override
@@ -38,13 +46,17 @@ public class RegistrationMessageDeliveryAdapter implements RegistrationMessagePo
       int ttlSeconds,
       String acceptLanguage,
       String correlationId) {
-    OtpPolicy policy = otpPolicy();
     MessageDeliveryChannel channel = toChannel(contactType);
+    NoticeTemplateDefinition definition =
+        noticeTemplateRegistryPort.resolve(
+            MessageDeliveryType.REGISTRATION_OTP, channel, acceptLanguage);
 
     var variables = new LinkedHashMap<String, String>();
     variables.put("code", otpCode);
     variables.put("ttlValue", String.valueOf(Math.max(1, ttlSeconds / 60)));
-    variables.put("ttlUnit", "minutes");
+    if (definition.ttlUnit() != null) {
+      variables.put("ttlUnit", definition.ttlUnit());
+    }
 
     var command =
         new MessageDeliveryCommand(
@@ -52,8 +64,8 @@ public class RegistrationMessageDeliveryAdapter implements RegistrationMessagePo
             MessageDeliveryScenario.REGISTRATION,
             channel,
             recipient,
-            subject(channel, policy),
-            body(channel, policy),
+            definition.subject(),
+            definition.body(),
             "registration-otp",
             Map.copyOf(variables),
             acceptLanguage,
@@ -64,41 +76,10 @@ public class RegistrationMessageDeliveryAdapter implements RegistrationMessagePo
         .map(result -> result.status() == MessageDeliveryStatus.ACCEPTED);
   }
 
-  private OtpPolicy otpPolicy() {
-    RegistrationAuthWorkflowPolicy policy = authWorkflowPolicyPort.registrationPolicy();
-    if (policy == null || policy.otp() == null) {
-      throw new IllegalStateException("Registration OTP policy is not configured");
-    }
-    return policy.otp();
-  }
-
   private MessageDeliveryChannel toChannel(RegistrationContactType contactType) {
     if (contactType == RegistrationContactType.MOBILE) {
       return MessageDeliveryChannel.SMS;
     }
     return MessageDeliveryChannel.EMAIL;
-  }
-
-  private String subject(MessageDeliveryChannel channel, OtpPolicy policy) {
-    if (channel == MessageDeliveryChannel.EMAIL
-        && policy.email() != null
-        && policy.email().subject() != null
-        && !policy.email().subject().isBlank()) {
-      return policy.email().subject();
-    }
-    return "registration-otp";
-  }
-
-  private String body(MessageDeliveryChannel channel, OtpPolicy policy) {
-    if (channel == MessageDeliveryChannel.EMAIL
-        && policy.email() != null
-        && policy.email().body() != null
-        && !policy.email().body().isBlank()) {
-      return policy.email().body();
-    }
-    if (policy.smsTemplate() != null && !policy.smsTemplate().isBlank()) {
-      return policy.smsTemplate();
-    }
-    return "{code}";
   }
 }
