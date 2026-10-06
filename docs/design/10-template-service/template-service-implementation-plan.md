@@ -45,7 +45,7 @@ still build `MessageDeliveryCommand` and call
 |---|---|---|---|
 | II-1 | Username Recovery | Simplest — single call site in `UsernameRecoveryFeatureConfig` / `UsernameRecoveryRequestProtectedOperation`. First to confirm whether `schemeName`/`schemeNameChi` already flow from the DTO through `TrpSearchMemberApimResultMapper` → `UsernameRecoveryLookupCandidate`, or need additive plumbing. | DONE (gate evidence: Appendix A.3) |
 | II-2 | Registration | Replace `RegistrationMessageDeliveryAdapter`'s `subject()`/`body()` policy lookup with `NoticeTemplateRegistryPort.resolve(...)`. No scheme-name placeholder needed (§8.2). | DONE (gate evidence: Appendix C.17) |
-| II-3 | Login | Replace `LoginOtpSendPolicy`-based lookup. Requires scheme-name plumbing from `TrpGetAccountListApimDataItem`. | PENDING |
+| II-3 | Login | Replace `LoginOtpSendPolicy`-based lookup. Requires scheme-name plumbing from `TrpGetAccountListApimDataItem`. | IN PROGRESS (investigation done; decision D8 open; draft sub-plan: Appendix D) |
 | II-4 | Forgot Password | **Last** — highest risk, since it currently has no live YAML wiring at all. Reconcile content to match `login-otp` verbatim (§5). Requires scheme-name plumbing from `ForgotPasswordTrpSearchMemberDataItem`. | PENDING |
 
 Each stage follows the established investigate → implement → validate
@@ -85,9 +85,11 @@ captcha gate on); each was validated with compile, test-compile and a scoped run
 (C.12 to C.14, C.16 and C.17). The stage gate is met on the final II-2 code commit da136a8f: a
 passing full `mvn test` (5564 tests, 0 failures, 0 errors, 10 skipped) and an application startup
 smoke test with no bean or configuration errors, both evidenced (C.17). Registration now takes its
-content and its unit word from the registry. Stages II-3 (Login), II-4 (Forgot Password) and Phase
-III remain PENDING; II-3 is next. Decisions and open items for II-1 are in Appendix A.2. Work that
-is deliberately outside this workstream is listed in Appendix B.
+content and its unit word from the registry. Stage II-3 (Login) is IN PROGRESS: its read-only
+investigation is done (scripts 081 and 082, Appendix D) and decision D8, the source of the trust
+code and the scheme name that the Login OTP content needs, is open; nothing is implemented. Stage
+II-4 (Forgot Password) and Phase III remain PENDING. Decisions and open items for II-1 are in
+Appendix A.2. Work that is deliberately outside this workstream is listed in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
 
@@ -1252,3 +1254,182 @@ characters) 21 times in the local Maven log, which is not in the zip. The rescan
    pass; `mvn spotless:apply` is still deferred.
 6. Open items 3 and 4 of A.2 (whether startup depends on the Config Service, and the Phase 04
    document) are unchanged.
+
+### Appendix D: Stage II-3 (Login) Investigation and Draft Sub-Plan
+
+Status: DRAFT. No code has been changed for Stage II-3. Recorded 2026-10-06 from the evidence of
+scripts 081 and 082 (read-only; HEAD 3189b444; `src/` and `pom.xml` identical to da136a8f).
+Statements are limited to what that evidence shows; inferences are marked; anything not shown is
+listed under D.9. This appendix answers C.17.5 item 1, except for decision D8.
+
+#### D.1 Current send path
+
+- `LoginOtpSendService` (application layer, 176 lines) and `LoginOtpResendService` (176 lines) are
+  the only classes that build a `MessageDeliveryCommand` for `MessageDeliveryType.LOGIN_OTP`. Each
+  is wrapped by a shared-idempotency coordinator (`SharedLoginOtpSendService`,
+  `SharedLoginOtpResendService`); the coordinators use
+  `LoginFailureClassifiers.possibleSideEffect()` and do not read content.
+- Send builds the command in `createDeliverBind` (lines 97-108): scenario LOGIN, the channel and
+  destination of the resolved destination, the subject only for EMAIL, the body, no template code
+  (null), the variables of `templateVariables` (lines 155-158) and the raw
+  `command.acceptLanguage()`. The variables are `code`, `ttlValue` = `policy.ttlSeconds()` (300 by
+  default, in seconds) and `ttlUnit` = the literal "seconds". Resend builds the same command inline
+  in `deliver` (lines 107-126, variables at lines 118-124).
+- The policy is a nine-component record `LoginOtpSendPolicy` (length, numericOnly, ttlSeconds,
+  resendCooldownSeconds, maxVerifyAttempts, resendLimitEnabled, maxResendAttempts, messageTemplate,
+  emailSubject). It has no e-mail body. Both services therefore send `policy.messageTemplate()`,
+  which is the SMS template, as the body of an EMAIL too, with `policy.emailSubject()` as the
+  subject (send lines 103-104; resend lines 113-116). The `email-template.body` of the old
+  configuration is validated but is not read by the send path.
+- The policy is built once at startup from `auth-workflows.login.otp.*` by the two application
+  configs (`LoginOtpSendApplicationConfig` lines 44-54, `LoginOtpResendApplicationConfig` lines
+  33-43) and passed to the constructors (lines 55-64 and line 44). Neither config has a
+  `NoticeTemplateRegistryPort`. The registry bean exists (`NoticeTemplateServiceConfig` lines 32-33)
+  and `UsernameRecoveryFeatureConfig` already injects it (lines 219-222).
+- Order of effects: the protected context is loaded; the OTP challenge is created (send) or replaced
+  (resend); only then is the command built and delivered. After a FAILED or UNKNOWN_OUTCOME delivery
+  the challenge is invalidated (send lines 113-130); on success the session is bound. Resend
+  delivers only when the challenge was replaced; a cooldown or a limit returns before delivery.
+- Locale: `LoginController` passes the raw `Accept-Language` header (send line 124, resend line 169)
+  to the commands. `SendLoginOtpCommand` trims it and turns a blank value into null;
+  `ResendLoginOtpCommand` keeps what it is given, and the controller code after line 183 was not
+  read. The pre-auth context stores no language. Today the locale reaches the delivery command but
+  the content does not depend on it.
+- Among the test files with Login in the path, none mentions `ttlUnit` or `ttlValue` (081
+  inventory), and the only ones that mention `LOGIN_OTP` are `LoginOtpSendServiceTest` and three
+  text guards (D.6 and D.7).
+
+#### D.2 Finding: the trust code and the scheme name are not available when the OTP is sent
+
+- The `login-otp` definition (`application.yml` lines 618-648) requires `{trustCode}` in the SMS (en
+  and zh_HK) and in the English e-mail subject, `{schemeName}` in the English e-mail body and
+  `{schemeNameChi}` in the zh_HK e-mail body, besides `{code}`, `{ttlValue}` and `{ttlUnit}`.
+  `forgot-password-otp` (lines 649-678) is identical by decision (solution design section 5). The
+  Login send path supplies none of the three. Rendering throws on a variable that the template needs
+  and the command does not carry (C.1), so, inferred from C.1, the migrated Login OTP would end as a
+  failed delivery for every member unless D8 is settled.
+- What the send path has: `LoginPreAuthContext` (normalized username, role, destinations by id,
+  verification time, workflow version) and `LoginPreAuthDestination` (id, channel, destination,
+  masked destination). The start operation builds it from the credential result
+  (`LoginStartProtectedOperation` line 79), and `TrpMemberLoginAdapter` implements that credential
+  port: `TrpMemberLoginApimDataItem` has `success`, `login-user-role`, `fail-count` and an `otp`
+  list of channel and destination, and `TrpMemberLoginContractMapper.toAuthenticated` (lines 26-59)
+  uses only those. The item is annotated `@JsonIgnoreProperties(ignoreUnknown = true)`, so other
+  APIM fields would be ignored; none is known.
+- Where trust data exists: the `TRPGetAccountList` item carries the trust code, the scheme type and,
+  since stage I-3, `sch-name` and `chin-sch-name` (`TrpGetAccountListApimDataItem` lines 6-15). It
+  is called from exactly one place in `src/main`: `LoginOtpVerifyService.continueToAccounts` (lines
+  312-372), after the OTP has been verified and consumed (lines 241-262). The request is built from
+  the normalized username only (`GetLoginAccountsUseCase` lines 10 and 17-26). The account list
+  follows the OTP (the account-selection projection `LoginOtpAccountResponse` is returned after
+  verification) and the verify result carries a list, so a member can hold several accounts.
+- The plumbing from stage I-3 is only half there: `TrpGetAccountListContractMapper.toRecord` (lines
+  14-23) maps seven fields and drops `schemeName` and `schemeNameChi`; `LoginAccountRecord`,
+  `LoginValidatedAccount` and `LoginSessionAccount` have no scheme-name component;
+  `LoginOtpAccountResponse` has the trust code but no scheme name. The plan row of II-3
+  ("scheme-name plumbing from `TrpGetAccountListApimDataItem`") does not say when the names are
+  needed; at the send they are not available.
+- Not known: whether the BRD defines Login OTP content that applies to a member before an account or
+  trust is chosen. The Login and Forgot Password content was taken as one (stage I-5 and solution
+  design section 5); the Forgot Password lookup returns trust data per candidate (stage I-3), the
+  Login credential step does not. The question for Nick is in D.4, decision D8.
+
+#### D.3 Serializer and session (A.1 carry-over)
+
+- `AesGcmLoginPreAuthContextProtector` serializes a private record `ProtectedPayload`
+  (normalizedUsername, userRole, destinationsById, credentialVerifiedAt as an ISO string,
+  workflowVersion) with explicit `from` and `toDomain` methods (lines 103-128). A field added to
+  `LoginPreAuthContext` is therefore dropped on the round trip unless it is added to
+  `ProtectedPayload` by hand, the same finding as for Username Recovery (A.1). The record
+  `LoginPreAuthDestination` is serialized as it is by the injected `ObjectMapper`
+  (`LoginPreAuthFoundationConfig` lines 24-30); that mapper's configuration was not read.
+- The context is created once at START (`LoginStartProtectedOperation.establish` lines 79-85:
+  `contexts.create`, `protector.protect`, four `loginContext.*` session attributes) and decrypted at
+  SEND, RESEND and VERIFY (`DefaultLoginProtectedAuthFlowContextLoader` lines 64-72). For RESEND the
+  selected destination is found by its masked value (lines 74-82).
+- `AesGcmLoginStartReplayProtector` serializes only the authFlowSessionId, the CSRF token, the
+  expiry and the destination choices (lines 75-107), and the send and resend replay snapshots carry
+  only the status, the masked destination and seconds. Neither holds the context or message content,
+  so a template change does not touch them.
+- Inferred, not read: pre-auth sessions are short-lived, so a protected payload written before a
+  deployment is not expected to be read after it; the shared Login idempotency migration has not
+  been deployed to any environment yet (Nick, 2026-09-05).
+
+#### D.4 Decisions
+
+| # | Topic | Position or options | Status |
+|---|---|---|---|
+| D8 | Trust code and scheme name for the Login OTP content | A: call `TRPGetAccountList` at Login START after `TRPMemberLogin` succeeds, keep the trust data in the protected pre-auth context and render it; needs a rule for a member with several trusts, adds an APIM call and a failure mode before any OTP is sent, and changes `LoginPreAuthContext`, `ProtectedPayload`, `LoginPreAuthContextFactory` and `LoginStartProtectedOperation`. B: Login OTP content without trust code and scheme name (BRD sign-off needed): changes the `login-otp` definition in en and zh_HK, which then differs from `forgot-password-otp`, so the rule that the two stay identical must change too. C: call `TRPGetAccountList` at every SEND and RESEND: the same ambiguity as A and one more APIM call per message. D: extend the APIM `TRPMemberLogin` response with the trust data (the DTO ignores unknown properties, so what the real response carries is not known; the ORSO team owns APIM and TAS). | OPEN: needs Nick (BRD); not decided here |
+| D9 | The unit | Pass `ttlValue` in minutes, `max(1, policy.ttlSeconds() / 60)`, and `ttlUnit` from `definition.ttlUnit()`, as D6 does for Registration. The source of the seconds stays `policy.ttlSeconds()`. This changes what Login sends today (C.11.3). | Proposed, not confirmed |
+| D10 | Where the registry is resolved and what a missing definition does | Resolve before the challenge is created or replaced (the channel and the locale are known there), so that a missing definition has no side effect: no challenge, no cooldown, no binding. A missing definition fails with `IllegalStateException`, no fallback (as D7). Resolving inside the delivery lambda, as Registration does, would leave an un-invalidated challenge on send and a replaced challenge on resend (inferred: with its cooldown running). The error signal passes the shared executor (key marked unknown, C.14.3) and, inferred, ends at the central handler as HTTP 500; the controller catch blocks were not read. | Proposed, not confirmed |
+| D11 | The old Login configuration | Keep `LoginOtpSendPolicy` with its nine components and keep `validateLoginPolicy` until stage III-1; the two services stop reading `messageTemplate()` and `emailSubject()`. Unlike Registration (C.10.1), the Login templates have a live check (`validateLoginPolicy` lines 336-346 require `{code}` in the SMS template and a valid e-mail template), so III-1 must remove it together with the YAML. | Proposed, not confirmed |
+
+#### D.5 Behaviour changes to record if D9 to D11 are confirmed
+
+- The SMS and e-mail wording becomes the BRD content of `login-otp` (en and zh_HK), replacing "Your
+  BCT login verification code is {code}. It is valid for {ttlValue} {ttlUnit}." (`application.yml`
+  lines 199-202).
+- The unit changes from seconds to minutes: "300 seconds" becomes "5 minutes" (D9).
+- The e-mail body changes from the SMS template to the registry e-mail body (D.1).
+- The content follows the locale of the send or resend request: en for a null, blank or unsupported
+  tag, zh_HK for the Chinese tags, as for Registration (design section 8.4).
+- A missing definition fails instead of silently using the old configuration (D10).
+- The values of `{trustCode}`, `{schemeName}` and `{schemeNameChi}` follow D8.
+
+#### D.6 Existing guards that constrain the code
+
+- `Task0043LoginOtpSendOrchestrationArchitectureTest` reads `LoginOtpSendService.java` as text. The
+  source must contain `implements SendLoginOtpUseCase`, `OtpChallengePort`, `MessageDeliveryPort`,
+  `OtpScenario.LOGIN`, `MessageDeliveryScenario.LOGIN`, `MessageDeliveryType.LOGIN_OTP`,
+  `challenge.rawCode()` and `templateVariables` (lines 16-23 and 40), and must not contain "Redis",
+  "WebClient", "org.springframework", "SecureRandom", "LoginOtpPort", "LoginMessagePort", "log.",
+  "System.out", "rawCode=<" or "providerMessageId" (lines 24-31 and 41). The text "log." also
+  matches inside other words, so no comment or identifier may contain it.
+- `Task0043LoginOtpResendArchitectureTest` requires `replaceChallenge`, `MessageDeliveryPort` and
+  `MessageDeliveryType.LOGIN_OTP` in `LoginOtpResendService.java` and forbids "Redis", "WebClient"
+  and "org.springframework" (lines 15-17).
+
+#### D.7 Test and coverage baseline
+
+- `LoginOtpSendServiceTest` (221 lines, 3 tests) builds the service in one helper (lines 164-191)
+  with the nine-component policy; `LoginOtpResendServiceTest` (161 lines, 3 tests) does the same
+  (lines 130-142). Both constructors gain a registry parameter, so each helper changes and each test
+  needs a registry fake. Their only content assertion is that `templateVariables` contains `code`
+  (send line 86, resend line 71); the send test also pins the order load, create, deliver, bind
+  (line 78).
+- `LoginOtpSendSharedRuntimeCompositionTest` (lines 71-96) and
+  `LoginOtpResendSharedRuntimeCompositionTest` (lines 64-89) load the application configs with mocks
+  and no `NoticeTemplateRegistryPort` bean. Inferred: once the config methods take the registry,
+  each needs a bean for it. `ProductionComposedLoginControllerBoundaryTest` and
+  `LoginStartSharedRuntimeCompositionTest` set Login OTP templates (lines 252-253 and 129-130) and
+  may load the same configs; they were not read.
+- The coverage of the two services was not collected. The tier for use cases and adapters with
+  orchestration applies (95% instruction gated, 85-90% branch, each uncovered branch justified).
+
+#### D.8 Draft sub-plan
+
+| Sub-stage | Change | Status |
+|---|---|---|
+| II-3.0 | Settle D8 to D11; write the solution-design section for the Login content and update this appendix before any code. | PENDING (blocked on D8) |
+| II-3.a | Read-only investigation of the send path, the context serializers and the trust source. | DONE (scripts 081 and 082; findings in D.1 to D.7) |
+| II-3.a2 | Read-only: the send and resend endpoints and their error handling in `LoginController`, the context tests that load the two configs, and, if D8 is A or C, the callers of `LoginPreAuthContext`. | PENDING |
+| II-3.b0 | Only if D8 is A or C: carry the trust code and the scheme names into the pre-auth context (`ProtectedPayload`, the factory, the start operation or the send path) with a round-trip test. | PENDING (depends on D8) |
+| II-3.b | `LoginOtpSendService` and `LoginOtpResendService` resolve `LOGIN_OTP` through `NoticeTemplateRegistryPort` (D9, D10), the two configs inject the port, the two unit tests and the two composition tests are adjusted. | PENDING |
+| II-3.c | Rendering test with the real registry and renderer for SMS and EMAIL in en and zh_HK (the minutes, the unit, no placeholder left over, the content of D8). | PENDING |
+| II-3.d | Tests for a missing definition on send and on resend: the error reaches the caller, nothing is created or sent. | PENDING |
+| II-3.e | Stage gate on the final code: full `mvn test` and an application startup smoke test; then the plan is updated. | PENDING |
+
+#### D.9 Open items
+
+1. D8 needs an answer from Nick (BRD): which trust code and scheme name, if any, the Login OTP
+   message carries when the member's accounts are not known yet.
+2. The send and resend endpoints of `LoginController` (try at lines 136 and 179) were printed only
+   up to the call; their catch blocks and the central handler path for an error signal are not read.
+3. Which context tests load `LoginOtpSendApplicationConfig` and `LoginOtpResendApplicationConfig` is
+   not established (D.7).
+4. The configuration of the `ObjectMapper` injected into `AesGcmLoginPreAuthContextProtector` is not
+   read; it matters only if a field is added to `LoginPreAuthDestination`.
+5. The delivery layer was not read for a null template code: Login passes null, Registration passes
+   "registration-otp". No change is proposed.
+6. The coverage baseline of the two services is not collected (D.7).
+7. The VERIFY path builds no message and is outside this stage.
