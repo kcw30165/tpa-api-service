@@ -9,10 +9,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * Centralized masking policy configuration.
  *
- * <p>Backs {@link MaskingService}. Email and mobile masking share the same {@link EmailMobile}
- * shape: both always reveal only the first and last character of the relevant segment, with the
- * hidden-character count driven by {@code mode} (variable-length vs. fixed-length). See {@link
- * MaskingService} for the full masking contract.
+ * <p>Backs {@link MaskingService}. Email and mobile masking share the same
+ * {@link EmailMobile} shape: both always reveal only the first and last
+ * character of the relevant segment, with the hidden-character count driven by
+ * {@code mode} (variable-length vs. fixed-length). See {@link MaskingService}
+ * for the full masking contract.
  */
 @ConfigurationProperties(prefix = "masking")
 @Getter
@@ -62,10 +63,10 @@ public class MaskingProperties {
 
     /**
      * Field-name substrings (case-insensitive, non-alphanumeric-stripped) that mark a
-     * structured-log field or plain-text key=value assignment as sensitive and therefore subject to
-     * full redaction via {@code placeholder}. Migrated from the former
-     * logging-sanitizer.sensitive-tokens key (LoggingSanitizerProperties, now deleted) so all
-     * masking-related configuration lives under this single masking.* tree.
+     * structured-log field or plain-text key=value assignment as sensitive and therefore
+     * subject to full redaction via {@code placeholder}. Migrated from the former
+     * logging-sanitizer.sensitive-tokens key (LoggingSanitizerProperties, now deleted) so
+     * all masking-related configuration lives under this single masking.* tree.
      */
     private List<String> sensitiveTokens =
         new ArrayList<>(

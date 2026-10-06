@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartWorkflowDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
@@ -19,6 +18,7 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartWorkflowDataResponse;
 
 class RegistrationStartWebMapperTest {
   private final RegistrationStartWebMapper mapper =
@@ -196,8 +196,7 @@ class RegistrationStartWebMapperTest {
             null,
             null,
             List.of(),
-            List.of(
-                new StartRegistrationError(RegistrationErrorKey.MESSAGE_DELIVERY_FAILED, "PAGE")),
+            List.of(new StartRegistrationError(RegistrationErrorKey.MESSAGE_DELIVERY_FAILED, "PAGE")),
             RegistrationIdempotencyStartOutcome.STARTED,
             null);
     var response = mapper.toMutationResponse(result, "en");
@@ -260,8 +259,7 @@ class RegistrationStartWebMapperTest {
     assertThat(response.errors())
         .singleElement()
         .satisfies(
-            error ->
-                assertThat(error.code()).isEqualTo("err.registration.start.verificationFailed"));
+            error -> assertThat(error.code()).isEqualTo("err.registration.start.verificationFailed"));
   }
 
   @Test
@@ -277,8 +275,7 @@ class RegistrationStartWebMapperTest {
             null,
             null,
             List.of(),
-            List.of(
-                new StartRegistrationError(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED, "PAGE")),
+            List.of(new StartRegistrationError(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED, "PAGE")),
             RegistrationIdempotencyStartOutcome.STARTED,
             null);
     var response = mapper.toMutationResponse(result, "en");
@@ -418,6 +415,7 @@ class RegistrationStartWebMapperTest {
     assertThat(response.csrfToken()).isEqualTo("csrf_safe_token");
   }
 
+
   @Test
   void toMutationResponseWithNullResultReturnsSystemErrorAndDoesNotThrow() {
     var response = mapper.toMutationResponse(null, "en");
@@ -480,7 +478,8 @@ class RegistrationStartWebMapperTest {
     assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
     assertThat(response.errors())
         .singleElement()
-        .satisfies(error -> assertThat(error.code()).isEqualTo("err.workflow.idempotency.missing"));
+        .satisfies(
+            error -> assertThat(error.code()).isEqualTo("err.workflow.idempotency.missing"));
   }
 
   @Test
@@ -489,4 +488,5 @@ class RegistrationStartWebMapperTest {
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
   }
+
 }

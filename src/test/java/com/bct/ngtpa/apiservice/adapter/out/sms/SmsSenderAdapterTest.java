@@ -274,7 +274,8 @@ class SmsSenderAdapterTest {
     SmsSenderAdapter adapter =
         adapterWith(
             baseProperties(), request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
-    var method = SmsSenderAdapter.class.getDeclaredMethod("safeProviderResponseBody", String.class);
+    var method =
+        SmsSenderAdapter.class.getDeclaredMethod("safeProviderResponseBody", String.class);
     method.setAccessible(true);
     Object result = method.invoke(adapter, new Object[] {null});
     assertThat(result).isEqualTo("");
@@ -287,7 +288,8 @@ class SmsSenderAdapterTest {
             .baseUrl(properties.getBaseUrl())
             .exchangeFunction(exchangeFunction)
             .build();
-    return new SmsSenderAdapter(webClient, properties, new MaskingService(new MaskingProperties()));
+    return new SmsSenderAdapter(
+        webClient, properties, new MaskingService(new MaskingProperties()));
   }
 
   private SmsProperties baseProperties() {

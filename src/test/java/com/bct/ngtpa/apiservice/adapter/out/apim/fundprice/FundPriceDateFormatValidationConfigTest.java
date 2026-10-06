@@ -12,8 +12,7 @@ class FundPriceDateFormatValidationConfigTest {
   @Test
   void beanFormatterParsesRealApimDate() {
     FundPriceDateFormatProperties properties = new FundPriceDateFormatProperties();
-    FundPriceDateFormatValidationConfig config =
-        new FundPriceDateFormatValidationConfig(properties);
+    FundPriceDateFormatValidationConfig config = new FundPriceDateFormatValidationConfig(properties);
 
     assertThat(LocalDate.parse("10/07/2026", config.fundPriceFullDateFormatter(properties)))
         .isEqualTo(LocalDate.of(2026, 7, 10));

@@ -1,9 +1,10 @@
 package com.bct.ngtpa.apiservice.application.dto.fundprice;
 
+import java.math.BigInteger;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,6 @@ class FundPriceExportResultTest {
     assertThat(result.fundPriceType()).isEqualTo("BIDOFFER PRICE");
     assertThat(result.maxRiskLevel()).isEqualTo("5");
   }
-
   @Test
   void nullRowsDefaultsToEmptyList() {
     var result = new FundPriceExportResult(null, "UNIT PRICE", null, BigInteger.TWO);

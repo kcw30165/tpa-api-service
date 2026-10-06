@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationSelectedTrustRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUsernameCheckRequest;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
@@ -15,6 +14,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 
 class RegistrationUsernameCheckWebMapperTest {
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -221,8 +221,7 @@ class RegistrationUsernameCheckWebMapperTest {
     assertThat(response.errors())
         .singleElement()
         .satisfies(
-            errorEntry ->
-                assertThat(errorEntry.code()).isEqualTo("err.workflow.system.unavailable"));
+            errorEntry -> assertThat(errorEntry.code()).isEqualTo("err.workflow.system.unavailable"));
   }
 
   @Test
@@ -239,8 +238,7 @@ class RegistrationUsernameCheckWebMapperTest {
     assertThat(response.errors())
         .singleElement()
         .satisfies(
-            errorEntry ->
-                assertThat(errorEntry.code()).isEqualTo("err.registration.state.invalid"));
+            errorEntry -> assertThat(errorEntry.code()).isEqualTo("err.registration.state.invalid"));
   }
 
   @Test
@@ -258,8 +256,7 @@ class RegistrationUsernameCheckWebMapperTest {
         .singleElement()
         .satisfies(
             errorEntry ->
-                assertThat(errorEntry.code())
-                    .isEqualTo("err.registration.username.request.invalid"));
+                assertThat(errorEntry.code()).isEqualTo("err.registration.username.request.invalid"));
   }
 
   @Test
@@ -324,4 +321,7 @@ class RegistrationUsernameCheckWebMapperTest {
     JsonNode json = objectMapper.valueToTree(response);
     assertThat(json.at("/errors/0/targets/0").asText()).isEqualTo("PAGE");
   }
+
+
+
 }

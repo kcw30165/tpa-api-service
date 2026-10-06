@@ -9,8 +9,8 @@ import java.util.Objects;
  * entry by fund-code).
  *
  * <p>Carries BOTH {@code bidPrice} and {@code offerPrice} always -- fundPriceType-driven field
- * selection (the bid/offer pair vs. a single unit price) is a display concern resolved later in the
- * web mapper, never here. {@code riskLevel} is deliberately nullable/blank-legitimate, matching
+ * selection (the bid/offer pair vs. a single unit price) is a display concern resolved later in
+ * the web mapper, never here. {@code riskLevel} is deliberately nullable/blank-legitimate, matching
  * every other risk-level field in this design pack.
  */
 public record RawFundPriceRow(

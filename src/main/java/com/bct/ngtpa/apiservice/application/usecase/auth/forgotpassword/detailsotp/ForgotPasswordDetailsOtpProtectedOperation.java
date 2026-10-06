@@ -30,12 +30,12 @@ import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBin
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsStatus;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpBindingCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitState;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
@@ -211,9 +211,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
             challenge.otpChallengeId(),
             channel,
             destination,
-            "email".equals(channel)
-                ? masker.maskEmail(destination)
-                : masker.maskMobile(destination),
+            "email".equals(channel) ? masker.maskEmail(destination) : masker.maskMobile(destination),
             challenge.expiresAt(),
             now.plusSeconds(60),
             now);

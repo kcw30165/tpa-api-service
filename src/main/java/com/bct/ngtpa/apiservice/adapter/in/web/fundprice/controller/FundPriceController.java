@@ -1,39 +1,30 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.fundprice.controller;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.mapper.FundPriceWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceModeResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceQueryResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support.FundPriceSortingSupport;
-import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support.FundPriceWorkbookExporter;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
-import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceModeCommand;
-import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceQueryResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
-import com.bct.ngtpa.apiservice.application.exception.FundPriceRequestInvalidException;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.FundPriceRequestInvalidException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
-import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCaseResult;
-import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCaseResult;
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceQueryUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceQueryUseCaseResult;
-import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
+import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.support.FundPriceWorkbookExporter;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceExportResult;
+import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceExportUseCaseResult;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.List;
 import java.util.Objects;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,19 +32,28 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import com.bct.ngtpa.apiservice.adapter.in.web.fundprice.response.FundPriceModeResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceModeCommand;
+import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
+import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.fundprice.FundPriceModeUseCaseResult;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
+import java.util.List;
 
 /**
  * Exposes all three Fund Price endpoints: {@code GET /fund-price} (query), {@code GET
  * /fund-price/export} (XLSX download), and {@code GET /fund-price/mode} (calendar metadata).
  *
- * <p>Session-id cookie resolution mirrors {@code LogoutController}'s exact, already-proven pattern
- * (confirmed, script 116's investigation): {@code exchange.getRequest().getCookies()
+ * <p>Session-id cookie resolution mirrors {@code LogoutController}'s exact, already-proven
+ * pattern (confirmed, script 116's investigation): {@code exchange.getRequest().getCookies()
  * .getFirst(name)}, then {@code new AuthenticatedSessionId(value.trim())} wrapped defensively.
  *
  * <p>FLAGGED, not resolved here: exact HTTP-status exception mapping for INVALID_DATE/malformed-
- * date/missing-cookie is not wired to this codebase's real {@code ApiExceptionHandler} conventions
- * -- correct failure BEHAVIOR (throwing) is implemented without guessing the specific exception
- * class the global handler expects; that wiring is a separate, deferred stage.
+ * date/missing-cookie is not wired to this codebase's real {@code ApiExceptionHandler}
+ * conventions -- correct failure BEHAVIOR (throwing) is implemented without guessing the specific
+ * exception class the global handler expects; that wiring is a separate, deferred stage.
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -137,9 +137,7 @@ public class FundPriceController {
     return switch (result.outcome()) {
       case APPLIED -> Mono.just(result.queryResult());
       case INVALID_DATE ->
-          Mono.error(
-              new FundPriceRequestInvalidException(
-                  "date is not a valid available fund price date"));
+          Mono.error(new FundPriceRequestInvalidException("date is not a valid available fund price date"));
       case SYSTEM_FAILURE -> Mono.error(FundPriceRetrievalException.systemFailure());
     };
   }
@@ -166,7 +164,6 @@ public class FundPriceController {
       throw new FundPriceRequestInvalidException("date must be in dd/MM/yyyy format");
     }
   }
-
   @GetMapping(value = "/fund-price/export", produces = EXCEL_MEDIA_TYPE)
   public Mono<ResponseEntity<byte[]>> exportFundPrice(ServerWebExchange exchange) {
     return Mono.defer(
@@ -188,8 +185,7 @@ public class FundPriceController {
               .map(
                   body ->
                       ResponseEntity.ok()
-                          .contentType(
-                              org.springframework.http.MediaType.parseMediaType(EXCEL_MEDIA_TYPE))
+                          .contentType(org.springframework.http.MediaType.parseMediaType(EXCEL_MEDIA_TYPE))
                           .header(
                               HttpHeaders.CONTENT_DISPOSITION,
                               ContentDisposition.attachment()

@@ -34,8 +34,7 @@ public final class LoginPreAuthContextFactory {
           "email".equals(source.channel())
               ? masker.maskEmail(source.destination())
               : masker.maskMobile(source.destination());
-      var destination =
-          new LoginPreAuthDestination(id, publicChannel, source.destination(), masked);
+      var destination = new LoginPreAuthDestination(id, publicChannel, source.destination(), masked);
       if (destinations.putIfAbsent(id, destination) != null) {
         throw new IllegalStateException("Duplicate login destination ID generated");
       }

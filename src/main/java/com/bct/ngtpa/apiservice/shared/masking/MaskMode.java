@@ -1,8 +1,8 @@
 package com.bct.ngtpa.apiservice.shared.masking;
 
 /**
- * Controls how many mask characters {@link MaskingService} renders between the first and last
- * revealed character of an email local-part or mobile number.
+ * Controls how many mask characters {@link MaskingService} renders between the
+ * first and last revealed character of an email local-part or mobile number.
  */
 public enum MaskMode {
   /** Mask-character count equals the actual number of hidden characters. */

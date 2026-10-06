@@ -16,8 +16,8 @@ import org.springframework.core.io.ByteArrayResource;
  * Confirms masking.logging.sensitive-tokens binds into {@link MaskingProperties} correctly.
  *
  * <p>Formerly bound logging-sanitizer.sensitive-tokens into the now-deleted
- * LoggingSanitizerProperties; relocated as part of the centralized masking policy migration (Phase
- * 3b) so all masking-related configuration lives under one masking.* tree.
+ * LoggingSanitizerProperties; relocated as part of the centralized masking policy migration
+ * (Phase 3b) so all masking-related configuration lives under one masking.* tree.
  */
 class LoggingSanitizerPropertiesBindingTest {
 

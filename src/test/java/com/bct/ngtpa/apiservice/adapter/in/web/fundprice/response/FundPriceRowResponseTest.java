@@ -19,19 +19,9 @@ class FundPriceRowResponseTest {
   void bidOfferShapeOmitsUnitPriceFieldFromJson() throws Exception {
     var response =
         new FundPriceRowResponse(
-            "DUSM",
-            "USD Fund",
-            "05/05/2026",
-            "HKD",
-            new BigDecimal("1"),
-            new BigDecimal("1"),
-            null,
-            "5");
+            "DUSM", "USD Fund", "05/05/2026", "HKD", new BigDecimal("1"), new BigDecimal("1"), null, "5");
     String json = objectMapper.writeValueAsString(response);
-    assertThat(json)
-        .contains("bidUnitPrice")
-        .contains("offerUnitPrice")
-        .doesNotContain("unitPrice");
+    assertThat(json).contains("bidUnitPrice").contains("offerUnitPrice").doesNotContain("unitPrice");
   }
 
   @Test
@@ -40,24 +30,14 @@ class FundPriceRowResponseTest {
         new FundPriceRowResponse(
             "DUSM", "USD Fund", "05/05/2026", "HKD", null, null, new BigDecimal("1"), "5");
     String json = objectMapper.writeValueAsString(response);
-    assertThat(json)
-        .contains("unitPrice")
-        .doesNotContain("bidUnitPrice")
-        .doesNotContain("offerUnitPrice");
+    assertThat(json).contains("unitPrice").doesNotContain("bidUnitPrice").doesNotContain("offerUnitPrice");
   }
 
   @Test
   void nullRiskLevelOmitsFieldFromJson() throws Exception {
     var response =
         new FundPriceRowResponse(
-            "DUSM",
-            "USD Fund",
-            "05/05/2026",
-            "HKD",
-            new BigDecimal("1"),
-            new BigDecimal("1"),
-            null,
-            null);
+            "DUSM", "USD Fund", "05/05/2026", "HKD", new BigDecimal("1"), new BigDecimal("1"), null, null);
     String json = objectMapper.writeValueAsString(response);
     assertThat(json).doesNotContain("riskLevel");
   }

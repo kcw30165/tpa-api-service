@@ -7,8 +7,8 @@ import java.math.BigDecimal;
  * {@code max-risk-level} on TRPGetFundPriceMode).
  *
  * <p>{@code null}, blank and {@code "0"} all mean "no risk level assigned": they rank as the
- * highest risk (sorted last) and never count as "a fund carries a risk level" for the {@code
- * maxRiskLevel} echo rule. The raw downstream string is still echoed verbatim on rows.
+ * highest risk (sorted last) and never count as "a fund carries a risk level" for the
+ * {@code maxRiskLevel} echo rule. The raw downstream string is still echoed verbatim on rows.
  */
 public final class FundPriceRiskLevels {
 

@@ -24,14 +24,15 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Fail-first tests for the SIMPLIFIED {@code FundPriceRequestSupport.loadUsableSession(...)} shape:
- * returns {@code Mono<Optional<FundPriceModeSessionMetadata>>} directly, replacing the previously
- * redundant {@code SessionCheckResult}/{@code UsableSession}/{@code SessionCheckOutcome} wrapper
- * types, which merely re-wrapped data {@link AuthenticatedSessionLifecycleResult} and {@link
- * FundPriceModeSessionMetadata} already carry adequately (confirmed, Nick: the redundancy was the
- * extra wrapper types, not the session-load call itself -- {@code FundPriceModeUseCase}'s own
- * established pattern confirms use cases loading their own session via a directly-supplied {@link
- * AuthenticatedSessionId} is correct, script 111's evidence).
+ * Fail-first tests for the SIMPLIFIED {@code FundPriceRequestSupport.loadUsableSession(...)}
+ * shape: returns {@code Mono<Optional<FundPriceModeSessionMetadata>>} directly, replacing the
+ * previously redundant {@code SessionCheckResult}/{@code UsableSession}/{@code
+ * SessionCheckOutcome} wrapper types, which merely re-wrapped data {@link
+ * AuthenticatedSessionLifecycleResult} and {@link FundPriceModeSessionMetadata} already carry
+ * adequately (confirmed, Nick: the redundancy was the extra wrapper types, not the session-load
+ * call itself -- {@code FundPriceModeUseCase}'s own established pattern confirms use cases
+ * loading their own session via a directly-supplied {@link AuthenticatedSessionId} is correct,
+ * script 111's evidence).
  */
 class FundPriceRequestSupportTest {
 

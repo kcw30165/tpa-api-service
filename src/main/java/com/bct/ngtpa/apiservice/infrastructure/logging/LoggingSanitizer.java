@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.infrastructure.logging;
 
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Array;
@@ -12,10 +11,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import org.springframework.stereotype.Component;
 
 @Component
 public class LoggingSanitizer {
+
 
   private final ObjectMapper objectMapper;
   private final MaskingService maskingService;
@@ -213,8 +214,7 @@ public class LoggingSanitizer {
     StringBuffer buffer = new StringBuffer();
     while (matcher.find()) {
       String placeholder = maskingService.loggingPlaceholder();
-      String maskedValue =
-          matcher.group(2).startsWith("\"") ? "\"" + placeholder + "\"" : placeholder;
+      String maskedValue = matcher.group(2).startsWith("\"") ? "\"" + placeholder + "\"" : placeholder;
       matcher.appendReplacement(buffer, Matcher.quoteReplacement(matcher.group(1) + maskedValue));
     }
     matcher.appendTail(buffer);

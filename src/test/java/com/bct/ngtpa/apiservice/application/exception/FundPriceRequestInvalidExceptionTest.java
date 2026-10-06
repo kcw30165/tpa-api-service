@@ -8,15 +8,14 @@ import org.junit.jupiter.api.Test;
 /**
  * Fail-first: FundPriceRequestInvalidException does not exist yet. Confirms it extends
  * ApplicationException (mirroring InvalidContributionRequestException's exact one-line shape) --
- * the existing generic @ExceptionHandler(ApplicationException.class) in ApiExceptionHandler already
- * maps ANY subclass to HTTP 400 automatically; no new handler method is needed.
+ * the existing generic @ExceptionHandler(ApplicationException.class) in ApiExceptionHandler
+ * already maps ANY subclass to HTTP 400 automatically; no new handler method is needed.
  */
 class FundPriceRequestInvalidExceptionTest {
 
   @Test
   void isAnApplicationException() {
-    var exception =
-        new FundPriceRequestInvalidException("date is not a valid available fund price date");
+    var exception = new FundPriceRequestInvalidException("date is not a valid available fund price date");
     assertThat(exception).isInstanceOf(ApplicationException.class);
   }
 

@@ -237,14 +237,6 @@ public final class DefaultAccountBalanceAssembler implements AccountBalanceAssem
   }
 
   private String subName(NormalizedAccountBalanceData n, String d, String s, String l) {
-    // A blank sub-display-source key means this account has no sub-grouping at all (confirmed
-    // legitimate downstream shape, see DefaultAccountBalanceNormalizer.requiredAllowingBlank).
-    // There is nothing to label in that case, so no description resolution is attempted -
-    // the real payload also leaves sub-src-desc/sub-src-chin-desc blank whenever sub-disp-src
-    // is blank, which would otherwise make descriptions.resolve() throw.
-    if (s.isEmpty()) {
-      return s;
-    }
     var x = n.displaySources().get(new DisplaySourceKey(d, s));
     if (x == null) throw AccountBalanceRetrievalException.systemFailure();
     return descriptions.resolve(l, x.subSourceDescription(), x.subSourceChineseDescription());

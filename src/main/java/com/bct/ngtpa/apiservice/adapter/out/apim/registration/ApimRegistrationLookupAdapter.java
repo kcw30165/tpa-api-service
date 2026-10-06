@@ -18,8 +18,8 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -58,7 +58,8 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
     this.resultMapper = Objects.requireNonNull(resultMapper, "resultMapper must not be null");
     this.failureEventPort =
         Objects.requireNonNull(failureEventPort, "failureEventPort must not be null");
-    this.maskingService = Objects.requireNonNull(maskingService, "maskingService must not be null");
+    this.maskingService =
+        Objects.requireNonNull(maskingService, "maskingService must not be null");
   }
 
   @Override

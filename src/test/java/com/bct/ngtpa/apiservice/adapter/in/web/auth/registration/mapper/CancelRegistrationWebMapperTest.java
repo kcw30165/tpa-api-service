@@ -25,8 +25,7 @@ class CancelRegistrationWebMapperTest {
   @Test
   void cancelledMapsToSuccessfulCleanupResponse() {
     var result =
-        new CancelRegistrationResult(
-            CancelRegistrationResultStatus.CANCELLED, true, true, List.of());
+        new CancelRegistrationResult(CancelRegistrationResultStatus.CANCELLED, true, true, List.of());
     var response = mapper.toResponse(result, "en");
     assertThat(response.success()).isTrue();
     assertThat(response.status()).isEqualTo(ApiStatus.SUCCESS);

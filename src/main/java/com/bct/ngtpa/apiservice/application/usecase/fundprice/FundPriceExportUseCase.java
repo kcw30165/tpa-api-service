@@ -26,20 +26,20 @@ import reactor.core.publisher.Mono;
 /**
  * Fetches TRPGetFundPrice for the full cached history window -- NO FE date parameter, per
  * fund-price-api-contract.md Section 3 ("No FE date-range parameters"). Derives {@code fromDate =
- * referenceDate.minusMonths(maximumFundPriceHistoryMonths)} and {@code toDate = referenceDate}, and
- * passes both directly as an explicit range via {@link FetchFundPriceRangeCommand} -- there is no
- * {@code mode} field and no adapter-side expansion anywhere on the export path (the MONTHLY
- * calendar-month expansion this Javadoc previously described was removed from {@code
+ * referenceDate.minusMonths(maximumFundPriceHistoryMonths)} and {@code toDate = referenceDate},
+ * and passes both directly as an explicit range via {@link FetchFundPriceRangeCommand} -- there
+ * is no {@code mode} field and no adapter-side expansion anywhere on the export path (the
+ * MONTHLY calendar-month expansion this Javadoc previously described was removed from {@code
  * ApimFundPriceSourceAdapter}; see fund-price-date-validation-contract.md).
  *
- * <p>Does NOT run {@link FundPriceRequestSupport#validateDate} -- there is no FE-supplied candidate
- * date to validate against the cached list.
+ * <p>Does NOT run {@link FundPriceRequestSupport#validateDate} -- there is no FE-supplied
+ * candidate date to validate against the cached list.
  *
  * <p>Resolves {@code fund-pri}/{@code PRECISION} via {@link GeneralMetadataResolver}, mirroring
  * {@code GetAccountBalanceService}'s exact established pattern (confirmed real precedent, scripts
- * 136/137): reference date first, then metadata, then the price-range fetch, then assembly. Neither
- * the controller nor {@code FundPriceWorkbookExporter} ever resolves metadata directly -- the
- * resolved precision is carried forward on {@link FundPriceExportResult}.
+ * 136/137): reference date first, then metadata, then the price-range fetch, then assembly.
+ * Neither the controller nor {@code FundPriceWorkbookExporter} ever resolves metadata directly --
+ * the resolved precision is carried forward on {@link FundPriceExportResult}.
  */
 public final class FundPriceExportUseCase {
 
@@ -108,7 +108,9 @@ public final class FundPriceExportUseCase {
                                           actorUserRole);
                                   return sourcePort
                                       .fetchPriceRange(command)
-                                      .map(raw -> assembleResult(raw, metadata, resolvedMetadata));
+                                      .map(
+                                          raw ->
+                                              assembleResult(raw, metadata, resolvedMetadata));
                                 });
                       });
             });
@@ -133,15 +135,9 @@ public final class FundPriceExportUseCase {
                         row.riskLevel()))
             .toList();
     boolean anyRiskLevel =
-        rows.stream()
-            .anyMatch(
-                r ->
-                    com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels
-                        .isAssigned(r.riskLevel()));
+        rows.stream().anyMatch(r -> com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels.isAssigned(r.riskLevel()));
     String maxRiskLevel =
-        anyRiskLevel
-                && com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels
-                    .isAssigned(metadata.maxRiskLevel())
+        anyRiskLevel && com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels.isAssigned(metadata.maxRiskLevel())
             ? metadata.maxRiskLevel()
             : null;
     BigInteger unitPricePrecision =

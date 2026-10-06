@@ -16,8 +16,7 @@ class RedisLoginIdempotencyKeyFactoryTest {
     var factory = new RedisLoginIdempotencyKeyFactory("ngtpa");
     var id = new LoginIdempotencyPersistenceId(VALID_PERSISTENCE_ID_VALUE);
     String key = factory.keyFor(LoginIdempotencyAction.CREDENTIALS, id);
-    assertThat(key)
-        .isEqualTo("ngtpa:auth:idempotency:login:credentials:" + VALID_PERSISTENCE_ID_VALUE);
+    assertThat(key).isEqualTo("ngtpa:auth:idempotency:login:credentials:" + VALID_PERSISTENCE_ID_VALUE);
   }
 
   @Test
@@ -25,8 +24,7 @@ class RedisLoginIdempotencyKeyFactoryTest {
     var factory = new RedisLoginIdempotencyKeyFactory("ngtpa:");
     var id = new LoginIdempotencyPersistenceId(VALID_PERSISTENCE_ID_VALUE);
     String key = factory.keyFor(LoginIdempotencyAction.OTP_SEND, id);
-    assertThat(key)
-        .isEqualTo("ngtpa:auth:idempotency:login:otp-send:" + VALID_PERSISTENCE_ID_VALUE);
+    assertThat(key).isEqualTo("ngtpa:auth:idempotency:login:otp-send:" + VALID_PERSISTENCE_ID_VALUE);
   }
 
   @Test
@@ -45,7 +43,8 @@ class RedisLoginIdempotencyKeyFactoryTest {
   void keyForRejectsNullAction() {
     var factory = new RedisLoginIdempotencyKeyFactory("ngtpa");
     var id = new LoginIdempotencyPersistenceId(VALID_PERSISTENCE_ID_VALUE);
-    assertThatThrownBy(() -> factory.keyFor(null, id)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> factory.keyFor(null, id))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test

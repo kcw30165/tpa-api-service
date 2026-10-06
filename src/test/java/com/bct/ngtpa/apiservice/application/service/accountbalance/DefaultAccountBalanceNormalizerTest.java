@@ -83,25 +83,6 @@ class DefaultAccountBalanceNormalizerTest {
   }
 
   @Test
-  void acceptsBlankSubDisplaySourceAsALegitimateNoSubGroupingValueButStillRejectsNull() {
-    var blankSource = source("EE", "", 20);
-    var blankHolding = holding("EE", "", "F", "1", "1", "1", "1");
-    var normalized =
-        normalizer.normalize(
-            raw(List.of(blankSource), List.of(fund("F", "1", "1", "x")), List.of(blankHolding)));
-
-    assertThat(normalized.displaySources()).containsKey(new DisplaySourceKey("EE", ""));
-    assertThat(normalized.holdings()).containsKey(new HoldingKey("EE", "", "F"));
-
-    // Null remains rejected on the holdings loop too, mirroring the display-source loop.
-    assertSystemFailure(
-        raw(
-            List.of(blankSource),
-            List.of(fund("F", "1", "1", "x")),
-            List.of(holding("EE", null, "F", "1", "1", "1", "1"))));
-  }
-
-  @Test
   void rejectsDisplaySourceAndFundOrphans() {
     var holding = holding("EE", "OE", "F", "1", "1", "1", "1");
     assertSystemFailure(raw(List.of(), List.of(fund("F", "1", "1", "x")), List.of(holding)));

@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Fail-first: {@code FetchFundPriceRangeCommand} does not exist yet. Carries an explicit
  * fromDate/toDate range with NO mode field at all -- confirmed design (Nick): export has no mode
- * concept; it passes policyNo, fromDate, toDate straight to APIM, bypassing {@link
- * FetchFundPriceCommand}'s single-date + mode-dependent expansion entirely.
+ * concept; it passes policyNo, fromDate, toDate straight to APIM, bypassing
+ * {@link FetchFundPriceCommand}'s single-date + mode-dependent expansion entirely.
  */
 class FetchFundPriceRangeCommandTest {
 
@@ -36,7 +36,8 @@ class FetchFundPriceRangeCommandTest {
   @Test
   void nullPolicyNoThrows() {
     assertThatThrownBy(
-            () -> new FetchFundPriceRangeCommand(null, FROM, TO, "DB", ActorUserRole.ROLE_USER_MBR))
+            () ->
+                new FetchFundPriceRangeCommand(null, FROM, TO, "DB", ActorUserRole.ROLE_USER_MBR))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("policyNo");
   }
@@ -103,7 +104,8 @@ class FetchFundPriceRangeCommandTest {
 
   @Test
   void nullActorUserRoleThrows() {
-    assertThatThrownBy(() -> new FetchFundPriceRangeCommand("00000008802", FROM, TO, "DB", null))
+    assertThatThrownBy(
+            () -> new FetchFundPriceRangeCommand("00000008802", FROM, TO, "DB", null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("actorUserRole");
   }

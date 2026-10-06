@@ -15,10 +15,7 @@ class ApimExecutionContractArchitectureTest {
           "ApimExchangeRequest.java",
           "ApimExchangeExecutor.java",
           "ApimSuccessfulExchange.java",
-          "DefaultApimExchangeExecutor.java",
-          "ApimEnvelopeSchemaClassification.java",
-          "ApimEnvelopeSchemaClassifier.java",
-          "ApimExchangeOutcomeLogger.java");
+          "DefaultApimExchangeExecutor.java", "ApimEnvelopeSchemaClassification.java", "ApimEnvelopeSchemaClassifier.java", "ApimExchangeOutcomeLogger.java");
 
   @Test
   void contractsHaveNoInboundSessionReactorApplicationOrFeatureDependencies() throws Exception {

@@ -14,12 +14,12 @@ import org.springframework.stereotype.Component;
 /**
  * Web-adapter sorting for Fund Price.
  *
- * <p><b>Query</b> ({@link #sort(FundPriceQueryResult, String)}): risk level ascending, where {@code
- * null}, blank and {@code "0"} mean "no risk level" and sort last as the highest risk; then the
- * fund name the user sees for the request language (zh_HK: Chinese name, falling back to the
- * English name), case-insensitive, in character-code order (English names therefore precede Chinese
- * names); then unit price (the downstream bid price) ascending; ties broken by English name and
- * then fund code so the order is deterministic.
+ * <p><b>Query</b> ({@link #sort(FundPriceQueryResult, String)}): risk level ascending, where
+ * {@code null}, blank and {@code "0"} mean "no risk level" and sort last as the highest risk; then
+ * the fund name the user sees for the request language (zh_HK: Chinese name, falling back to the
+ * English name), case-insensitive, in character-code order (English names therefore precede
+ * Chinese names); then unit price (the downstream bid price) ascending; ties broken by English
+ * name and then fund code so the order is deterministic.
  *
  * <p><b>Export</b> ({@link #sort(FundPriceExportResult)}): price date descending (latest first),
  * then risk level ascending with the same "no risk level last" rule, then English fund name
