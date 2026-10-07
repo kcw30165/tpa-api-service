@@ -263,6 +263,126 @@ class LoginOtpSendServiceTest {
     assertThat(delivery.get().templateVariables()).containsEntry("code", "654321");
   }
 
+  @Test
+  void sendCarriesNonNullTrustCodeAndSchemeNamesIntoTemplateVariables() {
+    var delivery = new AtomicReference<MessageDeliveryCommand>();
+    LoginPreAuthContext context =
+        new LoginPreAuthContext(
+            "member01",
+            null,
+            Map.of(
+                "dst_opaque",
+                new LoginPreAuthDestination("dst_opaque", "mobile", "91234567", "****4567")),
+            NOW.minusSeconds(60),
+            "v1",
+            "DBA",
+            "Example Scheme",
+            "示例計劃");
+    OtpChallengePort otp =
+        new StubOtpPort() {
+          public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
+            return Mono.just(
+                new CreateOtpChallengeResult("otp_opaque", "123456", NOW.plusSeconds(300), 300));
+          }
+        };
+    var service =
+        new LoginOtpSendService(
+            command ->
+                Mono.just(
+                    LoginProtectedAuthFlowContextResult.valid(context, null, null, "csrf_hash")),
+            new LoginOtpDestinationResolver(),
+            otp,
+            command -> {
+              delivery.set(command);
+              return Mono.just(
+                  new MessageDeliveryResult(
+                      MessageDeliveryStatus.ACCEPTED,
+                      command.channel(),
+                      "provider-id",
+                      null,
+                      null));
+            },
+            command -> Mono.empty(),
+            (type, value) -> "hash_only",
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new LoginOtpSendPolicy(
+                6,
+                true,
+                300,
+                60,
+                5,
+                false,
+                0,
+                "Your verification code is {code}",
+                "Verification code"),
+            (type, channel, locale) ->
+                new NoticeTemplateDefinition(
+                    type,
+                    channel,
+                    locale,
+                    "Verification code",
+                    "{code} {trustCode}",
+                    null,
+                    "minutes"));
+
+    StepVerifier.create(service.send(COMMAND)).expectNextCount(1).verifyComplete();
+
+    assertThat(delivery.get().templateVariables()).containsEntry("trustCode", "DBA");
+    assertThat(delivery.get().templateVariables()).containsEntry("schemeName", "Example Scheme");
+    assertThat(delivery.get().templateVariables())
+        .containsEntry("schemeNameChi", "示例計劃");
+  }
+
+  @Test
+  void sendOmitsTrustCodeAndSchemeNameKeysWhenContextCarriesNulls() {
+    var delivery = new AtomicReference<MessageDeliveryCommand>();
+    OtpChallengePort otp =
+        new StubOtpPort() {
+          public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
+            return Mono.just(
+                new CreateOtpChallengeResult("otp_opaque", "123456", NOW.plusSeconds(300), 300));
+          }
+        };
+    var service =
+        new LoginOtpSendService(
+            command ->
+                Mono.just(
+                    LoginProtectedAuthFlowContextResult.valid(context(), null, null, "csrf_hash")),
+            new LoginOtpDestinationResolver(),
+            otp,
+            command -> {
+              delivery.set(command);
+              return Mono.just(
+                  new MessageDeliveryResult(
+                      MessageDeliveryStatus.ACCEPTED,
+                      command.channel(),
+                      "provider-id",
+                      null,
+                      null));
+            },
+            command -> Mono.empty(),
+            (type, value) -> "hash_only",
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new LoginOtpSendPolicy(
+                6,
+                true,
+                300,
+                60,
+                5,
+                false,
+                0,
+                "Your verification code is {code}",
+                "Verification code"),
+            (type, channel, locale) ->
+                new NoticeTemplateDefinition(
+                    type, channel, locale, "Verification code", "{code}", null, "minutes"));
+
+    StepVerifier.create(service.send(COMMAND)).expectNextCount(1).verifyComplete();
+
+    assertThat(delivery.get().templateVariables()).doesNotContainKeys(
+        "trustCode", "schemeName", "schemeNameChi");
+  }
+
   private LoginOtpSendService service(
       LoginProtectedAuthFlowContextLoader loader,
       OtpChallengePort otp,

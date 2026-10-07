@@ -119,6 +119,15 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
     if (definition.ttlUnit() != null) {
       variables.put("ttlUnit", definition.ttlUnit());
     }
+    if (x.context().trustCode() != null) {
+      variables.put("trustCode", x.context().trustCode());
+    }
+    if (x.context().schemeName() != null) {
+      variables.put("schemeName", x.context().schemeName());
+    }
+    if (x.context().schemeNameChi() != null) {
+      variables.put("schemeNameChi", x.context().schemeNameChi());
+    }
     var command =
         new MessageDeliveryCommand(
             MessageDeliveryType.LOGIN_OTP,

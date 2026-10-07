@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.LoginPreAuthContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.message.*;
 import com.bct.ngtpa.apiservice.application.port.in.SendLoginOtpUseCase;
@@ -74,12 +75,14 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
                     new SendLoginOtpResult(
                         SendLoginOtpStatus.INVALID_DESTINATION, null, null, null, null));
               }
-              return createDeliverBind(command, destination);
+              return createDeliverBind(command, destination, loaded.context());
             });
   }
 
   private Mono<SendLoginOtpResult> createDeliverBind(
-      SendLoginOtpCommand command, ResolvedLoginOtpDestination destination) {
+      SendLoginOtpCommand command,
+      ResolvedLoginOtpDestination destination,
+      LoginPreAuthContext context) {
     Instant now = clock.instant();
     MessageDeliveryChannel channel = messageChannel(destination.channel());
     NoticeTemplateDefinition definition =
@@ -109,7 +112,7 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
                       definition.subject(),
                       definition.body(),
                       "login-otp",
-                      templateVariables(challenge.rawCode(), definition),
+                      templateVariables(challenge.rawCode(), definition, context),
                       command.acceptLanguage(),
                       command.correlationId());
               return messages
@@ -159,12 +162,21 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
   }
 
   private Map<String, String> templateVariables(
-      String rawCode, NoticeTemplateDefinition definition) {
+      String rawCode, NoticeTemplateDefinition definition, LoginPreAuthContext context) {
     var variables = new LinkedHashMap<String, String>();
     variables.put("code", rawCode);
     variables.put("ttlValue", Integer.toString(Math.max(1, policy.ttlSeconds() / 60)));
     if (definition.ttlUnit() != null) {
       variables.put("ttlUnit", definition.ttlUnit());
+    }
+    if (context.trustCode() != null) {
+      variables.put("trustCode", context.trustCode());
+    }
+    if (context.schemeName() != null) {
+      variables.put("schemeName", context.schemeName());
+    }
+    if (context.schemeNameChi() != null) {
+      variables.put("schemeNameChi", context.schemeNameChi());
     }
     return Map.copyOf(variables);
   }
