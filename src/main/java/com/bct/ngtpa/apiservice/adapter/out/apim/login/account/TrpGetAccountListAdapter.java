@@ -11,7 +11,6 @@ import reactor.core.publisher.Mono;
 public final class TrpGetAccountListAdapter implements LoginAccountAuthorizationPort {
   private final TrpGetAccountListTransport transport;
   private final TrpGetAccountListContractMapper mapper;
-  private final Map<String, String> errorMappings;
 
   public TrpGetAccountListAdapter(
       TrpGetAccountListTransport transport,
@@ -19,8 +18,9 @@ public final class TrpGetAccountListAdapter implements LoginAccountAuthorization
       TrpGetAccountListProperties properties) {
     this.transport = Objects.requireNonNull(transport);
     this.mapper = Objects.requireNonNull(mapper);
+    // Configuration ownership: the YAML error mappings are validated at startup. Runtime handling
+    // is intentionally uniform because every downstream business error fails closed.
     Objects.requireNonNull(properties).validate();
-    this.errorMappings = Map.copyOf(properties.getErrorMappings());
   }
 
   public Mono<LoginAccountAuthorizationResult> getAccounts(
