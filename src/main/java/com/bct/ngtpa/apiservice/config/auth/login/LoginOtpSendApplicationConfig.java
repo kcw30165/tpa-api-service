@@ -38,7 +38,8 @@ public class LoginOtpSendApplicationConfig {
       IdempotencyExecutor idempotencyExecutor,
       Clock clock,
       AuthWorkflowProperties properties,
-      TransientJsonPort json) {
+      TransientJsonPort json,
+      NoticeTemplateRegistryPort registryPort) {
     properties.validateLoginPolicy();
     var p = properties.getLogin().getOtp();
     var policy =
@@ -61,7 +62,8 @@ public class LoginOtpSendApplicationConfig {
             sessions,
             buckets,
             clock,
-            policy);
+            policy,
+            registryPort);
     return new SharedLoginOtpSendService(
         idempotencyExecutor,
         core,

@@ -27,7 +27,8 @@ public class LoginOtpResendApplicationConfig {
       IdempotencyExecutor idempotencyExecutor,
       Clock clock,
       AuthWorkflowProperties properties,
-      TransientJsonPort json) {
+      TransientJsonPort json,
+      NoticeTemplateRegistryPort registryPort) {
     properties.validateLoginPolicy();
     var p = properties.getLogin().getOtp();
     var policy =
@@ -41,7 +42,8 @@ public class LoginOtpResendApplicationConfig {
             p.getMaxResendAttempts(),
             p.getSmsTemplate(),
             p.getEmailTemplate().getSubject());
-    var core = new LoginOtpResendService(loader, otp, messages, binding, clock, policy);
+    var core =
+        new LoginOtpResendService(loader, otp, messages, binding, clock, policy, registryPort);
     return new SharedLoginOtpResendService(
         idempotencyExecutor,
         core,

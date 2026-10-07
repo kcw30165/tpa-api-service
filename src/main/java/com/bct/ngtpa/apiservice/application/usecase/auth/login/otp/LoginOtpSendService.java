@@ -19,6 +19,7 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
   private final DestinationBucketIdGenerator destinationBucketIds;
   private final Clock clock;
   private final LoginOtpSendPolicy policy;
+  private final NoticeTemplateRegistryPort registryPort;
 
   public LoginOtpSendService(
       LoginProtectedAuthFlowContextLoader contextLoader,
@@ -28,7 +29,8 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
       LoginOtpSessionBindingPort sessions,
       DestinationBucketIdGenerator destinationBucketIds,
       Clock clock,
-      LoginOtpSendPolicy policy) {
+      LoginOtpSendPolicy policy,
+      NoticeTemplateRegistryPort registryPort) {
     this.contextLoader = Objects.requireNonNull(contextLoader);
     this.destinationResolver = Objects.requireNonNull(destinationResolver);
     this.otp = Objects.requireNonNull(otp);
@@ -37,6 +39,7 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
     this.destinationBucketIds = Objects.requireNonNull(destinationBucketIds);
     this.clock = Objects.requireNonNull(clock);
     this.policy = Objects.requireNonNull(policy);
+    this.registryPort = Objects.requireNonNull(registryPort);
   }
 
   public Mono<SendLoginOtpResult> send(SendLoginOtpCommand command) {
@@ -78,6 +81,9 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
   private Mono<SendLoginOtpResult> createDeliverBind(
       SendLoginOtpCommand command, ResolvedLoginOtpDestination destination) {
     Instant now = clock.instant();
+    MessageDeliveryChannel channel = messageChannel(destination.channel());
+    NoticeTemplateDefinition definition =
+        registryPort.resolve(MessageDeliveryType.LOGIN_OTP, channel, command.acceptLanguage());
     CreateOtpChallengeCommand create =
         new CreateOtpChallengeCommand(
             OtpScenario.LOGIN,
@@ -98,12 +104,12 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
                   new MessageDeliveryCommand(
                       MessageDeliveryType.LOGIN_OTP,
                       MessageDeliveryScenario.LOGIN,
-                      messageChannel(destination.channel()),
+                      channel,
                       destination.destination(),
-                      destination.channel() == OtpChannel.EMAIL ? policy.emailSubject() : null,
-                      policy.messageTemplate(),
-                      null,
-                      templateVariables(challenge.rawCode()),
+                      definition.subject(),
+                      definition.body(),
+                      "login-otp",
+                      templateVariables(challenge.rawCode(), definition),
                       command.acceptLanguage(),
                       command.correlationId());
               return messages
@@ -152,9 +158,15 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
             });
   }
 
-  private Map<String, String> templateVariables(String rawCode) {
-    return Map.of(
-        "code", rawCode, "ttlValue", Integer.toString(policy.ttlSeconds()), "ttlUnit", "seconds");
+  private Map<String, String> templateVariables(
+      String rawCode, NoticeTemplateDefinition definition) {
+    var variables = new LinkedHashMap<String, String>();
+    variables.put("code", rawCode);
+    variables.put("ttlValue", Integer.toString(Math.max(1, policy.ttlSeconds() / 60)));
+    if (definition.ttlUnit() != null) {
+      variables.put("ttlUnit", definition.ttlUnit());
+    }
+    return Map.copyOf(variables);
   }
 
   private DestinationType destinationType(OtpChannel channel) {

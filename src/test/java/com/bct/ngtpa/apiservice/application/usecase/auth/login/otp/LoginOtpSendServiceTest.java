@@ -161,6 +161,108 @@ class LoginOtpSendServiceTest {
     assertThat(order).containsExactly("create", "deliver", "invalidate");
   }
 
+  @Test
+  void missingDefinitionFailsBeforeAnyChallengeIsCreated() {
+    AtomicReference<Boolean> createCalled = new AtomicReference<>(false);
+    OtpChallengePort otp =
+        new StubOtpPort() {
+          public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
+            createCalled.set(true);
+            return Mono.error(new AssertionError("must not create"));
+          }
+        };
+    NoticeTemplateRegistryPort registry =
+        (type, channel, locale) -> {
+          throw new IllegalStateException("login-otp definition missing");
+        };
+    var service =
+        new LoginOtpSendService(
+            command ->
+                Mono.just(
+                    LoginProtectedAuthFlowContextResult.valid(context(), null, null, "csrf_hash")),
+            new LoginOtpDestinationResolver(),
+            otp,
+            command -> Mono.error(new AssertionError("must not deliver")),
+            command -> Mono.error(new AssertionError("must not bind")),
+            (type, value) -> "hash_only",
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new LoginOtpSendPolicy(
+                6,
+                true,
+                300,
+                60,
+                5,
+                false,
+                0,
+                "Your verification code is {code}",
+                "Verification code"),
+            registry);
+
+    StepVerifier.create(service.send(COMMAND)).verifyError(IllegalStateException.class);
+    assertThat(createCalled.get()).isFalse();
+  }
+
+  @Test
+  void sendDeliversSubjectBodyTemplateCodeAndMinuteTtlFromResolvedDefinition() {
+    AtomicReference<MessageDeliveryCommand> delivery = new AtomicReference<>();
+    OtpChallengePort otp =
+        new StubOtpPort() {
+          public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
+            return Mono.just(
+                new CreateOtpChallengeResult("otp_opaque", "654321", NOW.plusSeconds(300), 300));
+          }
+        };
+    NoticeTemplateDefinition definition =
+        new NoticeTemplateDefinition(
+            MessageDeliveryType.LOGIN_OTP,
+            MessageDeliveryChannel.SMS,
+            "en",
+            null,
+            "Registry body {code}",
+            null,
+            "minutes");
+    var service =
+        new LoginOtpSendService(
+            command ->
+                Mono.just(
+                    LoginProtectedAuthFlowContextResult.valid(context(), null, null, "csrf_hash")),
+            new LoginOtpDestinationResolver(),
+            otp,
+            command -> {
+              delivery.set(command);
+              return Mono.just(
+                  new MessageDeliveryResult(
+                      MessageDeliveryStatus.ACCEPTED,
+                      command.channel(),
+                      "provider-id",
+                      null,
+                      null));
+            },
+            command -> Mono.empty(),
+            (type, value) -> "hash_only",
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new LoginOtpSendPolicy(
+                6,
+                true,
+                300,
+                60,
+                5,
+                false,
+                0,
+                "Policy template unused {code}",
+                "Policy subject unused"),
+            (type, channel, locale) -> definition);
+
+    StepVerifier.create(service.send(COMMAND)).expectNextCount(1).verifyComplete();
+
+    assertThat(delivery.get().templateCode()).isEqualTo("login-otp");
+    assertThat(delivery.get().body()).isEqualTo("Registry body {code}");
+    assertThat(delivery.get().subject()).isNull();
+    assertThat(delivery.get().templateVariables()).containsEntry("ttlValue", "5");
+    assertThat(delivery.get().templateVariables()).containsEntry("ttlUnit", "minutes");
+    assertThat(delivery.get().templateVariables()).containsEntry("code", "654321");
+  }
+
   private LoginOtpSendService service(
       LoginProtectedAuthFlowContextLoader loader,
       OtpChallengePort otp,
@@ -187,7 +289,16 @@ class LoginOtpSendServiceTest {
             false,
             0,
             "Your verification code is {code}",
-            "Verification code"));
+            "Verification code"),
+        (type, channel, locale) ->
+            new NoticeTemplateDefinition(
+                type,
+                channel,
+                locale,
+                "Verification code",
+                "Your verification code is {code}",
+                null,
+                "minutes"));
   }
 
   private LoginPreAuthContext context() {
