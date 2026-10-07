@@ -72,24 +72,24 @@ depending on a config block that has already been removed.
 
 ## Current Position
 
-Phase I (stages I-1 through I-6) is complete and closed. Phase II, Stage II-1 (Username
-Recovery) is DONE: sub-stages II-1.a to II-1.d are committed (Appendix A.1) and the stage gate is
-met on the final code, with a passing full `mvn test` and an application startup smoke test with
-no bean or configuration errors, both evidenced (Appendix A.3). Stage II-2 (Registration) is DONE:
-decisions D6 (option A) and D7 are confirmed, the design is solution design section 8.6, and all of
-its sub-stages (II-2.0, II-2.a, II-2.a2, II-2.b0, II-2.b, II-2.c, II-2.e and II-2.d) are DONE. The
-code is committed as be7294d5 (Template Service extension), ce2176e7 (Registration adapter
-migration), 14c71b24 (a rendering test with the real registry and renderer), 951049f8 (START with
-the captcha gate off, and RESEND, tests for a missing definition) and da136a8f (START with the
-captcha gate on); each was validated with compile, test-compile and a scoped run with 0 failures
-(C.12 to C.14, C.16 and C.17). The stage gate is met on the final II-2 code commit da136a8f: a
-passing full `mvn test` (5564 tests, 0 failures, 0 errors, 10 skipped) and an application startup
-smoke test with no bean or configuration errors, both evidenced (C.17). Registration now takes its
-content and its unit word from the registry. Stage II-3 (Login) is IN PROGRESS: its read-only
-investigation is done (scripts 081 and 082, Appendix D) and decision D8, the source of the trust
-code and the scheme name that the Login OTP content needs, is open; nothing is implemented. Stage
-II-4 (Forgot Password) and Phase III remain PENDING. Decisions and open items for II-1 are in
-Appendix A.2. Work that is deliberately outside this workstream is listed in Appendix B.
+Phase I (stages I-1 through I-6) is complete and closed. Phase II, Stage II-1 (Username Recovery) is
+DONE: sub-stages II-1.a to II-1.d are committed (Appendix A.1) and the stage gate is met on the
+final code, with a passing full `mvn test` and an application startup smoke test with no bean or
+configuration errors, both evidenced (Appendix A.3). Stage II-2 (Registration) is DONE: decisions D6
+(option A) and D7 are confirmed, the design is solution design section 8.6, and all of its
+sub-stages (II-2.0, II-2.a, II-2.a2, II-2.b0, II-2.b, II-2.c, II-2.e and II-2.d) are DONE. The code
+is committed as be7294d5 (Template Service extension), ce2176e7 (Registration adapter migration),
+14c71b24 (a rendering test with the real registry and renderer), 951049f8 (START with the captcha
+gate off, and RESEND, tests for a missing definition) and da136a8f (START with the captcha gate on);
+each was validated with compile, test-compile and a scoped run with 0 failures (C.12 to C.14, C.16
+and C.17). The stage gate is met on the final II-2 code commit da136a8f: a passing full `mvn test`
+(5564 tests, 0 failures, 0 errors, 10 skipped) and an application startup smoke test with no bean or
+configuration errors, both evidenced (C.17). Registration now takes its content and its unit word
+from the registry. Stage II-3 (Login) is IN PROGRESS: decisions D8 to D11 are resolved (Appendix
+D.11) and sub-stages II-3.0, II-3.a, II-3.a2, II-3.b0 and II-3.b are DONE (commits 0a30f4e0 and
+665650fe); II-3.c, II-3.d and II-3.e remain PENDING. Stage II-4 (Forgot Password) and Phase III
+remain PENDING. Decisions and open items for II-1 are in Appendix A.2. Work that is deliberately
+outside this workstream is listed in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
 
@@ -1413,8 +1413,8 @@ listed under D.9. This appendix answers C.17.5 item 1, except for decision D8.
 | II-3.0 | Settle D8 to D11; write the solution-design section for the Login content and update this appendix before any code. | DONE (D8 to D11 resolved 2026-10-06; see D.11) |
 | II-3.a | Read-only investigation of the send path, the context serializers and the trust source. | DONE (scripts 081 and 082; findings in D.1 to D.7) |
 | II-3.a2 | Read-only: the send and resend endpoints and their error handling in `LoginController`, the context tests that load the two configs, and, if D8 is A or C, the callers of `LoginPreAuthContext`. | DONE (script 084; findings in D.10) |
-| II-3.b0 | Add `trustCode`/`schemeName`/`schemeNameChi` to `TrpMemberLoginApimDataItem` (modeled ahead of the downstream TAS/APIM change) and remove them from `TrpGetAccountListApimDataItem`; carry the three fields through `CredentialAuthenticationResult`, `LoginPreAuthContext` and `ProtectedPayload` to the send and resend services, with a round-trip test. | PENDING (see D.11.1) |
-| II-3.b | `LoginOtpSendService` and `LoginOtpResendService` resolve `LOGIN_OTP` through `NoticeTemplateRegistryPort` (D9, D10), the two configs inject the port, the two unit tests and the two composition tests are adjusted. | PENDING |
+| II-3.b0 | Add `trustCode`/`schemeName`/`schemeNameChi` to `TrpMemberLoginApimDataItem` (modeled ahead of the downstream TAS/APIM change) and remove them from `TrpGetAccountListApimDataItem`; carry the three fields through `CredentialAuthenticationResult`, `LoginPreAuthContext` and `ProtectedPayload` to the send and resend services, with a round-trip test. | DONE (script 093, commit 0a30f4e0) |
+| II-3.b | `LoginOtpSendService` and `LoginOtpResendService` resolve `LOGIN_OTP` through `NoticeTemplateRegistryPort` (D9, D10), the two configs inject the port, the two unit tests and the two composition tests are adjusted. | DONE (script 095, commit 665650fe) |
 | II-3.c | Rendering test with the real registry and renderer for SMS and EMAIL in en and zh_HK (the minutes, the unit, no placeholder left over, the content of D8). | PENDING |
 | II-3.d | Tests for a missing definition on send and on resend: the error reaches the caller, nothing is created or sent. | PENDING |
 | II-3.e | Stage gate on the final code: full `mvn test` and an application startup smoke test; then the plan is updated. | PENDING |
@@ -1716,3 +1716,32 @@ commit hash recorded earlier in this plan, including `da136a8f` and the docs com
 - II-3.b0 is PENDING and is now unconditional (D8 is resolved as option D); its row in the D.8 table
   is updated to name the two DTOs and the propagation path.
 - II-3.b, II-3.c, II-3.d and II-3.e remain PENDING.
+
+### D.12 Closure of II-3.b0 and II-3.b (2026-10-07)
+
+D.11.7's closing bullet ("II-3.b0 is PENDING... II-3.b... remain PENDING") is superseded by this
+section; it is left in place above as a historical record of the state right after D8 to D11 were
+resolved, rather than edited in place.
+
+- II-3.b0 is DONE: script 093 committed `0a30f4e0`. `TrpMemberLoginApimDataItem` gained
+  `trustCode`/`schemeName`/`schemeNameChi` (modeled now, null until TAS/APIM ship the real fields);
+  `TrpGetAccountListApimDataItem` reverted to its original 7 components; the three fields are
+  carried through `CredentialAuthenticationResult`, `LoginPreAuthContextFactory`,
+  `LoginPreAuthContext` and the AES-GCM protector round trip; the obsolete
+  `TrpGetAccountListApimDataItemTest` was deleted (script 089 confirmed it was scaffolding from the
+  same mistaken stage-I-3 commit); `Task0043CredentialAuthenticationContractTest`'s
+  exact-component-list assertion was extended by the 3 new names (scripts 091 and 092 confirmed no
+  other guard needed any change).
+- II-3.b is DONE: script 095 committed `665650fe`. `LoginOtpSendService` and `LoginOtpResendService`
+  resolve `MessageDeliveryType.LOGIN_OTP` through `NoticeTemplateRegistryPort` before the OTP
+  challenge is created (send) or replaced (resend) (D10); `ttlValue` is in minutes via
+  `Math.max(1, policy.ttlSeconds() / 60)` with `ttlUnit` from the resolved definition (D9);
+  `policy.messageTemplate()`/`emailSubject()` are no longer read by either service (D11,
+  mechanically re-verified by the script itself before compiling); the two application configs
+  inject the port; the two unit tests and the two composition tests are adjusted; all four
+  `Task0043Login*` text-guard tests pass unedited (confirmed in full by script 094 before any code
+  was written, and re-confirmed mechanically by script 095 after patching).
+- Remaining: II-3.c (a rendering test with the real registry and renderer for SMS and EMAIL in en
+  and zh_HK), II-3.d (tests for a missing definition on send and on resend reaching the caller, at
+  the level above the unit tests script 095 already added), and II-3.e (the stage gate: full
+  `mvn test` and an application startup smoke test, then this plan is updated).
