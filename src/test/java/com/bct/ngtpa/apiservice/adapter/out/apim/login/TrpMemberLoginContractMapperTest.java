@@ -58,6 +58,42 @@ class TrpMemberLoginContractMapperTest {
   }
 
   @Test
+  void successfulItemCarriesTrustCodeAndSchemeNamesWhenPresent() {
+    var item =
+        new TrpMemberLoginApimDataItem(
+            true,
+            "role_user_mbr",
+            0,
+            List.of(new TrpMemberLoginApimOtpItem("email", "member@example.com")),
+            "DBA",
+            "Example Scheme",
+            "示例計劃");
+
+    var result = mapper.toAuthenticated("normalized.member", item);
+
+    assertThat(result.trustCode()).isEqualTo("DBA");
+    assertThat(result.schemeName()).isEqualTo("Example Scheme");
+    assertThat(result.schemeNameChi()).isEqualTo("示例計劃");
+    assertThat(result.toString()).doesNotContain("DBA", "Example Scheme", "示例計劃");
+  }
+
+  @Test
+  void successfulItemWithoutTrustOrSchemeLeavesThemNull() {
+    var item =
+        new TrpMemberLoginApimDataItem(
+            true,
+            "role_user_mbr",
+            0,
+            List.of(new TrpMemberLoginApimOtpItem("email", "member@example.com")));
+
+    var result = mapper.toAuthenticated("normalized.member", item);
+
+    assertThat(result.trustCode()).isNull();
+    assertThat(result.schemeName()).isNull();
+    assertThat(result.schemeNameChi()).isNull();
+  }
+
+  @Test
   void rejectsUnsupportedDuplicateOrBlankDestinations() {
     assertThatThrownBy(
             () ->

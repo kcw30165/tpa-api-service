@@ -47,6 +47,30 @@ class LoginPreAuthContextFactoryTest {
   }
 
   @Test
+  void carriesTrustCodeAndSchemeNamesFromResultIntoContext() {
+    var factory =
+        new LoginPreAuthContextFactory(
+            () -> "dst_opaque_value", new MaskingService(new MaskingProperties()));
+    var result =
+        new CredentialAuthenticationResult(
+            CredentialAuthenticationStatus.AUTHENTICATED,
+            "member",
+            "role_user",
+            0,
+            List.of(new LoginCredentialDestination("email", "member@example.com")),
+            null,
+            "DBA",
+            "Example Scheme",
+            "示例計劃");
+
+    var context = factory.create(result, Instant.parse("2026-07-20T00:00:00Z"));
+
+    assertThat(context.trustCode()).isEqualTo("DBA");
+    assertThat(context.schemeName()).isEqualTo("Example Scheme");
+    assertThat(context.schemeNameChi()).isEqualTo("示例計劃");
+  }
+
+  @Test
   void rejectsNonAuthenticatedOrDestinationlessResults() {
     var factory =
         new LoginPreAuthContextFactory(

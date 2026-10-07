@@ -55,7 +55,10 @@ public final class TrpMemberLoginContractMapper {
         ActorUserRole.fromApimValue(loginUserRole).name(),
         item.failCount() == null ? 0 : item.failCount(),
         destinations,
-        null);
+        null,
+        item.trustCode(),
+        item.schemeName(),
+        item.schemeNameChi());
   }
 
   public CredentialAuthenticationResult failure(CredentialAuthenticationStatus status) {

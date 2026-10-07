@@ -10,7 +10,10 @@ public record LoginPreAuthContext(
     String userRole,
     Map<String, LoginPreAuthDestination> destinationsById,
     Instant credentialVerifiedAt,
-    String workflowVersion) {
+    String workflowVersion,
+    String trustCode,
+    String schemeName,
+    String schemeNameChi) {
   public LoginPreAuthContext {
     Objects.requireNonNull(normalizedUsername);
 
@@ -20,6 +23,30 @@ public record LoginPreAuthContext(
             : java.util.Collections.unmodifiableMap(new LinkedHashMap<>(destinationsById));
     Objects.requireNonNull(credentialVerifiedAt);
     Objects.requireNonNull(workflowVersion);
+  }
+
+  /**
+   * Compatibility constructor for existing call sites predating the addition of {@code
+   * trustCode} / {@code schemeName} / {@code schemeNameChi} (modeled ahead of the downstream
+   * TAS/APIM change; see
+   * docs/design/10-template-service/template-service-implementation-plan.md section D.11.1). All
+   * three new fields default to {@code null}.
+   */
+  public LoginPreAuthContext(
+      String normalizedUsername,
+      String userRole,
+      Map<String, LoginPreAuthDestination> destinationsById,
+      Instant credentialVerifiedAt,
+      String workflowVersion) {
+    this(
+        normalizedUsername,
+        userRole,
+        destinationsById,
+        credentialVerifiedAt,
+        workflowVersion,
+        null,
+        null,
+        null);
   }
 
   @Override
@@ -32,6 +59,6 @@ public record LoginPreAuthContext(
         + credentialVerifiedAt
         + ", workflowVersion="
         + workflowVersion
-        + "]";
+        + ", trustCode=<redacted>, schemeName=<redacted>, schemeNameChi=<redacted>]";
   }
 }

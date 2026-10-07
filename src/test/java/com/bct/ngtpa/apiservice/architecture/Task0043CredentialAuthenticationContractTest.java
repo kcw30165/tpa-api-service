@@ -55,7 +55,10 @@ class Task0043CredentialAuthenticationContractTest {
             "userRole",
             "failCount",
             "destinations",
-            "downstreamCode");
+            "downstreamCode",
+            "trustCode",
+            "schemeName",
+            "schemeNameChi");
     assertThat(componentNames(LoginCredentialDestination.class))
         .containsExactly("channel", "destination");
   }

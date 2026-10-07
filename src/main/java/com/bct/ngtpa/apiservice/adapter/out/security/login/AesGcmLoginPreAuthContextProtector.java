@@ -106,7 +106,10 @@ public final class AesGcmLoginPreAuthContextProtector implements LoginPreAuthCon
       String userRole,
       Map<String, LoginPreAuthDestination> destinationsById,
       String credentialVerifiedAt,
-      String workflowVersion) {
+      String workflowVersion,
+      String trustCode,
+      String schemeName,
+      String schemeNameChi) {
 
     private static ProtectedPayload from(LoginPreAuthContext context) {
       return new ProtectedPayload(
@@ -114,7 +117,10 @@ public final class AesGcmLoginPreAuthContextProtector implements LoginPreAuthCon
           context.userRole(),
           context.destinationsById(),
           context.credentialVerifiedAt().toString(),
-          context.workflowVersion());
+          context.workflowVersion(),
+          context.trustCode(),
+          context.schemeName(),
+          context.schemeNameChi());
     }
 
     private LoginPreAuthContext toDomain() {
@@ -123,7 +129,10 @@ public final class AesGcmLoginPreAuthContextProtector implements LoginPreAuthCon
           userRole,
           destinationsById,
           Instant.parse(credentialVerifiedAt),
-          workflowVersion);
+          workflowVersion,
+          trustCode,
+          schemeName,
+          schemeNameChi);
     }
   }
 }
