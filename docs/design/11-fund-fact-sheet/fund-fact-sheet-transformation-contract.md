@@ -29,6 +29,8 @@ Output: `FundFactSheetResult(List<FundFactSheetRowResult>)` with `FundFactSheetR
 | `zh_HK` (`RequestLanguageResolver.isZhHk`) | `nameChi`; `nameEng` when `nameChi` is null or blank | `linkChi`; omitted when absent. No fallback to `linkEng` |
 | otherwise | `nameEng` | `linkEng`; omitted when absent |
 
+`DynamicDescriptionResolver` is not reused: for `en` it falls back to the Chinese name, and with both names blank it throws, which contradicts D-7 and D-10. Name selection is implemented locally in the web mapper (as `FundPriceWebMapper.displayFundName` does).
+
 ## 4. Sort (web)
 
 Single level on the selected `fundName`, using the Fund Price fund-name comparison:
@@ -47,4 +49,4 @@ Comparator.comparing((Row r) -> nullToEmpty(r.fundName()).toLowerCase(Locale.ROO
 
 `FundFactSheetRowResponse(int seq, String fundName, String fundNameEn, String fundNameZh, @JsonInclude(NON_NULL) String factsheetUrl)` inside `FundFactSheetResponse(List rows)` inside `FundFactSheetResultResponse(data)` inside `MutationResponse.success(ApiStatus.SUCCESS, ..., List.of())`.
 
-`fundNameEn` and `fundNameZh` are passed through as received; a null value is serialized as `null` (not omitted). Only `factsheetUrl` is omitted when absent.
+`fundNameEn` and `fundNameZh` are passed through as received; a null value is serialized as `null` (not omitted). Only `factsheetUrl` is omitted when absent. Do not use a class-level `@JsonInclude(NON_NULL)` (as `FundPriceRowResponse` does): it would drop `fundNameZh: null`. The repository has no global Jackson inclusion setting, so the default serializes null as `null`.

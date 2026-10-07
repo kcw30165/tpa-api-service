@@ -78,3 +78,5 @@ Chinese names above are illustrative only. The second row shows an `en` response
 | Any non-empty `err-message` other than `err.tpa.no.fund.fact.sheet` (including `err.scheme.invalid`); empty `err-message` with missing or empty `data`; null data item, list or row; transport failure; timeout | 503 | `SYSTEM_ERROR` | `err.fund-fact-sheet.retrieval.unavailable` |
 
 `errors[0].type` is `SYSTEM`. `DOWNSTREAM_REJECTED` and `DOWNSTREAM_ERROR` are never exposed. FE owns message text.
+
+The 503 error carries a code only: `message` is omitted from the JSON. A missing `Account-Ref` header leaves no `PortalAccessContext`, and the existing handler returns HTTP 400, `BUSINESS_REJECTED`, `err.member.context.invalid`. `Account-Ref` without the `portal_sid` cookie or the CSRF header fails in `PortalAccessContextWebFilter` with its existing error. No route registration or security configuration change is needed (`SecurityConfig` requires authentication for every exchange by default).

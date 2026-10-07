@@ -21,6 +21,10 @@
 | D-15 | CLP exclusion and Config Matrix 6.8.3.2 deferred (tech lead) |
 | D-16 | `policy-no` from `CurrentPortalAccessContextResolver`; `ref-date` from `ReferenceDatePort` |
 | D-17 | `ref-date` uses a feature-local `DateTimeFormatter.ofPattern("dd/MM/uuuu")` with STRICT resolution; `fundPriceFullDateFormatter` is not reused |
+| D-18 | `UrlValidator` lives in `application.service.presentation` and is not a Spring bean; each consumer constructs it inline in its configuration |
+| D-19 | Adapter logging: the executor already logs contract-invalid, business-rejected and exchange-failed outcomes. The adapter logs only a null data item, a null `FundFactSheet` list and a null row, value-free, as `event=fund-fact-sheet.<name>` |
+| D-20 | The use case maps every failure that is not a `FundFactSheetRetrievalException` to `systemFailure()` (as Gain/Loss and Account Balance do); `GetFundFactSheetCommand` carries no language, because language selection is in the web mapper; the 503 handler passes a null message and never calls the message resolver |
+| D-21 | `err.tpa.no.fund.fact.sheet` is matched on the code alone: zero rows whether `data` is absent (confirmed by the downstream developer) or present |
 
 ## Pending decisions
 
@@ -40,5 +44,5 @@ None. Former P-1 to P-4 are resolved as D-9, D-10, D-11 and D-17.
 | `UrlRule` Specification extension | No second rule yet |
 | CLP / 6.8.3.2 gating | Tech lead |
 | `TRPGetFundPrice` missing from routing ledger | Separate defect |
-| Message resolver removal | Planned refactor |
+| Message resolver removal | Planned refactor; it changes the `ApiExceptionHandler` constructor used by `ApiExceptionHandlerFundPriceTest`; the Fund Fact Sheet handler does not use the resolver |
 | Shared date formatting | The application always uses `dd/MM/yyyy`. Replace per-feature `DateTimeFormatter` beans and local patterns (Fund Price, Account Balance, Gain/Loss, Fund Fact Sheet) with one shared, framework-free date-format helper. Separate refactor |

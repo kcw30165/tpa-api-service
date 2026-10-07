@@ -1,8 +1,8 @@
 # Fund Fact Sheet Design Pack Index
 
 **Feature:** Fund Fact Sheet (BRD 6.8)
-**Status:** Proposed solution-design baseline for review and approval
-**Implementation status:** Not started
+**Status:** Design baseline, corrected after the Stage 0 repository investigation (scripts 008-016)
+**Implementation status:** Stage 0 complete; Stage 1 not started
 **Target branch:** `feature/impl-fund-fact-sheet` (created from `origin/dev`)
 **Baseline:** `c12d2cc4f23f87f5987252c6c3b55c2439355863`
 
@@ -33,3 +33,7 @@ This pack turns the reviewed BRD, the `TRPGetFundFactSheet` APIM contract, owner
 - Java owns authenticated orchestration, row validation, URL validation, language selection, sorting, mapping and public errors.
 - FE owns search, bilingual filtering, labels, wording, button enabling and the no-fund label.
 - Where repository evidence contradicts this pack, implementation stops and the pack is corrected first.
+
+## Stage 0 result
+
+The repository investigation (scripts 008-016) found no blocker. Findings and the guard constraints are in `fund-fact-sheet-implementation-plan.md` sections 1.7 and 2.1; decisions D-18 to D-21 are in `fund-fact-sheet-decisions-open-questions.md`.

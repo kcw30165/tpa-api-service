@@ -51,12 +51,12 @@ Layer placement follows existing repository conventions. Account Gain/Loss is th
 | `GetFundFactSheetService`, `FundFactSheetNormalizer` | `application.usecase.fundfactsheet` | Fund Price use cases (framework-free) |
 | `FundFactSheetSourcePort`, `FundFactSheetPresentationEventPort` | `application.port.out` | `FundPriceSourcePort`, `AccountBalancePresentationEventPort` |
 | `FundFactSheetRetrievalException` | `application.exception` | `FundPriceRetrievalException` |
-| `UrlValidator` | Shared, framework-free application package | See `fund-fact-sheet-url-validator-design.md` |
-| `ApimFundFactSheetSourceAdapter`, DTOs, properties, validation config | `adapter.out.apim.fundfactsheet` | `ApimFundPriceModeSourceAdapter`, `FundPriceModeApimProperties` |
+| `UrlValidator` | `application.service.presentation` (framework-free; not a Spring bean) | See `fund-fact-sheet-url-validator-design.md` |
+| `ApimFundFactSheetSourceAdapter`, properties, validation config (wire DTOs in `adapter.out.apim.fundfactsheet.dto`) | `adapter.out.apim.fundfactsheet` | `ApimFundPriceModeSourceAdapter`, `FundPriceModeApimProperties` |
 | `FundFactSheetPresentationEventLogger` | `infrastructure.logging` | `AccountBalancePresentationEventLogger` |
 | `FundFactSheetApplicationConfig` | `config.fundfactsheet` | `FundPriceModeApplicationConfig` |
 
-The exact package for `UrlValidator` is confirmed in Stage 1 against existing shared application packages; it is not guessed here.
+`UrlValidator` goes in `application.service.presentation`, beside the generic `DynamicDescriptionResolver` and `ExactPrecisionRenderer` (Stage 0, row 0.2).
 
 ## APIM classification
 

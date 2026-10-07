@@ -4,6 +4,10 @@
 
 Provide one framework-free validator for downstream-supplied URLs. Fund Fact Sheet is the first consumer. Account Balance is not changed in this delivery; its future migration is documented below.
 
+## Package
+
+`application.service.presentation` (Stage 0, row 0.2). The package already holds the generic framework-free helpers `DynamicDescriptionResolver` and `ExactPrecisionRenderer`, used by Account Balance, Account Gain/Loss and Account Summary. `UrlValidatorTest` goes in the same package.
+
 ## Name
 
 `UrlValidator`, method `validate(String)`. "Resolver" is avoided because URL resolution conventionally means resolving a relative URL against a base (`URI.resolve`), which this class does not do.
@@ -16,7 +20,7 @@ Provide one framework-free validator for downstream-supplied URLs. Fund Fact She
 | `URI.create(value)` throws, or result is not absolute | `Optional.empty()` | `onRejected.run()` |
 | Otherwise | `Optional.of(value)` exactly as received | None |
 
-No trimming, no scheme check, no host check (OQ-12). Values such as `javascript:` or `data:` URIs are absolute and pass through; FE is informed of this.
+No trimming, no scheme check, no host check (OQ-12). Stage 0 confirmed the rule line by line against `AccountBalanceFactsheetResolver`: null or blank gives empty with no event; `URI.create` throwing, or a relative URI, gives empty plus one event; otherwise the value is returned as received. Values such as `javascript:` or `data:` URIs are absolute and pass through; FE is informed of this.
 
 ## Shape
 
@@ -34,7 +38,7 @@ public final class UrlValidator {
 
 - The callback takes no arguments, so a URL can never reach a log through it.
 - Each consumer supplies its own event method (Fund Fact Sheet: `FundFactSheetPresentationEventPort::malformedFactsheet`).
-- No Spring annotations; wired as a bean per consumer in its configuration class.
+- No Spring annotations and not a bean: each consumer's configuration constructs it inline, for example inside the normalizer `@Bean` method. `AccountBalanceFactsheetResolver` is already a bean in `AccountBalanceApplicationConfig`, so a second `UrlValidator` bean would be ambiguous by type.
 
 ## Extension (future)
 
@@ -71,6 +75,8 @@ Not executed in this delivery. Account Balance code and tests stay untouched.
 3. `AccountBalanceFactsheetResolver` and its test are deleted; equivalent cases already live in `UrlValidatorTest`.
 4. Add an Account Balance wiring test proving the malformed event still fires and the log line is unchanged.
 5. Run all Account Balance and Account Summary tests and architecture guards; search guards for references to `AccountBalanceFactsheetResolver` and update only those.
+6. `DefaultAccountBalanceAssembler` also constructs `new AccountBalanceFactsheetResolver(e)` in a convenience constructor (Stage 0, script 012); migrate that call too.
+7. `AccountBalanceCurrencyVisibilityBoundaryGuardTest` asserts that the port declares `void malformedFactsheet()` with no `String` and that the logger contains neither `url` nor `factsheetUrl`; both stay true.
 
 ### Acceptance
 

@@ -13,7 +13,7 @@ sequenceDiagram
     participant APIM
     FE->>Filter: GET /api/v1/fund-fact-sheet (cookie, Account-Ref, CSRF, Accept-Language)
     Filter->>Ctl: PortalAccessContext in Reactor Context
-    Ctl->>UC: GetFundFactSheetCommand(lang, accountEnv, policyNo, role)
+    Ctl->>UC: GetFundFactSheetCommand(accountEnv, policyNo, role)
     UC->>Ref: resolveReferenceDate(accountEnv)
     Ref-->>UC: referenceDate
     UC->>Ad: fetch(FetchFundFactSheetCommand)
