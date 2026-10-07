@@ -23,6 +23,7 @@ Stabilization-status (current):
 - full mvn test: PASSED
 - Surefire inspection: PASSED
 <<<<<<< HEAD
+<<<<<<< HEAD
 - Spring startup smoke test: PASSED (Attempt 4)
 =======
 Stabilization-status (initial):
@@ -34,6 +35,9 @@ Stabilization-status (initial):
 >>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
 - Spring startup smoke test: BLOCKED
 >>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+- Spring startup smoke test: PASSED (Attempt 4)
+>>>>>>> dc79bc42 (docs(sonarqube): record successful application startup smoke)
 - SonarQube rescan: BLOCKED
 - scoped BUG verification: BLOCKED
 - completed vulnerability regression check: BLOCKED
@@ -76,6 +80,7 @@ Governance conclusion:
 - every skipped test has source-backed classification evidence;
 - Gate 3 satisfies the documented pass criteria;
 <<<<<<< HEAD
+<<<<<<< HEAD
 - Gates 5-6 remain BLOCKED;
 - the workstream is not closed.
 
@@ -83,6 +88,9 @@ Governance conclusion:
 >>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
 =======
 - Gates 4–6 remain BLOCKED;
+=======
+- Gate 4: PASSED; Gates 5–6 remain BLOCKED;
+>>>>>>> dc79bc42 (docs(sonarqube): record successful application startup smoke)
 - the workstream is not closed.
 
 >>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
@@ -239,6 +247,9 @@ Gate 4: repository-approved application startup smoke
 - Pass criteria:
   - application process starts successfully
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> dc79bc42 (docs(sonarqube): record successful application startup smoke)
   - Actuator readiness endpoint (http://localhost:8890/actuator/health) returns HTTP 200 within an agreed timeout
 - Startup timeout: 120 seconds (approved for the local run).
 - Attempt history and results (preserved as evidence):
@@ -250,6 +261,7 @@ Gate 4: repository-approved application startup smoke
   - The repository's application.yml resolves the port from SERVER_PORT (application.yml: port: ${SERVER_PORT:8888}); the documentation references 8090 while local runs commonly default to 8888 unless an explicit per-run SERVER_PORT override is used. No tracked file was modified to set 8890 — the per-run env override or an untracked local mechanism was used for Attempt 4. No change to tracked configuration is in scope for this stabilization step.
   - Script `009-gate4-attempt4-startup-smoke` resides outside the repository and was executed by the operator to produce Attempt 4 evidence; its invocation and artifacts are recorded in the evidence directory but the script itself is not committed to this repository.
 - Gate 4 final decision: PASSED.
+<<<<<<< HEAD
 - Stop conditions: application fails to start, readiness not reached within agreed timeout.
 - Recovery: collect logs and re-run Gate 4 as needed; do not modify tracked configuration to force a pass.
 =======
@@ -258,6 +270,10 @@ Gate 4: repository-approved application startup smoke
 - Stop conditions: application fails to start, readiness not reached within agreed timeout.
 - Recovery: collect logs, fix configuration or infrastructure, re-run Gate 4 once underlying issues are resolved.
 >>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+- Stop conditions: application fails to start, readiness not reached within agreed timeout.
+- Recovery: collect logs and re-run Gate 4 as needed; do not modify tracked configuration to force a pass.
+>>>>>>> dc79bc42 (docs(sonarqube): record successful application startup smoke)
 
 Gate 5: branch push / CI / Sonar (ORDERED)
 - Prerequisites: Gates 0–4 pass.
