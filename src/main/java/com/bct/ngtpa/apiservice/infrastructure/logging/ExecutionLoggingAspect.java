@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.Arrays;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -221,6 +223,26 @@ public class ExecutionLoggingAspect {
       String methodName = signature.getName();
       return new InvocationContext(
           className, methodName, className + "." + methodName, true, false, joinPoint.getArgs());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || o.getClass() != InvocationContext.class) return false;
+      InvocationContext other = (InvocationContext) o;
+      return Objects.equals(className(), other.className())
+          && Objects.equals(methodName(), other.methodName())
+          && Objects.equals(label(), other.label())
+          && logArgs() == other.logArgs()
+          && logResult() == other.logResult()
+          && Arrays.deepEquals(args(), other.args());
+    }
+
+    @Override
+    public int hashCode() {
+      int result = Objects.hash(className(), methodName(), label(), logArgs(), logResult());
+      result = 31 * result + Arrays.deepHashCode(args());
+      return result;
     }
   }
 }

@@ -66,10 +66,7 @@ public final class ForgotPasswordCompleteWebMapper {
         switch (result.status()) {
           case VALIDATION_FAILED, INVALID_AUTH_FLOW, CSRF_INVALID, IDEMPOTENCY_KEY_REUSED ->
               ApiStatus.VALIDATION_FAILED;
-          case DUPLICATE_IN_PROGRESS, BUSINESS_REJECTED ->
-              result.status() == CompleteForgotPasswordStatus.DUPLICATE_IN_PROGRESS
-                  ? ApiStatus.BUSINESS_REJECTED
-                  : ApiStatus.BUSINESS_REJECTED;
+          case DUPLICATE_IN_PROGRESS, BUSINESS_REJECTED -> ApiStatus.BUSINESS_REJECTED;
           case UNKNOWN_OUTCOME, SYSTEM_FAILED -> ApiStatus.SYSTEM_ERROR;
           case SUCCESS -> ApiStatus.SUCCESS;
         };
