@@ -94,13 +94,10 @@ public final class ApimGeneralMetadataSourceAdapter implements GeneralMetadataSo
     var entries = new LinkedHashMap<GeneralMetadataKey, ResolvedGeneralMetadata>();
     for (var result : results) {
       Optional<GeneralMetadataResolutionSource> resultSource = result.resolutionSource();
-      if (source.isPresent()
-          && resultSource.isPresent()
-          && source.get() != resultSource.get()) {
+      if (source.isPresent() && resultSource.isPresent() && source.get() != resultSource.get()) {
         throw new IllegalArgumentException("Conflicting general metadata resolution sources");
       }
-      if (source.isEmpty() && resultSource.isPresent())
-        source = resultSource;
+      if (source.isEmpty() && resultSource.isPresent()) source = resultSource;
       for (var entry : result.entries()) {
         var previous = entries.putIfAbsent(entry.key(), entry);
         if (previous != null && !previous.value().equals(entry.value()))

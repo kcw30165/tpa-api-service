@@ -2,10 +2,10 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordCompleteDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordWorkflowResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
@@ -42,11 +42,14 @@ class ForgotPasswordCompleteWebMapperTest {
     assertThat(response.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
     assertThat(response.result()).isNotNull();
     assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.NONE);
-    assertThat(response.errors()).singleElement().satisfies(error -> {
-      assertThat(error.code()).isEqualTo("err.forgot-password.duplicate");
-      assertThat(error.message()).isNull();
-      assertThat(error.targets()).containsExactly("id");
-    });
+    assertThat(response.errors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.code()).isEqualTo("err.forgot-password.duplicate");
+              assertThat(error.message()).isNull();
+              assertThat(error.targets()).containsExactly("id");
+            });
   }
 
   @Test
@@ -74,10 +77,13 @@ class ForgotPasswordCompleteWebMapperTest {
     assertThat(response.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
     assertThat(response.result()).isNotNull();
     assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.NONE);
-    assertThat(response.errors()).singleElement().satisfies(error -> {
-      assertThat(error.code()).isEqualTo("err.forgot-password.rejected");
-      assertThat(error.message()).isNull();
-      assertThat(error.targets()).isEmpty();
-    });
+    assertThat(response.errors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.code()).isEqualTo("err.forgot-password.rejected");
+              assertThat(error.message()).isNull();
+              assertThat(error.targets()).isEmpty();
+            });
   }
 }
