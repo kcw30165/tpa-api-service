@@ -41,11 +41,7 @@ public final class TrpGetAccountListAdapter implements LoginAccountAuthorization
     List<TrpGetAccountListApimDataItem> data =
         response.getData() == null ? List.of() : List.copyOf(response.getData());
     if (error != null) {
-      if (!data.isEmpty()) return LoginAccountAuthorizationResult.unavailable();
-      String configured = errorMappings.get(error);
-      return "UNAVAILABLE".equals(configured)
-          ? LoginAccountAuthorizationResult.unavailable()
-          : LoginAccountAuthorizationResult.unavailable();
+      return LoginAccountAuthorizationResult.unavailable();
     }
     if (data.isEmpty()) return LoginAccountAuthorizationResult.unavailable();
     try {

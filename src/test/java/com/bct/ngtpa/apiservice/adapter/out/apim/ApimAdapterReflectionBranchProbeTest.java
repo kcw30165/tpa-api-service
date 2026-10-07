@@ -226,27 +226,29 @@ class ApimAdapterReflectionBranchProbeTest {
     Class<?> commandClass =
         Class.forName(
             "com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand");
-    for (Constructor<?> constructor : commandClass.getDeclaredConstructors()) {
-      constructor.setAccessible(true);
-      Object[] args = new Object[constructor.getParameterCount()];
-      Class<?>[] types = constructor.getParameterTypes();
-      for (int i = 0; i < types.length; i++) {
-        if (types[i].equals(String.class)) {
-          args[i] =
-              switch (i) {
-                case 0 -> "JP";
-                case 1 -> "MBR";
-                default -> "value-" + i;
-              };
-        } else if (List.class.isAssignableFrom(types[i])) {
-          args[i] = List.of("MSG-1");
-        } else {
-          args[i] = null;
-        }
-      }
-      return constructor.newInstance(args);
+    Constructor<?>[] ctors = commandClass.getDeclaredConstructors();
+    if (ctors.length == 0) {
+      return null;
     }
-    return null;
+    Constructor<?> constructor = ctors[0];
+    constructor.setAccessible(true);
+    Object[] args = new Object[constructor.getParameterCount()];
+    Class<?>[] types = constructor.getParameterTypes();
+    for (int i = 0; i < types.length; i++) {
+      if (types[i].equals(String.class)) {
+        args[i] =
+            switch (i) {
+              case 0 -> "JP";
+              case 1 -> "MBR";
+              default -> "value-" + i;
+            };
+      } else if (List.class.isAssignableFrom(types[i])) {
+        args[i] = List.of("MSG-1");
+      } else {
+        args[i] = null;
+      }
+    }
+    return constructor.newInstance(args);
   }
 
   private static Method method(Class<?> type, String name, int parameterCount) {

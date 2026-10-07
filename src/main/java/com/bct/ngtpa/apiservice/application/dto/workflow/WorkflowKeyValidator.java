@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 final class WorkflowKeyValidator {
   private static final Pattern CODE_LIKE =
       Pattern.compile("^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)+$");
-  private static final Pattern LONG_DIGITS = Pattern.compile(".*\\d{8,}.*");
+  private static final Pattern LONG_DIGITS = Pattern.compile("\\d{8,}");
 
   private WorkflowKeyValidator() {}
 
@@ -27,7 +27,7 @@ final class WorkflowKeyValidator {
     String lower = value.toLowerCase(Locale.ROOT);
     return value.chars().anyMatch(Character::isWhitespace)
         || value.contains("@")
-        || LONG_DIGITS.matcher(value).matches()
+        || LONG_DIGITS.matcher(value).find()
         || lower.contains("csrf_")
         || lower.contains("otp_")
         || isUnsafePasswordLikeKey(lower)

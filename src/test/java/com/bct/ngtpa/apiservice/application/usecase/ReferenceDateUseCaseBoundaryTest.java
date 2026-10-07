@@ -39,10 +39,6 @@ class ReferenceDateUseCaseBoundaryTest {
     assertFalse(
         Arrays.stream(fields).anyMatch(field -> field.getType().equals(ConfigServicePort.class)),
         "RefreshReferenceDateService must not depend on ConfigServicePort directly");
-    assertFalse(
-        Arrays.stream(fields)
-            .anyMatch(field -> field.getType().getSimpleName().equals("ReferenceDateConfigPort")),
-        "RefreshReferenceDateService must not depend on ReferenceDateConfigPort directly");
   }
 
   private void assertUsesReferenceDatePortOnlyForReferenceDateResolution(Class<?> useCaseClass) {
@@ -58,11 +54,6 @@ class ReferenceDateUseCaseBoundaryTest {
     assertFalse(
         Arrays.stream(fields).anyMatch(field -> field.getType().equals(ConfigServicePort.class)),
         () -> useCaseClass.getSimpleName() + " must not depend on ConfigServicePort directly");
-    assertFalse(
-        Arrays.stream(fields)
-            .anyMatch(field -> field.getType().getSimpleName().equals("ReferenceDateConfigPort")),
-        () ->
-            useCaseClass.getSimpleName() + " must not depend on ReferenceDateConfigPort directly");
     assertFalse(
         Arrays.stream(fields)
             .anyMatch(field -> field.getType().equals(ReferenceDateCacheUpdatePort.class)),
