@@ -9,14 +9,27 @@ import org.junit.jupiter.api.Test;
 
 class ExecutionLoggingAspectInvocationContextTest {
 
-  private java.lang.invoke.MethodHandle findCanonicalConstructorHandle(Class<?> nested) throws Exception {
-    var lookup = java.lang.invoke.MethodHandles.privateLookupIn(ExecutionLoggingAspect.class, java.lang.invoke.MethodHandles.lookup());
-    var mt = java.lang.invoke.MethodType.methodType(void.class, String.class, String.class, String.class, boolean.class, boolean.class, Object[].class);
+  private java.lang.invoke.MethodHandle findCanonicalConstructorHandle(Class<?> nested)
+      throws Exception {
+    var lookup =
+        java.lang.invoke.MethodHandles.privateLookupIn(
+            ExecutionLoggingAspect.class, java.lang.invoke.MethodHandles.lookup());
+    var mt =
+        java.lang.invoke.MethodType.methodType(
+            void.class,
+            String.class,
+            String.class,
+            String.class,
+            boolean.class,
+            boolean.class,
+            Object[].class);
     return lookup.findConstructor(nested, mt);
   }
 
-  private Object newInvocationContext(java.lang.invoke.MethodHandle ctorHandle, Object[] args) throws Exception {
-    // canonical ctor: (String className, String methodName, String label, boolean logArgs, boolean logResult, Object[] args)
+  private Object newInvocationContext(java.lang.invoke.MethodHandle ctorHandle, Object[] args)
+      throws Exception {
+    // canonical ctor: (String className, String methodName, String label, boolean logArgs, boolean
+    // logResult, Object[] args)
     try {
       return ctorHandle.invokeWithArguments("C", "m", "C.m", true, false, args);
     } catch (Throwable t) {
@@ -46,14 +59,15 @@ class ExecutionLoggingAspectInvocationContextTest {
 
   @Test
   void equalsAndHashCode_contentAware_nestedPrimitiveArray() throws Exception {
-    Class<?> ic = Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
-        .filter(c -> c.getSimpleName().equals("InvocationContext"))
-        .findFirst()
-        .orElseThrow();
+    Class<?> ic =
+        Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
+            .filter(c -> c.getSimpleName().equals("InvocationContext"))
+            .findFirst()
+            .orElseThrow();
     var ctorHandle = findCanonicalConstructorHandle(ic);
 
-    Object[] a1 = new Object[] { new int[] {1,2} };
-    Object[] a2 = new Object[] { new int[] {1,2} };
+    Object[] a1 = new Object[] {new int[] {1, 2}};
+    Object[] a2 = new Object[] {new int[] {1, 2}};
 
     Object inv1 = newInvocationContext(ctorHandle, a1);
     Object inv2 = newInvocationContext(ctorHandle, a2);
@@ -64,10 +78,11 @@ class ExecutionLoggingAspectInvocationContextTest {
 
   @Test
   void equalsFalse_whenScalarDiffers() throws Exception {
-    Class<?> ic = Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
-        .filter(c -> c.getSimpleName().equals("InvocationContext"))
-        .findFirst()
-        .orElseThrow();
+    Class<?> ic =
+        Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
+            .filter(c -> c.getSimpleName().equals("InvocationContext"))
+            .findFirst()
+            .orElseThrow();
     var ctorHandle = findCanonicalConstructorHandle(ic);
 
     Object inv1 = newInvocationContext(ctorHandle, new Object[] {"x"});
@@ -85,14 +100,15 @@ class ExecutionLoggingAspectInvocationContextTest {
 
   @Test
   void equalsFalse_whenNestedArrayDiffers() throws Exception {
-    Class<?> ic = Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
-        .filter(c -> c.getSimpleName().equals("InvocationContext"))
-        .findFirst()
-        .orElseThrow();
+    Class<?> ic =
+        Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
+            .filter(c -> c.getSimpleName().equals("InvocationContext"))
+            .findFirst()
+            .orElseThrow();
     var ctorHandle = findCanonicalConstructorHandle(ic);
 
-    Object[] a1 = new Object[] { new int[] {1,2} };
-    Object[] a2 = new Object[] { new int[] {2,3} };
+    Object[] a1 = new Object[] {new int[] {1, 2}};
+    Object[] a2 = new Object[] {new int[] {2, 3}};
 
     Object inv1 = newInvocationContext(ctorHandle, a1);
     Object inv2 = newInvocationContext(ctorHandle, a2);
@@ -102,10 +118,11 @@ class ExecutionLoggingAspectInvocationContextTest {
 
   @Test
   void equalsFalse_withNullOrOtherType() throws Exception {
-    Class<?> ic = Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
-        .filter(c -> c.getSimpleName().equals("InvocationContext"))
-        .findFirst()
-        .orElseThrow();
+    Class<?> ic =
+        Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
+            .filter(c -> c.getSimpleName().equals("InvocationContext"))
+            .findFirst()
+            .orElseThrow();
     var ctorHandle = findCanonicalConstructorHandle(ic);
 
     Object inv = newInvocationContext(ctorHandle, new Object[] {"x"});

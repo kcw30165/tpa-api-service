@@ -12,8 +12,8 @@ import com.bct.ngtpa.apiservice.application.dto.RefreshReferenceDateCommand;
 import com.bct.ngtpa.apiservice.application.dto.RefreshReferenceDateResult;
 import com.bct.ngtpa.apiservice.application.port.in.RefreshReferenceDateUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDateRefreshPort;
-import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
 import com.bct.ngtpa.apiservice.application.port.out.ConfigServicePort;
+import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -169,8 +169,7 @@ class RefreshReferenceDateServiceTest {
             .anyMatch(field -> field.getType().equals(ReferenceDateCacheUpdatePort.class)));
     assertEquals(
         false,
-        Arrays.stream(fields)
-            .anyMatch(field -> field.getType().equals(ConfigServicePort.class)));
+        Arrays.stream(fields).anyMatch(field -> field.getType().equals(ConfigServicePort.class)));
   }
 
   @Test

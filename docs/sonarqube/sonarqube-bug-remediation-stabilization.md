@@ -12,18 +12,41 @@ Status summary (Units 1–7 are COMMITTED):
 - Unit 6 (TrpGetAccountList S3923): commit 8c0257caf673d85c77af6aafd8bcdfc4a085600a
 - Unit 7 (ExecutionLoggingAspect S6218): commit 2728632c82c3871a80c1e9c8c7f95c501042afea
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
 Stabilization-status (current):
 - Gate 0: PASSED
 - full compile: PASSED
 - full test-compile: PASSED
 - full mvn test: PASSED
 - Surefire inspection: PASSED
+<<<<<<< HEAD
+<<<<<<< HEAD
 - Spring startup smoke test: PASSED (Attempt 4)
+=======
+Stabilization-status (initial):
+- full compile: NOT_STARTED
+- full test-compile: NOT_STARTED
+- full mvn test: NOT_STARTED
+- Surefire inspection: NOT_STARTED
+=======
+>>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
+- Spring startup smoke test: BLOCKED
+>>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+- Spring startup smoke test: PASSED (Attempt 4)
+>>>>>>> dc79bc42 (docs(sonarqube): record successful application startup smoke)
 - SonarQube rescan: BLOCKED
 - scoped BUG verification: BLOCKED
 - completed vulnerability regression check: BLOCKED
 - CODE_SMELL comparison-only check: BLOCKED
 - branch push: BLOCKED
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
 - workstream closure: BLOCKED
 
 
@@ -56,9 +79,24 @@ Governance conclusion:
 - every skipped test is enumerated in `06-surefire-manifest.txt`;
 - every skipped test has source-backed classification evidence;
 - Gate 3 satisfies the documented pass criteria;
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> b745a88b (docs(sonarqube): remove stale gate 4 blocker wording)
 - Gates 5-6 remain BLOCKED;
 - the workstream is not closed.
 
+=======
+>>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+- Gates 4–6 remain BLOCKED;
+=======
+- Gate 4: PASSED; Gates 5–6 remain BLOCKED;
+>>>>>>> dc79bc42 (docs(sonarqube): record successful application startup smoke)
+- the workstream is not closed.
+
+>>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
 
 Canonical repository-approved commands (do not run here):
 
@@ -75,8 +113,18 @@ Canonical repository-approved commands (do not run here):
   - mvn -Dtest=Task0043TrpGetAccountListAdapterArchitectureTest,TrpGetAccountListAdapterTest test
   - mvn -Dtest=ExecutionLoggingAspectInvocationContextTest test
 - Surefire reports inspection locations (evidence):
+<<<<<<< HEAD
+<<<<<<< HEAD
   - `target/surefire-reports/*.txt`
   - `target/surefire-reports/TEST-*.xml`
+=======
+  - target/surefire-reports/*.txt
+  - target/surefire-reports/TEST-*.xml
+>>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+  - `target/surefire-reports/*.txt`
+  - `target/surefire-reports/TEST-*.xml`
+>>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
 - JaCoCo report artifacts (coverage evidence):
   - target/site/jacoco/jacoco.xml
 
@@ -104,8 +152,18 @@ Startup procedure (repository-evidenced)
   - Crypto/config secrets required for context protection and APIM payloads
 - Positive readiness signal (documented):
   - Actuator health endpoint: http://localhost:8090/actuator/health (HTTP 200 indicates readiness per docs/wsl/phase-04-direct-spring-runtime.md)
+<<<<<<< HEAD
+<<<<<<< HEAD
 - Startup timeout: not defined by the repository; 120 seconds was approved and used for the local run.
 - Shutdown: no repository-provided command exists; the approved policy is SIGTERM, a 30 second graceful wait, then SIGKILL only if the tracked process tree is still alive. It was executed by external script 009-gate4-attempt4-startup-smoke.
+=======
+- Startup timeout: NOT_DEFINED in repository documentation. No numeric startup timeout value is specified in repository scripts or docs. This missing fact BLOCKS Gate 4: an agreed numeric startup timeout must be recorded before running the startup gate locally; alternatively, run Gate 4 in a CI job that enforces a timeout and record that timeout in the evidence.
+- Safe shutdown: repository runtime controller responsibilities describe stopping the tracked process and child processes; there is no single repository-provided shutdown command. This missing fact BLOCKS Gate 4: a concrete safe shutdown procedure for the chosen execution environment must be provided before running the startup gate locally.
+>>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+- Startup timeout: not defined by the repository; 120 seconds was approved and used for the local run.
+- Shutdown: no repository-provided command exists; the approved policy is SIGTERM, a 30 second graceful wait, then SIGKILL only if the tracked process tree is still alive. It was executed by external script 009-gate4-attempt4-startup-smoke.
+>>>>>>> b745a88b (docs(sonarqube): remove stale gate 4 blocker wording)
 
 Evidence records and evidence directory (timestamped)
 
@@ -144,7 +202,15 @@ Strict success criteria (must be met for a gate to pass)
 - Total Surefire failures: 0.
 - Total Surefire errors: 0.
 - Skipped tests must be enumerated in 06-surefire-manifest.txt and classified as expected/pre-existing.
+<<<<<<< HEAD
+<<<<<<< HEAD
 - Startup must reach actuator health HTTP 200 with status UP within 120 seconds on the worktree-specific port (8890 for this worktree).
+=======
+- Startup context must reach the documented readiness signal (actuator health HTTP 200) within an agreed timeout (repository does not define one — see Gate 4 blocked note).
+>>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+- Startup must reach actuator health HTTP 200 with status UP within 120 seconds on the worktree-specific port (8890 for this worktree).
+>>>>>>> b745a88b (docs(sonarqube): remove stale gate 4 blocker wording)
 - Sonar analysis must complete successfully and the 10 scoped BUG keys must not be present in the open unresolved BUG query results.
 - No regression detected in the completed vulnerability workstream.
 
@@ -192,6 +258,10 @@ Gate 4: repository-approved application startup smoke
 - Evidence artifacts: 08-startup-command.txt, 09-startup-summary.txt, 10-readiness-response.txt, 11-shutdown-summary.txt
 - Pass criteria:
   - application process starts successfully
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> dc79bc42 (docs(sonarqube): record successful application startup smoke)
   - Actuator readiness endpoint (http://localhost:8890/actuator/health) returns HTTP 200 within an agreed timeout
 - Startup timeout: 120 seconds (approved for the local run).
 - Attempt history and results (preserved as evidence):
@@ -203,8 +273,19 @@ Gate 4: repository-approved application startup smoke
   - The repository's application.yml resolves the port from SERVER_PORT (application.yml: port: ${SERVER_PORT:8888}); the documentation references 8090 while local runs commonly default to 8888 unless an explicit per-run SERVER_PORT override is used. No tracked file was modified to set 8890 — the per-run env override or an untracked local mechanism was used for Attempt 4. No change to tracked configuration is in scope for this stabilization step.
   - Script `009-gate4-attempt4-startup-smoke` resides outside the repository and was executed by the operator to produce Attempt 4 evidence; its invocation and artifacts are recorded in the evidence directory but the script itself is not committed to this repository.
 - Gate 4 final decision: PASSED.
+<<<<<<< HEAD
 - Stop conditions: application fails to start, readiness not reached within agreed timeout.
 - Recovery: collect logs and re-run Gate 4 as needed; do not modify tracked configuration to force a pass.
+=======
+  - Actuator readiness endpoint (http://localhost:8090/actuator/health) returns HTTP 200 within an agreed timeout
+- Startup timeout: NOT_DEFINED in repository docs — this missing fact blocks Gate 4 until an agreed timeout is recorded. If executed in CI, use the CI job's enforced timeout and record it in 08-startup-command.txt.
+- Stop conditions: application fails to start, readiness not reached within agreed timeout.
+- Recovery: collect logs, fix configuration or infrastructure, re-run Gate 4 once underlying issues are resolved.
+>>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+- Stop conditions: application fails to start, readiness not reached within agreed timeout.
+- Recovery: collect logs and re-run Gate 4 as needed; do not modify tracked configuration to force a pass.
+>>>>>>> dc79bc42 (docs(sonarqube): record successful application startup smoke)
 
 Gate 5: branch push / CI / Sonar (ORDERED)
 - Prerequisites: Gates 0–4 pass.
@@ -222,8 +303,17 @@ Gate 5: branch push / CI / Sonar (ORDERED)
   - whether Sonar analyses feature branches or only `dev` (not recorded in repository)
   - exact Sonar API query or project key usage for extracting the 10 scoped issue keys (not recorded in repository)
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 
 Because the above facts are not present in the repository, Gate 5 is BLOCKED for Sonar execution until the missing CI/Jenkins job details and authentication method are provided by CI/ops.
+=======
+  Because the above facts are not present in the repository, Gate 5 is BLOCKED for Sonar execution until the missing CI/Jenkins job details and authentication method are provided by CI/ops.
+>>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+
+Because the above facts are not present in the repository, Gate 5 is BLOCKED for Sonar execution until the missing CI/Jenkins job details and authentication method are provided by CI/ops.
+>>>>>>> 8b25627e (docs(sonarqube): record gates 0 through 3 stabilization)
 
 Gate 6: exact issue-key verification and final documentation
 - Prerequisites: Gate 5 pass.
@@ -245,9 +335,21 @@ Notes (repository-proven or externally missing facts)
 Execution independence and evidence validity
 
 - Gates 1–3 (compile, test-compile, full test) may execute after Gate 0 passes and produce valid evidence independently of Gate 4/5/6.
+<<<<<<< HEAD
+<<<<<<< HEAD
 - Gates 1-4 (compile, test-compile, full test, startup smoke) are PASSED and their evidence remains valid.
 - Gates 5–6 (CI/Sonar and issue verification) are independently BLOCKED by missing CI/Jenkins/Sonar invocation facts described in Gate 5.
 - Successful completion of Gates 1–3 remains valid evidence while external blockers for Gates 4–6 are resolved; the workstream cannot be considered closed until Gates 5-6 pass.
+=======
+- Gate 4 (startup) is independently BLOCKED by the missing startup timeout and safe-shutdown procedures described above.
+- Gates 5–6 (CI/Sonar and issue verification) are independently BLOCKED by missing CI/Jenkins/Sonar invocation facts described in Gate 5.
+- Successful completion of Gates 1–3 remains valid evidence while external blockers for Gates 4–6 are resolved; the workstream cannot be considered closed until Gates 4–6 pass.
+>>>>>>> 730a3fa8 (docs(sonarqube): define bug remediation stabilization gates)
+=======
+- Gates 1-4 (compile, test-compile, full test, startup smoke) are PASSED and their evidence remains valid.
+- Gates 5–6 (CI/Sonar and issue verification) are independently BLOCKED by missing CI/Jenkins/Sonar invocation facts described in Gate 5.
+- Successful completion of Gates 1–3 remains valid evidence while external blockers for Gates 4–6 are resolved; the workstream cannot be considered closed until Gates 5-6 pass.
+>>>>>>> b745a88b (docs(sonarqube): remove stale gate 4 blocker wording)
 
 After the stabilization run completes (or is blocked), collect and store the evidence directory contents and update docs/sonarqube/sonarqube-bug-remediation-plan.md with final statuses.
 
