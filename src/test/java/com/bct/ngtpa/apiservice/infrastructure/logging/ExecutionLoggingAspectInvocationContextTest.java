@@ -1,21 +1,35 @@
 package com.bct.ngtpa.apiservice.infrastructure.logging;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Verifies the value semantics of the private {@code InvocationContext} record without widening its
+ * visibility and without comparing classes by name.
+ */
 class ExecutionLoggingAspectInvocationContextTest {
 
-  private java.lang.invoke.MethodHandle findCanonicalConstructorHandle(Class<?> nested)
-      throws Exception {
-    var lookup =
-        java.lang.invoke.MethodHandles.privateLookupIn(
-            ExecutionLoggingAspect.class, java.lang.invoke.MethodHandles.lookup());
-    var mt =
-        java.lang.invoke.MethodType.methodType(
+  private static Class<?> invocationContextClass() {
+    List<Class<?>> records =
+        Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
+            .filter(Class::isRecord)
+            .toList();
+    assertEquals(1, records.size(), "expected exactly one nested record");
+    return records.get(0);
+  }
+
+  private static MethodHandle canonicalConstructor() throws ReflectiveOperationException {
+    MethodHandles.Lookup lookup =
+        MethodHandles.privateLookupIn(ExecutionLoggingAspect.class, MethodHandles.lookup());
+    MethodType type =
+        MethodType.methodType(
             void.class,
             String.class,
             String.class,
@@ -23,111 +37,54 @@ class ExecutionLoggingAspectInvocationContextTest {
             boolean.class,
             boolean.class,
             Object[].class);
-    return lookup.findConstructor(nested, mt);
+    return lookup.findConstructor(invocationContextClass(), type);
   }
 
-  private Object newInvocationContext(java.lang.invoke.MethodHandle ctorHandle, Object[] args)
-      throws Exception {
-    // canonical ctor: (String className, String methodName, String label, boolean logArgs, boolean
-    // logResult, Object[] args)
-    try {
-      return ctorHandle.invokeWithArguments("C", "m", "C.m", true, false, args);
-    } catch (Throwable t) {
-      throw new Exception(t);
-    }
+  private static Object newContext(String methodName, Object[] args) throws Throwable {
+    return canonicalConstructor()
+        .invokeWithArguments("C", methodName, "C." + methodName, true, false, args);
   }
 
   @Test
-  void equalsAndHashCode_contentAware_simpleArgs() throws Exception {
-    Class<?>[] inner = ExecutionLoggingAspect.class.getDeclaredClasses();
-    Class<?> ic = null;
-    for (Class<?> c : inner) if (c.getSimpleName().equals("InvocationContext")) ic = c;
-    if (ic == null) throw new IllegalStateException("InvocationContext class not found");
+  void equalsAndHashCode_contentAware_simpleArgs() throws Throwable {
+    Object first = newContext("m", new Object[] {"x", 123});
+    Object second = newContext("m", new Object[] {"x", 123});
 
-    var ctorHandle = findCanonicalConstructorHandle(ic);
-
-    Object[] a1 = new Object[] {"x", 123};
-    Object[] a2 = new Object[] {"x", 123};
-
-    Object inv1 = newInvocationContext(ctorHandle, a1);
-    Object inv2 = newInvocationContext(ctorHandle, a2);
-
-    assertTrue(inv1.equals(inv2));
-    assertTrue(inv2.equals(inv1));
-    assertEquals(inv1.hashCode(), inv2.hashCode());
+    assertEquals(first, second);
+    assertEquals(second, first);
+    assertEquals(first.hashCode(), second.hashCode());
   }
 
   @Test
-  void equalsAndHashCode_contentAware_nestedPrimitiveArray() throws Exception {
-    Class<?> ic =
-        Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
-            .filter(c -> c.getSimpleName().equals("InvocationContext"))
-            .findFirst()
-            .orElseThrow();
-    var ctorHandle = findCanonicalConstructorHandle(ic);
+  void equalsAndHashCode_contentAware_nestedPrimitiveArray() throws Throwable {
+    Object first = newContext("m", new Object[] {new int[] {1, 2}});
+    Object second = newContext("m", new Object[] {new int[] {1, 2}});
 
-    Object[] a1 = new Object[] {new int[] {1, 2}};
-    Object[] a2 = new Object[] {new int[] {1, 2}};
-
-    Object inv1 = newInvocationContext(ctorHandle, a1);
-    Object inv2 = newInvocationContext(ctorHandle, a2);
-
-    assertTrue(inv1.equals(inv2));
-    assertEquals(inv1.hashCode(), inv2.hashCode());
+    assertEquals(first, second);
+    assertEquals(first.hashCode(), second.hashCode());
   }
 
   @Test
-  void equalsFalse_whenScalarDiffers() throws Exception {
-    Class<?> ic =
-        Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
-            .filter(c -> c.getSimpleName().equals("InvocationContext"))
-            .findFirst()
-            .orElseThrow();
-    var ctorHandle = findCanonicalConstructorHandle(ic);
+  void equalsFalse_whenScalarDiffers() throws Throwable {
+    Object first = newContext("m", new Object[] {"x"});
+    Object second = newContext("m2", new Object[] {"x"});
 
-    Object inv1 = newInvocationContext(ctorHandle, new Object[] {"x"});
-
-    // change scalar method name to differ (reuse existing ctorHandle)
-    Object inv3;
-    try {
-      inv3 = ctorHandle.invokeWithArguments("C", "m2", "C.m2", true, false, new Object[] {"x"});
-    } catch (Throwable t) {
-      throw new Exception(t);
-    }
-
-    assertFalse(inv1.equals(inv3));
+    assertNotEquals(first, second);
   }
 
   @Test
-  void equalsFalse_whenNestedArrayDiffers() throws Exception {
-    Class<?> ic =
-        Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
-            .filter(c -> c.getSimpleName().equals("InvocationContext"))
-            .findFirst()
-            .orElseThrow();
-    var ctorHandle = findCanonicalConstructorHandle(ic);
+  void equalsFalse_whenNestedArrayDiffers() throws Throwable {
+    Object first = newContext("m", new Object[] {new int[] {1, 2}});
+    Object second = newContext("m", new Object[] {new int[] {2, 3}});
 
-    Object[] a1 = new Object[] {new int[] {1, 2}};
-    Object[] a2 = new Object[] {new int[] {2, 3}};
-
-    Object inv1 = newInvocationContext(ctorHandle, a1);
-    Object inv2 = newInvocationContext(ctorHandle, a2);
-
-    assertFalse(inv1.equals(inv2));
+    assertNotEquals(first, second);
   }
 
   @Test
-  void equalsFalse_withNullOrOtherType() throws Exception {
-    Class<?> ic =
-        Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
-            .filter(c -> c.getSimpleName().equals("InvocationContext"))
-            .findFirst()
-            .orElseThrow();
-    var ctorHandle = findCanonicalConstructorHandle(ic);
+  void equalsFalse_withNullOrOtherType() throws Throwable {
+    Object context = newContext("m", new Object[] {"x"});
 
-    Object inv = newInvocationContext(ctorHandle, new Object[] {"x"});
-
-    assertFalse(inv.equals(null));
-    assertFalse(inv.equals("some string"));
+    assertNotEquals(context, null);
+    assertNotEquals(context, "some string");
   }
 }
