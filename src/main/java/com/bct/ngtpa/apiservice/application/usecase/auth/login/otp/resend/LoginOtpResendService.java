@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.LoginPreAuthContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.message.*;
 import com.bct.ngtpa.apiservice.application.port.in.ResendLoginOtpUseCase;
@@ -125,8 +126,9 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
     if (x.context().schemeName() != null) {
       variables.put("schemeName", x.context().schemeName());
     }
-    if (x.context().schemeNameChi() != null) {
-      variables.put("schemeNameChi", x.context().schemeNameChi());
+    String schemeNameChi = resolveSchemeNameChi(x.context());
+    if (schemeNameChi != null) {
+      variables.put("schemeNameChi", schemeNameChi);
     }
     var command =
         new MessageDeliveryCommand(
@@ -172,6 +174,19 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
                                 : ResendLoginOtpStatus.DELIVERY_FAILED,
                             x,
                             null)));
+  }
+
+  /**
+   * Mirrors {@code UsernameRecoveryRequestProtectedOperation.resolveSchemeNameChi} (plan decision,
+   * Nick, 2026-10-07): a blank {@code chin-sch-name} - confirmed to occur in real TRPMemberLogin
+   * responses - falls back to {@code sch-name}, rather than rendering an empty Chinese scheme
+   * name into a live member email.
+   */
+  private static String resolveSchemeNameChi(LoginPreAuthContext context) {
+    String schemeNameChi = context.schemeNameChi();
+    return (schemeNameChi == null || schemeNameChi.isBlank())
+        ? context.schemeName()
+        : schemeNameChi;
   }
 
   private OtpChannel channel(String value) {

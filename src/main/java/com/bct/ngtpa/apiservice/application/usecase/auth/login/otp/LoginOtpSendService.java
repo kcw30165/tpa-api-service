@@ -175,10 +175,24 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
     if (context.schemeName() != null) {
       variables.put("schemeName", context.schemeName());
     }
-    if (context.schemeNameChi() != null) {
-      variables.put("schemeNameChi", context.schemeNameChi());
+    String schemeNameChi = resolveSchemeNameChi(context);
+    if (schemeNameChi != null) {
+      variables.put("schemeNameChi", schemeNameChi);
     }
     return Map.copyOf(variables);
+  }
+
+  /**
+   * Mirrors {@code UsernameRecoveryRequestProtectedOperation.resolveSchemeNameChi} (plan decision,
+   * Nick, 2026-10-07): a blank {@code chin-sch-name} - confirmed to occur in real TRPMemberLogin
+   * responses - falls back to {@code sch-name}, rather than rendering an empty Chinese scheme
+   * name into a live member email.
+   */
+  private static String resolveSchemeNameChi(LoginPreAuthContext context) {
+    String schemeNameChi = context.schemeNameChi();
+    return (schemeNameChi == null || schemeNameChi.isBlank())
+        ? context.schemeName()
+        : schemeNameChi;
   }
 
   private DestinationType destinationType(OtpChannel channel) {

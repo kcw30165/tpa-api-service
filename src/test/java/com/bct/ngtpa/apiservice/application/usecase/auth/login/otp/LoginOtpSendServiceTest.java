@@ -383,6 +383,74 @@ class LoginOtpSendServiceTest {
         "trustCode", "schemeName", "schemeNameChi");
   }
 
+  @Test
+  void sendFallsBackToSchemeNameWhenSchemeNameChiIsBlank() {
+    var delivery = new AtomicReference<MessageDeliveryCommand>();
+    LoginPreAuthContext context =
+        new LoginPreAuthContext(
+            "member01",
+            null,
+            Map.of(
+                "dst_opaque",
+                new LoginPreAuthDestination("dst_opaque", "mobile", "91234567", "****4567")),
+            NOW.minusSeconds(60),
+            "v1",
+            "JPM",
+            "JP MORGAN CHASE - JMCI",
+            "");
+    OtpChallengePort otp =
+        new StubOtpPort() {
+          public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
+            return Mono.just(
+                new CreateOtpChallengeResult("otp_opaque", "123456", NOW.plusSeconds(300), 300));
+          }
+        };
+    var service =
+        new LoginOtpSendService(
+            command ->
+                Mono.just(
+                    LoginProtectedAuthFlowContextResult.valid(context, null, null, "csrf_hash")),
+            new LoginOtpDestinationResolver(),
+            otp,
+            command -> {
+              delivery.set(command);
+              return Mono.just(
+                  new MessageDeliveryResult(
+                      MessageDeliveryStatus.ACCEPTED,
+                      command.channel(),
+                      "provider-id",
+                      null,
+                      null));
+            },
+            command -> Mono.empty(),
+            (type, value) -> "hash_only",
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new LoginOtpSendPolicy(
+                6,
+                true,
+                300,
+                60,
+                5,
+                false,
+                0,
+                "Your verification code is {code}",
+                "Verification code"),
+            (type, channel, locale) ->
+                new NoticeTemplateDefinition(
+                    type,
+                    channel,
+                    locale,
+                    "Verification code",
+                    "{code} {schemeNameChi}",
+                    null,
+                    "minutes"));
+
+    StepVerifier.create(service.send(COMMAND)).expectNextCount(1).verifyComplete();
+
+    assertThat(delivery.get().templateVariables())
+        .containsEntry("schemeNameChi", "JP MORGAN CHASE - JMCI");
+  }
+
   private LoginOtpSendService service(
       LoginProtectedAuthFlowContextLoader loader,
       OtpChallengePort otp,

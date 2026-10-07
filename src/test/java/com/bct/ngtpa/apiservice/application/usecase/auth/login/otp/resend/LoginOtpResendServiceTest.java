@@ -314,6 +314,51 @@ class LoginOtpResendServiceTest {
         "trustCode", "schemeName", "schemeNameChi");
   }
 
+  @Test
+  void resendFallsBackToSchemeNameWhenSchemeNameChiIsBlank() {
+    var delivered = new AtomicReference<MessageDeliveryCommand>();
+    OtpChallengePort otp =
+        new Stub() {
+          public Mono<ReplaceOtpChallengeResult> replaceChallenge(ReplaceOtpChallengeCommand c) {
+            return Mono.just(
+                new ReplaceOtpChallengeResult(
+                    "old", "new", "654321", OtpReplacementOutcome.REPLACED,
+                    NOW.plusSeconds(300), 300, 60, 0, null));
+          }
+        };
+    var service =
+        service(
+            c ->
+                Mono.just(
+                    LoginProtectedAuthFlowContextResult.valid(
+                        new LoginPreAuthContext(
+                            "member",
+                            null,
+                            java.util.Map.of(),
+                            NOW,
+                            "v1",
+                            "JPM",
+                            "JP MORGAN CHASE - JMCI",
+                            ""),
+                        "old",
+                        new LoginPreAuthDestination(
+                            "dst_selected", "mobile", "91234567", "****4567"),
+                        "csrf_hash")),
+            otp,
+            c -> {
+              delivered.set(c);
+              return Mono.just(
+                  new MessageDeliveryResult(
+                      MessageDeliveryStatus.ACCEPTED, c.channel(), null, null, null));
+            },
+            c -> Mono.empty());
+
+    StepVerifier.create(service.resend(COMMAND)).expectNextCount(1).verifyComplete();
+
+    assertThat(delivered.get().templateVariables())
+        .containsEntry("schemeNameChi", "JP MORGAN CHASE - JMCI");
+  }
+
   private LoginOtpResendService service(
       LoginProtectedAuthFlowContextLoader l,
       OtpChallengePort o,
