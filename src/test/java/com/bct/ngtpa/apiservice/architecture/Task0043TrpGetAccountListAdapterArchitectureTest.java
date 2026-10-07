@@ -41,7 +41,9 @@ class Task0043TrpGetAccountListAdapterArchitectureTest {
         Files.readString(
             Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/login/account/TrpGetAccountListAdapter.java"));
-    assertThat(source).contains("implements LoginAccountAuthorizationPort", "errorMappings");
+    assertThat(source)
+        .contains(
+            "implements LoginAccountAuthorizationPort", "requireNonNull(properties).validate()");
     assertThat(source)
         .doesNotContain(
             "err.tpa.no.active.account",
