@@ -46,7 +46,7 @@ still build `MessageDeliveryCommand` and call
 | II-1 | Username Recovery | Simplest — single call site in `UsernameRecoveryFeatureConfig` / `UsernameRecoveryRequestProtectedOperation`. First to confirm whether `schemeName`/`schemeNameChi` already flow from the DTO through `TrpSearchMemberApimResultMapper` → `UsernameRecoveryLookupCandidate`, or need additive plumbing. | DONE (gate evidence: Appendix A.3) |
 | II-2 | Registration | Replace `RegistrationMessageDeliveryAdapter`'s `subject()`/`body()` policy lookup with `NoticeTemplateRegistryPort.resolve(...)`. No scheme-name placeholder needed (§8.2). | DONE (gate evidence: Appendix C.17) |
 | II-3 | Login | Replaced `LoginOtpSendPolicy`-based lookup with `NoticeTemplateRegistryPort.resolve(...)` in `LoginOtpSendService`/`LoginOtpResendService`. Scheme-name plumbing comes from `TrpMemberLoginApimDataItem` (D8, corrected model; see D.11.1), not `TrpGetAccountListApimDataItem`. | DONE (gate evidence: Appendix D.13) |
-| II-4 | Forgot Password | **Last** — highest risk, since it currently has no live YAML wiring at all. Reconcile content to match `login-otp` verbatim (§5). Requires scheme-name plumbing from `ForgotPasswordTrpSearchMemberDataItem`. | PENDING |
+| II-4 | Forgot Password | **Last** — highest risk, since it currently has no live YAML wiring at all. Reconcile content to match `login-otp` verbatim (§5). Scheme-name plumbing from `ForgotPasswordTrpSearchMemberDataItem` already exists; the gap is downstream (see Appendix E.3). | IN PROGRESS (investigation done; draft sub-plan: Appendix E) |
 
 Each stage follows the established investigate → implement → validate
 pattern: confirm full current source of the call site before any edit,
@@ -1777,3 +1777,118 @@ resolved, rather than edited in place.
   application stopped and released the port cleanly.
 - Stage II-3 (Login) is now DONE in full: sub-stages II-3.0, II-3.a, II-3.a2, II-3.b0, II-3.b,
   II-3.c, II-3.d and II-3.e are all DONE. The next stage is II-4 (Forgot Password).
+
+## Appendix E: Stage II-4 (Forgot Password) Investigation and Draft Sub-Plan
+
+### E.1 Current send and resend path (scripts 114, 115)
+
+`ForgotPasswordDetailsOtpProtectedOperation` (send, under lock after identity and details
+verification) and `ForgotPasswordOtpResendProtectedOperation` (resend) both build a
+`MessageDeliveryCommand` from a private `message(...)` method, reading subject/body from a static
+field `TEMPLATES = ForgotPasswordOtpTemplates.approved()` (send) or an injected
+`ForgotPasswordOtpTemplates templates` (resend). Both read `{code}`, `{ttlValue}`, `{ttlUnit}` into
+the template variables map; neither reads `trustCode`, `schemeName`, or `schemeNameChi` today,
+because the protected context carries none of those three fields (E.3).
+
+### E.2 The content source is a real, already-wired Java class, not a dead YAML key
+
+`ForgotPasswordOtpTemplates` is a real `@Bean`
+(`ForgotPasswordApplicationConfig.forgotPasswordOtpTemplates()`) with a static `approved()` factory
+containing hardcoded en/zh_HK strings for SMS, email subject and email body, each validated at
+construction time for the `{code}`/`{ttlValue}`/`{ttlUnit}` placeholders. The YAML node
+`auth-workflows.forgot-password.otp.localized-template.*` genuinely exists in `application.yml` but
+is read by nothing in the codebase - confirming D.11.4's "orphaned" description precisely: the real
+content lives in Java, not config, with a separate, unused YAML node sitting alongside it.
+
+### E.3 The real gap: the protected context, not the APIM source
+
+`ForgotPasswordAuthFlowContext` has **no** `trustCode`/`schemeName`/`schemeNameChi` fields today,
+and a direct, repository-wide search confirms nothing in the `forgotpassword` package tree reads any
+of those three accessor names anywhere (the one unrelated match, `item.trustCode()` in
+`ForgotPasswordTrpSearchMemberMapper`, reads the raw APIM response item, not the protected context).
+`VerifyForgotPasswordDetailsService`, which is where the lookup result would need to flow into the
+context, extracts only `accountEnv` from the lookup result today and discards the rest.
+
+### E.4 The APIM source already has the data; no D8-style correction needed
+
+Unlike Login's original D8, there is no wrong-DTO problem here.
+`ForgotPasswordTrpSearchMemberDataItem` (the Forgot-Password-owned, independently-named
+`TrpSearchMemberApimDataItem` under its own package) already models `trustCode`, `schemeName` (from
+`sch-name`), and `schemeNameChi` (from `chin-sch-name`), via a compatibility constructor that
+defaults the two newer fields to `null` for pre-existing call sites - the same shape Username
+Recovery's own copy of this class uses (E.7). The work for Stage II-4 is purely downstream: thread
+these three fields from the lookup result into `ForgotPasswordAuthFlowContext`, and from there into
+the rendered message.
+
+### E.5 Content parity with Login is already decided, not open
+
+Solution design section 5 ("Resolved Decision: Login vs. Forgot Password Templates"), read directly:
+`LOGIN_OTP` and `FORGOT_PASSWORD_OTP` remain **two separate notice codes with two separate YAML
+config entries** - they are not merged, since they originate from different workflows and may need
+to diverge independently in future - but **their content (subject/body text, per channel/locale)
+must be synchronized to be identical**, reconciling the current wording discrepancy (Login: "Your
+BCT login verification code is {code}..."; Forgot Password: "Your BCT forgot password verification
+code is {code}..."). The new `forgot-password-otp` registry entries should carry the exact same
+literal subject/body text as `login-otp`'s, not new content.
+
+### E.6 Two content-drift findings in the current hardcoded path (script 115)
+
+- `ForgotPasswordDetailsOtpProtectedOperation.message()` hardcodes the literal string `"5"` for
+  `ttlValue`, while the OTP challenge's TTL is separately hardcoded to 300 seconds a few lines
+  above. 300 / 60 = 5, so today's rendered output is correct, but the two numbers are independent
+  magic literals with nothing enforcing they stay in sync - a drift risk, not a current defect.
+- `ForgotPasswordOtpResendProtectedOperation.message()` already derives `ttlValue` correctly via
+  `Math.max(1, otpPolicy.ttlSeconds() / 60)`.
+- Both operations additionally declare an identical, copy-pasted private `ttlUnit(String language)`
+  method (same hardcoded `"分鐘"`/`"minutes"` logic). Routing both channels through
+  `NoticeTemplateRegistryPort` removes the duplication and the hardcoding together, the same way
+  Login's D9/D.11.2 resolution did.
+
+### E.7 Cross-workflow DTO inventory (script 116, directly answering Nick's question)
+
+Each workflow that calls `TRPSearchMember` maintains its **own**, independently-named,
+package-scoped `TrpSearchMemberApimDataItem` (or, for Forgot Password, the already-prefixed
+`ForgotPasswordTrpSearchMemberDataItem`) - there is no shared, generic DTO across workflows.
+Username Recovery's own copy has `schemeName`/`schemeNameChi` (added per this workstream's section
+8.2, carried through `UsernameRecoveryLookupCandidate` and the domain `UsernameRecoveryCandidate`).
+Registration's own copy of the same simply-named class does **not** carry either field - confirmed
+by a direct, repository-wide search finding zero occurrences of `schemeName`/`schemeNameChi`
+anywhere in Registration's code (script 118) - consistent with, not contradicting, the Phase II
+table's own "No scheme-name placeholder needed (§8.2)" text for Stage II-2. Forgot Password should
+follow Username Recovery's pattern directly: its own DTO already has the shape; the remaining work
+is purely in the context and session layers (E.3).
+
+### E.8 The rebuild-safety precedent to replicate (scripts 117, 118)
+
+Username Recovery once had exactly the bug shape this stage must now guard against:
+`UsernameRecoverySessionCandidate.withState()` rebuilt a candidate from an existing one using the
+dangerous 6-arg compatibility constructor, silently dropping `schemeName`/`schemeNameChi` on every
+delivery-state transition. This was caught during implementation (not design), fixed in commit
+`8889c0a1` to use the canonical 8-arg constructor and explicitly carry both fields forward, and is
+now guarded by three regression tests (`withStatePreservesSchemeNameAcrossReserveTransition`,
+`...AcrossRequestedTransition`, `...HandlesNullSchemeNameFieldsGracefully`). A direct,
+repository-wide search confirms no other live violation of this pattern exists today, and confirms
+Registration cannot have the same bug, because it never carries `schemeName`/`schemeNameChi` in any
+domain object in the first place (E.7). When `ForgotPasswordAuthFlowContext` gains these three
+fields (II-4.b0), its existing rebuild methods - `withPhase(...)` and `withResetAuthorization(...)`,
+both already present today - must carry the new fields forward explicitly, each proven by a
+regression test of the same shape as Username Recovery's.
+
+### E.9 Draft sub-plan
+
+| Sub-stage | Change | Status |
+|---|---|---|
+| II-4.0 | Settle the one open item below (E.10); confirm this appendix before any code. | PENDING |
+| II-4.a | Read-only investigation of the send/resend path, the content source, the context, the APIM source, the cross-workflow DTO inventory, and the rebuild-safety precedent. | DONE (scripts 114-118; findings in E.1-E.8) |
+| II-4.b0 | Add `trustCode`/`schemeName`/`schemeNameChi` to `ForgotPasswordAuthFlowContext` (compatibility constructor, same pattern as Login's `LoginPreAuthContext`); update `VerifyForgotPasswordDetailsService` to populate them from the lookup result; update the AES-GCM protector's private `Payload` record in lockstep (the Appendix A.1 carry-over warning, made concrete for this workflow); update `withPhase(...)`/`withResetAuthorization(...)` to carry the three fields forward explicitly, each with a regression test (E.8). | PENDING |
+| II-4.b | `ForgotPasswordDetailsOtpProtectedOperation` and `ForgotPasswordOtpResendProtectedOperation` resolve `FORGOT_PASSWORD_OTP` through `NoticeTemplateRegistryPort`, removing the hardcoded `ForgotPasswordOtpTemplates` content path, the hardcoded `"5"` `ttlValue` literal, and the duplicated `ttlUnit()` method from both operations; new `forgot-password-otp` YAML entries carry content synchronized to `login-otp`'s (E.5). | PENDING |
+| II-4.c | Rendering test with the real registry and renderer for SMS and EMAIL in en and zh_HK (the minutes, the unit, no placeholder left over, content identical to Login's). | PENDING |
+| II-4.d | Tests for a missing definition on send and on resend: the error reaches the caller, nothing is created or sent. | PENDING |
+| II-4.e | Stage gate on the final code: full `mvn test` and an application startup smoke test; then the plan is updated. | PENDING |
+
+### E.10 Open item: sub-stage granularity (needs Nick's decision)
+
+For Stage II-3, Nick combined II-3.c and II-3.d into a single script (108) and confirmed that
+approach as the instruction to follow. Whether II-4.c and II-4.d should be similarly combined for
+Forgot Password is the one open item before implementation can begin; everything else in this
+appendix is either a direct finding or an already-resolved decision (E.4, E.5).
