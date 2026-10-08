@@ -20,11 +20,11 @@ No exclusions, relocation, denominator manipulation or production-only seams. Th
 - Null callback rejected at construction.
 
 ### APIM adapter
-- Exact `ApimExchangeRequest`: path, request DTO (`policy-no`, `ref-date`), types, `ACCOUNT_ENV`, credential context, `SAFE_BUSINESS_CALL`.
-- `ref-date` formatted `dd/MM/uuuu` (e.g. 05/05/2026, 29/02/2028).
+- Exact `ApimExchangeRequest`: path, request DTO (`policy-no`, `cert-no`, `sch-type`), types, `ACCOUNT_ENV`, credential context, `SAFE_BUSINESS_CALL`.
+- The request DTO serializes exactly `policy-no`, `cert-no`, `sch-type` in that order, each as a JSON String; `cert-no` is textual (for example `"230"`) and no date field is present.
 - Flattening across multiple `data[]` items preserves order.
-- `err.tpa.no.fund.fact.sheet` with `data` absent returns zero rows.
-- `err.tpa.no.fund.fact.sheet` with `data` present also returns zero rows (the code decides).
+- `data: [{"FundFactSheet": []}]` (no funds) returns zero rows.
+- `err.tpa.no.fund.fact.sheet` is no longer special: like any non-empty `err-message` it is a system failure, with `data` absent or present.
 - Empty `FundFactSheet` list inside a non-null item contributes zero rows.
 - Empty `err-message` with `data: []`: system failure.
 - Non-empty `err-message` (`err.scheme.invalid` and unknown): system failure.
@@ -39,13 +39,15 @@ No exclusions, relocation, denominator manipulation or production-only seams. Th
 - Blank and null `name-eng` kept with `blankEnglishName`.
 - Null and blank `name-chi` kept without event.
 - Malformed link omitted with `malformedFactsheet`; valid link kept verbatim.
-- Event port methods take no arguments (architecture guard).
+- The event port has exactly five methods and none takes an argument (architecture guard).
 
 ### Use case
-- Reference date resolved with `accountEnv`; the fetch command carries `policyNo`, `referenceDate`, `accountEnv` and `actorUserRole`.
+- The fetch command carries `policyNo`, `certNo`, `schemeType`, `accountEnv` and `actorUserRole` exactly as given (`certNo` is passed through unchanged); no reference date is resolved.
 - A `FundFactSheetRetrievalException` passes through unchanged; any other failure maps to `systemFailure()`.
 - A no-fund source result gives an empty `FundFactSheetResult`.
 - The command carries no language.
+- A null or blank `policyNo`, `certNo` or `schemeType` (each tested separately): `FundFactSheetRetrievalException.systemFailure()`, exactly one `missingAccountIdentifier` event, and the source port is not called.
+- `missingAccountIdentifier` is value-free: an event port method with no arguments, logged as `event=fund-fact-sheet.missing-account-identifier`.
 
 ### Web
 - `en`: `fundName` = `nameEng`, `factsheetUrl` = `linkEng`.
@@ -56,6 +58,7 @@ No exclusions, relocation, denominator manipulation or production-only seams. Th
 - No-fund result returns `rows: []`.
 - Envelope shape `success/status/result.data.rows/messages/errors`.
 - Route and envelope are tested with `WebTestClient.bindToController(controller)` (the repository has no `@WebFluxTest` usage), with the real `ApiExceptionHandler` as controller advice for the 503 path.
+- The controller forwards `accountEnv`, `policyNo`, `certNo`, `schemeType` and the actor role from `PortalAccessContext`; query parameters are ignored.
 - Handler: 503, `SYSTEM_ERROR`, code `err.fund-fact-sheet.retrieval.unavailable`, type `SYSTEM`. No `message` field; the resolver is never called.
 
 ### Guards

@@ -19,14 +19,14 @@
 | Fuzzy search | Removed; partial, case-insensitive matching only |
 | "Displayed in PDF format" | Removed; links may be HTML or other formats |
 | Download filename `[fund name]_fund_fact_sheet.pdf` | Removed |
-| No fact sheet information | Per fund: an empty link disables that fund's button. No funds (TAS `err.tpa.no.fund.fact.sheet`): empty list, FE shows a label |
+| No fact sheet information | Per fund: an empty link disables that fund's button. No funds (TAS returns an empty `FundFactSheet` list): empty list, FE shows a label |
 
 ## Requirement ownership
 
 | # | Requirement | Owner | BFF handling |
 |---|---|---|---|
 | R1 | All schemes except CLP | Deferred | None this delivery (tech lead) |
-| R2 | Disable when no fact sheet info | FE + BFF | Empty or invalid link omitted; empty list when TAS returns `err.tpa.no.fund.fact.sheet` |
+| R2 | Disable when no fact sheet info | FE + BFF | Empty or invalid link omitted; empty list when TAS returns an empty `FundFactSheet` list |
 | R3 | List funds with fact sheets, sorted by fund name ascending | TAS + BFF | TAS selects funds; BFF sorts by display name, then `seq` |
 | R4 | Fund name + Download / View | BFF + FE | Display name and link chosen by `Accept-Language` |
 | R5 | Uploaded file or redirect link | BFF | URL only; never served or proxied |

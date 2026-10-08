@@ -15,20 +15,20 @@ All map to `FundFactSheetRetrievalException.systemFailure()`, handled by a dedic
 | Cause | Mapping |
 |---|---|
 | `err-message` = `err.scheme.invalid` | 503 (policy number comes from trusted server state; a miss is a system inconsistency) |
-| Any other non-empty `err-message` except `err.tpa.no.fund.fact.sheet` | 503 |
+| Any other non-empty `err-message` (there is no special no-fund code any more) | 503 |
 | `response` null, `err-message` null, `data` null | 503 |
-| `err-message` empty with `data` `[]` | 503 (TAS signals no funds with `err.tpa.no.fund.fact.sheet`) |
+| `err-message` empty with `data` `[]` | 503 (malformed; no funds is `data: [{"FundFactSheet": []}]`) |
 | Null data item, `FundFactSheet` list or row | 503 |
 | Timeout, transport, token, certificate, crypto, deserialization | 503 |
-| Reference date resolution failure | 503 through the use case's `onErrorMap` (`ReferenceDateAdapter` already falls back to the Hong Kong date on Redis errors, so this is a defensive path) |
+| `policyNo`, `certNo` or `schemeType` null or blank in the account context | 503; the use case logs `event=fund-fact-sheet.missing-account-identifier` (no values) and APIM is not called |
 
-Every 503 cause is logged without values: by the executor (`apim.contract.invalid`, `apim.business.rejected`, `apim.exchange.failed`) or, for a null data item, list or row, by the adapter. Raw downstream codes and exception text are never public.
+Every 503 cause is logged without values: by the executor (`apim.contract.invalid`, `apim.business.rejected`, `apim.exchange.failed`) or, for a null data item, list or row, by the adapter, and for an absent account identifier by the use case (event port). Raw downstream codes and exception text are never public.
 
 ## Not errors
 
 | Case | Result |
 |---|---|
-| `err-message` = `err.tpa.no.fund.fact.sheet` | 200, `rows: []` (executor logs `apim.business.rejected` at WARN) |
+| `err-message` empty with `data: [{"FundFactSheet": []}]` (no funds) | 200, `rows: []` |
 | Empty or rejected link | Row kept, `factsheetUrl` omitted |
 | Missing `seq` | Row dropped and logged |
 | Duplicate `seq` | First occurrence kept; later ones dropped and logged |

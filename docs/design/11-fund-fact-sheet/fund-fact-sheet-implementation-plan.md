@@ -6,6 +6,8 @@
 
 This plan is the execution contract for the design pack. Where it and another pack document disagree, stop and correct the pack before writing code.
 
+**Correction entry (2026-10-08): TRPGetFundFactSheet contract change.** The downstream contract changed after Stage 3 was committed (change notice; decisions C-1 to C-7). The request is now `policy-no`, `cert-no` and `sch-type` (JSON Strings from `PortalAccessContext.account()`); there is no `ref-date`, no `ReferenceDatePort` and no `dd/MM/uuuu` formatter in this feature; no funds is `data: [{"FundFactSheet": []}]`; `err.tpa.no.fund.fact.sheet` no longer exists; absent `policyNo`, `certNo` or `schemeType` is logged and answered with 503 without calling APIM. The Stage 2 and Stage 3 sections below describe the corrected state. The committed Stage 2 and Stage 3 code is corrected by a separate `fix(fund-fact-sheet)` commit; script 026 (the Stage 4 controller) was set aside unrun and its number stays used; Stage 4 resumes on the corrected code under a new script number.
+
 ---
 
 ## 1. Ground rules
@@ -150,7 +152,7 @@ Behaviour exactly as in `fund-fact-sheet-url-validator-design.md`: `Runnable onR
 
 ### Fail-first tests
 
-- `ApimFundFactSheetSourceAdapterTest`: all APIM adapter scenarios in the test design, including `err.tpa.no.fund.fact.sheet` → zero rows, `data: []` → system failure, every structural null → system failure, exact `ApimExchangeRequest`, `ref-date` formatting.
+- `ApimFundFactSheetSourceAdapterTest`: all APIM adapter scenarios in the test design, including `data: [{"FundFactSheet": []}]` → zero rows, `data: []` → system failure, any non-empty `err-message` (including the former no-fund code) and every structural null → system failure, exact `ApimExchangeRequest`, request fields `policy-no`, `cert-no` and `sch-type` as Strings.
 - Properties test: blank path fails startup; delegating constructor.
 - DTO contract test: wire names deserialize; unknown properties ignored; `seq` null preserved.
 - `ApimRoutingLedgerCharacterizationTest`: add the `TRPGetFundFactSheet` entry, change `.hasSize(19)` to `.hasSize(20)`, and add "TRPGetFundFactSheet" to the `containsExactlyInAnyOrder` list. The test also reads the adapter source and requires the literals `command.actorUserRole()`, `SAFE_BUSINESS_CALL` and `ApimDatabaseScope.ACCOUNT_ENV`, so the adapter's parameter is named `command`.
@@ -175,11 +177,12 @@ DTO names follow the `TrpGetInvestGlApimDataItem` / `TrpGetFundPriceApimDataItem
 ### Rules
 
 - `ApimDatabaseScope.ACCOUNT_ENV`, `ApimCredentialResolutionContext(actorUserRole, accountEnv)`, `ApimRetryEligibility.SAFE_BUSINESS_CALL`.
-- `ref-date`: feature-local `DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT)`.
+- Request fields: `policy-no`, `cert-no` and `sch-type`, all JSON Strings, in that order; `cert-no` is passed through unchanged (no numeric conversion). There is no `ref-date` and no date formatter (removed by the contract change).
 - Envelope handling exactly as the table in `fund-fact-sheet-apim-contract.md`.
-- `err.tpa.no.fund.fact.sheet` compared with an exact, case-sensitive match; the code alone decides (zero rows whether `data` is absent or present).
+- No special handling of `err.tpa.no.fund.fact.sheet`: it no longer exists, and like any non-empty `err-message` it is a system failure. No funds is `data: [{"FundFactSheet": []}]` (zero rows through the empty-list rule).
 - The adapter builds its `ApimExchangeRequest` inside `Mono.defer`, so any synchronous failure also maps to `systemFailure()`, and names its parameter `command`.
-- Constructors: a public `@Autowired` constructor taking the executor and `FundFactSheetApimProperties`, delegating to a package-private constructor taking the executor and the path string (rejects a blank path). The `dd/MM/uuuu` STRICT formatter is a private static constant of the adapter.
+- `FetchFundFactSheetCommand` carries `policyNo`, `certNo`, `schemeType`, `accountEnv` and `actorUserRole` (no date) and validates all five in its constructor.
+- Constructors: a public `@Autowired` constructor taking the executor and `FundFactSheetApimProperties`, delegating to a package-private constructor taking the executor and the path string (rejects a blank path).
 - The adapter logs only a null data item, a null `FundFactSheet` list and a null row (value-free, `event=fund-fact-sheet.<name>`, static SLF4J logger as in `ApimAccountGainLossSourceAdapter`). The executor already logs every other outcome.
 - Neither code nor comments in this package may name the types listed in section 1.7.
 
@@ -196,8 +199,8 @@ Compile, test-compile and gate pass. Ledger size is 20.
 ### Fail-first tests
 
 - `FundFactSheetNormalizerTest`: all normalizer scenarios.
-- `GetFundFactSheetServiceTest`: reference date resolved with `accountEnv`; the fetch command carries `policyNo`, `referenceDate`, `accountEnv` and `actorUserRole`; a `FundFactSheetRetrievalException` passes through unchanged; any other failure (source, reference date, normalizer) maps to `FundFactSheetRetrievalException.systemFailure()`; no-fund result is empty.
-- `FundFactSheetPresentationEventLoggerTest`: event names; no values logged.
+- `GetFundFactSheetServiceTest`: the fetch command carries `policyNo`, `certNo`, `schemeType`, `accountEnv` and `actorUserRole` exactly as given; a null or blank `policyNo`, `certNo` or `schemeType` (each tested) logs one `missingAccountIdentifier` event and fails with `systemFailure()` without calling the source port; a `FundFactSheetRetrievalException` passes through unchanged; any other failure (source, normalizer) maps to `FundFactSheetRetrievalException.systemFailure()`; no-fund result is empty.
+- `FundFactSheetPresentationEventLoggerTest`: the five event names; no values logged.
 - Handler test: `FundFactSheetRetrievalException` → 503, `SYSTEM_ERROR`, `err.fund-fact-sheet.retrieval.unavailable`, type `SYSTEM`.
 - The handler test also asserts that the error has no `message` field and that no resolver is called.
 - Architecture guard: `FundFactSheetPresentationEventPort` methods take no parameters.
@@ -207,9 +210,9 @@ Compile, test-compile and gate pass. Ledger size is 20.
 | File | Package |
 |---|---|
 | `GetFundFactSheetUseCase` | `application.port.in` **(evidenced)** |
-| `GetFundFactSheetCommand` (`accountEnv`, `policyNo`, `actorUserRole`; no language), `FundFactSheetResult`, `FundFactSheetRowResult` | `application.dto.fundfactsheet` (resolved) |
+| `GetFundFactSheetCommand` (`accountEnv`, `policyNo`, `certNo`, `schemeType`, `actorUserRole`; no language), `FundFactSheetResult`, `FundFactSheetRowResult` | `application.dto.fundfactsheet` (resolved) |
 | `GetFundFactSheetService`, `FundFactSheetNormalizer` | `application.usecase.fundfactsheet` (resolved) |
-| `FundFactSheetPresentationEventPort` (`missingSeq()`, `duplicateSeq()`, `blankEnglishName()`, `malformedFactsheet()`) | `application.port.out` **(evidenced)** |
+| `FundFactSheetPresentationEventPort` (`missingSeq()`, `duplicateSeq()`, `blankEnglishName()`, `malformedFactsheet()`, `missingAccountIdentifier()`) | `application.port.out` **(evidenced)** |
 | `FundFactSheetPresentationEventLogger` | `infrastructure.logging` **(evidenced)** |
 | `FundFactSheetApplicationConfig` | `config.fundfactsheet` (resolved; the `UrlValidator` is constructed inline inside the normalizer `@Bean` method) |
 | `ErrorCodes.FUND_FACT_SHEET_RETRIEVAL_UNAVAILABLE = "err.fund-fact-sheet.retrieval.unavailable"` | `shared.error` **(evidenced)** |
@@ -220,8 +223,9 @@ Compile, test-compile and gate pass. Ledger size is 20.
 - Application classes are framework-free; Spring wiring only in `FundFactSheetApplicationConfig`.
 - `UrlValidator` is constructed with `events::malformedFactsheet` and applied to both links.
 - Duplicate `seq`: keep first occurrence in TAS order.
-- `GetFundFactSheetService` builds the fetch command and calls `ReferenceDatePort`, the source port and the normalizer inside one `Mono.defer` chain; `onErrorMap` turns every failure that is not a `FundFactSheetRetrievalException` into `systemFailure()`, as `GetAccountGainLossService` does.
-- `FundFactSheetPresentationEventPort` is a plain four-method interface (not `@FunctionalInterface`); its logger writes `event=fund-fact-sheet.<name>` lines with no values, and its test uses the logback `ListAppender` technique of `ApiExceptionHandlerLoggingTest`.
+- `GetFundFactSheetService` first requires `policyNo`, `certNo` and `schemeType` to be non-null and non-blank (otherwise it reports `missingAccountIdentifier` and fails with `systemFailure()` before any call), then builds the fetch command and calls the source port and the normalizer inside one `Mono.defer` chain; `onErrorMap` turns every failure that is not a `FundFactSheetRetrievalException` into `systemFailure()`, as `GetAccountGainLossService` does.
+- `GetFundFactSheetService` takes the source port, the normalizer and `FundFactSheetPresentationEventPort` (the reference date port is no longer used by this feature); `FundFactSheetApplicationConfig` wires `getFundFactSheetUseCase(source, normalizer, events)` accordingly.
+- `FundFactSheetPresentationEventPort` is a plain five-method interface (not `@FunctionalInterface`); its logger writes `event=fund-fact-sheet.<name>` lines with no values, and its test uses the logback `ListAppender` technique of `ApiExceptionHandlerLoggingTest`.
 
 ### Exit
 
@@ -250,6 +254,7 @@ Compile, test-compile and gate pass.
 ### Rules
 
 - `RequestLanguageResolver.resolve(headers, acceptLanguage, "en")`, then `CurrentPortalAccessContextResolver.current()`. Read the headers context with `Mono.deferContextual` and `RequestHeaderContextKeys.CONTEXT_KEY` as `AccountGainLossController` does; the third argument of `resolve` is ignored (a missing header gives `en`), and `zh` and `zh-HK` normalize to `zh_HK`.
+- The controller builds `GetFundFactSheetCommand` from `PortalAccessContext.account()` (`accountEnv`, `policyNo`, `certNo`, `schemeType`) and `actor().actorUserRole()`; it ignores query parameters.
 - Sort: `fundName` lower-cased with `Locale.ROOT` (null as `""`), then `seq`. No `Collator`.
 - `@JsonInclude(NON_NULL)` on the `factsheetUrl` record component only. Do not copy the class-level `NON_NULL` of `FundPriceRowResponse`: it would drop `fundNameZh: null`. There is no global Jackson inclusion setting (`JacksonConfig` is a plain `ObjectMapper`), so a null `fundNameZh` serializes as `null`.
 

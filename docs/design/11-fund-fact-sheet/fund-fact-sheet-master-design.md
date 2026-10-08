@@ -9,9 +9,9 @@
 - Owns all labels, messages and Important Notes.
 
 ### Java BFF
-- Resolves trusted selected-account context and the reference date.
+- Resolves the trusted selected-account context (`policyNo`, `certNo`, `schemeType`, `accountEnv`, actor role). If `policyNo`, `certNo` or `schemeType` is absent, it logs and returns HTTP 503 without calling APIM.
 - Calls `TRPGetFundFactSheet` through the canonical executor.
-- Treats `err.tpa.no.fund.fact.sheet` as an empty result.
+- Treats an empty `FundFactSheet` list as an empty result (no funds).
 - Flattens, validates and normalizes rows; validates links with the shared `UrlValidator`.
 - Selects display name and link by language; sorts; maps to the public response.
 - Maps every other downstream, contract or transport failure to HTTP 503 `SYSTEM_ERROR`.
@@ -25,12 +25,12 @@
 ```text
 FundFactSheetController
   -> GetFundFactSheetUseCase (application port in)
-  -> ReferenceDatePort.resolveReferenceDate(accountEnv)
+  -> GetFundFactSheetService (requires policyNo, certNo and schemeType; absent: log, 503, no APIM call)
   -> FundFactSheetSourcePort.fetch(FetchFundFactSheetCommand)
   -> ApimFundFactSheetSourceAdapter
   -> ApimExchangeExecutor.postEnvelope(ApimExchangeRequest)
   -> APIM/TAS
-  <- RawFundFactSheetData (flattened; empty for err.tpa.no.fund.fact.sheet)
+  <- RawFundFactSheetData (flattened; empty when every FundFactSheet list is empty)
   -> FundFactSheetNormalizer (row rules + UrlValidator)
   <- FundFactSheetResult
   -> FundFactSheetWebMapper (language selection + sort)

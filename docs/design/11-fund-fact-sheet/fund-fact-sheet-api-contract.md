@@ -13,7 +13,7 @@ No request body and no query parameters.
 | Header / cookie | Purpose |
 |---|---|
 | `portal_sid` cookie | Authenticated session |
-| `Account-Ref` | Selected account; `PortalAccessContextWebFilter` resolves `policyNo`, `accountEnv` and actor role |
+| `Account-Ref` | Selected account; `PortalAccessContextWebFilter` resolves `policyNo`, `certNo`, `schemeType`, `accountEnv` and actor role |
 | CSRF header (`RequestHeaderContextKeys.XSRF_TOKEN_HEADER`) | Required by the filter whenever `Account-Ref` is present |
 | `X-Request-Id` | Request correlation |
 | `Accept-Language` | `en` or `zh_HK`; resolved with `RequestLanguageResolver.resolve(headers, acceptLanguage, "en")` |
@@ -66,7 +66,7 @@ Chinese names above are illustrative only. The second row shows an `en` response
 
 ## Collection rules
 
-- `rows` is always present. When TAS returns `err.tpa.no.fund.fact.sheet`, `rows` is `[]` and FE shows its label.
+- `rows` is always present. When there are no funds (TAS returns an empty `FundFactSheet` list), `rows` is `[]` and FE shows its label.
 - Rows from every `data[]` element are flattened into one list.
 - Order: `fundName` ascending (lower-cased with `Locale.ROOT`, plain character-code order, no `Collator`), then `seq` ascending.
 
@@ -75,7 +75,7 @@ Chinese names above are illustrative only. The second row shows an `en` response
 | Case | HTTP | `status` | `errors[0].code` |
 |---|---|---|---|
 | Missing or invalid session, CSRF or Account-Ref | Existing filter and handler behaviour | Existing | Existing |
-| Any non-empty `err-message` other than `err.tpa.no.fund.fact.sheet` (including `err.scheme.invalid`); empty `err-message` with missing or empty `data`; null data item, list or row; transport failure; timeout | 503 | `SYSTEM_ERROR` | `err.fund-fact-sheet.retrieval.unavailable` |
+| Any non-empty `err-message` (including `err.scheme.invalid`); empty `err-message` with missing or empty `data`; null data item, list or row; transport failure; timeout; `policyNo`, `certNo` or `schemeType` null or blank in the account context (logged, APIM not called) | 503 | `SYSTEM_ERROR` | `err.fund-fact-sheet.retrieval.unavailable` |
 
 `errors[0].type` is `SYSTEM`. `DOWNSTREAM_REJECTED` and `DOWNSTREAM_ERROR` are never exposed. FE owns message text.
 

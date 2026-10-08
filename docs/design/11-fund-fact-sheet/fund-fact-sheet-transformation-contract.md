@@ -2,7 +2,7 @@
 
 ## 1. Flatten (adapter)
 
-Collect every row from every `data[].FundFactSheet[]`, preserving TAS order, into `RawFundFactSheetData(List<RawFundFactSheetRow>)`. `err.tpa.no.fund.fact.sheet` yields an empty list. Structural nulls are system failures (APIM contract). The adapter does not validate row content; it preserves raw values.
+Collect every row from every `data[].FundFactSheet[]`, preserving TAS order, into `RawFundFactSheetData(List<RawFundFactSheetRow>)`. A `FundFactSheet` list that is empty in every item yields an empty list (no funds). Structural nulls are system failures (APIM contract). The adapter does not validate row content; it preserves raw values.
 
 `RawFundFactSheetRow(Integer seq, String nameEng, String nameChi, String linkEng, String linkChi)`
 
@@ -21,6 +21,10 @@ Both links are validated during normalization, so a malformed link in the langua
 Events go through `FundFactSheetPresentationEventPort` (no-argument methods) implemented by `FundFactSheetPresentationEventLogger`, mirroring `AccountBalancePresentationEventPort`. Log lines use `event=fund-fact-sheet.<name>`; `seq`, names, URLs, policy number and account identifiers are never logged.
 
 Output: `FundFactSheetResult(List<FundFactSheetRowResult>)` with `FundFactSheetRowResult(int seq, String nameEng, String nameChi, String linkEng, String linkChi)`; links are already validated and null when absent.
+
+## 2a. Account identifier check (use case)
+
+Before the fetch, `GetFundFactSheetService` requires `policyNo`, `certNo` and `schemeType` to be non-null and non-blank. If any is absent it reports `missingAccountIdentifier` (value-free, `event=fund-fact-sheet.missing-account-identifier`) and fails with `FundFactSheetRetrievalException.systemFailure()`; the source port is not called (decisions C-7). The event port therefore has five no-argument methods.
 
 ## 3. Language selection (web, `FundFactSheetWebMapper`)
 
