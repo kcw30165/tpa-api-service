@@ -7,6 +7,8 @@ import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import com.bct.ngtpa.apiservice.shared.web.*;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -19,6 +21,8 @@ import reactor.core.publisher.Mono;
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 @RequiredArgsConstructor
 public final class PortalAccessContextWebFilter implements WebFilter {
+  private static final Logger LOG = LoggerFactory.getLogger(PortalAccessContextWebFilter.class);
+
   private final PortalAccessContextPort portalAccessContextPort;
   private final ValidateAuthenticatedSessionUseCase sessionValidation;
   private final AuthenticatedSessionCookieWriter sessionCookies;
@@ -31,12 +35,21 @@ public final class PortalAccessContextWebFilter implements WebFilter {
     String csrf =
         exchange.getRequest().getHeaders().getFirst(RequestHeaderContextKeys.XSRF_TOKEN_HEADER);
     if (!StringUtils.hasText(sessionId) || !StringUtils.hasText(csrf)) {
+      LOG.warn(
+          "event=authenticated.context.failure stage=portal-access-filter reason={} sessionCookiePresent={} csrfHeaderPresent={} requestId={}",
+          StringUtils.hasText(sessionId) ? "MISSING_CSRF_HEADER" : "MISSING_SESSION_COOKIE",
+          StringUtils.hasText(sessionId),
+          StringUtils.hasText(csrf),
+          correlation(exchange));
       return Mono.error(new AuthenticatedPortalContextResolutionException());
     }
     AuthenticatedSessionId id;
     try {
       id = new AuthenticatedSessionId(sessionId.trim());
     } catch (RuntimeException failure) {
+      LOG.warn(
+          "event=authenticated.context.failure stage=portal-access-filter reason=MALFORMED_SESSION_ID requestId={}",
+          correlation(exchange));
       return Mono.error(new AuthenticatedPortalContextResolutionException());
     }
     String requestId =
@@ -57,6 +70,11 @@ public final class PortalAccessContextWebFilter implements WebFilter {
                 c.put(PortalAccessContextKeys.CONTEXT_KEY, context)
                     .put(PortalIdentityCorrelation.TRUST_CODE_CONTEXT_KEY, trustCode(context))
                     .put(PortalIdentityCorrelation.USER_ROLE_CONTEXT_KEY, userRole(context)));
+  }
+
+  private static String correlation(ServerWebExchange exchange) {
+    Object value = exchange.getAttributes().get(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY);
+    return value == null ? null : value.toString();
   }
 
   private String accountRef(ServerWebExchange exchange) {
