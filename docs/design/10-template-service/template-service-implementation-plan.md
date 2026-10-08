@@ -45,7 +45,7 @@ still build `MessageDeliveryCommand` and call
 |---|---|---|---|
 | II-1 | Username Recovery | Simplest — single call site in `UsernameRecoveryFeatureConfig` / `UsernameRecoveryRequestProtectedOperation`. First to confirm whether `schemeName`/`schemeNameChi` already flow from the DTO through `TrpSearchMemberApimResultMapper` → `UsernameRecoveryLookupCandidate`, or need additive plumbing. | DONE (gate evidence: Appendix A.3) |
 | II-2 | Registration | Replace `RegistrationMessageDeliveryAdapter`'s `subject()`/`body()` policy lookup with `NoticeTemplateRegistryPort.resolve(...)`. No scheme-name placeholder needed (§8.2). | DONE (gate evidence: Appendix C.17) |
-| II-3 | Login | Replace `LoginOtpSendPolicy`-based lookup. Requires scheme-name plumbing from `TrpGetAccountListApimDataItem`. | IN PROGRESS (investigation done; decision D8 open; draft sub-plan: Appendix D) |
+| II-3 | Login | Replaced `LoginOtpSendPolicy`-based lookup with `NoticeTemplateRegistryPort.resolve(...)` in `LoginOtpSendService`/`LoginOtpResendService`. Scheme-name plumbing comes from `TrpMemberLoginApimDataItem` (D8, corrected model; see D.11.1), not `TrpGetAccountListApimDataItem`. | DONE (gate evidence: Appendix D.13) |
 | II-4 | Forgot Password | **Last** — highest risk, since it currently has no live YAML wiring at all. Reconcile content to match `login-otp` verbatim (§5). Requires scheme-name plumbing from `ForgotPasswordTrpSearchMemberDataItem`. | PENDING |
 
 Each stage follows the established investigate → implement → validate
@@ -85,11 +85,12 @@ each was validated with compile, test-compile and a scoped run with 0 failures (
 and C.17). The stage gate is met on the final II-2 code commit da136a8f: a passing full `mvn test`
 (5564 tests, 0 failures, 0 errors, 10 skipped) and an application startup smoke test with no bean or
 configuration errors, both evidenced (C.17). Registration now takes its content and its unit word
-from the registry. Stage II-3 (Login) is IN PROGRESS: decisions D8 to D11 are resolved (Appendix
-D.11) and sub-stages II-3.0, II-3.a, II-3.a2, II-3.b0 and II-3.b are DONE (commits 0a30f4e0 and
-665650fe); II-3.c, II-3.d and II-3.e remain PENDING. Stage II-4 (Forgot Password) and Phase III
-remain PENDING. Decisions and open items for II-1 are in Appendix A.2. Work that is deliberately
-outside this workstream is listed in Appendix B.
+from the registry. Stage II-3 (Login) is DONE: decisions D8 to D11 are resolved (Appendix D.11) and
+all of its sub-stages (II-3.0, II-3.a, II-3.a2, II-3.b0, II-3.b, II-3.c, II-3.d and II-3.e) are
+DONE. The stage gate is met on the final code commit 5eafe73d: a passing full `mvn test` and an
+application startup smoke test with no bean or configuration errors, both evidenced (Appendix D.13).
+Stage II-4 (Forgot Password) and Phase III remain PENDING. Decisions and open items for II-1 are in
+Appendix A.2. Work that is deliberately outside this workstream is listed in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
 
@@ -1415,9 +1416,9 @@ listed under D.9. This appendix answers C.17.5 item 1, except for decision D8.
 | II-3.a2 | Read-only: the send and resend endpoints and their error handling in `LoginController`, the context tests that load the two configs, and, if D8 is A or C, the callers of `LoginPreAuthContext`. | DONE (script 084; findings in D.10) |
 | II-3.b0 | Add `trustCode`/`schemeName`/`schemeNameChi` to `TrpMemberLoginApimDataItem` (modeled ahead of the downstream TAS/APIM change) and remove them from `TrpGetAccountListApimDataItem`; carry the three fields through `CredentialAuthenticationResult`, `LoginPreAuthContext` and `ProtectedPayload` to the send and resend services, with a round-trip test. | DONE (script 093, commit 0a30f4e0) |
 | II-3.b | `LoginOtpSendService` and `LoginOtpResendService` resolve `LOGIN_OTP` through `NoticeTemplateRegistryPort` (D9, D10), the two configs inject the port, the two unit tests and the two composition tests are adjusted. | DONE (script 095, commit 665650fe) |
-| II-3.c | Rendering test with the real registry and renderer for SMS and EMAIL in en and zh_HK (the minutes, the unit, no placeholder left over, the content of D8). | PENDING |
-| II-3.d | Tests for a missing definition on send and on resend: the error reaches the caller, nothing is created or sent. | PENDING |
-| II-3.e | Stage gate on the final code: full `mvn test` and an application startup smoke test; then the plan is updated. | PENDING |
+| II-3.c | Rendering test with the real registry and renderer for SMS and EMAIL in en and zh_HK (the minutes, the unit, no placeholder left over, the content of D8). | DONE (script 108, commit 5eafe73d; combined with II-3.d) |
+| II-3.d | Tests for a missing definition on send and on resend: the error reaches the caller, nothing is created or sent. | DONE (script 108, commit 5eafe73d; combined with II-3.c) |
+| II-3.e | Stage gate on the final code: full `mvn test` and an application startup smoke test; then the plan is updated. | DONE (script 109; see D.13) |
 
 #### D.9 Open items
 
@@ -1745,3 +1746,34 @@ resolved, rather than edited in place.
   and zh_HK), II-3.d (tests for a missing definition on send and on resend reaching the caller, at
   the level above the unit tests script 095 already added), and II-3.e (the stage gate: full
   `mvn test` and an application startup smoke test, then this plan is updated).
+
+### D.13 Closure of II-3.c, II-3.d and II-3.e: Stage II-3 (Login) is DONE (2026-10-08)
+
+- II-3.c and II-3.d are DONE, combined into one test file per Nick's instruction: script 108
+  committed `5eafe73d`, adding `LoginOtpRenderedContentIntegrationTest.java`. It exercises the real
+  `application.yml`, the real `YamlNoticeTemplateRegistryAdapter`, the real
+  `LoginOtpSendService`/`LoginOtpResendService` and the real `MessageDeliveryAdapter` with its
+  default renderer; only the OTP challenge port, the session binding port, the protected-context
+  loader and the two senders are stubbed. Its centerpiece test uses the exact field values from a
+  real `TRPMemberLogin` response Nick provided (trust-code `JPM`, sch-name `JP MORGAN CHASE - JMCI`,
+  chin-sch-name blank), confirming end to end, through the real YAML, that the `chin-sch-name`
+  fallback (script 102) closes the real gap it was built for. A second test confirms a populated
+  `chin-sch-name` is rendered as-is and never overridden by the fallback. Further tests cover the
+  Chinese unit placement directly after the number, the whole-minutes-with-a-minimum-of-one rule,
+  `zh_HK` and `en` content genuinely differing, and II-3.d: a missing registry definition fails send
+  and resend before any challenge is created or replaced.
+- Two fixes landed before II-3.c/d could pass. Script 100 (commit `622c085c`) threads
+  `trustCode`/`schemeName`/`schemeNameChi` from `LoginPreAuthContext` into the rendered template
+  variables in both services, which script 095 had wired the registry resolution for but never
+  actually populated. Script 102 (commit `76fba151`) adds the same "blank `chin-sch-name` falls back
+  to `sch-name`" fallback Username Recovery already has, after Nick found a real `TRPMemberLogin`
+  response with a blank `chin-sch-name` and a populated `sch-name`.
+- II-3.e is DONE: the stage gate (script 109) on the final code commit `5eafe73d` passed both gates.
+  Gate A, a full `mvn test` (no skip, no scope): BUILD SUCCESS, 5585 tests, 0 failures, 0 errors, 10
+  skipped (the same stable 4-class baseline held since Stage II-1), console and XML fully
+  reconciled. Gate B, an application startup smoke test: the application started, health and
+  readiness both reported UP immediately and after a 20-second wait, the configured port was
+  listening, the application log held 0 bean/configuration/startup failure markers, and the
+  application stopped and released the port cleanly.
+- Stage II-3 (Login) is now DONE in full: sub-stages II-3.0, II-3.a, II-3.a2, II-3.b0, II-3.b,
+  II-3.c, II-3.d and II-3.e are all DONE. The next stage is II-4 (Forgot Password).
