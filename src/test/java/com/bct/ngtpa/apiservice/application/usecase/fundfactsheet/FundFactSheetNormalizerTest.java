@@ -249,6 +249,11 @@ class FundFactSheetNormalizerTest {
       recorded.add("malformedFactsheet");
     }
 
+    @Override
+    public void missingAccountIdentifier() {
+      recorded.add("missingAccountIdentifier");
+    }
+
     List<String> recorded() {
       return recorded;
     }

@@ -4,67 +4,88 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
-import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class FetchFundFactSheetCommandTest {
 
-  private static final LocalDate DATE = LocalDate.of(2026, 5, 5);
+  private static final String POLICY_NO = "00000008802";
+  private static final ActorUserRole ROLE = ActorUserRole.ROLE_USER_MBR;
+  private static final List<String> ABSENT = Arrays.asList(null, "", "   ");
 
   @Test
-  void carriesAllFourFieldsUnchanged() {
-    var command = new FetchFundFactSheetCommand("00000008802", DATE, "JP", ActorUserRole.ROLE_USER_MBR);
+  void carriesAllFiveFieldsUnchanged() {
+    var command = new FetchFundFactSheetCommand(POLICY_NO, "230", "OE", "JP", ROLE);
 
-    assertThat(command.policyNo()).isEqualTo("00000008802");
-    assertThat(command.referenceDate()).isEqualTo(DATE);
+    assertThat(command.policyNo()).isEqualTo(POLICY_NO);
+    assertThat(command.certNo()).isEqualTo("230");
+    assertThat(command.schemeType()).isEqualTo("OE");
     assertThat(command.accountEnv()).isEqualTo("JP");
-    assertThat(command.actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
+    assertThat(command.actorUserRole()).isEqualTo(ROLE);
+    assertThat(FetchFundFactSheetCommand.class.getRecordComponents()).hasSize(5);
   }
 
   @Test
   void rejectsNullAndBlankPolicyNo() {
-    assertThatThrownBy(() -> new FetchFundFactSheetCommand(null, DATE, "JP", ActorUserRole.ROLE_USER_MBR))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("policyNo");
-    assertThatThrownBy(() -> new FetchFundFactSheetCommand("  ", DATE, "JP", ActorUserRole.ROLE_USER_MBR))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("policyNo");
+    for (String absent : ABSENT) {
+      assertThatThrownBy(() -> new FetchFundFactSheetCommand(absent, "230", "OE", "JP", ROLE))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("policyNo");
+    }
   }
 
   @Test
-  void rejectsNullReferenceDate() {
-    assertThatThrownBy(
-            () -> new FetchFundFactSheetCommand("00000008802", null, "JP", ActorUserRole.ROLE_USER_MBR))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("referenceDate");
+  void rejectsNullAndBlankCertNo() {
+    for (String absent : ABSENT) {
+      assertThatThrownBy(() -> new FetchFundFactSheetCommand(POLICY_NO, absent, "OE", "JP", ROLE))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("certNo");
+    }
+  }
+
+  @Test
+  void rejectsNullAndBlankSchemeType() {
+    for (String absent : ABSENT) {
+      assertThatThrownBy(() -> new FetchFundFactSheetCommand(POLICY_NO, "230", absent, "JP", ROLE))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("schemeType");
+    }
   }
 
   @Test
   void rejectsNullAndBlankAccountEnv() {
-    assertThatThrownBy(
-            () -> new FetchFundFactSheetCommand("00000008802", DATE, null, ActorUserRole.ROLE_USER_MBR))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("accountEnv");
-    assertThatThrownBy(
-            () -> new FetchFundFactSheetCommand("00000008802", DATE, " ", ActorUserRole.ROLE_USER_MBR))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("accountEnv");
+    for (String absent : ABSENT) {
+      assertThatThrownBy(() -> new FetchFundFactSheetCommand(POLICY_NO, "230", "OE", absent, ROLE))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("accountEnv");
+    }
   }
 
   @Test
   void rejectsNullActorUserRole() {
-    assertThatThrownBy(() -> new FetchFundFactSheetCommand("00000008802", DATE, "JP", null))
+    assertThatThrownBy(() -> new FetchFundFactSheetCommand(POLICY_NO, "230", "OE", "JP", null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("actorUserRole");
   }
 
   @Test
   void rejectionMessagesAreFixedTextAndNeverCarryTheOffendingValue() {
-    assertThatThrownBy(
-            () -> new FetchFundFactSheetCommand("   ", DATE, "JP", ActorUserRole.ROLE_USER_MBR))
+    assertThatThrownBy(() -> new FetchFundFactSheetCommand("   ", "230", "OE", "JP", ROLE))
         .hasMessage("policyNo must not be blank");
-    assertThatThrownBy(
-            () -> new FetchFundFactSheetCommand("00000008802", DATE, "  ", ActorUserRole.ROLE_USER_MBR))
+    assertThatThrownBy(() -> new FetchFundFactSheetCommand(POLICY_NO, "  ", "OE", "JP", ROLE))
+        .hasMessage("certNo must not be blank");
+    assertThatThrownBy(() -> new FetchFundFactSheetCommand(POLICY_NO, "230", " ", "JP", ROLE))
+        .hasMessage("schemeType must not be blank");
+    assertThatThrownBy(() -> new FetchFundFactSheetCommand(POLICY_NO, "230", "OE", "  ", ROLE))
         .hasMessage("accountEnv must not be blank");
+  }
+
+  @Test
+  void certNoAndSchemeTypeAreNotTrimmedOrConverted() {
+    var command = new FetchFundFactSheetCommand(POLICY_NO, " 0230 ", "oe", "JP", ROLE);
+
+    assertThat(command.certNo()).isEqualTo(" 0230 ");
+    assertThat(command.schemeType()).isEqualTo("oe");
   }
 }

@@ -29,4 +29,9 @@ public final class FundFactSheetPresentationEventLogger
   public void malformedFactsheet() {
     log.warn("event=fund-fact-sheet.malformed-factsheet");
   }
+
+  @Override
+  public void missingAccountIdentifier() {
+    log.warn("event=fund-fact-sheet.missing-account-identifier");
+  }
 }

@@ -20,7 +20,6 @@ import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.fundfactsheet.FetchFundFactSheetCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundfactsheet.RawFundFactSheetRow;
 import com.bct.ngtpa.apiservice.application.exception.FundFactSheetRetrievalException;
-import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,8 +34,10 @@ import reactor.test.StepVerifier;
 class ApimFundFactSheetSourceAdapterTest {
 
   private static final String PATH = "/ws/NGTPA/v1/TRPGetFundFactSheet";
-  private static final String NO_FUND = "err.tpa.no.fund.fact.sheet";
+  private static final String FORMER_NO_FUND_CODE = "err.tpa.no.fund.fact.sheet";
   private static final String POLICY_NO = "00000008802";
+  private static final String CERT_NO = "230";
+  private static final String SCHEME_TYPE = "OE";
   private static final String SECRET_NAME = "Secret Fund Name";
   private static final String SECRET_LINK = "https://example.test/secret-link.pdf";
 
@@ -63,26 +64,32 @@ class ApimFundFactSheetSourceAdapterTest {
   void buildsTheExactExchangeRequestAndCallsTheExecutorOnce() {
     var executor = executorReturning(envelope("", List.of(item(row(1, "A", "B", "C", "D")))));
 
-    adapter(executor).fetch(command(LocalDate.of(2026, 5, 5))).block();
+    adapter(executor).fetch(command()).block();
 
     assertThat(executor.calls()).isEqualTo(1);
     var exchange = executor.seen();
     assertThat(exchange.path()).isEqualTo(PATH);
     assertThat(exchange.request())
-        .isEqualTo(new TrpGetFundFactSheetApimRequest(POLICY_NO, "05/05/2026"));
+        .isEqualTo(new TrpGetFundFactSheetApimRequest(POLICY_NO, CERT_NO, SCHEME_TYPE));
     assertThat(exchange.requestType()).isEqualTo(TrpGetFundFactSheetApimRequest.class);
     assertThat(exchange.responseDataType()).isEqualTo(TrpGetFundFactSheetApimDataItem.class);
     assertThat(exchange.databaseScope()).isEqualTo(ApimDatabaseScope.ACCOUNT_ENV);
-    assertThat(exchange.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
+    assertThat(exchange.credentialContext().actorUserRole())
+        .isEqualTo(ActorUserRole.ROLE_USER_MBR);
     assertThat(exchange.credentialContext().accountEnv()).isEqualTo("JP");
     assertThat(exchange.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
   }
 
   @Test
-  void formatsTheReferenceDateAsDdMmUuuu() {
-    assertThat(referenceDateSentFor(LocalDate.of(2026, 5, 5))).isEqualTo("05/05/2026");
-    assertThat(referenceDateSentFor(LocalDate.of(2028, 2, 29))).isEqualTo("29/02/2028");
-    assertThat(referenceDateSentFor(LocalDate.of(2026, 12, 1))).isEqualTo("01/12/2026");
+  void sendsCertNoAndSchemeTypeExactlyAsGivenAsStrings() {
+    var executor = executorReturning(emptyEnvelope());
+
+    adapter(executor).fetch(command(" 0230 ", "oe")).block();
+
+    var sent = (TrpGetFundFactSheetApimRequest) executor.seen().request();
+    assertThat(sent.policyNo()).isEqualTo(POLICY_NO);
+    assertThat(sent.certNo()).isEqualTo(" 0230 ");
+    assertThat(sent.schemeType()).isEqualTo("oe");
   }
 
   // ----- success shapes ----------------------------------------------------------------------
@@ -96,10 +103,12 @@ class ApimFundFactSheetSourceAdapterTest {
                 item(row(30, "C", "", "", ""), row(10, "A", "", "", "")),
                 item(row(20, "B", "", "", ""))));
 
-    StepVerifier.create(adapter(executorReturning(data)).fetch(command(LocalDate.of(2026, 5, 5))))
+    StepVerifier.create(adapter(executorReturning(data)).fetch(command()))
         .assertNext(
             result ->
-                assertThat(result.rows()).extracting(RawFundFactSheetRow::seq).containsExactly(30, 10, 20))
+                assertThat(result.rows())
+                    .extracting(RawFundFactSheetRow::seq)
+                    .containsExactly(30, 10, 20))
         .verifyComplete();
   }
 
@@ -107,7 +116,7 @@ class ApimFundFactSheetSourceAdapterTest {
   void rowFieldsAndAMissingSeqPassThroughUnchanged() {
     var data = envelope("", List.of(item(row(null, null, "", "https://example.test/e.pdf", null))));
 
-    StepVerifier.create(adapter(executorReturning(data)).fetch(command(LocalDate.of(2026, 5, 5))))
+    StepVerifier.create(adapter(executorReturning(data)).fetch(command()))
         .assertNext(
             result -> {
               assertThat(result.rows()).hasSize(1);
@@ -123,13 +132,8 @@ class ApimFundFactSheetSourceAdapterTest {
   }
 
   @Test
-  void theNoFundCodeWithoutDataReturnsZeroRows() {
-    assertZeroRows(envelope(NO_FUND, null));
-  }
-
-  @Test
-  void theNoFundCodeWithDataPresentAlsoReturnsZeroRows() {
-    assertZeroRows(envelope(NO_FUND, List.of(item(row(1, "A", "", "", "")))));
+  void noFundsIsADataItemWithAnEmptyFundFactSheetListAndGivesZeroRows() {
+    assertZeroRows(envelope("", List.of(item())));
   }
 
   @Test
@@ -137,12 +141,20 @@ class ApimFundFactSheetSourceAdapterTest {
     assertZeroRows(envelope("", List.of(item(), item())));
 
     var data = envelope("", List.of(item(), item(row(7, "A", "", "", ""))));
-    StepVerifier.create(adapter(executorReturning(data)).fetch(command(LocalDate.of(2026, 5, 5))))
+    StepVerifier.create(adapter(executorReturning(data)).fetch(command()))
         .assertNext(result -> assertThat(result.rows()).hasSize(1))
         .verifyComplete();
   }
 
   // ----- system failures without an adapter log ------------------------------------------------
+
+  @Test
+  void theFormerNoFundCodeIsNowAnOrdinarySystemFailureWhetherDataIsAbsentOrPresent() {
+    assertSystemFailureWithoutLog(envelope(FORMER_NO_FUND_CODE, null));
+    assertSystemFailureWithoutLog(
+        envelope(FORMER_NO_FUND_CODE, List.of(item(row(1, "A", "", "", "")))));
+    assertSystemFailureWithoutLog(envelope(FORMER_NO_FUND_CODE, List.of(item())));
+  }
 
   @Test
   void anEmptyErrMessageWithEmptyDataIsASystemFailure() {
@@ -155,12 +167,13 @@ class ApimFundFactSheetSourceAdapterTest {
   }
 
   @Test
-  void everyOtherDownstreamCodeIsASystemFailureAndTheNoFundCodeIsMatchedExactly() {
+  void everyNonEmptyErrMessageIsASystemFailure() {
     assertSystemFailureWithoutLog(envelope("err.scheme.invalid", null));
-    assertSystemFailureWithoutLog(envelope("err.tpa.something.else", List.of(item(row(1, "A", "", "", "")))));
+    assertSystemFailureWithoutLog(
+        envelope("err.tpa.something.else", List.of(item(row(1, "A", "", "", "")))));
     assertSystemFailureWithoutLog(envelope(" ", null));
     assertSystemFailureWithoutLog(envelope("ERR.TPA.NO.FUND.FACT.SHEET", null));
-    assertSystemFailureWithoutLog(envelope(NO_FUND + " ", null));
+    assertSystemFailureWithoutLog(envelope(FORMER_NO_FUND_CODE + " ", null));
   }
 
   @Test
@@ -175,9 +188,11 @@ class ApimFundFactSheetSourceAdapterTest {
 
   @Test
   void aTransportErrorBecomesASystemFailureWithoutRawText() {
-    var executor = new StubExecutor(() -> Mono.error(new IllegalStateException("connection refused: 10.0.0.1")));
+    var executor =
+        new StubExecutor(
+            () -> Mono.error(new IllegalStateException("connection refused: 10.0.0.1")));
 
-    StepVerifier.create(adapter(executor).fetch(command(LocalDate.of(2026, 5, 5))))
+    StepVerifier.create(adapter(executor).fetch(command()))
         .expectErrorSatisfies(
             error -> {
               assertThat(error).isInstanceOf(FundFactSheetRetrievalException.class);
@@ -193,7 +208,7 @@ class ApimFundFactSheetSourceAdapterTest {
     var original = FundFactSheetRetrievalException.systemFailure();
     var executor = new StubExecutor(() -> Mono.error(original));
 
-    StepVerifier.create(adapter(executor).fetch(command(LocalDate.of(2026, 5, 5))))
+    StepVerifier.create(adapter(executor).fetch(command()))
         .expectErrorSatisfies(error -> assertThat(error).isSameAs(original))
         .verify();
   }
@@ -203,12 +218,13 @@ class ApimFundFactSheetSourceAdapterTest {
     ApimExchangeExecutor throwing =
         new ApimExchangeExecutor() {
           @Override
-          public <R, D> Mono<ApimResponseEnvelope<D>> postEnvelope(ApimExchangeRequest<R, D> request) {
+          public <R, D> Mono<ApimResponseEnvelope<D>> postEnvelope(
+              ApimExchangeRequest<R, D> request) {
             throw new IllegalStateException("boom");
           }
         };
 
-    StepVerifier.create(adapter(throwing).fetch(command(LocalDate.of(2026, 5, 5))))
+    StepVerifier.create(adapter(throwing).fetch(command()))
         .expectErrorSatisfies(
             error -> assertThat(error).isInstanceOf(FundFactSheetRetrievalException.class))
         .verify();
@@ -221,7 +237,8 @@ class ApimFundFactSheetSourceAdapterTest {
     var data =
         envelope(
             "",
-            Arrays.asList(item(row(10010, SECRET_NAME, SECRET_NAME, SECRET_LINK, SECRET_LINK)), null));
+            Arrays.asList(
+                item(row(10010, SECRET_NAME, SECRET_NAME, SECRET_LINK, SECRET_LINK)), null));
 
     assertSystemFailureWithOneEvent(data, "event=fund-fact-sheet.downstream-null-item");
   }
@@ -255,7 +272,7 @@ class ApimFundFactSheetSourceAdapterTest {
 
   @Test
   void aBlankOrNullPathIsRejected() {
-    var executor = executorReturning(envelope(NO_FUND, null));
+    var executor = executorReturning(emptyEnvelope());
 
     assertThatThrownBy(() -> new ApimFundFactSheetSourceAdapter(executor, (String) null))
         .isInstanceOf(IllegalArgumentException.class)
@@ -274,7 +291,7 @@ class ApimFundFactSheetSourceAdapterTest {
 
   @Test
   void aNullCommandIsRejected() {
-    var adapter = adapter(executorReturning(envelope(NO_FUND, null)));
+    var adapter = adapter(executorReturning(emptyEnvelope()));
 
     assertThatThrownBy(() -> adapter.fetch(null))
         .isInstanceOf(NullPointerException.class)
@@ -285,18 +302,19 @@ class ApimFundFactSheetSourceAdapterTest {
   void theProductionConstructorTakesThePathFromTheProperties() {
     var properties = new FundFactSheetApimProperties();
     properties.setPath(PATH);
-    var executor = executorReturning(envelope(NO_FUND, null));
+    var executor = executorReturning(emptyEnvelope());
 
-    new ApimFundFactSheetSourceAdapter(executor, properties).fetch(command(LocalDate.of(2026, 5, 5))).block();
+    new ApimFundFactSheetSourceAdapter(executor, properties).fetch(command()).block();
 
     assertThat(executor.seen().path()).isEqualTo(PATH);
   }
 
   @Test
   void theProductionConstructorRejectsAnUnsetConfiguredPath() {
-    var executor = executorReturning(envelope(NO_FUND, null));
+    var executor = executorReturning(emptyEnvelope());
 
-    assertThatThrownBy(() -> new ApimFundFactSheetSourceAdapter(executor, new FundFactSheetApimProperties()))
+    assertThatThrownBy(
+            () -> new ApimFundFactSheetSourceAdapter(executor, new FundFactSheetApimProperties()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("path");
   }
@@ -304,13 +322,14 @@ class ApimFundFactSheetSourceAdapterTest {
   // ----- helpers ---------------------------------------------------------------------------------
 
   private void assertZeroRows(ApimResponseEnvelope<TrpGetFundFactSheetApimDataItem> data) {
-    StepVerifier.create(adapter(executorReturning(data)).fetch(command(LocalDate.of(2026, 5, 5))))
+    StepVerifier.create(adapter(executorReturning(data)).fetch(command()))
         .assertNext(result -> assertThat(result.rows()).isEmpty())
         .verifyComplete();
   }
 
-  private void assertSystemFailureWithoutLog(ApimResponseEnvelope<TrpGetFundFactSheetApimDataItem> data) {
-    StepVerifier.create(adapter(executorReturning(data)).fetch(command(LocalDate.of(2026, 5, 5))))
+  private void assertSystemFailureWithoutLog(
+      ApimResponseEnvelope<TrpGetFundFactSheetApimDataItem> data) {
+    StepVerifier.create(adapter(executorReturning(data)).fetch(command()))
         .expectErrorSatisfies(
             error -> assertThat(error).isInstanceOf(FundFactSheetRetrievalException.class))
         .verify();
@@ -319,7 +338,7 @@ class ApimFundFactSheetSourceAdapterTest {
 
   private void assertSystemFailureWithOneEvent(
       ApimResponseEnvelope<TrpGetFundFactSheetApimDataItem> data, String expectedEvent) {
-    StepVerifier.create(adapter(executorReturning(data)).fetch(command(LocalDate.of(2026, 5, 5))))
+    StepVerifier.create(adapter(executorReturning(data)).fetch(command()))
         .expectErrorSatisfies(
             error -> assertThat(error).isInstanceOf(FundFactSheetRetrievalException.class))
         .verify();
@@ -329,26 +348,29 @@ class ApimFundFactSheetSourceAdapterTest {
     assertThat(event.getLevel()).isEqualTo(Level.ERROR);
     assertThat(event.getFormattedMessage()).contains(expectedEvent);
     assertThat(event.getFormattedMessage())
-        .doesNotContain(POLICY_NO, SECRET_NAME, SECRET_LINK, "10010", "https://");
-  }
-
-  private static String referenceDateSentFor(LocalDate date) {
-    var executor = executorReturning(envelope(NO_FUND, null));
-    adapter(executor).fetch(command(date)).block();
-    return ((TrpGetFundFactSheetApimRequest) executor.seen().request()).referenceDate();
+        .doesNotContain(POLICY_NO, CERT_NO, SECRET_NAME, SECRET_LINK, "10010", "https://");
   }
 
   private static ApimFundFactSheetSourceAdapter adapter(ApimExchangeExecutor executor) {
     return new ApimFundFactSheetSourceAdapter(executor, PATH);
   }
 
-  private static FetchFundFactSheetCommand command(LocalDate date) {
-    return new FetchFundFactSheetCommand(POLICY_NO, date, "JP", ActorUserRole.ROLE_USER_MBR);
+  private static FetchFundFactSheetCommand command() {
+    return command(CERT_NO, SCHEME_TYPE);
+  }
+
+  private static FetchFundFactSheetCommand command(String certNo, String schemeType) {
+    return new FetchFundFactSheetCommand(
+        POLICY_NO, certNo, schemeType, "JP", ActorUserRole.ROLE_USER_MBR);
   }
 
   private static StubExecutor executorReturning(
       ApimResponseEnvelope<TrpGetFundFactSheetApimDataItem> envelope) {
     return new StubExecutor(() -> Mono.just(envelope));
+  }
+
+  private static ApimResponseEnvelope<TrpGetFundFactSheetApimDataItem> emptyEnvelope() {
+    return envelope("", List.of(item()));
   }
 
   private static ApimResponseEnvelope<TrpGetFundFactSheetApimDataItem> envelope(

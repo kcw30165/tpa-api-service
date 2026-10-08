@@ -50,12 +50,15 @@ class FundFactSheetResultTest {
   }
 
   @Test
-  void commandCarriesTheThreeTrustedValuesAndNoLanguage() {
-    var command = new GetFundFactSheetCommand("JP", "00000008802", ActorUserRole.ROLE_USER_MBR);
+  void commandCarriesTheFiveTrustedValuesAndNoLanguage() {
+    var command =
+        new GetFundFactSheetCommand("JP", "00000008802", "0230", "OE", ActorUserRole.ROLE_USER_MBR);
 
     assertThat(command.accountEnv()).isEqualTo("JP");
     assertThat(command.policyNo()).isEqualTo("00000008802");
+    assertThat(command.certNo()).isEqualTo("0230");
+    assertThat(command.schemeType()).isEqualTo("OE");
     assertThat(command.actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
-    assertThat(GetFundFactSheetCommand.class.getRecordComponents()).hasSize(3);
+    assertThat(GetFundFactSheetCommand.class.getRecordComponents()).hasSize(5);
   }
 }

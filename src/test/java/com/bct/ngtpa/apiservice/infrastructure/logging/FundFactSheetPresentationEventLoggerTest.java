@@ -62,12 +62,20 @@ class FundFactSheetPresentationEventLoggerTest {
   }
 
   @Test
+  void missingAccountIdentifierLogsOneWarnEvent() {
+    events.missingAccountIdentifier();
+
+    assertSingleWarn("event=fund-fact-sheet.missing-account-identifier");
+  }
+
+  @Test
   void everyCallLogsExactlyOneEventInCallOrder() {
     events.missingSeq();
     events.duplicateSeq();
     events.blankEnglishName();
     events.malformedFactsheet();
     events.malformedFactsheet();
+    events.missingAccountIdentifier();
 
     assertThat(appender.list)
         .extracting(ILoggingEvent::getFormattedMessage)
@@ -76,7 +84,8 @@ class FundFactSheetPresentationEventLoggerTest {
             "event=fund-fact-sheet.duplicate-seq",
             "event=fund-fact-sheet.blank-english-name",
             "event=fund-fact-sheet.malformed-factsheet",
-            "event=fund-fact-sheet.malformed-factsheet");
+            "event=fund-fact-sheet.malformed-factsheet",
+            "event=fund-fact-sheet.missing-account-identifier");
   }
 
   @Test
@@ -85,7 +94,9 @@ class FundFactSheetPresentationEventLoggerTest {
     events.duplicateSeq();
     events.blankEnglishName();
     events.malformedFactsheet();
+    events.missingAccountIdentifier();
 
+    assertThat(appender.list).hasSize(5);
     for (ILoggingEvent event : appender.list) {
       assertThat(event.getFormattedMessage()).doesNotContain("{}", "http", "=0", "=1");
       Object[] arguments = event.getArgumentArray();

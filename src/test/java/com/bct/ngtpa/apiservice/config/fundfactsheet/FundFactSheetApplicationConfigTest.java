@@ -6,14 +6,15 @@ import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.fundfactsheet.GetFundFactSheetCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundfactsheet.RawFundFactSheetData;
 import com.bct.ngtpa.apiservice.application.dto.fundfactsheet.RawFundFactSheetRow;
+import com.bct.ngtpa.apiservice.application.exception.FundFactSheetRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.in.GetFundFactSheetUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.FundFactSheetPresentationEventPort;
 import com.bct.ngtpa.apiservice.application.usecase.fundfactsheet.FundFactSheetNormalizer;
 import com.bct.ngtpa.apiservice.application.usecase.fundfactsheet.GetFundFactSheetService;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -45,6 +46,11 @@ class FundFactSheetApplicationConfigTest {
         @Override
         public void malformedFactsheet() {
           recorded.add("malformedFactsheet");
+        }
+
+        @Override
+        public void missingAccountIdentifier() {
+          recorded.add("missingAccountIdentifier");
         }
       };
 
@@ -81,21 +87,50 @@ class FundFactSheetApplicationConfigTest {
     FundFactSheetNormalizer normalizer = config.fundFactSheetNormalizer(events);
     GetFundFactSheetUseCase useCase =
         config.getFundFactSheetUseCase(
-            env -> Mono.just(LocalDate.of(2026, 5, 5)),
             cmd ->
                 Mono.just(
                     new RawFundFactSheetData(
                         List.of(new RawFundFactSheetRow(9, "Fund", "", "", "")))),
-            normalizer);
+            normalizer,
+            events);
 
     var result =
         useCase
-            .get(new GetFundFactSheetCommand("JP", "00000008802", ActorUserRole.ROLE_USER_MBR))
+            .get(
+                new GetFundFactSheetCommand(
+                    "JP", "00000008802", "0230", "OE", ActorUserRole.ROLE_USER_MBR))
             .block();
 
     assertThat(useCase).isInstanceOf(GetFundFactSheetService.class);
     assertThat(result.rows()).hasSize(1);
     assertThat(result.rows().get(0).seq()).isEqualTo(9);
+    assertThat(recorded).isEmpty();
+  }
+
+  @Test
+  void theUseCaseBeanReportsAnAbsentIdentifierThroughTheFeatureEventPortAndSkipsTheSource() {
+    var sourceCalls = new AtomicInteger();
+    FundFactSheetNormalizer normalizer = config.fundFactSheetNormalizer(events);
+    GetFundFactSheetUseCase useCase =
+        config.getFundFactSheetUseCase(
+            cmd -> {
+              sourceCalls.incrementAndGet();
+              return Mono.just(new RawFundFactSheetData(List.of()));
+            },
+            normalizer,
+            events);
+    var command =
+        new GetFundFactSheetCommand("JP", "00000008802", "  ", "OE", ActorUserRole.ROLE_USER_MBR);
+
+    try {
+      useCase.get(command).block();
+      throw new AssertionError("expected the retrieval failure");
+    } catch (FundFactSheetRetrievalException expected) {
+      assertThat(expected.getMessage()).isEqualTo("Fund fact sheet retrieval failed");
+    }
+
+    assertThat(recorded).containsExactly("missingAccountIdentifier");
+    assertThat(sourceCalls).hasValue(0);
   }
 
   @Test

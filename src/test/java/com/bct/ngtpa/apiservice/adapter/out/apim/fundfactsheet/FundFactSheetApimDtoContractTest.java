@@ -23,10 +23,10 @@ class FundFactSheetApimDtoContractTest {
 
   @Test
   void serializesTheRequestWithExactWireNamesAndOrder() throws Exception {
-    var request = new TrpGetFundFactSheetApimRequest("00000008802", "05/05/2026");
+    var request = new TrpGetFundFactSheetApimRequest("00000008802", "230", "OE");
 
     assertThat(json.writeValueAsString(request))
-        .isEqualTo("{\"policy-no\":\"00000008802\",\"ref-date\":\"05/05/2026\"}");
+        .isEqualTo("{\"policy-no\":\"00000008802\",\"cert-no\":\"230\",\"sch-type\":\"OE\"}");
   }
 
   @Test
@@ -51,15 +51,51 @@ class FundFactSheetApimDtoContractTest {
   }
 
   @Test
-  void deserializesTheNoFundEnvelopeWithoutData() throws Exception {
+  void keepsCertNoAndSchemeTypeTextualSoConfiguredEncryptionCanTransformThem() {
+    var request = new TrpGetFundFactSheetApimRequest("00000008802", "0230", "OE");
+
+    var node = json.valueToTree(request);
+
+    assertThat(node.path("cert-no").isTextual()).isTrue();
+    assertThat(node.path("cert-no").asText()).isEqualTo("0230");
+    assertThat(node.path("sch-type").isTextual()).isTrue();
+    assertThat(node.path("sch-type").asText()).isEqualTo("OE");
+  }
+
+  @Test
+  void theRequestCarriesNoReferenceDate() {
+    var node = json.valueToTree(new TrpGetFundFactSheetApimRequest("00000008802", "230", "OE"));
+
+    assertThat(node.has("ref-date")).isFalse();
+    assertThat(node.size()).isEqualTo(3);
+    assertThat(TrpGetFundFactSheetApimRequest.class.getRecordComponents()).hasSize(3);
+  }
+
+  @Test
+  void deserializesTheNoFundEnvelopeWithAnEmptyFundFactSheetList() throws Exception {
     JavaType type =
         json.getTypeFactory()
             .constructParametricType(ApimResponseEnvelope.class, TrpGetFundFactSheetApimDataItem.class);
 
     ApimResponseEnvelope<TrpGetFundFactSheetApimDataItem> envelope =
-        json.readValue("{\"response\":{\"err-message\":\"err.tpa.no.fund.fact.sheet\"}}", type);
+        json.readValue(
+            "{\"response\":{\"err-message\":\"\",\"data\":[{\"FundFactSheet\":[]}]}}", type);
 
-    assertThat(envelope.getResponse().getErrMessage()).isEqualTo("err.tpa.no.fund.fact.sheet");
+    assertThat(envelope.getResponse().getErrMessage()).isEqualTo("");
+    assertThat(envelope.getResponse().getData()).hasSize(1);
+    assertThat(envelope.getResponse().getData().get(0).fundFactSheet()).isEmpty();
+  }
+
+  @Test
+  void deserializesAnErrMessageOnlyEnvelopeWithoutData() throws Exception {
+    JavaType type =
+        json.getTypeFactory()
+            .constructParametricType(ApimResponseEnvelope.class, TrpGetFundFactSheetApimDataItem.class);
+
+    ApimResponseEnvelope<TrpGetFundFactSheetApimDataItem> envelope =
+        json.readValue("{\"response\":{\"err-message\":\"err.scheme.invalid\"}}", type);
+
+    assertThat(envelope.getResponse().getErrMessage()).isEqualTo("err.scheme.invalid");
     assertThat(envelope.getResponse().getData()).isNull();
   }
 

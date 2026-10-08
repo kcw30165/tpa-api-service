@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.config.fundfactsheet;
 import com.bct.ngtpa.apiservice.application.port.in.GetFundFactSheetUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.FundFactSheetPresentationEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.FundFactSheetSourcePort;
-import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.service.presentation.UrlValidator;
 import com.bct.ngtpa.apiservice.application.usecase.fundfactsheet.FundFactSheetNormalizer;
 import com.bct.ngtpa.apiservice.application.usecase.fundfactsheet.GetFundFactSheetService;
@@ -26,9 +25,9 @@ public class FundFactSheetApplicationConfig {
 
   @Bean
   GetFundFactSheetUseCase getFundFactSheetUseCase(
-      ReferenceDatePort referenceDatePort,
       FundFactSheetSourcePort source,
-      FundFactSheetNormalizer normalizer) {
-    return new GetFundFactSheetService(referenceDatePort, source, normalizer);
+      FundFactSheetNormalizer normalizer,
+      FundFactSheetPresentationEventPort events) {
+    return new GetFundFactSheetService(source, normalizer, events);
   }
 }

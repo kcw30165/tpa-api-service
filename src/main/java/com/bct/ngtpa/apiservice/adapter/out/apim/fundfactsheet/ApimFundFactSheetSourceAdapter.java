@@ -13,8 +13,6 @@ import com.bct.ngtpa.apiservice.application.dto.fundfactsheet.RawFundFactSheetDa
 import com.bct.ngtpa.apiservice.application.dto.fundfactsheet.RawFundFactSheetRow;
 import com.bct.ngtpa.apiservice.application.exception.FundFactSheetRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.out.FundFactSheetSourcePort;
-import java.time.format.DateTimeFormatter;
-import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -29,17 +27,15 @@ import reactor.core.publisher.Mono;
  *
  * <p>Builds a typed exchange request and calls the shared exchange executor. The executor already
  * logs contract-invalid, business-rejected and exchange-failed outcomes, so this adapter logs only
- * a null data item, a null row list and a null row, without any value. The downstream code that
- * signals "no funds" is matched exactly and decides on its own; every other rejection and every
- * malformed response maps to the single generic {@link FundFactSheetRetrievalException}.
+ * a null data item, a null row list and a null row, without any value. Every non-empty downstream
+ * error message and every malformed response map to the single generic {@link
+ * FundFactSheetRetrievalException}. No funds is a non-empty data list whose items carry empty row
+ * lists; it yields zero rows.
  */
 @Component
 public final class ApimFundFactSheetSourceAdapter implements FundFactSheetSourcePort {
 
   private static final Logger LOG = LoggerFactory.getLogger(ApimFundFactSheetSourceAdapter.class);
-  private static final DateTimeFormatter REFERENCE_DATE =
-      DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
-  private static final String NO_FUND_FACT_SHEET = "err.tpa.no.fund.fact.sheet";
   private static final String EVENT_NULL_ITEM =
       "event=fund-fact-sheet.downstream-null-item operation=TRPGetFundFactSheet";
   private static final String EVENT_NULL_LIST =
@@ -71,7 +67,7 @@ public final class ApimFundFactSheetSourceAdapter implements FundFactSheetSource
             () -> {
               var request =
                   new TrpGetFundFactSheetApimRequest(
-                      command.policyNo(), command.referenceDate().format(REFERENCE_DATE));
+                      command.policyNo(), command.certNo(), command.schemeType());
               var exchange =
                   new ApimExchangeRequest<>(
                       path,
@@ -100,13 +96,7 @@ public final class ApimFundFactSheetSourceAdapter implements FundFactSheetSource
       return Mono.error(FundFactSheetRetrievalException.systemFailure());
     }
     String errMessage = response.getErrMessage();
-    if (errMessage == null) {
-      return Mono.error(FundFactSheetRetrievalException.systemFailure());
-    }
-    if (NO_FUND_FACT_SHEET.equals(errMessage)) {
-      return Mono.just(new RawFundFactSheetData(List.of()));
-    }
-    if (!errMessage.isEmpty()) {
+    if (errMessage == null || !errMessage.isEmpty()) {
       return Mono.error(FundFactSheetRetrievalException.systemFailure());
     }
     var items = response.getData();

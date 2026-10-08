@@ -27,16 +27,20 @@ class FundFactSheetApplicationBoundaryGuardTest {
           "application/usecase/fundfactsheet/GetFundFactSheetService.java");
 
   @Test
-  void presentationEventPortHasExactlyTheFourEventsAndNoMethodTakesAnArgument() {
+  void presentationEventPortHasExactlyTheFiveEventsAndNoMethodTakesAnArgument() {
     Method[] methods =
         Arrays.stream(FundFactSheetPresentationEventPort.class.getDeclaredMethods())
             .filter(method -> !method.isSynthetic())
             .toArray(Method[]::new);
 
-    assertThat(methods).hasSize(4);
+    assertThat(methods).hasSize(5);
     assertThat(Arrays.stream(methods).map(Method::getName).toList())
         .containsExactlyInAnyOrder(
-            "missingSeq", "duplicateSeq", "blankEnglishName", "malformedFactsheet");
+            "missingSeq",
+            "duplicateSeq",
+            "blankEnglishName",
+            "malformedFactsheet",
+            "missingAccountIdentifier");
     for (Method method : methods) {
       assertThat(method.getParameterCount()).as(method.getName()).isZero();
       assertThat(method.getReturnType()).as(method.getName()).isEqualTo(void.class);
@@ -50,8 +54,8 @@ class FundFactSheetApplicationBoundaryGuardTest {
             Path.of(MAIN + "infrastructure/logging/FundFactSheetPresentationEventLogger.java"));
 
     assertThat(source).doesNotContain("{}");
-    assertThat(count(source, "log\\.[a-z]+\\(")).isEqualTo(4);
-    assertThat(count(source, "log\\.warn\\(\"event=fund-fact-sheet\\.[a-z-]+\"\\);")).isEqualTo(4);
+    assertThat(count(source, "log\\.[a-z]+\\(")).isEqualTo(5);
+    assertThat(count(source, "log\\.warn\\(\"event=fund-fact-sheet\\.[a-z-]+\"\\);")).isEqualTo(5);
   }
 
   @Test
