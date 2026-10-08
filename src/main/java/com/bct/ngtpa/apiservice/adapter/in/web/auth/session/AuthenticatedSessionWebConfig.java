@@ -12,6 +12,9 @@ public class AuthenticatedSessionWebConfig {
     if (properties == null || properties.getLogin() == null) {
       throw new IllegalStateException("auth-workflows.login configuration is required");
     }
-    return new AuthenticatedSessionCookieWriter(properties.getLogin().getSession().getCookie());
+    var session = properties.getLogin().getSession();
+    AuthenticatedSessionCookieLifetimePolicy.requireWithinAbsoluteTimeout(
+        session.getCookie().getMaxAgeSeconds(), session.getAbsoluteTimeoutSeconds());
+    return new AuthenticatedSessionCookieWriter(session.getCookie());
   }
 }
