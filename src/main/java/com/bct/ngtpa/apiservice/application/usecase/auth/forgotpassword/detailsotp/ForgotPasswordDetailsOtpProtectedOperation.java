@@ -17,6 +17,7 @@ import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryResult;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryScenario;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryStatus;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
+import com.bct.ngtpa.apiservice.application.dto.message.NoticeTemplateDefinition;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -28,12 +29,12 @@ import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowConte
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBindingPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpBindingCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitState;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.nio.charset.StandardCharsets;
@@ -49,7 +50,6 @@ import reactor.core.publisher.Mono;
 
 /** Executes DETAILS_AND_OTP after shared idempotency ownership has been acquired. */
 public final class ForgotPasswordDetailsOtpProtectedOperation {
-  private static final ForgotPasswordOtpTemplates TEMPLATES = ForgotPasswordOtpTemplates.approved();
   private final SecureForgotPasswordOtpCommitRefGenerator references;
   private final AuthFlowSessionMutationLockPort locks;
   private final AuthFlowSessionPort sessions;
@@ -64,6 +64,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
   private final ForgotPasswordDetailsOtpLeasePolicy policy;
   private final Clock clock;
   private final Duration idempotencyTtl;
+  private final NoticeTemplateRegistryPort registry;
 
   public ForgotPasswordDetailsOtpProtectedOperation(
       SecureForgotPasswordOtpCommitRefGenerator references,
@@ -79,7 +80,8 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
       ForgotPasswordOtpCommitRetentionPolicy retention,
       ForgotPasswordDetailsOtpLeasePolicy policy,
       Clock clock,
-      Duration idempotencyTtl) {
+      Duration idempotencyTtl,
+      NoticeTemplateRegistryPort registry) {
     this.references = Objects.requireNonNull(references);
     this.locks = Objects.requireNonNull(locks);
     this.sessions = Objects.requireNonNull(sessions);
@@ -94,6 +96,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
     this.policy = Objects.requireNonNull(policy);
     this.clock = Objects.requireNonNull(clock);
     this.idempotencyTtl = Objects.requireNonNull(idempotencyTtl);
+    this.registry = Objects.requireNonNull(registry);
   }
 
   public Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> execute(
@@ -262,18 +265,26 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
       String channel,
       String destination,
       CreateOtpChallengeResult challenge) {
+    MessageDeliveryChannel deliveryChannel =
+        "email".equals(channel) ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
+    NoticeTemplateDefinition definition =
+        registry.resolve(
+            MessageDeliveryType.FORGOT_PASSWORD_OTP, deliveryChannel, command.language());
     return new MessageDeliveryCommand(
         MessageDeliveryType.FORGOT_PASSWORD_OTP,
         MessageDeliveryScenario.FORGOT_PASSWORD,
-        "email".equals(channel) ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS,
+        deliveryChannel,
         destination,
-        "email".equals(channel) ? TEMPLATES.emailSubject(command.language()) : null,
-        "email".equals(channel)
-            ? TEMPLATES.emailBody(command.language())
-            : TEMPLATES.sms(command.language()),
+        definition.subject(),
+        definition.body(),
         null,
         Map.of(
-            "code", challenge.rawCode(), "ttlValue", "5", "ttlUnit", ttlUnit(command.language())),
+            "code",
+            challenge.rawCode(),
+            "ttlValue",
+            Integer.toString(Math.max(1, challenge.expiresInSeconds() / 60)),
+            "ttlUnit",
+            definition.ttlUnit()),
         command.language(),
         command.requestId());
   }
@@ -302,11 +313,5 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
     } catch (Exception exception) {
       throw new IllegalStateException("hash unavailable");
     }
-  }
-
-  private String ttlUnit(String language) {
-    return language != null && language.trim().replace('-', '_').equalsIgnoreCase("zh_HK")
-        ? "分鐘"
-        : "minutes";
   }
 }

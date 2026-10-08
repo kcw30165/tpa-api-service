@@ -39,7 +39,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
   private final MaskingService masker;
   private final ForgotPasswordOtpCommitStatePort commitStates;
   private final ForgotPasswordOtpCommitRetentionPolicy retention;
-  private final ForgotPasswordOtpTemplates templates;
+  private final NoticeTemplateRegistryPort registry;
   private final ForgotPasswordInitialOtpPolicy otpPolicy;
   private final CsrfTokenValidationService csrfTokens =
       new CsrfTokenValidationService(new Sha256CsrfTokenHasher());
@@ -61,7 +61,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
       MaskingService masker,
       ForgotPasswordOtpCommitStatePort commitStates,
       ForgotPasswordOtpCommitRetentionPolicy retention,
-      ForgotPasswordOtpTemplates templates,
+      NoticeTemplateRegistryPort registry,
       ForgotPasswordInitialOtpPolicy otpPolicy,
       Clock clock,
       Duration idempotencyTtl,
@@ -78,7 +78,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
     this.masker = Objects.requireNonNull(masker);
     this.commitStates = Objects.requireNonNull(commitStates);
     this.retention = Objects.requireNonNull(retention);
-    this.templates = Objects.requireNonNull(templates);
+    this.registry = Objects.requireNonNull(registry);
     this.otpPolicy = Objects.requireNonNull(otpPolicy);
     this.clock = Objects.requireNonNull(clock);
     this.idempotencyTtl = Objects.requireNonNull(idempotencyTtl);
@@ -523,13 +523,17 @@ public final class ForgotPasswordOtpResendProtectedOperation {
       String rawCode) {
     boolean email = "email".equalsIgnoreCase(context.contactChannel());
     String language = command.language();
+    MessageDeliveryChannel channel =
+        email ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
+    NoticeTemplateDefinition definition =
+        registry.resolve(MessageDeliveryType.FORGOT_PASSWORD_OTP, channel, language);
     return new MessageDeliveryCommand(
         MessageDeliveryType.FORGOT_PASSWORD_OTP,
         MessageDeliveryScenario.FORGOT_PASSWORD,
-        email ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS,
+        channel,
         context.protectedDestination(),
-        email ? templates.emailSubject(language) : null,
-        email ? templates.emailBody(language) : templates.sms(language),
+        definition.subject(),
+        definition.body(),
         null,
         Map.of(
             "code",
@@ -537,15 +541,9 @@ public final class ForgotPasswordOtpResendProtectedOperation {
             "ttlValue",
             Integer.toString(Math.max(1, otpPolicy.ttlSeconds() / 60)),
             "ttlUnit",
-            ttlUnit(language)),
+            definition.ttlUnit()),
         language,
         command.requestId());
-  }
-
-  private String ttlUnit(String language) {
-    return language != null && language.trim().replace('-', '_').equalsIgnoreCase("zh_HK")
-        ? "分鐘"
-        : "minutes";
   }
 
   private ResendForgotPasswordOtpResult mapEligibility(

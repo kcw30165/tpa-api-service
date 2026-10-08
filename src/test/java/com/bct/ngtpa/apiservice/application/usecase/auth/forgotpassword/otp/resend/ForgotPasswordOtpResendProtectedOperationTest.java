@@ -6,6 +6,7 @@ import static com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.conte
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
@@ -21,6 +22,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeResul
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryChannel;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryResult;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryStatus;
+import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
+import com.bct.ngtpa.apiservice.application.dto.message.NoticeTemplateDefinition;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -37,12 +40,12 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordInitialOtpPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitState;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.nio.charset.StandardCharsets;
@@ -94,7 +97,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
       mock(ForgotPasswordOtpCommitStatePort.class);
   private final ForgotPasswordOtpCommitRetentionPolicy retention =
       new ForgotPasswordOtpCommitRetentionPolicy(Duration.ofMinutes(5), Duration.ofHours(1));
-  private final ForgotPasswordOtpTemplates templates = ForgotPasswordOtpTemplates.approved();
+  private final NoticeTemplateRegistryPort registry = mock(NoticeTemplateRegistryPort.class);
   private final ForgotPasswordInitialOtpPolicy otpPolicy =
       ForgotPasswordInitialOtpPolicy.approved();
 
@@ -116,7 +119,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
         masker,
         commitStates,
         retention,
-        templates,
+        registry,
         otpPolicy,
         clock,
         idempotencyTtl,
@@ -262,7 +265,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
                     masker,
                     commitStates,
                     retention,
-                    templates,
+                    registry,
                     otpPolicy,
                     clock,
                     idempotencyTtl,
@@ -569,6 +572,16 @@ class ForgotPasswordOtpResendProtectedOperationTest {
                 new CreateOtpChallengeResult("candidate-1", "123456", NOW.plusSeconds(300), 300)));
     when(protector.protect(any()))
         .thenReturn(new ForgotPasswordAuthFlowEncryptedContext("ct-2", "kv-2", "AES_GCM_V1"));
+    when(registry.resolve(any(), any(), any()))
+        .thenReturn(
+            new NoticeTemplateDefinition(
+                MessageDeliveryType.FORGOT_PASSWORD_OTP,
+                MessageDeliveryChannel.EMAIL,
+                "en",
+                "BCT forgot password verification code",
+                "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}.",
+                java.util.Set.of("code", "ttlValue", "ttlUnit"),
+                "minutes"));
 
     // --- Defensive stubbing: ALL Mono-returning methods on `otp` and
     // `challengeState`. Mockito returns null (not Mono.empty()) for
@@ -614,6 +627,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
               assertThat(r.replayReference()).isNotNull();
             })
         .verifyComplete();
+    verify(registry).resolve(any(), any(), any());
   }
 
   @Test

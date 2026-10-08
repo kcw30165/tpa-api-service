@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.ForgotPasswordResetAuthorization;
@@ -169,6 +170,19 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
             });
 
     ForgotPasswordOtpCommitStatePort commitStates = new InMemoryCommitStates();
+    com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort registry =
+        mock(com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort.class);
+    when(registry.resolve(any(), any(), any()))
+        .thenReturn(
+            new com.bct.ngtpa.apiservice.application.dto.message.NoticeTemplateDefinition(
+                com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType
+                    .FORGOT_PASSWORD_OTP,
+                com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryChannel.EMAIL,
+                "en",
+                "BCT forgot password verification code",
+                "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}.",
+                java.util.Set.of("code", "ttlValue", "ttlUnit"),
+                "minutes"));
     ForgotPasswordDetailsOtpProtectedOperation service =
         new ForgotPasswordDetailsOtpProtectedOperation(
             new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp
@@ -186,7 +200,8 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
                 Duration.ofSeconds(60), Duration.ofMinutes(10)),
             new ForgotPasswordDetailsOtpLeasePolicy(60, 10, 10, 3, 10000, 100, 5000, 1000),
             clock,
-            Duration.ofMinutes(5));
+            Duration.ofMinutes(5),
+            registry);
 
     StepVerifier.create(
             service.execute(
@@ -211,6 +226,7 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
               assertThat(execution.replayReference()).isNotNull();
             })
         .verifyComplete();
+    verify(registry).resolve(any(), any(), any());
   }
 
   private static final class InMemoryCommitStates implements ForgotPasswordOtpCommitStatePort {

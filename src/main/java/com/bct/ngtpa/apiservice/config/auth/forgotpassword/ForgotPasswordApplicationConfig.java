@@ -325,7 +325,8 @@ public class ForgotPasswordApplicationConfig {
       ForgotPasswordDetailsOtpLeasePolicy leasePolicy,
       Clock clock,
       ObjectMapper objectMapper,
-      AuthWorkflowProperties properties) {
+      AuthWorkflowProperties properties,
+      com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort registry) {
     properties.validateForgotPasswordPolicy();
     Duration ttl =
         Duration.ofSeconds(
@@ -345,7 +346,8 @@ public class ForgotPasswordApplicationConfig {
             retention,
             leasePolicy,
             clock,
-            ttl);
+            ttl,
+            registry);
     var json = new JacksonTransientJsonAdapter(objectMapper);
     var protectedReplay = new DefaultForgotPasswordDetailsOtpProtectedReplayResolver(replay);
     var codec =
@@ -455,7 +457,7 @@ public class ForgotPasswordApplicationConfig {
       com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort commitStates,
       ForgotPasswordOtpCommitRetentionPolicy retention,
       ForgotPasswordOtpReplayResolver replay,
-      ForgotPasswordOtpTemplates templates,
+      com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort registry,
       ForgotPasswordInitialOtpPolicy otpPolicy,
       Clock clock,
       ObjectMapper objectMapper,
@@ -479,7 +481,7 @@ public class ForgotPasswordApplicationConfig {
             masker,
             commitStates,
             retention,
-            templates,
+            registry,
             otpPolicy,
             clock,
             ttl,
