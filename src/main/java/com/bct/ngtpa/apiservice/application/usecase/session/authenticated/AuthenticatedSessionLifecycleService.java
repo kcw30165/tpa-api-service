@@ -155,6 +155,13 @@ public final class AuthenticatedSessionLifecycleService
                           command.correlationId()))
                   .thenReturn(AuthenticatedSessionLifecycleResult.active(touched));
             })
+        .doOnError(
+            error ->
+                LOG.error(
+                    "event=authenticated.session.load-and-touch.failure stage=load-and-touch exceptionType={} causeType={} correlationId={}",
+                    error.getClass().getSimpleName(),
+                    error.getCause() == null ? null : error.getCause().getClass().getSimpleName(),
+                    command.correlationId()))
         .onErrorResume(error -> result(AuthenticatedSessionLifecycleStatus.FAILED));
   }
 

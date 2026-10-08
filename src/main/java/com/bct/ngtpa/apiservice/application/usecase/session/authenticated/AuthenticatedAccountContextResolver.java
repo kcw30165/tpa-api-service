@@ -4,9 +4,14 @@ import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 public final class AuthenticatedAccountContextResolver implements PortalAccessContextPort {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(AuthenticatedAccountContextResolver.class);
+
   private final LoadAndTouchAuthenticatedSessionUseCase lifecycle;
 
   public AuthenticatedAccountContextResolver(LoadAndTouchAuthenticatedSessionUseCase lifecycle) {
@@ -26,20 +31,36 @@ public final class AuthenticatedAccountContextResolver implements PortalAccessCo
       id = new AuthenticatedSessionId(sessionId.trim());
       ref = new AuthenticatedAccountRef(accountRef.trim());
     } catch (RuntimeException e) {
-      return Mono.error(new AuthenticatedPortalContextResolutionException());
+      return Mono.defer(
+          () -> {
+            LOG.warn(
+                "event=authenticated.context.failure stage=account-context-resolver reason=INVALID_SESSION_ID_OR_ACCOUNT_REF_FORMAT");
+            return Mono.error(new AuthenticatedPortalContextResolutionException());
+          });
     }
     return lifecycle
         .loadAndTouch(new LoadAndTouchAuthenticatedSessionCommand(id, null))
         .flatMap(
             result -> {
               if (result.status() != AuthenticatedSessionLifecycleStatus.ACTIVE
-                  || result.session() == null)
+                  || result.session() == null) {
+                LOG.warn(
+                    "event=authenticated.context.failure stage=account-context-resolver reason=SESSION_NOT_ACTIVE lifecycleStatus={} sessionPresent={}",
+                    result.status(),
+                    result.session() != null);
                 return Mono.error(new AuthenticatedPortalContextResolutionException());
+              }
               return result
                   .session()
                   .findAccount(ref)
                   .map(account -> Mono.just(map(result.session(), account)))
-                  .orElseGet(() -> Mono.error(new AuthenticatedPortalContextResolutionException()));
+                  .orElseGet(
+                      () -> {
+                        LOG.warn(
+                            "event=authenticated.context.failure stage=account-context-resolver reason=ACCOUNT_REF_NOT_IN_SESSION accountCount={}",
+                            result.session().accounts().size());
+                        return Mono.error(new AuthenticatedPortalContextResolutionException());
+                      });
             });
   }
 
