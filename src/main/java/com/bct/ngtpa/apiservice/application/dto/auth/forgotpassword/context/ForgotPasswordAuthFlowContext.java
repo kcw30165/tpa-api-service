@@ -13,6 +13,9 @@ public record ForgotPasswordAuthFlowContext(
     String maskedDestination,
     ForgotPasswordResetAuthorization resetAuthorization,
     String accountEnv,
+    String trustCode,
+    String schemeName,
+    String schemeNameChi,
     String workflowVersion,
     ForgotPasswordProtectedPhase phase) {
   public ForgotPasswordAuthFlowContext {
@@ -24,6 +27,49 @@ public record ForgotPasswordAuthFlowContext(
         phase == null && completeStartContext(username, identityValue, identityType)
             ? ForgotPasswordProtectedPhase.USERNAME_VERIFIED
             : phase;
+  }
+
+  /**
+   * Compatibility constructor for existing call sites predating the addition of {@code
+   * trustCode}/{@code schemeName}/{@code schemeNameChi} (see
+   * docs/design/10-template-service/template-service-implementation-plan.md Appendix E.3 and
+   * E.9, II-4.b0). All three new fields default to {@code null}.
+   *
+   * <p><strong>Caution:</strong> any caller rebuilding a context from an existing one (e.g. a
+   * withX-style state transition) should use the canonical 15-arg constructor and forward {@code
+   * trustCode()}/{@code schemeName()}/{@code schemeNameChi()} explicitly, not this compatibility
+   * constructor, or the values will be silently nulled out (the same risk Username Recovery's
+   * UsernameRecoveryCandidate already documents and guards against).
+   */
+  public ForgotPasswordAuthFlowContext(
+      String username,
+      String identityValue,
+      String identityType,
+      boolean identityVerified,
+      String resetSubjectId,
+      String contactChannel,
+      String protectedDestination,
+      String maskedDestination,
+      ForgotPasswordResetAuthorization resetAuthorization,
+      String accountEnv,
+      String workflowVersion,
+      ForgotPasswordProtectedPhase phase) {
+    this(
+        username,
+        identityValue,
+        identityType,
+        identityVerified,
+        resetSubjectId,
+        contactChannel,
+        protectedDestination,
+        maskedDestination,
+        resetAuthorization,
+        accountEnv,
+        null,
+        null,
+        null,
+        workflowVersion,
+        phase);
   }
 
   /**
@@ -103,6 +149,9 @@ public record ForgotPasswordAuthFlowContext(
         maskedDestination,
         resetAuthorization,
         accountEnv,
+        trustCode,
+        schemeName,
+        schemeNameChi,
         workflowVersion,
         next);
   }
@@ -120,6 +169,9 @@ public record ForgotPasswordAuthFlowContext(
         maskedDestination,
         authorization,
         accountEnv,
+        trustCode,
+        schemeName,
+        schemeNameChi,
         workflowVersion,
         phase);
   }
@@ -141,7 +193,8 @@ public record ForgotPasswordAuthFlowContext(
         + contactChannel
         + ", protectedDestination=<redacted>, maskedDestination="
         + maskedDestination
-        + ", resetAuthorization=<redacted>, accountEnv=<redacted>, workflowVersion="
+        + ", resetAuthorization=<redacted>, accountEnv=<redacted>, trustCode=<redacted>,"
+        + " schemeName=<redacted>, schemeNameChi=<redacted>, workflowVersion="
         + workflowVersion
         + ", phase="
         + phase

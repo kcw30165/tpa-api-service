@@ -149,6 +149,9 @@ public final class VerifyForgotPasswordDetailsService
                                                   context.maskedDestination(),
                                                   context.resetAuthorization(),
                                                   accountEnv,
+                                                  r.trustCode(),
+                                                  r.schemeName(),
+                                                  r.schemeNameChi(),
                                                   context.workflowVersion(),
                                                   context.phase());
                                           ForgotPasswordAuthFlowEncryptedContext encrypted =
