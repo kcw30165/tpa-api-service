@@ -1882,13 +1882,17 @@ regression test of the same shape as Username Recovery's.
 | II-4.a | Read-only investigation of the send/resend path, the content source, the context, the APIM source, the cross-workflow DTO inventory, and the rebuild-safety precedent. | DONE (scripts 114-118; findings in E.1-E.8) |
 | II-4.b0 | Add `trustCode`/`schemeName`/`schemeNameChi` to `ForgotPasswordAuthFlowContext` (compatibility constructor, same pattern as Login's `LoginPreAuthContext`); update `VerifyForgotPasswordDetailsService` to populate them from the lookup result; update the AES-GCM protector's private `Payload` record in lockstep (the Appendix A.1 carry-over warning, made concrete for this workflow); update `withPhase(...)`/`withResetAuthorization(...)` to carry the three fields forward explicitly, each with a regression test (E.8). | PENDING |
 | II-4.b | `ForgotPasswordDetailsOtpProtectedOperation` and `ForgotPasswordOtpResendProtectedOperation` resolve `FORGOT_PASSWORD_OTP` through `NoticeTemplateRegistryPort`, removing the hardcoded `ForgotPasswordOtpTemplates` content path, the hardcoded `"5"` `ttlValue` literal, and the duplicated `ttlUnit()` method from both operations; new `forgot-password-otp` YAML entries carry content synchronized to `login-otp`'s (E.5). | PENDING |
-| II-4.c | Rendering test with the real registry and renderer for SMS and EMAIL in en and zh_HK (the minutes, the unit, no placeholder left over, content identical to Login's). | PENDING |
-| II-4.d | Tests for a missing definition on send and on resend: the error reaches the caller, nothing is created or sent. | PENDING |
+| II-4.c/d | Combined rendering and missing-definition test with the real registry and renderer for SMS and EMAIL in en and zh_HK (the minutes, the unit, no placeholder left over, content identical to Login's) and a missing definition on send and on resend (the error reaches the caller, nothing is created or sent). | PENDING |
 | II-4.e | Stage gate on the final code: full `mvn test` and an application startup smoke test; then the plan is updated. | PENDING |
 
-### E.10 Open item: sub-stage granularity (needs Nick's decision)
+### E.10 Decision: II-4.c and II-4.d are combined (Nick, 2026-10-08)
 
-For Stage II-3, Nick combined II-3.c and II-3.d into a single script (108) and confirmed that
-approach as the instruction to follow. Whether II-4.c and II-4.d should be similarly combined for
-Forgot Password is the one open item before implementation can begin; everything else in this
-appendix is either a direct finding or an already-resolved decision (E.4, E.5).
+Nick confirmed II-4.c and II-4.d are combined into a single sub-stage, the same way Login's II-3.c
+and II-3.d were combined (script 108). Reasoning: the real test harness - the real
+`application.yml`, the real `NoticeTemplateRegistryPort` adapter, the real send/resend services, and
+the real `MessageDeliveryAdapter` with its renderer - is identical for both the rendering assertions
+and the missing-definition assertions, so building it once and asserting both is strictly less code
+than two parallel copies of the same real-dependency wiring. Login's own combined test also produced
+one strong, data-backed proof (the real `TRPMemberLogin` response rendering correctly end to end)
+rather than two weaker, separate ones; the same benefit applies here. This decision is final; no
+other sub-stage in Appendix E remains open.
