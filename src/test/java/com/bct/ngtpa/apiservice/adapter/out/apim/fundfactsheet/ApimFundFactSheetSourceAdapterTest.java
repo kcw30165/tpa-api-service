@@ -74,8 +74,7 @@ class ApimFundFactSheetSourceAdapterTest {
     assertThat(exchange.requestType()).isEqualTo(TrpGetFundFactSheetApimRequest.class);
     assertThat(exchange.responseDataType()).isEqualTo(TrpGetFundFactSheetApimDataItem.class);
     assertThat(exchange.databaseScope()).isEqualTo(ApimDatabaseScope.ACCOUNT_ENV);
-    assertThat(exchange.credentialContext().actorUserRole())
-        .isEqualTo(ActorUserRole.ROLE_USER_MBR);
+    assertThat(exchange.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
     assertThat(exchange.credentialContext().accountEnv()).isEqualTo("JP");
     assertThat(exchange.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
   }

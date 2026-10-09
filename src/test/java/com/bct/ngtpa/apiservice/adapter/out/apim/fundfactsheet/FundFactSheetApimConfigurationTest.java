@@ -40,7 +40,8 @@ class FundFactSheetApimConfigurationTest {
 
   @Test
   void validationConfigurationFailsStartupOnABlankPath() {
-    assertThatThrownBy(() -> new FundFactSheetApimValidationConfig(new FundFactSheetApimProperties()))
+    assertThatThrownBy(
+            () -> new FundFactSheetApimValidationConfig(new FundFactSheetApimProperties()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("apim.fund-fact-sheet.path");
   }
@@ -58,19 +59,22 @@ class FundFactSheetApimConfigurationTest {
   @Test
   void bindsFromTheApimFundFactSheetPrefix() {
     var binder =
-        new Binder(new MapConfigurationPropertySource(Map.of("apim.fund-fact-sheet.path", "/ws/bound")));
+        new Binder(
+            new MapConfigurationPropertySource(Map.of("apim.fund-fact-sheet.path", "/ws/bound")));
 
     FundFactSheetApimProperties bound =
         binder
             .bind("apim.fund-fact-sheet", Bindable.of(FundFactSheetApimProperties.class))
-            .orElseThrow(() -> new IllegalStateException("Failed to bind FundFactSheetApimProperties"));
+            .orElseThrow(
+                () -> new IllegalStateException("Failed to bind FundFactSheetApimProperties"));
 
     assertThat(bound.getPath()).isEqualTo("/ws/bound");
   }
 
   @Test
   void shippedApplicationYmlDefinesThePathUnderTheApimBlock() throws IOException {
-    String yaml = new ClassPathResource("application.yml").getContentAsString(StandardCharsets.UTF_8);
+    String yaml =
+        new ClassPathResource("application.yml").getContentAsString(StandardCharsets.UTF_8);
 
     assertThat(yaml)
         .contains(

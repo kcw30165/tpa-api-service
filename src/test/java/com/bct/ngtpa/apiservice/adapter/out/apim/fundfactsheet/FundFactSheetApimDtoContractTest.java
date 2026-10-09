@@ -33,7 +33,8 @@ class FundFactSheetApimDtoContractTest {
   void deserializesTheFullEnvelopeThroughTheSameGenericTypeTheExecutorUses() throws Exception {
     JavaType type =
         json.getTypeFactory()
-            .constructParametricType(ApimResponseEnvelope.class, TrpGetFundFactSheetApimDataItem.class);
+            .constructParametricType(
+                ApimResponseEnvelope.class, TrpGetFundFactSheetApimDataItem.class);
 
     ApimResponseEnvelope<TrpGetFundFactSheetApimDataItem> envelope = json.readValue(SAMPLE, type);
 
@@ -75,7 +76,8 @@ class FundFactSheetApimDtoContractTest {
   void deserializesTheNoFundEnvelopeWithAnEmptyFundFactSheetList() throws Exception {
     JavaType type =
         json.getTypeFactory()
-            .constructParametricType(ApimResponseEnvelope.class, TrpGetFundFactSheetApimDataItem.class);
+            .constructParametricType(
+                ApimResponseEnvelope.class, TrpGetFundFactSheetApimDataItem.class);
 
     ApimResponseEnvelope<TrpGetFundFactSheetApimDataItem> envelope =
         json.readValue(
@@ -90,7 +92,8 @@ class FundFactSheetApimDtoContractTest {
   void deserializesAnErrMessageOnlyEnvelopeWithoutData() throws Exception {
     JavaType type =
         json.getTypeFactory()
-            .constructParametricType(ApimResponseEnvelope.class, TrpGetFundFactSheetApimDataItem.class);
+            .constructParametricType(
+                ApimResponseEnvelope.class, TrpGetFundFactSheetApimDataItem.class);
 
     ApimResponseEnvelope<TrpGetFundFactSheetApimDataItem> envelope =
         json.readValue("{\"response\":{\"err-message\":\"err.scheme.invalid\"}}", type);
@@ -102,7 +105,8 @@ class FundFactSheetApimDtoContractTest {
   @Test
   void missingAndNullSeqStayNull() throws Exception {
     var missing = json.readValue("{\"name-eng\":\"Fund A\"}", TrpGetFundFactSheetApimRow.class);
-    var explicitNull = json.readValue("{\"seq\":null,\"name-eng\":\"Fund A\"}", TrpGetFundFactSheetApimRow.class);
+    var explicitNull =
+        json.readValue("{\"seq\":null,\"name-eng\":\"Fund A\"}", TrpGetFundFactSheetApimRow.class);
 
     assertThat(missing.seq()).isNull();
     assertThat(explicitNull.seq()).isNull();

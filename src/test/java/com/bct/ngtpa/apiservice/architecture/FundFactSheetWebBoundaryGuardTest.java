@@ -72,8 +72,7 @@ class FundFactSheetWebBoundaryGuardTest {
   @Test
   void theControllerIsARestControllerInItsFeaturePackageAndNotInTheOldFlatFolder() {
     assertThat(FundFactSheetController.class.isAnnotationPresent(RestController.class)).isTrue();
-    assertThat(FundFactSheetController.class.isAnnotationPresent(ControllerAdvice.class))
-        .isFalse();
+    assertThat(FundFactSheetController.class.isAnnotationPresent(ControllerAdvice.class)).isFalse();
     assertThat(FundFactSheetController.class.getPackageName())
         .isEqualTo("com.bct.ngtpa.apiservice.adapter.in.web.fundfactsheet");
     Path oldFlat = Path.of(MAIN + "adapter/in/web/controller/FundFactSheetController.java");

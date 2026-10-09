@@ -44,6 +44,7 @@ class RawFundFactSheetDataTest {
     source.add(row(2));
 
     assertThat(data.rows()).hasSize(1);
-    assertThatThrownBy(() -> data.rows().add(row(3))).isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> data.rows().add(row(3)))
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 }

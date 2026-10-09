@@ -120,8 +120,7 @@ class FundFactSheetNormalizerTest {
 
   @Test
   void aNullOrBlankChineseNameIsCarriedAsReceivedWithoutEvent() {
-    var raw =
-        data(row(1, "A", null, "", ""), row(2, "B", "", "", ""), row(3, "C", "  ", "", ""));
+    var raw = data(row(1, "A", null, "", ""), row(2, "B", "", "", ""), row(3, "C", "  ", "", ""));
 
     FundFactSheetResult result = normalizer.normalize(raw);
 

@@ -156,10 +156,7 @@ class FundFactSheetWebMapperTest {
   @Test
   void englishSortingIgnoresTheChineseNames() {
     var order =
-        seqs(
-            "en",
-            row(1, "Alpha Fund", ZH_B, null, null),
-            row(2, "Zeta Fund", ZH_A, null, null));
+        seqs("en", row(1, "Alpha Fund", ZH_B, null, null), row(2, "Zeta Fund", ZH_A, null, null));
 
     assertThat(order).containsExactly(1, 2);
   }

@@ -32,12 +32,11 @@ import reactor.test.StepVerifier;
 
 /**
  * Route and envelope tests. Bound directly to the controller instance, like {@code
- * AccountSummaryControllerTest}: the shared {@code X-Request-Id} filter is not part of these
- * tests, so missing-header rejection is covered by the filter's own tests, not duplicated here.
- * {@code ApiExceptionHandler} is constructed exactly as {@code
- * ApiExceptionHandlerFundFactSheetTest} does, and body assertions use {@code
- * .expectBody().jsonPath(...)}, the idiom proven by {@code ReferenceDateRefreshControllerTest} and
- * {@code UpdatePersonalInformationControllerContractTest}.
+ * AccountSummaryControllerTest}: the shared {@code X-Request-Id} filter is not part of these tests,
+ * so missing-header rejection is covered by the filter's own tests, not duplicated here. {@code
+ * ApiExceptionHandler} is constructed exactly as {@code ApiExceptionHandlerFundFactSheetTest} does,
+ * and body assertions use {@code .expectBody().jsonPath(...)}, the idiom proven by {@code
+ * ReferenceDateRefreshControllerTest} and {@code UpdatePersonalInformationControllerContractTest}.
  */
 class FundFactSheetControllerTest {
 
