@@ -395,8 +395,7 @@ class LoginOtpRenderedContentIntegrationTest {
           binding,
           (type, value) -> "hash_only",
           Clock.fixed(Instant.parse("2026-07-24T01:00:00Z"), ZoneOffset.UTC),
-          new LoginOtpSendPolicy(
-              6, true, ttlSeconds, 60, 5, false, 0, "Policy template unused {code}", "unused"),
+          new LoginOtpSendPolicy(6, true, ttlSeconds, 60, 5, false, 0),
           registry);
     }
 
@@ -443,8 +442,7 @@ class LoginOtpRenderedContentIntegrationTest {
           delivery,
           binding,
           Clock.fixed(Instant.parse("2026-07-24T01:00:00Z"), ZoneOffset.UTC),
-          new LoginOtpSendPolicy(
-              6, true, 300, 60, 5, false, 0, "Policy template unused {code}", "unused"),
+          new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
           registry);
     }
   }

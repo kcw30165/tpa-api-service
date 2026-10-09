@@ -114,15 +114,6 @@ public class AuthWorkflowProperties {
     private int maxVerifyAttempts;
     private boolean resendLimitEnabled;
     private int maxResendAttempts;
-    private String smsTemplate;
-    private final LoginOtpEmail emailTemplate = new LoginOtpEmail();
-  }
-
-  @Getter
-  @Setter
-  public static class LoginOtpEmail {
-    private String subject;
-    private String body;
   }
 
   @Getter
@@ -328,13 +319,6 @@ public class AuthWorkflowProperties {
     requirePositive(login.otp.ttlSeconds, "otp.ttl-seconds");
     requireNonNegative(login.otp.resendCooldownSeconds, "otp.resend-cooldown-seconds");
     requirePositive(login.otp.maxVerifyAttempts, "otp.max-verify-attempts");
-    if (login.otp.smsTemplate == null || !login.otp.smsTemplate.contains("{code}"))
-      throw new IllegalStateException("auth-workflows.login.otp.sms-template must contain {code}");
-    if (login.otp.emailTemplate.subject == null
-        || login.otp.emailTemplate.subject.isBlank()
-        || login.otp.emailTemplate.body == null
-        || !login.otp.emailTemplate.body.contains("{code}"))
-      throw new IllegalStateException("auth-workflows.login.otp.email-template is invalid");
     if (login.otp.resendLimitEnabled) {
       requirePositive(login.otp.maxResendAttempts, "otp.max-resend-attempts");
     }

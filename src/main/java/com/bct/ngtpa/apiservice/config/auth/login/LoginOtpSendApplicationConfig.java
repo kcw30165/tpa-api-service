@@ -50,9 +50,7 @@ public class LoginOtpSendApplicationConfig {
             p.getResendCooldownSeconds(),
             p.getMaxVerifyAttempts(),
             p.isResendLimitEnabled(),
-            p.getMaxResendAttempts(),
-            p.getSmsTemplate(),
-            p.getEmailTemplate().getSubject());
+            p.getMaxResendAttempts());
     var core =
         new LoginOtpSendService(
             loader,

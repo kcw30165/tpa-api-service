@@ -151,7 +151,7 @@ class LoginOtpResendServiceTest {
             c -> Mono.error(new AssertionError("must not deliver")),
             c -> Mono.error(new AssertionError("must not bind")),
             Clock.fixed(NOW, ZoneOffset.UTC),
-            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0, "Your code is {code}", "Code"),
+            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
             (type, channel, locale) -> {
               throw new IllegalStateException("login-otp definition missing");
             });
@@ -214,9 +214,7 @@ class LoginOtpResendServiceTest {
                 60,
                 5,
                 false,
-                0,
-                "Policy template unused {code}",
-                "Policy subject unused"),
+                0),
             (type, channel, locale) -> definition);
 
     StepVerifier.create(service.resend(COMMAND))
@@ -370,7 +368,7 @@ class LoginOtpResendServiceTest {
         m,
         b,
         Clock.fixed(NOW, ZoneOffset.UTC),
-        new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0, "Your code is {code}", "Code"),
+        new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
         (type, channel, locale) ->
             new NoticeTemplateDefinition(
                 type, channel, locale, "Code", "Your code is {code}", null, "minutes"));

@@ -187,10 +187,6 @@ auth-workflows:
       max-verify-attempts: ${LOGIN_OTP_MAX_VERIFY_ATTEMPTS:5}
       resend-limit-enabled: false
       max-resend-attempts: 0
-      sms-template: "Your BCT login verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
-      email-template:
-        subject: "BCT login verification code"
-        body: "Your BCT login verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
     idempotency:
       start-ttl-seconds: ${LOGIN_START_IDEMPOTENCY_TTL_SECONDS:300}
       otp-send-ttl-seconds: ${LOGIN_OTP_SEND_IDEMPOTENCY_TTL_SECONDS:300}

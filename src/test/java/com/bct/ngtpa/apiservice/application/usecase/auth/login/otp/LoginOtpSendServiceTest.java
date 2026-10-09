@@ -193,9 +193,7 @@ class LoginOtpSendServiceTest {
                 60,
                 5,
                 false,
-                0,
-                "Your verification code is {code}",
-                "Verification code"),
+                0),
             registry);
 
     StepVerifier.create(service.send(COMMAND)).verifyError(IllegalStateException.class);
@@ -248,9 +246,7 @@ class LoginOtpSendServiceTest {
                 60,
                 5,
                 false,
-                0,
-                "Policy template unused {code}",
-                "Policy subject unused"),
+                0),
             (type, channel, locale) -> definition);
 
     StepVerifier.create(service.send(COMMAND)).expectNextCount(1).verifyComplete();
@@ -312,9 +308,7 @@ class LoginOtpSendServiceTest {
                 60,
                 5,
                 false,
-                0,
-                "Your verification code is {code}",
-                "Verification code"),
+                0),
             (type, channel, locale) ->
                 new NoticeTemplateDefinition(
                     type,
@@ -370,9 +364,7 @@ class LoginOtpSendServiceTest {
                 60,
                 5,
                 false,
-                0,
-                "Your verification code is {code}",
-                "Verification code"),
+                0),
             (type, channel, locale) ->
                 new NoticeTemplateDefinition(
                     type, channel, locale, "Verification code", "{code}", null, "minutes"));
@@ -432,9 +424,7 @@ class LoginOtpSendServiceTest {
                 60,
                 5,
                 false,
-                0,
-                "Your verification code is {code}",
-                "Verification code"),
+                0),
             (type, channel, locale) ->
                 new NoticeTemplateDefinition(
                     type,
@@ -475,9 +465,7 @@ class LoginOtpSendServiceTest {
             60,
             5,
             false,
-            0,
-            "Your verification code is {code}",
-            "Verification code"),
+            0),
         (type, channel, locale) ->
             new NoticeTemplateDefinition(
                 type,

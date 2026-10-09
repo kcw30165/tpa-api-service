@@ -248,9 +248,6 @@ class ProductionComposedLoginControllerBoundaryTest {
     login.getOtp().setTtlSeconds(300);
     login.getOtp().setResendCooldownSeconds(60);
     login.getOtp().setMaxVerifyAttempts(5);
-    login.getOtp().setSmsTemplate("code={code}");
-    login.getOtp().getEmailTemplate().setSubject("Login code");
-    login.getOtp().getEmailTemplate().setBody("code={code}");
     login.getIdempotency().setStartTtlSeconds(300);
     login.getIdempotency().setOtpSendTtlSeconds(300);
     login.getIdempotency().setOtpResendTtlSeconds(300);
