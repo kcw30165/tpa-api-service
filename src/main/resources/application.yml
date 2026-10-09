@@ -141,15 +141,6 @@ auth-workflows:
       max-resend-attempts: 5
       invalidate-previous-on-resend: true
       reset-verify-attempts-on-resend: true
-      localized-template:
-        en:
-          sms: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
-          email-subject: "BCT forgot password verification code"
-          email-body: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
-        zh_HK:
-          sms: "您的 BCT 忘記密碼驗證碼為 {code}，有效期限為 {ttlValue} {ttlUnit}。"
-          email-subject: "BCT 忘記密碼驗證碼"
-          email-body: "您的 BCT 忘記密碼驗證碼為 {code}，有效期限為 {ttlValue} {ttlUnit}。"
     details-and-otp:
       mutation-lock-lease-seconds: ${FORGOT_PASSWORD_DETAILS_OTP_LOCK_LEASE_SECONDS:60}
       mutation-lock-redis-allowance-seconds: ${FORGOT_PASSWORD_DETAILS_OTP_REDIS_ALLOWANCE_SECONDS:10}
