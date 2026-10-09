@@ -46,7 +46,7 @@ still build `MessageDeliveryCommand` and call
 | II-1 | Username Recovery | Simplest — single call site in `UsernameRecoveryFeatureConfig` / `UsernameRecoveryRequestProtectedOperation`. First to confirm whether `schemeName`/`schemeNameChi` already flow from the DTO through `TrpSearchMemberApimResultMapper` → `UsernameRecoveryLookupCandidate`, or need additive plumbing. | DONE (gate evidence: Appendix A.3) |
 | II-2 | Registration | Replace `RegistrationMessageDeliveryAdapter`'s `subject()`/`body()` policy lookup with `NoticeTemplateRegistryPort.resolve(...)`. No scheme-name placeholder needed (§8.2). | DONE (gate evidence: Appendix C.17) |
 | II-3 | Login | Replaced `LoginOtpSendPolicy`-based lookup with `NoticeTemplateRegistryPort.resolve(...)` in `LoginOtpSendService`/`LoginOtpResendService`. Scheme-name plumbing comes from `TrpMemberLoginApimDataItem` (D8, corrected model; see D.11.1), not `TrpGetAccountListApimDataItem`. | DONE (gate evidence: Appendix D.13) |
-| II-4 | Forgot Password | **Last** — highest risk, since it currently has no live YAML wiring at all. Reconcile content to match `login-otp` verbatim (§5). Scheme-name plumbing from `ForgotPasswordTrpSearchMemberDataItem` already exists; the gap is downstream (see Appendix E.3). | IN PROGRESS (investigation done; draft sub-plan: Appendix E) |
+| II-4 | Forgot Password | **Last** — highest risk, since it currently has no live YAML wiring at all. Reconcile content to match `login-otp` verbatim (§5). Scheme-name plumbing from `ForgotPasswordTrpSearchMemberDataItem` already exists; the gap is downstream (see Appendix E.3). | DONE (see Appendix E.11) |
 
 Each stage follows the established investigate → implement → validate
 pattern: confirm full current source of the call site before any edit,
@@ -1878,12 +1878,12 @@ regression test of the same shape as Username Recovery's.
 
 | Sub-stage | Change | Status |
 |---|---|---|
-| II-4.0 | Settle the one open item below (E.10); confirm this appendix before any code. | PENDING |
+| II-4.0 | Settle the one open item below (E.10); confirm this appendix before any code. | DONE (see E.10) |
 | II-4.a | Read-only investigation of the send/resend path, the content source, the context, the APIM source, the cross-workflow DTO inventory, and the rebuild-safety precedent. | DONE (scripts 114-118; findings in E.1-E.8) |
-| II-4.b0 | Add `trustCode`/`schemeName`/`schemeNameChi` to `ForgotPasswordAuthFlowContext` (compatibility constructor, same pattern as Login's `LoginPreAuthContext`); update `VerifyForgotPasswordDetailsService` to populate them from the lookup result; update the AES-GCM protector's private `Payload` record in lockstep (the Appendix A.1 carry-over warning, made concrete for this workflow); update `withPhase(...)`/`withResetAuthorization(...)` to carry the three fields forward explicitly, each with a regression test (E.8). | PENDING |
-| II-4.b | `ForgotPasswordDetailsOtpProtectedOperation` and `ForgotPasswordOtpResendProtectedOperation` resolve `FORGOT_PASSWORD_OTP` through `NoticeTemplateRegistryPort`, removing the hardcoded `ForgotPasswordOtpTemplates` content path, the hardcoded `"5"` `ttlValue` literal, and the duplicated `ttlUnit()` method from both operations; new `forgot-password-otp` YAML entries carry content synchronized to `login-otp`'s (E.5). | PENDING |
-| II-4.c/d | Combined rendering and missing-definition test with the real registry and renderer for SMS and EMAIL in en and zh_HK (the minutes, the unit, no placeholder left over, content identical to Login's) and a missing definition on send and on resend (the error reaches the caller, nothing is created or sent). | PENDING |
-| II-4.e | Stage gate on the final code: full `mvn test` and an application startup smoke test; then the plan is updated. | PENDING |
+| II-4.b0 | Add `trustCode`/`schemeName`/`schemeNameChi` to `ForgotPasswordAuthFlowContext` (compatibility constructor, same pattern as Login's `LoginPreAuthContext`); update `VerifyForgotPasswordDetailsService` to populate them from the lookup result; update the AES-GCM protector's private `Payload` record in lockstep (the Appendix A.1 carry-over warning, made concrete for this workflow); update `withPhase(...)`/`withResetAuthorization(...)` to carry the three fields forward explicitly, each with a regression test (E.8). | DONE (script 123, commit `47b6f99e`; see E.11) |
+| II-4.b | `ForgotPasswordDetailsOtpProtectedOperation` and `ForgotPasswordOtpResendProtectedOperation` resolve `FORGOT_PASSWORD_OTP` through `NoticeTemplateRegistryPort`, removing the hardcoded `ForgotPasswordOtpTemplates` content path, the hardcoded `"5"` `ttlValue` literal, and the duplicated `ttlUnit()` method from both operations; new `forgot-password-otp` YAML entries carry content synchronized to `login-otp`'s (E.5). | DONE (script 129, commit `cac6b38f`; see E.11) |
+| II-4.c/d | Combined rendering and missing-definition test with the real registry and renderer for SMS and EMAIL in en and zh_HK (the minutes, the unit, no placeholder left over, content identical to Login's) and a missing definition on send and on resend (the error reaches the caller, nothing is created or sent). | DONE (prerequisites: script 132 commit `0457a465`, script 134 commit `2a63c3af`; test: script 136 commit `8740ba7f`; see E.11) |
+| II-4.e | Stage gate on the final code: full `mvn test` and an application startup smoke test; then the plan is updated. | DONE (script 142; see E.11) |
 
 ### E.10 Decision: II-4.c and II-4.d are combined (Nick, 2026-10-08)
 
@@ -1896,3 +1896,42 @@ than two parallel copies of the same real-dependency wiring. Login's own combine
 one strong, data-backed proof (the real `TRPMemberLogin` response rendering correctly end to end)
 rather than two weaker, separate ones; the same benefit applies here. This decision is final; no
 other sub-stage in Appendix E remains open.
+
+### E.11 Closure of II-4.0, II-4.b0, II-4.b, II-4.c/d and II-4.e: Stage II-4 (Forgot Password) is DONE (2026-10-09)
+
+- II-4.0 is DONE: the one open item (sub-stage granularity) was settled by Nick's decision at
+  E.10, docs commit `b89d4c4b`.
+- II-4.b0 is DONE: script 123 committed `47b6f99e`, threading `trustCode`/`schemeName`/
+  `schemeNameChi` through `ForgotPasswordAuthFlowContext`, the lookup result and the AES-GCM
+  protector, with `withPhase(...)`/`withResetAuthorization(...)` carrying the three fields
+  forward explicitly (mirroring Username Recovery's E.8 rebuild-safety precedent).
+- II-4.b is DONE: script 129 (a clean retry of script 127, which aborted with zero files written
+  after script 128's investigation found a single anchor mismatch - an 11-asterisk masked-email
+  literal where the real test file had 12) committed `cac6b38f`, routing both
+  `ForgotPasswordDetailsOtpProtectedOperation` and `ForgotPasswordOtpResendProtectedOperation`
+  through `NoticeTemplateRegistryPort` and removing the hardcoded `ForgotPasswordOtpTemplates`
+  content path, the hardcoded `"5"` `ttlValue` literal, and the duplicated `ttlUnit()` method.
+- II-4.c/d is DONE, combined into one test file per Nick's E.10 decision. Two prerequisite fixes
+  landed first, mirroring Login's own two-fix precedent (D.13): script 132 committed `0457a465`,
+  threading `trustCode`/`schemeName`/`schemeNameChi` into the rendered content with the same
+  blank-`schemeNameChi`-falls-back-to-`schemeName` rule Login already has (script 102); script 134
+  committed `2a63c3af`, reordering both operations so the registry definition is resolved before
+  any OTP challenge is created or (resend only) the session is mutated, mirroring Login's own
+  already-safe ordering. Script 136 then committed `8740ba7f`, adding
+  `ForgotPasswordOtpRenderedContentIntegrationTest.java`: the real `YamlNoticeTemplateRegistryAdapter`
+  and the real `MessageDeliveryAdapter`, 10 tests covering rendering on all 4 channels, the
+  blank-`schemeNameChi` fallback on both send and resend, the Chinese unit placed directly after
+  the number, the whole-minutes-with-a-minimum-of-one rule, and the two missing-definition cases
+  (send: no OTP challenge created; resend: no OTP challenge created and no session mutated).
+- II-4.e is DONE: the stage gate (script 142, on commit `8740ba7f`) passed both gates. Two
+  earlier gate-script attempts (139, 140) surfaced and were fixed as script-only bugs - a
+  process-group-signaling assumption that left two orphaned processes behind (cleaned up by
+  script 141) and a failure-marker double-count caused by an unnecessary `|| echo 0` fallback -
+  neither was a code or test defect. Gate A, a full `mvn test` (no skip, no scope): BUILD SUCCESS,
+  5608 tests, 0 failures, 0 errors, 10 skipped (the same stable baseline held since Stage II-1).
+  Gate B, a real application startup smoke test: the application started, health reported UP
+  immediately (36 seconds) and again after a 20-second wait, the configured port (8889, this
+  worktree's own real `SERVER_PORT`) was listening, the startup log held 0 bean/configuration/
+  startup failure markers, and the application stopped and released the port cleanly.
+- Stage II-4 (Forgot Password) is now DONE in full: sub-stages II-4.0, II-4.a, II-4.b0, II-4.b,
+  II-4.c/d and II-4.e are all DONE.
