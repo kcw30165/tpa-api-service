@@ -25,6 +25,71 @@ import reactor.core.publisher.Mono;
  * therefore covered by the filter's own tests, not duplicated here.
  */
 class AccountSummaryControllerTest {
+  @Test
+  void typedBalanceFailuresUseApprovedPolicyThroughRealAdvice() {
+    assertBalanceFailure(
+        com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException
+            .systemFailure(),
+        503,
+        "SYSTEM_ERROR",
+        "err.system.unavailable");
+    assertBalanceFailure(
+        com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException
+            .accountNotFound(),
+        422,
+        "BUSINESS_REJECTED",
+        "err.ab.account.not.exist");
+    assertBalanceFailure(
+        com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException
+            .accountMismatch(),
+        422,
+        "BUSINESS_REJECTED",
+        "err.ab.account.mismatch");
+  }
+
+  private static void assertBalanceFailure(
+      com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException failure,
+      int httpStatus,
+      String status,
+      String code) {
+    var sanitizer =
+        Mockito.mock(com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer.class);
+    when(sanitizer.toSafeString(Mockito.any())).thenReturn("safe-event");
+    var advice =
+        new com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler(
+            Mockito.mock(com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver.class),
+            sanitizer);
+    GetAccountSummaryUseCase useCase = command -> Mono.error(failure);
+    WebTestClient.bindToController(new AccountSummaryController(useCase, resolver(context())))
+        .controllerAdvice(advice)
+        .webFilter(
+            (exchange, chain) -> {
+              exchange
+                  .getAttributes()
+                  .put(
+                      com.bct.ngtpa.apiservice.shared.web.RequestCorrelation
+                          .REQUEST_ID_ATTRIBUTE_KEY,
+                      "regression-request");
+              return chain.filter(exchange);
+            })
+        .build()
+        .get()
+        .uri("/api/v1/account/summary")
+        .exchange()
+        .expectStatus()
+        .value(actual -> assertThat(actual).isEqualTo(httpStatus))
+        .expectHeader()
+        .valueEquals("X-Request-Id", "regression-request")
+        .expectBody()
+        .jsonPath("$.success")
+        .isEqualTo(false)
+        .jsonPath("$.status")
+        .isEqualTo(status)
+        .jsonPath("$.errors[0].code")
+        .isEqualTo(code)
+        .jsonPath("$.errors[0].message")
+        .doesNotExist();
+  }
 
   @Test
   void defaultsPeriodToSinceSchemeInceptionAndCurrencyToNull() {
