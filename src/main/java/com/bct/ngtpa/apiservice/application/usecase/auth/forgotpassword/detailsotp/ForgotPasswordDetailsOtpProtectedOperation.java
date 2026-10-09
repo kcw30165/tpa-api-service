@@ -166,6 +166,11 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
     String channel = command.email() != null && !command.email().isBlank() ? "email" : "mobile";
     String destination = "email".equals(channel) ? command.email() : command.mobile();
     OtpChannel otpChannel = "email".equals(channel) ? OtpChannel.EMAIL : OtpChannel.SMS;
+    MessageDeliveryChannel deliveryChannel =
+        "email".equals(channel) ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
+    NoticeTemplateDefinition definition =
+        registry.resolve(
+            MessageDeliveryType.FORGOT_PASSWORD_OTP, deliveryChannel, command.language());
     return otp.createChallenge(
             new CreateOtpChallengeCommand(
                 OtpScenario.FORGOT_PASSWORD,
@@ -182,7 +187,9 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
             challenge -> {
               if (!budget.active()) return failure();
               return delivery
-                  .deliver(message(command, channel, destination, challenge, context))
+                  .deliver(
+                      message(
+                          command, destination, challenge, context, deliveryChannel, definition))
                   .flatMap(
                       result ->
                           bindAndCommit(
@@ -264,15 +271,11 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
 
   private MessageDeliveryCommand message(
       ForgotPasswordDetailsOtpCommand command,
-      String channel,
       String destination,
       CreateOtpChallengeResult challenge,
-      ForgotPasswordAuthFlowContext context) {
-    MessageDeliveryChannel deliveryChannel =
-        "email".equals(channel) ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
-    NoticeTemplateDefinition definition =
-        registry.resolve(
-            MessageDeliveryType.FORGOT_PASSWORD_OTP, deliveryChannel, command.language());
+      ForgotPasswordAuthFlowContext context,
+      MessageDeliveryChannel deliveryChannel,
+      NoticeTemplateDefinition definition) {
     Map<String, String> variables = new LinkedHashMap<>();
     variables.put("code", challenge.rawCode());
     variables.put(

@@ -291,6 +291,13 @@ public final class ForgotPasswordOtpResendProtectedOperation {
         "email".equalsIgnoreCase(validated.context.contactChannel())
             ? OtpChannel.EMAIL
             : OtpChannel.SMS;
+    MessageDeliveryChannel deliveryChannel =
+        "email".equalsIgnoreCase(validated.context.contactChannel())
+            ? MessageDeliveryChannel.EMAIL
+            : MessageDeliveryChannel.SMS;
+    NoticeTemplateDefinition definition =
+        registry.resolve(
+            MessageDeliveryType.FORGOT_PASSWORD_OTP, deliveryChannel, command.language());
     return otp.createChallenge(
             new CreateOtpChallengeCommand(
                 OtpScenario.FORGOT_PASSWORD,
@@ -315,7 +322,13 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                     .flatMap(
                         stagedSnapshot ->
                             delivery
-                                .deliver(message(command, validated.context, candidate.rawCode()))
+                                .deliver(
+                                    message(
+                                        command,
+                                        validated.context,
+                                        candidate.rawCode(),
+                                        deliveryChannel,
+                                        definition))
                                 .flatMap(
                                     deliveryResult ->
                                         transition(
@@ -520,13 +533,10 @@ public final class ForgotPasswordOtpResendProtectedOperation {
   private MessageDeliveryCommand message(
       ResendForgotPasswordOtpCommand command,
       ForgotPasswordAuthFlowContext context,
-      String rawCode) {
-    boolean email = "email".equalsIgnoreCase(context.contactChannel());
+      String rawCode,
+      MessageDeliveryChannel channel,
+      NoticeTemplateDefinition definition) {
     String language = command.language();
-    MessageDeliveryChannel channel =
-        email ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
-    NoticeTemplateDefinition definition =
-        registry.resolve(MessageDeliveryType.FORGOT_PASSWORD_OTP, channel, language);
     Map<String, String> variables = new LinkedHashMap<>();
     variables.put("code", rawCode);
     variables.put(
