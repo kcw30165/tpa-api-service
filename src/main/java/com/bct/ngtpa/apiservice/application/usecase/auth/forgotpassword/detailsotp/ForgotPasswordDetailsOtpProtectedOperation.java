@@ -43,6 +43,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -136,7 +137,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                       .flatMap(
                           result ->
                               result.status() == ForgotPasswordDetailsStatus.DETAILS_VERIFIED
-                                  ? issue(command, reference, handle, budget)
+                                  ? issue(command, reference, handle, budget, context)
                                   : Mono.just(
                                       new ForgotPasswordDetailsOtpProtectedExecutionResult(
                                           new ForgotPasswordDetailsOtpResult(
@@ -160,7 +161,8 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
       ForgotPasswordDetailsOtpCommand command,
       String reference,
       SessionLockHandle handle,
-      ForgotPasswordMutationLeaseBudget budget) {
+      ForgotPasswordMutationLeaseBudget budget,
+      ForgotPasswordAuthFlowContext context) {
     String channel = command.email() != null && !command.email().isBlank() ? "email" : "mobile";
     String destination = "email".equals(channel) ? command.email() : command.mobile();
     OtpChannel otpChannel = "email".equals(channel) ? OtpChannel.EMAIL : OtpChannel.SMS;
@@ -180,7 +182,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
             challenge -> {
               if (!budget.active()) return failure();
               return delivery
-                  .deliver(message(command, channel, destination, challenge))
+                  .deliver(message(command, channel, destination, challenge, context))
                   .flatMap(
                       result ->
                           bindAndCommit(
@@ -264,12 +266,28 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
       ForgotPasswordDetailsOtpCommand command,
       String channel,
       String destination,
-      CreateOtpChallengeResult challenge) {
+      CreateOtpChallengeResult challenge,
+      ForgotPasswordAuthFlowContext context) {
     MessageDeliveryChannel deliveryChannel =
         "email".equals(channel) ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
     NoticeTemplateDefinition definition =
         registry.resolve(
             MessageDeliveryType.FORGOT_PASSWORD_OTP, deliveryChannel, command.language());
+    Map<String, String> variables = new LinkedHashMap<>();
+    variables.put("code", challenge.rawCode());
+    variables.put(
+        "ttlValue", Integer.toString(Math.max(1, challenge.expiresInSeconds() / 60)));
+    variables.put("ttlUnit", definition.ttlUnit());
+    if (context.trustCode() != null) {
+      variables.put("trustCode", context.trustCode());
+    }
+    if (context.schemeName() != null) {
+      variables.put("schemeName", context.schemeName());
+    }
+    String schemeNameChi = resolveSchemeNameChi(context);
+    if (schemeNameChi != null) {
+      variables.put("schemeNameChi", schemeNameChi);
+    }
     return new MessageDeliveryCommand(
         MessageDeliveryType.FORGOT_PASSWORD_OTP,
         MessageDeliveryScenario.FORGOT_PASSWORD,
@@ -278,15 +296,23 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
         definition.subject(),
         definition.body(),
         null,
-        Map.of(
-            "code",
-            challenge.rawCode(),
-            "ttlValue",
-            Integer.toString(Math.max(1, challenge.expiresInSeconds() / 60)),
-            "ttlUnit",
-            definition.ttlUnit()),
+        Map.copyOf(variables),
         command.language(),
         command.requestId());
+  }
+
+  /**
+   * Mirrors {@code LoginOtpSendService.resolveSchemeNameChi} / {@code
+   * UsernameRecoveryRequestProtectedOperation.resolveSchemeNameChi} (plan decision, Nick,
+   * 2026-10-07; applied to Forgot Password per Nick's instruction on 2026-10-08 to include the
+   * same rule now rather than defer it): a blank {@code schemeNameChi} falls back to {@code
+   * schemeName}, rather than rendering an empty Chinese scheme name into a live member message.
+   */
+  private static String resolveSchemeNameChi(ForgotPasswordAuthFlowContext context) {
+    String schemeNameChi = context.schemeNameChi();
+    return (schemeNameChi == null || schemeNameChi.isBlank())
+        ? context.schemeName()
+        : schemeNameChi;
   }
 
   private ForgotPasswordAuthFlowContext decrypt(AuthFlowSession session) {

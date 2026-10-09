@@ -527,6 +527,21 @@ public final class ForgotPasswordOtpResendProtectedOperation {
         email ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
     NoticeTemplateDefinition definition =
         registry.resolve(MessageDeliveryType.FORGOT_PASSWORD_OTP, channel, language);
+    Map<String, String> variables = new LinkedHashMap<>();
+    variables.put("code", rawCode);
+    variables.put(
+        "ttlValue", Integer.toString(Math.max(1, otpPolicy.ttlSeconds() / 60)));
+    variables.put("ttlUnit", definition.ttlUnit());
+    if (context.trustCode() != null) {
+      variables.put("trustCode", context.trustCode());
+    }
+    if (context.schemeName() != null) {
+      variables.put("schemeName", context.schemeName());
+    }
+    String schemeNameChi = resolveSchemeNameChi(context);
+    if (schemeNameChi != null) {
+      variables.put("schemeNameChi", schemeNameChi);
+    }
     return new MessageDeliveryCommand(
         MessageDeliveryType.FORGOT_PASSWORD_OTP,
         MessageDeliveryScenario.FORGOT_PASSWORD,
@@ -535,15 +550,23 @@ public final class ForgotPasswordOtpResendProtectedOperation {
         definition.subject(),
         definition.body(),
         null,
-        Map.of(
-            "code",
-            rawCode,
-            "ttlValue",
-            Integer.toString(Math.max(1, otpPolicy.ttlSeconds() / 60)),
-            "ttlUnit",
-            definition.ttlUnit()),
+        Map.copyOf(variables),
         language,
         command.requestId());
+  }
+
+  /**
+   * Mirrors {@code LoginOtpResendService.resolveSchemeNameChi} / {@code
+   * UsernameRecoveryRequestProtectedOperation.resolveSchemeNameChi} (plan decision, Nick,
+   * 2026-10-07; applied to Forgot Password per Nick's instruction on 2026-10-08 to include the
+   * same rule now rather than defer it): a blank {@code schemeNameChi} falls back to {@code
+   * schemeName}, rather than rendering an empty Chinese scheme name into a live member message.
+   */
+  private static String resolveSchemeNameChi(ForgotPasswordAuthFlowContext context) {
+    String schemeNameChi = context.schemeNameChi();
+    return (schemeNameChi == null || schemeNameChi.isBlank())
+        ? context.schemeName()
+        : schemeNameChi;
   }
 
   private ResendForgotPasswordOtpResult mapEligibility(
