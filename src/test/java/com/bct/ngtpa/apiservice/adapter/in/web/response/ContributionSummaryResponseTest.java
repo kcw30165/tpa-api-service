@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class ContributionListResponseTest {
+class ContributionSummaryResponseTest {
 
   @Test
   void recordFieldsAreAccessible() {

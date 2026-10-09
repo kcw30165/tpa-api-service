@@ -27,7 +27,7 @@ import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-class ForgotPasswordControllerTest {
+class AuthForgotPasswordControllerTest {
   @Test
   void successfulStartWritesCookieAndReturnsCsrfOnly() {
     AtomicReference<StartForgotPasswordCommand> command = new AtomicReference<>();

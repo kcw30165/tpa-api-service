@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLo
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.exception.AccountGainLossRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
+import com.bct.ngtpa.apiservice.application.exception.FundFactSheetRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
@@ -291,6 +292,22 @@ public class ApiExceptionHandler {
     ApiError error =
         ApiError.form(
             errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);
+    return buildMutationErrorResponse(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        ApiStatus.SYSTEM_ERROR,
+        List.of(error),
+        exchange,
+        ex,
+        ex.getMessage(),
+        true,
+        false);
+  }
+
+  @ExceptionHandler(FundFactSheetRetrievalException.class)
+  public ResponseEntity<MutationResponse<Void>> handleFundFactSheetRetrievalException(
+      FundFactSheetRetrievalException ex, ServerWebExchange exchange) {
+    ApiError error =
+        ApiError.system(ErrorCodes.FUND_FACT_SHEET_RETRIEVAL_UNAVAILABLE, null, SOURCE_SERVER);
     return buildMutationErrorResponse(
         HttpStatus.SERVICE_UNAVAILABLE,
         ApiStatus.SYSTEM_ERROR,

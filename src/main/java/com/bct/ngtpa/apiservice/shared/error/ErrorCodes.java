@@ -21,6 +21,8 @@ public final class ErrorCodes {
   public static final String FUND_PRICE_REQUEST_INVALID = "err.fund-price.request.invalid";
   public static final String FUND_PRICE_RETRIEVAL_UNAVAILABLE =
       "err.fund-price.retrieval.unavailable";
+  public static final String FUND_FACT_SHEET_RETRIEVAL_UNAVAILABLE =
+      "err.fund-fact-sheet.retrieval.unavailable";
   public static final String CAPTCHA_VERIFICATION_INVALID = "err.captcha.verification.invalid";
 
   public static final String MEMBER_CONTEXT_UNAVAILABLE = "err.member.context.unavailable";
