@@ -53,7 +53,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempote
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordInitialOtpPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpReplayResolver;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendEligibilityValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendFoundationService;
@@ -218,11 +217,6 @@ public class ForgotPasswordApplicationConfig {
           ForgotPasswordAuthFlowContextProtectorPort protector) {
     return new com.bct.ngtpa.apiservice.adapter.out.session.forgotpassword
         .ForgotPasswordOtpSessionBindingAdapter(sessions, challenges, protector);
-  }
-
-  @Bean
-  public ForgotPasswordOtpTemplates forgotPasswordOtpTemplates() {
-    return ForgotPasswordOtpTemplates.approved();
   }
 
   @Bean

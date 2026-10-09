@@ -7,9 +7,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.Forg
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpScenario;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryScenario;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
-import com.bct.ngtpa.apiservice.application.service.message.DefaultMessageTemplateRenderer;
-import com.bct.ngtpa.apiservice.application.service.message.MessageTemplateRenderCommand;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class ForgotPasswordInitialOtpBindingSubtask005002FailFirstTest {
@@ -38,26 +35,6 @@ class ForgotPasswordInitialOtpBindingSubtask005002FailFirstTest {
     assertThat(policy.invalidatePreviousOnResend()).isTrue();
     assertThatThrownBy(() -> new ForgotPasswordInitialOtpPolicy(0, true, 300, 60, 5, 5, true))
         .isInstanceOf(IllegalArgumentException.class);
-  }
-
-  @Test
-  void rendersApprovedEnglishAndTraditionalChineseTemplates() {
-    var templates = ForgotPasswordOtpTemplates.approved();
-    var renderer = new DefaultMessageTemplateRenderer();
-    Map<String, String> variables = Map.of("code", "123456", "ttlValue", "5", "ttlUnit", "minutes");
-    assertThat(
-            renderer
-                .render(new MessageTemplateRenderCommand(templates.sms("en"), variables))
-                .renderedText())
-        .isEqualTo(
-            "Your BCT forgot password verification code is 123456. It is valid for 5 minutes.");
-    assertThat(
-            renderer
-                .render(new MessageTemplateRenderCommand(templates.sms("zh_HK"), variables))
-                .renderedText())
-        .contains("123456", "5", "minutes");
-    assertThat(templates.emailSubject("en")).isEqualTo("BCT forgot password verification code");
-    assertThat(templates.emailSubject("zh-HK")).isEqualTo("BCT 忘記密碼驗證碼");
   }
 
   // maskingMatchesLoginOutputAndRedactsSafeTypes removed: ForgotPasswordDestinationMasker
