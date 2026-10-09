@@ -152,18 +152,7 @@ class RegistrationOtpChallengeLifecycleIntegrationTest {
       return new RegistrationAuthWorkflowPolicy(
           null,
           null,
-          new OtpPolicy(
-              6,
-              true,
-              300,
-              60,
-              5,
-              true,
-              5,
-              true,
-              true,
-              "OTP {code}",
-              new OtpEmailPolicy("OTP", "OTP {code}")),
+          new OtpPolicy(6, true, 300, 60, 5, true, 5, true, true),
           null,
           null);
     }

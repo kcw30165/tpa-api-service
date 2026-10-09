@@ -185,15 +185,6 @@ public class AuthWorkflowProperties {
     private int maxResendAttempts;
     private boolean invalidatePreviousOnResend;
     private boolean resetVerifyAttemptsOnResend;
-    private String smsTemplate;
-    private final OtpEmail emailTemplate = new OtpEmail();
-  }
-
-  @Getter
-  @Setter
-  public static class OtpEmail {
-    private String subject;
-    private String body;
   }
 
   @Getter
@@ -434,13 +425,6 @@ public class AuthWorkflowProperties {
       requirePositive(
           otp.maxResendAttempts, "auth-workflows.forgot-password.otp.max-resend-attempts");
     }
-    // requireTemplate(otp.smsTemplate, "auth-workflows.forgot-password.otp.sms-template");
-    // if (otp.emailTemplate.subject == null || otp.emailTemplate.subject.isBlank()) {
-    //     throw new IllegalStateException(
-    //             "auth-workflows.forgot-password.otp.email-template.subject must not be blank");
-    // }
-    // requireTemplate(otp.emailTemplate.body,
-    // "auth-workflows.forgot-password.otp.email-template.body");
   }
 
   private void requireTemplate(String template, String property) {
