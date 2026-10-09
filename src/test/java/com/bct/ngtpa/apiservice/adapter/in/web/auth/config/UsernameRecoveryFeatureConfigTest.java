@@ -62,9 +62,6 @@ class UsernameRecoveryFeatureConfigTest {
     AuthWorkflowProperties.UsernameRecovery usernameRecovery =
         new AuthWorkflowProperties.UsernameRecovery();
     usernameRecovery.getSession().setTtlSeconds(600);
-    usernameRecovery.getTemplate().setEmailSubject("BCT username recovery");
-    usernameRecovery.getTemplate().setEmailBody("Your BCT username is {username}.");
-    usernameRecovery.getTemplate().setSmsBody("Your BCT username is {username}.");
     properties.setUsernameRecovery(usernameRecovery);
     return properties;
   }

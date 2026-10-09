@@ -24,9 +24,6 @@ class UsernameRecoveryWorkflowPropertiesTest {
     assertThat(usernameRecovery.getSession().getTtlSeconds()).isEqualTo(600);
     assertThat(usernameRecovery.getMessage()).isNotNull();
     assertThat(usernameRecovery.getMessage().getDestinationOverride()).isNotNull();
-    usernameRecovery.getTemplate().setEmailSubject("BCT username recovery");
-    usernameRecovery.getTemplate().setEmailBody("Your username is {username}.");
-    usernameRecovery.getTemplate().setSmsBody("Your username is {username}.");
 
     var properties = new AuthWorkflowProperties();
     properties.setUsernameRecovery(usernameRecovery);
@@ -37,9 +34,6 @@ class UsernameRecoveryWorkflowPropertiesTest {
   void validateUsernameRecoveryPolicyAcceptsPositiveSessionTtl() {
     var usernameRecovery = new AuthWorkflowProperties.UsernameRecovery();
     usernameRecovery.getSession().setTtlSeconds(600);
-    usernameRecovery.getTemplate().setEmailSubject("BCT username recovery");
-    usernameRecovery.getTemplate().setEmailBody("Your username is {username}.");
-    usernameRecovery.getTemplate().setSmsBody("Your username is {username}.");
 
     var properties = new AuthWorkflowProperties();
     properties.setUsernameRecovery(usernameRecovery);

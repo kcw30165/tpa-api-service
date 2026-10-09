@@ -269,15 +269,6 @@ public class AuthWorkflowProperties {
   public static class UsernameRecovery {
     private final UsernameRecoverySession session = new UsernameRecoverySession();
     private final Message message = new Message();
-    private final UsernameRecoveryTemplate template = new UsernameRecoveryTemplate();
-  }
-
-  @Getter
-  @Setter
-  public static class UsernameRecoveryTemplate {
-    private String emailSubject;
-    private String emailBody;
-    private String smsBody;
   }
 
   @Getter
@@ -445,28 +436,6 @@ public class AuthWorkflowProperties {
     if (usernameRecovery.getSession().getTtlSeconds() <= 0) {
       throw new IllegalStateException(
           "auth-workflows.username-recovery.session.ttl-seconds must be greater than zero");
-    }
-    validateUsernameRecoveryTemplate(
-        usernameRecovery.getTemplate().getEmailSubject(),
-        "auth-workflows.username-recovery.template.email-subject",
-        false);
-    validateUsernameRecoveryTemplate(
-        usernameRecovery.getTemplate().getEmailBody(),
-        "auth-workflows.username-recovery.template.email-body",
-        true);
-    validateUsernameRecoveryTemplate(
-        usernameRecovery.getTemplate().getSmsBody(),
-        "auth-workflows.username-recovery.template.sms-body",
-        true);
-  }
-
-  private void validateUsernameRecoveryTemplate(
-      String template, String property, boolean usernameRequired) {
-    if (template == null || template.isBlank()) {
-      throw new IllegalStateException(property + " must not be blank");
-    }
-    if (usernameRequired && !template.contains("{username}")) {
-      throw new IllegalStateException(property + " must contain {username}");
     }
   }
 
