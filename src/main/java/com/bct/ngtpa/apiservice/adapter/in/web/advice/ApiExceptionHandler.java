@@ -1,11 +1,13 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.advice;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.accountbalance.AccountBalanceRetrievalResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
+import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.AccountGainLossRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.FundFactSheetRetrievalException;
@@ -90,6 +92,46 @@ public class ApiExceptionHandler {
         ex,
         "APIM profile resolution failed",
         true,
+        false);
+  }
+
+  @ExceptionHandler(AccountBalanceRetrievalException.class)
+  public ResponseEntity<MutationResponse<Void>> handleAccountBalanceRetrievalException(
+      AccountBalanceRetrievalException exception, ServerWebExchange exchange) {
+    var failure = exception.normalizationFailure();
+    if (failure != null) {
+      Map<String, Object> event = new LinkedHashMap<>();
+      event.put("event", "account.balance.normalization.failed");
+      String requestId = getRequestId(exchange);
+      if (requestId != null) event.put("requestId", requestId);
+      event.put(
+          "collection",
+          switch (failure.collection()) {
+            case DISP_SRC -> "dispSrc";
+            case FUND_DTL -> "fundDtl";
+            case ACC_BAL -> "accBal";
+          });
+      event.put("rowIndex", failure.rowIndex());
+      event.put(
+          "field",
+          switch (failure.field()) {
+            case DISP_SRC -> "disp-src";
+            case SUB_DISP_SRC -> "sub-disp-src";
+            case FUND_CODE -> "fund-code";
+          });
+      event.put("reason", failure.reason().name());
+      log.error("{}", loggingSanitizer.toSafeString(event));
+    }
+    var mapped = AccountBalanceRetrievalResponsePolicy.map(exception);
+    var body = java.util.Objects.requireNonNull(mapped.getBody());
+    return buildMutationErrorResponse(
+        mapped.getStatusCode(),
+        body.status(),
+        body.errors(),
+        exchange,
+        exception,
+        exception.getMessage(),
+        exception.reason() == AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE,
         false);
   }
 
