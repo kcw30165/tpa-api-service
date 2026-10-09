@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.exception;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 public final class AccountBalanceRetrievalException extends RuntimeException {
@@ -28,7 +29,8 @@ public final class AccountBalanceRetrievalException extends RuntimeException {
   }
 
   public record NormalizationFailure(
-      Collection collection, int rowIndex, Field field, ValidationReason reason) {
+      Collection collection, int rowIndex, Field field, ValidationReason reason)
+      implements Serializable {
     public NormalizationFailure {
       Objects.requireNonNull(collection);
       Objects.requireNonNull(field);
