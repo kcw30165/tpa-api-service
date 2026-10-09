@@ -36,20 +36,18 @@ public final class FundFactSheetNormalizer {
     Objects.requireNonNull(raw, "raw must not be null");
     Set<Integer> seen = new HashSet<>();
     List<FundFactSheetRowResult> rows = new ArrayList<>(raw.rows().size());
+
     for (RawFundFactSheetRow row : raw.rows()) {
       Integer seq = row.seq();
-      if (seq == null) {
-        events.missingSeq();
+      if (!acceptSeq(seq, seen)) {
         continue;
       }
-      if (!seen.add(seq)) {
-        events.duplicateSeq();
-        continue;
-      }
+
       String nameEng = row.nameEng();
       if (nameEng == null || nameEng.isBlank()) {
         events.blankEnglishName();
       }
+
       rows.add(
           new FundFactSheetRowResult(
               seq,
@@ -58,6 +56,19 @@ public final class FundFactSheetNormalizer {
               urlValidator.validate(row.linkEng()).orElse(null),
               urlValidator.validate(row.linkChi()).orElse(null)));
     }
+
     return new FundFactSheetResult(rows);
+  }
+
+  private boolean acceptSeq(Integer seq, Set<Integer> seen) {
+    if (seq == null) {
+      events.missingSeq();
+      return false;
+    }
+    if (!seen.add(seq)) {
+      events.duplicateSeq();
+      return false;
+    }
+    return true;
   }
 }
