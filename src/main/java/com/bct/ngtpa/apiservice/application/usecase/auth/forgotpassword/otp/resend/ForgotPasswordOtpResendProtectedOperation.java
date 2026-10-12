@@ -251,7 +251,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                         context.maskedDestination(),
                         secondsUntil(now, authoritative.expiresAt())));
               }
-              int successfulResendCount = readCount(session.data().attributes());
+              int successfulResendCount = readCount(command, session.data().attributes());
               return foundation
                   .evaluate(
                       new ForgotPasswordOtpResendCommand(
@@ -285,6 +285,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                           secondsUntil(now, authoritative.expiresAt()),
                           false));
             })
+        .doOnError(cause -> logFailure(command, "eligibility", cause))
         .onErrorReturn(
             ValidatedState.invalid(ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED));
   }
@@ -643,7 +644,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                 CONTEXT_ALGORITHM, ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM)));
   }
 
-  private int readCount(Map<String, String> attributes) {
+  private int readCount(ResendForgotPasswordOtpCommand command, Map<String, String> attributes) {
     if (attributes == null) {
       return 0;
     }
@@ -655,6 +656,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
       int parsed = Integer.parseInt(value.trim());
       return Math.max(0, parsed);
     } catch (RuntimeException invalid) {
+      logFailure(command, "resend-count", invalid);
       return 0;
     }
   }

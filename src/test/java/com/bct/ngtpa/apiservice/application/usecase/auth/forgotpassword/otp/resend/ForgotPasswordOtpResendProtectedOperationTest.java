@@ -637,6 +637,59 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     assertLoggedFailure("execute");
   }
 
+  private AuthFlowSession validSessionWithResendCount(String count) {
+    return new AuthFlowSession(
+        sid,
+        AuthFlowScenario.FORGOT_PASSWORD,
+        AuthFlowStatus.OTP_SENT,
+        csrfHash,
+        "challenge-1",
+        new AuthFlowSessionData(
+            "email",
+            MASKED_DESTINATION,
+            Map.of(
+                CONTEXT_CIPHERTEXT, "ciphertext-1",
+                CONTEXT_KEY_VERSION, "kv-1",
+                CONTEXT_ALGORITHM, ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM,
+                "forgotPasswordOtpSuccessfulResendCount", count)),
+        NOW.minusSeconds(120),
+        NOW.minusSeconds(60),
+        NOW.plusSeconds(1800));
+  }
+
+  @Test
+  void challengeLookupErrorYieldsAResultAndLogsTheFailure() {
+    givenLockAcquired();
+    givenSession(validSession());
+    givenContext();
+    when(challengeState.findById(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    StepVerifier.create(newOp().execute(validCommand())).expectNextCount(1).verifyComplete();
+    assertLoggedFailure("eligibility");
+  }
+
+  @Test
+  void unparsableResendCountIsLogged() {
+    givenLockAcquired();
+    givenSession(validSessionWithResendCount("not-a-number"));
+    givenContext();
+    givenChallenge();
+    when(foundation.evaluate(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    StepVerifier.create(newOp().execute(validCommand())).expectNextCount(1).verifyComplete();
+    List<ILoggingEvent> counted =
+        logAppender.list.stream()
+            .filter(event -> event.getFormattedMessage().contains("stage=resend-count"))
+            .toList();
+    assertThat(counted).hasSize(1);
+    assertThat(counted.get(0).getLevel()).isEqualTo(Level.ERROR);
+    assertThat(counted.get(0).getThrowableProxy()).isNull();
+    assertThat(counted.get(0).getFormattedMessage())
+        .contains(
+            "event=forgot-password.resend.failed",
+            "requestId=",
+            "exceptionType=NumberFormatException")
+        .doesNotContain("not-a-number");
+  }
+
   // ----- tests: eligible -> dispatch -------------------------------------------
 
   private void givenEligible() {

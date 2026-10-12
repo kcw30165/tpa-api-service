@@ -47,10 +47,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 /** Executes DETAILS_AND_OTP after shared idempotency ownership has been acquired. */
 public final class ForgotPasswordDetailsOtpProtectedOperation {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(ForgotPasswordDetailsOtpProtectedOperation.class);
+
   private final SecureForgotPasswordOtpCommitRefGenerator references;
   private final AuthFlowSessionMutationLockPort locks;
   private final AuthFlowSessionPort sessions;
@@ -106,6 +111,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
     return locks
         .acquire(command.sessionId(), policy.lease())
         .flatMap(handle -> handle.acquired() ? locked(command, reference, handle) : failure())
+        .doOnError(cause -> logFailure(command, "execute", cause))
         .onErrorResume(ignored -> failure());
   }
 
@@ -345,6 +351,15 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
     return Mono.just(
         new ForgotPasswordDetailsOtpProtectedExecutionResult(
             ForgotPasswordDetailsOtpResult.system(), null));
+  }
+
+  private static void logFailure(
+      ForgotPasswordDetailsOtpCommand command, String stage, Throwable cause) {
+    LOGGER.error(
+        "event=forgot-password.details-otp.failed requestId={} stage={} exceptionType={}",
+        command.requestId(),
+        stage,
+        cause.getClass().getSimpleName());
   }
 
   private String hex(String value) {

@@ -6,9 +6,14 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordDetailsLookupPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.*;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 public final class ForgotPasswordUnderLockDetailsVerifier {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(ForgotPasswordUnderLockDetailsVerifier.class);
+
   private final ForgotPasswordDetailsLookupPort lookup;
 
   public ForgotPasswordUnderLockDetailsVerifier(ForgotPasswordDetailsLookupPort l) {
@@ -47,8 +52,16 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
                         r.schemeNameChi())
                     : ForgotPasswordUnderLockDetailsVerification.of(
                         ForgotPasswordDetailsStatus.BUSINESS_REJECTED))
+        .doOnError(cause -> logFailure(requestId, cause))
         .onErrorReturn(
             ForgotPasswordUnderLockDetailsVerification.of(
                 ForgotPasswordDetailsStatus.SYSTEM_FAILED));
+  }
+
+  private static void logFailure(String requestId, Throwable cause) {
+    LOGGER.error(
+        "event=forgot-password.details-otp.failed requestId={} stage=lookup exceptionType={}",
+        requestId,
+        cause.getClass().getSimpleName());
   }
 }
