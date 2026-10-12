@@ -13,7 +13,7 @@ class LoginOtpVerifyWebMapperTest {
 
   @Test
   void invalidStaysOnVerifyOtp() {
-    var r = m.toMutationResponse(new VerifyLoginOtpResult(VerifyLoginOtpStatus.INVALID, 3, false));
+    var r = m.toMutationResponse(new VerifyLoginOtpResult(VerifyLoginOtpStatus.INVALID, 3, false, java.util.List.of(), null, null));
     assertThat(r.result().nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
     assertThat(r.errors().getFirst().code()).isEqualTo("err.login.otp.invalid");
     assertThat(r.result().data().csrfToken()).isNull();
@@ -23,7 +23,7 @@ class LoginOtpVerifyWebMapperTest {
   void exhaustionUsesRestartFlowAction() {
     var r =
         m.toMutationResponse(
-            new VerifyLoginOtpResult(VerifyLoginOtpStatus.VERIFY_ATTEMPTS_EXCEEDED, 0, true));
+            new VerifyLoginOtpResult(VerifyLoginOtpStatus.VERIFY_ATTEMPTS_EXCEEDED, 0, true, java.util.List.of(), null, null));
     assertThat(r.result().nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
     assertThat(r.result().data().actions().getFirst().code()).isEqualTo("RESTART_FLOW");
     assertThat(r.result().data().csrfToken()).isNull();
@@ -33,7 +33,7 @@ class LoginOtpVerifyWebMapperTest {
   void loginOtpActionsKeepCompactCodeOnlyJsonShape() throws Exception {
     var response =
         m.toMutationResponse(
-            new VerifyLoginOtpResult(VerifyLoginOtpStatus.VERIFY_ATTEMPTS_EXCEEDED, 0, true));
+            new VerifyLoginOtpResult(VerifyLoginOtpStatus.VERIFY_ATTEMPTS_EXCEEDED, 0, true, java.util.List.of(), null, null));
 
     var json = objectMapper.writeValueAsString(response);
 

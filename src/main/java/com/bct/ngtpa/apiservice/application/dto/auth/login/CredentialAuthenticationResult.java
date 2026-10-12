@@ -20,29 +20,13 @@ public record CredentialAuthenticationResult(
   }
 
   /**
-   * Compatibility constructor for existing call sites predating the addition of {@code
-   * trustCode} / {@code schemeName} / {@code schemeNameChi} (modeled ahead of the downstream
-   * TAS/APIM change; see
-   * docs/design/10-template-service/template-service-implementation-plan.md section D.11.1). All
-   * three new fields default to {@code null}.
+   * Creates the result of a failed credential check: no authenticated user, role, destinations or
+   * trust and scheme fields, only the failure status and the downstream fail count.
    */
-  public CredentialAuthenticationResult(
-      CredentialAuthenticationStatus status,
-      String normalizedUsername,
-      String userRole,
-      Integer failCount,
-      List<LoginCredentialDestination> destinations,
-      String downstreamCode) {
-    this(
-        status,
-        normalizedUsername,
-        userRole,
-        failCount,
-        destinations,
-        downstreamCode,
-        null,
-        null,
-        null);
+  public static CredentialAuthenticationResult failure(
+      CredentialAuthenticationStatus status, Integer failCount) {
+    return new CredentialAuthenticationResult(
+        status, null, null, failCount, List.of(), null, null, null, null);
   }
 
   @Override

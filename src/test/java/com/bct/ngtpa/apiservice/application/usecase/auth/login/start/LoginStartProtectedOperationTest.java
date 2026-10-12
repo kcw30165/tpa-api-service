@@ -241,13 +241,16 @@ class LoginStartProtectedOperationTest {
         List.of(
             new LoginCredentialDestination("email", "first@example.com"),
             new LoginCredentialDestination("mobile", "91234567")),
+        null,
+        null,
+        null,
         null);
   }
 
   private CredentialAuthenticationResult result(
       CredentialAuthenticationStatus status, Integer failCount) {
     return new CredentialAuthenticationResult(
-        status, "member01", "role_user", failCount, List.of(), null);
+        status, "member01", "role_user", failCount, List.of(), null, null, null, null);
   }
 
   private LoginPreAuthContext context() {
@@ -257,6 +260,6 @@ class LoginStartProtectedOperationTest {
         new LoginPreAuthDestination("dst_first", "email", "first@example.com", "f***@example.com"));
     destinations.put(
         "dst_second", new LoginPreAuthDestination("dst_second", "sms", "91234567", "****4567"));
-    return new LoginPreAuthContext("member01", "role_user", destinations, NOW, "v1");
+    return new LoginPreAuthContext("member01", "role_user", destinations, NOW, "v1", null, null, null);
   }
 }

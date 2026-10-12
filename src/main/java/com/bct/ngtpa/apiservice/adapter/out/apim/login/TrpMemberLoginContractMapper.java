@@ -70,7 +70,7 @@ public final class TrpMemberLoginContractMapper {
     if (status == null || status == CredentialAuthenticationStatus.AUTHENTICATED) {
       throw new IllegalArgumentException("Credential failure status is required");
     }
-    return new CredentialAuthenticationResult(status, null, null, failCount, List.of(), null);
+    return CredentialAuthenticationResult.failure(status, failCount);
   }
 
   private String required(String value, String field) {

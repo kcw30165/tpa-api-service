@@ -485,7 +485,10 @@ class LoginOtpSendServiceTest {
             "dst_opaque",
             new LoginPreAuthDestination("dst_opaque", "mobile", "91234567", "****4567")),
         NOW.minusSeconds(60),
-        "v1");
+        "v1",
+        null,
+        null,
+        null);
   }
 
   private abstract static class StubOtpPort implements OtpChallengePort {

@@ -39,7 +39,10 @@ class TrpMemberLoginContractMapperTest {
             0,
             List.of(
                 new TrpMemberLoginApimOtpItem("email", "member@example.com"),
-                new TrpMemberLoginApimOtpItem("mobile", "91234567")));
+                new TrpMemberLoginApimOtpItem("mobile", "91234567")),
+            null,
+            null,
+            null);
 
     var result = mapper.toAuthenticated("normalized.member", item);
 
@@ -84,7 +87,10 @@ class TrpMemberLoginContractMapperTest {
             true,
             "role_user_mbr",
             0,
-            List.of(new TrpMemberLoginApimOtpItem("email", "member@example.com")));
+            List.of(new TrpMemberLoginApimOtpItem("email", "member@example.com")),
+            null,
+            null,
+            null);
 
     var result = mapper.toAuthenticated("normalized.member", item);
 
@@ -100,7 +106,7 @@ class TrpMemberLoginContractMapperTest {
                 mapper.toAuthenticated(
                     "member",
                     new TrpMemberLoginApimDataItem(
-                        true, null, 0, List.of(new TrpMemberLoginApimOtpItem("sms", "91234567")))))
+                        true, null, 0, List.of(new TrpMemberLoginApimOtpItem("sms", "91234567")), null, null, null)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("channel");
 
@@ -114,7 +120,10 @@ class TrpMemberLoginContractMapperTest {
                         0,
                         List.of(
                             new TrpMemberLoginApimOtpItem("email", "member@example.com"),
-                            new TrpMemberLoginApimOtpItem("email", "member@example.com")))))
+                            new TrpMemberLoginApimOtpItem("email", "member@example.com")),
+                        null,
+                        null,
+                        null)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("duplicate");
 
@@ -123,7 +132,7 @@ class TrpMemberLoginContractMapperTest {
                 mapper.toAuthenticated(
                     "member",
                     new TrpMemberLoginApimDataItem(
-                        true, null, 0, List.of(new TrpMemberLoginApimOtpItem("email", " ")))))
+                        true, null, 0, List.of(new TrpMemberLoginApimOtpItem("email", " ")), null, null, null)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("destination");
   }

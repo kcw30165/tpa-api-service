@@ -45,7 +45,7 @@ class LoginOtpResendServiceTest {
             c ->
                 Mono.just(
                     LoginProtectedAuthFlowContextResult.valid(
-                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1"),
+                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1", null, null, null),
                             "old",
                         new LoginPreAuthDestination(
                                 "dst_selected", "mobile", "91234567", "****4567"),
@@ -87,7 +87,7 @@ class LoginOtpResendServiceTest {
             c ->
                 Mono.just(
                     LoginProtectedAuthFlowContextResult.valid(
-                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1"),
+                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1", null, null, null),
                         "old",
                         new LoginPreAuthDestination(
                             "dst_selected", "email", "member@example.com", "m***@example.com"),
@@ -142,7 +142,7 @@ class LoginOtpResendServiceTest {
             c ->
                 Mono.just(
                     LoginProtectedAuthFlowContextResult.valid(
-                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1"),
+                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1", null, null, null),
                         "old",
                         new LoginPreAuthDestination(
                             "dst_selected", "mobile", "91234567", "****4567"),
@@ -193,7 +193,7 @@ class LoginOtpResendServiceTest {
             c ->
                 Mono.just(
                     LoginProtectedAuthFlowContextResult.valid(
-                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1"),
+                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1", null, null, null),
                         "old",
                         new LoginPreAuthDestination(
                             "dst_selected", "email", "member@example.com", "m***@example.com"),
@@ -292,7 +292,7 @@ class LoginOtpResendServiceTest {
             c ->
                 Mono.just(
                     LoginProtectedAuthFlowContextResult.valid(
-                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1"),
+                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1", null, null, null),
                             "old",
                         new LoginPreAuthDestination(
                                 "dst_selected", "mobile", "91234567", "****4567"),

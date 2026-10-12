@@ -72,7 +72,10 @@ class LoginOtpSuccessAccountContinuationTest {
               com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR.name(),
               Map.of(),
               Instant.parse("2026-07-20T00:00:00Z"),
-              "v1");
+              "v1",
+              null,
+              null,
+              null);
       LoginProtectedAuthFlowContextLoader loader =
           c ->
               Mono.just(

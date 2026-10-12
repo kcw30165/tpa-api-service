@@ -25,30 +25,6 @@ public record LoginPreAuthContext(
     Objects.requireNonNull(workflowVersion);
   }
 
-  /**
-   * Compatibility constructor for existing call sites predating the addition of {@code
-   * trustCode} / {@code schemeName} / {@code schemeNameChi} (modeled ahead of the downstream
-   * TAS/APIM change; see
-   * docs/design/10-template-service/template-service-implementation-plan.md section D.11.1). All
-   * three new fields default to {@code null}.
-   */
-  public LoginPreAuthContext(
-      String normalizedUsername,
-      String userRole,
-      Map<String, LoginPreAuthDestination> destinationsById,
-      Instant credentialVerifiedAt,
-      String workflowVersion) {
-    this(
-        normalizedUsername,
-        userRole,
-        destinationsById,
-        credentialVerifiedAt,
-        workflowVersion,
-        null,
-        null,
-        null);
-  }
-
   @Override
   public String toString() {
     return "LoginPreAuthContext[normalizedUsername=<redacted>, userRole="
