@@ -122,7 +122,7 @@ class EstablishAuthenticatedLoginSessionServiceTest {
             "OE",
             null,
             null);
-    return new EstablishAuthenticatedLoginSessionCommand(
+    return EstablishAuthenticatedLoginSessionCommandFixture.withTestBoundary(
         AFS,
         new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
         List.of(account),

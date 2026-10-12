@@ -17,7 +17,7 @@ class EstablishAuthenticatedLoginSessionContractTest {
   @Test
   void commandCarriesVerifiedActorAccountsPreAuthIdentityAndCsrfHash() {
     var command =
-        new EstablishAuthenticatedLoginSessionCommand(
+        EstablishAuthenticatedLoginSessionCommandFixture.withTestBoundary(
             new AuthFlowSessionId("afs_opaque"),
             new ActorContext("member01", ActorUserRole.ROLE_USER_MBR),
             List.of(account()),
@@ -34,7 +34,7 @@ class EstablishAuthenticatedLoginSessionContractTest {
   void commandRejectsMissingActorAccountsAndCsrfHash() {
     assertThatThrownBy(
             () ->
-                new EstablishAuthenticatedLoginSessionCommand(
+                EstablishAuthenticatedLoginSessionCommandFixture.withTestBoundary(
                     new AuthFlowSessionId("afs_opaque"),
                     null,
                     List.of(account()),
@@ -43,7 +43,7 @@ class EstablishAuthenticatedLoginSessionContractTest {
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(
             () ->
-                new EstablishAuthenticatedLoginSessionCommand(
+                EstablishAuthenticatedLoginSessionCommandFixture.withTestBoundary(
                     new AuthFlowSessionId("afs_opaque"),
                     new ActorContext("member01", ActorUserRole.ROLE_USER_MBR),
                     List.of(),
@@ -52,7 +52,7 @@ class EstablishAuthenticatedLoginSessionContractTest {
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
             () ->
-                new EstablishAuthenticatedLoginSessionCommand(
+                EstablishAuthenticatedLoginSessionCommandFixture.withTestBoundary(
                     new AuthFlowSessionId("afs_opaque"),
                     new ActorContext("member01", ActorUserRole.ROLE_USER_MBR),
                     List.of(account()),

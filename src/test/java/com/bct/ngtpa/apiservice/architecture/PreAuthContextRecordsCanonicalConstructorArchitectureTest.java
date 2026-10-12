@@ -45,7 +45,6 @@ class PreAuthContextRecordsCanonicalConstructorArchitectureTest {
 
   private static final Set<String> KNOWN_REMAINING =
       new TreeSet<>(List.of(
-              "EstablishAuthenticatedLoginSessionCommand:5",
               "RegistrationLookupAccount:4",
               "RegistrationOtpResendResponse:4",
               "RegistrationProtectedAuthFlowContextCommand:5",
