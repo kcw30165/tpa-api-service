@@ -60,9 +60,9 @@ smoke test before each stage transition, per standing convention), commit.
 
 | Stage | Work | Status |
 |---|---|---|
-| III-1 | Remove the four old scattered config blocks (`auth-workflows.registration.otp.*`, `auth-workflows.login.otp.*`, `auth-workflows.username-recovery.template.*`, and the orphaned `auth-workflows.forgot-password.otp.localized-template.*` node) | PENDING |
-| III-2 | Remove `ForgotPasswordOtpTemplates` Java class | PENDING |
-| III-3 | Remove the duplicated `ttlUnit()` helpers in `ForgotPasswordDetailsOtpProtectedOperation` / `ForgotPasswordOtpResendProtectedOperation` | PENDING |
+| III-1 | Remove the four old scattered config blocks (`auth-workflows.registration.otp.*`, `auth-workflows.login.otp.*`, `auth-workflows.username-recovery.template.*`, and the orphaned `auth-workflows.forgot-password.otp.localized-template.*` node) | DONE |
+| III-2 | Remove `ForgotPasswordOtpTemplates` Java class | DONE |
+| III-3 | Remove the duplicated `ttlUnit()` helpers in `ForgotPasswordDetailsOtpProtectedOperation` / `ForgotPasswordOtpResendProtectedOperation` | DONE |
 
 Cleanup is deliberately deferred until **all four** workflows are
 migrated — not performed per-workflow — so that no workflow is left
@@ -89,7 +89,7 @@ from the registry. Stage II-3 (Login) is DONE: decisions D8 to D11 are resolved 
 all of its sub-stages (II-3.0, II-3.a, II-3.a2, II-3.b0, II-3.b, II-3.c, II-3.d and II-3.e) are
 DONE. The stage gate is met on the final code commit 5eafe73d: a passing full `mvn test` and an
 application startup smoke test with no bean or configuration errors, both evidenced (Appendix D.13).
-Stage II-4 (Forgot Password) is DONE (Appendix E.11, closed 2026-10-09). Phase III is tracked in its own table, which is the authority for the status of its stages. Decisions and open items for II-1 are in
+Stage II-4 (Forgot Password) is DONE (Appendix E.11, closed 2026-10-09). Phase III cleanup: III-1 (f3dbea25, 29d6fdeb, 0be76d9c, 9813d607) and III-2 (a82441ec) are DONE. III-3 (the duplicated ttlUnit() helpers) is DONE: the two operations no longer declare a ttlUnit method. Decisions and open items for II-1 are in
 Appendix A.2. Work that is deliberately outside this workstream is listed in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
