@@ -97,10 +97,8 @@ class AuthUsernameRecoveryControllerTest {
         controller(
             new RecordingStartUseCase(
                 Mono.just(
-                    new UsernameRecoveryStartResult(
+                    UsernameRecoveryStartResult.withoutSession(
                         UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND,
-                        null,
-                        null,
                         List.of()))),
             neverRequest(),
             neverCancel());
@@ -128,10 +126,8 @@ class AuthUsernameRecoveryControllerTest {
     var start =
         new RecordingStartUseCase(
             Mono.just(
-                new UsernameRecoveryStartResult(
+                UsernameRecoveryStartResult.withoutSession(
                     UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-                    null,
-                    null,
                     List.of(new UsernameRecoverySchemeProjection(null, "DB", "DBA", false)))));
     var controller = controller(start, neverRequest(), neverCancel());
     var request =

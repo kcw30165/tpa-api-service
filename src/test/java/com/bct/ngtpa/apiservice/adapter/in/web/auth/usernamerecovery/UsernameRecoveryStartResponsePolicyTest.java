@@ -46,6 +46,7 @@ class UsernameRecoveryStartResponsePolicyTest {
     var result =
         new UsernameRecoveryStartResult(
             Outcome.SESSION_CREATED,
+            null,
             "csrf-value",
             600,
             List.of(
@@ -72,7 +73,7 @@ class UsernameRecoveryStartResponsePolicyTest {
 
   @Test
   void memberNotFoundMapsToBusinessRejectedRestartFlowWithVerificationFailedError() {
-    var result = new UsernameRecoveryStartResult(Outcome.MEMBER_NOT_FOUND, null, null, List.of());
+    var result = UsernameRecoveryStartResult.withoutSession(Outcome.MEMBER_NOT_FOUND, List.of());
 
     var responsePolicy = policy.toPolicy(result, mapper);
     var body = responsePolicy.body();
@@ -101,10 +102,8 @@ class UsernameRecoveryStartResponsePolicyTest {
   @Test
   void zeroRegisteredMapsToBusinessRejectedRestartFlowWithRegistrationReminderAndSchemesOnlyData() {
     var result =
-        new UsernameRecoveryStartResult(
+        UsernameRecoveryStartResult.withoutSession(
             Outcome.ZERO_REGISTERED,
-            null,
-            null,
             List.of(new UsernameRecoverySchemeProjection(null, "DB", "DBA", false)));
 
     var responsePolicy = policy.toPolicy(result, mapper);
@@ -261,6 +260,7 @@ class UsernameRecoveryStartResponsePolicyTest {
   private static UsernameRecoveryStartResult sessionCreatedResult() {
     return new UsernameRecoveryStartResult(
         Outcome.SESSION_CREATED,
+        null,
         "csrf-value",
         600,
         List.of(
@@ -269,14 +269,12 @@ class UsernameRecoveryStartResponsePolicyTest {
   }
 
   private static UsernameRecoveryStartResult memberNotFoundResult() {
-    return new UsernameRecoveryStartResult(Outcome.MEMBER_NOT_FOUND, null, null, List.of());
+    return UsernameRecoveryStartResult.withoutSession(Outcome.MEMBER_NOT_FOUND, List.of());
   }
 
   private static UsernameRecoveryStartResult zeroRegisteredResult() {
-    return new UsernameRecoveryStartResult(
+    return UsernameRecoveryStartResult.withoutSession(
         Outcome.ZERO_REGISTERED,
-        null,
-        null,
         List.of(new UsernameRecoverySchemeProjection(null, "DB", "DBA", false)));
   }
 

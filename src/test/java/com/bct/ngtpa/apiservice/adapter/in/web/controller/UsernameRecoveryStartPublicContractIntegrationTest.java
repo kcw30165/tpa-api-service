@@ -133,8 +133,8 @@ class UsernameRecoveryStartPublicContractIntegrationTest {
     StartUsernameRecoveryUseCase start =
         command ->
             Mono.just(
-                new UsernameRecoveryStartResult(
-                    UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND, null, null, List.of()));
+                UsernameRecoveryStartResult.withoutSession(
+                    UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND, List.of()));
 
     client(start)
         .post()
@@ -170,10 +170,8 @@ class UsernameRecoveryStartPublicContractIntegrationTest {
     StartUsernameRecoveryUseCase start =
         command ->
             Mono.just(
-                new UsernameRecoveryStartResult(
+                UsernameRecoveryStartResult.withoutSession(
                     UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-                    null,
-                    null,
                     List.of(new UsernameRecoverySchemeProjection(null, "DB", "DBA", false))));
 
     client(start)

@@ -96,6 +96,7 @@ class UsernameRecoveryStartWebMapperTest {
     var result =
         new UsernameRecoveryStartResult(
             UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
+            null,
             "csrf-value",
             600,
             List.of(
@@ -127,8 +128,8 @@ class UsernameRecoveryStartWebMapperTest {
   @Test
   void memberNotFoundProjectsRestartFlowWithNullData() {
     var result =
-        new UsernameRecoveryStartResult(
-            UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND, null, null, List.of());
+        UsernameRecoveryStartResult.withoutSession(
+            UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND, List.of());
 
     var response = mapper.toResult(result);
 
@@ -139,10 +140,8 @@ class UsernameRecoveryStartWebMapperTest {
   @Test
   void zeroRegisteredProjectsRestartFlowWithNullData() {
     var result =
-        new UsernameRecoveryStartResult(
+        UsernameRecoveryStartResult.withoutSession(
             UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-            null,
-            null,
             List.of(new UsernameRecoverySchemeProjection(null, "DB", "DBA", false)));
 
     var response = mapper.toResult(result);

@@ -56,8 +56,8 @@ class UsernameRecoveryStartExecutionBridgeTest {
   }
 
   private static UsernameRecoveryStartResult memberNotFound() {
-    return new UsernameRecoveryStartResult(
-        UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND, null, null, List.of());
+    return UsernameRecoveryStartResult.withoutSession(
+        UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND, List.of());
   }
 
   // ----- toTransientResponse(): guard --------------------------------------------

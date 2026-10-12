@@ -64,7 +64,7 @@ class TrpSearchMemberApimDataItemTest {
   void toStringNeverDisclosesSensitiveValues() {
     var item =
         new TrpSearchMemberApimDataItem(
-            "DB", "DBA", "OE", "00000008802", "5", "", "15/07/1969", true, "db02");
+            "DB", "DBA", "OE", null, null, "00000008802", "5", "", "15/07/1969", true, "db02");
     assertThat(item.toString())
         .doesNotContain("DB", "DBA", "OE", "00000008802", "5", "15/07/1969", "db02");
   }
@@ -81,10 +81,10 @@ class TrpSearchMemberApimDataItemTest {
   }
 
   @Test
-  void compatibilityConstructorDefaultsNewFieldsToNull() {
+  void canonicalConstructorAllowsNullSchemeNameFields() {
     var item =
         new TrpSearchMemberApimDataItem(
-            "DB", "DBA", "MPF", "0001", "0002", "A", "", true, "user-1");
+            "DB", "DBA", "MPF", null, null, "0001", "0002", "A", "", true, "user-1");
     assertThat(item.schemeName()).isNull();
     assertThat(item.schemeNameChi()).isNull();
   }

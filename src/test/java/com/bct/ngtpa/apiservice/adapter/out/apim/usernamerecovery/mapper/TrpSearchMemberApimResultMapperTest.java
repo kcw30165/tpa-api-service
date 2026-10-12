@@ -186,6 +186,6 @@ class TrpSearchMemberApimResultMapperTest {
   private static TrpSearchMemberApimDataItem item(
       String env, String trustCode, Boolean registered, String custId, String termCompleteDate) {
     return new TrpSearchMemberApimDataItem(
-        env, trustCode, "OE", "00000008802", "5", "", termCompleteDate, registered, custId);
+        env, trustCode, "OE", null, null, "00000008802", "5", "", termCompleteDate, registered, custId);
   }
 }

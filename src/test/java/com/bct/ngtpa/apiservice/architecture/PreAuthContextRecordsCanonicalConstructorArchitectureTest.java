@@ -54,9 +54,7 @@ class PreAuthContextRecordsCanonicalConstructorArchitectureTest {
               "StartRegistrationCommand:10",
               "StartRegistrationError:2",
               "TrpChkCustIdApimDataItem:2",
-              "TrpSearchMemberApimDataItem:4",
-              "TrpSearchMemberApimDataItem:9",
-              "UsernameRecoveryStartResult:4"));
+              "TrpSearchMemberApimDataItem:4"));
 
   @Test
   void thePreAuthPackagesAreScannedAndTheirRecordsLoad() throws IOException {

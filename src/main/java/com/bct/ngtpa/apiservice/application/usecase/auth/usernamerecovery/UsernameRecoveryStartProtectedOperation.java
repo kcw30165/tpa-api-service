@@ -120,10 +120,8 @@ public final class UsernameRecoveryStartProtectedOperation {
                       handleMatched(command, validation, lookupResult.candidates(), now);
                   case NOT_FOUND ->
                       Mono.just(
-                          new UsernameRecoveryStartResult(
+                          UsernameRecoveryStartResult.withoutSession(
                               UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND,
-                              null,
-                              null,
                               List.of()));
                   case CONTRACT_INVALID, UNAVAILABLE, UNKNOWN_OUTCOME ->
                       Mono.error(UsernameRecoveryStartException.systemFailure());
@@ -144,8 +142,8 @@ public final class UsernameRecoveryStartProtectedOperation {
                           null, candidate.accountEnv(), candidate.trustCode(), false))
               .toList();
       return Mono.just(
-          new UsernameRecoveryStartResult(
-              UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED, null, null, projections));
+          UsernameRecoveryStartResult.withoutSession(
+              UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED, projections));
     }
     return createRevisioned(command, validation, candidates, now);
   }

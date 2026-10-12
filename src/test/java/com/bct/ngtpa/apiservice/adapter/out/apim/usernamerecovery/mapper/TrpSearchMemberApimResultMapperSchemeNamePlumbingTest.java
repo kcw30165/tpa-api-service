@@ -48,7 +48,7 @@ class TrpSearchMemberApimResultMapperSchemeNamePlumbingTest {
   @Test
   void mapsAbsentSchemeNameFieldsToNull() {
     TrpSearchMemberApimDataItem item =
-        new TrpSearchMemberApimDataItem("DB", "DBA", "OE", "0001", "2", "", "", true, "user-1");
+        new TrpSearchMemberApimDataItem("DB", "DBA", "OE", null, null, "0001", "2", "", "", true, "user-1");
 
     UsernameRecoveryLookupResult result = mapper.toResult(null, List.of(item));
 

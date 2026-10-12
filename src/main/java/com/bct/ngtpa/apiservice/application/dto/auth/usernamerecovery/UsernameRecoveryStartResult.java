@@ -22,8 +22,9 @@ import java.util.Objects;
  * #toString()} never discloses the CSRF token or the auth-flow session id.
  *
  * <p>The {@code authFlowSessionId} component (Repair 024A) is server/transport-only: it never
- * enters the public projection or the replay snapshots, and the four-argument convenience
- * constructor keeps it null. The SESSION_CREATED non-null session-id invariant is enforced at the
+ * enters the public projection or the replay snapshots, and a result
+ * without a session ({@link #withoutSession}) leaves it null.
+ * The SESSION_CREATED non-null session-id invariant is enforced at the
  * service construction site ({@code UsernameRecoveryStartProtectedOperation.sessionCreated}), not
  * in this record constructor.
  */
@@ -95,12 +96,15 @@ public record UsernameRecoveryStartResult(
     }
   }
 
-  public UsernameRecoveryStartResult(
-      Outcome outcome,
-      String csrfToken,
-      Integer expiresInSeconds,
-      List<UsernameRecoverySchemeProjection> schemes) {
-    this(outcome, null, csrfToken, expiresInSeconds, schemes);
+  /**
+   * Creates a result that carries no session: the outcome and the scheme projections only, with no
+   * auth-flow session id, CSRF token or expiry. That is the shape of {@code MEMBER_NOT_FOUND} and
+   * {@code ZERO_REGISTERED}; the constructor still rejects a {@code SESSION_CREATED} outcome built
+   * this way, because it requires session data.
+   */
+  public static UsernameRecoveryStartResult withoutSession(
+      Outcome outcome, List<UsernameRecoverySchemeProjection> schemes) {
+    return new UsernameRecoveryStartResult(outcome, null, null, null, schemes);
   }
 
   @Override
