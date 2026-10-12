@@ -243,6 +243,7 @@ TRPGetCountryList
 ### Notes
 
 - `TRPRegMember` and `TRPResetPassword` are already approved as `ACCOUNT_ENV`.
+- Superseded (2026-10-12): `TRPResetPassword` is `NON_ACCOUNT` in the current code, with a `null` `accountEnv` in its credential context, and the Forgot Password pre-auth flow carries no `accountEnv` (commit `b77a7ad8`). `TRPRegMember` is unchanged.
 - Registration lineage is complete through protected `UsernameCheckState`.
 - Forgot Password is currently missing propagation of `TRPSearchRegedMember.env` into protected state and then into the resolver context for `TRPResetPassword`; this is an implementation gap.
 - Authenticated operations use `PortalAccessContext.actor.actorUserRole` and `PortalAccessContext.account.accountEnv`.

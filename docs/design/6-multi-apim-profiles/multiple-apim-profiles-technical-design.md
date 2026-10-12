@@ -572,6 +572,8 @@ request.env == selectedTrust.accountEnv == resolutionContext.accountEnv
 
 ## 12. Forgot Password Design
 
+> **Superseded (2026-10-12).** This section designed adding `accountEnv` to `ForgotPasswordAuthFlowContext` and routing `TRPResetPassword` as `ACCOUNT_ENV`. That design was reversed. In the current code `TRPResetPassword` uses `ApimDatabaseScope.NON_ACCOUNT` with a credential context whose `accountEnv` is `null`, and `accountEnv` does not exist in the Forgot Password pre-auth flow (commit `b77a7ad8`, guarded by `ForgotPasswordPreAuthNoAccountEnvArchitectureTest`). Registration still carries `accountEnv`. Read the text below as the historical design.
+
 ### 12.1 Current gap
 
 Current code receives `TRPSearchRegedMember.env` but does not expose it from the APIM mapper into the application result and does not store it in `ForgotPasswordAuthFlowContext`.
@@ -814,6 +816,8 @@ Before deploying code:
 The approved enum introduces no compatibility aliases.
 
 The discovery found no production persisted role field in the reviewed session boundaries. If deployment verification finds live persisted roles outside those boundaries, invalidate affected sessions rather than silently accepting historical values.
+
+> Superseded (2026-10-12): see the note under section 12. The Forgot Password context no longer carries `accountEnv`.
 
 Forgot Password protected context changes require version-aware handling:
 

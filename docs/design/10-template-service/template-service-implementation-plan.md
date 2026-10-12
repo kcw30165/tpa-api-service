@@ -89,7 +89,7 @@ from the registry. Stage II-3 (Login) is DONE: decisions D8 to D11 are resolved 
 all of its sub-stages (II-3.0, II-3.a, II-3.a2, II-3.b0, II-3.b, II-3.c, II-3.d and II-3.e) are
 DONE. The stage gate is met on the final code commit 5eafe73d: a passing full `mvn test` and an
 application startup smoke test with no bean or configuration errors, both evidenced (Appendix D.13).
-Stage II-4 (Forgot Password) and Phase III remain PENDING. Decisions and open items for II-1 are in
+Stage II-4 (Forgot Password) is DONE (Appendix E.11, closed 2026-10-09). Phase III is tracked in its own table, which is the authority for the status of its stages. Decisions and open items for II-1 are in
 Appendix A.2. Work that is deliberately outside this workstream is listed in Appendix B.
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)

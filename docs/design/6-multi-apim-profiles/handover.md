@@ -228,6 +228,8 @@ This section supersedes earlier intermediate status statements where they confli
 
 ### Stage 006 Forgot Password Routing Final Status
 
+> **Superseded (2026-10-12).** The routing and the `accountEnv` lineage below were reversed after this stage. In the current code `TRPResetPassword` uses `ApimDatabaseScope.NON_ACCOUNT` with a credential context whose `accountEnv` is `null`, and `accountEnv` does not exist in the Forgot Password pre-auth flow (commit `b77a7ad8`, guarded by `ForgotPasswordPreAuthNoAccountEnvArchitectureTest`). Registration still carries `accountEnv`. Registration is unchanged. This section is kept as the record of what the stage delivered.
+
 - Status: `IMPLEMENTATION_COMPLETE_PENDING_EXTERNAL_INTEGRATION`.
 - Forgot Password APIM routing was completed and committed before Stage 007 began.
 - `TRPSearchRegedMember` uses explicit `ApimDatabaseScope.NON_ACCOUNT` routing with `ActorUserRole.ROLE_USER` and `ApimRetryEligibility.SAFE_BUSINESS_CALL`.
