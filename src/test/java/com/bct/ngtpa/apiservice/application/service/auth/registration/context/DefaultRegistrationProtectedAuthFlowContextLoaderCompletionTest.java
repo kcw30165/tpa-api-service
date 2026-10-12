@@ -62,7 +62,7 @@ class DefaultRegistrationProtectedAuthFlowContextLoaderCompletionTest {
   void usernameVerifiedSessionRemainsInvalidForLegacyOtpCaller() {
     var loader = loader(session(AuthFlowStatus.USERNAME_VERIFIED), context());
     var legacyOtpCommand =
-        new RegistrationProtectedAuthFlowContextCommand(
+        RegistrationProtectedAuthFlowContextCommand.forOtpSent(
             SESSION_ID, "csrf-safe", null, null, "req-safe");
 
     StepVerifier.create(loader.load(legacyOtpCommand))

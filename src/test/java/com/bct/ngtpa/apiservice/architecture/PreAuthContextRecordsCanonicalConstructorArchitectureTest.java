@@ -44,17 +44,7 @@ class PreAuthContextRecordsCanonicalConstructorArchitectureTest {
   private static final int MINIMUM_RECORDS = 304;
 
   private static final Set<String> KNOWN_REMAINING =
-      new TreeSet<>(List.of(
-              "RegistrationLookupAccount:4",
-              "RegistrationOtpResendResponse:4",
-              "RegistrationProtectedAuthFlowContextCommand:5",
-              "ResendRegistrationOtpResult:10",
-              "SelectedTrust:5",
-              "SimpleWebError:2",
-              "StartRegistrationCommand:10",
-              "StartRegistrationError:2",
-              "TrpChkCustIdApimDataItem:2",
-              "TrpSearchMemberApimDataItem:4"));
+      new TreeSet<>(List.of());
 
   @Test
   void thePreAuthPackagesAreScannedAndTheirRecordsLoad() throws IOException {

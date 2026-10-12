@@ -328,7 +328,7 @@ class RegistrationMissingDefinitionStartCaptchaGateOnIntegrationTest {
       return Mono.just(
           new RegistrationLookupResult(
               RegistrationLookupStatus.ELIGIBLE,
-              List.of(new RegistrationLookupAccount("member@example.com", "49998888", "OI", "JPM")),
+              List.of(new RegistrationLookupAccount("OI", "JPM", null, null, null, null, null, Boolean.FALSE, null)),
               null));
     }
   }

@@ -12,7 +12,7 @@ class RegistrationProtectedAuthFlowContextCommandStatusTest {
   @Test
   void legacyConstructorRemainsRestrictedToOtpSent() {
     var command =
-        new RegistrationProtectedAuthFlowContextCommand(
+        RegistrationProtectedAuthFlowContextCommand.forOtpSent(
             new AuthFlowSessionId("afs_safe"), "csrf-safe", null, null, "req-safe");
 
     assertThat(command.acceptedStatuses()).containsExactly(AuthFlowStatus.OTP_SENT);

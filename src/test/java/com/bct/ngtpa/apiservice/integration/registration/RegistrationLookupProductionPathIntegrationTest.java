@@ -155,7 +155,7 @@ class RegistrationLookupProductionPathIntegrationTest {
   }
 
   private static TrpSearchMemberApimDataItem item(String e, String m, String env, String trust) {
-    return new TrpSearchMemberApimDataItem(e, m, env, trust);
+    return new TrpSearchMemberApimDataItem(env, trust, null, null, null, null, null, Boolean.FALSE, null);
   }
 
   private static ApimResponseEnvelope<TrpSearchMemberApimDataItem> envelope(

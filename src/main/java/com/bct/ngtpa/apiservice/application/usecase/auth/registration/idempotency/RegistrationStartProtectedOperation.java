@@ -104,7 +104,7 @@ public final class RegistrationStartProtectedOperation {
               null,
               List.of(),
               validation.errors().stream()
-                  .map(e -> new StartRegistrationError(e.errorKey(), e.target()))
+                  .map(e -> StartRegistrationError.withoutMessage(e.errorKey(), e.target()))
                   .toList(),
               RegistrationIdempotencyStartOutcome.STARTED,
               null));
@@ -311,7 +311,7 @@ public final class RegistrationStartProtectedOperation {
         null,
         null,
         List.of(),
-        List.of(new StartRegistrationError(key, target)),
+        List.of(StartRegistrationError.withoutMessage(key, target)),
         RegistrationIdempotencyStartOutcome.STARTED,
         null);
   }

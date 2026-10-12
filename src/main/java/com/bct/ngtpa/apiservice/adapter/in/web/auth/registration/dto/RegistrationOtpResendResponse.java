@@ -6,14 +6,6 @@ public record RegistrationOtpResendResponse(
     Integer resendCooldownSeconds,
     Integer remainingResendAttempts,
     Integer retryAfterSeconds) {
-  public RegistrationOtpResendResponse(
-      String maskedDestination,
-      Integer expiresInSeconds,
-      Integer resendCooldownSeconds,
-      Integer remainingResendAttempts) {
-    this(maskedDestination, expiresInSeconds, resendCooldownSeconds, remainingResendAttempts, null);
-  }
-
   @Override
   public String toString() {
     return "RegistrationOtpResendResponse[maskedDestination="

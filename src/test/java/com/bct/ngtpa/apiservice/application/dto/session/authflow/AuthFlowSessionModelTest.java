@@ -114,7 +114,7 @@ class AuthFlowSessionModelTest {
     var checkedAt = Instant.parse("2026-06-29T00:05:00Z");
     var state =
         new UsernameCheckState(
-            new SelectedTrust("TL", "ENV1", "Scheme A", "scheme-a", 10),
+            new SelectedTrust("TL", "ENV1"),
             "abc1@",
             checkedAt,
             checkedAt.plusSeconds(600));
@@ -152,7 +152,7 @@ class AuthFlowSessionModelTest {
     var now = Instant.parse("2026-06-29T00:00:00Z");
     var state =
         new UsernameCheckState(
-            new SelectedTrust("TL", "ENV1", null, null, null),
+            new SelectedTrust("TL", "ENV1"),
             "user_secret",
             now,
             now.plusSeconds(300));

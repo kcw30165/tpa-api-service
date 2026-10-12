@@ -219,6 +219,7 @@ class AuthRegistrationOtpResendControllerTest {
             300,
             60,
             4,
+            null,
             List.of(),
             List.of(),
             RegistrationIdempotencyStartOutcome.STARTED,

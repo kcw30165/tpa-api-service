@@ -18,10 +18,6 @@ public record TrpChkCustIdApimDataItem(
     @JsonProperty("user-id") String userId,
     @JsonProperty("id-type") String idType) {
 
-  public TrpChkCustIdApimDataItem(String customerId, Boolean isExist) {
-    this(customerId, isExist, null, null, null);
-  }
-
   public boolean exists() {
     return Boolean.TRUE.equals(isExist);
   }

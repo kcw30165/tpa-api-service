@@ -226,7 +226,7 @@ class VerifyRegistrationOtpUseCaseTest {
     int calls;
     RegistrationLookupStatus status = RegistrationLookupStatus.ELIGIBLE;
     List<RegistrationLookupAccount> accounts =
-        List.of(new RegistrationLookupAccount("member@example.com", "91234567", "OI", "JPM"));
+        List.of(new RegistrationLookupAccount("OI", "JPM", null, null, null, null, null, Boolean.FALSE, null));
 
     public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
       calls++;

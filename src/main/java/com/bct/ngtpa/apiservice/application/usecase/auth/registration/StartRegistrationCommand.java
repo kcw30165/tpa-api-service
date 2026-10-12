@@ -31,29 +31,4 @@ public record StartRegistrationCommand(
         + idempotencyTtl
         + "]";
   }
-
-  public StartRegistrationCommand(
-      RegistrationIdempotencyKey idempotencyKey,
-      String identityType,
-      String identityValue,
-      String dateOfBirth,
-      String email,
-      String mobile,
-      String captchaChallengeId,
-      String acceptLanguage,
-      String correlationId,
-      Duration idempotencyTtl) {
-    this(
-        idempotencyKey,
-        identityType,
-        identityValue,
-        dateOfBirth,
-        email,
-        mobile,
-        captchaChallengeId,
-        null,
-        acceptLanguage,
-        correlationId,
-        idempotencyTtl);
-  }
 }

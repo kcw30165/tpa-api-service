@@ -70,7 +70,7 @@ public final class SharedVerifyRegistrationOtpService implements VerifyRegistrat
     }
     return contexts
         .load(
-            new RegistrationProtectedAuthFlowContextCommand(
+            RegistrationProtectedAuthFlowContextCommand.forOtpSent(
                 command.authFlowSessionId(),
                 command.csrfToken(),
                 command.origin(),

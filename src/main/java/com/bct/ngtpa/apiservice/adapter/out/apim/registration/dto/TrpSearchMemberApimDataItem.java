@@ -15,15 +15,6 @@ public record TrpSearchMemberApimDataItem(
     @JsonProperty("term-complete-date") String termCompleteDate,
     @JsonProperty("isRegistered") Boolean isRegistered,
     @JsonProperty("cust-id") String customerId) {
-  /**
-   * Compatibility constructor for existing fixtures while they migrate to the complete member
-   * shape.
-   */
-  public TrpSearchMemberApimDataItem(
-      String email, String mobileNumber, String env, String trustCode) {
-    this(env, trustCode, null, null, null, null, null, Boolean.FALSE, null);
-  }
-
   @Override
   public String toString() {
     return "TrpSearchMemberApimDataItem[env=<redacted>, trustCode=<redacted>, schemeType=<redacted>, policyNo=<redacted>, certNo=<redacted>, termStatus=<redacted>, termCompleteDate=<redacted>, isRegistered="

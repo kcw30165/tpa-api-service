@@ -24,14 +24,14 @@ public record RegistrationProtectedAuthFlowContextCommand(
             : Set.copyOf(acceptedStatuses);
   }
 
-  /** Existing OTP resend/verify callers remain restricted to OTP_SENT. */
-  public RegistrationProtectedAuthFlowContextCommand(
+  /** Creates a command for the OTP resend and verify callers, which accept only {@code OTP_SENT}. */
+  public static RegistrationProtectedAuthFlowContextCommand forOtpSent(
       AuthFlowSessionId authFlowSessionId,
       String csrfToken,
       String origin,
       String referer,
       String correlationId) {
-    this(
+    return new RegistrationProtectedAuthFlowContextCommand(
         authFlowSessionId,
         csrfToken,
         origin,

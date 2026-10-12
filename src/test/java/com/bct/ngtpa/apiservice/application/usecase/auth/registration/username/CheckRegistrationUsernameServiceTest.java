@@ -414,7 +414,7 @@ class CheckRegistrationUsernameServiceTest {
         RegistrationEligibleTrustSet.ATTRIBUTE_NAME,
         RegistrationEligibleTrustSet.encode(
             java.util.List.of(
-                new RegistrationLookupAccount("member@example.com", "", "ENV1", "TL"))));
+                new RegistrationLookupAccount("ENV1", "TL", null, null, null, null, null, Boolean.FALSE, null))));
     if (usernameCheck != null) {
       RegistrationUsernameCheckEncryptedState encrypted =
           new FakeUsernameCheckProtector().protect(usernameCheck);

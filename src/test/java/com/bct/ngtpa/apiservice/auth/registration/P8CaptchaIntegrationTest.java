@@ -79,7 +79,7 @@ class P8CaptchaIntegrationTest {
                     null,
                     List.of(),
                     List.of(
-                        new StartRegistrationError(
+                        StartRegistrationError.withoutMessage(
                             RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID,
                             "captchaChallengeId")),
                     RegistrationIdempotencyStartOutcome.STARTED,

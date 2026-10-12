@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 class RegistrationEligibleTrustSetTest {
   private static final List<RegistrationLookupAccount> ELIGIBLE =
       List.of(
-          new RegistrationLookupAccount("member@example.com", "", "JP", "JPM"),
-          new RegistrationLookupAccount("member@example.com", "", "TB", "MSIG"));
+          new RegistrationLookupAccount("JP", "JPM", null, null, null, null, null, Boolean.FALSE, null),
+          new RegistrationLookupAccount("TB", "MSIG", null, null, null, null, null, Boolean.FALSE, null));
 
   @Test
   void authorizesEachExactEligiblePair() {

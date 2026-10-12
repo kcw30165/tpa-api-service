@@ -15,12 +15,12 @@ public record TrpChkCustIdApimEnvelope(String errMessage, List<TrpChkCustIdApimD
 
   public static TrpChkCustIdApimEnvelope available(String customerId) {
     return new TrpChkCustIdApimEnvelope(
-        "", List.of(new TrpChkCustIdApimDataItem(customerId, Boolean.FALSE)));
+        "", List.of(new TrpChkCustIdApimDataItem(customerId, Boolean.FALSE, null /* schemeCode */, null /* userId */, null /* idType */)));
   }
 
   public static TrpChkCustIdApimEnvelope exists(String customerId) {
     return new TrpChkCustIdApimEnvelope(
-        "", List.of(new TrpChkCustIdApimDataItem(customerId, Boolean.TRUE)));
+        "", List.of(new TrpChkCustIdApimDataItem(customerId, Boolean.TRUE, null /* schemeCode */, null /* userId */, null /* idType */)));
   }
 
   public static TrpChkCustIdApimEnvelope businessRejected(String errMessage) {

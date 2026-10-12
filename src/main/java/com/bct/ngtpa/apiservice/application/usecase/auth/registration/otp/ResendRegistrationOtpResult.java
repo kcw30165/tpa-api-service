@@ -21,31 +21,6 @@ public record ResendRegistrationOtpResult(
     RegistrationIdempotencyStartOutcome idempotencyOutcome,
     RegistrationIdempotencyResponseSnapshot replaySnapshot) {
 
-  public ResendRegistrationOtpResult(
-      ResendRegistrationOtpResultStatus status,
-      WorkflowNextStep nextStep,
-      String maskedDestination,
-      int expiresInSeconds,
-      int resendCooldownSeconds,
-      int remainingResendAttempts,
-      List<WorkflowMessageDescriptor> messages,
-      List<WorkflowErrorDescriptor> errors,
-      RegistrationIdempotencyStartOutcome idempotencyOutcome,
-      RegistrationIdempotencyResponseSnapshot replaySnapshot) {
-    this(
-        status,
-        nextStep,
-        maskedDestination,
-        expiresInSeconds,
-        resendCooldownSeconds,
-        remainingResendAttempts,
-        null,
-        messages,
-        errors,
-        idempotencyOutcome,
-        replaySnapshot);
-  }
-
   public ResendRegistrationOtpResult {
     Objects.requireNonNull(status, "status must not be null");
     nextStep = nextStep == null ? WorkflowNextStep.NONE : nextStep;

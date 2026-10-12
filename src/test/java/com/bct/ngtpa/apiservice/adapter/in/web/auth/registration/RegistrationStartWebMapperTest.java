@@ -115,7 +115,7 @@ class RegistrationStartWebMapperTest {
             null,
             List.of(),
             List.of(
-                new StartRegistrationError(
+                StartRegistrationError.withoutMessage(
                     RegistrationErrorKey.START_VERIFICATION_FAILED, "identityValue")),
             RegistrationIdempotencyStartOutcome.STARTED,
             null);
@@ -144,7 +144,7 @@ class RegistrationStartWebMapperTest {
             null,
             List.of(),
             List.of(
-                new StartRegistrationError(RegistrationErrorKey.MESSAGE_DELIVERY_FAILED, "email")),
+                StartRegistrationError.withoutMessage(RegistrationErrorKey.MESSAGE_DELIVERY_FAILED, "email")),
             RegistrationIdempotencyStartOutcome.STARTED,
             null);
 
@@ -172,7 +172,7 @@ class RegistrationStartWebMapperTest {
             null,
             null,
             List.of(),
-            List.of(new StartRegistrationError(SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE, "PAGE")),
+            List.of(StartRegistrationError.withoutMessage(SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE, "PAGE")),
             RegistrationIdempotencyStartOutcome.STARTED,
             null);
 
@@ -197,7 +197,7 @@ class RegistrationStartWebMapperTest {
             null,
             List.of(),
             List.of(
-                new StartRegistrationError(RegistrationErrorKey.MESSAGE_DELIVERY_FAILED, "PAGE")),
+                StartRegistrationError.withoutMessage(RegistrationErrorKey.MESSAGE_DELIVERY_FAILED, "PAGE")),
             RegistrationIdempotencyStartOutcome.STARTED,
             null);
     var response = mapper.toMutationResponse(result, "en");
@@ -223,7 +223,7 @@ class RegistrationStartWebMapperTest {
             null,
             List.of(),
             List.of(
-                new StartRegistrationError(
+                StartRegistrationError.withoutMessage(
                     SharedWorkflowErrorKey.DOWNSTREAM_BUSINESS_REJECTED, "PAGE")),
             RegistrationIdempotencyStartOutcome.STARTED,
             null);
@@ -251,7 +251,7 @@ class RegistrationStartWebMapperTest {
             null,
             List.of(),
             List.of(
-                new StartRegistrationError(RegistrationErrorKey.START_VERIFICATION_FAILED, "PAGE")),
+                StartRegistrationError.withoutMessage(RegistrationErrorKey.START_VERIFICATION_FAILED, "PAGE")),
             RegistrationIdempotencyStartOutcome.STARTED,
             null);
     var response = mapper.toMutationResponse(result, "en");
@@ -278,7 +278,7 @@ class RegistrationStartWebMapperTest {
             null,
             List.of(),
             List.of(
-                new StartRegistrationError(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED, "PAGE")),
+                StartRegistrationError.withoutMessage(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED, "PAGE")),
             RegistrationIdempotencyStartOutcome.STARTED,
             null);
     var response = mapper.toMutationResponse(result, "en");
@@ -303,7 +303,7 @@ class RegistrationStartWebMapperTest {
             null,
             null,
             List.of(),
-            List.of(new StartRegistrationError(RegistrationErrorKey.START_REQUEST_INVALID, "PAGE")),
+            List.of(StartRegistrationError.withoutMessage(RegistrationErrorKey.START_REQUEST_INVALID, "PAGE")),
             RegistrationIdempotencyStartOutcome.STARTED,
             null);
     var response = mapper.toMutationResponse(result, "en");

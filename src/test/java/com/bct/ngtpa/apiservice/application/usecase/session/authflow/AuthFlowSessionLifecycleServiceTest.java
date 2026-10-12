@@ -262,7 +262,7 @@ class AuthFlowSessionLifecycleServiceTest {
 
   private static UsernameCheckState usernameCheckState() {
     return new UsernameCheckState(
-        new SelectedTrust("TL", "ENV1", "Scheme A", "scheme-a", 10),
+        new SelectedTrust("TL", "ENV1"),
         "user_secret",
         NOW,
         NOW.plusSeconds(600));

@@ -106,6 +106,7 @@ public final class RegistrationOtpResendProtectedOperation {
         created.expiresInSeconds(),
         created.resendCooldownSeconds(),
         created.remainingResendAttempts(),
+        null /* retryAfterSeconds */,
         List.of(),
         List.of(),
         RegistrationIdempotencyStartOutcome.STARTED,
