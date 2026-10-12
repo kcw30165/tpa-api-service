@@ -22,7 +22,7 @@ class ForgotPasswordTrpSearchMemberDataItemTest {
   }
 
   @Test
-  void compatibilityConstructorDefaultsNewFieldsToNull() {
+  void canonicalConstructorAllowsNullSchemeNameFields() {
     var item =
         new ForgotPasswordTrpSearchMemberDataItem(
             "TB", "MSIG", "OE", null, null, "0001", "2", "", "", false, null);

@@ -88,7 +88,7 @@ class ForgotPasswordIdempotencyReplaySnapshotTest {
   }
 
   @Test
-  void fourArgConstructorDefaultsIdentityTypeToNull() {
+  void canonicalConstructorAllowsNullIdentityType() {
     ForgotPasswordIdempotencyReplaySnapshot snapshot =
         new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "ref-1", Map.of(), null);
     assertThat(snapshot.identityType()).isNull();

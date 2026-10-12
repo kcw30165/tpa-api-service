@@ -199,7 +199,7 @@ class UsernameRecoveryStartResultTest {
   }
 
   @Test
-  void fourArgumentConvenienceConstructorKeepsNullAuthFlowSessionId() {
+  void sessionCreatedResultMayCarryNullAuthFlowSessionId() {
     var result =
         new UsernameRecoveryStartResult(
             UsernameRecoveryStartResult.Outcome.SESSION_CREATED,

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class RegistrationProtectedAuthFlowContextCommandStatusTest {
 
   @Test
-  void legacyConstructorRemainsRestrictedToOtpSent() {
+  void forOtpSentAcceptsOnlyOtpSent() {
     var command =
         RegistrationProtectedAuthFlowContextCommand.forOtpSent(
             new AuthFlowSessionId("afs_safe"), "csrf-safe", null, null, "req-safe");
