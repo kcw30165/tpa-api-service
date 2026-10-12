@@ -260,6 +260,7 @@ class LoginStartProtectedOperationTest {
         new LoginPreAuthDestination("dst_first", "email", "first@example.com", "f***@example.com"));
     destinations.put(
         "dst_second", new LoginPreAuthDestination("dst_second", "sms", "91234567", "****4567"));
-    return new LoginPreAuthContext("member01", "role_user", destinations, NOW, "v1", null, null, null);
+    return new LoginPreAuthContext(
+        "member01", "role_user", destinations, NOW, "v1", null, null, null);
   }
 }

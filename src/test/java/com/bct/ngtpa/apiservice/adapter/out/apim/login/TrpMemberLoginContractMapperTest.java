@@ -106,7 +106,13 @@ class TrpMemberLoginContractMapperTest {
                 mapper.toAuthenticated(
                     "member",
                     new TrpMemberLoginApimDataItem(
-                        true, null, 0, List.of(new TrpMemberLoginApimOtpItem("sms", "91234567")), null, null, null)))
+                        true,
+                        null,
+                        0,
+                        List.of(new TrpMemberLoginApimOtpItem("sms", "91234567")),
+                        null,
+                        null,
+                        null)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("channel");
 
@@ -132,7 +138,13 @@ class TrpMemberLoginContractMapperTest {
                 mapper.toAuthenticated(
                     "member",
                     new TrpMemberLoginApimDataItem(
-                        true, null, 0, List.of(new TrpMemberLoginApimOtpItem("email", " ")), null, null, null)))
+                        true,
+                        null,
+                        0,
+                        List.of(new TrpMemberLoginApimOtpItem("email", " ")),
+                        null,
+                        null,
+                        null)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("destination");
   }

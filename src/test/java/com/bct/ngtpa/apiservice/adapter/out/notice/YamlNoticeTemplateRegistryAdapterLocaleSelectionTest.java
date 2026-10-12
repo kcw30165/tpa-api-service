@@ -27,8 +27,12 @@ class YamlNoticeTemplateRegistryAdapterLocaleSelectionTest {
   void englishTagsSelectEnglishForBothChannels() {
     YamlNoticeTemplateRegistryAdapter adapter = adapterWith(englishAndHongKong());
     for (String tag : new String[] {"en", "EN", "en-US", "en_GB"}) {
-      assertThat(resolve(adapter, MessageDeliveryChannel.SMS, tag).locale()).as("sms %s", tag).isEqualTo("en");
-      assertThat(resolve(adapter, MessageDeliveryChannel.EMAIL, tag).locale()).as("email %s", tag).isEqualTo("en");
+      assertThat(resolve(adapter, MessageDeliveryChannel.SMS, tag).locale())
+          .as("sms %s", tag)
+          .isEqualTo("en");
+      assertThat(resolve(adapter, MessageDeliveryChannel.EMAIL, tag).locale())
+          .as("email %s", tag)
+          .isEqualTo("en");
     }
   }
 
@@ -36,8 +40,12 @@ class YamlNoticeTemplateRegistryAdapterLocaleSelectionTest {
   void unsupportedOrUndeterminedTagsFallBackToEnglish() {
     YamlNoticeTemplateRegistryAdapter adapter = adapterWith(englishAndHongKong());
     for (String tag : new String[] {"fr", "und", "", "   ", null}) {
-      assertThat(resolve(adapter, MessageDeliveryChannel.SMS, tag).locale()).as("sms %s", tag).isEqualTo("en");
-      assertThat(resolve(adapter, MessageDeliveryChannel.EMAIL, tag).locale()).as("email %s", tag).isEqualTo("en");
+      assertThat(resolve(adapter, MessageDeliveryChannel.SMS, tag).locale())
+          .as("sms %s", tag)
+          .isEqualTo("en");
+      assertThat(resolve(adapter, MessageDeliveryChannel.EMAIL, tag).locale())
+          .as("email %s", tag)
+          .isEqualTo("en");
     }
   }
 
@@ -45,8 +53,12 @@ class YamlNoticeTemplateRegistryAdapterLocaleSelectionTest {
   void hongKongTagsSelectZhHkRegardlessOfCaseSeparatorOrPadding() {
     YamlNoticeTemplateRegistryAdapter adapter = adapterWith(englishAndHongKong());
     for (String tag : new String[] {"zh_HK", "zh-HK", "zh-hk", "ZH_hk", " zh-HK "}) {
-      assertThat(resolve(adapter, MessageDeliveryChannel.SMS, tag).locale()).as("sms %s", tag).isEqualTo("zh_HK");
-      assertThat(resolve(adapter, MessageDeliveryChannel.EMAIL, tag).locale()).as("email %s", tag).isEqualTo("zh_HK");
+      assertThat(resolve(adapter, MessageDeliveryChannel.SMS, tag).locale())
+          .as("sms %s", tag)
+          .isEqualTo("zh_HK");
+      assertThat(resolve(adapter, MessageDeliveryChannel.EMAIL, tag).locale())
+          .as("email %s", tag)
+          .isEqualTo("zh_HK");
     }
   }
 
@@ -54,8 +66,12 @@ class YamlNoticeTemplateRegistryAdapterLocaleSelectionTest {
   void otherChineseTagsSelectTheConfiguredChineseLocale() {
     YamlNoticeTemplateRegistryAdapter adapter = adapterWith(englishAndHongKong());
     for (String tag : new String[] {"zh", "zh-TW", "zh-CN", "zh-Hant", "zh-Hant-HK", "zh-Hans"}) {
-      assertThat(resolve(adapter, MessageDeliveryChannel.SMS, tag).locale()).as("sms %s", tag).isEqualTo("zh_HK");
-      assertThat(resolve(adapter, MessageDeliveryChannel.EMAIL, tag).locale()).as("email %s", tag).isEqualTo("zh_HK");
+      assertThat(resolve(adapter, MessageDeliveryChannel.SMS, tag).locale())
+          .as("sms %s", tag)
+          .isEqualTo("zh_HK");
+      assertThat(resolve(adapter, MessageDeliveryChannel.EMAIL, tag).locale())
+          .as("email %s", tag)
+          .isEqualTo("zh_HK");
     }
   }
 

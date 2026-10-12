@@ -374,6 +374,4 @@ public final class UsernameRecoveryRequestProtectedOperation {
   private static boolean nonBlank(String value) {
     return value != null && !value.isBlank();
   }
-
-
 }

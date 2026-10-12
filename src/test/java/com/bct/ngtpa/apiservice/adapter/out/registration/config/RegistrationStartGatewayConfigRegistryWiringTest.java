@@ -91,10 +91,7 @@ class RegistrationStartGatewayConfigRegistryWiringTest {
     var environment = new MockEnvironment();
     environment.setActiveProfiles("prod");
     return config.registrationMessageGateway(
-        delivery,
-        registry,
-        new DeploymentEnvironmentPolicy(environment),
-        properties());
+        delivery, registry, new DeploymentEnvironmentPolicy(environment), properties());
   }
 
   private static AuthWorkflowProperties properties() {

@@ -13,19 +13,22 @@ class ForgotPasswordIdempotencyReplaySnapshotTest {
 
   @Test
   void nullOutcomeCodeThrows() {
-    assertThatThrownBy(() -> new ForgotPasswordIdempotencyReplaySnapshot(null, "ref-1", Map.of(), null))
+    assertThatThrownBy(
+            () -> new ForgotPasswordIdempotencyReplaySnapshot(null, "ref-1", Map.of(), null))
         .isInstanceOf(NullPointerException.class);
   }
 
   @Test
   void blankOutcomeCodeThrows() {
-    assertThatThrownBy(() -> new ForgotPasswordIdempotencyReplaySnapshot("", "ref-1", Map.of(), null))
+    assertThatThrownBy(
+            () -> new ForgotPasswordIdempotencyReplaySnapshot("", "ref-1", Map.of(), null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void blankOpaqueCommitRefThrows() {
-    assertThatThrownBy(() -> new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "  ", Map.of(), null))
+    assertThatThrownBy(
+            () -> new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "  ", Map.of(), null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 

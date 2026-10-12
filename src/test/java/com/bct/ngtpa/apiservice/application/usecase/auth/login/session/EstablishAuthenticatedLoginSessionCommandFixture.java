@@ -9,8 +9,8 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import java.util.List;
 
 /**
- * Test-only factory for {@link EstablishAuthenticatedLoginSessionCommand} that supplies
- * fixed values for the components the removed 5-argument constructor used to default: the handoff
+ * Test-only factory for {@link EstablishAuthenticatedLoginSessionCommand} that supplies fixed
+ * values for the components the removed 5-argument constructor used to default: the handoff
  * reference, the verification operation reference, the reservation hash and the login consumption
  * proof. A test that cares about one of those components builds the canonical command itself.
  */

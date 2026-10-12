@@ -38,7 +38,14 @@ class UsernameRecoverySessionCandidateTest {
       String scheme, String env, String trust, UsernameRecoveryDeliveryState state) {
     return new UsernameRecoverySessionCandidate(
         new UsernameRecoveryCandidate(
-            new UsernameRecoverySchemeRef(scheme), env, trust, true, "user-" + scheme, state, null, null),
+            new UsernameRecoverySchemeRef(scheme),
+            env,
+            trust,
+            true,
+            "user-" + scheme,
+            state,
+            null,
+            null),
         null,
         null);
   }

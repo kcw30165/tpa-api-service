@@ -9,18 +9,17 @@ import java.util.Set;
  * Resolved content for a single notice (messageType), channel, and locale.
  *
  * <p>This record intentionally carries NO channel-conditional business validation (e.g. "subject
- * required for EMAIL"), to avoid violating the Open/Closed Principle: a future channel
- * (WhatsApp, WeChat, etc.) must never require modifying this class. This mirrors the real
- * precedent in {@code MessageDeliveryCommand}, whose compact constructor performs only a
- * defensive copy with zero channel-specific branching; channel-specific rules live in the port
- * implementation that consumes the data ({@code MessageDeliveryAdapter.validate()}), not in the
- * data type itself.
+ * required for EMAIL"), to avoid violating the Open/Closed Principle: a future channel (WhatsApp,
+ * WeChat, etc.) must never require modifying this class. This mirrors the real precedent in {@code
+ * MessageDeliveryCommand}, whose compact constructor performs only a defensive copy with zero
+ * channel-specific branching; channel-specific rules live in the port implementation that consumes
+ * the data ({@code MessageDeliveryAdapter.validate()}), not in the data type itself.
  *
- * <p>Safety is not weakened by this: the same "subject required for EMAIL" rule is already
- * enforced twice elsewhere - at config load time ({@code NoticeTemplateProperties.validate()})
- * and at dispatch time ({@code MessageDeliveryAdapter.validate()}, which runs on every {@code
- * MessageDeliveryCommand} built from a resolved {@code NoticeTemplateDefinition} before any
- * message is actually sent).
+ * <p>Safety is not weakened by this: the same "subject required for EMAIL" rule is already enforced
+ * twice elsewhere - at config load time ({@code NoticeTemplateProperties.validate()}) and at
+ * dispatch time ({@code MessageDeliveryAdapter.validate()}, which runs on every {@code
+ * MessageDeliveryCommand} built from a resolved {@code NoticeTemplateDefinition} before any message
+ * is actually sent).
  *
  * <p>{@code ttlUnit} is the unit word for {@code {ttlUnit}} that is configured for the locale key
  * selected for this content (solution design section 8.6). It is null when none is configured. The

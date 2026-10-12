@@ -4,10 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import java.util.Objects;
 
 public record ForgotPasswordCompletionCommand(
-    String customerId,
-    String password,
-    String correlationId,
-    ActorUserRole actorUserRole) {
+    String customerId, String password, String correlationId, ActorUserRole actorUserRole) {
   public ForgotPasswordCompletionCommand {
     customerId = required(customerId, "customerId");
     password = required(password, "password");

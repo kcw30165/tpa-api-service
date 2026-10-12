@@ -51,7 +51,12 @@ class LoginOtpSuccessAccountWebMapperTest {
             mapper
                 .toMutationResponse(
                     new VerifyLoginOtpResult(
-                        VerifyLoginOtpStatus.ACCOUNT_LIST_UNAVAILABLE, null, false, List.of(), null, null))
+                        VerifyLoginOtpStatus.ACCOUNT_LIST_UNAVAILABLE,
+                        null,
+                        false,
+                        List.of(),
+                        null,
+                        null))
                 .errors()
                 .getFirst()
                 .code())
@@ -60,7 +65,12 @@ class LoginOtpSuccessAccountWebMapperTest {
             mapper
                 .toMutationResponse(
                     new VerifyLoginOtpResult(
-                        VerifyLoginOtpStatus.ZERO_VALID_ACCOUNTS, null, false, List.of(), null, null))
+                        VerifyLoginOtpStatus.ZERO_VALID_ACCOUNTS,
+                        null,
+                        false,
+                        List.of(),
+                        null,
+                        null))
                 .errors()
                 .getFirst()
                 .code())

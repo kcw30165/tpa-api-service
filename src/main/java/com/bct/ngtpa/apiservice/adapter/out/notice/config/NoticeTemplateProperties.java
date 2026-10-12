@@ -7,16 +7,16 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Centralized notice-template content, keyed by the kebab-case form of {@code
- * MessageDeliveryType} (e.g. {@code registration-otp}). Mirrors the {@code Map<String, String>}
- * binding style used by {@code FundPriceExportProperties.sheetNames} rather than binding a Map
- * directly at the {@code @ConfigurationProperties} root, for which no codebase precedent exists.
+ * Centralized notice-template content, keyed by the kebab-case form of {@code MessageDeliveryType}
+ * (e.g. {@code registration-otp}). Mirrors the {@code Map<String, String>} binding style used by
+ * {@code FundPriceExportProperties.sheetNames} rather than binding a Map directly at the
+ * {@code @ConfigurationProperties} root, for which no codebase precedent exists.
  *
  * <p>NOTE: as of this scaffolding round, {@code application.yml} does not yet populate {@code
  * notice-templates.definitions.*} with final business-approved content. See
- * docs/design/7-template-service/template-service-solution-design.md section 8.3: the BRD's
- * static "5 minutes" wording and current production's {ttlValue}/{ttlUnit} placeholders have not
- * been reconciled.
+ * docs/design/7-template-service/template-service-solution-design.md section 8.3: the BRD's static
+ * "5 minutes" wording and current production's {ttlValue}/{ttlUnit} placeholders have not been
+ * reconciled.
  */
 @ConfigurationProperties(prefix = "notice-templates")
 @Getter
@@ -50,8 +50,8 @@ public class NoticeTemplateProperties {
 
   /**
    * Fails fast at startup when a configured definition is missing both channels, or when an email
-   * locale entry has a blank subject/body. Does not require every {@code MessageDeliveryType} to
-   * be configured, since this round scaffolds the mechanism only (§8.3).
+   * locale entry has a blank subject/body. Does not require every {@code MessageDeliveryType} to be
+   * configured, since this round scaffolds the mechanism only (§8.3).
    *
    * <p>It also requires a non-blank {@code ttl-units} entry under the same locale key for every
    * content text that contains {@code {ttlUnit}} (solution design section 8.6).
@@ -83,8 +83,7 @@ public class NoticeTemplateProperties {
     }
   }
 
-  private void requireTtlUnit(
-      String definitionKey, String channel, String localeKey, String text) {
+  private void requireTtlUnit(String definitionKey, String channel, String localeKey, String text) {
     if (!text.contains(TTL_UNIT_PLACEHOLDER)) {
       return;
     }
@@ -108,7 +107,8 @@ public class NoticeTemplateProperties {
       String key = entry.getKey();
       NoticeDefinition definition = entry.getValue();
       if (definition == null) {
-        throw new IllegalStateException("notice-templates.definitions." + key + " must not be null");
+        throw new IllegalStateException(
+            "notice-templates.definitions." + key + " must not be null");
       }
       boolean hasSms = definition.sms != null && !definition.sms.isEmpty();
       boolean hasEmail = definition.email != null && !definition.email.isEmpty();
@@ -137,7 +137,10 @@ public class NoticeTemplateProperties {
         for (Map.Entry<String, String> smsEntry : definition.sms.entrySet()) {
           if (smsEntry.getValue() == null || smsEntry.getValue().isBlank()) {
             throw new IllegalStateException(
-                "notice-templates.definitions." + key + ".sms." + smsEntry.getKey()
+                "notice-templates.definitions."
+                    + key
+                    + ".sms."
+                    + smsEntry.getKey()
                     + " must not be blank");
           }
         }

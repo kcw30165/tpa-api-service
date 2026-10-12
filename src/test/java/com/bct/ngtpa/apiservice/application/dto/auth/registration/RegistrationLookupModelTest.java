@@ -70,7 +70,9 @@ class RegistrationLookupModelTest {
 
   @Test
   void lookupResultDoesNotExposeAccountsInToString() {
-    var account = new RegistrationLookupAccount("OI", "JPM", null, null, null, null, null, Boolean.FALSE, null);
+    var account =
+        new RegistrationLookupAccount(
+            "OI", "JPM", null, null, null, null, null, Boolean.FALSE, null);
     var result =
         new RegistrationLookupResult(RegistrationLookupStatus.ELIGIBLE, List.of(account), null);
 

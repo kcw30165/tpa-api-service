@@ -16,8 +16,8 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
- * The records of the pre-auth flows (Forgot Password, Login, Username Recovery, Registration, and the
- * auth-flow session model and the Username Recovery domain model they share) declare only their
+ * The records of the pre-auth flows (Forgot Password, Login, Username Recovery, Registration, and
+ * the auth-flow session model and the Username Recovery domain model they share) declare only their
  * canonical constructor.
  *
  * <p>A compatibility constructor lets a caller rebuild a record from an existing instance and
@@ -45,8 +45,7 @@ class PreAuthContextRecordsCanonicalConstructorArchitectureTest {
           "/domain/model/UsernameRecovery");
   private static final int MINIMUM_RECORDS = 304;
 
-  private static final Set<String> KNOWN_REMAINING =
-      new TreeSet<>(List.of());
+  private static final Set<String> KNOWN_REMAINING = new TreeSet<>(List.of());
 
   @Test
   void thePreAuthPackagesAreScannedAndTheirRecordsLoad() throws IOException {
@@ -81,8 +80,7 @@ class PreAuthContextRecordsCanonicalConstructorArchitectureTest {
   @Test
   void everyKnownRemainingEntryStillExists() throws IOException {
     Set<String> found = offenders();
-    List<String> stale =
-        KNOWN_REMAINING.stream().filter(entry -> !found.contains(entry)).toList();
+    List<String> stale = KNOWN_REMAINING.stream().filter(entry -> !found.contains(entry)).toList();
 
     assertThat(stale)
         .as("KNOWN_REMAINING entries whose compatibility constructor is gone; delete them")

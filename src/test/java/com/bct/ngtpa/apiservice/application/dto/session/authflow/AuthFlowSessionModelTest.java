@@ -114,10 +114,7 @@ class AuthFlowSessionModelTest {
     var checkedAt = Instant.parse("2026-06-29T00:05:00Z");
     var state =
         new UsernameCheckState(
-            new SelectedTrust("TL", "ENV1"),
-            "abc1@",
-            checkedAt,
-            checkedAt.plusSeconds(600));
+            new SelectedTrust("TL", "ENV1"), "abc1@", checkedAt, checkedAt.plusSeconds(600));
     assertThat(state.selectedTrust().trustCode()).isEqualTo("TL");
     assertThat(state.selectedTrust().accountEnv()).isEqualTo("ENV1");
     assertThat(state.username()).isEqualTo("abc1@");
@@ -152,10 +149,7 @@ class AuthFlowSessionModelTest {
     var now = Instant.parse("2026-06-29T00:00:00Z");
     var state =
         new UsernameCheckState(
-            new SelectedTrust("TL", "ENV1"),
-            "user_secret",
-            now,
-            now.plusSeconds(300));
+            new SelectedTrust("TL", "ENV1"), "user_secret", now, now.plusSeconds(300));
     var data = new AuthFlowSessionData("EMAIL", "m****r@example.com", Map.of());
     var session =
         new AuthFlowSession(

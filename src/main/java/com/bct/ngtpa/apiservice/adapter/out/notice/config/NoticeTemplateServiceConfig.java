@@ -8,11 +8,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Wires the centralized Template Service, mirroring {@code
- * FundPriceDateFormatValidationConfig}'s exact established pattern in this codebase: plain {@code
- * @Configuration}, a constructor that validates the bound {@code @ConfigurationProperties} at
- * startup (fail-fast on misconfiguration), and a {@code @Bean} method returning what those
- * properties produce.
+ * Wires the centralized Template Service, mirroring {@code FundPriceDateFormatValidationConfig}'s
+ * exact established pattern in this codebase: plain {@code @Configuration}, a constructor that
+ * validates the bound {@code @ConfigurationProperties} at startup (fail-fast on misconfiguration),
+ * and a {@code @Bean} method returning what those properties produce.
  *
  * <p>{@code application.yml} does not yet populate {@code notice-templates.definitions.*} with
  * final business-approved content (see
@@ -30,7 +29,8 @@ public class NoticeTemplateServiceConfig {
 
   @Bean
   @ConditionalOnMissingBean(NoticeTemplateRegistryPort.class)
-  public NoticeTemplateRegistryPort noticeTemplateRegistryPort(NoticeTemplateProperties properties) {
+  public NoticeTemplateRegistryPort noticeTemplateRegistryPort(
+      NoticeTemplateProperties properties) {
     return new YamlNoticeTemplateRegistryAdapter(properties);
   }
 }

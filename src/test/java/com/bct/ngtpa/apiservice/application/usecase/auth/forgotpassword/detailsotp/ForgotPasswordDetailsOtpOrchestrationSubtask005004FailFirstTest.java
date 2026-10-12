@@ -182,7 +182,8 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
     when(lookup.verify(any()))
         .thenReturn(
             Mono.just(
-                new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED, null, null, null)));
+                new ForgotPasswordDetailsLookupResult(
+                    ForgotPasswordDetailsLookupStatus.MATCHED, null, null, null)));
 
     OtpChallengePort otp = mock(OtpChallengePort.class);
     when(otp.createChallenge(any()))
@@ -338,7 +339,8 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
     when(lookup.verify(any()))
         .thenReturn(
             Mono.just(
-                new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED, null, null, null)));
+                new ForgotPasswordDetailsLookupResult(
+                    ForgotPasswordDetailsLookupStatus.MATCHED, null, null, null)));
 
     OtpChallengePort otp = mock(OtpChallengePort.class);
     when(otp.createChallenge(any()))

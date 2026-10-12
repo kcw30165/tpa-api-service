@@ -7,7 +7,6 @@ import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryChannel;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
 import com.bct.ngtpa.apiservice.application.dto.message.NoticeTemplateDefinition;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
@@ -20,12 +19,12 @@ import org.springframework.core.io.ClassPathResource;
  * Phase I, Stage I-6 (final stage of the Template Service's own implementation, per
  * docs/design/10-template-service/template-service-implementation-plan.md): confirms {@link
  * YamlNoticeTemplateRegistryAdapter#resolve} returns correct content for ALL FOUR {@link
- * MessageDeliveryType} values x 2 {@link MessageDeliveryChannel} values x 2 locales, using the
- * REAL {@code application.yml} (loaded the same way as {@code
- * ApplicationYamlNoticeTemplatesBindingTest}: {@link YamlPropertySourceLoader} + {@link Binder},
- * no synthetic test-only properties), wired through the REAL adapter class - not a hand-built
- * {@link NoticeTemplateProperties} instance. This is the end-to-end correctness gate that closes
- * Phase I before any workflow migration (Phase II) may begin.
+ * MessageDeliveryType} values x 2 {@link MessageDeliveryChannel} values x 2 locales, using the REAL
+ * {@code application.yml} (loaded the same way as {@code
+ * ApplicationYamlNoticeTemplatesBindingTest}: {@link YamlPropertySourceLoader} + {@link Binder}, no
+ * synthetic test-only properties), wired through the REAL adapter class - not a hand-built {@link
+ * NoticeTemplateProperties} instance. This is the end-to-end correctness gate that closes Phase I
+ * before any workflow migration (Phase II) may begin.
  */
 class NoticeTemplateRegistryFullMatrixSmokeTest {
 
@@ -102,8 +101,7 @@ class NoticeTemplateRegistryFullMatrixSmokeTest {
   void loginAndForgotPasswordOtpRequireTrustCodeAndSchemeNamePlaceholders() {
     for (MessageDeliveryType messageType :
         List.of(MessageDeliveryType.LOGIN_OTP, MessageDeliveryType.FORGOT_PASSWORD_OTP)) {
-      NoticeTemplateDefinition sms =
-          adapter.resolve(messageType, MessageDeliveryChannel.SMS, "en");
+      NoticeTemplateDefinition sms = adapter.resolve(messageType, MessageDeliveryChannel.SMS, "en");
       assertThat(sms.requiredPlaceholders())
           .as("%s sms placeholders", messageType)
           .containsExactlyInAnyOrder("trustCode", "code", "ttlValue", "ttlUnit");

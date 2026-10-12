@@ -556,13 +556,15 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
         .verifyComplete();
   }
 
-  // ----- tests: trust and scheme fields survive the reset-subject normalization (scripts 188-190) ----
+  // ----- tests: trust and scheme fields survive the reset-subject normalization (scripts 188-190)
+  // ----
 
   @Test
   void verifyKeepsTheTrustAndSchemeFieldsWhenTheResetSubjectIdIsNormalized() {
     givenLockAcquired();
     givenInitialSession(validSession());
-    // START stores no resetSubjectId; the operation falls back to the identity value and rebuilds the
+    // START stores no resetSubjectId; the operation falls back to the identity value and rebuilds
+    // the
     // context, which must carry the trust and scheme fields across the rebuild.
     ForgotPasswordAuthFlowContext withoutResetSubject =
         new ForgotPasswordAuthFlowContext(

@@ -548,8 +548,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
     String language = command.language();
     Map<String, String> variables = new LinkedHashMap<>();
     variables.put("code", rawCode);
-    variables.put(
-        "ttlValue", Integer.toString(Math.max(1, otpPolicy.ttlSeconds() / 60)));
+    variables.put("ttlValue", Integer.toString(Math.max(1, otpPolicy.ttlSeconds() / 60)));
     variables.put("ttlUnit", definition.ttlUnit());
     if (context.trustCode() != null) {
       variables.put("trustCode", context.trustCode());
@@ -577,9 +576,9 @@ public final class ForgotPasswordOtpResendProtectedOperation {
   /**
    * Mirrors {@code LoginOtpResendService.resolveSchemeNameChi} / {@code
    * UsernameRecoveryRequestProtectedOperation.resolveSchemeNameChi} (plan decision, Nick,
-   * 2026-10-07; applied to Forgot Password per Nick's instruction on 2026-10-08 to include the
-   * same rule now rather than defer it): a blank {@code schemeNameChi} falls back to {@code
-   * schemeName}, rather than rendering an empty Chinese scheme name into a live member message.
+   * 2026-10-07; applied to Forgot Password per Nick's instruction on 2026-10-08 to include the same
+   * rule now rather than defer it): a blank {@code schemeNameChi} falls back to {@code schemeName},
+   * rather than rendering an empty Chinese scheme name into a live member message.
    */
   private static String resolveSchemeNameChi(ForgotPasswordAuthFlowContext context) {
     String schemeNameChi = context.schemeNameChi();

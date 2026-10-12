@@ -78,8 +78,10 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
   void correctOtpWithMultipleTrustsTransitionsToSelection() {
     lookup.accounts =
         List.of(
-            new RegistrationLookupAccount("OI", "JPM", null, null, null, null, null, Boolean.FALSE, null),
-            new RegistrationLookupAccount("DB", "DBA", null, null, null, null, null, Boolean.FALSE, null));
+            new RegistrationLookupAccount(
+                "OI", "JPM", null, null, null, null, null, Boolean.FALSE, null),
+            new RegistrationLookupAccount(
+                "DB", "DBA", null, null, null, null, null, Boolean.FALSE, null));
     VerifyRegistrationOtpResult result = service.verify(command("many", "123456")).block();
     assertThat(result.status()).isEqualTo(VerifyRegistrationOtpResultStatus.VERIFIED);
     assertThat(result.nextStep().name()).isEqualTo("SELECT_TRUST");
@@ -163,8 +165,10 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
   void completedVerifyReplayReturnsOriginalTrustsWithZeroAdditionalEffects() {
     lookup.accounts =
         List.of(
-            new RegistrationLookupAccount("OI", "JPM", null, null, null, null, null, Boolean.FALSE, null),
-            new RegistrationLookupAccount("DB", "DBA", null, null, null, null, null, Boolean.FALSE, null));
+            new RegistrationLookupAccount(
+                "OI", "JPM", null, null, null, null, null, Boolean.FALSE, null),
+            new RegistrationLookupAccount(
+                "DB", "DBA", null, null, null, null, null, Boolean.FALSE, null));
     VerifyRegistrationOtpResult first = service.verify(command("replay", "123456")).block();
     int otpCalls = otp.calls,
         transitions = session.transitions,
@@ -357,7 +361,9 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
     void reset() {
       status = RegistrationLookupStatus.ELIGIBLE;
       accounts =
-          List.of(new RegistrationLookupAccount("OI", "JPM", null, null, null, null, null, Boolean.FALSE, null));
+          List.of(
+              new RegistrationLookupAccount(
+                  "OI", "JPM", null, null, null, null, null, Boolean.FALSE, null));
       calls = 0;
     }
 

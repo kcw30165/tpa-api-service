@@ -44,13 +44,13 @@ import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBin
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.SmsSenderPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupResult;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpLeasePolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordUnderLockDetailsVerifier;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupResult;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordInitialOtpPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpBindingResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
@@ -91,16 +91,17 @@ import reactor.core.publisher.Mono;
  * instruction to combine the two sub-stages the same way Login's II-3.c/II-3.d were combined,
  * script 108, Appendix E.10): the REAL {@code application.yml}, the REAL {@link
  * YamlNoticeTemplateRegistryAdapter}, the REAL {@link ForgotPasswordDetailsOtpProtectedOperation}
- * (send) / {@link ForgotPasswordOtpResendProtectedOperation} (resend) (as completed by scripts
- * 132 and 134: {@code trustCode}/{@code schemeName}/{@code schemeNameChi} are threaded from the
- * context into the rendered content, with a blank {@code schemeNameChi} falling back to {@code
- * schemeName}, and the registry definition is resolved before any OTP challenge is created or
- * session mutated), and the REAL {@link MessageDeliveryAdapter} with its default renderer. Every
- * other collaborator (session port, lock port, protector, lookup port, OTP challenge port,
- * binding port, commit-state port, eligibility use case) is mocked - exactly the
- * infrastructure-backed ports the two pre-existing unit tests for these classes already mock
- * ({@link com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest},
- * {@link com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendProtectedOperationTest})
+ * (send) / {@link ForgotPasswordOtpResendProtectedOperation} (resend) (as completed by scripts 132
+ * and 134: {@code trustCode}/{@code schemeName}/{@code schemeNameChi} are threaded from the context
+ * into the rendered content, with a blank {@code schemeNameChi} falling back to {@code schemeName},
+ * and the registry definition is resolved before any OTP challenge is created or session mutated),
+ * and the REAL {@link MessageDeliveryAdapter} with its default renderer. Every other collaborator
+ * (session port, lock port, protector, lookup port, OTP challenge port, binding port, commit-state
+ * port, eligibility use case) is mocked - exactly the infrastructure-backed ports the two
+ * pre-existing unit tests for these classes already mock ({@link
+ * com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest},
+ * {@link
+ * com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendProtectedOperationTest})
  * - so the text that would reach a member can be asserted for SMS and EMAIL in en and zh_HK
  * (II-4.c), and so a missing registry definition is proven to fail before any OTP challenge is
  * created or, for resend, any session mutation is persisted (II-4.d).
@@ -108,9 +109,9 @@ import reactor.core.publisher.Mono;
  * <p>Per solution design section 5 (confirmed in Appendix E.5), {@code forgot-password-otp}'s YAML
  * content is byte-identical to {@code login-otp}'s (synchronized wording, two separate config
  * entries) - confirmed directly against the real {@code application.yml} (script 124). This test
- * therefore asserts the same literal wording Login's own rendered-content test already proved
- * (e.g. "One-Time Password", not "forgot password" phrasing), which is the correct, by-design
- * outcome, not an oversight.
+ * therefore asserts the same literal wording Login's own rendered-content test already proved (e.g.
+ * "One-Time Password", not "forgot password" phrasing), which is the correct, by-design outcome,
+ * not an oversight.
  *
  * <p>{@code trustCode}/{@code schemeName}/{@code schemeNameChi} values used below are
  * representative test fixtures (no specific real production example was provided for Forgot
@@ -177,7 +178,8 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
           schemeName,
           schemeNameChi,
           ttlSeconds,
-          new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED, null, null, null));
+          new ForgotPasswordDetailsLookupResult(
+              ForgotPasswordDetailsLookupStatus.MATCHED, null, null, null));
     }
 
     SendHarness(
@@ -255,7 +257,8 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
           message -> {
             smsCalls.incrementAndGet();
             sms.set(message);
-            return Mono.just(new SenderResult(SenderStatus.ACCEPTED, "provider-sms-id", null, null));
+            return Mono.just(
+                new SenderResult(SenderStatus.ACCEPTED, "provider-sms-id", null, null));
           };
       EmailSenderPort emailSender =
           message -> {
@@ -269,10 +272,12 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
       ForgotPasswordOtpSessionBindingPort binding = mock(ForgotPasswordOtpSessionBindingPort.class);
       when(binding.apply(any()))
           .thenReturn(
-              Mono.just(new ForgotPasswordOtpBindingResult(ForgotPasswordOtpBindingResult.Status.BOUND)));
+              Mono.just(
+                  new ForgotPasswordOtpBindingResult(ForgotPasswordOtpBindingResult.Status.BOUND)));
 
       ForgotPasswordOtpCommitStatePort commitStates = new InMemoryCommitStates();
-      YamlNoticeTemplateRegistryAdapter registry = new YamlNoticeTemplateRegistryAdapter(properties);
+      YamlNoticeTemplateRegistryAdapter registry =
+          new YamlNoticeTemplateRegistryAdapter(properties);
 
       service =
           new ForgotPasswordDetailsOtpProtectedOperation(
@@ -371,7 +376,10 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
         mock(SecureForgotPasswordOtpCommitRefGenerator.class);
     private final ForgotPasswordOtpResendProtectedOperation service;
 
-    ResendHarness(NoticeTemplateProperties properties, String trustCode, String schemeName,
+    ResendHarness(
+        NoticeTemplateProperties properties,
+        String trustCode,
+        String schemeName,
         String schemeNameChi) {
       context =
           new ForgotPasswordAuthFlowContext(
@@ -394,7 +402,8 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
           message -> {
             smsCalls.incrementAndGet();
             sms.set(message);
-            return Mono.just(new SenderResult(SenderStatus.ACCEPTED, "provider-sms-id", null, null));
+            return Mono.just(
+                new SenderResult(SenderStatus.ACCEPTED, "provider-sms-id", null, null));
           };
       EmailSenderPort emailSender =
           message -> {
@@ -411,7 +420,8 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
       ForgotPasswordOtpCommitStatePort commitStates = mock(ForgotPasswordOtpCommitStatePort.class);
       ForgotPasswordOtpCommitRetentionPolicy retention =
           new ForgotPasswordOtpCommitRetentionPolicy(Duration.ofMinutes(5), Duration.ofHours(1));
-      YamlNoticeTemplateRegistryAdapter registry = new YamlNoticeTemplateRegistryAdapter(properties);
+      YamlNoticeTemplateRegistryAdapter registry =
+          new YamlNoticeTemplateRegistryAdapter(properties);
 
       service =
           new ForgotPasswordOtpResendProtectedOperation(
@@ -508,7 +518,9 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
           .thenReturn(
               Mono.just(
                   new CreateOtpChallengeResult(
-                      "candidate-1", "123456", NOW.plusSeconds(otpPolicy.ttlSeconds()),
+                      "candidate-1",
+                      "123456",
+                      NOW.plusSeconds(otpPolicy.ttlSeconds()),
                       otpPolicy.ttlSeconds())));
 
       when(protector.protect(any()))
@@ -519,7 +531,8 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
       // can occur regardless of which specific port method the private helpers invoke. ---
       when(otp.invalidateChallenge(any())).thenReturn(Mono.empty());
       when(otp.verifyChallenge(any())).thenReturn(Mono.just(mock(VerifyOtpChallengeResult.class)));
-      when(otp.replaceChallenge(any())).thenReturn(Mono.just(mock(ReplaceOtpChallengeResult.class)));
+      when(otp.replaceChallenge(any()))
+          .thenReturn(Mono.just(mock(ReplaceOtpChallengeResult.class)));
       when(challengeState.save(any())).thenReturn(Mono.empty());
       when(challengeState.update(any())).thenReturn(Mono.empty());
       when(challengeState.delete(any())).thenReturn(Mono.empty());
@@ -617,8 +630,7 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
 
   @Test
   void aPopulatedSchemeNameChiIsRenderedAsIsNotReplacedByTheFallback() {
-    SendHarness harness =
-        new SendHarness(realProperties(), TRUST_CODE, SCHEME_NAME, "示例計劃", 300);
+    SendHarness harness = new SendHarness(realProperties(), TRUST_CODE, SCHEME_NAME, "示例計劃", 300);
 
     assertThat(harness.execute("member@example.com", null, "zh-HK").status())
         .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SUCCESS);
@@ -681,7 +693,8 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
   void aMissingForgotPasswordOtpDefinitionFailsSendBeforeAnyChallengeIsCreatedOrMessageSent() {
     NoticeTemplateProperties properties = realProperties();
     properties.setDefinitions(new LinkedHashMap<>());
-    SendHarness harness = new SendHarness(properties, TRUST_CODE, SCHEME_NAME, SCHEME_NAME_CHI, 300);
+    SendHarness harness =
+        new SendHarness(properties, TRUST_CODE, SCHEME_NAME, SCHEME_NAME_CHI, 300);
 
     assertThat(harness.execute("member@example.com", null, "en").status())
         .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR);
@@ -714,10 +727,7 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
 
   private static ForgotPasswordDetailsLookupResult matchedLookupWithTrustFields() {
     return new ForgotPasswordDetailsLookupResult(
-        ForgotPasswordDetailsLookupStatus.MATCHED,
-        TRUST_CODE,
-        SCHEME_NAME,
-        SCHEME_NAME_CHI);
+        ForgotPasswordDetailsLookupStatus.MATCHED, TRUST_CODE, SCHEME_NAME, SCHEME_NAME_CHI);
   }
 
   @Test
@@ -785,7 +795,8 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
             TRUST_CODE,
             SCHEME_NAME,
             SCHEME_NAME_CHI,
-            new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED, null, null, null));
+            new ForgotPasswordDetailsLookupResult(
+                ForgotPasswordDetailsLookupStatus.MATCHED, null, null, null));
 
     assertThat(harness.execute("member@example.com", "en").status())
         .as("details-check outcome")
@@ -851,9 +862,12 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
                       null,
                       null,
                       Map.of(
-                          CIPHERTEXT_KEY, "ct-0",
-                          "forgotPasswordContextKeyVersion", "kv-0",
-                          "forgotPasswordContextAlgorithm", "AES_GCM_V1")),
+                          CIPHERTEXT_KEY,
+                          "ct-0",
+                          "forgotPasswordContextKeyVersion",
+                          "kv-0",
+                          "forgotPasswordContextAlgorithm",
+                          "AES_GCM_V1")),
                   NOW.minusSeconds(30),
                   NOW.minusSeconds(5),
                   NOW.plusSeconds(300)),

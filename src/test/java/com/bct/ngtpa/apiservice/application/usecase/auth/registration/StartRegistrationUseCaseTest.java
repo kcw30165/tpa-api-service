@@ -299,7 +299,8 @@ class StartRegistrationUseCaseTest {
               ? new RegistrationLookupResult(
                   RegistrationLookupStatus.ELIGIBLE,
                   List.of(
-                      new RegistrationLookupAccount("OI", "JPM", null, null, null, null, null, Boolean.FALSE, null)),
+                      new RegistrationLookupAccount(
+                          "OI", "JPM", null, null, null, null, null, Boolean.FALSE, null)),
                   null)
               : new RegistrationLookupResult(
                   RegistrationLookupStatus.NOT_ELIGIBLE, List.of(), "not-found"));

@@ -422,7 +422,9 @@ class StartRegistrationCaptchaGateTest {
       return Mono.just(
           new RegistrationLookupResult(
               RegistrationLookupStatus.ELIGIBLE,
-              List.of(new RegistrationLookupAccount("OI", "JPM", null, null, null, null, null, Boolean.FALSE, null)),
+              List.of(
+                  new RegistrationLookupAccount(
+                      "OI", "JPM", null, null, null, null, null, Boolean.FALSE, null)),
               null));
     }
 

@@ -179,8 +179,8 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
   /**
    * Mirrors {@code UsernameRecoveryRequestProtectedOperation.resolveSchemeNameChi} (plan decision,
    * Nick, 2026-10-07): a blank {@code chin-sch-name} - confirmed to occur in real TRPMemberLogin
-   * responses - falls back to {@code sch-name}, rather than rendering an empty Chinese scheme
-   * name into a live member email.
+   * responses - falls back to {@code sch-name}, rather than rendering an empty Chinese scheme name
+   * into a live member email.
    */
   private static String resolveSchemeNameChi(LoginPreAuthContext context) {
     String schemeNameChi = context.schemeNameChi();

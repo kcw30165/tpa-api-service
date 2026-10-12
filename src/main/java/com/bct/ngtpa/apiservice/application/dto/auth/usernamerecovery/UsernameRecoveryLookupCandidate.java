@@ -8,18 +8,17 @@ import java.util.Objects;
  * <p>Design references: {@code
  * docs/design/6-username-recovery/username-recovery-apim-integration-design.md} section 4/5/7
  * ({@code env} maps to {@code accountEnv}, {@code trust-code} to {@code trustCode}, {@code
- * isRegistered} to {@code registered}, and {@code cust-id} to {@code userName}; a registered
- * record requires a nonblank {@code cust-id}, an unregistered record must be blank or absent) and
- * {@code docs/design/6-username-recovery/username-recovery-session-redis-design.md} section 3
- * (minimal candidate fields; policy, certificate, scheme, termination, DOB, and raw identity data
- * are not retained).
+ * isRegistered} to {@code registered}, and {@code cust-id} to {@code userName}; a registered record
+ * requires a nonblank {@code cust-id}, an unregistered record must be blank or absent) and {@code
+ * docs/design/6-username-recovery/username-recovery-session-redis-design.md} section 3 (minimal
+ * candidate fields; policy, certificate, scheme, termination, DOB, and raw identity data are not
+ * retained).
  *
  * <p>{@code schemeName}/{@code schemeNameChi} are additive fields sourced from the APIM {@code
  * sch-name}/{@code chin-sch-name} response fields (see
- * docs/design/10-template-service/template-service-solution-design.md section 8.2), carried
- * through so the centralized Template Service can render the {schemeName}/{schemeNameChi}
- * placeholders required by notice content. Optional (nullable), since not every lookup source
- * populates them.
+ * docs/design/10-template-service/template-service-solution-design.md section 8.2), carried through
+ * so the centralized Template Service can render the {schemeName}/{schemeNameChi} placeholders
+ * required by notice content. Optional (nullable), since not every lookup source populates them.
  *
  * <p>Invariants: {@code accountEnv} and {@code trustCode} are required and nonblank; {@code
  * userName} is present and nonblank only for registered candidates. Opaque Scheme-Refs are created

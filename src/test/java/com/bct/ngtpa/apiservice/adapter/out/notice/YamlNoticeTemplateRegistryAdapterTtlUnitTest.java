@@ -71,8 +71,7 @@ class YamlNoticeTemplateRegistryAdapterTtlUnitTest {
   void contentThatUsesTheUnitFailsWhenNoUnitIsConfiguredForTheSelectedKey() {
     Map<String, String> onlyEnglish = new LinkedHashMap<>();
     onlyEnglish.put("en", "minutes");
-    YamlNoticeTemplateRegistryAdapter adapter =
-        adapter(onlyEnglish, smsEnAndZh(), emailEnAndZh());
+    YamlNoticeTemplateRegistryAdapter adapter = adapter(onlyEnglish, smsEnAndZh(), emailEnAndZh());
 
     assertThatThrownBy(() -> resolve(adapter, MessageDeliveryChannel.SMS, "zh-HK"))
         .isInstanceOf(IllegalStateException.class)

@@ -14,24 +14,22 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Pure mapper from the TRPSearchMember err-message and data items to the application lookup
- * result.
+ * Pure mapper from the TRPSearchMember err-message and data items to the application lookup result.
  *
  * <p>Outcome mapping follows the APIM integration design downstream matrix: member-not-found and
  * blank-success-empty data become {@code NOT_FOUND}; structurally valid data becomes {@code
  * MATCHED}; invariant violations become {@code CONTRACT_INVALID} (missing
- * env/trust-code/isRegistered, registered record without cust-id, unregistered record with
- * cust-id, duplicate env+trust-code, invalid nonblank term-complete-date). Any other nonblank
- * err-message is unclassifiable at this boundary and throws {@link
- * TrpSearchMemberApimDownstreamException}; the raw code is carried as non-message state only. A
- * null data item is treated as a contract violation, never silently dropped. No raw APIM names or
- * sensitive values leave this package.
+ * env/trust-code/isRegistered, registered record without cust-id, unregistered record with cust-id,
+ * duplicate env+trust-code, invalid nonblank term-complete-date). Any other nonblank err-message is
+ * unclassifiable at this boundary and throws {@link TrpSearchMemberApimDownstreamException}; the
+ * raw code is carried as non-message state only. A null data item is treated as a contract
+ * violation, never silently dropped. No raw APIM names or sensitive values leave this package.
  *
  * <p>{@code sch-name}/{@code chin-sch-name} (mapped onto {@code schemeName}/{@code schemeNameChi})
  * are carried through to the application candidate as-is (including when blank/absent), per
  * docs/design/10-template-service/template-service-solution-design.md section 8.2. These are not
- * part of the CONTRACT_INVALID invariant checks above, since they are supplementary content
- * fields, not identity/authorization-bearing fields.
+ * part of the CONTRACT_INVALID invariant checks above, since they are supplementary content fields,
+ * not identity/authorization-bearing fields.
  */
 public class TrpSearchMemberApimResultMapper {
   private static final String MEMBER_NOT_FOUND = "err.tpa.member.not.found";
@@ -92,7 +90,8 @@ public class TrpSearchMemberApimResultMapper {
               text(item.schemeName()),
               text(item.schemeNameChi())));
     }
-    return new UsernameRecoveryLookupResult(UsernameRecoveryLookupResult.Status.MATCHED, candidates);
+    return new UsernameRecoveryLookupResult(
+        UsernameRecoveryLookupResult.Status.MATCHED, candidates);
   }
 
   private static boolean validTermCompleteDate(String value) {

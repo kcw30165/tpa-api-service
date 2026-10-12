@@ -121,8 +121,7 @@ public final class UsernameRecoveryStartProtectedOperation {
                   case NOT_FOUND ->
                       Mono.just(
                           UsernameRecoveryStartResult.withoutSession(
-                              UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND,
-                              List.of()));
+                              UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND, List.of()));
                   case CONTRACT_INVALID, UNAVAILABLE, UNKNOWN_OUTCOME ->
                       Mono.error(UsernameRecoveryStartException.systemFailure());
                 });

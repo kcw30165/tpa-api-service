@@ -186,14 +186,7 @@ class LoginOtpSendServiceTest {
             command -> Mono.error(new AssertionError("must not bind")),
             (type, value) -> "hash_only",
             Clock.fixed(NOW, ZoneOffset.UTC),
-            new LoginOtpSendPolicy(
-                6,
-                true,
-                300,
-                60,
-                5,
-                false,
-                0),
+            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
             registry);
 
     StepVerifier.create(service.send(COMMAND)).verifyError(IllegalStateException.class);
@@ -239,14 +232,7 @@ class LoginOtpSendServiceTest {
             command -> Mono.empty(),
             (type, value) -> "hash_only",
             Clock.fixed(NOW, ZoneOffset.UTC),
-            new LoginOtpSendPolicy(
-                6,
-                true,
-                300,
-                60,
-                5,
-                false,
-                0),
+            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
             (type, channel, locale) -> definition);
 
     StepVerifier.create(service.send(COMMAND)).expectNextCount(1).verifyComplete();
@@ -301,14 +287,7 @@ class LoginOtpSendServiceTest {
             command -> Mono.empty(),
             (type, value) -> "hash_only",
             Clock.fixed(NOW, ZoneOffset.UTC),
-            new LoginOtpSendPolicy(
-                6,
-                true,
-                300,
-                60,
-                5,
-                false,
-                0),
+            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
             (type, channel, locale) ->
                 new NoticeTemplateDefinition(
                     type,
@@ -323,8 +302,7 @@ class LoginOtpSendServiceTest {
 
     assertThat(delivery.get().templateVariables()).containsEntry("trustCode", "DBA");
     assertThat(delivery.get().templateVariables()).containsEntry("schemeName", "Example Scheme");
-    assertThat(delivery.get().templateVariables())
-        .containsEntry("schemeNameChi", "示例計劃");
+    assertThat(delivery.get().templateVariables()).containsEntry("schemeNameChi", "示例計劃");
   }
 
   @Test
@@ -357,22 +335,15 @@ class LoginOtpSendServiceTest {
             command -> Mono.empty(),
             (type, value) -> "hash_only",
             Clock.fixed(NOW, ZoneOffset.UTC),
-            new LoginOtpSendPolicy(
-                6,
-                true,
-                300,
-                60,
-                5,
-                false,
-                0),
+            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
             (type, channel, locale) ->
                 new NoticeTemplateDefinition(
                     type, channel, locale, "Verification code", "{code}", null, "minutes"));
 
     StepVerifier.create(service.send(COMMAND)).expectNextCount(1).verifyComplete();
 
-    assertThat(delivery.get().templateVariables()).doesNotContainKeys(
-        "trustCode", "schemeName", "schemeNameChi");
+    assertThat(delivery.get().templateVariables())
+        .doesNotContainKeys("trustCode", "schemeName", "schemeNameChi");
   }
 
   @Test
@@ -417,14 +388,7 @@ class LoginOtpSendServiceTest {
             command -> Mono.empty(),
             (type, value) -> "hash_only",
             Clock.fixed(NOW, ZoneOffset.UTC),
-            new LoginOtpSendPolicy(
-                6,
-                true,
-                300,
-                60,
-                5,
-                false,
-                0),
+            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
             (type, channel, locale) ->
                 new NoticeTemplateDefinition(
                     type,
@@ -458,14 +422,7 @@ class LoginOtpSendServiceTest {
           }
         },
         Clock.fixed(NOW, ZoneOffset.UTC),
-        new LoginOtpSendPolicy(
-            6,
-            true,
-            300,
-            60,
-            5,
-            false,
-            0),
+        new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
         (type, channel, locale) ->
             new NoticeTemplateDefinition(
                 type,

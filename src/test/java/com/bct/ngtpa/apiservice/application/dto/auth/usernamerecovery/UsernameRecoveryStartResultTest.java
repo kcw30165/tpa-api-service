@@ -61,7 +61,11 @@ class UsernameRecoveryStartResultTest {
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryStartResult(
-                    UsernameRecoveryStartResult.Outcome.SESSION_CREATED, null, "csrf", 600, List.of()))
+                    UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
+                    null,
+                    "csrf",
+                    600,
+                    List.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("session-created result requires at least one scheme projection");
     assertThatThrownBy(
@@ -115,7 +119,11 @@ class UsernameRecoveryStartResultTest {
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryStartResult(
-                    UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND, null, "csrf", null, List.of()))
+                    UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND,
+                    null,
+                    "csrf",
+                    null,
+                    List.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("member-not-found result must not carry session data or schemes");
   }

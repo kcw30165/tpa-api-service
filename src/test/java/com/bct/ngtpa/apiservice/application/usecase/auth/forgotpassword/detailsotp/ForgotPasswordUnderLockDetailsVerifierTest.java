@@ -3,47 +3,24 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.ForgotPasswordResetAuthorization;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
-import com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeResult;
-import com.bct.ngtpa.apiservice.application.dto.message.SenderResult;
-import com.bct.ngtpa.apiservice.application.dto.message.SenderStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
-import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort;
-import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
-import com.bct.ngtpa.apiservice.application.port.out.EmailSenderPort;
-import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordDetailsLookupPort;
-import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort;
-import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBindingPort;
-import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
-import com.bct.ngtpa.apiservice.application.port.out.SmsSenderPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupResult;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupStatus;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpBindingResult;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitState;
-import com.bct.ngtpa.apiservice.application.usecase.message.MessageDeliveryAdapter;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.time.*;
 import java.util.Map;
-import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -84,7 +61,6 @@ class ForgotPasswordUnderLockDetailsVerifierTest {
             "exceptionType=IllegalStateException")
         .doesNotContain("boom");
   }
-
 
   @Test
   void lookupErrorYieldsAFailureVerificationAndLogsTheFailure() {

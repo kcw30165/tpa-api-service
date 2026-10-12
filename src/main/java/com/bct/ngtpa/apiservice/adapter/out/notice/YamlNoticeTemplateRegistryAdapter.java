@@ -81,8 +81,9 @@ public class YamlNoticeTemplateRegistryAdapter implements NoticeTemplateRegistry
   /**
    * Selects the configured locale key for the requested tag: exact match (case-insensitive, {@code
    * _} and {@code -} treated alike), then the first configured key with the same language, then
-   * {@value #DEFAULT_LOCALE}. Nothing here lists locales, so a newly configured locale needs no code
-   * change. See docs/design/10-template-service/template-service-solution-design.md section 8.4.
+   * {@value #DEFAULT_LOCALE}. Nothing here lists locales, so a newly configured locale needs no
+   * code change. See docs/design/10-template-service/template-service-solution-design.md section
+   * 8.4.
    */
   private String selectLocale(
       Set<String> available,

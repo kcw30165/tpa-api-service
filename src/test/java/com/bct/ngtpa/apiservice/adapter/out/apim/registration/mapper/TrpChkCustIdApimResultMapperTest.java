@@ -74,7 +74,8 @@ class TrpChkCustIdApimResultMapperTest {
         mapper.toResult(
             new TrpChkCustIdApimEnvelope(
                 "err.tpa.some.business.error",
-                java.util.List.of(new TrpChkCustIdApimDataItem("db01", Boolean.FALSE, null, null, null))));
+                java.util.List.of(
+                    new TrpChkCustIdApimDataItem("db01", Boolean.FALSE, null, null, null))));
 
     assertThat(result.status()).isEqualTo(RegistrationUsernameAvailabilityStatus.REJECTED);
     assertThat(result.downstreamErrorCode()).isEqualTo("err.tpa.some.business.error");

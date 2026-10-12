@@ -67,7 +67,15 @@ class Task0043CredentialAuthenticationContractTest {
   void useCaseDelegatesThroughApplicationBoundary() {
     CredentialAuthenticationResult expected =
         new CredentialAuthenticationResult(
-            CredentialAuthenticationStatus.INCORRECT_PASSWORD, null, null, 1, List.of(), null, null, null, null);
+            CredentialAuthenticationStatus.INCORRECT_PASSWORD,
+            null,
+            null,
+            1,
+            List.of(),
+            null,
+            null,
+            null,
+            null);
     CredentialAuthenticationPort port = command -> Mono.just(expected);
     var useCase = new AuthenticateLoginCredentialsUseCase(port);
 

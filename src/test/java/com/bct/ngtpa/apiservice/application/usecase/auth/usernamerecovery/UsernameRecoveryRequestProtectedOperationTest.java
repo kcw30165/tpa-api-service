@@ -33,8 +33,7 @@ class UsernameRecoveryRequestProtectedOperationTest {
   private final FakeAuthFlowPort sessions = new FakeAuthFlowPort();
   private final FakeDestinationPort destinations = new FakeDestinationPort();
   private final FakeDeliveryPort deliveries = new FakeDeliveryPort();
-  private final FakeNoticeTemplateRegistryPort templates =
-      new FakeNoticeTemplateRegistryPort();
+  private final FakeNoticeTemplateRegistryPort templates = new FakeNoticeTemplateRegistryPort();
   private final UsernameRecoveryAuthFlowContextBinding binding =
       new UsernameRecoveryAuthFlowContextBinding(
           new AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter("v1", CONTEXT_SECRET));
@@ -235,7 +234,8 @@ class UsernameRecoveryRequestProtectedOperationTest {
 
   @Test
   void variablesCarryUsernameTrustCodeAndSchemeNames() {
-    sessions.snapshot = snapshot(contextWithSchemeNames("JP MORGAN CHASE - JMCI", "CHI-NAME-SAMPLE"));
+    sessions.snapshot =
+        snapshot(contextWithSchemeNames("JP MORGAN CHASE - JMCI", "CHI-NAME-SAMPLE"));
     StepVerifier.create(execute(CSRF, null)).expectNextCount(1).verifyComplete();
     assertThat(deliveries.lastCommand.templateVariables())
         .containsEntry("username", "user-1")
@@ -451,7 +451,14 @@ class UsernameRecoveryRequestProtectedOperationTest {
     boolean requested = state == UsernameRecoveryDeliveryState.REQUESTED;
     return new UsernameRecoverySessionCandidate(
         new UsernameRecoveryCandidate(
-            new UsernameRecoverySchemeRef(ref), accountEnv, trustCode, registered, username, state, null, null),
+            new UsernameRecoverySchemeRef(ref),
+            accountEnv,
+            trustCode,
+            registered,
+            username,
+            state,
+            null,
+            null),
         requested ? NOW : null,
         requested ? "existing" : null);
   }

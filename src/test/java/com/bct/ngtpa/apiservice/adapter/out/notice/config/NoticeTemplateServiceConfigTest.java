@@ -4,18 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.autoconfigure.AutoConfigurationExcludeFilter;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.context.annotation.Configuration;
 
 /**
- * Context-loading test for {@link NoticeTemplateServiceConfig}, using Spring Boot's standard
- * {@link ApplicationContextRunner} test support. This exists because missing/incorrect bean
- * wiring is a class of defect that pure unit tests (which construct classes manually) do not
- * catch - see the precedent noted in {@code FundPriceQueryExportUseCaseConfig}'s javadoc, which
- * documents a real Spring startup failure that only a context-loading or {@code spring-boot:run}
- * smoke test could have caught.
+ * Context-loading test for {@link NoticeTemplateServiceConfig}, using Spring Boot's standard {@link
+ * ApplicationContextRunner} test support. This exists because missing/incorrect bean wiring is a
+ * class of defect that pure unit tests (which construct classes manually) do not catch - see the
+ * precedent noted in {@code FundPriceQueryExportUseCaseConfig}'s javadoc, which documents a real
+ * Spring startup failure that only a context-loading or {@code spring-boot:run} smoke test could
+ * have caught.
  */
 class NoticeTemplateServiceConfigTest {
 

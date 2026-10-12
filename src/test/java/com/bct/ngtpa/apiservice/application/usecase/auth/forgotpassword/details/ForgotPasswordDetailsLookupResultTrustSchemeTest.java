@@ -27,8 +27,7 @@ class ForgotPasswordDetailsLookupResultTrustSchemeTest {
 
   @Test
   void notFoundCarriesNoTrustOrSchemeFields() {
-    var result =
-        ForgotPasswordDetailsLookupResult.notFound();
+    var result = ForgotPasswordDetailsLookupResult.notFound();
 
     assertThat(result.trustCode()).isNull();
     assertThat(result.schemeName()).isNull();

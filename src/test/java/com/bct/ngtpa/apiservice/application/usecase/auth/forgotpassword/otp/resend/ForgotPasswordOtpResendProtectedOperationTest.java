@@ -648,10 +648,14 @@ class ForgotPasswordOtpResendProtectedOperationTest {
             "email",
             MASKED_DESTINATION,
             Map.of(
-                CONTEXT_CIPHERTEXT, "ciphertext-1",
-                CONTEXT_KEY_VERSION, "kv-1",
-                CONTEXT_ALGORITHM, ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM,
-                "forgotPasswordOtpSuccessfulResendCount", count)),
+                CONTEXT_CIPHERTEXT,
+                "ciphertext-1",
+                CONTEXT_KEY_VERSION,
+                "kv-1",
+                CONTEXT_ALGORITHM,
+                ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM,
+                "forgotPasswordOtpSuccessfulResendCount",
+                count)),
         NOW.minusSeconds(120),
         NOW.minusSeconds(60),
         NOW.plusSeconds(1800));

@@ -122,7 +122,9 @@ class UsernameRecoveryStartProtectedOperationTest {
             Mono.just(
                 new UsernameRecoveryLookupResult(
                     UsernameRecoveryLookupResult.Status.MATCHED,
-                    List.of(new UsernameRecoveryLookupCandidate("DB", "DBA", false, null, null, null)))));
+                    List.of(
+                        new UsernameRecoveryLookupCandidate(
+                            "DB", "DBA", false, null, null, null)))));
     StepVerifier.create(execute())
         .assertNext(
             r -> {

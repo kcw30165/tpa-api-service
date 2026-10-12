@@ -12,6 +12,4 @@ public record TrpMemberLoginApimDataItem(
     @JsonProperty("otp") List<TrpMemberLoginApimOtpItem> otp,
     @JsonProperty("trust-code") String trustCode,
     @JsonProperty("sch-name") String schemeName,
-    @JsonProperty("chin-sch-name") String schemeNameChi) {
-
-}
+    @JsonProperty("chin-sch-name") String schemeNameChi) {}

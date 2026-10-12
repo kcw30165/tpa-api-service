@@ -16,9 +16,9 @@ import org.springframework.core.io.ClassPathResource;
  * synthetic property map, unlike {@link NoticeTemplateServiceConfigTest}) via Spring Boot's
  * standard {@link YamlPropertySourceLoader} + {@link Binder} combination, and confirms the
  * notice-templates.* content populated in Phase I Stage I-5 both binds and passes {@link
- * NoticeTemplateProperties#validate()}. This is a lightweight binding check only; it does not
- * start a Spring ApplicationContext. The full per-combination (4 message types x 2 channels x 2
- * locales) resolve() correctness smoke test is Phase I Stage I-6, not duplicated here.
+ * NoticeTemplateProperties#validate()}. This is a lightweight binding check only; it does not start
+ * a Spring ApplicationContext. The full per-combination (4 message types x 2 channels x 2 locales)
+ * resolve() correctness smoke test is Phase I Stage I-6, not duplicated here.
  */
 class ApplicationYamlNoticeTemplatesBindingTest {
 
@@ -34,7 +34,8 @@ class ApplicationYamlNoticeTemplatesBindingTest {
     NoticeTemplateProperties properties =
         binder
             .bind("notice-templates", NoticeTemplateProperties.class)
-            .orElseThrow(() -> new AssertionError("notice-templates did not bind from application.yml"));
+            .orElseThrow(
+                () -> new AssertionError("notice-templates did not bind from application.yml"));
 
     properties.validate();
 

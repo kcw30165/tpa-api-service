@@ -95,8 +95,7 @@ class UsernameRecoveryFeatureConfigTest {
         .withBean(UsernameRecoveryLookupPort.class, () -> mock(UsernameRecoveryLookupPort.class))
         .withBean(AuthFlowSessionPort.class, () -> mock(AuthFlowSessionPort.class))
         .withBean(MessageDeliveryPort.class, () -> mock(MessageDeliveryPort.class))
-        .withBean(
-            NoticeTemplateRegistryPort.class, () -> mock(NoticeTemplateRegistryPort.class))
+        .withBean(NoticeTemplateRegistryPort.class, () -> mock(NoticeTemplateRegistryPort.class))
         .withBean(
             UsernameRecoveryEffectiveDestinationPort.class,
             () -> mock(UsernameRecoveryEffectiveDestinationPort.class))

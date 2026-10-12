@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 /**
- * Confirms schemeName/schemeNameChi addition (section 8.2) on
- * the domain-layer UsernameRecoveryCandidate (distinct from the DTO-layer
- * UsernameRecoveryLookupCandidate, which has its own dedicated test).
+ * Confirms schemeName/schemeNameChi addition (section 8.2) on the domain-layer
+ * UsernameRecoveryCandidate (distinct from the DTO-layer UsernameRecoveryLookupCandidate, which has
+ * its own dedicated test).
  */
 class UsernameRecoveryCandidateSchemeNameTest {
 
@@ -34,7 +34,14 @@ class UsernameRecoveryCandidateSchemeNameTest {
     var schemeRef = new UsernameRecoverySchemeRef("sch_opaque-1");
     var candidate =
         new UsernameRecoveryCandidate(
-            schemeRef, "DB", "DBA", true, "john.doe", UsernameRecoveryDeliveryState.AVAILABLE, null, null);
+            schemeRef,
+            "DB",
+            "DBA",
+            true,
+            "john.doe",
+            UsernameRecoveryDeliveryState.AVAILABLE,
+            null,
+            null);
 
     assertThat(candidate.schemeName()).isNull();
     assertThat(candidate.schemeNameChi()).isNull();

@@ -27,7 +27,6 @@ import com.bct.ngtpa.apiservice.application.port.out.SmsSenderPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.LoginOtpDestinationResolver;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.LoginOtpSendPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.LoginOtpSendService;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.LoginProtectedAuthFlowContextCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.LoginProtectedAuthFlowContextResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.SendLoginOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.SendLoginOtpResult;
@@ -59,28 +58,28 @@ import reactor.core.publisher.Mono;
  * combine the two sub-stages): the REAL {@code application.yml}, the REAL {@link
  * YamlNoticeTemplateRegistryAdapter}, the REAL {@link LoginOtpSendService} / {@link
  * LoginOtpResendService} (as completed by scripts 100 and 102: {@code trustCode}/{@code
- * schemeName}/{@code schemeNameChi} are threaded from the context into the rendered content, with
- * a blank {@code schemeNameChi} falling back to {@code schemeName}), and the REAL {@link
+ * schemeName}/{@code schemeNameChi} are threaded from the context into the rendered content, with a
+ * blank {@code schemeNameChi} falling back to {@code schemeName}), and the REAL {@link
  * MessageDeliveryAdapter} with its default renderer. Only the OTP challenge port, the session
  * binding port, the protected-context loader and the two senders are stubbed - exactly the
- * infrastructure-backed ports every existing Login unit test already stubs - so the text that
- * would reach a member can be asserted for SMS and EMAIL in en and zh_HK (II-3.c), and so a missing
+ * infrastructure-backed ports every existing Login unit test already stubs - so the text that would
+ * reach a member can be asserted for SMS and EMAIL in en and zh_HK (II-3.c), and so a missing
  * registry definition is proven to fail before anything is created or sent (II-3.d).
  *
  * <p>{@link #realTrpMemberLoginResponseExampleRendersSuccessfullyOnAllFourChannels} uses the exact
- * field values from a real {@code TRPMemberLogin} response Nick provided (trust-code {@code
- * "JPM"}, sch-name {@code "JP MORGAN CHASE - JMCI"}, chin-sch-name blank): this is not a
- * hypothetical fixture, it is today's actual production shape, confirming the fallback (script
- * 102) closes the real gap it was built for end to end, through the real YAML.
+ * field values from a real {@code TRPMemberLogin} response Nick provided (trust-code {@code "JPM"},
+ * sch-name {@code "JP MORGAN CHASE - JMCI"}, chin-sch-name blank): this is not a hypothetical
+ * fixture, it is today's actual production shape, confirming the fallback (script 102) closes the
+ * real gap it was built for end to end, through the real YAML.
  *
  * <p>{@link LoginOtpSendPolicy}'s real constructor (script 106, read-only) rejects a {@code
  * ttlSeconds} of zero or less and requires its {@code messageTemplate} to contain the literal
  * {@code {code}} placeholder; since the real registry definition - not this policy - supplies the
  * actual delivered subject/body (confirmed by the real, already-passing {@code
  * LoginOtpSendServiceTest}/{@code LoginOtpResendServiceTest}, which pass a deliberately-unused
- * placeholder string here, e.g. {@code "Policy template unused {code}"}), this fixture's own
- * {@code messageTemplate}/{@code ttlSeconds} values only need to satisfy that constructor, not
- * describe real content.
+ * placeholder string here, e.g. {@code "Policy template unused {code}"}), this fixture's own {@code
+ * messageTemplate}/{@code ttlSeconds} values only need to satisfy that constructor, not describe
+ * real content.
  */
 class LoginOtpRenderedContentIntegrationTest {
 
@@ -233,17 +232,20 @@ class LoginOtpRenderedContentIntegrationTest {
     LoginPreAuthContext context = context(null, REAL_SCHEME_NAME, "");
 
     Chain sms = new Chain(realProperties(), context);
-    assertThat(sms.send(300, "en")).as("sms/en, null trustCode")
+    assertThat(sms.send(300, "en"))
+        .as("sms/en, null trustCode")
         .isEqualTo(SendLoginOtpStatus.DELIVERY_FAILED);
 
     Chain emailEn = new Chain(realProperties(), context);
-    assertThat(emailEn.sendEmail(300, "en")).as("email/en, null trustCode (subject needs it)")
+    assertThat(emailEn.sendEmail(300, "en"))
+        .as("email/en, null trustCode (subject needs it)")
         .isEqualTo(SendLoginOtpStatus.DELIVERY_FAILED);
 
     Chain emailZh = new Chain(realProperties(), context);
     assertThat(emailZh.sendEmail(300, "zh-HK"))
-        .as("email/zh_HK, null trustCode but schemeName present (neither the subject nor the"
-            + " body needs trustCode)")
+        .as(
+            "email/zh_HK, null trustCode but schemeName present (neither the subject nor the"
+                + " body needs trustCode)")
         .isEqualTo(SendLoginOtpStatus.SENT);
   }
 

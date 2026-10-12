@@ -10,7 +10,9 @@ import org.junit.jupiter.api.Test;
 class LoginProtectedAuthFlowContextResultCsrfHashTest {
   @Test
   void validResultCarriesOnlyPersistedHashForAuthenticatedSessionHandoff() {
-    var c = new LoginPreAuthContext("member", "ROLE_USER_MBR", Map.of(), Instant.EPOCH, "v1", null, null, null);
+    var c =
+        new LoginPreAuthContext(
+            "member", "ROLE_USER_MBR", Map.of(), Instant.EPOCH, "v1", null, null, null);
     var r = LoginProtectedAuthFlowContextResult.valid(c, "otp", null, "csrf_hash");
     assertThat(r.csrfTokenHash()).isEqualTo("csrf_hash");
     assertThat(r.toString()).doesNotContain("csrf_hash");
@@ -18,7 +20,9 @@ class LoginProtectedAuthFlowContextResultCsrfHashTest {
 
   @Test
   void validResultRejectsBlankHashAndInvalidResultCarriesNone() {
-    var c = new LoginPreAuthContext("member", "ROLE_USER_MBR", Map.of(), Instant.EPOCH, "v1", null, null, null);
+    var c =
+        new LoginPreAuthContext(
+            "member", "ROLE_USER_MBR", Map.of(), Instant.EPOCH, "v1", null, null, null);
     assertThatThrownBy(() -> LoginProtectedAuthFlowContextResult.valid(c, "otp", null, " "))
         .isInstanceOf(IllegalArgumentException.class);
     assertThat(

@@ -24,7 +24,9 @@ public record RegistrationProtectedAuthFlowContextCommand(
             : Set.copyOf(acceptedStatuses);
   }
 
-  /** Creates a command for the OTP resend and verify callers, which accept only {@code OTP_SENT}. */
+  /**
+   * Creates a command for the OTP resend and verify callers, which accept only {@code OTP_SENT}.
+   */
   public static RegistrationProtectedAuthFlowContextCommand forOtpSent(
       AuthFlowSessionId authFlowSessionId,
       String csrfToken,

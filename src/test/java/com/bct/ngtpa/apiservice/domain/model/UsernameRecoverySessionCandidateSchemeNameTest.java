@@ -80,7 +80,14 @@ class UsernameRecoverySessionCandidateSchemeNameTest {
     var schemeRef = new UsernameRecoverySchemeRef("sch_opaque-1");
     var candidate =
         new UsernameRecoveryCandidate(
-            schemeRef, "DB", "DBA", true, "john.doe", UsernameRecoveryDeliveryState.AVAILABLE, null, null);
+            schemeRef,
+            "DB",
+            "DBA",
+            true,
+            "john.doe",
+            UsernameRecoveryDeliveryState.AVAILABLE,
+            null,
+            null);
     var sessionCandidate = new UsernameRecoverySessionCandidate(candidate, null, null);
 
     var reserved = sessionCandidate.withState(UsernameRecoveryDeliveryState.RESERVED, null, null);

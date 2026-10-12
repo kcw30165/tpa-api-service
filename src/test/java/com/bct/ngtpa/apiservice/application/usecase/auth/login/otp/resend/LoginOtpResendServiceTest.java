@@ -45,7 +45,8 @@ class LoginOtpResendServiceTest {
             c ->
                 Mono.just(
                     LoginProtectedAuthFlowContextResult.valid(
-                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1", null, null, null),
+                        new LoginPreAuthContext(
+                                "member", null, java.util.Map.of(), NOW, "v1", null, null, null),
                             "old",
                         new LoginPreAuthDestination(
                                 "dst_selected", "mobile", "91234567", "****4567"),
@@ -87,7 +88,8 @@ class LoginOtpResendServiceTest {
             c ->
                 Mono.just(
                     LoginProtectedAuthFlowContextResult.valid(
-                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1", null, null, null),
+                        new LoginPreAuthContext(
+                            "member", null, java.util.Map.of(), NOW, "v1", null, null, null),
                         "old",
                         new LoginPreAuthDestination(
                             "dst_selected", "email", "member@example.com", "m***@example.com"),
@@ -142,7 +144,8 @@ class LoginOtpResendServiceTest {
             c ->
                 Mono.just(
                     LoginProtectedAuthFlowContextResult.valid(
-                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1", null, null, null),
+                        new LoginPreAuthContext(
+                            "member", null, java.util.Map.of(), NOW, "v1", null, null, null),
                         "old",
                         new LoginPreAuthDestination(
                             "dst_selected", "mobile", "91234567", "****4567"),
@@ -193,7 +196,8 @@ class LoginOtpResendServiceTest {
             c ->
                 Mono.just(
                     LoginProtectedAuthFlowContextResult.valid(
-                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1", null, null, null),
+                        new LoginPreAuthContext(
+                            "member", null, java.util.Map.of(), NOW, "v1", null, null, null),
                         "old",
                         new LoginPreAuthDestination(
                             "dst_selected", "email", "member@example.com", "m***@example.com"),
@@ -207,14 +211,7 @@ class LoginOtpResendServiceTest {
             },
             c -> Mono.empty(),
             Clock.fixed(NOW, ZoneOffset.UTC),
-            new LoginOtpSendPolicy(
-                6,
-                true,
-                300,
-                60,
-                5,
-                false,
-                0),
+            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
             (type, channel, locale) -> definition);
 
     StepVerifier.create(service.resend(COMMAND))
@@ -236,8 +233,15 @@ class LoginOtpResendServiceTest {
           public Mono<ReplaceOtpChallengeResult> replaceChallenge(ReplaceOtpChallengeCommand c) {
             return Mono.just(
                 new ReplaceOtpChallengeResult(
-                    "old", "new", "654321", OtpReplacementOutcome.REPLACED,
-                    NOW.plusSeconds(300), 300, 60, 0, null));
+                    "old",
+                    "new",
+                    "654321",
+                    OtpReplacementOutcome.REPLACED,
+                    NOW.plusSeconds(300),
+                    300,
+                    60,
+                    0,
+                    null));
           }
         };
     var service =
@@ -271,8 +275,7 @@ class LoginOtpResendServiceTest {
 
     assertThat(delivered.get().templateVariables()).containsEntry("trustCode", "DBA");
     assertThat(delivered.get().templateVariables()).containsEntry("schemeName", "Example Scheme");
-    assertThat(delivered.get().templateVariables())
-        .containsEntry("schemeNameChi", "示例計劃");
+    assertThat(delivered.get().templateVariables()).containsEntry("schemeNameChi", "示例計劃");
   }
 
   @Test
@@ -283,8 +286,15 @@ class LoginOtpResendServiceTest {
           public Mono<ReplaceOtpChallengeResult> replaceChallenge(ReplaceOtpChallengeCommand c) {
             return Mono.just(
                 new ReplaceOtpChallengeResult(
-                    "old", "new", "654321", OtpReplacementOutcome.REPLACED,
-                    NOW.plusSeconds(300), 300, 60, 0, null));
+                    "old",
+                    "new",
+                    "654321",
+                    OtpReplacementOutcome.REPLACED,
+                    NOW.plusSeconds(300),
+                    300,
+                    60,
+                    0,
+                    null));
           }
         };
     var service =
@@ -292,7 +302,8 @@ class LoginOtpResendServiceTest {
             c ->
                 Mono.just(
                     LoginProtectedAuthFlowContextResult.valid(
-                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1", null, null, null),
+                        new LoginPreAuthContext(
+                                "member", null, java.util.Map.of(), NOW, "v1", null, null, null),
                             "old",
                         new LoginPreAuthDestination(
                                 "dst_selected", "mobile", "91234567", "****4567"),
@@ -308,8 +319,8 @@ class LoginOtpResendServiceTest {
 
     StepVerifier.create(service.resend(COMMAND)).expectNextCount(1).verifyComplete();
 
-    assertThat(delivered.get().templateVariables()).doesNotContainKeys(
-        "trustCode", "schemeName", "schemeNameChi");
+    assertThat(delivered.get().templateVariables())
+        .doesNotContainKeys("trustCode", "schemeName", "schemeNameChi");
   }
 
   @Test
@@ -320,8 +331,15 @@ class LoginOtpResendServiceTest {
           public Mono<ReplaceOtpChallengeResult> replaceChallenge(ReplaceOtpChallengeCommand c) {
             return Mono.just(
                 new ReplaceOtpChallengeResult(
-                    "old", "new", "654321", OtpReplacementOutcome.REPLACED,
-                    NOW.plusSeconds(300), 300, 60, 0, null));
+                    "old",
+                    "new",
+                    "654321",
+                    OtpReplacementOutcome.REPLACED,
+                    NOW.plusSeconds(300),
+                    300,
+                    60,
+                    0,
+                    null));
           }
         };
     var service =

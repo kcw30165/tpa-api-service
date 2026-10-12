@@ -31,8 +31,7 @@ class YamlNoticeTemplateRegistryAdapterTest {
     YamlNoticeTemplateRegistryAdapter adapter = adapterWith(registrationOtpDefinition());
 
     NoticeTemplateDefinition result =
-        adapter.resolve(
-            MessageDeliveryType.REGISTRATION_OTP, MessageDeliveryChannel.SMS, "zh_HK");
+        adapter.resolve(MessageDeliveryType.REGISTRATION_OTP, MessageDeliveryChannel.SMS, "zh_HK");
 
     assertThat(result.body()).isEqualTo("範例註冊一次性密碼：{code}");
   }
@@ -75,9 +74,7 @@ class YamlNoticeTemplateRegistryAdapterTest {
         new YamlNoticeTemplateRegistryAdapter(new NoticeTemplateProperties());
 
     assertThatThrownBy(
-            () ->
-                adapter.resolve(
-                    MessageDeliveryType.LOGIN_OTP, MessageDeliveryChannel.SMS, "en"))
+            () -> adapter.resolve(MessageDeliveryType.LOGIN_OTP, MessageDeliveryChannel.SMS, "en"))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("login-otp");
   }
@@ -116,8 +113,7 @@ class YamlNoticeTemplateRegistryAdapterTest {
     YamlNoticeTemplateRegistryAdapter adapter =
         new YamlNoticeTemplateRegistryAdapter(new NoticeTemplateProperties());
 
-    assertThatThrownBy(
-            () -> adapter.resolve(MessageDeliveryType.REGISTRATION_OTP, null, "en"))
+    assertThatThrownBy(() -> adapter.resolve(MessageDeliveryType.REGISTRATION_OTP, null, "en"))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("channel");
   }
@@ -129,8 +125,7 @@ class YamlNoticeTemplateRegistryAdapterTest {
         .hasMessageContaining("properties");
   }
 
-  private YamlNoticeTemplateRegistryAdapter adapterWith(
-      Map.Entry<String, NoticeDefinition> entry) {
+  private YamlNoticeTemplateRegistryAdapter adapterWith(Map.Entry<String, NoticeDefinition> entry) {
     NoticeTemplateProperties properties = new NoticeTemplateProperties();
     properties.setDefinitions(Map.of(entry.getKey(), entry.getValue()));
     return new YamlNoticeTemplateRegistryAdapter(properties);

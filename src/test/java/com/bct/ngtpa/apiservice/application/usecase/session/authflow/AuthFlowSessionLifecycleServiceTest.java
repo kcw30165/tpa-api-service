@@ -262,10 +262,7 @@ class AuthFlowSessionLifecycleServiceTest {
 
   private static UsernameCheckState usernameCheckState() {
     return new UsernameCheckState(
-        new SelectedTrust("TL", "ENV1"),
-        "user_secret",
-        NOW,
-        NOW.plusSeconds(600));
+        new SelectedTrust("TL", "ENV1"), "user_secret", NOW, NOW.plusSeconds(600));
   }
 
   private static java.util.List<String> recordComponentNames(Class<?> type) {

@@ -98,8 +98,7 @@ class AuthUsernameRecoveryControllerTest {
             new RecordingStartUseCase(
                 Mono.just(
                     UsernameRecoveryStartResult.withoutSession(
-                        UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND,
-                        List.of()))),
+                        UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND, List.of()))),
             neverRequest(),
             neverCancel());
     var request =

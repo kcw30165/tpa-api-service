@@ -81,7 +81,10 @@ class AuthLoginOtpVerifyAuthenticatedTransportTest {
   @Test
   void failedVerificationNeverPublishesSid() {
     VerifyLoginOtpUseCase useCase =
-        command -> Mono.just(new VerifyLoginOtpResult(VerifyLoginOtpStatus.INVALID, 3, false, java.util.List.of(), null, null));
+        command ->
+            Mono.just(
+                new VerifyLoginOtpResult(
+                    VerifyLoginOtpStatus.INVALID, 3, false, java.util.List.of(), null, null));
     AuthFlowSessionProperties properties = new AuthFlowSessionProperties();
     LoginController controller =
         new LoginController(

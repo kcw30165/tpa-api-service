@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Confirms schemeName/schemeNameChi (sch-name/chin-sch-name) actually flow from the APIM DTO
  * through to the application-layer candidate, per
- * docs/design/10-template-service/template-service-solution-design.md section 8.2. Added
- * alongside the pre-existing TrpSearchMemberApimResultMapperTest, which this does not modify.
+ * docs/design/10-template-service/template-service-solution-design.md section 8.2. Added alongside
+ * the pre-existing TrpSearchMemberApimResultMapperTest, which this does not modify.
  */
 class TrpSearchMemberApimResultMapperSchemeNamePlumbingTest {
 
@@ -22,7 +22,17 @@ class TrpSearchMemberApimResultMapperSchemeNamePlumbingTest {
   void mapsSchemeNameAndSchemeNameChiOntoMatchedCandidate() {
     TrpSearchMemberApimDataItem item =
         new TrpSearchMemberApimDataItem(
-            "JP", "JPM", "OE", "JP MORGAN CHASE - JMCI", "摩根大通", "0001", "2", "", "", true, "user-1");
+            "JP",
+            "JPM",
+            "OE",
+            "JP MORGAN CHASE - JMCI",
+            "摩根大通",
+            "0001",
+            "2",
+            "",
+            "",
+            true,
+            "user-1");
 
     UsernameRecoveryLookupResult result = mapper.toResult(null, List.of(item));
 
@@ -48,7 +58,8 @@ class TrpSearchMemberApimResultMapperSchemeNamePlumbingTest {
   @Test
   void mapsAbsentSchemeNameFieldsToNull() {
     TrpSearchMemberApimDataItem item =
-        new TrpSearchMemberApimDataItem("DB", "DBA", "OE", null, null, "0001", "2", "", "", true, "user-1");
+        new TrpSearchMemberApimDataItem(
+            "DB", "DBA", "OE", null, null, "0001", "2", "", "", true, "user-1");
 
     UsernameRecoveryLookupResult result = mapper.toResult(null, List.of(item));
 

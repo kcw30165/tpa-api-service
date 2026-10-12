@@ -8,10 +8,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.
  * context created at START holds none of them and nothing else on the live path writes them.
  */
 public record ForgotPasswordUnderLockDetailsVerification(
-    ForgotPasswordDetailsStatus status,
-    String trustCode,
-    String schemeName,
-    String schemeNameChi) {
+    ForgotPasswordDetailsStatus status, String trustCode, String schemeName, String schemeNameChi) {
 
   public static ForgotPasswordUnderLockDetailsVerification of(ForgotPasswordDetailsStatus status) {
     return new ForgotPasswordUnderLockDetailsVerification(status, null, null, null);

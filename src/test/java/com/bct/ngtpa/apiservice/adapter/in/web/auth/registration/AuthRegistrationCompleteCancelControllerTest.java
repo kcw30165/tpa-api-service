@@ -45,7 +45,9 @@ class AuthRegistrationCompleteCancelControllerTest {
                     WorkflowNextStep.REGISTRATION_SUCCESS,
                     true,
                     false,
-                    List.of(new RegistrationLookupAccount("ENV1", "TL", null, null, null, null, null, Boolean.FALSE, null)),
+                    List.of(
+                        new RegistrationLookupAccount(
+                            "ENV1", "TL", null, null, null, null, null, Boolean.FALSE, null)),
                     List.of())),
             new CancelUseCaseStub(
                 new CancelRegistrationResult(

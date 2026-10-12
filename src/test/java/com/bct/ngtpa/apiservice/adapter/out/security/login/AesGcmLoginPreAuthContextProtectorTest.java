@@ -25,7 +25,14 @@ class AesGcmLoginPreAuthContextProtectorTest {
             "dst_opaque_value", "email", "member@example.com", "m*****@example.com"));
     var context =
         new LoginPreAuthContext(
-            "member01", "role_user", destinations, Instant.parse("2026-07-20T00:00:00Z"), "v1", null, null, null);
+            "member01",
+            "role_user",
+            destinations,
+            Instant.parse("2026-07-20T00:00:00Z"),
+            "v1",
+            null,
+            null,
+            null);
 
     var encrypted = protector.protect(context);
 
@@ -98,8 +105,7 @@ class AesGcmLoginPreAuthContextProtectorTest {
 
     var encrypted = protector.protect(context);
 
-    assertThat(encrypted.ciphertext())
-        .doesNotContain("DBA", "Example Scheme", "示例計劃", "member01");
+    assertThat(encrypted.ciphertext()).doesNotContain("DBA", "Example Scheme", "示例計劃", "member01");
     assertThat(protector.unprotect(encrypted)).isEqualTo(context);
   }
 

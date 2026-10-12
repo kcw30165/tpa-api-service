@@ -29,8 +29,8 @@ public record ForgotPasswordAuthFlowContext(
   }
 
   /**
-   * Creates the context stored when Forgot Password starts: an identity-only context with no contact
-   * data, reset authorization, trust or scheme fields. Later steps add those.
+   * Creates the context stored when Forgot Password starts: an identity-only context with no
+   * contact data, reset authorization, trust or scheme fields. Later steps add those.
    */
   public static ForgotPasswordAuthFlowContext started(
       String username, String identityValue, String identityType, String workflowVersion) {

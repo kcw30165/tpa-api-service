@@ -21,14 +21,14 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
- * Guards the rule that {@code accountEnv} does not exist in the Forgot Password pre-auth flow: neither
- * FE nor Java knows it before login, and nothing downstream of Forgot Password uses it (the reset
- * request carries only the customer id and the password, and its credential context is null).
+ * Guards the rule that {@code accountEnv} does not exist in the Forgot Password pre-auth flow:
+ * neither FE nor Java knows it before login, and nothing downstream of Forgot Password uses it (the
+ * reset request carries only the customer id and the password, and its credential context is null).
  *
- * <p>Registration is deliberately NOT guarded: {@code TRPRegMember} needs {@code env} in its request
- * body and for APIM routing. Username Recovery returns {@code accountEnv} to FE at {@code /start} for
- * rendering, so only its {@code /request} path is guarded (it works from the Scheme-Ref and needs only
- * trustCode, schemeName and userName).
+ * <p>Registration is deliberately NOT guarded: {@code TRPRegMember} needs {@code env} in its
+ * request body and for APIM routing. Username Recovery returns {@code accountEnv} to FE at {@code
+ * /start} for rendering, so only its {@code /request} path is guarded (it works from the Scheme-Ref
+ * and needs only trustCode, schemeName and userName).
  */
 class ForgotPasswordPreAuthNoAccountEnvArchitectureTest {
 
@@ -50,7 +50,8 @@ class ForgotPasswordPreAuthNoAccountEnvArchitectureTest {
     }
 
     assertThat(offenders)
-        .as("forgot-password context, lookup result and completion command members named accountEnv")
+        .as(
+            "forgot-password context, lookup result and completion command members named accountEnv")
         .isEmpty();
   }
 
@@ -91,7 +92,9 @@ class ForgotPasswordPreAuthNoAccountEnvArchitectureTest {
           files
               .filter(
                   path ->
-                      path.getFileName().toString().equals("UsernameRecoveryRequestProtectedOperation.java"))
+                      path.getFileName()
+                          .toString()
+                          .equals("UsernameRecoveryRequestProtectedOperation.java"))
               .toList();
     }
 
@@ -128,7 +131,9 @@ class ForgotPasswordPreAuthNoAccountEnvArchitectureTest {
 
   private static boolean mentionsAccountEnv(Path path) {
     try {
-      return Files.readString(path, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT).contains(TOKEN);
+      return Files.readString(path, StandardCharsets.UTF_8)
+          .toLowerCase(Locale.ROOT)
+          .contains(TOKEN);
     } catch (IOException exception) {
       throw new java.io.UncheckedIOException(exception);
     }

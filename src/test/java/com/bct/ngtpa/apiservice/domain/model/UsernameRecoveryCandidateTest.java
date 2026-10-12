@@ -40,7 +40,14 @@ class UsernameRecoveryCandidateTest {
   private static UsernameRecoveryCandidate candidate(
       UsernameRecoverySchemeRef schemeRef, boolean registered, String userName) {
     return new UsernameRecoveryCandidate(
-        schemeRef, "DB", "DBA", registered, userName, UsernameRecoveryDeliveryState.AVAILABLE, null, null);
+        schemeRef,
+        "DB",
+        "DBA",
+        registered,
+        userName,
+        UsernameRecoveryDeliveryState.AVAILABLE,
+        null,
+        null);
   }
 
   @Test
@@ -118,7 +125,14 @@ class UsernameRecoveryCandidateTest {
         NullPointerException.class,
         () ->
             new UsernameRecoveryCandidate(
-                new UsernameRecoverySchemeRef("sch_1"), "DB", "DBA", true, "john.doe", null, null, null));
+                new UsernameRecoverySchemeRef("sch_1"),
+                "DB",
+                "DBA",
+                true,
+                "john.doe",
+                null,
+                null,
+                null));
   }
 
   @Test

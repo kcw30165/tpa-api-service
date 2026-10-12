@@ -161,7 +161,8 @@ class RegistrationMissingDefinitionStartResendIntegrationTest {
 
     StepVerifier.create(operation.execute(resendCommand(), validContext()))
         .assertNext(
-            result -> assertThat(result.status()).isEqualTo(ResendRegistrationOtpResultStatus.RESENT))
+            result ->
+                assertThat(result.status()).isEqualTo(ResendRegistrationOtpResultStatus.RESENT))
         .expectComplete()
         .verify(WAIT);
 
@@ -181,7 +182,8 @@ class RegistrationMissingDefinitionStartResendIntegrationTest {
     MessageDeliveryPort delivery = mock(MessageDeliveryPort.class);
     when(delivery.deliver(any()))
         .thenReturn(
-            Mono.just(new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
+            Mono.just(
+                new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, null, null, null, null)));
     return delivery;
   }
 
@@ -355,7 +357,9 @@ class RegistrationMissingDefinitionStartResendIntegrationTest {
       return Mono.just(
           new RegistrationLookupResult(
               RegistrationLookupStatus.ELIGIBLE,
-              List.of(new RegistrationLookupAccount("OI", "JPM", null, null, null, null, null, Boolean.FALSE, null)),
+              List.of(
+                  new RegistrationLookupAccount(
+                      "OI", "JPM", null, null, null, null, null, Boolean.FALSE, null)),
               null));
     }
   }
