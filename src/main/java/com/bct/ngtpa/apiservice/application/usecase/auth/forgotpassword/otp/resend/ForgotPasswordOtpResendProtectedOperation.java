@@ -18,10 +18,15 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.*;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 /** Executes OTP_RESEND after shared idempotency ownership has been acquired. */
 public final class ForgotPasswordOtpResendProtectedOperation {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(ForgotPasswordOtpResendProtectedOperation.class);
+
   private static final String EXPIRES_AT = "forgotPasswordOtpExpiresAt";
   private static final String RESEND_AT = "forgotPasswordOtpResendAvailableAt";
   private static final String RESEND_COUNT = "forgotPasswordOtpSuccessfulResendCount";
@@ -157,6 +162,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                                 command, pendingRef, snapshot, validated);
                           });
                 })
+            .doOnError(cause -> logFailure(command, "execute", cause))
             .onErrorReturn(
                 new ForgotPasswordOtpResendProtectedExecutionResult(
                     new ResendForgotPasswordOtpResult(
@@ -195,6 +201,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
     try {
       context = decrypt(session);
     } catch (RuntimeException ex) {
+      logFailure(command, "decrypt", ex);
       return Mono.just(
           ValidatedState.invalid(ForgotPasswordOtpResendEligibilityStatus.SESSION_INVALID));
     }
@@ -266,6 +273,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                               context.maskedDestination(),
                               secondsUntil(now, authoritative.expiresAt()),
                               false))
+                  .doOnError(cause -> logFailure(command, "foundation", cause))
                   .onErrorReturn(
                       new ValidatedState(
                           ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED,
@@ -667,6 +675,15 @@ public final class ForgotPasswordOtpResendProtectedOperation {
     } catch (Exception exception) {
       throw new IllegalStateException("forgot password resend hash unavailable");
     }
+  }
+
+  private static void logFailure(
+      ResendForgotPasswordOtpCommand command, String stage, Throwable cause) {
+    LOGGER.error(
+        "event=forgot-password.resend.failed requestId={} stage={} exceptionType={}",
+        command.requestId(),
+        stage,
+        cause.getClass().getSimpleName());
   }
 
   private boolean blank(String value) {

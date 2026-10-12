@@ -9,6 +9,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
@@ -58,7 +62,10 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -103,6 +110,39 @@ class ForgotPasswordOtpResendProtectedOperationTest {
 
   private final AuthFlowSessionId sid = new AuthFlowSessionId("afs-otp-1");
   private final String csrfHash = sha256(RAW_CSRF);
+
+  // ----- log capture -------------------------------------------------------
+
+  private ListAppender<ILoggingEvent> logAppender;
+  private Logger operationLogger;
+
+  @BeforeEach
+  void attachLogAppender() {
+    operationLogger =
+        (Logger) LoggerFactory.getLogger(ForgotPasswordOtpResendProtectedOperation.class);
+    logAppender = new ListAppender<>();
+    logAppender.start();
+    operationLogger.addAppender(logAppender);
+  }
+
+  @AfterEach
+  void detachLogAppender() {
+    operationLogger.detachAppender(logAppender);
+  }
+
+  private void assertLoggedFailure(String stage) {
+    assertThat(logAppender.list).hasSize(1);
+    ILoggingEvent event = logAppender.list.get(0);
+    assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(event.getThrowableProxy()).isNull();
+    assertThat(event.getFormattedMessage())
+        .contains(
+            "event=forgot-password.resend.failed",
+            "requestId=",
+            "stage=" + stage,
+            "exceptionType=IllegalStateException")
+        .doesNotContain("boom");
+  }
 
   // ----- construction helpers ---------------------------------------------
 
@@ -391,6 +431,20 @@ class ForgotPasswordOtpResendProtectedOperationTest {
   }
 
   @Test
+  void decryptFailureYieldsAuthFlowInvalidAndLogsTheFailure() {
+    givenLockAcquired();
+    givenSession(validSession());
+    when(protector.unprotect(any())).thenThrow(new IllegalStateException("boom"));
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            r ->
+                assertThat(r.result().status())
+                    .isEqualTo(ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID))
+        .verifyComplete();
+    assertLoggedFailure("decrypt");
+  }
+
+  @Test
   void maskerMismatchYieldsAuthFlowInvalid() {
     givenLockAcquired();
     givenSession(validSession());
@@ -543,6 +597,22 @@ class ForgotPasswordOtpResendProtectedOperationTest {
   }
 
   @Test
+  void foundationErrorYieldsSystemFailedAndLogsTheFailure() {
+    givenLockAcquired();
+    givenSession(validSession());
+    givenContext();
+    givenChallenge();
+    when(foundation.evaluate(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            r ->
+                assertThat(r.result().status())
+                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
+        .verifyComplete();
+    assertLoggedFailure("foundation");
+  }
+
+  @Test
   void loadSnapshotErrorYieldsSystemFailed() {
     givenLockAcquired();
     when(sessions.loadSnapshot(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
@@ -552,6 +622,19 @@ class ForgotPasswordOtpResendProtectedOperationTest {
                 assertThat(r.result().status())
                     .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
         .verifyComplete();
+  }
+
+  @Test
+  void loadSnapshotErrorYieldsSystemFailedAndLogsTheFailure() {
+    givenLockAcquired();
+    when(sessions.loadSnapshot(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            r ->
+                assertThat(r.result().status())
+                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
+        .verifyComplete();
+    assertLoggedFailure("execute");
   }
 
   // ----- tests: eligible -> dispatch -------------------------------------------
