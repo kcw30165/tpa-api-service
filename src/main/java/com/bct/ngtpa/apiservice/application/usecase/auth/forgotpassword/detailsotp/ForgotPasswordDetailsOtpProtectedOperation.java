@@ -137,7 +137,15 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                       .flatMap(
                           result ->
                               result.status() == ForgotPasswordDetailsStatus.DETAILS_VERIFIED
-                                  ? issue(command, reference, handle, budget, context)
+                                  ? issue(
+                                      command,
+                                      reference,
+                                      handle,
+                                      budget,
+                                      context.withLookupFields(
+                                          result.trustCode(),
+                                          result.schemeName(),
+                                          result.schemeNameChi()))
                                   : Mono.just(
                                       new ForgotPasswordDetailsOtpProtectedExecutionResult(
                                           new ForgotPasswordDetailsOtpResult(

@@ -171,6 +171,22 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
         String schemeName,
         String schemeNameChi,
         int ttlSeconds) {
+      this(
+          properties,
+          trustCode,
+          schemeName,
+          schemeNameChi,
+          ttlSeconds,
+          new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED));
+    }
+
+    SendHarness(
+        NoticeTemplateProperties properties,
+        String trustCode,
+        String schemeName,
+        String schemeNameChi,
+        int ttlSeconds,
+        ForgotPasswordDetailsLookupResult lookupResult) {
       Instant now = Instant.parse("2026-08-04T10:15:30Z");
       Clock clock = Clock.fixed(now, ZoneOffset.UTC);
       AuthFlowSessionId sessionId = new AuthFlowSessionId("afs_test_123");
@@ -228,10 +244,7 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
           .thenReturn(context);
 
       ForgotPasswordDetailsLookupPort lookup = mock(ForgotPasswordDetailsLookupPort.class);
-      when(lookup.verify(any()))
-          .thenReturn(
-              Mono.just(
-                  new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED)));
+      when(lookup.verify(any())).thenReturn(Mono.just(lookupResult));
 
       when(otp.createChallenge(any()))
           .thenReturn(
@@ -691,5 +704,53 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
     verify(harness.sessions, never()).updateRevisioned(any());
     assertThat(harness.emailCalls.get()).isZero();
     assertThat(harness.smsCalls.get()).isZero();
+  }
+
+  // ===============================================================================
+  // Live-path regression (scripts 173-179): the protected context is created at START with no
+  // trustCode/schemeName/schemeNameChi, and nothing on the live DETAILS_AND_OTP path writes them
+  // later, so the under-lock details step must take them from the TRPSearchMember lookup result.
+  // These tests build the context the way START does (all three null) and supply the values only
+  // through the lookup result.
+  // ===============================================================================
+
+  private static ForgotPasswordDetailsLookupResult matchedLookupWithTrustFields() {
+    return new ForgotPasswordDetailsLookupResult(
+        ForgotPasswordDetailsLookupStatus.MATCHED,
+        "ENV1",
+        TRUST_CODE,
+        SCHEME_NAME,
+        SCHEME_NAME_CHI);
+  }
+
+  @Test
+  void sendRendersEmailFromLookupTrustFieldsWhenTheStoredContextHasNone() {
+    SendHarness harness =
+        new SendHarness(realProperties(), null, null, null, 300, matchedLookupWithTrustFields());
+
+    assertThat(harness.execute("member@example.com", null, "en").status())
+        .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SUCCESS);
+    assertThat(harness.email.get().subject()).contains(TRUST_CODE).doesNotContain("{", "}");
+    assertThat(harness.email.get().body()).contains(SCHEME_NAME).doesNotContain("{", "}");
+  }
+
+  @Test
+  void sendRendersZhHkEmailFromLookupTrustFieldsWhenTheStoredContextHasNone() {
+    SendHarness harness =
+        new SendHarness(realProperties(), null, null, null, 300, matchedLookupWithTrustFields());
+
+    assertThat(harness.execute("member@example.com", null, "zh-HK").status())
+        .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SUCCESS);
+    assertThat(harness.email.get().body()).contains(SCHEME_NAME_CHI).doesNotContain("{", "}");
+  }
+
+  @Test
+  void sendRendersSmsFromLookupTrustFieldsWhenTheStoredContextHasNone() {
+    SendHarness harness =
+        new SendHarness(realProperties(), null, null, null, 300, matchedLookupWithTrustFields());
+
+    assertThat(harness.execute(null, "91234567", "en").status())
+        .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SUCCESS);
+    assertThat(harness.sms.get().content()).contains(TRUST_CODE).doesNotContain("{", "}");
   }
 }

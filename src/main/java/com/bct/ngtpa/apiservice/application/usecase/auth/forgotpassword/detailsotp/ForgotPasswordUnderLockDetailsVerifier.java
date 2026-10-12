@@ -15,7 +15,7 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
     lookup = Objects.requireNonNull(l);
   }
 
-  public Mono<ForgotPasswordDetailsResult> verify(
+  public Mono<ForgotPasswordUnderLockDetailsVerification> verify(
       SessionLockHandle lock,
       AuthFlowSession session,
       ForgotPasswordAuthFlowContext context,
@@ -24,7 +24,8 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
       String mobile,
       String requestId) {
     if (lock == null || !lock.acquired() || session == null || context == null)
-      return Mono.just(ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.SYSTEM_FAILED));
+      return Mono.just(
+          ForgotPasswordUnderLockDetailsVerification.of(ForgotPasswordDetailsStatus.SYSTEM_FAILED));
     return lookup
         .verify(
             new ForgotPasswordDetailsLookupCommand(
@@ -39,8 +40,15 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
         .map(
             r ->
                 r.status() == ForgotPasswordDetailsLookupStatus.MATCHED
-                    ? ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.DETAILS_VERIFIED)
-                    : ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.BUSINESS_REJECTED))
-        .onErrorReturn(ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.SYSTEM_FAILED));
+                    ? new ForgotPasswordUnderLockDetailsVerification(
+                        ForgotPasswordDetailsStatus.DETAILS_VERIFIED,
+                        r.trustCode(),
+                        r.schemeName(),
+                        r.schemeNameChi())
+                    : ForgotPasswordUnderLockDetailsVerification.of(
+                        ForgotPasswordDetailsStatus.BUSINESS_REJECTED))
+        .onErrorReturn(
+            ForgotPasswordUnderLockDetailsVerification.of(
+                ForgotPasswordDetailsStatus.SYSTEM_FAILED));
   }
 }

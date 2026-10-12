@@ -176,6 +176,31 @@ public record ForgotPasswordAuthFlowContext(
         phase);
   }
 
+  /**
+   * Returns a copy carrying the trust and scheme fields returned by the member lookup, keeping the
+   * stored value for any field the lookup did not supply. The details step needs this because the
+   * context created at START carries none of them.
+   */
+  public ForgotPasswordAuthFlowContext withLookupFields(
+      String lookupTrustCode, String lookupSchemeName, String lookupSchemeNameChi) {
+    return new ForgotPasswordAuthFlowContext(
+        username,
+        identityValue,
+        identityType,
+        identityVerified,
+        resetSubjectId,
+        contactChannel,
+        protectedDestination,
+        maskedDestination,
+        resetAuthorization,
+        accountEnv,
+        hasText(lookupTrustCode) ? lookupTrustCode : trustCode,
+        hasText(lookupSchemeName) ? lookupSchemeName : schemeName,
+        hasText(lookupSchemeNameChi) ? lookupSchemeNameChi : schemeNameChi,
+        workflowVersion,
+        phase);
+  }
+
   private static String requireText(String value, String field) {
     if (value == null || value.isBlank()) {
       throw new IllegalArgumentException(field + " must not be blank");
