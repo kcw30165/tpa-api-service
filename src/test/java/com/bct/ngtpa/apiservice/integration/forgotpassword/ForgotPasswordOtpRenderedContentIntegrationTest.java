@@ -753,4 +753,265 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
         .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SUCCESS);
     assertThat(harness.sms.get().content()).contains(TRUST_CODE).doesNotContain("{", "}");
   }
+
+  // ===============================================================================
+  // Persistence regression (scripts 180-181): resend reads trustCode/schemeName/schemeNameChi from
+  // the protected context that was STORED at OTP_SENT, so they must be persisted by the details
+  // check. These tests run the REAL details operation and the REAL OTP session binding adapter over
+  // an in-memory session store and assert on the context that was persisted.
+  // ===============================================================================
+
+  @Test
+  void detailsCheckPersistsTheLookupTrustFieldsForResend() {
+    PersistedContextHarness harness =
+        new PersistedContextHarness(
+            realProperties(), null, null, null, null, matchedLookupWithTrustFields());
+
+    assertThat(harness.execute("member@example.com", "en").status())
+        .as("details-check outcome")
+        .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SUCCESS);
+
+    ForgotPasswordAuthFlowContext persisted = harness.persistedContext();
+    assertThat(persisted.phase())
+        .as("persisted phase")
+        .isEqualTo(ForgotPasswordProtectedPhase.OTP_SENT);
+    assertThat(persisted.trustCode()).as("persisted trustCode").isEqualTo(TRUST_CODE);
+    assertThat(persisted.schemeName()).as("persisted schemeName").isEqualTo(SCHEME_NAME);
+    assertThat(persisted.schemeNameChi()).as("persisted schemeNameChi").isEqualTo(SCHEME_NAME_CHI);
+  }
+
+  @Test
+  void detailsCheckKeepsTrustFieldsAlreadyStoredWhenTheLookupSuppliesNone() {
+    PersistedContextHarness harness =
+        new PersistedContextHarness(
+            realProperties(),
+            "ENV1",
+            TRUST_CODE,
+            SCHEME_NAME,
+            SCHEME_NAME_CHI,
+            new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED));
+
+    assertThat(harness.execute("member@example.com", "en").status())
+        .as("details-check outcome")
+        .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SUCCESS);
+
+    ForgotPasswordAuthFlowContext persisted = harness.persistedContext();
+    assertThat(persisted.phase())
+        .as("persisted phase")
+        .isEqualTo(ForgotPasswordProtectedPhase.OTP_SENT);
+    assertThat(persisted.accountEnv()).as("persisted accountEnv").isEqualTo("ENV1");
+    assertThat(persisted.trustCode()).as("persisted trustCode").isEqualTo(TRUST_CODE);
+    assertThat(persisted.schemeName()).as("persisted schemeName").isEqualTo(SCHEME_NAME);
+    assertThat(persisted.schemeNameChi()).as("persisted schemeNameChi").isEqualTo(SCHEME_NAME_CHI);
+  }
+
+  private static final class PersistedContextHarness {
+    private static final Instant NOW = Instant.parse("2026-08-04T10:15:30Z");
+    private static final AuthFlowSessionId SESSION_ID = new AuthFlowSessionId("afs_persist_123");
+    private static final String CIPHERTEXT_KEY = "forgotPasswordContextCiphertext";
+
+    private final AtomicReference<AuthFlowSessionSnapshot> store = new AtomicReference<>();
+    private final Map<String, ForgotPasswordAuthFlowContext> vault = new java.util.HashMap<>();
+    private final AtomicInteger contextSeq = new AtomicInteger();
+    private final AtomicInteger revisionSeq = new AtomicInteger();
+    private final ForgotPasswordDetailsOtpProtectedOperation service;
+
+    PersistedContextHarness(
+        NoticeTemplateProperties properties,
+        String accountEnv,
+        String trustCode,
+        String schemeName,
+        String schemeNameChi,
+        ForgotPasswordDetailsLookupResult lookupResult) {
+      Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+      SessionLockHandle lock = new SessionLockHandle(true, "lock-key", "owner-token");
+
+      // The stored context as START leaves it: no contact data and, unless a test says otherwise,
+      // no trust fields.
+      ForgotPasswordAuthFlowContext initial =
+          new ForgotPasswordAuthFlowContext(
+              "member-user",
+              "tas-user-id",
+              "HKID",
+              true,
+              "reset-subject-id",
+              null,
+              null,
+              null,
+              null,
+              accountEnv,
+              trustCode,
+              schemeName,
+              schemeNameChi,
+              "v1",
+              ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
+      vault.put("ct-0", initial);
+      store.set(
+          new AuthFlowSessionSnapshot(
+              new AuthFlowSession(
+                  SESSION_ID,
+                  AuthFlowScenario.FORGOT_PASSWORD,
+                  AuthFlowStatus.IDENTITY_VERIFIED,
+                  "csrf-hash",
+                  null,
+                  new AuthFlowSessionData(
+                      null,
+                      null,
+                      Map.of(
+                          CIPHERTEXT_KEY, "ct-0",
+                          "forgotPasswordContextKeyVersion", "kv-0",
+                          "forgotPasswordContextAlgorithm", "AES_GCM_V1")),
+                  NOW.minusSeconds(30),
+                  NOW.minusSeconds(5),
+                  NOW.plusSeconds(300)),
+              new SessionRevision("0123456789abcdef0123456789abcdef")));
+
+      AuthFlowSessionMutationLockPort locks = mock(AuthFlowSessionMutationLockPort.class);
+      when(locks.acquire(any(), any())).thenReturn(Mono.just(lock));
+      when(locks.release(lock)).thenReturn(Mono.just(true));
+
+      // In-memory session store: every revisioned update replaces the stored snapshot.
+      AuthFlowSessionPort sessions = mock(AuthFlowSessionPort.class);
+      when(sessions.loadSnapshot(any()))
+          .thenAnswer(invocation -> Mono.just(Optional.of(store.get())));
+      when(sessions.updateRevisioned(any()))
+          .thenAnswer(
+              invocation -> {
+                com.bct.ngtpa.apiservice.application.dto.session.authflow
+                        .RevisionedAuthFlowSessionMutationCommand
+                    command = invocation.getArgument(0);
+                AuthFlowSessionSnapshot next =
+                    new AuthFlowSessionSnapshot(
+                        command.updated(),
+                        new SessionRevision(String.format("%032x", revisionSeq.incrementAndGet())));
+                store.set(next);
+                return Mono.just(
+                    new AuthFlowSessionMutationResult(
+                        AuthFlowSessionMutationOutcome.APPLIED, next));
+              });
+
+      // Protector fake: keeps the exact context object that was protected, keyed by ciphertext.
+      ForgotPasswordAuthFlowContextProtectorPort protector =
+          mock(ForgotPasswordAuthFlowContextProtectorPort.class);
+      when(protector.protect(any()))
+          .thenAnswer(
+              invocation -> {
+                String ciphertext = "ct-" + contextSeq.incrementAndGet();
+                vault.put(ciphertext, invocation.getArgument(0));
+                return new ForgotPasswordAuthFlowEncryptedContext(ciphertext, "kv-1", "AES_GCM_V1");
+              });
+      when(protector.unprotect(any(ForgotPasswordAuthFlowEncryptedContext.class)))
+          .thenAnswer(
+              invocation -> {
+                ForgotPasswordAuthFlowEncryptedContext encrypted = invocation.getArgument(0);
+                return vault.get(encrypted.ciphertext());
+              });
+
+      ForgotPasswordDetailsLookupPort lookup = mock(ForgotPasswordDetailsLookupPort.class);
+      when(lookup.verify(any())).thenReturn(Mono.just(lookupResult));
+
+      Instant expiresAt = NOW.plusSeconds(300);
+      OtpChallengePort otp = mock(OtpChallengePort.class);
+      when(otp.createChallenge(any()))
+          .thenReturn(Mono.just(new CreateOtpChallengeResult("otp-1", "123456", expiresAt, 300)));
+      OtpChallengeStatePort challenges = mock(OtpChallengeStatePort.class);
+      when(challenges.findById(any()))
+          .thenReturn(
+              Mono.just(
+                  Optional.of(
+                      new OtpChallenge(
+                          "otp-1",
+                          OtpScenario.FORGOT_PASSWORD,
+                          SESSION_ID.value(),
+                          OtpChannel.EMAIL,
+                          "destinationhash",
+                          "codehash",
+                          OtpStatus.CREATED,
+                          0,
+                          5,
+                          0,
+                          5,
+                          NOW.minusSeconds(1),
+                          expiresAt,
+                          NOW.minusSeconds(1),
+                          null,
+                          null))));
+
+      SmsSenderPort smsSender =
+          message ->
+              Mono.just(new SenderResult(SenderStatus.ACCEPTED, "provider-sms-id", null, null));
+      EmailSenderPort emailSender =
+          message ->
+              Mono.just(new SenderResult(SenderStatus.ACCEPTED, "provider-email-id", null, null));
+
+      // REAL binding adapter over the in-memory store and the protector fake.
+      ForgotPasswordOtpSessionBindingPort binding =
+          new com.bct.ngtpa.apiservice.adapter.out.session.forgotpassword
+              .ForgotPasswordOtpSessionBindingAdapter(sessions, challenges, protector);
+
+      service =
+          new ForgotPasswordDetailsOtpProtectedOperation(
+              new SecureForgotPasswordOtpCommitRefGenerator(),
+              locks,
+              sessions,
+              protector,
+              new ForgotPasswordUnderLockDetailsVerifier(lookup),
+              otp,
+              new MessageDeliveryAdapter(smsSender, emailSender),
+              new MaskingService(new MaskingProperties()),
+              binding,
+              new MemoryCommitStates(),
+              new ForgotPasswordOtpCommitRetentionPolicy(
+                  Duration.ofSeconds(60), Duration.ofMinutes(10)),
+              new ForgotPasswordDetailsOtpLeasePolicy(60, 10, 10, 3, 10000, 100, 5000, 1000),
+              clock,
+              Duration.ofMinutes(5),
+              new YamlNoticeTemplateRegistryAdapter(properties));
+    }
+
+    ForgotPasswordDetailsOtpResult execute(String email, String language) {
+      return service
+          .execute(
+              new ForgotPasswordDetailsOtpCommand(
+                  SESSION_ID,
+                  "csrf",
+                  "https://portal.example",
+                  "https://portal.example/forgot-password",
+                  "req-123",
+                  language,
+                  "ac2e9b54-836d-4729-8957-d89b1d8ae015",
+                  "04/07/1978",
+                  email,
+                  null))
+          .block()
+          .result();
+    }
+
+    /** The protected context that the session store currently holds. */
+    ForgotPasswordAuthFlowContext persistedContext() {
+      String ciphertext = store.get().session().data().attributes().get(CIPHERTEXT_KEY);
+      return vault.get(ciphertext);
+    }
+
+    private static final class MemoryCommitStates implements ForgotPasswordOtpCommitStatePort {
+      private final Map<String, ForgotPasswordOtpCommitState> states = new java.util.HashMap<>();
+
+      @Override
+      public Mono<Boolean> saveIfAbsent(
+          String opaqueCommitRef, ForgotPasswordOtpCommitState state, Duration ttl) {
+        return Mono.just(states.putIfAbsent(opaqueCommitRef, state) == null);
+      }
+
+      @Override
+      public Mono<Optional<ForgotPasswordOtpCommitState>> load(String opaqueCommitRef) {
+        return Mono.just(Optional.ofNullable(states.get(opaqueCommitRef)));
+      }
+
+      @Override
+      public Mono<Void> delete(String opaqueCommitRef) {
+        states.remove(opaqueCommitRef);
+        return Mono.empty();
+      }
+    }
+  }
 }

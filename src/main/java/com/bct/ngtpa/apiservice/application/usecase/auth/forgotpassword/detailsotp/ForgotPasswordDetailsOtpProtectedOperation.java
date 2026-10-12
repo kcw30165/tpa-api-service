@@ -208,7 +208,8 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                               destination,
                               challenge,
                               result,
-                              budget));
+                              budget,
+                              context));
             });
   }
 
@@ -220,7 +221,8 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
       String destination,
       CreateOtpChallengeResult challenge,
       MessageDeliveryResult deliveryResult,
-      ForgotPasswordMutationLeaseBudget budget) {
+      ForgotPasswordMutationLeaseBudget budget,
+      ForgotPasswordAuthFlowContext context) {
     if (!budget.hasPersistenceBudget(policy.persistenceAllowance())) return failure();
     Instant now = clock.instant();
     var bind =
@@ -236,7 +238,10 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                 : masker.maskMobile(destination),
             challenge.expiresAt(),
             now.plusSeconds(60),
-            now);
+            now,
+            context.trustCode(),
+            context.schemeName(),
+            context.schemeNameChi());
     return binding
         .apply(bind)
         .flatMap(

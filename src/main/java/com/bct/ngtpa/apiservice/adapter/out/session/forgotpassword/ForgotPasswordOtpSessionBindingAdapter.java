@@ -101,6 +101,10 @@ public final class ForgotPasswordOtpSessionBindingAdapter
                       c.protectedDestination(),
                       c.maskedDestination(),
                       context.resetAuthorization(),
+                      context.accountEnv(),
+                      firstText(c.trustCode(), context.trustCode()),
+                      firstText(c.schemeName(), context.schemeName()),
+                      firstText(c.schemeNameChi(), context.schemeNameChi()),
                       context.workflowVersion(),
                       ForgotPasswordProtectedPhase.OTP_SENT);
               return update(
@@ -161,6 +165,10 @@ public final class ForgotPasswordOtpSessionBindingAdapter
                 now,
                 s.expiresAt()))
         .then();
+  }
+
+  private static String firstText(String preferred, String fallback) {
+    return preferred == null || preferred.isBlank() ? fallback : preferred;
   }
 
   private Mono<ForgotPasswordOtpBindingResult> rejected() {
