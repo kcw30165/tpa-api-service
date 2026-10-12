@@ -5,7 +5,9 @@ public record ForgotPasswordDetailsLookupResult(
     String trustCode,
     String schemeName,
     String schemeNameChi) {
-  public ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus status) {
-    this(status, null, null, null);
+  /** The lookup found no matching registered member: no trust or scheme fields. */
+  public static ForgotPasswordDetailsLookupResult notFound() {
+    return new ForgotPasswordDetailsLookupResult(
+        ForgotPasswordDetailsLookupStatus.NOT_FOUND, null, null, null);
   }
 }

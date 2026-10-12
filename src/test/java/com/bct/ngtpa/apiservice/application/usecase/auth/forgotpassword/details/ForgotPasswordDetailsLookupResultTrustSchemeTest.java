@@ -7,8 +7,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Confirms trustCode/schemeName/schemeNameChi (added for Stage II-4, see
  * docs/design/10-template-service/template-service-implementation-plan.md Appendix E.3 and E.9,
- * II-4.b0) on the canonical constructor, and that the status-only compatibility constructor
- * defaults all three to null.
+ * II-4.b0) on the canonical constructor, and that the notFound() factory carries none of them.
  */
 class ForgotPasswordDetailsLookupResultTrustSchemeTest {
 
@@ -27,9 +26,9 @@ class ForgotPasswordDetailsLookupResultTrustSchemeTest {
   }
 
   @Test
-  void oneArgCompatibilityConstructorDefaultsEverythingToNull() {
+  void notFoundCarriesNoTrustOrSchemeFields() {
     var result =
-        new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.NOT_FOUND);
+        ForgotPasswordDetailsLookupResult.notFound();
 
     assertThat(result.trustCode()).isNull();
     assertThat(result.schemeName()).isNull();

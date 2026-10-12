@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
@@ -93,7 +94,8 @@ class IdempotentCompleteForgotPasswordServiceTest {
         "https://ref",
         "en",
         "corr-1",
-        Duration.ofMinutes(5));
+        Duration.ofMinutes(5),
+        ActorUserRole.ROLE_USER_MBR);
   }
 
   private AuthFlowSession sessionWith(Map<String, String> attributes) {

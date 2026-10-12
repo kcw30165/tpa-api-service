@@ -101,7 +101,7 @@ public final class ForgotPasswordTrpSearchMemberMapper {
   }
 
   private static ForgotPasswordDetailsLookupResult notFound() {
-    return new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.NOT_FOUND);
+    return ForgotPasswordDetailsLookupResult.notFound();
   }
 
   private static ForgotPasswordDetailsDownstreamException malformed(

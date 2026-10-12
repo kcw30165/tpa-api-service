@@ -25,7 +25,7 @@ class ForgotPasswordTrpSearchMemberDataItemTest {
   void compatibilityConstructorDefaultsNewFieldsToNull() {
     var item =
         new ForgotPasswordTrpSearchMemberDataItem(
-            "TB", "MSIG", "OE", "0001", "2", "", "", false, null);
+            "TB", "MSIG", "OE", null, null, "0001", "2", "", "", false, null);
     assertThat(item.schemeName()).isNull();
     assertThat(item.schemeNameChi()).isNull();
     assertThat(item.env()).isEqualTo("TB");

@@ -45,28 +45,19 @@ class PreAuthContextRecordsCanonicalConstructorArchitectureTest {
 
   private static final Set<String> KNOWN_REMAINING =
       new TreeSet<>(List.of(
-              "CompleteForgotPasswordCommand:10",
               "EstablishAuthenticatedLoginSessionCommand:5",
-              "ForgotPasswordDetailsLookupResult:1",
-              "ForgotPasswordIdempotencyReplaySnapshot:3",
-              "ForgotPasswordOtpResendState:3",
-              "ForgotPasswordPasswordSetupDataResponse:0",
-              "ForgotPasswordTrpSearchMemberDataItem:9",
               "RegistrationLookupAccount:4",
               "RegistrationOtpResendResponse:4",
               "RegistrationProtectedAuthFlowContextCommand:5",
               "ResendRegistrationOtpResult:10",
               "SelectedTrust:5",
               "SimpleWebError:2",
-              "StartForgotPasswordCommand:6",
-              "StartForgotPasswordUsernameLookupCommand:2",
               "StartRegistrationCommand:10",
               "StartRegistrationError:2",
               "TrpChkCustIdApimDataItem:2",
               "TrpSearchMemberApimDataItem:4",
               "TrpSearchMemberApimDataItem:9",
-              "UsernameRecoveryStartResult:4",
-              "VerifyForgotPasswordOtpResult:2"));
+              "UsernameRecoveryStartResult:4"));
 
   @Test
   void thePreAuthPackagesAreScannedAndTheirRecordsLoad() throws IOException {

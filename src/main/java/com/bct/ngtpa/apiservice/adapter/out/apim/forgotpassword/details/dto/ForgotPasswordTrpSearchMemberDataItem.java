@@ -18,36 +18,6 @@ public record ForgotPasswordTrpSearchMemberDataItem(
     @JsonProperty("isRegistered") Boolean isRegistered,
     @JsonProperty("cust-id") String customerId) {
 
-  /**
-   * Compatibility constructor for existing call sites predating the addition of {@code sch-name}
-   * / {@code chin-sch-name} (newly added APIM response fields; see
-   * docs/design/10-template-service/template-service-solution-design.md section 8.2). Both new
-   * fields default to {@code null}.
-   */
-  public ForgotPasswordTrpSearchMemberDataItem(
-      String env,
-      String trustCode,
-      String schemeType,
-      String policyNo,
-      String certNo,
-      String termStatus,
-      String termCompleteDate,
-      Boolean isRegistered,
-      String customerId) {
-    this(
-        env,
-        trustCode,
-        schemeType,
-        null,
-        null,
-        policyNo,
-        certNo,
-        termStatus,
-        termCompleteDate,
-        isRegistered,
-        customerId);
-  }
-
   @Override
   public String toString() {
     return "ForgotPasswordTrpSearchMemberDataItem[env=, trustCode=, schemeType=, schemeName=, schemeNameChi=, policyNo=, "

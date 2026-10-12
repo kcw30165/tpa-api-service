@@ -7,10 +7,6 @@ public record ForgotPasswordOtpResendState(
     int successfulResendCount,
     Instant latestAcceptedAt,
     boolean blocked) {
-  public ForgotPasswordOtpResendState(String id, int count, Instant at) {
-    this(id, count, at, false);
-  }
-
   public ForgotPasswordOtpResendState {
     if (activeChallengeId == null || activeChallengeId.isBlank())
       throw new IllegalArgumentException("active challenge required");

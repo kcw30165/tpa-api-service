@@ -15,9 +15,4 @@ public record VerifyForgotPasswordOtpResult(
       throw new IllegalArgumentException("remainingVerifyAttempts must not be negative");
     }
   }
-
-  public VerifyForgotPasswordOtpResult(
-      VerifyForgotPasswordOtpStatus status, WorkflowNextStep nextStep) {
-    this(status, nextStep, null);
-  }
 }

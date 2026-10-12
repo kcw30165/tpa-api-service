@@ -122,7 +122,7 @@ class ForgotPasswordPublicResponseContractSubtask008FailFirstTest {
     assertMachineReadable(
         verifyMapper.toMutationResponse(
             new VerifyForgotPasswordOtpResult(
-                VerifyForgotPasswordOtpStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP)),
+                VerifyForgotPasswordOtpStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP, null)),
         ApiStatus.VALIDATION_FAILED,
         WorkflowNextStep.VERIFY_OTP,
         "err.forgot-password.otp.invalid",
@@ -131,7 +131,7 @@ class ForgotPasswordPublicResponseContractSubtask008FailFirstTest {
     assertMachineReadable(
         verifyMapper.toMutationResponse(
             new VerifyForgotPasswordOtpResult(
-                VerifyForgotPasswordOtpStatus.OTP_EXPIRED, WorkflowNextStep.RESEND_OTP)),
+                VerifyForgotPasswordOtpStatus.OTP_EXPIRED, WorkflowNextStep.RESEND_OTP, null)),
         ApiStatus.BUSINESS_REJECTED,
         WorkflowNextStep.RESEND_OTP,
         "err.forgot-password.otp.expired",

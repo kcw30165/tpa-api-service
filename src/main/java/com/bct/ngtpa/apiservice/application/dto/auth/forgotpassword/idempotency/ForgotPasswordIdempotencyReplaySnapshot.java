@@ -24,11 +24,6 @@ public record ForgotPasswordIdempotencyReplaySnapshot(
     identityType = identityType == null || identityType.isBlank() ? null : identityType.trim();
   }
 
-  public ForgotPasswordIdempotencyReplaySnapshot(
-      String outcomeCode, String opaqueCommitRef, Map<String, String> safeHeaders) {
-    this(outcomeCode, opaqueCommitRef, safeHeaders, null);
-  }
-
   private static String requireText(String value, String field) {
     if (value == null || value.isBlank()) {
       throw new IllegalArgumentException(field + " must not be blank");

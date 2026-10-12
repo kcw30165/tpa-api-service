@@ -13,26 +13,26 @@ class ForgotPasswordIdempotencyReplaySnapshotTest {
 
   @Test
   void nullOutcomeCodeThrows() {
-    assertThatThrownBy(() -> new ForgotPasswordIdempotencyReplaySnapshot(null, "ref-1", Map.of()))
+    assertThatThrownBy(() -> new ForgotPasswordIdempotencyReplaySnapshot(null, "ref-1", Map.of(), null))
         .isInstanceOf(NullPointerException.class);
   }
 
   @Test
   void blankOutcomeCodeThrows() {
-    assertThatThrownBy(() -> new ForgotPasswordIdempotencyReplaySnapshot("", "ref-1", Map.of()))
+    assertThatThrownBy(() -> new ForgotPasswordIdempotencyReplaySnapshot("", "ref-1", Map.of(), null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void blankOpaqueCommitRefThrows() {
-    assertThatThrownBy(() -> new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "  ", Map.of()))
+    assertThatThrownBy(() -> new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "  ", Map.of(), null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void nullHeadersBecomesEmptyMap() {
     ForgotPasswordIdempotencyReplaySnapshot snapshot =
-        new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "ref-1", null);
+        new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "ref-1", null, null);
     assertThat(snapshot.safeHeaders()).isEmpty();
   }
 
@@ -41,7 +41,7 @@ class ForgotPasswordIdempotencyReplaySnapshotTest {
     Map<String, String> headers = new java.util.LinkedHashMap<>();
     headers.put("", "value");
     assertThatThrownBy(
-            () -> new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "ref-1", headers))
+            () -> new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "ref-1", headers, null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -50,7 +50,7 @@ class ForgotPasswordIdempotencyReplaySnapshotTest {
     assertThatThrownBy(
             () ->
                 new ForgotPasswordIdempotencyReplaySnapshot(
-                    "SUCCESS", "ref-1", Map.of("Set-Cookie", "session=abc")))
+                    "SUCCESS", "ref-1", Map.of("Set-Cookie", "session=abc"), null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -59,7 +59,7 @@ class ForgotPasswordIdempotencyReplaySnapshotTest {
     assertThatThrownBy(
             () ->
                 new ForgotPasswordIdempotencyReplaySnapshot(
-                    "SUCCESS", "ref-1", Map.of("X-Custom", "csrf_abc123")))
+                    "SUCCESS", "ref-1", Map.of("X-Custom", "csrf_abc123"), null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -68,7 +68,7 @@ class ForgotPasswordIdempotencyReplaySnapshotTest {
     assertThatThrownBy(
             () ->
                 new ForgotPasswordIdempotencyReplaySnapshot(
-                    "SUCCESS", "ref-1", Map.of("Authorization-Like", "Bearer xyz")))
+                    "SUCCESS", "ref-1", Map.of("Authorization-Like", "Bearer xyz"), null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -76,7 +76,7 @@ class ForgotPasswordIdempotencyReplaySnapshotTest {
   void validSafeHeadersAreRetained() {
     ForgotPasswordIdempotencyReplaySnapshot snapshot =
         new ForgotPasswordIdempotencyReplaySnapshot(
-            "SUCCESS", "ref-1", Map.of("Retry-After", "30"));
+            "SUCCESS", "ref-1", Map.of("Retry-After", "30"), null);
     assertThat(snapshot.safeHeaders()).containsEntry("Retry-After", "30");
   }
 
@@ -90,7 +90,7 @@ class ForgotPasswordIdempotencyReplaySnapshotTest {
   @Test
   void fourArgConstructorDefaultsIdentityTypeToNull() {
     ForgotPasswordIdempotencyReplaySnapshot snapshot =
-        new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "ref-1", Map.of());
+        new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "ref-1", Map.of(), null);
     assertThat(snapshot.identityType()).isNull();
   }
 

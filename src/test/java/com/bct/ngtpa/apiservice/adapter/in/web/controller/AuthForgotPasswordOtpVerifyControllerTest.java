@@ -225,7 +225,7 @@ class AuthForgotPasswordOtpVerifyControllerTest {
       this.command = command;
       return Mono.just(
           new VerifyForgotPasswordOtpResult(
-              VerifyForgotPasswordOtpStatus.VERIFIED, WorkflowNextStep.PASSWORD_SETUP));
+              VerifyForgotPasswordOtpStatus.VERIFIED, WorkflowNextStep.PASSWORD_SETUP, null));
     }
   }
 

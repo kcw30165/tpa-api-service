@@ -177,7 +177,7 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
           schemeName,
           schemeNameChi,
           ttlSeconds,
-          new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED));
+          new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED, null, null, null));
     }
 
     SendHarness(
@@ -785,7 +785,7 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
             TRUST_CODE,
             SCHEME_NAME,
             SCHEME_NAME_CHI,
-            new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED));
+            new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED, null, null, null));
 
     assertThat(harness.execute("member@example.com", "en").status())
         .as("details-check outcome")

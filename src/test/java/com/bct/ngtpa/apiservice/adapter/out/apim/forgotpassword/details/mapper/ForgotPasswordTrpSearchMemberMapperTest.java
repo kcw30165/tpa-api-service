@@ -91,6 +91,6 @@ class ForgotPasswordTrpSearchMemberMapperTest {
   private static ForgotPasswordTrpSearchMemberDataItem item(
       String env, String trustCode, boolean registered, String customerId) {
     return new ForgotPasswordTrpSearchMemberDataItem(
-        env, trustCode, "OE", "0001", "2", "", "", registered, customerId);
+        env, trustCode, "OE", null, null, "0001", "2", "", "", registered, customerId);
   }
 }
