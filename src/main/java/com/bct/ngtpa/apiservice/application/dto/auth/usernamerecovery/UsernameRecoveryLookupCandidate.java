@@ -51,15 +51,6 @@ public record UsernameRecoveryLookupCandidate(
     }
   }
 
-  /**
-   * Compatibility constructor for existing call sites predating the addition of {@code
-   * schemeName}/{@code schemeNameChi}. Both new fields default to {@code null}.
-   */
-  public UsernameRecoveryLookupCandidate(
-      String accountEnv, String trustCode, boolean registered, String userName) {
-    this(accountEnv, trustCode, registered, userName, null, null);
-  }
-
   @Override
   public String toString() {
     return "UsernameRecoveryLookupCandidate[accountEnv="

@@ -66,25 +66,6 @@ public record UsernameRecoveryCandidate(
     }
   }
 
-  /**
-   * Compatibility constructor for existing call sites predating the addition of {@code
-   * schemeName}/{@code schemeNameChi}. Both new fields default to {@code null}.
-   *
-   * <p><b>Caution:</b> any caller rebuilding a candidate from an existing one (e.g. a withX-style
-   * state transition) should use the canonical 8-arg constructor and forward {@code
-   * schemeName()}/{@code schemeNameChi()} explicitly, not this compatibility constructor, or the
-   * values will be silently nulled out.
-   */
-  public UsernameRecoveryCandidate(
-      UsernameRecoverySchemeRef schemeRef,
-      String accountEnv,
-      String trustCode,
-      boolean registered,
-      String userName,
-      UsernameRecoveryDeliveryState deliveryState) {
-    this(schemeRef, accountEnv, trustCode, registered, userName, deliveryState, null, null);
-  }
-
   @Override
   public String toString() {
     return "UsernameRecoveryCandidate[schemeRef="

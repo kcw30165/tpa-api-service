@@ -78,7 +78,7 @@ class UsernameRecoveryLookupBoundaryReconciliationTest {
 
   @Test
   void lookupStringOutputsNeverExposeApimRawNamesOrSensitiveValues() {
-    var candidate = new UsernameRecoveryLookupCandidate("DB", "DBA", true, "john.doe");
+    var candidate = new UsernameRecoveryLookupCandidate("DB", "DBA", true, "john.doe", null, null);
     var matched =
         new UsernameRecoveryLookupResult(
             UsernameRecoveryLookupResult.Status.MATCHED, List.of(candidate));

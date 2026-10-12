@@ -451,7 +451,7 @@ class UsernameRecoveryRequestProtectedOperationTest {
     boolean requested = state == UsernameRecoveryDeliveryState.REQUESTED;
     return new UsernameRecoverySessionCandidate(
         new UsernameRecoveryCandidate(
-            new UsernameRecoverySchemeRef(ref), accountEnv, trustCode, registered, username, state),
+            new UsernameRecoverySchemeRef(ref), accountEnv, trustCode, registered, username, state, null, null),
         requested ? NOW : null,
         requested ? "existing" : null);
   }

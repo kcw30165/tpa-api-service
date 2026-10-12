@@ -5,9 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 /**
- * Confirms schemeName/schemeNameChi addition (section 8.2) and the compatibility constructor,
- * added alongside the pre-existing UsernameRecoveryLookupCandidateTest, which this does not
- * modify.
+ * Confirms schemeName/schemeNameChi addition (section 8.2), added alongside the pre-existing
+ * UsernameRecoveryLookupCandidateTest, which this does not modify.
  */
 class UsernameRecoveryLookupCandidateSchemeNameTest {
 
@@ -22,8 +21,8 @@ class UsernameRecoveryLookupCandidateSchemeNameTest {
   }
 
   @Test
-  void compatibilityConstructorDefaultsSchemeNameFieldsToNull() {
-    var candidate = new UsernameRecoveryLookupCandidate("DB", "DBA", true, "john.doe");
+  void canonicalConstructorAllowsNullSchemeNameFields() {
+    var candidate = new UsernameRecoveryLookupCandidate("DB", "DBA", true, "john.doe", null, null);
 
     assertThat(candidate.schemeName()).isNull();
     assertThat(candidate.schemeNameChi()).isNull();

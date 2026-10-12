@@ -57,7 +57,9 @@ class AesGcmUsernameRecoveryAuthFlowContextProtectorAdapterTest {
                     "DBA",
                     true,
                     "username-1",
-                    UsernameRecoveryDeliveryState.AVAILABLE),
+                    UsernameRecoveryDeliveryState.AVAILABLE,
+                    null,
+                    null),
                 null,
                 null)));
   }

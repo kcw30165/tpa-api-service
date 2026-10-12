@@ -9,7 +9,7 @@ class UsernameRecoveryLookupCandidateTest {
 
   @Test
   void registeredCandidateRetainsUsername() {
-    var candidate = new UsernameRecoveryLookupCandidate("DB", "DBA", true, "john.doe");
+    var candidate = new UsernameRecoveryLookupCandidate("DB", "DBA", true, "john.doe", null, null);
 
     assertThat(candidate.accountEnv()).isEqualTo("DB");
     assertThat(candidate.trustCode()).isEqualTo("DBA");
@@ -19,7 +19,7 @@ class UsernameRecoveryLookupCandidateTest {
 
   @Test
   void unregisteredCandidateRetainsNoUsername() {
-    var candidate = new UsernameRecoveryLookupCandidate("DB", "DBB", false, null);
+    var candidate = new UsernameRecoveryLookupCandidate("DB", "DBB", false, null, null, null);
 
     assertThat(candidate.registered()).isFalse();
     assertThat(candidate.userName()).isNull();
@@ -27,34 +27,34 @@ class UsernameRecoveryLookupCandidateTest {
 
   @Test
   void rejectsMissingOrBlankAccountEnvAndTrustCode() {
-    assertThatThrownBy(() -> new UsernameRecoveryLookupCandidate(null, "DBA", true, "john.doe"))
+    assertThatThrownBy(() -> new UsernameRecoveryLookupCandidate(null, "DBA", true, "john.doe", null, null))
         .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> new UsernameRecoveryLookupCandidate(" ", "DBA", true, "john.doe"))
+    assertThatThrownBy(() -> new UsernameRecoveryLookupCandidate(" ", "DBA", true, "john.doe", null, null))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new UsernameRecoveryLookupCandidate("DB", " ", true, "john.doe"))
+    assertThatThrownBy(() -> new UsernameRecoveryLookupCandidate("DB", " ", true, "john.doe", null, null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void registeredCandidateRequiresNonblankUsername() {
-    assertThatThrownBy(() -> new UsernameRecoveryLookupCandidate("DB", "DBA", true, null))
+    assertThatThrownBy(() -> new UsernameRecoveryLookupCandidate("DB", "DBA", true, null, null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("registered candidate requires a nonblank userName");
-    assertThatThrownBy(() -> new UsernameRecoveryLookupCandidate("DB", "DBA", true, "  "))
+    assertThatThrownBy(() -> new UsernameRecoveryLookupCandidate("DB", "DBA", true, "  ", null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("registered candidate requires a nonblank userName");
   }
 
   @Test
   void unregisteredCandidateMustNotRetainUsername() {
-    assertThatThrownBy(() -> new UsernameRecoveryLookupCandidate("DB", "DBB", false, "john.doe"))
+    assertThatThrownBy(() -> new UsernameRecoveryLookupCandidate("DB", "DBB", false, "john.doe", null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("unregistered candidate must not retain a userName");
   }
 
   @Test
   void toStringDoesNotDiscloseUsername() {
-    var candidate = new UsernameRecoveryLookupCandidate("DB", "DBA", true, "secret.user");
+    var candidate = new UsernameRecoveryLookupCandidate("DB", "DBA", true, "secret.user", null, null);
 
     assertThat(candidate.toString())
         .doesNotContain("secret.user")

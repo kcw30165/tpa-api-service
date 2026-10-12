@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class UsernameRecoveryLookupResultTest {
 
   private static UsernameRecoveryLookupCandidate candidate() {
-    return new UsernameRecoveryLookupCandidate("DB", "DBA", true, "john.doe");
+    return new UsernameRecoveryLookupCandidate("DB", "DBA", true, "john.doe", null, null);
   }
 
   @Test
