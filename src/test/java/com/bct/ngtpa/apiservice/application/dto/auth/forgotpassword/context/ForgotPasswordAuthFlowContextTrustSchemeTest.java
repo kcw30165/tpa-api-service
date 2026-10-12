@@ -42,24 +42,34 @@ class ForgotPasswordAuthFlowContextTrustSchemeTest {
   }
 
   @Test
-  void compatibilityConstructorDefaultsTrustSchemeFieldsToNull() {
-    var context =
-        new ForgotPasswordAuthFlowContext(
-            "member01",
-            "identity-value",
-            "STAFFNO",
-            false,
-            null,
-            null,
-            null,
-            null,
-            null,
-            "v1",
-            ForgotPasswordProtectedPhase.USERNAME_VERIFIED);
+  void startedContextCarriesOnlyTheIdentityAndTheWorkflowVersion() {
+    var started =
+        ForgotPasswordAuthFlowContext.started("member01", "identity-value", "STAFFNO", "v1");
 
-    assertThat(context.trustCode()).isNull();
-    assertThat(context.schemeName()).isNull();
-    assertThat(context.schemeNameChi()).isNull();
+    assertThat(started.username()).isEqualTo("member01");
+    assertThat(started.identityVerified()).isFalse();
+    assertThat(started.phase()).isEqualTo(ForgotPasswordProtectedPhase.USERNAME_VERIFIED);
+    assertThat(started.resetSubjectId()).isNull();
+    assertThat(started.contactChannel()).isNull();
+    assertThat(started.resetAuthorization()).isNull();
+    assertThat(started.trustCode()).isNull();
+    assertThat(started.schemeName()).isNull();
+    assertThat(started.schemeNameChi()).isNull();
+  }
+
+  @Test
+  void withResetSubjectIdPreservesEveryOtherField() {
+    var context = context("DBA", "Scheme En", "Scheme Chi");
+
+    var updated = context.withResetSubjectId("subject-2");
+
+    assertThat(updated.resetSubjectId()).isEqualTo("subject-2");
+    assertThat(updated.trustCode()).isEqualTo("DBA");
+    assertThat(updated.schemeName()).isEqualTo("Scheme En");
+    assertThat(updated.schemeNameChi()).isEqualTo("Scheme Chi");
+    assertThat(updated.username()).isEqualTo(context.username());
+    assertThat(updated.identityValue()).isEqualTo(context.identityValue());
+    assertThat(updated.phase()).isEqualTo(context.phase());
   }
 
   @Test

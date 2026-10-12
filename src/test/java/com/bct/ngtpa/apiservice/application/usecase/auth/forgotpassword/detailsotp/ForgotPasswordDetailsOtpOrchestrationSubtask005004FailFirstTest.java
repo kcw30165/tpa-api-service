@@ -99,6 +99,9 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
                 now,
                 now.plusSeconds(600),
                 null),
+            null,
+            null,
+            null,
             "v1",
             ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
 

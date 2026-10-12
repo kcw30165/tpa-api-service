@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ver
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
@@ -36,6 +37,7 @@ import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -110,6 +112,9 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
         "email",
         "john@example.com",
         "j***@example.com",
+        null,
+        null,
+        null,
         null,
         "v1",
         ForgotPasswordProtectedPhase.OTP_SENT);
@@ -345,6 +350,9 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
             "john@example.com",
             "j***@example.com",
             null,
+            null,
+            null,
+            null,
             "v1",
             ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
     when(loader.load(any()))
@@ -546,5 +554,55 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
                 assertThat(r.result().status())
                     .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED))
         .verifyComplete();
+  }
+
+  // ----- tests: trust and scheme fields survive the reset-subject normalization (scripts 188-190) ----
+
+  @Test
+  void verifyKeepsTheTrustAndSchemeFieldsWhenTheResetSubjectIdIsNormalized() {
+    givenLockAcquired();
+    givenInitialSession(validSession());
+    // START stores no resetSubjectId; the operation falls back to the identity value and rebuilds the
+    // context, which must carry the trust and scheme fields across the rebuild.
+    ForgotPasswordAuthFlowContext withoutResetSubject =
+        new ForgotPasswordAuthFlowContext(
+            "john",
+            "idv-1",
+            "CUSTID",
+            true,
+            null,
+            "email",
+            "john@example.com",
+            "j***@example.com",
+            null,
+            "HSBC",
+            "Scheme En",
+            "Scheme Chi",
+            "v1",
+            ForgotPasswordProtectedPhase.OTP_SENT);
+    when(loader.load(any()))
+        .thenReturn(
+            Mono.just(
+                ForgotPasswordProtectedAuthFlowContextResult.valid(
+                    "challenge-1", withoutResetSubject)));
+    givenWriterAndExpirySucceed();
+    when(otp.verifyChallenge(any()))
+        .thenReturn(Mono.just(challengeResult(OtpVerificationOutcome.VALID, 0)));
+
+    assertThat(newOp().execute(validCommand()).block().result().status())
+        .as("verify outcome")
+        .isEqualTo(VerifyForgotPasswordOtpStatus.VERIFIED);
+
+    ArgumentCaptor<ForgotPasswordAuthFlowContext> persisted =
+        ArgumentCaptor.forClass(ForgotPasswordAuthFlowContext.class);
+    verify(protector).protect(persisted.capture());
+    ForgotPasswordAuthFlowContext saved = persisted.getValue();
+    assertThat(saved.phase())
+        .as("persisted phase")
+        .isEqualTo(ForgotPasswordProtectedPhase.PASSWORD_SETUP);
+    assertThat(saved.resetSubjectId()).as("persisted resetSubjectId").isEqualTo("idv-1");
+    assertThat(saved.trustCode()).as("persisted trustCode").isEqualTo("HSBC");
+    assertThat(saved.schemeName()).as("persisted schemeName").isEqualTo("Scheme En");
+    assertThat(saved.schemeNameChi()).as("persisted schemeNameChi").isEqualTo("Scheme Chi");
   }
 }

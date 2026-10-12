@@ -100,6 +100,9 @@ class VerifyForgotPasswordIdentityServiceTest {
         "john@example.com",
         "j***@example.com",
         null,
+        null,
+        null,
+        null,
         "v1",
         phase);
   }

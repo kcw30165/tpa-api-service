@@ -60,6 +60,10 @@ class AesGcmForgotPasswordAuthFlowContextProtectorTest {
             Instant.parse("2026-07-30T00:00:00Z"),
             Instant.parse("2026-07-30T00:05:00Z"),
             null),
-        "v1");
+        null,
+        null,
+        null,
+        "v1",
+        null);
   }
 }

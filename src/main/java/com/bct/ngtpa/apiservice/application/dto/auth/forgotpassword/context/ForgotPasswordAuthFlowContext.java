@@ -29,67 +29,24 @@ public record ForgotPasswordAuthFlowContext(
   }
 
   /**
-   * Compatibility constructor for call sites that carry no trust or scheme fields: {@code
-   * trustCode}, {@code schemeName} and {@code schemeNameChi} default to {@code null} (see
-   * docs/design/10-template-service/template-service-implementation-plan.md Appendix E.3 and E.9,
-   * II-4.b0).
-   *
-   * <p><strong>Caution:</strong> any caller rebuilding a context from an existing one (e.g. a
-   * withX-style state transition) should use the canonical 14-arg constructor and forward {@code
-   * trustCode()}/{@code schemeName()}/{@code schemeNameChi()} explicitly, not this compatibility
-   * constructor, or the values will be silently nulled out (the same risk Username Recovery's
-   * UsernameRecoveryCandidate already documents and guards against).
+   * Creates the context stored when Forgot Password starts: an identity-only context with no contact
+   * data, reset authorization, trust or scheme fields. Later steps add those.
    */
-  public ForgotPasswordAuthFlowContext(
-      String username,
-      String identityValue,
-      String identityType,
-      boolean identityVerified,
-      String resetSubjectId,
-      String contactChannel,
-      String protectedDestination,
-      String maskedDestination,
-      ForgotPasswordResetAuthorization resetAuthorization,
-      String workflowVersion,
-      ForgotPasswordProtectedPhase phase) {
-    this(
+  public static ForgotPasswordAuthFlowContext started(
+      String username, String identityValue, String identityType, String workflowVersion) {
+    return new ForgotPasswordAuthFlowContext(
         username,
         identityValue,
         identityType,
-        identityVerified,
-        resetSubjectId,
-        contactChannel,
-        protectedDestination,
-        maskedDestination,
-        resetAuthorization,
+        false,
         null,
         null,
         null,
-        workflowVersion,
-        phase);
-  }
-
-  public ForgotPasswordAuthFlowContext(
-      String username,
-      String identityValue,
-      String identityType,
-      boolean identityVerified,
-      String resetSubjectId,
-      String contactChannel,
-      String protectedDestination,
-      String maskedDestination,
-      ForgotPasswordResetAuthorization resetAuthorization,
-      String workflowVersion) {
-    this(
-        username,
-        identityValue,
-        identityType,
-        identityVerified,
-        resetSubjectId,
-        contactChannel,
-        protectedDestination,
-        maskedDestination,
-        resetAuthorization,
+        null,
+        null,
+        null,
+        null,
+        null,
         workflowVersion,
         null);
   }
@@ -132,6 +89,28 @@ public record ForgotPasswordAuthFlowContext(
         protectedDestination,
         maskedDestination,
         authorization,
+        trustCode,
+        schemeName,
+        schemeNameChi,
+        workflowVersion,
+        phase);
+  }
+
+  /**
+   * Returns a copy with the given reset subject id and every other field unchanged, including the
+   * trust and scheme fields.
+   */
+  public ForgotPasswordAuthFlowContext withResetSubjectId(String newResetSubjectId) {
+    return new ForgotPasswordAuthFlowContext(
+        username,
+        identityValue,
+        identityType,
+        identityVerified,
+        newResetSubjectId,
+        contactChannel,
+        protectedDestination,
+        maskedDestination,
+        resetAuthorization,
         trustCode,
         schemeName,
         schemeNameChi,
