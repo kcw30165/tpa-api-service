@@ -7,8 +7,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Confirms trustCode/schemeName/schemeNameChi (added for Stage II-4, see
  * docs/design/10-template-service/template-service-implementation-plan.md Appendix E.3 and E.9,
- * II-4.b0) on the canonical constructor, and that both pre-existing compatibility constructors
- * (1-arg status-only, 2-arg status+accountEnv) continue to default the three new fields to null.
+ * II-4.b0) on the canonical constructor, and that the status-only compatibility constructor
+ * defaults all three to null.
  */
 class ForgotPasswordDetailsLookupResultTrustSchemeTest {
 
@@ -17,26 +17,13 @@ class ForgotPasswordDetailsLookupResultTrustSchemeTest {
     var result =
         new ForgotPasswordDetailsLookupResult(
             ForgotPasswordDetailsLookupStatus.MATCHED,
-            "DB",
             "DBA",
             "JP MORGAN CHASE",
-            "摩根大通");
+            "\u6469\u6839\u5927\u901a");
 
-    assertThat(result.accountEnv()).isEqualTo("DB");
     assertThat(result.trustCode()).isEqualTo("DBA");
     assertThat(result.schemeName()).isEqualTo("JP MORGAN CHASE");
-    assertThat(result.schemeNameChi()).isEqualTo("摩根大通");
-  }
-
-  @Test
-  void twoArgCompatibilityConstructorDefaultsTrustSchemeFieldsToNull() {
-    var result =
-        new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED, "DB");
-
-    assertThat(result.accountEnv()).isEqualTo("DB");
-    assertThat(result.trustCode()).isNull();
-    assertThat(result.schemeName()).isNull();
-    assertThat(result.schemeNameChi()).isNull();
+    assertThat(result.schemeNameChi()).isEqualTo("\u6469\u6839\u5927\u901a");
   }
 
   @Test
@@ -44,7 +31,6 @@ class ForgotPasswordDetailsLookupResultTrustSchemeTest {
     var result =
         new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.NOT_FOUND);
 
-    assertThat(result.accountEnv()).isNull();
     assertThat(result.trustCode()).isNull();
     assertThat(result.schemeName()).isNull();
     assertThat(result.schemeNameChi()).isNull();

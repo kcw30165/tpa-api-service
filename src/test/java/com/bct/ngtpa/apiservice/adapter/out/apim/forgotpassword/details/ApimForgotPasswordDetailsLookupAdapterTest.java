@@ -140,7 +140,6 @@ class ApimForgotPasswordDetailsLookupAdapterTest {
         .assertNext(
             result -> {
               assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.MATCHED);
-              assertThat(result.accountEnv()).isEqualTo("env1");
             })
         .verifyComplete();
   }

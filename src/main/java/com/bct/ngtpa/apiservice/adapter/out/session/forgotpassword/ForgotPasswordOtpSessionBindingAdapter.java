@@ -101,7 +101,6 @@ public final class ForgotPasswordOtpSessionBindingAdapter
                       c.protectedDestination(),
                       c.maskedDestination(),
                       context.resetAuthorization(),
-                      context.accountEnv(),
                       firstText(c.trustCode(), context.trustCode()),
                       firstText(c.schemeName(), context.schemeName()),
                       firstText(c.schemeNameChi(), context.schemeNameChi()),

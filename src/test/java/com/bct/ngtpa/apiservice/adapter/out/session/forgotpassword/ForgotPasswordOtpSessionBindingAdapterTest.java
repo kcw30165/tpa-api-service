@@ -103,7 +103,6 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
         "john@example.com",
         "j***@example.com",
         null,
-        null,
         "v1",
         phase);
   }
@@ -490,7 +489,6 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
         "john@example.com",
         "j***@example.com",
         null,
-        "ENV1",
         "STORED-TRUST",
         "Stored Scheme",
         "Stored Scheme Chi",
@@ -528,14 +526,13 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
   }
 
   @Test
-  void acceptedKeepsTheStoredTrustFieldsAndAccountEnvWhenTheCommandCarriesNone() {
+  void acceptedKeepsTheStoredTrustFieldsWhenTheCommandCarriesNone() {
     when(protector.unprotect(any())).thenReturn(storedContextWithTrustFields());
 
     ForgotPasswordAuthFlowContext persisted =
         bindAndCapturePersistedContext(acceptedCommandWith(null, null, null));
 
     assertThat(persisted.phase()).isEqualTo(ForgotPasswordProtectedPhase.OTP_SENT);
-    assertThat(persisted.accountEnv()).isEqualTo("ENV1");
     assertThat(persisted.trustCode()).isEqualTo("STORED-TRUST");
     assertThat(persisted.schemeName()).isEqualTo("Stored Scheme");
     assertThat(persisted.schemeNameChi()).isEqualTo("Stored Scheme Chi");
@@ -548,7 +545,6 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
     ForgotPasswordAuthFlowContext persisted =
         bindAndCapturePersistedContext(acceptedCommandWith(" ", "", "  "));
 
-    assertThat(persisted.accountEnv()).isEqualTo("ENV1");
     assertThat(persisted.trustCode()).isEqualTo("STORED-TRUST");
     assertThat(persisted.schemeName()).isEqualTo("Stored Scheme");
     assertThat(persisted.schemeNameChi()).isEqualTo("Stored Scheme Chi");

@@ -111,7 +111,6 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
         "john@example.com",
         "j***@example.com",
         null,
-        null,
         "v1",
         ForgotPasswordProtectedPhase.OTP_SENT);
   }
@@ -345,7 +344,6 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
             "email",
             "john@example.com",
             "j***@example.com",
-            null,
             null,
             "v1",
             ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);

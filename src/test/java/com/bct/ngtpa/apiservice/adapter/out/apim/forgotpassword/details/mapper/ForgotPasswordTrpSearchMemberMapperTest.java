@@ -34,7 +34,7 @@ class ForgotPasswordTrpSearchMemberMapperTest {
         mapper.toResult(
             "", List.of(item("TB", "MSIG", false, null), item("JP", "JPM", true, "nick")), "nick");
     assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.MATCHED);
-    assertThat(result.accountEnv()).isEqualTo("JP");
+    assertThat(result.trustCode()).isEqualTo("JPM");
   }
 
   @Test
@@ -49,7 +49,7 @@ class ForgotPasswordTrpSearchMemberMapperTest {
             "tbciti01");
 
     assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.MATCHED);
-    assertThat(result.accountEnv()).isEqualTo("TB");
+    assertThat(result.trustCode()).isEqualTo("CITI");
   }
 
   @Test

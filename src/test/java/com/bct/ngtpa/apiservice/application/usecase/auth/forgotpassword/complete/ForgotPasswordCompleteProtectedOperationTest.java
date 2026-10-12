@@ -104,7 +104,6 @@ class ForgotPasswordCompleteProtectedOperationTest {
         "prot",
         "j***",
         auth,
-        "env1",
         "v1",
         ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
   }

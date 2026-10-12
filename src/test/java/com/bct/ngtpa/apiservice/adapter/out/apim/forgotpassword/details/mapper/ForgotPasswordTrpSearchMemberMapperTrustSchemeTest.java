@@ -36,7 +36,6 @@ class ForgotPasswordTrpSearchMemberMapperTrustSchemeTest {
     var result = mapper.toResult(null, List.of(item), "CUST1");
 
     assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.MATCHED);
-    assertThat(result.accountEnv()).isEqualTo("DB");
     assertThat(result.trustCode()).isEqualTo("DBA");
     assertThat(result.schemeName()).isEqualTo("JP MORGAN CHASE");
     assertThat(result.schemeNameChi()).isEqualTo("摩根大通");

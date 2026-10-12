@@ -25,7 +25,6 @@ class ForgotPasswordAuthFlowContextTrustSchemeTest {
         null,
         null,
         null,
-        "DB",
         trustCode,
         schemeName,
         schemeNameChi,
@@ -55,7 +54,6 @@ class ForgotPasswordAuthFlowContextTrustSchemeTest {
             null,
             null,
             null,
-            "DB",
             "v1",
             ForgotPasswordProtectedPhase.USERNAME_VERIFIED);
 

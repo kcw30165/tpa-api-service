@@ -203,7 +203,6 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
               null,
               null,
               null,
-              null,
               trustCode,
               schemeName,
               schemeNameChi,
@@ -384,7 +383,6 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
               "email",
               PROTECTED_DESTINATION,
               MASKED_DESTINATION,
-              null,
               null,
               trustCode,
               schemeName,
@@ -717,7 +715,6 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
   private static ForgotPasswordDetailsLookupResult matchedLookupWithTrustFields() {
     return new ForgotPasswordDetailsLookupResult(
         ForgotPasswordDetailsLookupStatus.MATCHED,
-        "ENV1",
         TRUST_CODE,
         SCHEME_NAME,
         SCHEME_NAME_CHI);
@@ -765,7 +762,7 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
   void detailsCheckPersistsTheLookupTrustFieldsForResend() {
     PersistedContextHarness harness =
         new PersistedContextHarness(
-            realProperties(), null, null, null, null, matchedLookupWithTrustFields());
+            realProperties(), null, null, null, matchedLookupWithTrustFields());
 
     assertThat(harness.execute("member@example.com", "en").status())
         .as("details-check outcome")
@@ -785,7 +782,6 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
     PersistedContextHarness harness =
         new PersistedContextHarness(
             realProperties(),
-            "ENV1",
             TRUST_CODE,
             SCHEME_NAME,
             SCHEME_NAME_CHI,
@@ -799,7 +795,6 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
     assertThat(persisted.phase())
         .as("persisted phase")
         .isEqualTo(ForgotPasswordProtectedPhase.OTP_SENT);
-    assertThat(persisted.accountEnv()).as("persisted accountEnv").isEqualTo("ENV1");
     assertThat(persisted.trustCode()).as("persisted trustCode").isEqualTo(TRUST_CODE);
     assertThat(persisted.schemeName()).as("persisted schemeName").isEqualTo(SCHEME_NAME);
     assertThat(persisted.schemeNameChi()).as("persisted schemeNameChi").isEqualTo(SCHEME_NAME_CHI);
@@ -818,7 +813,6 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
 
     PersistedContextHarness(
         NoticeTemplateProperties properties,
-        String accountEnv,
         String trustCode,
         String schemeName,
         String schemeNameChi,
@@ -839,7 +833,6 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
               null,
               null,
               null,
-              accountEnv,
               trustCode,
               schemeName,
               schemeNameChi,

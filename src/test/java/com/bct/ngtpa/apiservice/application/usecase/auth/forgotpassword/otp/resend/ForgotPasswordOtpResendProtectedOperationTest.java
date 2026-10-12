@@ -183,7 +183,6 @@ class ForgotPasswordOtpResendProtectedOperationTest {
         PROTECTED_DESTINATION,
         MASKED_DESTINATION,
         null,
-        null,
         "v1",
         ForgotPasswordProtectedPhase.OTP_SENT);
   }

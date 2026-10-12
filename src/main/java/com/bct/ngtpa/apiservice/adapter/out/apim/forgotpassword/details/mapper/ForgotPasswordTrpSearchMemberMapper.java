@@ -85,7 +85,6 @@ public final class ForgotPasswordTrpSearchMemberMapper {
         ? notFound()
         : new ForgotPasswordDetailsLookupResult(
             ForgotPasswordDetailsLookupStatus.MATCHED,
-            text(matched.env()),
             text(matched.trustCode()),
             text(matched.schemeName()),
             text(matched.schemeNameChi()));
