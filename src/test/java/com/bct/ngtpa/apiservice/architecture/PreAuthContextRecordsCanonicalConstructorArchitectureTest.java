@@ -17,7 +17,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The records of the pre-auth flows (Forgot Password, Login, Username Recovery, Registration, and the
- * auth-flow session model they share) declare only their canonical constructor.
+ * auth-flow session model and the Username Recovery domain model they share) declare only their
+ * canonical constructor.
  *
  * <p>A compatibility constructor lets a caller rebuild a record from an existing instance and
  * silently drop fields: the shape behind the Forgot Password details-check and resend failures,
@@ -40,7 +41,8 @@ class PreAuthContextRecordsCanonicalConstructorArchitectureTest {
           "/login/",
           "/usernamerecovery/",
           "/registration/",
-          "/session/authflow/");
+          "/session/authflow/",
+          "/domain/model/UsernameRecovery");
   private static final int MINIMUM_RECORDS = 304;
 
   private static final Set<String> KNOWN_REMAINING =
@@ -60,8 +62,9 @@ class PreAuthContextRecordsCanonicalConstructorArchitectureTest {
                     "ForgotPasswordAuthFlowContext",
                     "LoginPreAuthContext",
                     "UsernameRecoveryAuthFlowContext",
-                    "RegistrationAuthFlowContext")))
-        .as("the four flow context records are among the scanned records")
+                    "RegistrationAuthFlowContext",
+                    "UsernameRecoverySessionCandidate")))
+        .as("the flow context records and the session candidate are scanned")
         .isTrue();
   }
 

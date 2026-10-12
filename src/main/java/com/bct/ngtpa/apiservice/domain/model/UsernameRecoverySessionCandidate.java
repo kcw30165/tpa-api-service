@@ -90,12 +90,11 @@ public record UsernameRecoverySessionCandidate(
    * Rebuilds this candidate with a new delivery state and optional delivery metadata, preserving
    * all Task 006 candidate fields <b>and</b> schemeName/schemeNameChi.
    *
-   * <p><b>Fixed field-loss landmine:</b> this previously rebuilt the wrapped {@link
-   * UsernameRecoveryCandidate} via its 6-arg compatibility constructor, which defaults
-   * schemeName/schemeNameChi to {@code null} - silently discarding those values on every state
-   * transition (reserve/markRequested/markFailed/markUnknownOutcome). Now uses the canonical 8-arg
-   * constructor, explicitly carrying forward {@code candidate.schemeName()}/{@code
-   * candidate.schemeNameChi()}.
+   * <p>The wrapped {@link UsernameRecoveryCandidate} is rebuilt through its canonical
+   * constructor, so every component, including schemeName/schemeNameChi, is carried forward
+   * explicitly on each state transition (reserve/markRequested/markFailed/markUnknownOutcome).
+   * The record declares no shorter constructor, so a component added later cannot be dropped
+   * silently here: this call would stop compiling.
    */
   public UsernameRecoverySessionCandidate withState(
       UsernameRecoveryDeliveryState state, Instant requestedAt, String senderReference) {
