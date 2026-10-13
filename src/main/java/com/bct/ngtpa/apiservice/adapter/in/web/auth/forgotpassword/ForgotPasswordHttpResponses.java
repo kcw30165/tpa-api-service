@@ -35,7 +35,9 @@ public final class ForgotPasswordHttpResponses {
         || ForgotPasswordErrorKey.CSRF_INVALID.value().equals(code)) {
       return HttpStatus.FORBIDDEN;
     }
-    if (ForgotPasswordErrorKey.OTP_MAX_ATTEMPTS_REACHED.value().equals(code)) {
+    if (ForgotPasswordErrorKey.OTP_MAX_ATTEMPTS_REACHED.value().equals(code)
+        || ForgotPasswordErrorKey.OTP_RESEND_COOLDOWN.value().equals(code)
+        || ForgotPasswordErrorKey.OTP_RESEND_LIMIT_REACHED.value().equals(code)) {
       return HttpStatus.TOO_MANY_REQUESTS;
     }
     if (body.status() == ApiStatus.BUSINESS_REJECTED) {
