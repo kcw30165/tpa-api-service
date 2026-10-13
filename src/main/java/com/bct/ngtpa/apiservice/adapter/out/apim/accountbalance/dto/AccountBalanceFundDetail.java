@@ -11,4 +11,5 @@ public record AccountBalanceFundDetail(
     @JsonProperty("fund-price") BigDecimal fundPrice,
     @JsonProperty("fund-curr") String fundCurrency,
     @JsonProperty("exchange-rate") BigDecimal exchangeRate,
-    @JsonProperty("fund-fact-sheet") String fundFactsheet) {}
+    @JsonProperty("fund-fact-sheet") String fundFactsheet,
+    @JsonProperty("chin-fund-fact-sheet") String chineseFundFactsheet) {}

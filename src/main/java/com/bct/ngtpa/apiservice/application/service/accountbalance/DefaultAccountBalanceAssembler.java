@@ -16,6 +16,7 @@ import reactor.core.publisher.Mono;
 
 public final class DefaultAccountBalanceAssembler implements AccountBalanceAssembler {
   private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+  private static final String CHINESE_LANGUAGE = "zh_HK";
   private final AccountBalanceNormalizer normalizer;
   private final AccountOverviewAggregator overview;
   private final FundLevelPortfolioBuilder fundBuilder;
@@ -128,7 +129,7 @@ public final class DefaultAccountBalanceAssembler implements AccountBalanceAssem
                         .map(
                             f -> {
                               var raw = n.funds().get(new FundKey(f.fundCode()));
-                              String fs = factsheets.resolve(raw.fundFactsheet()).orElse(null),
+                              String fs = factsheet(raw, l),
                                   fx =
                                       n.displayOptions().fxRateVisible()
                                           ? render(
@@ -210,9 +211,7 @@ public final class DefaultAccountBalanceAssembler implements AccountBalanceAssem
                                                       f.accountBalance(),
                                                       p,
                                                       GeneralMetadataName.NET_ASSET_VALUE),
-                                                  factsheets
-                                                      .resolve(raw.fundFactsheet())
-                                                      .orElse(null),
+                                                  factsheet(raw, l),
                                                   n.displayOptions().fxRateVisible()
                                                       ? render(
                                                           raw.exchangeRate(),
@@ -223,6 +222,22 @@ public final class DefaultAccountBalanceAssembler implements AccountBalanceAssem
                                         .toList()))
                         .toList()))
         .toList();
+  }
+
+  /**
+   * Chinese requests prefer {@code chin-fund-fact-sheet} and fall back to {@code fund-fact-sheet}
+   * when the Chinese link is absent, blank or rejected as malformed. Every other language uses
+   * {@code fund-fact-sheet} only. Each candidate goes through the existing resolver, so a rejected
+   * link is still reported without its value.
+   */
+  private String factsheet(RawAccountBalanceFundDetail raw, String language) {
+    if (CHINESE_LANGUAGE.equalsIgnoreCase(language)) {
+      var chinese = factsheets.resolve(raw.chineseFundFactsheet());
+      if (chinese.isPresent()) {
+        return chinese.get();
+      }
+    }
+    return factsheets.resolve(raw.fundFactsheet()).orElse(null);
   }
 
   private String displayName(NormalizedAccountBalanceData n, String id, String l) {

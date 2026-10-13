@@ -36,7 +36,8 @@ class AccountBalanceSourcePortContractTest {
                     new BigDecimal("535.9379"),
                     "HKD",
                     new BigDecimal("1.0"),
-                    "not a url")),
+                    "not a url",
+                    null)),
             List.of(
                 new RawAccountBalanceHolding(
                     "EE",
