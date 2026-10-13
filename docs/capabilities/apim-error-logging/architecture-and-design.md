@@ -173,3 +173,24 @@ This confirms the "empty `data` + empty `err-message`" shape is a downstream (AP
 **Resolution:** `ApimEnvelopeSchemaClassifier` now classifies `err-message: ""` combined with `data` being either absent (`null`) or present-but-empty (`[]`) as `MALFORMED` (logged as `apim.contract.invalid` at ERROR), collapsing what were previously two separate branches (section 5, pre-correction) into one. `err-message` non-empty combined with an empty or absent `data` array remains `BUSINESS_REJECTED` (logged at WARN) - unchanged, since a business rejection is still not required to carry a `data` array.
 
 This is a **classification/logging-only change**: it does not alter what any adapter, mapper, or business use case receives from `postEnvelope`. It only changes what gets logged and at what level for this specific envelope shape.
+
+### 13. Response mapping failures (2026-10-13)
+
+`ApimPayloadCryptoService` used to report every failure while reading a response as `ApimCryptoException("Failed to decrypt APIM response payload.")`, even when nothing was decrypted. A JSON-to-DTO mapping failure, such as the then-unmapped `TRPGetMemberAccBal` field `fundDtl.chin-fund-fact-sheet`, therefore looked like a crypto failure, and `apim.exchange.failed` did not show the cause.
+
+Each step now reports its own failure:
+
+| Step | Exception | Message |
+|---|---|---|
+| Read the JSON | `ApimCryptoException` | `Failed to parse APIM response payload.` |
+| Decrypt configured fields | `ApimCryptoException` | `Failed to decrypt APIM response payload.` |
+| Map the JSON to the response type | `ApimResponseMappingException` | `Failed to map APIM response payload.` |
+
+With encryption disabled, a mapping failure is also `ApimResponseMappingException`; malformed or empty JSON stays a parse failure.
+
+`apim.exchange.failed` adds two fields:
+
+- `rootCauseType`: simple class name of the innermost cause, when it differs from the top-level exception.
+- `jsonPath`: field names and array indexes of the first Jackson mapping failure in the cause chain, for example `response.data[0].fundDtl[0].chin-fund-fact-sheet`. It is built from the exception's path references, never from its message, because Jackson messages can contain response values.
+
+This supersedes the section 5 remark that type mismatches surface as a deserialization/crypto exception, and extends the section 6 field list. `ApimCryptoFailureClassifier` treats `ApimResponseMappingException` like `ApimCryptoException`, so callers that turn a crypto failure into an unknown outcome keep the same result. No HTTP status, public error code or retry behaviour changes.

@@ -215,3 +215,7 @@ Rollback: revert the commit. The change has no runtime or configuration effect.
 | 003 | Callers of the crypto service, executor and facade source, global exception handler, status codes, logging calls, suppression convention |
 | 004 | `ApimCryptoFailureClassifier` usage, error-code constants, handler tests, APIM URL schemes in configuration, `pom.xml`, CI validation script, documentation layout, commit-message convention |
 | 005 | Deployed APIM URL scheme (Helm renders), failure surface in adapters and handler tests, method inventory, fresh class-level JaCoCo baseline |
+
+## Addendum (2026-10-13): response mapping failures
+
+A response that cannot be mapped to its Java type is no longer reported as `ApimCryptoException`. It is now `ApimResponseMappingException` (`Failed to map APIM response payload.`), and malformed JSON with encryption enabled is reported as `Failed to parse APIM response payload.` instead of `Failed to decrypt APIM response payload.`. Field decryption failures, the wire format and the cipher are unchanged, so the analysis in section 3.4 still applies to the crypto path. `ApimCryptoFailureClassifier` now also returns true for `ApimResponseMappingException`. See `docs/capabilities/apim-error-logging/architecture-and-design.md` section 13.
