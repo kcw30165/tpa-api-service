@@ -583,6 +583,7 @@ notice-templates:
             ------------------------------------------------------------
 
             Your One-Time Password (OTP): {code}
+
             This password expires in {ttlValue} {ttlUnit}.
 
             Bank Consortium Trust Company Limited
@@ -614,6 +615,7 @@ notice-templates:
             ------------------------------------------------------------
 
             Your One-Time Password (OTP) for BCT Pension Member Portal is: {code}
+
             This password expires in {ttlValue} {ttlUnit}.
 
             Bank Consortium Trust Company Limited
@@ -654,6 +656,7 @@ notice-templates:
             ------------------------------------------------------------
 
             Your One-Time Password (OTP) for BCT Pension Member Portal is: {code}
+
             This password expires in {ttlValue} {ttlUnit}.
 
             Bank Consortium Trust Company Limited
