@@ -104,46 +104,60 @@ public class NoticeTemplateProperties {
 
   private void validateDefinitions() {
     for (Map.Entry<String, NoticeDefinition> entry : definitions.entrySet()) {
-      String key = entry.getKey();
-      NoticeDefinition definition = entry.getValue();
-      if (definition == null) {
+      validateDefinition(entry.getKey(), entry.getValue());
+    }
+  }
+
+  private void validateDefinition(String key, NoticeDefinition definition) {
+    if (definition == null) {
+      throw new IllegalStateException("notice-templates.definitions." + key + " must not be null");
+    }
+    boolean hasSms = definition.sms != null && !definition.sms.isEmpty();
+    boolean hasEmail = definition.email != null && !definition.email.isEmpty();
+    if (!hasSms && !hasEmail) {
+      throw new IllegalStateException(
+          "notice-templates.definitions." + key + " must configure at least one channel");
+    }
+    validateEmailEntries(key, definition.email);
+    validateSmsEntries(key, definition.sms);
+  }
+
+  private void validateEmailEntries(String key, Map<String, EmailContent> email) {
+    if (email == null) {
+      return;
+    }
+    for (Map.Entry<String, EmailContent> entry : email.entrySet()) {
+      validateEmailEntry(key, entry.getKey(), entry.getValue());
+    }
+  }
+
+  private void validateEmailEntry(String key, String locale, EmailContent content) {
+    if (content == null
+        || content.subject == null
+        || content.subject.isBlank()
+        || content.body == null
+        || content.body.isBlank()) {
+      throw new IllegalStateException(
+          "notice-templates.definitions."
+              + key
+              + ".email."
+              + locale
+              + " must have non-blank subject and body");
+    }
+  }
+
+  private void validateSmsEntries(String key, Map<String, String> sms) {
+    if (sms == null) {
+      return;
+    }
+    for (Map.Entry<String, String> entry : sms.entrySet()) {
+      if (entry.getValue() == null || entry.getValue().isBlank()) {
         throw new IllegalStateException(
-            "notice-templates.definitions." + key + " must not be null");
-      }
-      boolean hasSms = definition.sms != null && !definition.sms.isEmpty();
-      boolean hasEmail = definition.email != null && !definition.email.isEmpty();
-      if (!hasSms && !hasEmail) {
-        throw new IllegalStateException(
-            "notice-templates.definitions." + key + " must configure at least one channel");
-      }
-      if (definition.email != null) {
-        for (Map.Entry<String, EmailContent> emailEntry : definition.email.entrySet()) {
-          EmailContent content = emailEntry.getValue();
-          if (content == null
-              || content.subject == null
-              || content.subject.isBlank()
-              || content.body == null
-              || content.body.isBlank()) {
-            throw new IllegalStateException(
-                "notice-templates.definitions."
-                    + key
-                    + ".email."
-                    + emailEntry.getKey()
-                    + " must have non-blank subject and body");
-          }
-        }
-      }
-      if (definition.sms != null) {
-        for (Map.Entry<String, String> smsEntry : definition.sms.entrySet()) {
-          if (smsEntry.getValue() == null || smsEntry.getValue().isBlank()) {
-            throw new IllegalStateException(
-                "notice-templates.definitions."
-                    + key
-                    + ".sms."
-                    + smsEntry.getKey()
-                    + " must not be blank");
-          }
-        }
+            "notice-templates.definitions."
+                + key
+                + ".sms."
+                + entry.getKey()
+                + " must not be blank");
       }
     }
   }

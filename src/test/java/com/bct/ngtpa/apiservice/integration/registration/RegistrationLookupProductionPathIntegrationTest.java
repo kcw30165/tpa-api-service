@@ -24,8 +24,7 @@ class RegistrationLookupProductionPathIntegrationTest {
   void validLookupInvokesTypedExecutorExactlyOnceAndPreservesBody() {
     AtomicReference<ApimExchangeRequest<?, ?>> seen = new AtomicReference<>();
     AtomicInteger calls = new AtomicInteger();
-    var executor =
-        capturing(seen, calls, envelope("", List.of(item("member@example.com", "", "OI", "JPM"))));
+    var executor = capturing(seen, calls, envelope("", List.of(item("OI", "JPM"))));
     var adapter =
         new ApimRegistrationLookupAdapter(
             executor, mock(FailureEventPort.class), new MaskingService(new MaskingProperties()));
@@ -154,7 +153,7 @@ class RegistrationLookupProductionPathIntegrationTest {
         ActorUserRole.ROLE_USER_MBR);
   }
 
-  private static TrpSearchMemberApimDataItem item(String e, String m, String env, String trust) {
+  private static TrpSearchMemberApimDataItem item(String env, String trust) {
     return new TrpSearchMemberApimDataItem(
         env, trust, null, null, null, null, null, Boolean.FALSE, null);
   }

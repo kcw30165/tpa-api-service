@@ -33,6 +33,8 @@ public record UsernameRecoveryLookupCandidate(
     String schemeName,
     String schemeNameChi) {
 
+  private static final String REDACTED = "<redacted>";
+
   public UsernameRecoveryLookupCandidate {
     Objects.requireNonNull(accountEnv, "accountEnv must not be null");
     Objects.requireNonNull(trustCode, "trustCode must not be null");
@@ -59,11 +61,11 @@ public record UsernameRecoveryLookupCandidate(
         + ", registered="
         + registered
         + ", userName="
-        + (userName == null ? null : "<redacted>")
+        + (userName == null ? null : REDACTED)
         + ", schemeName="
-        + (schemeName == null ? null : "<redacted>")
+        + (schemeName == null ? null : REDACTED)
         + ", schemeNameChi="
-        + (schemeNameChi == null ? null : "<redacted>")
+        + (schemeNameChi == null ? null : REDACTED)
         + "]";
   }
 }
