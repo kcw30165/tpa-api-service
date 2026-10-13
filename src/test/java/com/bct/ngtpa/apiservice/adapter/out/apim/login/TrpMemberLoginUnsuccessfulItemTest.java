@@ -17,7 +17,8 @@ class TrpMemberLoginUnsuccessfulItemTest {
   void blankErrorAndSingleUnsuccessfulItemMapsToIncorrectPassword() {
     var body = new ApimResponseBody<TrpMemberLoginApimDataItem>();
     body.setErrMessage("");
-    body.setData(List.of(new TrpMemberLoginApimDataItem(false, null, 1, List.of())));
+    body.setData(
+        List.of(new TrpMemberLoginApimDataItem(false, null, 1, List.of(), null, null, null)));
     var envelope = new ApimResponseEnvelope<TrpMemberLoginApimDataItem>();
     envelope.setResponse(body);
     TrpMemberLoginTransport transport = command -> Mono.just(envelope);

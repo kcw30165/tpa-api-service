@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
+import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 class UsernameRecoveryRequestCommandTest {
@@ -16,17 +17,20 @@ class UsernameRecoveryRequestCommandTest {
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryRequestCommand(
-                    null, new UsernameRecoverySchemeRef("sch_1"), IDEMPOTENCY_KEY))
+                    null, new UsernameRecoverySchemeRef("sch_1"), IDEMPOTENCY_KEY, null))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryRequestCommand(
-                    new AuthFlowSessionId("afs_1"), null, IDEMPOTENCY_KEY))
+                    new AuthFlowSessionId("afs_1"), null, IDEMPOTENCY_KEY, null))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryRequestCommand(
-                    new AuthFlowSessionId("afs_1"), new UsernameRecoverySchemeRef("sch_1"), null))
+                    new AuthFlowSessionId("afs_1"),
+                    new UsernameRecoverySchemeRef("sch_1"),
+                    null,
+                    null))
         .isInstanceOf(NullPointerException.class);
   }
 
@@ -35,7 +39,10 @@ class UsernameRecoveryRequestCommandTest {
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryRequestCommand(
-                    new AuthFlowSessionId("afs_1"), new UsernameRecoverySchemeRef("sch_1"), "   "))
+                    new AuthFlowSessionId("afs_1"),
+                    new UsernameRecoverySchemeRef("sch_1"),
+                    "   ",
+                    null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("username recovery request command idempotencyKey must not be blank");
   }
@@ -46,7 +53,8 @@ class UsernameRecoveryRequestCommandTest {
         new UsernameRecoveryRequestCommand(
             new AuthFlowSessionId("afs_opaque"),
             new UsernameRecoverySchemeRef("sch_opaque-1"),
-            "  IdEm_ReQuEsT_123  ");
+            "  IdEm_ReQuEsT_123  ",
+            null);
 
     assertThat(command.authFlowSessionId().value()).isEqualTo("afs_opaque");
     assertThat(command.schemeRef().value()).isEqualTo("sch_opaque-1");
@@ -59,7 +67,8 @@ class UsernameRecoveryRequestCommandTest {
         new UsernameRecoveryRequestCommand(
             new AuthFlowSessionId("afs_opaque"),
             new UsernameRecoverySchemeRef("sch_opaque-1"),
-            IDEMPOTENCY_KEY);
+            IDEMPOTENCY_KEY,
+            null);
 
     assertThat(command.authFlowSessionId().value()).isEqualTo("afs_opaque");
     assertThat(command.schemeRef().value()).isEqualTo("sch_opaque-1");
@@ -72,11 +81,39 @@ class UsernameRecoveryRequestCommandTest {
         new UsernameRecoveryRequestCommand(
             new AuthFlowSessionId("afs_secret"),
             new UsernameRecoverySchemeRef("sch_secret"),
-            "idem_secret_key");
+            "idem_secret_key",
+            null);
 
     assertThat(command.toString())
         .doesNotContain("afs_secret", "sch_secret", "idem_secret_key")
         .contains(
             "authFlowSessionId=<redacted>", "schemeRef=<redacted>", "idempotencyKey=<redacted>");
+  }
+
+  @Test
+  void aRequestWithoutALanguageRendersInTheLanguageThatStartStored() {
+    UsernameRecoveryRequestCommand command =
+        new UsernameRecoveryRequestCommand(
+            new AuthFlowSessionId("afs_opaque"),
+            new UsernameRecoverySchemeRef("sch_opaque-1"),
+            "  IdEm_ReQuEsT_123  ",
+            null);
+
+    assertThat(command.language()).isNull();
+    assertThat(command.languageOr(Locale.forLanguageTag("zh-HK")))
+        .isEqualTo(Locale.forLanguageTag("zh-HK"));
+  }
+
+  @Test
+  void aRequestWithALanguageRendersInThatLanguageEvenWhenStartStoredAnother() {
+    UsernameRecoveryRequestCommand command =
+        new UsernameRecoveryRequestCommand(
+            new AuthFlowSessionId("afs_opaque"),
+            new UsernameRecoverySchemeRef("sch_opaque-1"),
+            "  IdEm_ReQuEsT_123  ",
+            Locale.ENGLISH);
+
+    assertThat(command.language()).isEqualTo(Locale.ENGLISH);
+    assertThat(command.languageOr(Locale.forLanguageTag("zh-HK"))).isEqualTo(Locale.ENGLISH);
   }
 }

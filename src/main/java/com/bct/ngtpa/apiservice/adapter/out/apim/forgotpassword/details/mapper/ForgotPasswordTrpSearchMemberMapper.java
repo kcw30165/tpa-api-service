@@ -84,7 +84,10 @@ public final class ForgotPasswordTrpSearchMemberMapper {
     return matched == null
         ? notFound()
         : new ForgotPasswordDetailsLookupResult(
-            ForgotPasswordDetailsLookupStatus.MATCHED, text(matched.env()));
+            ForgotPasswordDetailsLookupStatus.MATCHED,
+            text(matched.trustCode()),
+            text(matched.schemeName()),
+            text(matched.schemeNameChi()));
   }
 
   private static boolean validTermCompleteDate(String value) {
@@ -98,7 +101,7 @@ public final class ForgotPasswordTrpSearchMemberMapper {
   }
 
   private static ForgotPasswordDetailsLookupResult notFound() {
-    return new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.NOT_FOUND);
+    return ForgotPasswordDetailsLookupResult.notFound();
   }
 
   private static ForgotPasswordDetailsDownstreamException malformed(

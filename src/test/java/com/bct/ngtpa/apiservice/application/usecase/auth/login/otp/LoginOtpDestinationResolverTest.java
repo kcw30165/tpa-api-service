@@ -24,7 +24,14 @@ class LoginOtpDestinationResolverTest {
         new LoginPreAuthDestination("dst_second_opaque", "sms", "91234567", "****4567"));
     var context =
         new LoginPreAuthContext(
-            "member01", null, destinations, Instant.parse("2026-07-24T00:00:00Z"), "v1");
+            "member01",
+            null,
+            destinations,
+            Instant.parse("2026-07-24T00:00:00Z"),
+            "v1",
+            null,
+            null,
+            null);
 
     var resolved =
         resolver.resolve(
@@ -58,7 +65,10 @@ class LoginOtpDestinationResolverTest {
                 new LoginPreAuthDestination(
                     "dst_only", "email", "member@example.com", "m*****@example.com")),
             Instant.now(),
-            "v1");
+            "v1",
+            null,
+            null,
+            null);
     assertThatThrownBy(
             () ->
                 resolver.resolve(
@@ -85,7 +95,10 @@ class LoginOtpDestinationResolverTest {
                 "dst_mobile",
                 new LoginPreAuthDestination("dst_mobile", "mobile", "91234567", "****4567")),
             Instant.now(),
-            "v1");
+            "v1",
+            null,
+            null,
+            null);
     var resolved =
         resolver.resolve(
             context,

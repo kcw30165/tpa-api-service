@@ -53,7 +53,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempote
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordInitialOtpPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpReplayResolver;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendEligibilityValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendFoundationService;
@@ -191,26 +190,6 @@ public class ForgotPasswordApplicationConfig {
   }
 
   @Bean
-  public com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordDetailsUseCase
-      verifyForgotPasswordDetailsUseCase(
-          com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort sessions,
-          com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort locks,
-          com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context
-                  .ForgotPasswordProtectedAuthFlowContextLoader
-              loader,
-          com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordDetailsLookupPort lookup,
-          com.bct.ngtpa.apiservice.application.usecase.session.authflow
-                  .AuthFlowSessionLifecycleService
-              lifecycleService,
-          com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort
-              protector,
-          Clock clock) {
-    return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details
-        .VerifyForgotPasswordDetailsService(
-        sessions, locks, loader, lookup, lifecycleService, protector, clock);
-  }
-
-  @Bean
   public com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBindingPort
       forgotPasswordOtpSessionBindingPort(
           com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort sessions,
@@ -218,11 +197,6 @@ public class ForgotPasswordApplicationConfig {
           ForgotPasswordAuthFlowContextProtectorPort protector) {
     return new com.bct.ngtpa.apiservice.adapter.out.session.forgotpassword
         .ForgotPasswordOtpSessionBindingAdapter(sessions, challenges, protector);
-  }
-
-  @Bean
-  public ForgotPasswordOtpTemplates forgotPasswordOtpTemplates() {
-    return ForgotPasswordOtpTemplates.approved();
   }
 
   @Bean
@@ -325,7 +299,8 @@ public class ForgotPasswordApplicationConfig {
       ForgotPasswordDetailsOtpLeasePolicy leasePolicy,
       Clock clock,
       ObjectMapper objectMapper,
-      AuthWorkflowProperties properties) {
+      AuthWorkflowProperties properties,
+      com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort registry) {
     properties.validateForgotPasswordPolicy();
     Duration ttl =
         Duration.ofSeconds(
@@ -345,7 +320,8 @@ public class ForgotPasswordApplicationConfig {
             retention,
             leasePolicy,
             clock,
-            ttl);
+            ttl,
+            registry);
     var json = new JacksonTransientJsonAdapter(objectMapper);
     var protectedReplay = new DefaultForgotPasswordDetailsOtpProtectedReplayResolver(replay);
     var codec =
@@ -455,7 +431,7 @@ public class ForgotPasswordApplicationConfig {
       com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort commitStates,
       ForgotPasswordOtpCommitRetentionPolicy retention,
       ForgotPasswordOtpReplayResolver replay,
-      ForgotPasswordOtpTemplates templates,
+      com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort registry,
       ForgotPasswordInitialOtpPolicy otpPolicy,
       Clock clock,
       ObjectMapper objectMapper,
@@ -479,7 +455,7 @@ public class ForgotPasswordApplicationConfig {
             masker,
             commitStates,
             retention,
-            templates,
+            registry,
             otpPolicy,
             clock,
             ttl,

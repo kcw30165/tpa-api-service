@@ -38,7 +38,14 @@ class UsernameRecoverySessionCandidateTest {
       String scheme, String env, String trust, UsernameRecoveryDeliveryState state) {
     return new UsernameRecoverySessionCandidate(
         new UsernameRecoveryCandidate(
-            new UsernameRecoverySchemeRef(scheme), env, trust, true, "user-" + scheme, state),
+            new UsernameRecoverySchemeRef(scheme),
+            env,
+            trust,
+            true,
+            "user-" + scheme,
+            state,
+            null,
+            null),
         null,
         null);
   }
@@ -47,7 +54,7 @@ class UsernameRecoverySessionCandidateTest {
       String scheme, String env, String trust, UsernameRecoveryDeliveryState state) {
     return new UsernameRecoverySessionCandidate(
         new UsernameRecoveryCandidate(
-            new UsernameRecoverySchemeRef(scheme), env, trust, false, null, state),
+            new UsernameRecoverySchemeRef(scheme), env, trust, false, null, state, null, null),
         null,
         null);
   }
@@ -86,7 +93,7 @@ class UsernameRecoverySessionCandidateTest {
   void requiresSessionBoundSchemeRef() {
     UsernameRecoveryCandidate preSession =
         new UsernameRecoveryCandidate(
-            null, "DB", "DBA", false, null, UsernameRecoveryDeliveryState.AVAILABLE);
+            null, "DB", "DBA", false, null, UsernameRecoveryDeliveryState.AVAILABLE, null, null);
 
     assertThrows(
         IllegalArgumentException.class,

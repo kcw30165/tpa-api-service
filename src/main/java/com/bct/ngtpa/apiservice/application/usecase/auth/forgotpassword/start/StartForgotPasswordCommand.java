@@ -23,23 +23,6 @@ public record StartForgotPasswordCommand(
     Objects.requireNonNull(actorUserRole, "actorUserRole must not be null");
   }
 
-  public StartForgotPasswordCommand(
-      ForgotPasswordIdempotencyKey idempotencyKey,
-      String username,
-      String existingAuthFlowSessionId,
-      String acceptLanguage,
-      String correlationId,
-      Duration idempotencyTtl) {
-    this(
-        idempotencyKey,
-        username,
-        existingAuthFlowSessionId,
-        acceptLanguage,
-        correlationId,
-        idempotencyTtl,
-        ActorUserRole.ROLE_USER_MBR);
-  }
-
   @Override
   public String toString() {
     return "StartForgotPasswordCommand[idempotencyKey=<redacted>, username=<redacted>, existingAuthFlowSessionId=<redacted>, acceptLanguage="

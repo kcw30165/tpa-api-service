@@ -25,7 +25,14 @@ class AesGcmLoginPreAuthContextProtectorTest {
             "dst_opaque_value", "email", "member@example.com", "m*****@example.com"));
     var context =
         new LoginPreAuthContext(
-            "member01", "role_user", destinations, Instant.parse("2026-07-20T00:00:00Z"), "v1");
+            "member01",
+            "role_user",
+            destinations,
+            Instant.parse("2026-07-20T00:00:00Z"),
+            "v1",
+            null,
+            null,
+            null);
 
     var encrypted = protector.protect(context);
 
@@ -50,7 +57,10 @@ class AesGcmLoginPreAuthContextProtectorTest {
                 "dst_opaque_value",
                 new LoginPreAuthDestination("dst_opaque_value", "sms", "91234567", "****4567")),
             Instant.now(),
-            "v1");
+            "v1",
+            null,
+            null,
+            null);
     var encrypted = protector.protect(context);
 
     assertThatThrownBy(
@@ -70,6 +80,33 @@ class AesGcmLoginPreAuthContextProtectorTest {
                         .LoginPreAuthEncryptedContext(
                         encrypted.keyVersion(), encrypted.algorithm(), encrypted.iv(), tampered)))
         .isInstanceOf(LoginPreAuthContextProtectionException.class);
+  }
+
+  @Test
+  void roundTripsTrustCodeAndSchemeNamesWithoutPlaintext() {
+    var protector =
+        new AesGcmLoginPreAuthContextProtector(
+            new ObjectMapper().findAndRegisterModules(), "v1", secret());
+    var destinations = new LinkedHashMap<String, LoginPreAuthDestination>();
+    destinations.put(
+        "dst_opaque_value",
+        new LoginPreAuthDestination(
+            "dst_opaque_value", "email", "member@example.com", "m****@example.com"));
+    var context =
+        new LoginPreAuthContext(
+            "member01",
+            "role_user",
+            destinations,
+            Instant.parse("2026-07-20T00:00:00Z"),
+            "v1",
+            "DBA",
+            "Example Scheme",
+            "示例計劃");
+
+    var encrypted = protector.protect(context);
+
+    assertThat(encrypted.ciphertext()).doesNotContain("DBA", "Example Scheme", "示例計劃", "member01");
+    assertThat(protector.unprotect(encrypted)).isEqualTo(context);
   }
 
   private String secret() {

@@ -719,7 +719,9 @@ class RegistrationStartWorkflowIntegrationTest {
       result =
           new RegistrationLookupResult(
               RegistrationLookupStatus.ELIGIBLE,
-              List.of(new RegistrationLookupAccount("member@example.com", "91234567", "OI", "JPM")),
+              List.of(
+                  new RegistrationLookupAccount(
+                      "OI", "JPM", null, null, null, null, null, Boolean.FALSE, null)),
               null);
     }
   }

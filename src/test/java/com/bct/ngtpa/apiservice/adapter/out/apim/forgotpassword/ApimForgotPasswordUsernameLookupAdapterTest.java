@@ -71,7 +71,7 @@ class ApimForgotPasswordUsernameLookupAdapterTest {
                 Mono.just(
                     envelope(
                         "err.tpa.cust.id.not.registered",
-                        List.of(new TrpChkCustIdApimDataItem("", false)))));
+                        List.of(new TrpChkCustIdApimDataItem("", false, null, null, null)))));
     StepVerifier.create(
             adapter.lookup(
                 new StartForgotPasswordUsernameLookupCommand(

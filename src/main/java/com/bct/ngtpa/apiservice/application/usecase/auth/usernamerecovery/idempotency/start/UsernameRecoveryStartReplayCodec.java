@@ -154,7 +154,7 @@ public final class UsernameRecoveryStartReplayCodec {
     UsernameRecoveryStartResult toNonSessionResult(Outcome decoded) {
       if (decoded == Outcome.MEMBER_NOT_FOUND) {
         if (schemes == null || !schemes.isEmpty()) throw new IllegalArgumentException();
-        return new UsernameRecoveryStartResult(decoded, null, null, List.of());
+        return UsernameRecoveryStartResult.withoutSession(decoded, List.of());
       }
       if (decoded != Outcome.ZERO_REGISTERED || schemes == null || schemes.isEmpty()) {
         throw new IllegalArgumentException();
@@ -170,7 +170,7 @@ public final class UsernameRecoveryStartReplayCodec {
                         null, s.accountEnv(), s.trustCode(), false);
                   })
               .toList();
-      return new UsernameRecoveryStartResult(decoded, null, null, projections);
+      return UsernameRecoveryStartResult.withoutSession(decoded, projections);
     }
   }
 

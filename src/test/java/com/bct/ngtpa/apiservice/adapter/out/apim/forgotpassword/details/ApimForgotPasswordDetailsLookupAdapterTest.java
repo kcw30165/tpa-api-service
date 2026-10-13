@@ -134,13 +134,22 @@ class ApimForgotPasswordDetailsLookupAdapterTest {
   void matchedMemberDelegatesToMapperMatchedResult() {
     ForgotPasswordTrpSearchMemberDataItem item =
         new ForgotPasswordTrpSearchMemberDataItem(
-            "env1", "trust1", "SCHEME_A", "policy1", "cert1", "ACTIVE", null, true, "cust1");
+            "env1",
+            "trust1",
+            "SCHEME_A",
+            null,
+            null,
+            "policy1",
+            "cert1",
+            "ACTIVE",
+            null,
+            true,
+            "cust1");
     givenExecutorReturns(envelopeWith(null, List.of(item)));
     StepVerifier.create(newAdapter().verify(command()))
         .assertNext(
             result -> {
               assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.MATCHED);
-              assertThat(result.accountEnv()).isEqualTo("env1");
             })
         .verifyComplete();
   }

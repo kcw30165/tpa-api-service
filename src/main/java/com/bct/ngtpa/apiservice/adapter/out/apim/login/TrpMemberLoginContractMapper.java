@@ -55,7 +55,10 @@ public final class TrpMemberLoginContractMapper {
         ActorUserRole.fromApimValue(loginUserRole).name(),
         item.failCount() == null ? 0 : item.failCount(),
         destinations,
-        null);
+        null,
+        item.trustCode(),
+        item.schemeName(),
+        item.schemeNameChi());
   }
 
   public CredentialAuthenticationResult failure(CredentialAuthenticationStatus status) {
@@ -67,7 +70,7 @@ public final class TrpMemberLoginContractMapper {
     if (status == null || status == CredentialAuthenticationStatus.AUTHENTICATED) {
       throw new IllegalArgumentException("Credential failure status is required");
     }
-    return new CredentialAuthenticationResult(status, null, null, failCount, List.of(), null);
+    return CredentialAuthenticationResult.failure(status, failCount);
   }
 
   private String required(String value, String field) {

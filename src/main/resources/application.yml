@@ -141,15 +141,6 @@ auth-workflows:
       max-resend-attempts: 5
       invalidate-previous-on-resend: true
       reset-verify-attempts-on-resend: true
-      localized-template:
-        en:
-          sms: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
-          email-subject: "BCT forgot password verification code"
-          email-body: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
-        zh_HK:
-          sms: "您的 BCT 忘記密碼驗證碼為 {code}，有效期限為 {ttlValue} {ttlUnit}。"
-          email-subject: "BCT 忘記密碼驗證碼"
-          email-body: "您的 BCT 忘記密碼驗證碼為 {code}，有效期限為 {ttlValue} {ttlUnit}。"
     details-and-otp:
       mutation-lock-lease-seconds: ${FORGOT_PASSWORD_DETAILS_OTP_LOCK_LEASE_SECONDS:60}
       mutation-lock-redis-allowance-seconds: ${FORGOT_PASSWORD_DETAILS_OTP_REDIS_ALLOWANCE_SECONDS:10}
@@ -196,10 +187,6 @@ auth-workflows:
       max-verify-attempts: ${LOGIN_OTP_MAX_VERIFY_ATTEMPTS:5}
       resend-limit-enabled: false
       max-resend-attempts: 0
-      sms-template: "Your BCT login verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
-      email-template:
-        subject: "BCT login verification code"
-        body: "Your BCT login verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
     idempotency:
       start-ttl-seconds: ${LOGIN_START_IDEMPOTENCY_TTL_SECONDS:300}
       otp-send-ttl-seconds: ${LOGIN_OTP_SEND_IDEMPOTENCY_TTL_SECONDS:300}
@@ -240,10 +227,6 @@ auth-workflows:
       destination-override:
         mobile: ${USERNAME_RECOVERY_MESSAGE_OVERRIDE_MOBILE:}
         email: ${USERNAME_RECOVERY_MESSAGE_OVERRIDE_EMAIL:}
-    template:
-      email-subject: ${USERNAME_RECOVERY_EMAIL_SUBJECT:BCT username recovery}
-      email-body: ${USERNAME_RECOVERY_EMAIL_BODY:Your BCT username is {username}.}
-      sms-body: ${USERNAME_RECOVERY_SMS_BODY:Your BCT username is {username}.}
   registration:
     pre-start-challenge:
       enabled: true
@@ -268,10 +251,6 @@ auth-workflows:
       max-resend-attempts: 5
       invalidate-previous-on-resend: true
       reset-verify-attempts-on-resend: true
-      sms-template: "Your BCT verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
-      email-template:
-        subject: "BCT verification code"
-        body: "Your verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
     username:
       min-length: 4
       max-length: 128
@@ -572,3 +551,160 @@ masking:
       - cert-no
       - user-id
   disabled-placeholder: "<masked>"
+
+# ============================================================================
+# Centralized Template Service content (docs/design/10-template-service/).
+# Keys are the kebab-case form of MessageDeliveryType (see solution-design
+# doc section 8.0). Content sourced verbatim from the BRD SMS sheet and the
+# three email docx templates (E0001/E0002/E0003), with OTP/trust-code/
+# username/scheme-name literals replaced by {placeholder} variables, and
+# TTL wording changed from the literal "5 minutes" to dynamic
+# {ttlValue}/{ttlUnit} per the resolved decision in section 8.3 (not applied
+# to username-recovery, which the BRD defines with no OTP/expiry).
+# ============================================================================
+notice-templates:
+  # Unit word for {ttlUnit}, looked up with the locale key that was selected for the content
+  # (solution design section 8.6). Every locale key whose content uses {ttlUnit} needs an entry.
+  ttl-units:
+    en: "minutes"
+    zh_HK: "分鐘"
+  definitions:
+    registration-otp:
+      sms:
+        en: "BCT Pension: Your One-Time Password (OTP) for Account Registration: {code}. Valid for {ttlValue} {ttlUnit}."
+        zh_HK: "BCT 退休金: 有關您的帳戶登記的一次性密碼為: {code}。有效期為{ttlValue}{ttlUnit}。"
+      email:
+        en:
+          subject: "BCT Pension Member Portal - One-Time Password for Account Registration"
+          body: |
+            Dear Member,
+
+            RE: BCT Pension Member Portal- Account Registration
+            ------------------------------------------------------------
+
+            Your One-Time Password (OTP): {code}   
+            This password expires in {ttlValue} {ttlUnit}.
+
+            Bank Consortium Trust Company Limited
+
+            [This is an automatically generated e-mail. Please do not reply to this e-mail address. Thank you for your co-operation.]
+        zh_HK:
+          subject: "BCT 退休金會員平台 - 帳戶登記的一次性密碼"
+          body: |
+            關於：BCT 銀聯集團 退休金會員平台 - 帳戶登記
+            ------------------------------------------------------------
+
+            您的一次性密碼(OTP)為：{code}
+            此密碼於{ttlValue}{ttlUnit}內有效。
+
+            銀聯信託有限公司
+
+            ［此乃經自動系統發出之電子郵件，請勿回覆。多謝合作。］
+    login-otp:
+      sms:
+        en: "BCT-{trustCode}: Your One-Time Password (OTP) : {code}. Valid for {ttlValue} {ttlUnit}."
+        zh_HK: "BCT - {trustCode} : 您的一次性密碼為: {code}。有效期為{ttlValue}{ttlUnit}。"
+      email:
+        en:
+          subject: "{trustCode} BCT Pension Scheme - Member's One-Time Password"
+          body: |
+            Dear Member,
+
+            RE: {schemeName} ("the Plan")
+            ------------------------------------------------------------
+
+            Your One-Time Password (OTP) for BCT Pension Member Portal is: {code}   
+            This password expires in {ttlValue} {ttlUnit}.
+
+            Bank Consortium Trust Company Limited
+            (Trustee and Administrator of the Plan)
+
+            [This is an automatically generated e-mail. Please do not reply to this e-mail address. Thank you for your co-operation.]
+        zh_HK:
+          subject: "{trustCode} BCT 退休計劃：成員的一次性密碼"
+          body: |
+            關於：{schemeNameChi}（「本計劃」）
+            ------------------------------------------------------------
+
+            您的退休金會員平台的一次性密碼(OTP)為：{code}
+            此密碼於{ttlValue}{ttlUnit}內有效。
+
+            銀聯信託有限公司
+            （本計劃的信託人及行政管理人)
+
+            ［此乃經自動系統發出之電子郵件，請勿回覆。多謝合作。］
+    forgot-password-otp:
+      # Content intentionally identical to login-otp (resolved decision,
+      # solution-design doc section 5): two separate config entries,
+      # synchronized content.
+      sms:
+        en: "BCT-{trustCode}: Your One-Time Password (OTP) : {code}. Valid for {ttlValue} {ttlUnit}."
+        zh_HK: "BCT - {trustCode} : 您的一次性密碼為: {code}。有效期為{ttlValue}{ttlUnit}。"
+      email:
+        en:
+          subject: "{trustCode} BCT Pension Scheme - Member's One-Time Password"
+          body: |
+            Dear Member,
+
+            RE: {schemeName} ("the Plan")
+            ------------------------------------------------------------
+
+            Your One-Time Password (OTP) for BCT Pension Member Portal is: {code}   
+            This password expires in {ttlValue} {ttlUnit}.
+
+            Bank Consortium Trust Company Limited
+            (Trustee and Administrator of the Plan)
+
+            [This is an automatically generated e-mail. Please do not reply to this e-mail address. Thank you for your co-operation.]
+        zh_HK:
+          subject: "{trustCode} BCT 退休計劃：成員的一次性密碼"
+          body: |
+            關於：{schemeNameChi}（「本計劃」）
+            ------------------------------------------------------------
+
+            您的退休金會員平台的一次性密碼(OTP)為：{code}
+            此密碼於{ttlValue}{ttlUnit}內有效。
+
+            銀聯信託有限公司
+            （本計劃的信託人及行政管理人)
+
+            ［此乃經自動系統發出之電子郵件，請勿回覆。多謝合作。］
+    username-recovery:
+      # No OTP/expiry per BRD notice inventory (section 3); no TTL
+      # placeholder used here.
+      sms:
+        en: "BCT-{trustCode}: Your Username is {username}. Please login our Member Portal to view your account details"
+        zh_HK: "BCT - {trustCode} : 您的用戶名稱是 {username} 。 請登入會員網站查閱您的賬戶資料。"
+      email:
+        en:
+          subject: "{trustCode} BCT Pension Scheme- Username Recovery"
+          body: |
+            Dear Member,
+
+            RE: {schemeName} ("the Plan")
+            ------------------------------------------------------------
+
+            Your username of the above-mentioned Plan as below
+
+            {username}
+
+            Bank Consortium Trust Company Limited
+            (Trustee and Administrator of the Plan)
+
+            [This is an automatically generated e-mail. Please do not reply to this e-mail address. Thank you for your co-operation.]
+        zh_HK:
+          subject: "{trustCode} BCT 退休計劃 - 取回用戶名稱"
+          body: |
+            親愛的成員：
+
+            關於：{schemeNameChi}（「本計劃」）
+            ------------------------------------------------------------
+
+            您於上述計劃的用戶名稱如下：
+
+            {username}
+
+            銀聯信託有限公司
+            （本計劃的信託人及行政管理人)
+
+            ［此乃經自動系統發出之電子郵件，請勿回覆。多謝合作。］

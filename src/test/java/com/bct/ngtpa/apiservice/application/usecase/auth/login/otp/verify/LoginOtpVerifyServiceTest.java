@@ -75,7 +75,10 @@ class LoginOtpVerifyServiceTest {
                           ActorUserRole.ROLE_USER_MBR.name(),
                           java.util.Map.of(),
                           Instant.parse("2026-07-20T00:00:00Z"),
-                          "v1"),
+                          "v1",
+                          null,
+                          null,
+                          null),
                       "otp_active",
                       null,
                       "csrf_hash"));

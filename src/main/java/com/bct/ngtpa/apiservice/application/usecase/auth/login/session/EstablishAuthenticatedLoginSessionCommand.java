@@ -53,27 +53,4 @@ public record EstablishAuthenticatedLoginSessionCommand(
         + correlationId
         + "]";
   }
-
-  public EstablishAuthenticatedLoginSessionCommand(
-      AuthFlowSessionId authFlowSessionId,
-      ActorContext actorContext,
-      List<LoginSessionAccount> accounts,
-      String csrfTokenHash,
-      String correlationId) {
-    this(
-        authFlowSessionId,
-        actorContext,
-        accounts,
-        csrfTokenHash,
-        correlationId,
-        new AuthenticatedLoginHandoffReference("00000000000000000000000000000000"),
-        new LoginOtpVerificationOperationReference("00000000000000000000000000000000"),
-        "legacy-test-boundary",
-        new LoginOtpConsumptionProof(
-            "legacy-test-boundary",
-            new AuthenticatedLoginHandoffReference("00000000000000000000000000000000"),
-            new LoginOtpVerificationOperationReference("00000000000000000000000000000000"),
-            "legacy-test-boundary",
-            java.time.Instant.EPOCH));
-  }
 }

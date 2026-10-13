@@ -31,19 +31,6 @@ public record VerifyLoginOtpResult(
         status == VerifyLoginOtpStatus.ACCOUNTS_READY ? authenticatedCsrfToken.trim() : null;
   }
 
-  public VerifyLoginOtpResult(
-      VerifyLoginOtpStatus status,
-      Integer remainingVerifyAttempts,
-      boolean clearAuthFlowCookie,
-      List<LoginSessionAccount> accounts) {
-    this(status, remainingVerifyAttempts, clearAuthFlowCookie, accounts, null, null);
-  }
-
-  public VerifyLoginOtpResult(
-      VerifyLoginOtpStatus status, Integer remainingVerifyAttempts, boolean clearAuthFlowCookie) {
-    this(status, remainingVerifyAttempts, clearAuthFlowCookie, List.of(), null, null);
-  }
-
   @Override
   public String toString() {
     return "VerifyLoginOtpResult[status="

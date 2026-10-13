@@ -100,7 +100,8 @@ class UsernameRecoveryCommandContextArchitectureGuardTest {
         new UsernameRecoveryRequestCommand(
             new AuthFlowSessionId("afs_secret"),
             new UsernameRecoverySchemeRef("sch_secret"),
-            "idem_request_secret");
+            "idem_request_secret",
+            null);
     var cancel =
         new UsernameRecoveryCancelCommand(
             new AuthFlowSessionId("afs_secret"), "idem_cancel_secret");

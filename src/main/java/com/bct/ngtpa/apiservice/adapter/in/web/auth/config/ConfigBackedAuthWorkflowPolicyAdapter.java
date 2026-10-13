@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.config;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.CaptchaPolicy;
-import com.bct.ngtpa.apiservice.application.dto.auth.OtpEmailPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.OtpPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.PasswordPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengePolicy;
@@ -44,11 +43,7 @@ public class ConfigBackedAuthWorkflowPolicyAdapter implements AuthWorkflowPolicy
             registration.getOtp().isResendLimitEnabled(),
             registration.getOtp().getMaxResendAttempts(),
             registration.getOtp().isInvalidatePreviousOnResend(),
-            registration.getOtp().isResetVerifyAttemptsOnResend(),
-            registration.getOtp().getSmsTemplate(),
-            new OtpEmailPolicy(
-                registration.getOtp().getEmailTemplate().getSubject(),
-                registration.getOtp().getEmailTemplate().getBody())),
+            registration.getOtp().isResetVerifyAttemptsOnResend()),
         new UsernamePolicy(
             registration.getUsername().getMinLength(),
             registration.getUsername().getMaxLength(),

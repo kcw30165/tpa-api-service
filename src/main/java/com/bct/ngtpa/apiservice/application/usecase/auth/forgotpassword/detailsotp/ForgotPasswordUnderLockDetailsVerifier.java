@@ -6,16 +6,21 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordDetailsLookupPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.*;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 public final class ForgotPasswordUnderLockDetailsVerifier {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(ForgotPasswordUnderLockDetailsVerifier.class);
+
   private final ForgotPasswordDetailsLookupPort lookup;
 
   public ForgotPasswordUnderLockDetailsVerifier(ForgotPasswordDetailsLookupPort l) {
     lookup = Objects.requireNonNull(l);
   }
 
-  public Mono<ForgotPasswordDetailsResult> verify(
+  public Mono<ForgotPasswordUnderLockDetailsVerification> verify(
       SessionLockHandle lock,
       AuthFlowSession session,
       ForgotPasswordAuthFlowContext context,
@@ -24,7 +29,8 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
       String mobile,
       String requestId) {
     if (lock == null || !lock.acquired() || session == null || context == null)
-      return Mono.just(ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.SYSTEM_FAILED));
+      return Mono.just(
+          ForgotPasswordUnderLockDetailsVerification.of(ForgotPasswordDetailsStatus.SYSTEM_FAILED));
     return lookup
         .verify(
             new ForgotPasswordDetailsLookupCommand(
@@ -39,8 +45,23 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
         .map(
             r ->
                 r.status() == ForgotPasswordDetailsLookupStatus.MATCHED
-                    ? ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.DETAILS_VERIFIED)
-                    : ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.BUSINESS_REJECTED))
-        .onErrorReturn(ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.SYSTEM_FAILED));
+                    ? new ForgotPasswordUnderLockDetailsVerification(
+                        ForgotPasswordDetailsStatus.DETAILS_VERIFIED,
+                        r.trustCode(),
+                        r.schemeName(),
+                        r.schemeNameChi())
+                    : ForgotPasswordUnderLockDetailsVerification.of(
+                        ForgotPasswordDetailsStatus.BUSINESS_REJECTED))
+        .doOnError(cause -> logFailure(requestId, cause))
+        .onErrorReturn(
+            ForgotPasswordUnderLockDetailsVerification.of(
+                ForgotPasswordDetailsStatus.SYSTEM_FAILED));
+  }
+
+  private static void logFailure(String requestId, Throwable cause) {
+    LOGGER.error(
+        "event=forgot-password.details-otp.failed requestId={} stage=lookup exceptionType={}",
+        requestId,
+        cause.getClass().getSimpleName());
   }
 }

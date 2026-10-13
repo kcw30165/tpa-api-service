@@ -126,16 +126,10 @@ public final class ForgotPasswordStartProtectedOperation {
     String publicIdentityType = publicIdentityType(lookupResult.identityType());
     var protectedContext =
         contextProtector.protect(
-            new ForgotPasswordAuthFlowContext(
+            ForgotPasswordAuthFlowContext.started(
                 lookupResult.customerId(),
                 lookupResult.userId(),
                 publicIdentityType,
-                false,
-                null,
-                null,
-                null,
-                null,
-                null,
                 WORKFLOW_VERSION));
     Map<String, String> attributes = new LinkedHashMap<>();
     attributes.put(

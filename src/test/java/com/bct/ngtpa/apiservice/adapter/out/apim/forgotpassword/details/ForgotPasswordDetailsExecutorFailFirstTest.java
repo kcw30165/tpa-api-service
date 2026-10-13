@@ -29,18 +29,11 @@ class ForgotPasswordDetailsExecutorFailFirstTest {
   }
 
   @Test
-  void everyApplicationCallerSuppliesCompatibilityRole() throws Exception {
-    String direct =
-        compact(
-            source(
-                "application/usecase/auth/forgotpassword/details/VerifyForgotPasswordDetailsService.java"));
+  void theApplicationCallerSuppliesCompatibilityRole() throws Exception {
     String locked =
         compact(
             source(
                 "application/usecase/auth/forgotpassword/detailsotp/ForgotPasswordUnderLockDetailsVerifier.java"));
-    assertThat(direct)
-        .contains("ActorUserRole.ROLE_USER_MBR")
-        .contains("newForgotPasswordDetailsLookupCommand(");
     assertThat(locked)
         .contains("ActorUserRole.ROLE_USER_MBR")
         .contains("newForgotPasswordDetailsLookupCommand(");

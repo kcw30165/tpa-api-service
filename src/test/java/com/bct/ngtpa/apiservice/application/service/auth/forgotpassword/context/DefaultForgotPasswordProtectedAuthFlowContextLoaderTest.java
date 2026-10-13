@@ -417,7 +417,11 @@ class DefaultForgotPasswordProtectedAuthFlowContextLoaderTest {
           "member@example.com",
           "m****r@example.com",
           null,
-          "v1");
+          null,
+          null,
+          null,
+          "v1",
+          null);
     }
   }
 }

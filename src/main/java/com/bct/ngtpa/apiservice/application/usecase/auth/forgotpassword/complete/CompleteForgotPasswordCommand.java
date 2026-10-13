@@ -29,31 +29,6 @@ public record CompleteForgotPasswordCommand(
     }
   }
 
-  public CompleteForgotPasswordCommand(
-      AuthFlowSessionId authFlowSessionId,
-      String csrfToken,
-      ForgotPasswordIdempotencyKey idempotencyKey,
-      String password,
-      String confirmPassword,
-      String origin,
-      String referer,
-      String acceptLanguage,
-      String correlationId,
-      Duration idempotencyTtl) {
-    this(
-        authFlowSessionId,
-        csrfToken,
-        idempotencyKey,
-        password,
-        confirmPassword,
-        origin,
-        referer,
-        acceptLanguage,
-        correlationId,
-        idempotencyTtl,
-        ActorUserRole.ROLE_USER_MBR);
-  }
-
   @Override
   public String toString() {
     return "CompleteForgotPasswordCommand[authFlowSessionId=<redacted>, csrfToken=<redacted>, "

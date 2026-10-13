@@ -193,6 +193,13 @@ Cookie: auth_flow_sid=afs_opaque
 Content-Length: 0
 ```
 
+### Language of the notice
+
+The e-mail or SMS sent by this call is rendered in the language of the call's own `Accept-Language`.
+When the header is absent, blank or names no language (for example `*`), the language that `/start`
+stored in the session is used. The header does not take part in the idempotency fingerprint of
+`/request`, so a replay of the same request returns the original result.
+
 ### Successful request with usernames still unrequested
 
 After sender `ACCEPTED`, candidate state becomes `REQUESTED`. If another registered candidate remains not `REQUESTED`, FE returns to the selection page.

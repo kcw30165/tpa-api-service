@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.session.forgotpassword;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
@@ -32,6 +33,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -102,6 +104,8 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
         "j***@example.com",
         null,
         null,
+        null,
+        null,
         "v1",
         phase);
   }
@@ -117,7 +121,10 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
         "j***@example.com",
         NOW.plusSeconds(300),
         NOW.plusSeconds(60),
-        NOW);
+        NOW,
+        null,
+        null,
+        null);
   }
 
   private OtpChallenge validChallenge() {
@@ -183,7 +190,10 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
             "j***@example.com",
             NOW.plusSeconds(300),
             NOW.plusSeconds(60),
-            NOW);
+            NOW,
+            null,
+            null,
+            null);
     StepVerifier.create(newAdapter().apply(cmd))
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
@@ -301,7 +311,10 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
             "j***@example.com",
             NOW.plusSeconds(300),
             NOW.plusSeconds(60),
-            NOW);
+            NOW,
+            null,
+            null,
+            null);
     StepVerifier.create(newAdapter().apply(cmd))
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
@@ -412,7 +425,10 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
             "j***@example.com",
             NOW.minusSeconds(1),
             NOW.plusSeconds(60),
-            NOW);
+            NOW,
+            null,
+            null,
+            null);
     when(challenges.findById(any())).thenReturn(Mono.just(Optional.of(expired)));
     StepVerifier.create(newAdapter().apply(cmd))
         .assertNext(
@@ -443,5 +459,97 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
+  }
+
+  // ----- tests: ACCEPTED - trust and scheme fields (scripts 180-182) ------------------------
+
+  private ForgotPasswordOtpBindingCommand acceptedCommandWith(
+      String trustCode, String schemeName, String schemeNameChi) {
+    return new ForgotPasswordOtpBindingCommand(
+        sid,
+        acquiredLock,
+        MessageDeliveryStatus.ACCEPTED,
+        "challenge-1",
+        "email",
+        "john@example.com",
+        "j***@example.com",
+        NOW.plusSeconds(300),
+        NOW.plusSeconds(60),
+        NOW,
+        trustCode,
+        schemeName,
+        schemeNameChi);
+  }
+
+  private ForgotPasswordAuthFlowContext storedContextWithTrustFields() {
+    return new ForgotPasswordAuthFlowContext(
+        "john",
+        "idv-1",
+        "CUSTID",
+        true,
+        "subj-1",
+        "email",
+        "john@example.com",
+        "j***@example.com",
+        null,
+        "STORED-TRUST",
+        "Stored Scheme",
+        "Stored Scheme Chi",
+        "v1",
+        ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
+  }
+
+  private ForgotPasswordAuthFlowContext bindAndCapturePersistedContext(
+      ForgotPasswordOtpBindingCommand command) {
+    givenSession(identityVerifiedSession());
+    givenWriterSucceeds();
+    when(challenges.findById(any())).thenReturn(Mono.just(Optional.of(validChallenge())));
+    StepVerifier.create(newAdapter().apply(command))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.BOUND))
+        .verifyComplete();
+    ArgumentCaptor<ForgotPasswordAuthFlowContext> persisted =
+        ArgumentCaptor.forClass(ForgotPasswordAuthFlowContext.class);
+    verify(protector).protect(persisted.capture());
+    return persisted.getValue();
+  }
+
+  @Test
+  void acceptedPersistsTheTrustFieldsCarriedByTheCommand() {
+    when(protector.unprotect(any()))
+        .thenReturn(contextAtPhase(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED));
+
+    ForgotPasswordAuthFlowContext persisted =
+        bindAndCapturePersistedContext(acceptedCommandWith("HSBC", "Scheme En", "Scheme Chi"));
+
+    assertThat(persisted.phase()).isEqualTo(ForgotPasswordProtectedPhase.OTP_SENT);
+    assertThat(persisted.trustCode()).isEqualTo("HSBC");
+    assertThat(persisted.schemeName()).isEqualTo("Scheme En");
+    assertThat(persisted.schemeNameChi()).isEqualTo("Scheme Chi");
+  }
+
+  @Test
+  void acceptedKeepsTheStoredTrustFieldsWhenTheCommandCarriesNone() {
+    when(protector.unprotect(any())).thenReturn(storedContextWithTrustFields());
+
+    ForgotPasswordAuthFlowContext persisted =
+        bindAndCapturePersistedContext(acceptedCommandWith(null, null, null));
+
+    assertThat(persisted.phase()).isEqualTo(ForgotPasswordProtectedPhase.OTP_SENT);
+    assertThat(persisted.trustCode()).isEqualTo("STORED-TRUST");
+    assertThat(persisted.schemeName()).isEqualTo("Stored Scheme");
+    assertThat(persisted.schemeNameChi()).isEqualTo("Stored Scheme Chi");
+  }
+
+  @Test
+  void acceptedTreatsBlankCommandTrustFieldsAsAbsent() {
+    when(protector.unprotect(any())).thenReturn(storedContextWithTrustFields());
+
+    ForgotPasswordAuthFlowContext persisted =
+        bindAndCapturePersistedContext(acceptedCommandWith(" ", "", "  "));
+
+    assertThat(persisted.trustCode()).isEqualTo("STORED-TRUST");
+    assertThat(persisted.schemeName()).isEqualTo("Stored Scheme");
+    assertThat(persisted.schemeNameChi()).isEqualTo("Stored Scheme Chi");
   }
 }

@@ -130,7 +130,6 @@ public final class ForgotPasswordCompleteProtectedOperation {
                 context.username(),
                 command.password(),
                 command.correlationId(),
-                context.accountEnv(),
                 command.actorUserRole()))
         .flatMap(result -> classify(session, context, result, now))
         .onErrorResume(ignored -> blockUnknown(session, now));

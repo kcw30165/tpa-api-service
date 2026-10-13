@@ -38,7 +38,7 @@ class AuthRegistrationControllerCaptchaGateTest {
                         null,
                         List.of(),
                         List.of(
-                            new StartRegistrationError(
+                            StartRegistrationError.withoutMessage(
                                 RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED,
                                 "captchaChallengeId")),
                         RegistrationIdempotencyStartOutcome.STARTED,
@@ -139,7 +139,7 @@ class AuthRegistrationControllerCaptchaGateTest {
                         null,
                         List.of(),
                         List.of(
-                            new StartRegistrationError(
+                            StartRegistrationError.withoutMessage(
                                 RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID,
                                 "captchaChallengeId")),
                         RegistrationIdempotencyStartOutcome.STARTED,

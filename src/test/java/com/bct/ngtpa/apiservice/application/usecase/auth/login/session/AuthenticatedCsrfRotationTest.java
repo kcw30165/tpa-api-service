@@ -61,7 +61,7 @@ class AuthenticatedCsrfRotationTest {
             null,
             null);
     var command =
-        new EstablishAuthenticatedLoginSessionCommand(
+        EstablishAuthenticatedLoginSessionCommandFixture.withTestBoundary(
             new AuthFlowSessionId("afs_opaque"),
             new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
             List.of(account),

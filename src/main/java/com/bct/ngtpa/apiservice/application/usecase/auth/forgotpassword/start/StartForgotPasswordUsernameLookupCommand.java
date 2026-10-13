@@ -14,10 +14,6 @@ public record StartForgotPasswordUsernameLookupCommand(
     normalizedUsername = normalizedUsername.trim();
   }
 
-  public StartForgotPasswordUsernameLookupCommand(String normalizedUsername, String correlationId) {
-    this(normalizedUsername, correlationId, ActorUserRole.ROLE_USER_MBR);
-  }
-
   @Override
   public String toString() {
     return "StartForgotPasswordUsernameLookupCommand[normalizedUsername=<redacted>, correlationId="

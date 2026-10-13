@@ -6,8 +6,13 @@ import static com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.conte
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
@@ -21,6 +26,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeResul
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryChannel;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryResult;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryStatus;
+import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
+import com.bct.ngtpa.apiservice.application.dto.message.NoticeTemplateDefinition;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -37,12 +44,12 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordInitialOtpPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitState;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.nio.charset.StandardCharsets;
@@ -55,7 +62,10 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -94,12 +104,45 @@ class ForgotPasswordOtpResendProtectedOperationTest {
       mock(ForgotPasswordOtpCommitStatePort.class);
   private final ForgotPasswordOtpCommitRetentionPolicy retention =
       new ForgotPasswordOtpCommitRetentionPolicy(Duration.ofMinutes(5), Duration.ofHours(1));
-  private final ForgotPasswordOtpTemplates templates = ForgotPasswordOtpTemplates.approved();
+  private final NoticeTemplateRegistryPort registry = mock(NoticeTemplateRegistryPort.class);
   private final ForgotPasswordInitialOtpPolicy otpPolicy =
       ForgotPasswordInitialOtpPolicy.approved();
 
   private final AuthFlowSessionId sid = new AuthFlowSessionId("afs-otp-1");
   private final String csrfHash = sha256(RAW_CSRF);
+
+  // ----- log capture -------------------------------------------------------
+
+  private ListAppender<ILoggingEvent> logAppender;
+  private Logger operationLogger;
+
+  @BeforeEach
+  void attachLogAppender() {
+    operationLogger =
+        (Logger) LoggerFactory.getLogger(ForgotPasswordOtpResendProtectedOperation.class);
+    logAppender = new ListAppender<>();
+    logAppender.start();
+    operationLogger.addAppender(logAppender);
+  }
+
+  @AfterEach
+  void detachLogAppender() {
+    operationLogger.detachAppender(logAppender);
+  }
+
+  private void assertLoggedFailure(String stage) {
+    assertThat(logAppender.list).hasSize(1);
+    ILoggingEvent event = logAppender.list.get(0);
+    assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(event.getThrowableProxy()).isNull();
+    assertThat(event.getFormattedMessage())
+        .contains(
+            "event=forgot-password.resend.failed",
+            "requestId=",
+            "stage=" + stage,
+            "exceptionType=IllegalStateException")
+        .doesNotContain("boom");
+  }
 
   // ----- construction helpers ---------------------------------------------
 
@@ -116,7 +159,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
         masker,
         commitStates,
         retention,
-        templates,
+        registry,
         otpPolicy,
         clock,
         idempotencyTtl,
@@ -179,6 +222,8 @@ class ForgotPasswordOtpResendProtectedOperationTest {
         "email",
         PROTECTED_DESTINATION,
         MASKED_DESTINATION,
+        null,
+        null,
         null,
         null,
         "v1",
@@ -262,7 +307,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
                     masker,
                     commitStates,
                     retention,
-                    templates,
+                    registry,
                     otpPolicy,
                     clock,
                     idempotencyTtl,
@@ -383,6 +428,20 @@ class ForgotPasswordOtpResendProtectedOperationTest {
                 assertThat(r.result().status())
                     .isEqualTo(ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID))
         .verifyComplete();
+  }
+
+  @Test
+  void decryptFailureYieldsAuthFlowInvalidAndLogsTheFailure() {
+    givenLockAcquired();
+    givenSession(validSession());
+    when(protector.unprotect(any())).thenThrow(new IllegalStateException("boom"));
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            r ->
+                assertThat(r.result().status())
+                    .isEqualTo(ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID))
+        .verifyComplete();
+    assertLoggedFailure("decrypt");
   }
 
   @Test
@@ -538,6 +597,22 @@ class ForgotPasswordOtpResendProtectedOperationTest {
   }
 
   @Test
+  void foundationErrorYieldsSystemFailedAndLogsTheFailure() {
+    givenLockAcquired();
+    givenSession(validSession());
+    givenContext();
+    givenChallenge();
+    when(foundation.evaluate(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            r ->
+                assertThat(r.result().status())
+                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
+        .verifyComplete();
+    assertLoggedFailure("foundation");
+  }
+
+  @Test
   void loadSnapshotErrorYieldsSystemFailed() {
     givenLockAcquired();
     when(sessions.loadSnapshot(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
@@ -547,6 +622,76 @@ class ForgotPasswordOtpResendProtectedOperationTest {
                 assertThat(r.result().status())
                     .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
         .verifyComplete();
+  }
+
+  @Test
+  void loadSnapshotErrorYieldsSystemFailedAndLogsTheFailure() {
+    givenLockAcquired();
+    when(sessions.loadSnapshot(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            r ->
+                assertThat(r.result().status())
+                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
+        .verifyComplete();
+    assertLoggedFailure("execute");
+  }
+
+  private AuthFlowSession validSessionWithResendCount(String count) {
+    return new AuthFlowSession(
+        sid,
+        AuthFlowScenario.FORGOT_PASSWORD,
+        AuthFlowStatus.OTP_SENT,
+        csrfHash,
+        "challenge-1",
+        new AuthFlowSessionData(
+            "email",
+            MASKED_DESTINATION,
+            Map.of(
+                CONTEXT_CIPHERTEXT,
+                "ciphertext-1",
+                CONTEXT_KEY_VERSION,
+                "kv-1",
+                CONTEXT_ALGORITHM,
+                ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM,
+                "forgotPasswordOtpSuccessfulResendCount",
+                count)),
+        NOW.minusSeconds(120),
+        NOW.minusSeconds(60),
+        NOW.plusSeconds(1800));
+  }
+
+  @Test
+  void challengeLookupErrorYieldsAResultAndLogsTheFailure() {
+    givenLockAcquired();
+    givenSession(validSession());
+    givenContext();
+    when(challengeState.findById(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    StepVerifier.create(newOp().execute(validCommand())).expectNextCount(1).verifyComplete();
+    assertLoggedFailure("eligibility");
+  }
+
+  @Test
+  void unparsableResendCountIsLogged() {
+    givenLockAcquired();
+    givenSession(validSessionWithResendCount("not-a-number"));
+    givenContext();
+    givenChallenge();
+    when(foundation.evaluate(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    StepVerifier.create(newOp().execute(validCommand())).expectNextCount(1).verifyComplete();
+    List<ILoggingEvent> counted =
+        logAppender.list.stream()
+            .filter(event -> event.getFormattedMessage().contains("stage=resend-count"))
+            .toList();
+    assertThat(counted).hasSize(1);
+    assertThat(counted.get(0).getLevel()).isEqualTo(Level.ERROR);
+    assertThat(counted.get(0).getThrowableProxy()).isNull();
+    assertThat(counted.get(0).getFormattedMessage())
+        .contains(
+            "event=forgot-password.resend.failed",
+            "requestId=",
+            "exceptionType=NumberFormatException")
+        .doesNotContain("not-a-number");
   }
 
   // ----- tests: eligible -> dispatch -------------------------------------------
@@ -569,6 +714,16 @@ class ForgotPasswordOtpResendProtectedOperationTest {
                 new CreateOtpChallengeResult("candidate-1", "123456", NOW.plusSeconds(300), 300)));
     when(protector.protect(any()))
         .thenReturn(new ForgotPasswordAuthFlowEncryptedContext("ct-2", "kv-2", "AES_GCM_V1"));
+    when(registry.resolve(any(), any(), any()))
+        .thenReturn(
+            new NoticeTemplateDefinition(
+                MessageDeliveryType.FORGOT_PASSWORD_OTP,
+                MessageDeliveryChannel.EMAIL,
+                "en",
+                "BCT forgot password verification code",
+                "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}.",
+                java.util.Set.of("code", "ttlValue", "ttlUnit"),
+                "minutes"));
 
     // --- Defensive stubbing: ALL Mono-returning methods on `otp` and
     // `challengeState`. Mockito returns null (not Mono.empty()) for
@@ -614,6 +769,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
               assertThat(r.replayReference()).isNotNull();
             })
         .verifyComplete();
+    verify(registry).resolve(any(), any(), any());
   }
 
   @Test

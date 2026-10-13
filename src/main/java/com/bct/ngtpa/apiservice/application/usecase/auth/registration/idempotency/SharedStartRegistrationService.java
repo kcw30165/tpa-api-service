@@ -109,7 +109,7 @@ public final class SharedStartRegistrationService implements StartRegistrationUs
         null,
         null,
         List.of(),
-        List.of(new StartRegistrationError(key, target)),
+        List.of(StartRegistrationError.withoutMessage(key, target)),
         outcome,
         null);
   }

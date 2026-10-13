@@ -19,7 +19,9 @@ class ApimRegistrationLookupAdapterEnvelopeTest {
   @Test
   void envelopeDefensivelyCopiesDataAndRedactsToString() {
     var data = new java.util.ArrayList<TrpSearchMemberApimDataItem>();
-    data.add(new TrpSearchMemberApimDataItem("member@example.com", "91234567", "OI", "JPM"));
+    data.add(
+        new TrpSearchMemberApimDataItem(
+            "OI", "JPM", null, null, null, null, null, Boolean.FALSE, null));
 
     var envelope = new ApimRegistrationLookupEnvelope("", data);
     data.clear();

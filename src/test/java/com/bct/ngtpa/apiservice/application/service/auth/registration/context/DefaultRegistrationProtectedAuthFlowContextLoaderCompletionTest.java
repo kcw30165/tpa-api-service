@@ -59,13 +59,13 @@ class DefaultRegistrationProtectedAuthFlowContextLoaderCompletionTest {
   }
 
   @Test
-  void usernameVerifiedSessionRemainsInvalidForLegacyOtpCaller() {
+  void usernameVerifiedSessionIsInvalidForTheOtpSentCaller() {
     var loader = loader(session(AuthFlowStatus.USERNAME_VERIFIED), context());
-    var legacyOtpCommand =
-        new RegistrationProtectedAuthFlowContextCommand(
+    var otpSentCommand =
+        RegistrationProtectedAuthFlowContextCommand.forOtpSent(
             SESSION_ID, "csrf-safe", null, null, "req-safe");
 
-    StepVerifier.create(loader.load(legacyOtpCommand))
+    StepVerifier.create(loader.load(otpSentCommand))
         .assertNext(
             result ->
                 assertThat(result.status())

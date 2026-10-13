@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
@@ -126,7 +127,8 @@ class IdempotentStartForgotPasswordServiceTest {
         null,
         "en",
         "req-1",
-        Duration.ofMinutes(5));
+        Duration.ofMinutes(5),
+        ActorUserRole.ROLE_USER_MBR);
   }
 
   private static StartForgotPasswordResult result(StartForgotPasswordResultStatus status) {

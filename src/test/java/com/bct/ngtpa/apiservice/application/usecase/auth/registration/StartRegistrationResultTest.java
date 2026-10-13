@@ -25,7 +25,7 @@ class StartRegistrationResultTest {
             "afs_secret",
             List.of(),
             List.of(
-                new StartRegistrationError(
+                StartRegistrationError.withoutMessage(
                     RegistrationErrorKey.START_VERIFICATION_FAILED, "identityValue")),
             RegistrationIdempotencyStartOutcome.STARTED,
             null);
@@ -55,6 +55,7 @@ class StartRegistrationResultTest {
             "member@example.com",
             null,
             "cap_secret",
+            null,
             "en",
             "corr-secret",
             Duration.ofMinutes(5));

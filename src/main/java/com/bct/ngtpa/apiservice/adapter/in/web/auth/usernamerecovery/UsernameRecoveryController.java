@@ -160,7 +160,12 @@ public final class UsernameRecoveryController {
             () -> {
               UsernameRecoveryRequestCommand command;
               try {
-                command = convertRequest(sessionId, schemeRef, idempotencyKey);
+                command =
+                    convertRequest(
+                        sessionId,
+                        schemeRef,
+                        idempotencyKey,
+                        UsernameRecoveryRequestLanguageResolver.fromHeader(language));
               } catch (UsernameRecoveryRequestException exception) {
                 return Mono.just(requestPolicy.toPolicy(exception));
               } catch (InvalidSchemeRefSignal exception) {
@@ -235,11 +240,12 @@ public final class UsernameRecoveryController {
    * inspected and unexpected defects stay eligible for the central boundary.
    */
   private UsernameRecoveryRequestCommand convertRequest(
-      String sessionId, String schemeRef, String idempotencyKey) {
+      String sessionId, String schemeRef, String idempotencyKey, Locale requestLanguage) {
     AuthFlowSessionId session = toSessionId(sessionId);
     UsernameRecoverySchemeRef opaqueSchemeRef = toSchemeRef(schemeRef);
     try {
-      return new UsernameRecoveryRequestCommand(session, opaqueSchemeRef, idempotencyKey.trim());
+      return new UsernameRecoveryRequestCommand(
+          session, opaqueSchemeRef, idempotencyKey.trim(), requestLanguage);
     } catch (NullPointerException | IllegalArgumentException exception) {
       throw UsernameRecoveryRequestException.validationFailed();
     }

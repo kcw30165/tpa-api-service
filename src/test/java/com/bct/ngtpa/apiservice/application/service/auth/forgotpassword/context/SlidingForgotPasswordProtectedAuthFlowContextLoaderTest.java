@@ -41,7 +41,11 @@ class SlidingForgotPasswordProtectedAuthFlowContextLoaderTest {
                         "member@example.com",
                         "m****r@example.com",
                         null,
-                        "v1"))));
+                        null,
+                        null,
+                        null,
+                        "v1",
+                        null))));
     when(expiry.refresh(SESSION_ID, NOW))
         .thenReturn(Mono.error(new IllegalStateException("refresh-stop")));
     var loader =

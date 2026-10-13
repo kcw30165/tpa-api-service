@@ -49,7 +49,7 @@ class RegistrationStartReplayCodecTest {
             null,
             List.of(),
             List.of(
-                new StartRegistrationError(
+                StartRegistrationError.withoutMessage(
                     RegistrationErrorKey.START_VERIFICATION_FAILED, "identityValue")),
             RegistrationIdempotencyStartOutcome.STARTED,
             null);

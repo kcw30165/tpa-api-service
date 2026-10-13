@@ -54,6 +54,6 @@ class TrpSearchMemberAdapterTest {
 
   private static TrpSearchMemberApimDataItem item() {
     return new TrpSearchMemberApimDataItem(
-        "DB", "DBA", "MPF", "0001", "0002", "A", "", true, "user-1");
+        "DB", "DBA", "MPF", null, null, "0001", "0002", "A", "", true, "user-1");
   }
 }

@@ -120,11 +120,8 @@ public final class UsernameRecoveryStartProtectedOperation {
                       handleMatched(command, validation, lookupResult.candidates(), now);
                   case NOT_FOUND ->
                       Mono.just(
-                          new UsernameRecoveryStartResult(
-                              UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND,
-                              null,
-                              null,
-                              List.of()));
+                          UsernameRecoveryStartResult.withoutSession(
+                              UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND, List.of()));
                   case CONTRACT_INVALID, UNAVAILABLE, UNKNOWN_OUTCOME ->
                       Mono.error(UsernameRecoveryStartException.systemFailure());
                 });
@@ -144,8 +141,8 @@ public final class UsernameRecoveryStartProtectedOperation {
                           null, candidate.accountEnv(), candidate.trustCode(), false))
               .toList();
       return Mono.just(
-          new UsernameRecoveryStartResult(
-              UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED, null, null, projections));
+          UsernameRecoveryStartResult.withoutSession(
+              UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED, projections));
     }
     return createRevisioned(command, validation, candidates, now);
   }
@@ -170,7 +167,9 @@ public final class UsernameRecoveryStartProtectedOperation {
                             candidate.trustCode(),
                             candidate.registered(),
                             candidate.registered() ? candidate.userName() : null,
-                            UsernameRecoveryDeliveryState.AVAILABLE),
+                            UsernameRecoveryDeliveryState.AVAILABLE,
+                            candidate.schemeName(),
+                            candidate.schemeNameChi()),
                         null,
                         null))
             .toList();

@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.LoginPreAuthContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.message.*;
 import com.bct.ngtpa.apiservice.application.port.in.SendLoginOtpUseCase;
@@ -19,6 +20,7 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
   private final DestinationBucketIdGenerator destinationBucketIds;
   private final Clock clock;
   private final LoginOtpSendPolicy policy;
+  private final NoticeTemplateRegistryPort registryPort;
 
   public LoginOtpSendService(
       LoginProtectedAuthFlowContextLoader contextLoader,
@@ -28,7 +30,8 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
       LoginOtpSessionBindingPort sessions,
       DestinationBucketIdGenerator destinationBucketIds,
       Clock clock,
-      LoginOtpSendPolicy policy) {
+      LoginOtpSendPolicy policy,
+      NoticeTemplateRegistryPort registryPort) {
     this.contextLoader = Objects.requireNonNull(contextLoader);
     this.destinationResolver = Objects.requireNonNull(destinationResolver);
     this.otp = Objects.requireNonNull(otp);
@@ -37,6 +40,7 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
     this.destinationBucketIds = Objects.requireNonNull(destinationBucketIds);
     this.clock = Objects.requireNonNull(clock);
     this.policy = Objects.requireNonNull(policy);
+    this.registryPort = Objects.requireNonNull(registryPort);
   }
 
   public Mono<SendLoginOtpResult> send(SendLoginOtpCommand command) {
@@ -71,13 +75,18 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
                     new SendLoginOtpResult(
                         SendLoginOtpStatus.INVALID_DESTINATION, null, null, null, null));
               }
-              return createDeliverBind(command, destination);
+              return createDeliverBind(command, destination, loaded.context());
             });
   }
 
   private Mono<SendLoginOtpResult> createDeliverBind(
-      SendLoginOtpCommand command, ResolvedLoginOtpDestination destination) {
+      SendLoginOtpCommand command,
+      ResolvedLoginOtpDestination destination,
+      LoginPreAuthContext context) {
     Instant now = clock.instant();
+    MessageDeliveryChannel channel = messageChannel(destination.channel());
+    NoticeTemplateDefinition definition =
+        registryPort.resolve(MessageDeliveryType.LOGIN_OTP, channel, command.acceptLanguage());
     CreateOtpChallengeCommand create =
         new CreateOtpChallengeCommand(
             OtpScenario.LOGIN,
@@ -98,12 +107,12 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
                   new MessageDeliveryCommand(
                       MessageDeliveryType.LOGIN_OTP,
                       MessageDeliveryScenario.LOGIN,
-                      messageChannel(destination.channel()),
+                      channel,
                       destination.destination(),
-                      destination.channel() == OtpChannel.EMAIL ? policy.emailSubject() : null,
-                      policy.messageTemplate(),
-                      null,
-                      templateVariables(challenge.rawCode()),
+                      definition.subject(),
+                      definition.body(),
+                      "login-otp",
+                      templateVariables(challenge.rawCode(), definition, context),
                       command.acceptLanguage(),
                       command.correlationId());
               return messages
@@ -152,9 +161,38 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
             });
   }
 
-  private Map<String, String> templateVariables(String rawCode) {
-    return Map.of(
-        "code", rawCode, "ttlValue", Integer.toString(policy.ttlSeconds()), "ttlUnit", "seconds");
+  private Map<String, String> templateVariables(
+      String rawCode, NoticeTemplateDefinition definition, LoginPreAuthContext context) {
+    var variables = new LinkedHashMap<String, String>();
+    variables.put("code", rawCode);
+    variables.put("ttlValue", Integer.toString(Math.max(1, policy.ttlSeconds() / 60)));
+    if (definition.ttlUnit() != null) {
+      variables.put("ttlUnit", definition.ttlUnit());
+    }
+    if (context.trustCode() != null) {
+      variables.put("trustCode", context.trustCode());
+    }
+    if (context.schemeName() != null) {
+      variables.put("schemeName", context.schemeName());
+    }
+    String schemeNameChi = resolveSchemeNameChi(context);
+    if (schemeNameChi != null) {
+      variables.put("schemeNameChi", schemeNameChi);
+    }
+    return Map.copyOf(variables);
+  }
+
+  /**
+   * Mirrors {@code UsernameRecoveryRequestProtectedOperation.resolveSchemeNameChi} (plan decision,
+   * Nick, 2026-10-07): a blank {@code chin-sch-name} - confirmed to occur in real TRPMemberLogin
+   * responses - falls back to {@code sch-name}, rather than rendering an empty Chinese scheme name
+   * into a live member email.
+   */
+  private static String resolveSchemeNameChi(LoginPreAuthContext context) {
+    String schemeNameChi = context.schemeNameChi();
+    return (schemeNameChi == null || schemeNameChi.isBlank())
+        ? context.schemeName()
+        : schemeNameChi;
   }
 
   private DestinationType destinationType(OtpChannel channel) {

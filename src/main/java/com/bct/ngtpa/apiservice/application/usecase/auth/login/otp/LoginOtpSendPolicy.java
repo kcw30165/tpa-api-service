@@ -7,13 +7,9 @@ public record LoginOtpSendPolicy(
     int resendCooldownSeconds,
     int maxVerifyAttempts,
     boolean resendLimitEnabled,
-    int maxResendAttempts,
-    String messageTemplate,
-    String emailSubject) {
+    int maxResendAttempts) {
   public LoginOtpSendPolicy {
     if (length <= 0 || ttlSeconds <= 0 || resendCooldownSeconds < 0 || maxVerifyAttempts <= 0)
       throw new IllegalArgumentException("Invalid login OTP policy");
-    if (messageTemplate == null || !messageTemplate.contains("{code}"))
-      throw new IllegalArgumentException("OTP template must contain code placeholder");
   }
 }

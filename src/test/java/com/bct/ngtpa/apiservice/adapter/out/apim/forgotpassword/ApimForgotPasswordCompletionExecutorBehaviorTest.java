@@ -153,6 +153,6 @@ class ApimForgotPasswordCompletionExecutorBehaviorTest {
 
   private ForgotPasswordCompletionCommand command() {
     return new ForgotPasswordCompletionCommand(
-        "db655", "Password!", "req-1", "IGNORED_ENV", ActorUserRole.ROLE_USER_MBR);
+        "db655", "Password!", "req-1", ActorUserRole.ROLE_USER_MBR);
   }
 }

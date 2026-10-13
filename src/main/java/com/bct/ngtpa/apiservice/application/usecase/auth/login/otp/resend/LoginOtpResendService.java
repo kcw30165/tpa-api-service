@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.LoginPreAuthContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.message.*;
 import com.bct.ngtpa.apiservice.application.port.in.ResendLoginOtpUseCase;
@@ -19,6 +20,7 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
   private final LoginOtpSessionBindingPort binding;
   private final Clock clock;
   private final LoginOtpSendPolicy policy;
+  private final NoticeTemplateRegistryPort registryPort;
 
   public LoginOtpResendService(
       LoginProtectedAuthFlowContextLoader l,
@@ -26,13 +28,15 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
       MessageDeliveryPort m,
       LoginOtpSessionBindingPort b,
       Clock c,
-      LoginOtpSendPolicy p) {
+      LoginOtpSendPolicy p,
+      NoticeTemplateRegistryPort r) {
     loader = Objects.requireNonNull(l);
     otp = Objects.requireNonNull(o);
     messages = Objects.requireNonNull(m);
     binding = Objects.requireNonNull(b);
     clock = Objects.requireNonNull(c);
     policy = Objects.requireNonNull(p);
+    registryPort = Objects.requireNonNull(r);
   }
 
   public Mono<ResendLoginOtpResult> resend(ResendLoginOtpCommand c) {
@@ -67,6 +71,12 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
 
   private Mono<ResendLoginOtpResult> replace(
       ResendLoginOtpCommand c, LoginProtectedAuthFlowContextResult x) {
+    MessageDeliveryChannel channel =
+        channel(x.selectedDestination().channel()) == OtpChannel.EMAIL
+            ? MessageDeliveryChannel.EMAIL
+            : MessageDeliveryChannel.SMS;
+    NoticeTemplateDefinition definition =
+        registryPort.resolve(MessageDeliveryType.LOGIN_OTP, channel, c.acceptLanguage());
     return otp.replaceChallenge(
             new ReplaceOtpChallengeCommand(
                 x.activeOtpChallengeId(),
@@ -79,7 +89,7 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
         .flatMap(
             r ->
                 switch (r.outcome()) {
-                  case REPLACED -> deliver(c, x, r);
+                  case REPLACED -> deliver(c, x, r, channel, definition);
                   case COOLDOWN_ACTIVE ->
                       Mono.just(
                           new ResendLoginOtpResult(
@@ -99,29 +109,37 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
   }
 
   private Mono<ResendLoginOtpResult> deliver(
-      ResendLoginOtpCommand c, LoginProtectedAuthFlowContextResult x, ReplaceOtpChallengeResult r) {
-    var channel =
-        channel(x.selectedDestination().channel()) == OtpChannel.EMAIL
-            ? MessageDeliveryChannel.EMAIL
-            : MessageDeliveryChannel.SMS;
+      ResendLoginOtpCommand c,
+      LoginProtectedAuthFlowContextResult x,
+      ReplaceOtpChallengeResult r,
+      MessageDeliveryChannel channel,
+      NoticeTemplateDefinition definition) {
+    var variables = new LinkedHashMap<String, String>();
+    variables.put("code", r.rawCode());
+    variables.put("ttlValue", Integer.toString(Math.max(1, policy.ttlSeconds() / 60)));
+    if (definition.ttlUnit() != null) {
+      variables.put("ttlUnit", definition.ttlUnit());
+    }
+    if (x.context().trustCode() != null) {
+      variables.put("trustCode", x.context().trustCode());
+    }
+    if (x.context().schemeName() != null) {
+      variables.put("schemeName", x.context().schemeName());
+    }
+    String schemeNameChi = resolveSchemeNameChi(x.context());
+    if (schemeNameChi != null) {
+      variables.put("schemeNameChi", schemeNameChi);
+    }
     var command =
         new MessageDeliveryCommand(
             MessageDeliveryType.LOGIN_OTP,
             MessageDeliveryScenario.LOGIN,
             channel,
             x.selectedDestination().destination(),
-            channel(x.selectedDestination().channel()) == OtpChannel.EMAIL
-                ? policy.emailSubject()
-                : null,
-            policy.messageTemplate(),
-            null,
-            Map.of(
-                "code",
-                r.rawCode(),
-                "ttlValue",
-                Integer.toString(policy.ttlSeconds()),
-                "ttlUnit",
-                "seconds"),
+            definition.subject(),
+            definition.body(),
+            "login-otp",
+            Map.copyOf(variables),
             c.acceptLanguage(),
             c.correlationId());
     return messages
@@ -156,6 +174,19 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
                                 : ResendLoginOtpStatus.DELIVERY_FAILED,
                             x,
                             null)));
+  }
+
+  /**
+   * Mirrors {@code UsernameRecoveryRequestProtectedOperation.resolveSchemeNameChi} (plan decision,
+   * Nick, 2026-10-07): a blank {@code chin-sch-name} - confirmed to occur in real TRPMemberLogin
+   * responses - falls back to {@code sch-name}, rather than rendering an empty Chinese scheme name
+   * into a live member email.
+   */
+  private static String resolveSchemeNameChi(LoginPreAuthContext context) {
+    String schemeNameChi = context.schemeNameChi();
+    return (schemeNameChi == null || schemeNameChi.isBlank())
+        ? context.schemeName()
+        : schemeNameChi;
   }
 
   private OtpChannel channel(String value) {

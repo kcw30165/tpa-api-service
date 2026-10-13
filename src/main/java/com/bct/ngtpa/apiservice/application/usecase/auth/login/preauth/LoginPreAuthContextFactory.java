@@ -41,6 +41,13 @@ public final class LoginPreAuthContextFactory {
       }
     }
     return new LoginPreAuthContext(
-        result.normalizedUsername(), result.userRole(), destinations, verifiedAt, WORKFLOW_VERSION);
+        result.normalizedUsername(),
+        result.userRole(),
+        destinations,
+        verifiedAt,
+        WORKFLOW_VERSION,
+        result.trustCode(),
+        result.schemeName(),
+        result.schemeNameChi());
   }
 }

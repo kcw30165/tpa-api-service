@@ -74,7 +74,8 @@ class TrpChkCustIdApimResultMapperTest {
         mapper.toResult(
             new TrpChkCustIdApimEnvelope(
                 "err.tpa.some.business.error",
-                java.util.List.of(new TrpChkCustIdApimDataItem("db01", Boolean.FALSE))));
+                java.util.List.of(
+                    new TrpChkCustIdApimDataItem("db01", Boolean.FALSE, null, null, null))));
 
     assertThat(result.status()).isEqualTo(RegistrationUsernameAvailabilityStatus.REJECTED);
     assertThat(result.downstreamErrorCode()).isEqualTo("err.tpa.some.business.error");
@@ -82,7 +83,7 @@ class TrpChkCustIdApimResultMapperTest {
 
   @Test
   void toStringDoesNotExposeCustomerId() {
-    var item = new TrpChkCustIdApimDataItem("db01", Boolean.TRUE);
+    var item = new TrpChkCustIdApimDataItem("db01", Boolean.TRUE, null, null, null);
     var envelope = new TrpChkCustIdApimEnvelope("", java.util.List.of(item));
 
     assertThat(item.toString()).doesNotContain("db01");

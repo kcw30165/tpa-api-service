@@ -33,6 +33,7 @@ class UsernameRecoveryRequestProtectedOperationTest {
   private final FakeAuthFlowPort sessions = new FakeAuthFlowPort();
   private final FakeDestinationPort destinations = new FakeDestinationPort();
   private final FakeDeliveryPort deliveries = new FakeDeliveryPort();
+  private final FakeNoticeTemplateRegistryPort templates = new FakeNoticeTemplateRegistryPort();
   private final UsernameRecoveryAuthFlowContextBinding binding =
       new UsernameRecoveryAuthFlowContextBinding(
           new AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter("v1", CONTEXT_SECRET));
@@ -207,6 +208,123 @@ class UsernameRecoveryRequestProtectedOperationTest {
         .verifyComplete();
   }
 
+  @Test
+  void resolvesTemplatePerRequestUsingContextLanguageAndDeliveryChannel() {
+    sessions.snapshot = snapshot(contextWithLanguage(Locale.forLanguageTag("zh-HK")));
+    StepVerifier.create(execute(CSRF, null)).expectNextCount(1).verifyComplete();
+    assertThat(templates.lastType).isEqualTo(MessageDeliveryType.USERNAME_RECOVERY);
+    assertThat(templates.lastChannel).isEqualTo(MessageDeliveryChannel.EMAIL);
+    assertThat(templates.lastLocale).isEqualTo("zh-HK");
+    assertThat(deliveries.lastCommand.locale()).isEqualTo("zh-HK");
+    assertThat(deliveries.lastCommand.subject()).isEqualTo("subject");
+    assertThat(deliveries.lastCommand.body()).isEqualTo("body");
+  }
+
+  @Test
+  void anEnglishRequestLanguageOverridesAChineseLanguageStoredByStart() {
+    sessions.snapshot = snapshot(contextWithLanguage(Locale.forLanguageTag("zh-HK")));
+    StepVerifier.create(execute(commandWithRequestLanguage(REF, Locale.ENGLISH), CSRF, null))
+        .expectNextCount(1)
+        .verifyComplete();
+    assertThat(templates.lastType).isEqualTo(MessageDeliveryType.USERNAME_RECOVERY);
+    assertThat(templates.lastChannel).isEqualTo(MessageDeliveryChannel.EMAIL);
+    assertThat(templates.lastLocale).isEqualTo("en");
+    assertThat(deliveries.lastCommand.locale()).isEqualTo("en");
+    assertThat(deliveries.lastCommand.subject()).isEqualTo("subject");
+    assertThat(deliveries.lastCommand.body()).isEqualTo("body");
+  }
+
+  @Test
+  void aChineseRequestLanguageOverridesAnEnglishLanguageStoredByStart() {
+    sessions.snapshot = snapshot(contextWithLanguage(Locale.ENGLISH));
+    StepVerifier.create(
+            execute(commandWithRequestLanguage(REF, Locale.forLanguageTag("zh-HK")), CSRF, null))
+        .expectNextCount(1)
+        .verifyComplete();
+    assertThat(templates.lastType).isEqualTo(MessageDeliveryType.USERNAME_RECOVERY);
+    assertThat(templates.lastChannel).isEqualTo(MessageDeliveryChannel.EMAIL);
+    assertThat(templates.lastLocale).isEqualTo("zh-HK");
+    assertThat(deliveries.lastCommand.locale()).isEqualTo("zh-HK");
+    assertThat(deliveries.lastCommand.subject()).isEqualTo("subject");
+    assertThat(deliveries.lastCommand.body()).isEqualTo("body");
+  }
+
+  @Test
+  void resolvesTemplateOnEveryRequestNotOnceAtConstruction() {
+    StepVerifier.create(execute(CSRF, null)).expectNextCount(1).verifyComplete();
+    assertThat(templates.resolveCalls).isEqualTo(1);
+    assertThat(templates.lastLocale).isEqualTo("en");
+    resetAvailable();
+    sessions.snapshot = snapshot(contextWithLanguage(Locale.forLanguageTag("zh-HK")));
+    StepVerifier.create(execute(CSRF, null)).expectNextCount(1).verifyComplete();
+    assertThat(templates.resolveCalls).isEqualTo(2);
+    assertThat(templates.lastLocale).isEqualTo("zh-HK");
+  }
+
+  @Test
+  void variablesCarryUsernameTrustCodeAndSchemeNames() {
+    sessions.snapshot =
+        snapshot(contextWithSchemeNames("JP MORGAN CHASE - JMCI", "CHI-NAME-SAMPLE"));
+    StepVerifier.create(execute(CSRF, null)).expectNextCount(1).verifyComplete();
+    assertThat(deliveries.lastCommand.templateVariables())
+        .containsEntry("username", "user-1")
+        .containsEntry("trustCode", "DBA")
+        .containsEntry("schemeName", "JP MORGAN CHASE - JMCI")
+        .containsEntry("schemeNameChi", "CHI-NAME-SAMPLE");
+  }
+
+  @Test
+  void blankOrNullSchemeNameChiFallsBackToSchemeName() {
+    for (String chi : new String[] {"", "   ", null}) {
+      resetAvailable();
+      sessions.snapshot = snapshot(contextWithSchemeNames("JP MORGAN CHASE - JMCI", chi));
+      StepVerifier.create(execute(CSRF, null)).expectNextCount(1).verifyComplete();
+      assertThat(deliveries.lastCommand.templateVariables())
+          .containsEntry("schemeName", "JP MORGAN CHASE - JMCI")
+          .containsEntry("schemeNameChi", "JP MORGAN CHASE - JMCI");
+    }
+  }
+
+  @Test
+  void absentSchemeNamesAreOmittedFromVariables() {
+    StepVerifier.create(execute(CSRF, null)).expectNextCount(1).verifyComplete();
+    assertThat(deliveries.lastCommand.templateVariables())
+        .containsEntry("username", "user-1")
+        .containsEntry("trustCode", "DBA")
+        .doesNotContainKeys("schemeName", "schemeNameChi");
+  }
+
+  private static UsernameRecoveryAuthFlowContext contextWithLanguage(Locale language) {
+    return new UsernameRecoveryAuthFlowContext(
+        UsernameRecoveryWorkflowStatus.ACTIVE,
+        new UsernameRecoveryVerifiedDestination(
+            "pepperc@ah.ozk", UsernameRecoveryVerifiedDestination.Channel.EMAIL),
+        language,
+        List.of(candidate(REF, true, "user-1", UsernameRecoveryDeliveryState.AVAILABLE)));
+  }
+
+  private static UsernameRecoveryAuthFlowContext contextWithSchemeNames(
+      String schemeName, String schemeNameChi) {
+    return new UsernameRecoveryAuthFlowContext(
+        UsernameRecoveryWorkflowStatus.ACTIVE,
+        new UsernameRecoveryVerifiedDestination(
+            "pepperc@ah.ozk", UsernameRecoveryVerifiedDestination.Channel.EMAIL),
+        Locale.ENGLISH,
+        List.of(
+            new UsernameRecoverySessionCandidate(
+                new UsernameRecoveryCandidate(
+                    new UsernameRecoverySchemeRef(REF),
+                    "DB",
+                    "DBA",
+                    true,
+                    "user-1",
+                    UsernameRecoveryDeliveryState.AVAILABLE,
+                    schemeName,
+                    schemeNameChi),
+                null,
+                null)));
+  }
+
   private UsernameRecoveryRequestProtectedOperation newOperation(List<String> origins) {
     return new UsernameRecoveryRequestProtectedOperation(
         binding,
@@ -216,9 +334,7 @@ class UsernameRecoveryRequestProtectedOperationTest {
         deliveries,
         new MaskingService(new MaskingProperties()),
         origins,
-        "subject",
-        "body",
-        "sms");
+        templates);
   }
 
   private Mono<UsernameRecoveryRequestProtectedExecutionResult> execute(
@@ -233,7 +349,16 @@ class UsernameRecoveryRequestProtectedOperationTest {
 
   private static UsernameRecoveryRequestCommand command(String ref) {
     return new UsernameRecoveryRequestCommand(
-        new AuthFlowSessionId(SESSION), new UsernameRecoverySchemeRef(ref), "idem_key_1234");
+        new AuthFlowSessionId(SESSION), new UsernameRecoverySchemeRef(ref), "idem_key_1234", null);
+  }
+
+  private static UsernameRecoveryRequestCommand commandWithRequestLanguage(
+      String ref, Locale requestLanguage) {
+    return new UsernameRecoveryRequestCommand(
+        new AuthFlowSessionId(SESSION),
+        new UsernameRecoverySchemeRef(ref),
+        "idem_key_1234",
+        requestLanguage);
   }
 
   private void resetAvailable() {
@@ -364,7 +489,14 @@ class UsernameRecoveryRequestProtectedOperationTest {
     boolean requested = state == UsernameRecoveryDeliveryState.REQUESTED;
     return new UsernameRecoverySessionCandidate(
         new UsernameRecoveryCandidate(
-            new UsernameRecoverySchemeRef(ref), accountEnv, trustCode, registered, username, state),
+            new UsernameRecoverySchemeRef(ref),
+            accountEnv,
+            trustCode,
+            registered,
+            username,
+            state,
+            null,
+            null),
         requested ? NOW : null,
         requested ? "existing" : null);
   }
@@ -426,14 +558,39 @@ class UsernameRecoveryRequestProtectedOperationTest {
     boolean fail;
     boolean empty;
     int deliverCalls;
+    MessageDeliveryCommand lastCommand;
     Runnable beforeDeliver = () -> {};
 
     public Mono<MessageDeliveryResult> deliver(MessageDeliveryCommand c) {
       deliverCalls++;
+      lastCommand = c;
       beforeDeliver.run();
       if (fail) return Mono.error(failure);
       if (empty) return Mono.empty();
       return Mono.just(result);
+    }
+  }
+
+  private static final class FakeNoticeTemplateRegistryPort implements NoticeTemplateRegistryPort {
+    int resolveCalls;
+    MessageDeliveryType lastType;
+    MessageDeliveryChannel lastChannel;
+    String lastLocale;
+
+    public NoticeTemplateDefinition resolve(
+        MessageDeliveryType messageType, MessageDeliveryChannel channel, String locale) {
+      resolveCalls++;
+      lastType = messageType;
+      lastChannel = channel;
+      lastLocale = locale;
+      boolean email = channel == MessageDeliveryChannel.EMAIL;
+      return new NoticeTemplateDefinition(
+          messageType,
+          channel,
+          locale,
+          email ? "subject" : null,
+          email ? "body" : "sms",
+          java.util.Set.of());
     }
   }
 }

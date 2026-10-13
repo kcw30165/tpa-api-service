@@ -16,7 +16,6 @@ class TrpSearchMemberApimDataItemTest {
   @Test
   void deserializesRawApimFieldNames() throws Exception {
     var item = new ObjectMapper().readValue(SAMPLE, TrpSearchMemberApimDataItem.class);
-
     assertThat(item.env()).isEqualTo("DB");
     assertThat(item.trustCode()).isEqualTo("DBA");
     assertThat(item.schemeType()).isEqualTo("OE");
@@ -34,9 +33,7 @@ class TrpSearchMemberApimDataItemTest {
         """
                 {"env":"OI","trust-code":"JPM","future-field":"future","isRegistered":false}
                 """;
-
     var item = new ObjectMapper().readValue(json, TrpSearchMemberApimDataItem.class);
-
     assertThat(item.env()).isEqualTo("OI");
     assertThat(item.trustCode()).isEqualTo("JPM");
     assertThat(item.isRegistered()).isFalse();
@@ -48,9 +45,7 @@ class TrpSearchMemberApimDataItemTest {
         """
                 {"env":"OI","trust-code":"JPM"}
                 """;
-
     var item = new ObjectMapper().readValue(json, TrpSearchMemberApimDataItem.class);
-
     assertThat(item.isRegistered()).isNull();
   }
 
@@ -60,9 +55,7 @@ class TrpSearchMemberApimDataItemTest {
         """
                 {"policy-no":8802,"cert-no":5}
                 """;
-
     var item = new ObjectMapper().readValue(json, TrpSearchMemberApimDataItem.class);
-
     assertThat(item.policyNo()).isEqualTo("8802");
     assertThat(item.certNo()).isEqualTo("5");
   }
@@ -71,9 +64,45 @@ class TrpSearchMemberApimDataItemTest {
   void toStringNeverDisclosesSensitiveValues() {
     var item =
         new TrpSearchMemberApimDataItem(
-            "DB", "DBA", "OE", "00000008802", "5", "", "15/07/1969", true, "db02");
-
+            "DB", "DBA", "OE", null, null, "00000008802", "5", "", "15/07/1969", true, "db02");
     assertThat(item.toString())
         .doesNotContain("DB", "DBA", "OE", "00000008802", "5", "15/07/1969", "db02");
+  }
+
+  @Test
+  void deserializesNewSchemeNameFields() throws Exception {
+    String json =
+        """
+        {"env":"JP","trust-code":"JPM","sch-name":"JP MORGAN CHASE - JMCI","chin-sch-name":""}
+        """;
+    var item = new ObjectMapper().readValue(json, TrpSearchMemberApimDataItem.class);
+    assertThat(item.schemeName()).isEqualTo("JP MORGAN CHASE - JMCI");
+    assertThat(item.schemeNameChi()).isEmpty();
+  }
+
+  @Test
+  void canonicalConstructorAllowsNullSchemeNameFields() {
+    var item =
+        new TrpSearchMemberApimDataItem(
+            "DB", "DBA", "MPF", null, null, "0001", "0002", "A", "", true, "user-1");
+    assertThat(item.schemeName()).isNull();
+    assertThat(item.schemeNameChi()).isNull();
+  }
+
+  @Test
+  void canonicalConstructorAcceptsSchemeNameFields() {
+    var item =
+        new TrpSearchMemberApimDataItem(
+            "DB", "DBA", "MPF", "JP MORGAN CHASE", "摩根大通", "0001", "0002", "A", "", true, "user-1");
+    assertThat(item.schemeName()).isEqualTo("JP MORGAN CHASE");
+    assertThat(item.schemeNameChi()).isEqualTo("摩根大通");
+  }
+
+  @Test
+  void toStringNeverDisclosesSchemeNameValues() {
+    var item =
+        new TrpSearchMemberApimDataItem(
+            "DB", "DBA", "MPF", "JP MORGAN CHASE", "摩根大通", "0001", "0002", "A", "", true, "user-1");
+    assertThat(item.toString()).doesNotContain("JP MORGAN CHASE", "摩根大通");
   }
 }

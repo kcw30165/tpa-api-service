@@ -10,7 +10,10 @@ public record LoginPreAuthContext(
     String userRole,
     Map<String, LoginPreAuthDestination> destinationsById,
     Instant credentialVerifiedAt,
-    String workflowVersion) {
+    String workflowVersion,
+    String trustCode,
+    String schemeName,
+    String schemeNameChi) {
   public LoginPreAuthContext {
     Objects.requireNonNull(normalizedUsername);
 
@@ -32,6 +35,6 @@ public record LoginPreAuthContext(
         + credentialVerifiedAt
         + ", workflowVersion="
         + workflowVersion
-        + "]";
+        + ", trustCode=<redacted>, schemeName=<redacted>, schemeNameChi=<redacted>]";
   }
 }

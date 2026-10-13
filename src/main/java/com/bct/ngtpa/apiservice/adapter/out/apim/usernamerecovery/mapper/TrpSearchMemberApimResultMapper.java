@@ -24,6 +24,12 @@ import java.util.Set;
  * unclassifiable at this boundary and throws {@link TrpSearchMemberApimDownstreamException}; the
  * raw code is carried as non-message state only. A null data item is treated as a contract
  * violation, never silently dropped. No raw APIM names or sensitive values leave this package.
+ *
+ * <p>{@code sch-name}/{@code chin-sch-name} (mapped onto {@code schemeName}/{@code schemeNameChi})
+ * are carried through to the application candidate as-is (including when blank/absent), per
+ * docs/design/10-template-service/template-service-solution-design.md section 8.2. These are not
+ * part of the CONTRACT_INVALID invariant checks above, since they are supplementary content fields,
+ * not identity/authorization-bearing fields.
  */
 public class TrpSearchMemberApimResultMapper {
   private static final String MEMBER_NOT_FOUND = "err.tpa.member.not.found";
@@ -34,7 +40,6 @@ public class TrpSearchMemberApimResultMapper {
       String errMessage, List<TrpSearchMemberApimDataItem> data) {
     String safeError = text(errMessage);
     List<TrpSearchMemberApimDataItem> items = data == null ? List.of() : data;
-
     if (MEMBER_NOT_FOUND.equals(safeError)) {
       return new UsernameRecoveryLookupResult(
           UsernameRecoveryLookupResult.Status.NOT_FOUND, List.of());
@@ -78,7 +83,12 @@ public class TrpSearchMemberApimResultMapper {
       }
       candidates.add(
           new UsernameRecoveryLookupCandidate(
-              env, trustCode, registered, registered ? custId : null));
+              env,
+              trustCode,
+              registered,
+              registered ? custId : null,
+              text(item.schemeName()),
+              text(item.schemeNameChi())));
     }
     return new UsernameRecoveryLookupResult(
         UsernameRecoveryLookupResult.Status.MATCHED, candidates);

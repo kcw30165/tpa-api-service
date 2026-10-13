@@ -9,4 +9,7 @@ public record TrpMemberLoginApimDataItem(
     @JsonProperty("success") boolean success,
     @JsonProperty("login-user-role") String loginUserRole,
     @JsonProperty("fail-count") Integer failCount,
-    @JsonProperty("otp") List<TrpMemberLoginApimOtpItem> otp) {}
+    @JsonProperty("otp") List<TrpMemberLoginApimOtpItem> otp,
+    @JsonProperty("trust-code") String trustCode,
+    @JsonProperty("sch-name") String schemeName,
+    @JsonProperty("chin-sch-name") String schemeNameChi) {}

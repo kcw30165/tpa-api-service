@@ -161,6 +161,250 @@ class LoginOtpSendServiceTest {
     assertThat(order).containsExactly("create", "deliver", "invalidate");
   }
 
+  @Test
+  void missingDefinitionFailsBeforeAnyChallengeIsCreated() {
+    AtomicReference<Boolean> createCalled = new AtomicReference<>(false);
+    OtpChallengePort otp =
+        new StubOtpPort() {
+          public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
+            createCalled.set(true);
+            return Mono.error(new AssertionError("must not create"));
+          }
+        };
+    NoticeTemplateRegistryPort registry =
+        (type, channel, locale) -> {
+          throw new IllegalStateException("login-otp definition missing");
+        };
+    var service =
+        new LoginOtpSendService(
+            command ->
+                Mono.just(
+                    LoginProtectedAuthFlowContextResult.valid(context(), null, null, "csrf_hash")),
+            new LoginOtpDestinationResolver(),
+            otp,
+            command -> Mono.error(new AssertionError("must not deliver")),
+            command -> Mono.error(new AssertionError("must not bind")),
+            (type, value) -> "hash_only",
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
+            registry);
+
+    StepVerifier.create(service.send(COMMAND)).verifyError(IllegalStateException.class);
+    assertThat(createCalled.get()).isFalse();
+  }
+
+  @Test
+  void sendDeliversSubjectBodyTemplateCodeAndMinuteTtlFromResolvedDefinition() {
+    AtomicReference<MessageDeliveryCommand> delivery = new AtomicReference<>();
+    OtpChallengePort otp =
+        new StubOtpPort() {
+          public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
+            return Mono.just(
+                new CreateOtpChallengeResult("otp_opaque", "654321", NOW.plusSeconds(300), 300));
+          }
+        };
+    NoticeTemplateDefinition definition =
+        new NoticeTemplateDefinition(
+            MessageDeliveryType.LOGIN_OTP,
+            MessageDeliveryChannel.SMS,
+            "en",
+            null,
+            "Registry body {code}",
+            null,
+            "minutes");
+    var service =
+        new LoginOtpSendService(
+            command ->
+                Mono.just(
+                    LoginProtectedAuthFlowContextResult.valid(context(), null, null, "csrf_hash")),
+            new LoginOtpDestinationResolver(),
+            otp,
+            command -> {
+              delivery.set(command);
+              return Mono.just(
+                  new MessageDeliveryResult(
+                      MessageDeliveryStatus.ACCEPTED,
+                      command.channel(),
+                      "provider-id",
+                      null,
+                      null));
+            },
+            command -> Mono.empty(),
+            (type, value) -> "hash_only",
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
+            (type, channel, locale) -> definition);
+
+    StepVerifier.create(service.send(COMMAND)).expectNextCount(1).verifyComplete();
+
+    assertThat(delivery.get().templateCode()).isEqualTo("login-otp");
+    assertThat(delivery.get().body()).isEqualTo("Registry body {code}");
+    assertThat(delivery.get().subject()).isNull();
+    assertThat(delivery.get().templateVariables()).containsEntry("ttlValue", "5");
+    assertThat(delivery.get().templateVariables()).containsEntry("ttlUnit", "minutes");
+    assertThat(delivery.get().templateVariables()).containsEntry("code", "654321");
+  }
+
+  @Test
+  void sendCarriesNonNullTrustCodeAndSchemeNamesIntoTemplateVariables() {
+    var delivery = new AtomicReference<MessageDeliveryCommand>();
+    LoginPreAuthContext context =
+        new LoginPreAuthContext(
+            "member01",
+            null,
+            Map.of(
+                "dst_opaque",
+                new LoginPreAuthDestination("dst_opaque", "mobile", "91234567", "****4567")),
+            NOW.minusSeconds(60),
+            "v1",
+            "DBA",
+            "Example Scheme",
+            "示例計劃");
+    OtpChallengePort otp =
+        new StubOtpPort() {
+          public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
+            return Mono.just(
+                new CreateOtpChallengeResult("otp_opaque", "123456", NOW.plusSeconds(300), 300));
+          }
+        };
+    var service =
+        new LoginOtpSendService(
+            command ->
+                Mono.just(
+                    LoginProtectedAuthFlowContextResult.valid(context, null, null, "csrf_hash")),
+            new LoginOtpDestinationResolver(),
+            otp,
+            command -> {
+              delivery.set(command);
+              return Mono.just(
+                  new MessageDeliveryResult(
+                      MessageDeliveryStatus.ACCEPTED,
+                      command.channel(),
+                      "provider-id",
+                      null,
+                      null));
+            },
+            command -> Mono.empty(),
+            (type, value) -> "hash_only",
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
+            (type, channel, locale) ->
+                new NoticeTemplateDefinition(
+                    type,
+                    channel,
+                    locale,
+                    "Verification code",
+                    "{code} {trustCode}",
+                    null,
+                    "minutes"));
+
+    StepVerifier.create(service.send(COMMAND)).expectNextCount(1).verifyComplete();
+
+    assertThat(delivery.get().templateVariables()).containsEntry("trustCode", "DBA");
+    assertThat(delivery.get().templateVariables()).containsEntry("schemeName", "Example Scheme");
+    assertThat(delivery.get().templateVariables()).containsEntry("schemeNameChi", "示例計劃");
+  }
+
+  @Test
+  void sendOmitsTrustCodeAndSchemeNameKeysWhenContextCarriesNulls() {
+    var delivery = new AtomicReference<MessageDeliveryCommand>();
+    OtpChallengePort otp =
+        new StubOtpPort() {
+          public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
+            return Mono.just(
+                new CreateOtpChallengeResult("otp_opaque", "123456", NOW.plusSeconds(300), 300));
+          }
+        };
+    var service =
+        new LoginOtpSendService(
+            command ->
+                Mono.just(
+                    LoginProtectedAuthFlowContextResult.valid(context(), null, null, "csrf_hash")),
+            new LoginOtpDestinationResolver(),
+            otp,
+            command -> {
+              delivery.set(command);
+              return Mono.just(
+                  new MessageDeliveryResult(
+                      MessageDeliveryStatus.ACCEPTED,
+                      command.channel(),
+                      "provider-id",
+                      null,
+                      null));
+            },
+            command -> Mono.empty(),
+            (type, value) -> "hash_only",
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
+            (type, channel, locale) ->
+                new NoticeTemplateDefinition(
+                    type, channel, locale, "Verification code", "{code}", null, "minutes"));
+
+    StepVerifier.create(service.send(COMMAND)).expectNextCount(1).verifyComplete();
+
+    assertThat(delivery.get().templateVariables())
+        .doesNotContainKeys("trustCode", "schemeName", "schemeNameChi");
+  }
+
+  @Test
+  void sendFallsBackToSchemeNameWhenSchemeNameChiIsBlank() {
+    var delivery = new AtomicReference<MessageDeliveryCommand>();
+    LoginPreAuthContext context =
+        new LoginPreAuthContext(
+            "member01",
+            null,
+            Map.of(
+                "dst_opaque",
+                new LoginPreAuthDestination("dst_opaque", "mobile", "91234567", "****4567")),
+            NOW.minusSeconds(60),
+            "v1",
+            "JPM",
+            "JP MORGAN CHASE - JMCI",
+            "");
+    OtpChallengePort otp =
+        new StubOtpPort() {
+          public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
+            return Mono.just(
+                new CreateOtpChallengeResult("otp_opaque", "123456", NOW.plusSeconds(300), 300));
+          }
+        };
+    var service =
+        new LoginOtpSendService(
+            command ->
+                Mono.just(
+                    LoginProtectedAuthFlowContextResult.valid(context, null, null, "csrf_hash")),
+            new LoginOtpDestinationResolver(),
+            otp,
+            command -> {
+              delivery.set(command);
+              return Mono.just(
+                  new MessageDeliveryResult(
+                      MessageDeliveryStatus.ACCEPTED,
+                      command.channel(),
+                      "provider-id",
+                      null,
+                      null));
+            },
+            command -> Mono.empty(),
+            (type, value) -> "hash_only",
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
+            (type, channel, locale) ->
+                new NoticeTemplateDefinition(
+                    type,
+                    channel,
+                    locale,
+                    "Verification code",
+                    "{code} {schemeNameChi}",
+                    null,
+                    "minutes"));
+
+    StepVerifier.create(service.send(COMMAND)).expectNextCount(1).verifyComplete();
+
+    assertThat(delivery.get().templateVariables())
+        .containsEntry("schemeNameChi", "JP MORGAN CHASE - JMCI");
+  }
+
   private LoginOtpSendService service(
       LoginProtectedAuthFlowContextLoader loader,
       OtpChallengePort otp,
@@ -178,16 +422,16 @@ class LoginOtpSendServiceTest {
           }
         },
         Clock.fixed(NOW, ZoneOffset.UTC),
-        new LoginOtpSendPolicy(
-            6,
-            true,
-            300,
-            60,
-            5,
-            false,
-            0,
-            "Your verification code is {code}",
-            "Verification code"));
+        new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0),
+        (type, channel, locale) ->
+            new NoticeTemplateDefinition(
+                type,
+                channel,
+                locale,
+                "Verification code",
+                "Your verification code is {code}",
+                null,
+                "minutes"));
   }
 
   private LoginPreAuthContext context() {
@@ -198,7 +442,10 @@ class LoginOtpSendServiceTest {
             "dst_opaque",
             new LoginPreAuthDestination("dst_opaque", "mobile", "91234567", "****4567")),
         NOW.minusSeconds(60),
-        "v1");
+        "v1",
+        null,
+        null,
+        null);
   }
 
   private abstract static class StubOtpPort implements OtpChallengePort {

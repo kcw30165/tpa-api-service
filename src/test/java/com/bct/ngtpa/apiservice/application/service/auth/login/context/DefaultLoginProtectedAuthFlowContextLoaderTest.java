@@ -26,7 +26,10 @@ class DefaultLoginProtectedAuthFlowContextLoaderTest {
             ActorUserRole.ROLE_USER_MBR.toApimValue(),
             Map.of(),
             NOW.minusSeconds(1),
-            "v1");
+            "v1",
+            null,
+            null,
+            null);
     var loader = loader(session(AuthFlowScenario.LOGIN, AuthFlowStatus.STARTED), context, true);
     StepVerifier.create(loader.load(command()))
         .assertNext(

@@ -222,6 +222,8 @@ The discovery stage must prove where the selected registration `accountEnv` is p
 
 ### 4.6 Forgot Password operations
 
+> **Superseded (2026-10-12).** The question below no longer applies. In the current code `TRPResetPassword` uses `ApimDatabaseScope.NON_ACCOUNT` with a credential context whose `accountEnv` is `null`, and `accountEnv` does not exist in the Forgot Password pre-auth flow (commit `b77a7ad8`, guarded by `ForgotPasswordPreAuthNoAccountEnvArchitectureTest`). Registration still carries `accountEnv`.
+
 The current codebase appears to include:
 
 ```text
@@ -500,6 +502,8 @@ TRPRegMember
 5. preserve idempotency, replay, CSRF, OTP, and additional-trust behavior.
 
 ### Stage 006: Forgot Password routing
+
+> Superseded (2026-10-12): see the note under 4.6.
 
 **Prerequisites:**
 

@@ -75,7 +75,8 @@ class RequestUsernameRecoveryUseCaseTest {
                 new UsernameRecoveryRequestCommand(
                     new AuthFlowSessionId("afs_opaque-1"),
                     new UsernameRecoverySchemeRef("sch_opaque-1"),
-                    "idem_12345678")))
+                    "idem_12345678",
+                    null)))
         .expectErrorSatisfies(
             error -> {
               assertThat(error).isInstanceOf(UsernameRecoveryRequestException.class);

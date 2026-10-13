@@ -9,6 +9,4 @@ public record OtpPolicy(
     boolean resendLimitEnabled,
     int maxResendAttempts,
     boolean invalidatePreviousOnResend,
-    boolean resetVerifyAttemptsOnResend,
-    String smsTemplate,
-    OtpEmailPolicy email) {}
+    boolean resetVerifyAttemptsOnResend) {}

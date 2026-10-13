@@ -57,7 +57,7 @@ public final class SharedResendRegistrationOtpService implements ResendRegistrat
     Objects.requireNonNull(command, "command must not be null");
     return contexts
         .load(
-            new RegistrationProtectedAuthFlowContextCommand(
+            RegistrationProtectedAuthFlowContextCommand.forOtpSent(
                 command.authFlowSessionId(),
                 command.csrfToken(),
                 command.origin(),

@@ -4,22 +4,12 @@ import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import java.util.Objects;
 
 public record ForgotPasswordCompletionCommand(
-    String customerId,
-    String password,
-    String correlationId,
-    String accountEnv,
-    ActorUserRole actorUserRole) {
+    String customerId, String password, String correlationId, ActorUserRole actorUserRole) {
   public ForgotPasswordCompletionCommand {
     customerId = required(customerId, "customerId");
     password = required(password, "password");
     correlationId = correlationId == null || correlationId.isBlank() ? null : correlationId.trim();
-    accountEnv = accountEnv == null || accountEnv.isBlank() ? null : accountEnv.trim();
     Objects.requireNonNull(actorUserRole, "actorUserRole must not be null");
-  }
-
-  public ForgotPasswordCompletionCommand(
-      String customerId, String password, String correlationId, String accountEnv) {
-    this(customerId, password, correlationId, accountEnv, ActorUserRole.ROLE_USER_MBR);
   }
 
   private static String required(String value, String name) {
@@ -32,7 +22,7 @@ public record ForgotPasswordCompletionCommand(
 
   @Override
   public String toString() {
-    return "ForgotPasswordCompletionCommand[customerId=<redacted>, accountEnv=<redacted>, ****** correlationId="
+    return "ForgotPasswordCompletionCommand[customerId=<redacted>, ****** correlationId="
         + correlationId
         + "]";
   }

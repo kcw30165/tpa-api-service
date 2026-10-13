@@ -14,13 +14,24 @@ import java.util.Objects;
  * candidate fields; policy, certificate, scheme, termination, DOB, and raw identity data are not
  * retained).
  *
+ * <p>{@code schemeName}/{@code schemeNameChi} are additive fields sourced from the APIM {@code
+ * sch-name}/{@code chin-sch-name} response fields (see
+ * docs/design/10-template-service/template-service-solution-design.md section 8.2), carried through
+ * so the centralized Template Service can render the {schemeName}/{schemeNameChi} placeholders
+ * required by notice content. Optional (nullable), since not every lookup source populates them.
+ *
  * <p>Invariants: {@code accountEnv} and {@code trustCode} are required and nonblank; {@code
  * userName} is present and nonblank only for registered candidates. Opaque Scheme-Refs are created
  * only when a session is created and are therefore absent at this boundary. {@link #toString()}
- * never discloses {@code userName}.
+ * never discloses {@code userName}, {@code schemeName}, or {@code schemeNameChi}.
  */
 public record UsernameRecoveryLookupCandidate(
-    String accountEnv, String trustCode, boolean registered, String userName) {
+    String accountEnv,
+    String trustCode,
+    boolean registered,
+    String userName,
+    String schemeName,
+    String schemeNameChi) {
 
   public UsernameRecoveryLookupCandidate {
     Objects.requireNonNull(accountEnv, "accountEnv must not be null");
@@ -49,6 +60,10 @@ public record UsernameRecoveryLookupCandidate(
         + registered
         + ", userName="
         + (userName == null ? null : "<redacted>")
+        + ", schemeName="
+        + (schemeName == null ? null : "<redacted>")
+        + ", schemeNameChi="
+        + (schemeNameChi == null ? null : "<redacted>")
         + "]";
   }
 }

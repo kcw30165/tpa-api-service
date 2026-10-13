@@ -114,15 +114,6 @@ public class AuthWorkflowProperties {
     private int maxVerifyAttempts;
     private boolean resendLimitEnabled;
     private int maxResendAttempts;
-    private String smsTemplate;
-    private final LoginOtpEmail emailTemplate = new LoginOtpEmail();
-  }
-
-  @Getter
-  @Setter
-  public static class LoginOtpEmail {
-    private String subject;
-    private String body;
   }
 
   @Getter
@@ -194,15 +185,6 @@ public class AuthWorkflowProperties {
     private int maxResendAttempts;
     private boolean invalidatePreviousOnResend;
     private boolean resetVerifyAttemptsOnResend;
-    private String smsTemplate;
-    private final OtpEmail emailTemplate = new OtpEmail();
-  }
-
-  @Getter
-  @Setter
-  public static class OtpEmail {
-    private String subject;
-    private String body;
   }
 
   @Getter
@@ -269,15 +251,6 @@ public class AuthWorkflowProperties {
   public static class UsernameRecovery {
     private final UsernameRecoverySession session = new UsernameRecoverySession();
     private final Message message = new Message();
-    private final UsernameRecoveryTemplate template = new UsernameRecoveryTemplate();
-  }
-
-  @Getter
-  @Setter
-  public static class UsernameRecoveryTemplate {
-    private String emailSubject;
-    private String emailBody;
-    private String smsBody;
   }
 
   @Getter
@@ -337,13 +310,6 @@ public class AuthWorkflowProperties {
     requirePositive(login.otp.ttlSeconds, "otp.ttl-seconds");
     requireNonNegative(login.otp.resendCooldownSeconds, "otp.resend-cooldown-seconds");
     requirePositive(login.otp.maxVerifyAttempts, "otp.max-verify-attempts");
-    if (login.otp.smsTemplate == null || !login.otp.smsTemplate.contains("{code}"))
-      throw new IllegalStateException("auth-workflows.login.otp.sms-template must contain {code}");
-    if (login.otp.emailTemplate.subject == null
-        || login.otp.emailTemplate.subject.isBlank()
-        || login.otp.emailTemplate.body == null
-        || !login.otp.emailTemplate.body.contains("{code}"))
-      throw new IllegalStateException("auth-workflows.login.otp.email-template is invalid");
     if (login.otp.resendLimitEnabled) {
       requirePositive(login.otp.maxResendAttempts, "otp.max-resend-attempts");
     }
@@ -446,28 +412,6 @@ public class AuthWorkflowProperties {
       throw new IllegalStateException(
           "auth-workflows.username-recovery.session.ttl-seconds must be greater than zero");
     }
-    validateUsernameRecoveryTemplate(
-        usernameRecovery.getTemplate().getEmailSubject(),
-        "auth-workflows.username-recovery.template.email-subject",
-        false);
-    validateUsernameRecoveryTemplate(
-        usernameRecovery.getTemplate().getEmailBody(),
-        "auth-workflows.username-recovery.template.email-body",
-        true);
-    validateUsernameRecoveryTemplate(
-        usernameRecovery.getTemplate().getSmsBody(),
-        "auth-workflows.username-recovery.template.sms-body",
-        true);
-  }
-
-  private void validateUsernameRecoveryTemplate(
-      String template, String property, boolean usernameRequired) {
-    if (template == null || template.isBlank()) {
-      throw new IllegalStateException(property + " must not be blank");
-    }
-    if (usernameRequired && !template.contains("{username}")) {
-      throw new IllegalStateException(property + " must contain {username}");
-    }
   }
 
   private void validateForgotPasswordOtpPolicy(Otp otp) {
@@ -481,13 +425,6 @@ public class AuthWorkflowProperties {
       requirePositive(
           otp.maxResendAttempts, "auth-workflows.forgot-password.otp.max-resend-attempts");
     }
-    // requireTemplate(otp.smsTemplate, "auth-workflows.forgot-password.otp.sms-template");
-    // if (otp.emailTemplate.subject == null || otp.emailTemplate.subject.isBlank()) {
-    //     throw new IllegalStateException(
-    //             "auth-workflows.forgot-password.otp.email-template.subject must not be blank");
-    // }
-    // requireTemplate(otp.emailTemplate.body,
-    // "auth-workflows.forgot-password.otp.email-template.body");
   }
 
   private void requireTemplate(String template, String property) {

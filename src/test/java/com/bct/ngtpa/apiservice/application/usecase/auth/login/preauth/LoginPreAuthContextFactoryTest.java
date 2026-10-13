@@ -32,6 +32,9 @@ class LoginPreAuthContextFactoryTest {
             List.of(
                 new LoginCredentialDestination("email", "member@example.com"),
                 new LoginCredentialDestination("mobile", "91234567")),
+            null,
+            null,
+            null,
             null);
     var context = factory.create(result, Instant.parse("2026-07-20T00:00:00Z"));
     assertThat(context.normalizedUsername()).isEqualTo("member");
@@ -44,6 +47,30 @@ class LoginPreAuthContextFactoryTest {
         .containsExactly("m****r@example.com", "9******7");
     assertThat(context.toString())
         .doesNotContain("member", "member@example.com", "91234567", "dst_opaque_value");
+  }
+
+  @Test
+  void carriesTrustCodeAndSchemeNamesFromResultIntoContext() {
+    var factory =
+        new LoginPreAuthContextFactory(
+            () -> "dst_opaque_value", new MaskingService(new MaskingProperties()));
+    var result =
+        new CredentialAuthenticationResult(
+            CredentialAuthenticationStatus.AUTHENTICATED,
+            "member",
+            "role_user",
+            0,
+            List.of(new LoginCredentialDestination("email", "member@example.com")),
+            null,
+            "DBA",
+            "Example Scheme",
+            "示例計劃");
+
+    var context = factory.create(result, Instant.parse("2026-07-20T00:00:00Z"));
+
+    assertThat(context.trustCode()).isEqualTo("DBA");
+    assertThat(context.schemeName()).isEqualTo("Example Scheme");
+    assertThat(context.schemeNameChi()).isEqualTo("示例計劃");
   }
 
   @Test
@@ -60,6 +87,9 @@ class LoginPreAuthContextFactoryTest {
                         null,
                         1,
                         List.of(),
+                        null,
+                        null,
+                        null,
                         null),
                     Instant.now()))
         .isInstanceOf(IllegalArgumentException.class);
@@ -72,6 +102,9 @@ class LoginPreAuthContextFactoryTest {
                         null,
                         0,
                         List.of(),
+                        null,
+                        null,
+                        null,
                         null),
                     Instant.now()))
         .isInstanceOf(IllegalStateException.class)

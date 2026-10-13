@@ -24,9 +24,6 @@ class Task0043RegistrationOtpPolicyCharacterizationTest {
     registration.getOtp().setMaxResendAttempts(5);
     registration.getOtp().setInvalidatePreviousOnResend(true);
     registration.getOtp().setResetVerifyAttemptsOnResend(true);
-    registration.getOtp().setSmsTemplate("otp={otp}");
-    registration.getOtp().getEmailTemplate().setSubject("OTP");
-    registration.getOtp().getEmailTemplate().setBody("otp={otp}");
     properties.setRegistration(registration);
 
     var policy = new ConfigBackedAuthWorkflowPolicyAdapter(properties).registrationPolicy().otp();

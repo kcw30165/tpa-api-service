@@ -12,6 +12,7 @@ import com.bct.ngtpa.apiservice.application.port.in.ResendLoginOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.LoginOtpSessionBindingPort;
 import com.bct.ngtpa.apiservice.application.port.out.LoginProtectedAuthFlowContextLoader;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend.ResendLoginOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend.ResendLoginOtpStatus;
@@ -84,6 +85,7 @@ class LoginOtpResendSharedRuntimeCompositionTest {
         .withBean(OtpChallengePort.class, () -> mock(OtpChallengePort.class))
         .withBean(MessageDeliveryPort.class, () -> mock(MessageDeliveryPort.class))
         .withBean(LoginOtpSessionBindingPort.class, () -> mock(LoginOtpSessionBindingPort.class))
+        .withBean(NoticeTemplateRegistryPort.class, () -> mock(NoticeTemplateRegistryPort.class))
         .withBean(IdempotencyExecutor.class, () -> executor)
         .withBean(
             Clock.class, () -> Clock.fixed(Instant.parse("2026-09-05T00:00:00Z"), ZoneOffset.UTC));
@@ -103,9 +105,6 @@ class LoginOtpResendSharedRuntimeCompositionTest {
     login.getOtp().setTtlSeconds(300);
     login.getOtp().setResendCooldownSeconds(60);
     login.getOtp().setMaxVerifyAttempts(5);
-    login.getOtp().setSmsTemplate("code={code}");
-    login.getOtp().getEmailTemplate().setSubject("Login code");
-    login.getOtp().getEmailTemplate().setBody("code={code}");
     login.getIdempotency().setStartTtlSeconds(300);
     login.getIdempotency().setOtpSendTtlSeconds(321);
     login.getIdempotency().setOtpResendTtlSeconds(322);

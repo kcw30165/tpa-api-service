@@ -20,6 +20,7 @@ import com.bct.ngtpa.apiservice.application.port.in.RequestUsernameRecoveryUseCa
 import com.bct.ngtpa.apiservice.application.port.in.StartUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
@@ -218,7 +219,7 @@ public class UsernameRecoveryFeatureConfig {
       MessageDeliveryPort messageDeliveryPort,
       MaskingService maskingService,
       CorsProperties corsProperties,
-      AuthWorkflowProperties properties) {
+      NoticeTemplateRegistryPort noticeTemplateRegistryPort) {
     return new UsernameRecoveryRequestProtectedOperation(
         contextBinding,
         csrfTokenValidationService,
@@ -227,9 +228,7 @@ public class UsernameRecoveryFeatureConfig {
         messageDeliveryPort,
         maskingService,
         corsProperties.getAllowedOrigins(),
-        requiredUsernameRecovery(properties).getTemplate().getEmailSubject(),
-        requiredUsernameRecovery(properties).getTemplate().getEmailBody(),
-        requiredUsernameRecovery(properties).getTemplate().getSmsBody());
+        noticeTemplateRegistryPort);
   }
 
   @Bean

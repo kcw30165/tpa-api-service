@@ -309,17 +309,6 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
         || resetSubjectId.equals(context.resetSubjectId())) {
       return context;
     }
-    return new ForgotPasswordAuthFlowContext(
-        context.username(),
-        context.identityValue(),
-        context.identityType(),
-        context.identityVerified(),
-        resetSubjectId,
-        context.contactChannel(),
-        context.protectedDestination(),
-        context.maskedDestination(),
-        context.resetAuthorization(),
-        context.workflowVersion(),
-        context.phase());
+    return context.withResetSubjectId(resetSubjectId);
   }
 }

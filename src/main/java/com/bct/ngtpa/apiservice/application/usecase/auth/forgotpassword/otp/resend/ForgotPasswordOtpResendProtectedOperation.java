@@ -18,10 +18,15 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.*;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 /** Executes OTP_RESEND after shared idempotency ownership has been acquired. */
 public final class ForgotPasswordOtpResendProtectedOperation {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(ForgotPasswordOtpResendProtectedOperation.class);
+
   private static final String EXPIRES_AT = "forgotPasswordOtpExpiresAt";
   private static final String RESEND_AT = "forgotPasswordOtpResendAvailableAt";
   private static final String RESEND_COUNT = "forgotPasswordOtpSuccessfulResendCount";
@@ -39,7 +44,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
   private final MaskingService masker;
   private final ForgotPasswordOtpCommitStatePort commitStates;
   private final ForgotPasswordOtpCommitRetentionPolicy retention;
-  private final ForgotPasswordOtpTemplates templates;
+  private final NoticeTemplateRegistryPort registry;
   private final ForgotPasswordInitialOtpPolicy otpPolicy;
   private final CsrfTokenValidationService csrfTokens =
       new CsrfTokenValidationService(new Sha256CsrfTokenHasher());
@@ -61,7 +66,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
       MaskingService masker,
       ForgotPasswordOtpCommitStatePort commitStates,
       ForgotPasswordOtpCommitRetentionPolicy retention,
-      ForgotPasswordOtpTemplates templates,
+      NoticeTemplateRegistryPort registry,
       ForgotPasswordInitialOtpPolicy otpPolicy,
       Clock clock,
       Duration idempotencyTtl,
@@ -78,7 +83,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
     this.masker = Objects.requireNonNull(masker);
     this.commitStates = Objects.requireNonNull(commitStates);
     this.retention = Objects.requireNonNull(retention);
-    this.templates = Objects.requireNonNull(templates);
+    this.registry = Objects.requireNonNull(registry);
     this.otpPolicy = Objects.requireNonNull(otpPolicy);
     this.clock = Objects.requireNonNull(clock);
     this.idempotencyTtl = Objects.requireNonNull(idempotencyTtl);
@@ -157,6 +162,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                                 command, pendingRef, snapshot, validated);
                           });
                 })
+            .doOnError(cause -> logFailure(command, "execute", cause))
             .onErrorReturn(
                 new ForgotPasswordOtpResendProtectedExecutionResult(
                     new ResendForgotPasswordOtpResult(
@@ -195,6 +201,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
     try {
       context = decrypt(session);
     } catch (RuntimeException ex) {
+      logFailure(command, "decrypt", ex);
       return Mono.just(
           ValidatedState.invalid(ForgotPasswordOtpResendEligibilityStatus.SESSION_INVALID));
     }
@@ -244,7 +251,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                         context.maskedDestination(),
                         secondsUntil(now, authoritative.expiresAt())));
               }
-              int successfulResendCount = readCount(session.data().attributes());
+              int successfulResendCount = readCount(command, session.data().attributes());
               return foundation
                   .evaluate(
                       new ForgotPasswordOtpResendCommand(
@@ -266,6 +273,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                               context.maskedDestination(),
                               secondsUntil(now, authoritative.expiresAt()),
                               false))
+                  .doOnError(cause -> logFailure(command, "foundation", cause))
                   .onErrorReturn(
                       new ValidatedState(
                           ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED,
@@ -277,6 +285,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                           secondsUntil(now, authoritative.expiresAt()),
                           false));
             })
+        .doOnError(cause -> logFailure(command, "eligibility", cause))
         .onErrorReturn(
             ValidatedState.invalid(ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED));
   }
@@ -291,6 +300,13 @@ public final class ForgotPasswordOtpResendProtectedOperation {
         "email".equalsIgnoreCase(validated.context.contactChannel())
             ? OtpChannel.EMAIL
             : OtpChannel.SMS;
+    MessageDeliveryChannel deliveryChannel =
+        "email".equalsIgnoreCase(validated.context.contactChannel())
+            ? MessageDeliveryChannel.EMAIL
+            : MessageDeliveryChannel.SMS;
+    NoticeTemplateDefinition definition =
+        registry.resolve(
+            MessageDeliveryType.FORGOT_PASSWORD_OTP, deliveryChannel, command.language());
     return otp.createChallenge(
             new CreateOtpChallengeCommand(
                 OtpScenario.FORGOT_PASSWORD,
@@ -315,7 +331,13 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                     .flatMap(
                         stagedSnapshot ->
                             delivery
-                                .deliver(message(command, validated.context, candidate.rawCode()))
+                                .deliver(
+                                    message(
+                                        command,
+                                        validated.context,
+                                        candidate.rawCode(),
+                                        deliveryChannel,
+                                        definition))
                                 .flatMap(
                                     deliveryResult ->
                                         transition(
@@ -520,32 +542,49 @@ public final class ForgotPasswordOtpResendProtectedOperation {
   private MessageDeliveryCommand message(
       ResendForgotPasswordOtpCommand command,
       ForgotPasswordAuthFlowContext context,
-      String rawCode) {
-    boolean email = "email".equalsIgnoreCase(context.contactChannel());
+      String rawCode,
+      MessageDeliveryChannel channel,
+      NoticeTemplateDefinition definition) {
     String language = command.language();
+    Map<String, String> variables = new LinkedHashMap<>();
+    variables.put("code", rawCode);
+    variables.put("ttlValue", Integer.toString(Math.max(1, otpPolicy.ttlSeconds() / 60)));
+    variables.put("ttlUnit", definition.ttlUnit());
+    if (context.trustCode() != null) {
+      variables.put("trustCode", context.trustCode());
+    }
+    if (context.schemeName() != null) {
+      variables.put("schemeName", context.schemeName());
+    }
+    String schemeNameChi = resolveSchemeNameChi(context);
+    if (schemeNameChi != null) {
+      variables.put("schemeNameChi", schemeNameChi);
+    }
     return new MessageDeliveryCommand(
         MessageDeliveryType.FORGOT_PASSWORD_OTP,
         MessageDeliveryScenario.FORGOT_PASSWORD,
-        email ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS,
+        channel,
         context.protectedDestination(),
-        email ? templates.emailSubject(language) : null,
-        email ? templates.emailBody(language) : templates.sms(language),
+        definition.subject(),
+        definition.body(),
         null,
-        Map.of(
-            "code",
-            rawCode,
-            "ttlValue",
-            Integer.toString(Math.max(1, otpPolicy.ttlSeconds() / 60)),
-            "ttlUnit",
-            ttlUnit(language)),
+        Map.copyOf(variables),
         language,
         command.requestId());
   }
 
-  private String ttlUnit(String language) {
-    return language != null && language.trim().replace('-', '_').equalsIgnoreCase("zh_HK")
-        ? "分鐘"
-        : "minutes";
+  /**
+   * Mirrors {@code LoginOtpResendService.resolveSchemeNameChi} / {@code
+   * UsernameRecoveryRequestProtectedOperation.resolveSchemeNameChi} (plan decision, Nick,
+   * 2026-10-07; applied to Forgot Password per Nick's instruction on 2026-10-08 to include the same
+   * rule now rather than defer it): a blank {@code schemeNameChi} falls back to {@code schemeName},
+   * rather than rendering an empty Chinese scheme name into a live member message.
+   */
+  private static String resolveSchemeNameChi(ForgotPasswordAuthFlowContext context) {
+    String schemeNameChi = context.schemeNameChi();
+    return (schemeNameChi == null || schemeNameChi.isBlank())
+        ? context.schemeName()
+        : schemeNameChi;
   }
 
   private ResendForgotPasswordOtpResult mapEligibility(
@@ -604,7 +643,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                 CONTEXT_ALGORITHM, ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM)));
   }
 
-  private int readCount(Map<String, String> attributes) {
+  private int readCount(ResendForgotPasswordOtpCommand command, Map<String, String> attributes) {
     if (attributes == null) {
       return 0;
     }
@@ -616,6 +655,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
       int parsed = Integer.parseInt(value.trim());
       return Math.max(0, parsed);
     } catch (RuntimeException invalid) {
+      logFailure(command, "resend-count", invalid);
       return 0;
     }
   }
@@ -636,6 +676,15 @@ public final class ForgotPasswordOtpResendProtectedOperation {
     } catch (Exception exception) {
       throw new IllegalStateException("forgot password resend hash unavailable");
     }
+  }
+
+  private static void logFailure(
+      ResendForgotPasswordOtpCommand command, String stage, Throwable cause) {
+    LOGGER.error(
+        "event=forgot-password.resend.failed requestId={} stage={} exceptionType={}",
+        command.requestId(),
+        stage,
+        cause.getClass().getSimpleName());
   }
 
   private boolean blank(String value) {

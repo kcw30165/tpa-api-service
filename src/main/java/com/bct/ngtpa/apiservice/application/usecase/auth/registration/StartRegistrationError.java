@@ -4,8 +4,9 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
 import java.util.Objects;
 
 public record StartRegistrationError(WorkflowErrorKey errorKey, String target, String message) {
-  public StartRegistrationError(WorkflowErrorKey errorKey, String target) {
-    this(errorKey, target, null);
+  /** Creates an error that carries no message of its own: only the error key and the target. */
+  public static StartRegistrationError withoutMessage(WorkflowErrorKey errorKey, String target) {
+    return new StartRegistrationError(errorKey, target, null);
   }
 
   public StartRegistrationError {

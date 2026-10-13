@@ -21,12 +21,19 @@ import java.util.Objects;
  *       invariants (registered requires username; unregistered must not carry one).
  * </ul>
  *
+ * <p>{@code schemeName}/{@code schemeNameChi} are additive fields carried from {@link
+ * com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryLookupCandidate}
+ * so the centralized Template Service can render the {schemeName}/{schemeNameChi} placeholders (see
+ * docs/design/10-template-service/template-service-solution-design.md section 8.2). Optional
+ * (nullable).
+ *
  * <p>Invariants: {@code accountEnv}, {@code trustCode}, and {@code deliveryState} are required
  * (accountEnv/trustCode additionally nonblank per the APIM contract; {@code deliveryState}
  * nonnull); {@code schemeRef} is a non-null {@link UsernameRecoverySchemeRef} for registered
  * candidates and may be null only for pre-session unregistered projections (any non-null Scheme-Ref
  * is nonblank by value-object construction); {@code userName} is present and nonblank only for
- * registered candidates. {@link #toString()} never discloses {@code schemeRef} or {@code userName}.
+ * registered candidates. {@link #toString()} never discloses {@code schemeRef}, {@code userName},
+ * {@code schemeName}, or {@code schemeNameChi}.
  */
 public record UsernameRecoveryCandidate(
     UsernameRecoverySchemeRef schemeRef,
@@ -34,7 +41,9 @@ public record UsernameRecoveryCandidate(
     String trustCode,
     boolean registered,
     String userName,
-    UsernameRecoveryDeliveryState deliveryState) {
+    UsernameRecoveryDeliveryState deliveryState,
+    String schemeName,
+    String schemeNameChi) {
 
   public UsernameRecoveryCandidate {
     Objects.requireNonNull(accountEnv, "accountEnv must not be null");

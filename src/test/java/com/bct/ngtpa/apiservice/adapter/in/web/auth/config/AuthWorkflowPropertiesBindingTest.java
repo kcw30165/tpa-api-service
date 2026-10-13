@@ -62,15 +62,6 @@ class AuthWorkflowPropertiesBindingTest {
           assertEquals(5, registration.getOtp().getMaxResendAttempts());
           assertTrue(registration.getOtp().isInvalidatePreviousOnResend());
           assertTrue(registration.getOtp().isResetVerifyAttemptsOnResend());
-          assertEquals(
-              "Your BCT verification code is {code}. It is valid for {ttlValue} {ttlUnit}.",
-              registration.getOtp().getSmsTemplate());
-          assertNotNull(registration.getOtp().getEmailTemplate());
-          assertEquals(
-              "BCT verification code", registration.getOtp().getEmailTemplate().getSubject());
-          assertEquals(
-              "Your verification code is {code}. It is valid for {ttlValue} {ttlUnit}.",
-              registration.getOtp().getEmailTemplate().getBody());
 
           assertNotNull(registration.getUsername());
           assertEquals(4, registration.getUsername().getMinLength());
@@ -158,14 +149,6 @@ class AuthWorkflowPropertiesBindingTest {
           assertEquals(5, otp.getMaxResendAttempts());
           assertTrue(otp.isInvalidatePreviousOnResend());
           assertTrue(otp.isResetVerifyAttemptsOnResend());
-          // assertEquals("Your BCT forgot password verification code is {code}. It is valid for
-          // {ttlValue} {ttlUnit}.",
-          //         otp.getSmsTemplate());
-          // assertEquals("BCT forgot password verification code",
-          //         otp.getEmailTemplate().getSubject());
-          // assertEquals("Your BCT forgot password verification code is {code}. It is valid for
-          // {ttlValue} {ttlUnit}.",
-          //         otp.getEmailTemplate().getBody());
 
           var idempotency = properties.getForgotPassword().getIdempotency();
           assertEquals(300, idempotency.getStartTtlSeconds());

@@ -122,7 +122,9 @@ class UsernameRecoveryStartProtectedOperationTest {
             Mono.just(
                 new UsernameRecoveryLookupResult(
                     UsernameRecoveryLookupResult.Status.MATCHED,
-                    List.of(new UsernameRecoveryLookupCandidate("DB", "DBA", false, null)))));
+                    List.of(
+                        new UsernameRecoveryLookupCandidate(
+                            "DB", "DBA", false, null, null, null)))));
     StepVerifier.create(execute())
         .assertNext(
             r -> {
@@ -280,8 +282,8 @@ class UsernameRecoveryStartProtectedOperationTest {
     return new UsernameRecoveryLookupResult(
         UsernameRecoveryLookupResult.Status.MATCHED,
         List.of(
-            new UsernameRecoveryLookupCandidate("DB", "DBA", true, "user-1"),
-            new UsernameRecoveryLookupCandidate("DB", "DBB", false, null)));
+            new UsernameRecoveryLookupCandidate("DB", "DBA", true, "user-1", null, null),
+            new UsernameRecoveryLookupCandidate("DB", "DBB", false, null, null, null)));
   }
 
   private static void assertReason(Throwable error, UsernameRecoveryStartException.Reason reason) {

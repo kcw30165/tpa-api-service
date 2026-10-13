@@ -47,9 +47,18 @@ class UsernameRecoveryLookupBoundaryReconciliationTest {
 
   @Test
   void lookupCandidateExposesOnlyTheMinimalProjection() {
+    // Amended for docs/design/10-template-service/template-service-solution-design.md
+    // section 8.2: schemeName/schemeNameChi are legitimate application-level content
+    // fields (already normalized to camelCase, sourced from the APIM sch-name/
+    // chin-sch-name response fields) required by the centralized Template Service to
+    // render {schemeName}/{schemeNameChi} placeholders. This does not violate this
+    // test's original intent (no raw APIM field names, no transport-only cruft, no
+    // framework dependency, framework-free immutable record) - it amends the "minimal
+    // projection" contract to include two new, intentionally-added content fields.
     assertThat(UsernameRecoveryLookupCandidate.class.isRecord()).isTrue();
     assertThat(recordComponents(UsernameRecoveryLookupCandidate.class))
-        .containsExactly("accountEnv", "trustCode", "registered", "userName");
+        .containsExactly(
+            "accountEnv", "trustCode", "registered", "userName", "schemeName", "schemeNameChi");
   }
 
   @Test
@@ -69,7 +78,7 @@ class UsernameRecoveryLookupBoundaryReconciliationTest {
 
   @Test
   void lookupStringOutputsNeverExposeApimRawNamesOrSensitiveValues() {
-    var candidate = new UsernameRecoveryLookupCandidate("DB", "DBA", true, "john.doe");
+    var candidate = new UsernameRecoveryLookupCandidate("DB", "DBA", true, "john.doe", null, null);
     var matched =
         new UsernameRecoveryLookupResult(
             UsernameRecoveryLookupResult.Status.MATCHED, List.of(candidate));

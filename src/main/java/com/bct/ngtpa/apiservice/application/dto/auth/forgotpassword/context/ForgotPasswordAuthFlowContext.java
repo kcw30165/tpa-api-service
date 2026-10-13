@@ -12,7 +12,9 @@ public record ForgotPasswordAuthFlowContext(
     String protectedDestination,
     String maskedDestination,
     ForgotPasswordResetAuthorization resetAuthorization,
-    String accountEnv,
+    String trustCode,
+    String schemeName,
+    String schemeNameChi,
     String workflowVersion,
     ForgotPasswordProtectedPhase phase) {
   public ForgotPasswordAuthFlowContext {
@@ -27,57 +29,23 @@ public record ForgotPasswordAuthFlowContext(
   }
 
   /**
-   * Backward-compatible constructor matching the previous 11-arg signature. Preserves old call
-   * sites by inserting a null accountEnv.
+   * Creates the context stored when Forgot Password starts: an identity-only context with no
+   * contact data, reset authorization, trust or scheme fields. Later steps add those.
    */
-  public ForgotPasswordAuthFlowContext(
-      String username,
-      String identityValue,
-      String identityType,
-      boolean identityVerified,
-      String resetSubjectId,
-      String contactChannel,
-      String protectedDestination,
-      String maskedDestination,
-      ForgotPasswordResetAuthorization resetAuthorization,
-      String workflowVersion,
-      ForgotPasswordProtectedPhase phase) {
-    this(
+  public static ForgotPasswordAuthFlowContext started(
+      String username, String identityValue, String identityType, String workflowVersion) {
+    return new ForgotPasswordAuthFlowContext(
         username,
         identityValue,
         identityType,
-        identityVerified,
-        resetSubjectId,
-        contactChannel,
-        protectedDestination,
-        maskedDestination,
-        resetAuthorization,
+        false,
         null,
-        workflowVersion,
-        phase);
-  }
-
-  public ForgotPasswordAuthFlowContext(
-      String username,
-      String identityValue,
-      String identityType,
-      boolean identityVerified,
-      String resetSubjectId,
-      String contactChannel,
-      String protectedDestination,
-      String maskedDestination,
-      ForgotPasswordResetAuthorization resetAuthorization,
-      String workflowVersion) {
-    this(
-        username,
-        identityValue,
-        identityType,
-        identityVerified,
-        resetSubjectId,
-        contactChannel,
-        protectedDestination,
-        maskedDestination,
-        resetAuthorization,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null,
         workflowVersion,
         null);
@@ -102,7 +70,9 @@ public record ForgotPasswordAuthFlowContext(
         protectedDestination,
         maskedDestination,
         resetAuthorization,
-        accountEnv,
+        trustCode,
+        schemeName,
+        schemeNameChi,
         workflowVersion,
         next);
   }
@@ -119,7 +89,55 @@ public record ForgotPasswordAuthFlowContext(
         protectedDestination,
         maskedDestination,
         authorization,
-        accountEnv,
+        trustCode,
+        schemeName,
+        schemeNameChi,
+        workflowVersion,
+        phase);
+  }
+
+  /**
+   * Returns a copy with the given reset subject id and every other field unchanged, including the
+   * trust and scheme fields.
+   */
+  public ForgotPasswordAuthFlowContext withResetSubjectId(String newResetSubjectId) {
+    return new ForgotPasswordAuthFlowContext(
+        username,
+        identityValue,
+        identityType,
+        identityVerified,
+        newResetSubjectId,
+        contactChannel,
+        protectedDestination,
+        maskedDestination,
+        resetAuthorization,
+        trustCode,
+        schemeName,
+        schemeNameChi,
+        workflowVersion,
+        phase);
+  }
+
+  /**
+   * Returns a copy carrying the trust and scheme fields returned by the member lookup, keeping the
+   * stored value for any field the lookup did not supply. The details step needs this because the
+   * context created at START carries none of them.
+   */
+  public ForgotPasswordAuthFlowContext withLookupFields(
+      String lookupTrustCode, String lookupSchemeName, String lookupSchemeNameChi) {
+    return new ForgotPasswordAuthFlowContext(
+        username,
+        identityValue,
+        identityType,
+        identityVerified,
+        resetSubjectId,
+        contactChannel,
+        protectedDestination,
+        maskedDestination,
+        resetAuthorization,
+        hasText(lookupTrustCode) ? lookupTrustCode : trustCode,
+        hasText(lookupSchemeName) ? lookupSchemeName : schemeName,
+        hasText(lookupSchemeNameChi) ? lookupSchemeNameChi : schemeNameChi,
         workflowVersion,
         phase);
   }
@@ -141,7 +159,8 @@ public record ForgotPasswordAuthFlowContext(
         + contactChannel
         + ", protectedDestination=<redacted>, maskedDestination="
         + maskedDestination
-        + ", resetAuthorization=<redacted>, accountEnv=<redacted>, workflowVersion="
+        + ", resetAuthorization=<redacted>, trustCode=<redacted>,"
+        + " schemeName=<redacted>, schemeNameChi=<redacted>, workflowVersion="
         + workflowVersion
         + ", phase="
         + phase

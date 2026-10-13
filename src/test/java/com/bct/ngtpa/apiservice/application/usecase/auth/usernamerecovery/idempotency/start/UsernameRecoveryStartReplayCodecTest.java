@@ -56,10 +56,8 @@ class UsernameRecoveryStartReplayCodecTest {
     var port = new ReplayPort();
     var codec = codec(port);
     var result =
-        new UsernameRecoveryStartResult(
+        UsernameRecoveryStartResult.withoutSession(
             UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-            null,
-            null,
             List.of(new UsernameRecoverySchemeProjection(null, "HK", "T001", false)));
     var captured =
         codec

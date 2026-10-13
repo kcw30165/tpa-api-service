@@ -94,6 +94,7 @@ class UsernameRecoveryWebMapperSensitiveDataTest {
     var startResult =
         new UsernameRecoveryStartResult(
             UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
+            null,
             "csrf_hash_secret",
             600,
             List.of(

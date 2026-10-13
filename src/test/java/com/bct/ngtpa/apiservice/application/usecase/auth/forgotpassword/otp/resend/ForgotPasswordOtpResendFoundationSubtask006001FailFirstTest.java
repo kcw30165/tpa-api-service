@@ -74,7 +74,7 @@ class ForgotPasswordOtpResendFoundationSubtask006001FailFirstTest {
 
   @Test
   void replacementTransitionsDoNotActivateBeforeAccepted() {
-    var state = new ForgotPasswordOtpResendState("old", 0, now.minusSeconds(60));
+    var state = new ForgotPasswordOtpResendState("old", 0, now.minusSeconds(60), false);
     assertThat(
             state
                 .transition(ForgotPasswordOtpResendDeliveryOutcome.FAILED, "new", now)

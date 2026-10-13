@@ -40,7 +40,14 @@ class UsernameRecoveryCandidateTest {
   private static UsernameRecoveryCandidate candidate(
       UsernameRecoverySchemeRef schemeRef, boolean registered, String userName) {
     return new UsernameRecoveryCandidate(
-        schemeRef, "DB", "DBA", registered, userName, UsernameRecoveryDeliveryState.AVAILABLE);
+        schemeRef,
+        "DB",
+        "DBA",
+        registered,
+        userName,
+        UsernameRecoveryDeliveryState.AVAILABLE,
+        null,
+        null);
   }
 
   @Test
@@ -99,7 +106,9 @@ class UsernameRecoveryCandidateTest {
                 "DBA",
                 true,
                 "john.doe",
-                UsernameRecoveryDeliveryState.AVAILABLE));
+                UsernameRecoveryDeliveryState.AVAILABLE,
+                null,
+                null));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -109,12 +118,21 @@ class UsernameRecoveryCandidateTest {
                 null,
                 true,
                 "john.doe",
-                UsernameRecoveryDeliveryState.AVAILABLE));
+                UsernameRecoveryDeliveryState.AVAILABLE,
+                null,
+                null));
     assertThrows(
         NullPointerException.class,
         () ->
             new UsernameRecoveryCandidate(
-                new UsernameRecoverySchemeRef("sch_1"), "DB", "DBA", true, "john.doe", null));
+                new UsernameRecoverySchemeRef("sch_1"),
+                "DB",
+                "DBA",
+                true,
+                "john.doe",
+                null,
+                null,
+                null));
   }
 
   @Test
@@ -128,7 +146,9 @@ class UsernameRecoveryCandidateTest {
                 "DBA",
                 true,
                 "john.doe",
-                UsernameRecoveryDeliveryState.AVAILABLE));
+                UsernameRecoveryDeliveryState.AVAILABLE,
+                null,
+                null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -138,7 +158,9 @@ class UsernameRecoveryCandidateTest {
                 "DBA",
                 true,
                 "john.doe",
-                UsernameRecoveryDeliveryState.AVAILABLE));
+                UsernameRecoveryDeliveryState.AVAILABLE,
+                null,
+                null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -148,7 +170,9 @@ class UsernameRecoveryCandidateTest {
                 "",
                 true,
                 "john.doe",
-                UsernameRecoveryDeliveryState.AVAILABLE));
+                UsernameRecoveryDeliveryState.AVAILABLE,
+                null,
+                null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -158,7 +182,9 @@ class UsernameRecoveryCandidateTest {
                 "   ",
                 true,
                 "john.doe",
-                UsernameRecoveryDeliveryState.AVAILABLE));
+                UsernameRecoveryDeliveryState.AVAILABLE,
+                null,
+                null));
   }
 
   @Test

@@ -49,7 +49,7 @@ class RegistrationProtectedAuthFlowContextLoaderServiceTest {
 
     StepVerifier.create(
             loader.load(
-                new RegistrationProtectedAuthFlowContextCommand(
+                RegistrationProtectedAuthFlowContextCommand.forOtpSent(
                     new AuthFlowSessionId("afs_abc"), "csrf-token", null, null, "corr")))
         .assertNext(
             result -> {
@@ -69,7 +69,7 @@ class RegistrationProtectedAuthFlowContextLoaderServiceTest {
   void invalidCsrfDoesNotDecryptContext() {
     StepVerifier.create(
             loader.load(
-                new RegistrationProtectedAuthFlowContextCommand(
+                RegistrationProtectedAuthFlowContextCommand.forOtpSent(
                     new AuthFlowSessionId("afs_abc"), "bad-token", null, null, "corr")))
         .assertNext(
             result ->
