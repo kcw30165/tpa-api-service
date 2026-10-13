@@ -67,6 +67,7 @@ Use `displayAccounts`, `displayAccountId`, `displayAccountLabel`, `subDisplayAcc
 - Hidden portfolio properties are omitted from both views.
 - No `fundFactsheetEnabled` field exists.
 - Blank factsheet is omitted. Malformed factsheet is safely logged and omitted.
+- `zh_HK` prefers `chin-fund-fact-sheet` and falls back to `fund-fact-sheet` when the Chinese link is absent, blank or malformed; other languages use `fund-fact-sheet` only.
 
 ## Exclusions
 

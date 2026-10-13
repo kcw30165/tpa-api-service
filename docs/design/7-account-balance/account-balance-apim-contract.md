@@ -86,3 +86,9 @@ The repository investigation ratifies these physical boundaries:
 ### Ratified APIM and context details
 
 `login-user-id` comes from `PortalAccessContext.actor().actorUserId()`, and `login-user-role` uses `ActorUserRole.toApimValue()`. Protected `certNo` remains a string through the application boundary, then `TRPGetMemberAccBal` performs explicit checked numeric conversion at its DTO boundary. Both APIM operations use runtime-configured, startup-validated paths, `ACCOUNT_ENV`, `SAFE_BUSINESS_CALL`, and executor-owned transport security. `TRPGetMemberAccBal` requires exactly one non-null top-level data item.
+
+## fundDtl.chin-fund-fact-sheet (2026-10-13)
+
+TAS added `chin-fund-fact-sheet` (String, Chinese fact sheet URL) to every `fundDtl` item. `AccountBalanceFundDetail` maps it as `chineseFundFactsheet`, and the adapter carries it into `RawAccountBalanceFundDetail.chineseFundFactsheet` unchanged. An absent value is `null`.
+
+Before it was mapped, the field broke envelope parsing: the nested `fundDtl` DTO does not ignore unknown properties and the production `ObjectMapper` keeps `FAIL_ON_UNKNOWN_PROPERTIES` enabled. The failure surfaced as `ApimCryptoException: Failed to decrypt APIM response payload.` and HTTP 503 on `/api/v1/account/summary`, although no field was decrypted. Selection rules are in `account-balance-transformation-contract.md` (Factsheet).

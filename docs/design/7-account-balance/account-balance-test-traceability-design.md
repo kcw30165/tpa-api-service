@@ -31,6 +31,8 @@
 - English, Chinese, and fallback descriptions.
 - Hidden overview null behavior and portfolio omission.
 - Factsheet blank/malformed omission.
+- `zh_HK` factsheet selection: Chinese link used; English fallback when the Chinese link is null, empty, blank or malformed; omitted when both are unusable; other languages never use the Chinese link (`AccountBalanceChineseFactsheetSelectionTest`).
+- `chin-fund-fact-sheet` deserializes with the strict production `ObjectMapper` and is carried by the adapter (`AccountBalanceChineseFactsheetContractTest`).
 
 ## Metadata tests
 
