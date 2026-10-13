@@ -91,6 +91,8 @@ DONE. The stage gate is met on the final code commit 5eafe73d: a passing full `m
 application startup smoke test with no bean or configuration errors, both evidenced (Appendix D.13).
 Stage II-4 (Forgot Password) is DONE (Appendix E.11, closed 2026-10-09). Phase III cleanup: III-1 (f3dbea25, 29d6fdeb, 0be76d9c, 9813d607) and III-2 (a82441ec) are DONE. III-3 (the duplicated ttlUnit() helpers) is DONE: the two operations no longer declare a ttlUnit method. Decisions and open items for II-1 are in
 Appendix A.2. Work that is deliberately outside this workstream is listed in Appendix B.
+Appendix F records the alignment of the e-mail bodies with the BRD layout and the Username Recovery
+request language rule (2026-10-13).
 
 ## Appendix A: Stage II-1 Sub-Plan (Username Recovery Migration Detail)
 
@@ -116,6 +118,10 @@ confirmed the following before any implementation:
   channel, locale)`, using the member's actual `context.language()` at
   request time. This is an intended improvement (matches the BRD's
   per-locale requirement), not an unapproved scope expansion.
+
+  **Update (2026-10-13, Appendix F).** The language used to render the notice at request time is now
+  the one of the `/request` call (its `Accept-Language`). `context.language()`, which START stored,
+  is the fallback when `/request` names no language.
 
 Because this migration spans three layers (APIM DTO → domain model →
 feature wiring → request-time resolution), it is split into four
@@ -183,6 +189,14 @@ key; see solution design section 8.4. Fixed in `b9012557`.
 Not changed: `UsernameRecoveryController.resolveLanguage` still builds the `Locale` from the raw
 header, so a multi-value header becomes `und` and selects English. Carry into II-2 to II-4: pass a
 single tag, and read each workflow's language source before changing its send path.
+
+**Update (2026-10-13, Appendix F).** The START part of this finding stands: START still builds
+`language` from the raw header. REQUEST no longer selects the template from `context.language()`
+alone: since `704d7230` it uses `command.languageOr(context.language())`, that is the
+`Accept-Language` of the `/request` call with the language START stored as the fallback. `/request`
+reads its header through `UsernameRecoveryRequestLanguageResolver`, which gives no language for an
+absent, blank or language-less value such as `*`. `UsernameRecoveryController.resolveLanguage` is
+unchanged.
 
 **Stage gate (satisfied on 2026-10-05; evidence in Appendix A.3).** The standing convention requires,
 before a stage transition, evidence that the full Maven test suite passed and that an application
@@ -1935,3 +1949,81 @@ other sub-stage in Appendix E remains open.
   startup failure markers, and the application stopped and released the port cleanly.
 - Stage II-4 (Forgot Password) is now DONE in full: sub-stages II-4.0, II-4.a, II-4.b0, II-4.b,
   II-4.c/d and II-4.e are all DONE.
+
+## Appendix F: Alignment with the BRD after the migration (2026-10-13)
+
+After the four workflows were migrated, Nick listed differences between the implementation and the
+BRD. They were checked against the three BRD documents (E0001 Registration, E0002 Login and Forgot
+Password, E0003 Username Recovery) and gave two changes: the layout of the e-mail bodies, and the
+language Username Recovery renders its notice in.
+
+### F.1 E-mail body layout (script 213, `a5d4c13c`)
+
+- The BRD documents are Word files. Each paragraph is a line, each empty paragraph is a blank line,
+  and the line starting `RE:` (English) or the line starting the Chinese `關於` carries a bottom
+  border, a horizontal rule. The eight e-mail bodies in `application.yml` (`registration-otp`,
+  `login-otp`, `forgot-password-otp` and `username-recovery`, each in `en` and `zh_HK`) now follow
+  that. Subjects, SMS templates, placeholders and the `{ttlValue}`/`{ttlUnit}` wording are
+  unchanged.
+- The rule becomes a separator line of 60 hyphens directly under that line. A Word border has no
+  character length, so the length is a choice; the script takes it as a parameter and the new test
+  follows the same value.
+- Registration: a separator and a blank line after the `RE:`/`關於` line, no blank line between the
+  one-time-password line and the expiry line, and a blank line after the company name.
+- Login and Forgot Password (one text): a separator and a blank line after the `RE:`/`關於` line, and
+  a blank line after the last line of the signature block.
+- Username Recovery: a separator after the `RE:`/`關於` line (a blank line already followed it), a
+  blank line after the sentence that introduces the username, and a blank line after the last line
+  of the signature block.
+- The Chinese subjects of Login, Forgot Password and Username Recovery already carried no trust
+  code, as in the BRD. A test now pins that.
+
+`ApplicationYamlEmailBodiesMatchBrdTest` loads `src/main/resources/application.yml` from disk and
+asserts the exact text of all eight bodies and those three subjects (9 tests). Before the file was
+written, each body was checked against the text it was analysed against, and afterwards that no line
+outside the eight bodies changed. The gate was 60 template, renderer and rendered-content test
+classes.
+
+Known limits. The e-mail adapter sends `text/plain`, so the BRD's italic line ("[This is an
+automatically generated e-mail ...]") and a true horizontal rule are not reproduced. That needs an
+HTML part, a separate stage: a `multipart/alternative` message, an HTML body or a format flag in the
+template model, HTML escaping of the scheme name and the username, and tests.
+
+Open point. Nick's list said to insert a blank line after the English one-time-password line. The
+BRD documents have none between that line and the expiry line, and script 213 follows the documents.
+A blank line there is a three-line change if wanted.
+
+### F.2 Username Recovery renders in the language of the `/request` call (scripts 215, 217, 218)
+
+- Before: START stored a `Locale` built from its `Accept-Language`, and `/request` rendered with
+  that stored language. `/request` accepted an `Accept-Language` header and ignored it, unlike
+  Registration, Login and Forgot Password, which render in the language of the current request.
+- Now (`704d7230`): `UsernameRecoveryRequestCommand` carries a nullable `Locale language` and
+  `languageOr(stored)`. The controller reads the header through
+  `UsernameRecoveryRequestLanguageResolver`, which gives `null` for an absent, blank or
+  language-less value, and `UsernameRecoveryRequestProtectedOperation` resolves the template with
+  `command.languageOr(context.language())`. A call that names no language renders exactly as before,
+  in the language START stored.
+- The idempotency fingerprint of `/request` is the session id and the Scheme-Ref. It never contained
+  a language and is unchanged, so existing records stay valid and a replayed request returns the
+  original result. START's fingerprint still includes the language.
+- Tests: `UsernameRecoveryRequestCommandTest` and `UsernameRecoveryRequestLanguageResolverTest` (the
+  rule and the header parsing), `UsernameRecoveryRequestProtectedOperationTest` (`ee8f9ab7`: an
+  English request overrides a stored Chinese language and a Chinese request overrides a stored
+  English one; the fallback is the existing base test, whose command carries no language) and
+  `AuthUsernameRecoveryControllerTest` (`f4fd38e7`: `zh-HK` and `en` reach the command; absent,
+  blank and `*` give no language).
+- Script 216 stopped without changing anything: it assumed one `execute` helper in the operation
+  test and the class has two overloads. Script 217 replaced it.
+- Both new test groups were checked by mutation. With the operation's override line reverted to
+  `context.language()`, exactly the two override tests fail. With the controller's
+  `UsernameRecoveryRequestLanguageResolver.fromHeader(language)` replaced by `null`, exactly the
+  test for a given header fails. Each file was restored before its commit.
+
+### F.3 Status
+
+- The full `mvn test` and the application startup smoke test were confirmed by Nick at `f4fd38e7`,
+  which includes everything above. The hashes are those of the local branch at the time of writing;
+  the branch has not been pushed, so a later rebase changes them.
+- Not done: HTML e-mail (F.1), and the open point on the blank line after the English
+  one-time-password line.

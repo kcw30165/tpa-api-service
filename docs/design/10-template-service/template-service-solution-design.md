@@ -445,6 +445,11 @@ from the raw Accept-Language header with `Locale.forLanguageTag`, which cannot r
 multi-value header (`zh,en;q=0.5` becomes `und` and selects English). The public contract tests
 send a single tag (`en`, `zh-HK`). Callers must pass a single tag.
 
+Update (2026-10-13): Username Recovery `/request` now passes the tag of its own call, read through
+`UsernameRecoveryRequestLanguageResolver`, which uses the same `Locale.forLanguageTag` parsing but
+gives no language for a value without one (for example `*`), and falls back to the language START
+stored. START is unchanged. See Appendix F of the implementation plan.
+
 ### 8.5 Input Preconditions and Confirmed Decisions
 
 Confirmed during Stage II-1 (2026-10-05):
@@ -460,6 +465,10 @@ Confirmed during Stage II-1 (2026-10-05):
   (section 8.4); a browser-style list is not supported. `UsernameRecoveryController` therefore
   keeps building its `Locale` from the raw header. A shared resolver is the longer-term
   alternative and is not adopted now.
+
+  Update (2026-10-13): this describes START. `/request` reads its own `Accept-Language` through
+  `UsernameRecoveryRequestLanguageResolver` and falls back to the language START stored (Appendix F
+  of the implementation plan).
 - **Simplified Chinese.** `zh-CN` receives `zh_HK` content until a `zh_CN` entry is configured,
   as in the rest of the application. Caveat: `RequestHeaderContext` normalizes every language
   starting with `zh` to `zh-HK`, so a workflow that takes its language from that context can never
