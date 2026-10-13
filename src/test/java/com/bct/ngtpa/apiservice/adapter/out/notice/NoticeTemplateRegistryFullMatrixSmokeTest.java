@@ -116,7 +116,7 @@ class NoticeTemplateRegistryFullMatrixSmokeTest {
           adapter.resolve(messageType, MessageDeliveryChannel.EMAIL, "zh_HK");
       assertThat(emailZh.requiredPlaceholders())
           .as("%s email[zh_HK] placeholders", messageType)
-          .containsExactlyInAnyOrder("code", "schemeNameChi", "ttlValue", "ttlUnit");
+          .containsExactlyInAnyOrder("trustCode", "code", "schemeNameChi", "ttlValue", "ttlUnit");
     }
   }
 

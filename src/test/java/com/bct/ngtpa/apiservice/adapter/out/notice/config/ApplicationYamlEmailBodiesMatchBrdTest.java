@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.notice.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Properties;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -14,11 +15,17 @@ import org.springframework.core.io.FileSystemResource;
  * line, and the horizontal rule under the "RE:" or "關於" line is a separator line of hyphens. The
  * e-mail adapter sends plain text, so the BRD's italic line and a true rule are not reproduced.
  *
- * <p>The Chinese subjects of Login, Forgot Password and Username Recovery carry no trust code.
+ * <p>The Chinese subjects of Login, Forgot Password and Username Recovery start with the trust code
+ * placeholder. In the Registration, Login and Forgot Password English bodies the expiry line
+ * follows the one-time-password line directly, and the one-time-password line ends in three spaces:
+ * Outlook removes a single line break from plain-text mail and keeps this one.
  */
 class ApplicationYamlEmailBodiesMatchBrdTest {
 
   private static final String RULE = "-".repeat(60);
+
+  /** Outlook keeps the line break after a line that ends in three spaces. */
+  private static final String OTP_LINE_END = " ".repeat(3);
 
   private static Properties properties;
 
@@ -52,10 +59,9 @@ class ApplicationYamlEmailBodiesMatchBrdTest {
                 "Dear Member,",
                 "",
                 "RE: BCT Pension Member Portal- Account Registration",
-                RULE,
+                "------------------------------------------------------------",
                 "",
-                "Your One-Time Password (OTP): {code}",
-                "",
+                "Your One-Time Password (OTP): {code}" + OTP_LINE_END,
                 "This password expires in {ttlValue} {ttlUnit}.",
                 "",
                 "Bank Consortium Trust Company Limited",
@@ -69,7 +75,7 @@ class ApplicationYamlEmailBodiesMatchBrdTest {
         .isEqualTo(
             expected(
                 "關於：BCT 銀聯集團 退休金會員平台 - 帳戶登記",
-                RULE,
+                "------------------------------------------------------------",
                 "",
                 "您的一次性密碼(OTP)為：{code}",
                 "此密碼於{ttlValue}{ttlUnit}內有效。",
@@ -87,10 +93,10 @@ class ApplicationYamlEmailBodiesMatchBrdTest {
                 "Dear Member,",
                 "",
                 "RE: {schemeName} (\"the Plan\")",
-                RULE,
+                "------------------------------------------------------------",
                 "",
-                "Your One-Time Password (OTP) for BCT Pension Member Portal is: {code}",
-                "",
+                "Your One-Time Password (OTP) for BCT Pension Member Portal is: {code}"
+                    + OTP_LINE_END,
                 "This password expires in {ttlValue} {ttlUnit}.",
                 "",
                 "Bank Consortium Trust Company Limited",
@@ -105,7 +111,7 @@ class ApplicationYamlEmailBodiesMatchBrdTest {
         .isEqualTo(
             expected(
                 "關於：{schemeNameChi}（「本計劃」）",
-                RULE,
+                "------------------------------------------------------------",
                 "",
                 "您的退休金會員平台的一次性密碼(OTP)為：{code}",
                 "此密碼於{ttlValue}{ttlUnit}內有效。",
@@ -124,10 +130,10 @@ class ApplicationYamlEmailBodiesMatchBrdTest {
                 "Dear Member,",
                 "",
                 "RE: {schemeName} (\"the Plan\")",
-                RULE,
+                "------------------------------------------------------------",
                 "",
-                "Your One-Time Password (OTP) for BCT Pension Member Portal is: {code}",
-                "",
+                "Your One-Time Password (OTP) for BCT Pension Member Portal is: {code}"
+                    + OTP_LINE_END,
                 "This password expires in {ttlValue} {ttlUnit}.",
                 "",
                 "Bank Consortium Trust Company Limited",
@@ -142,7 +148,7 @@ class ApplicationYamlEmailBodiesMatchBrdTest {
         .isEqualTo(
             expected(
                 "關於：{schemeNameChi}（「本計劃」）",
-                RULE,
+                "------------------------------------------------------------",
                 "",
                 "您的退休金會員平台的一次性密碼(OTP)為：{code}",
                 "此密碼於{ttlValue}{ttlUnit}內有效。",
@@ -161,7 +167,7 @@ class ApplicationYamlEmailBodiesMatchBrdTest {
                 "Dear Member,",
                 "",
                 "RE: {schemeName} (\"the Plan\")",
-                RULE,
+                "------------------------------------------------------------",
                 "",
                 "Your username of the above-mentioned Plan as below",
                 "",
@@ -181,7 +187,7 @@ class ApplicationYamlEmailBodiesMatchBrdTest {
                 "親愛的成員：",
                 "",
                 "關於：{schemeNameChi}（「本計劃」）",
-                RULE,
+                "------------------------------------------------------------",
                 "",
                 "您於上述計劃的用戶名稱如下：",
                 "",
@@ -194,15 +200,18 @@ class ApplicationYamlEmailBodiesMatchBrdTest {
   }
 
   @Test
-  void theChineseSubjectsOfLoginForgotPasswordAndUsernameRecoveryCarryNoTrustCode() {
-    assertThat(subject("login-otp", "zh_HK"))
-        .isEqualTo("BCT 退休計劃：成員的一次性密碼")
-        .doesNotContain("{trustCode}");
-    assertThat(subject("forgot-password-otp", "zh_HK"))
-        .isEqualTo("BCT 退休計劃：成員的一次性密碼")
-        .doesNotContain("{trustCode}");
-    assertThat(subject("username-recovery", "zh_HK"))
-        .isEqualTo("BCT 退休計劃 - 取回用戶名稱")
-        .doesNotContain("{trustCode}");
+  void theChineseSubjectsOfLoginForgotPasswordAndUsernameRecoveryStartWithTheTrustCode() {
+    assertThat(subject("login-otp", "zh_HK")).isEqualTo("{trustCode} BCT 退休計劃：成員的一次性密碼");
+    assertThat(subject("forgot-password-otp", "zh_HK")).isEqualTo("{trustCode} BCT 退休計劃：成員的一次性密碼");
+    assertThat(subject("username-recovery", "zh_HK")).isEqualTo("{trustCode} BCT 退休計劃 - 取回用戶名稱");
+  }
+
+  @Test
+  void theEnglishSmsPrefixesAreBctDashTrustCode() {
+    for (String definition : List.of("login-otp", "forgot-password-otp", "username-recovery")) {
+      assertThat(properties.getProperty("notice-templates.definitions." + definition + ".sms.en"))
+          .as(definition)
+          .startsWith("BCT-{trustCode}: ");
+    }
   }
 }

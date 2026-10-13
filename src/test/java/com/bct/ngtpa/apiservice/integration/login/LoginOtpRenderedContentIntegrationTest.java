@@ -113,7 +113,7 @@ class LoginOtpRenderedContentIntegrationTest {
         .as("email/zh_HK")
         .isEqualTo(SendLoginOtpStatus.SENT);
     assertThat(emailZh.email.get().subject())
-        .doesNotContain(REAL_TRUST_CODE)
+        .startsWith(REAL_TRUST_CODE + " ")
         .doesNotContain("{", "}");
     // the real gap script 102 closed: chin-sch-name was blank, so the body must fall back to
     // sch-name rather than rendering an empty Chinese scheme name.
@@ -223,12 +223,12 @@ class LoginOtpRenderedContentIntegrationTest {
   }
 
   // ----- defensive: IF trustCode were ever absent (not today's real state - script 102 confirmed
-  //       it is populated - but TAS has not guaranteed it always will be), SMS and the English
-  //       email fail because the real YAML requires {trustCode} there; the Chinese email alone
-  //       never needed {trustCode} and still succeeds as long as a scheme name is present --------
+  //       it is populated - but TAS has not guaranteed it always will be), SMS and both e-mail
+  //       languages fail, because the real YAML requires {trustCode} in the SMS and in the
+  //       subject of every e-mail ---------------------------------------------------------------
 
   @Test
-  void aNullTrustCodeFailsSmsAndEnglishEmailButHongKongEmailStillSucceedsSinceItNeedsNoTrustCode() {
+  void aNullTrustCodeFailsSmsAndEmailInBothLanguages() {
     LoginPreAuthContext context = context(null, REAL_SCHEME_NAME, "");
 
     Chain sms = new Chain(realProperties(), context);
@@ -243,10 +243,8 @@ class LoginOtpRenderedContentIntegrationTest {
 
     Chain emailZh = new Chain(realProperties(), context);
     assertThat(emailZh.sendEmail(300, "zh-HK"))
-        .as(
-            "email/zh_HK, null trustCode but schemeName present (neither the subject nor the"
-                + " body needs trustCode)")
-        .isEqualTo(SendLoginOtpStatus.SENT);
+        .as("email/zh_HK, null trustCode (subject needs it)")
+        .isEqualTo(SendLoginOtpStatus.DELIVERY_FAILED);
   }
 
   // ----- fixtures -----------------------------------------------------------------------------

@@ -590,7 +590,7 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
         new SendHarness(properties, TRUST_CODE, SCHEME_NAME, SCHEME_NAME_CHI, 300);
     assertThat(emailZh.execute("member@example.com", null, "zh-HK").status())
         .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SUCCESS);
-    assertThat(emailZh.email.get().subject()).doesNotContain(TRUST_CODE).doesNotContain("{", "}");
+    assertThat(emailZh.email.get().subject()).startsWith(TRUST_CODE + " ").doesNotContain("{", "}");
     assertThat(emailZh.email.get().body()).contains(SCHEME_NAME_CHI).doesNotContain("{", "}");
   }
 
@@ -605,7 +605,7 @@ class ForgotPasswordOtpRenderedContentIntegrationTest {
 
     ResendHarness zh = new ResendHarness(properties, TRUST_CODE, SCHEME_NAME, SCHEME_NAME_CHI);
     assertThat(zh.execute("zh-HK")).isEqualTo(ResendForgotPasswordOtpStatus.RESENT);
-    assertThat(zh.email.get().subject()).doesNotContain(TRUST_CODE).doesNotContain("{", "}");
+    assertThat(zh.email.get().subject()).startsWith(TRUST_CODE + " ").doesNotContain("{", "}");
     assertThat(zh.email.get().body()).contains(SCHEME_NAME_CHI).doesNotContain("{", "}");
   }
 
