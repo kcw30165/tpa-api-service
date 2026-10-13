@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -13,6 +14,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UpdateMemberInfoApimDataItem {
   @JsonProperty("success")
   private boolean success;

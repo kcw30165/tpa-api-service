@@ -194,3 +194,9 @@ With encryption disabled, a mapping failure is also `ApimResponseMappingExceptio
 - `jsonPath`: field names and array indexes of the first Jackson mapping failure in the cause chain, for example `response.data[0].fundDtl[0].chin-fund-fact-sheet`. It is built from the exception's path references, never from its message, because Jackson messages can contain response values.
 
 This supersedes the section 5 remark that type mismatches surface as a deserialization/crypto exception, and extends the section 6 field list. `ApimCryptoFailureClassifier` treats `ApimResponseMappingException` like `ApimCryptoException`, so callers that turn a crypto failure into an unknown outcome keep the same result. No HTTP status, public error code or retry behaviour changes.
+
+### 14. Unknown response properties are ignored (2026-10-13)
+
+Every APIM response DTO, and every repository type nested inside one, carries `@JsonIgnoreProperties(ignoreUnknown = true)`. Ten nested or item DTOs lacked it: the five `TRPGetMemberAccBal` nested records, `TrpChkCustIdApimDataItem`, `TrpRegMemberApimDataItem`, `TrpResetPasswordApimDataItem`, `UpdateMemberInfoApimDataItem` and `UpdateMemberInfoApimError`. An additive TAS field no longer fails the exchange; type mismatches still fail and are logged by `apim.exchange.failed` with `jsonPath` (section 13).
+
+`ApimResponseDtoIgnoreUnknownArchitectureTest` enforces this: it finds each response type passed to `ApimExchangeRequest` and walks nested types by reflection. Request DTOs and the global `ObjectMapper` are unchanged. Trade-off: a new downstream field is silently ignored until someone maps it.
