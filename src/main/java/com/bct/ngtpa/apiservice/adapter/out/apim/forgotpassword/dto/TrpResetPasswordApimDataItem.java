@@ -1,7 +1,9 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record TrpResetPasswordApimDataItem(
     @JsonProperty("success") Boolean success,
     @JsonProperty("cust-id") String customerId,

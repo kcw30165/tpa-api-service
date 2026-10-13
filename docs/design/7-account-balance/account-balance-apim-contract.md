@@ -92,3 +92,7 @@ The repository investigation ratifies these physical boundaries:
 TAS added `chin-fund-fact-sheet` (String, Chinese fact sheet URL) to every `fundDtl` item. `AccountBalanceFundDetail` maps it as `chineseFundFactsheet`, and the adapter carries it into `RawAccountBalanceFundDetail.chineseFundFactsheet` unchanged. An absent value is `null`.
 
 Before it was mapped, the field broke envelope parsing: the nested `fundDtl` DTO does not ignore unknown properties and the production `ObjectMapper` keeps `FAIL_ON_UNKNOWN_PROPERTIES` enabled. The failure surfaced as `ApimCryptoException: Failed to decrypt APIM response payload.` and HTTP 503 on `/api/v1/account/summary`, although no field was decrypted. Selection rules are in `account-balance-transformation-contract.md` (Factsheet).
+
+## Unknown response properties (2026-10-13)
+
+The nested `TRPGetMemberAccBal` DTOs (`AccountBalanceCurrency`, `AccountBalanceDisplayOptions`, `AccountBalanceDisplaySource`, `AccountBalanceFundDetail`, `AccountBalanceHolding`) now ignore unknown properties, so the failure described above can no longer be caused by an additive field. See `docs/capabilities/apim-error-logging/architecture-and-design.md` section 14.

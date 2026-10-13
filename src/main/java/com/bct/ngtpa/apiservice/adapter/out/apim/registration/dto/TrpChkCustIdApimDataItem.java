@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -9,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * unchanged at the DTO boundary; availability is derived by the result mapper, not by mutating the
  * raw APIM value.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record TrpChkCustIdApimDataItem(
     @JsonProperty("cust-id") String customerId,
     @JsonProperty("isExist") Boolean isExist,
