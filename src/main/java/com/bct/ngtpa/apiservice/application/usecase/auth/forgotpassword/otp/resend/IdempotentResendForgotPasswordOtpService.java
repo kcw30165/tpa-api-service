@@ -11,11 +11,16 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempote
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.otpresend.ForgotPasswordOtpResendExecutionBridge;
 import java.time.Duration;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 /** Thin OTP_RESEND integration over the repository-wide shared idempotency executor. */
 public final class IdempotentResendForgotPasswordOtpService
     implements ResendForgotPasswordOtpUseCase {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IdempotentResendForgotPasswordOtpService.class);
+
   private final IdempotencyExecutor executor;
   private final ForgotPasswordOtpResendProtectedOperation operation;
   private final ForgotPasswordOtpResendExecutionBridge responses;
@@ -56,6 +61,7 @@ public final class IdempotentResendForgotPasswordOtpService
     return executor
         .execute(execution)
         .map(result -> route(result.lifecycleOutcome(), result.terminalResponse()))
+        .doOnError(cause -> logFailure(command, cause))
         .onErrorReturn(simple(ResendForgotPasswordOtpStatus.SYSTEM_FAILED));
   }
 
@@ -88,6 +94,13 @@ public final class IdempotentResendForgotPasswordOtpService
       case FAILED_EXISTING -> simple(ResendForgotPasswordOtpStatus.PREVIOUS_FAILED);
       case UNKNOWN_OUTCOME_EXISTING -> simple(ResendForgotPasswordOtpStatus.UNKNOWN_OUTCOME);
     };
+  }
+
+  private static void logFailure(ResendForgotPasswordOtpCommand command, Throwable cause) {
+    LOGGER.error(
+        "event=forgot-password.resend.failed requestId={} stage=idempotency exceptionType={}",
+        command.requestId(),
+        cause.getClass().getSimpleName());
   }
 
   private ResendForgotPasswordOtpResult simple(ResendForgotPasswordOtpStatus status) {

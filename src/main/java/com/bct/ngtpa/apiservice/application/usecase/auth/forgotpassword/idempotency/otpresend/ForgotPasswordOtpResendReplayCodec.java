@@ -105,14 +105,27 @@ public final class ForgotPasswordOtpResendReplayCodec {
 
   private static boolean requiresProtectedReplay(ResendForgotPasswordOtpStatus status) {
     return switch (status) {
-      case RESENT, COMPLETED_REPLAY, COOLDOWN_ACTIVE, RESEND_LIMIT_REACHED, EXPIRED -> true;
+      case RESENT, COMPLETED_REPLAY, EXPIRED -> true;
+      default -> false;
+    };
+  }
+
+  /**
+   * Statuses whose live first response may carry the masked destination and timing. Only RESENT,
+   * COMPLETED_REPLAY and EXPIRED are replayed from protected state (see {@link
+   * #requiresProtectedReplay}); COOLDOWN_ACTIVE and RESEND_LIMIT_REACHED are safe rejections that
+   * the protected operation returns without a replay reference, so only their status is persisted.
+   */
+  private static boolean carriesTransientContinuity(ResendForgotPasswordOtpStatus status) {
+    return switch (status) {
+      case RESENT, COMPLETED_REPLAY, EXPIRED, COOLDOWN_ACTIVE, RESEND_LIMIT_REACHED -> true;
       default -> false;
     };
   }
 
   private static void validateCapturable(ResendForgotPasswordOtpResult result) {
     httpStatus(result.status());
-    if (!requiresProtectedReplay(result.status())
+    if (!carriesTransientContinuity(result.status())
         && (result.maskedDestination() != null
             || result.expiresInSeconds() != null
             || result.resendCooldownSeconds() != null
