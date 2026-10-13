@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 
 public class YamlNoticeTemplateRegistryAdapter implements NoticeTemplateRegistryPort {
 
-  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{([a-zA-Z0-9_]+)}");
+  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{(\\w+)}");
   private static final String DEFAULT_LOCALE = "en";
   private static final String TTL_UNIT_PLACEHOLDER = "ttlUnit";
 
@@ -92,21 +92,41 @@ public class YamlNoticeTemplateRegistryAdapter implements NoticeTemplateRegistry
       String channelName) {
     String wanted = requested == null ? "" : requested.trim();
     if (!wanted.isEmpty()) {
-      String wantedCanonical = canonical(wanted);
-      for (String candidate : available) {
-        if (canonical(candidate).equals(wantedCanonical)) {
-          return candidate;
-        }
+      String exact = findExactLocale(available, canonical(wanted));
+      if (exact != null) {
+        return exact;
       }
-      String wantedLanguage = languageOf(wanted);
-      if (!wantedLanguage.isEmpty()) {
-        for (String candidate : available) {
-          if (languageOf(candidate).equals(wantedLanguage)) {
-            return candidate;
-          }
-        }
+      String sameLanguage = findLanguageLocale(available, languageOf(wanted));
+      if (sameLanguage != null) {
+        return sameLanguage;
       }
     }
+    return defaultLocaleOrThrow(available, wanted, messageType, channelName);
+  }
+
+  private String findExactLocale(Set<String> available, String wantedCanonical) {
+    for (String candidate : available) {
+      if (canonical(candidate).equals(wantedCanonical)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  private String findLanguageLocale(Set<String> available, String wantedLanguage) {
+    if (wantedLanguage.isEmpty()) {
+      return null;
+    }
+    for (String candidate : available) {
+      if (languageOf(candidate).equals(wantedLanguage)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  private String defaultLocaleOrThrow(
+      Set<String> available, String wanted, MessageDeliveryType messageType, String channelName) {
     if (available.contains(DEFAULT_LOCALE)) {
       return DEFAULT_LOCALE;
     }

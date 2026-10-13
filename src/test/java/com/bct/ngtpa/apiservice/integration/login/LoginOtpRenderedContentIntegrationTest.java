@@ -303,21 +303,21 @@ class LoginOtpRenderedContentIntegrationTest {
     Chain(NoticeTemplateProperties properties, LoginPreAuthContext context) {
       this.context = context;
       this.registry = new YamlNoticeTemplateRegistryAdapter(properties);
-      SmsSenderPort sms =
+      SmsSenderPort smsSender =
           message -> {
             smsCalls.incrementAndGet();
             this.sms.set(message);
             return Mono.just(
                 new SenderResult(SenderStatus.ACCEPTED, "provider-sms-id", null, null));
           };
-      EmailSenderPort email =
+      EmailSenderPort emailSender =
           message -> {
             emailCalls.incrementAndGet();
             this.email.set(message);
             return Mono.just(
                 new SenderResult(SenderStatus.ACCEPTED, "provider-email-id", null, null));
           };
-      this.delivery = new MessageDeliveryAdapter(sms, email);
+      this.delivery = new MessageDeliveryAdapter(smsSender, emailSender);
     }
 
     SendLoginOtpStatus send(int ttlSeconds, String locale) {

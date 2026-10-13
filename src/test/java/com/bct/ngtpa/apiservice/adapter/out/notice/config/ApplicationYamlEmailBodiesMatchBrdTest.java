@@ -22,8 +22,6 @@ import org.springframework.core.io.FileSystemResource;
  */
 class ApplicationYamlEmailBodiesMatchBrdTest {
 
-  private static final String RULE = "-".repeat(60);
-
   /** Outlook keeps the line break after a line that ends in three spaces. */
   private static final String OTP_LINE_END = " ".repeat(3);
 
