@@ -118,7 +118,10 @@ class IdempotentRequestUsernameRecoveryServiceTest {
 
   private static UsernameRecoveryRequestCommand command() {
     return new UsernameRecoveryRequestCommand(
-        new AuthFlowSessionId("afs_1"), new UsernameRecoverySchemeRef("sch_1"), "idem_12345678");
+        new AuthFlowSessionId("afs_1"),
+        new UsernameRecoverySchemeRef("sch_1"),
+        "idem_12345678",
+        null);
   }
 
   private static UsernameRecoveryRequestResult simple() {

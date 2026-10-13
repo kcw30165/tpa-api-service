@@ -181,7 +181,7 @@ public final class UsernameRecoveryRequestProtectedOperation {
                       ? maskingService.maskEmail(context.verifiedDestination().value())
                       : maskingService.maskMobile(context.verifiedDestination().value());
               MessageDeliveryCommand delivery =
-                  buildDeliveryCommand(context, candidate, effective, correlationId);
+                  buildDeliveryCommand(context, candidate, effective, correlationId, command);
               return messageDeliveryPort
                   .deliver(delivery)
                   .switchIfEmpty(
@@ -304,12 +304,13 @@ public final class UsernameRecoveryRequestProtectedOperation {
       UsernameRecoveryAuthFlowContext context,
       UsernameRecoverySessionCandidate candidate,
       UsernameRecoveryEffectiveDestinationResult effective,
-      String correlationId) {
+      String correlationId,
+      UsernameRecoveryRequestCommand requestCommand) {
     MessageDeliveryChannel channel =
         effective.channel() == UsernameRecoveryVerifiedDestination.Channel.EMAIL
             ? MessageDeliveryChannel.EMAIL
             : MessageDeliveryChannel.SMS;
-    String locale = context.language().toLanguageTag();
+    String locale = requestCommand.languageOr(context.language()).toLanguageTag();
     NoticeTemplateDefinition definition =
         noticeTemplateRegistryPort.resolve(MessageDeliveryType.USERNAME_RECOVERY, channel, locale);
     Map<String, String> variables = new LinkedHashMap<>();

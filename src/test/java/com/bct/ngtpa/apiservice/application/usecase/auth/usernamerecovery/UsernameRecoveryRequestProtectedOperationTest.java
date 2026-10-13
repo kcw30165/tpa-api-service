@@ -320,7 +320,7 @@ class UsernameRecoveryRequestProtectedOperationTest {
 
   private static UsernameRecoveryRequestCommand command(String ref) {
     return new UsernameRecoveryRequestCommand(
-        new AuthFlowSessionId(SESSION), new UsernameRecoverySchemeRef(ref), "idem_key_1234");
+        new AuthFlowSessionId(SESSION), new UsernameRecoverySchemeRef(ref), "idem_key_1234", null);
   }
 
   private void resetAvailable() {

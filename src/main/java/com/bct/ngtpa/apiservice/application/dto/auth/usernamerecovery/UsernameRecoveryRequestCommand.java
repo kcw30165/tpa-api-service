@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery;
 
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -20,6 +21,10 @@ import java.util.Objects;
  * identity}. The Scheme-Ref keeps its committed typed {@link UsernameRecoverySchemeRef}
  * representation. No raw CSRF is carried.
  *
+ * <p>{@code language} is the language of this {@code /request} call (its {@code Accept-Language}).
+ * It is null when the call names none, and the notice is then rendered in the language that START
+ * stored in the session. It is not part of the idempotency fingerprint.
+ *
  * <p>Invariants: {@code authFlowSessionId}, {@code schemeRef}, and {@code idempotencyKey} are
  * required; the idempotency key is trimmed and nonblank (its case is preserved). {@link
  * #toString()} never discloses the session id, the opaque Scheme-Ref, or the idempotency key.
@@ -27,7 +32,8 @@ import java.util.Objects;
 public record UsernameRecoveryRequestCommand(
     AuthFlowSessionId authFlowSessionId,
     UsernameRecoverySchemeRef schemeRef,
-    String idempotencyKey) {
+    String idempotencyKey,
+    Locale language) {
 
   public UsernameRecoveryRequestCommand {
     Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null");
@@ -38,6 +44,14 @@ public record UsernameRecoveryRequestCommand(
       throw new IllegalArgumentException(
           "username recovery request command idempotencyKey must not be blank");
     }
+  }
+
+  /**
+   * The language to render the notice in: the language of this request when it carries one,
+   * otherwise {@code stored}, the language that START kept in the protected session context.
+   */
+  public Locale languageOr(Locale stored) {
+    return language != null ? language : stored;
   }
 
   @Override
