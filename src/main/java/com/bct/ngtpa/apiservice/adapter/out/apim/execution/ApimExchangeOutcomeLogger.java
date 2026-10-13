@@ -3,8 +3,10 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.execution;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -23,6 +25,8 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 public class ApimExchangeOutcomeLogger {
+
+  private static final int MAX_CAUSE_DEPTH = 16;
 
   private final LoggingSanitizer loggingSanitizer;
   private final ObjectMapper objectMapper;
@@ -50,6 +54,14 @@ public class ApimExchangeOutcomeLogger {
     Map<String, Object> event = baseEvent("apim.exchange.failed", request, requestId);
     event.put("exceptionType", error.getClass().getSimpleName());
     event.put("errorMessage", loggingSanitizer.sanitizeText(error.getMessage()));
+    Throwable innermost = rootCause(error);
+    if (innermost != error) {
+      event.put("rootCauseType", innermost.getClass().getSimpleName());
+    }
+    String fieldPath = jsonPath(error);
+    if (fieldPath != null) {
+      event.put("jsonPath", fieldPath);
+    }
     log.error("{}", toJson(event));
   }
 
@@ -80,6 +92,50 @@ public class ApimExchangeOutcomeLogger {
     event.put("databaseScope", request.databaseScope().name());
     event.put("retryEligibility", request.retryEligibility().name());
     return event;
+  }
+
+  private static Throwable rootCause(Throwable error) {
+    Throwable current = error;
+    for (int depth = 0; depth < MAX_CAUSE_DEPTH; depth++) {
+      Throwable cause = current.getCause();
+      if (cause == null || cause == current) {
+        break;
+      }
+      current = cause;
+    }
+    return current;
+  }
+
+  /**
+   * Field names and array indexes of the first JSON mapping failure in the cause chain, for example
+   * {@code response.data[0].fundDtl[0].chin-fund-fact-sheet}. Built from the path references only:
+   * the exception message is never used, because Jackson messages can contain response values.
+   */
+  private static String jsonPath(Throwable error) {
+    Throwable current = error;
+    for (int depth = 0; current != null && depth <= MAX_CAUSE_DEPTH; depth++) {
+      if (current instanceof JsonMappingException mapping) {
+        return formatPath(mapping.getPath());
+      }
+      Throwable cause = current.getCause();
+      current = cause == current ? null : cause;
+    }
+    return null;
+  }
+
+  private static String formatPath(List<JsonMappingException.Reference> path) {
+    StringBuilder text = new StringBuilder();
+    for (JsonMappingException.Reference reference : path) {
+      if (reference.getFieldName() != null) {
+        if (text.length() > 0) {
+          text.append('.');
+        }
+        text.append(reference.getFieldName());
+      } else if (reference.getIndex() >= 0) {
+        text.append('[').append(reference.getIndex()).append(']');
+      }
+    }
+    return text.length() == 0 ? null : text.toString();
   }
 
   private String toJson(Object obj) {

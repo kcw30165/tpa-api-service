@@ -6,9 +6,12 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimPayloadFieldTransformer;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimRsaPayloadCrypto;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
 import java.security.SecureRandom;
@@ -73,14 +76,12 @@ public class ApimPayloadCryptoService {
       return parseJson(responseJson, targetType);
     }
 
+    JsonNode transformedNode =
+        decryptResponseFields(readResponseTree(responseJson), targetFields, publicKey);
     try {
-      JsonNode sourceNode = objectMapper.readTree(responseJson);
-      JsonNode transformedNode =
-          apimPayloadFieldTransformer.transformFields(
-              sourceNode, targetFields, fieldValue -> decryptField(fieldValue, publicKey));
       return objectMapper.treeToValue(transformedNode, targetType);
-    } catch (Exception ex) {
-      throw new ApimCryptoException("Failed to decrypt APIM response payload.", ex);
+    } catch (JsonProcessingException | RuntimeException ex) {
+      throw new ApimResponseMappingException(ex);
     }
   }
 
@@ -98,22 +99,25 @@ public class ApimPayloadCryptoService {
       return parseJson(responseJson, targetType);
     }
 
+    JsonNode transformedNode =
+        decryptResponseFields(readResponseTree(responseJson), targetFields, publicKey);
     try {
-      JsonNode sourceNode = objectMapper.readTree(responseJson);
-      JsonNode transformedNode =
-          apimPayloadFieldTransformer.transformFields(
-              sourceNode, targetFields, fieldValue -> decryptField(fieldValue, publicKey));
       return objectMapper.readValue(transformedNode.traverse(), targetType);
-    } catch (Exception ex) {
-      throw new ApimCryptoException("Failed to decrypt APIM response payload.", ex);
+    } catch (IOException | RuntimeException ex) {
+      throw new ApimResponseMappingException(ex);
     }
   }
 
   private <T> T parseJson(String sourceJson, JavaType targetType) {
     try {
       return objectMapper.readValue(sourceJson, targetType);
-    } catch (Exception ex) {
-      throw new ApimCryptoException("Failed to parse APIM response payload.", ex);
+    } catch (JsonMappingException ex) {
+      if (!StringUtils.hasText(sourceJson)) {
+        throw parseFailure(ex);
+      }
+      throw new ApimResponseMappingException(ex);
+    } catch (JsonProcessingException | RuntimeException ex) {
+      throw parseFailure(ex);
     }
   }
 
@@ -141,6 +145,28 @@ public class ApimPayloadCryptoService {
     } catch (Exception ex) {
       throw new ApimCryptoException("Failed to transform APIM payload.", ex);
     }
+  }
+
+  private JsonNode readResponseTree(String responseJson) {
+    try {
+      return objectMapper.readTree(responseJson);
+    } catch (JsonProcessingException | RuntimeException ex) {
+      throw parseFailure(ex);
+    }
+  }
+
+  private JsonNode decryptResponseFields(
+      JsonNode sourceNode, Set<String> targetFields, PublicKey publicKey) {
+    try {
+      return apimPayloadFieldTransformer.transformFields(
+          sourceNode, targetFields, fieldValue -> decryptField(fieldValue, publicKey));
+    } catch (RuntimeException ex) {
+      throw new ApimCryptoException("Failed to decrypt APIM response payload.", ex);
+    }
+  }
+
+  private static ApimCryptoException parseFailure(Exception cause) {
+    return new ApimCryptoException("Failed to parse APIM response payload.", cause);
   }
 
   private String encryptField(String plainText, PublicKey publicKey) {
@@ -212,8 +238,13 @@ public class ApimPayloadCryptoService {
   private <T> T parseJson(String sourceJson, Class<T> targetType) {
     try {
       return objectMapper.readValue(sourceJson, targetType);
-    } catch (Exception ex) {
-      throw new ApimCryptoException("Failed to parse APIM response payload.", ex);
+    } catch (JsonMappingException ex) {
+      if (!StringUtils.hasText(sourceJson)) {
+        throw parseFailure(ex);
+      }
+      throw new ApimResponseMappingException(ex);
+    } catch (JsonProcessingException | RuntimeException ex) {
+      throw parseFailure(ex);
     }
   }
 
