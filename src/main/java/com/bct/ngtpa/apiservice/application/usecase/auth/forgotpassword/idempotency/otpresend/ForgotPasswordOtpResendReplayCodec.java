@@ -94,8 +94,8 @@ public final class ForgotPasswordOtpResendReplayCodec {
   public static int httpStatus(ResendForgotPasswordOtpStatus status) {
     return switch (status) {
       case RESENT, COMPLETED_REPLAY -> 200;
-      case COOLDOWN_ACTIVE -> 429;
-      case RESEND_LIMIT_REACHED, EXPIRED, AUTH_FLOW_INVALID -> 422;
+      case COOLDOWN_ACTIVE, RESEND_LIMIT_REACHED -> 429;
+      case EXPIRED, AUTH_FLOW_INVALID -> 422;
       case SECURITY_REJECTED -> 403;
       case IDEMPOTENCY_KEY_REUSED -> 409;
       case DELIVERY_FAILED -> 502;

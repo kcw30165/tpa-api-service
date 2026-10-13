@@ -125,7 +125,7 @@ class ForgotPasswordOtpResendReplayCodecCooldownFailFirstTest {
 
   @Test
   void captureResendLimitReachedWithoutReferenceSucceeds() {
-    assertCapturedWithoutReference(resendLimitReached(), 422);
+    assertCapturedWithoutReference(resendLimitReached(), 429);
   }
 
   @Test
@@ -147,7 +147,7 @@ class ForgotPasswordOtpResendReplayCodecCooldownFailFirstTest {
 
   @Test
   void hydrateResendLimitReachedWithoutReferenceReturnsStatusOnly() {
-    assertHydratedStatusOnly(ResendForgotPasswordOtpStatus.RESEND_LIMIT_REACHED, 422);
+    assertHydratedStatusOnly(ResendForgotPasswordOtpStatus.RESEND_LIMIT_REACHED, 429);
   }
 
   @Test
