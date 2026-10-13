@@ -258,3 +258,7 @@ NEXT_PHASE_BLOCKED_PENDING_ARCHITECT_DECISION=YES
 ## Production response contract correction
 
 Corrected the public Account Balance response to preserve the approved structured `accountOverview` object containing `displayOptions`, `displayAccounts[]`, and `accountTotals`. The existing raw overview aggregation, visibility flags, deterministic Display Account ordering, localized labels, and totals are now carried through the application and web response boundaries instead of being flattened. `factsheetUrl` was also removed from Fund Level View nested Sub-Display-Account leaves while remaining on both legitimate Fund node shapes. Controller, serialization, assembler integration, architecture guards, the FE-BFF API example, and the Phase IV-007 ratification now lock the same contract. No APIM transport, currency, authentication, selected-account, or error behavior changed.
+
+## Chinese fact sheet link (2026-10-13)
+
+Mapped the new `TRPGetMemberAccBal` field `fundDtl.chin-fund-fact-sheet` through `AccountBalanceFundDetail` and `RawAccountBalanceFundDetail` (`chineseFundFactsheet`); every record construction was updated and no backward-compatible constructor was added. `DefaultAccountBalanceAssembler` selects `factsheetUrl` in both portfolio views: `zh_HK` prefers the Chinese link and falls back to `fund-fact-sheet` when it is absent, blank or malformed; other languages use `fund-fact-sheet` only. `AccountBalanceFactsheetResolver` is unchanged. This also fixes the HTTP 503 caused by the unmapped field. Branch `fix/account-balance-chin-fund-fact-sheet`.

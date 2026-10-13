@@ -55,7 +55,7 @@ TAS already rounds returned numbers. Java aggregates exact `BigDecimal` values a
 
 ## Factsheet
 
-A nonblank syntactically valid absolute URL is returned. A blank or malformed value is omitted; malformed values are safely logged without the full URL.
+`factsheetUrl` is chosen per fund from `TRPGetMemberAccBal` `fundDtl`. When the request language resolves to `zh_HK` (`Accept-Language` `zh`, `zh-HK` or `zh_HK`), `chin-fund-fact-sheet` is used if it is a nonblank, syntactically valid absolute URL; otherwise (absent, blank or malformed) `fund-fact-sheet` is used. Every other language uses `fund-fact-sheet` only and never falls back to the Chinese link. Each candidate is validated by `AccountBalanceFactsheetResolver`: a blank value is omitted silently, a malformed value is omitted and logged without the URL. When no candidate is valid, `factsheetUrl` is omitted. The same rule applies to the Fund Level View and the Sub-Display-Account Level View.
 
 ## Phase I Repository Ratification
 

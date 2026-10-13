@@ -30,7 +30,8 @@ class DefaultAccountBalanceAssemblerIntegrationTest {
                     new BigDecimal("10.5000"),
                     "HKD",
                     new BigDecimal("1.0000"),
-                    "https://example.test/f1")),
+                    "https://example.test/f1",
+                    null)),
             List.of(
                 new RawAccountBalanceHolding(
                     "EE",

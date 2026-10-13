@@ -10,4 +10,5 @@ public record RawAccountBalanceFundDetail(
     BigDecimal fundPrice,
     String fundCurrency,
     BigDecimal exchangeRate,
-    String fundFactsheet) {}
+    String fundFactsheet,
+    String chineseFundFactsheet) {}

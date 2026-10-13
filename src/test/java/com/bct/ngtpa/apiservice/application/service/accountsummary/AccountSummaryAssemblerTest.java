@@ -278,7 +278,7 @@ class AccountSummaryAssemblerTest {
   private static RawAccountBalanceFundDetail fundDetail(
       String fundCode, String name, String chineseName) {
     return new RawAccountBalanceFundDetail(
-        fundCode, name, chineseName, 1, BigDecimal.ONE, "HKD", BigDecimal.ONE, null);
+        fundCode, name, chineseName, 1, BigDecimal.ONE, "HKD", BigDecimal.ONE, null, null);
   }
 
   private static AccountGainLossResult gainLossResult(AccountGainLossFund... funds) {

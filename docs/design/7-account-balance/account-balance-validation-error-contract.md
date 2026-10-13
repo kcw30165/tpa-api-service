@@ -23,7 +23,7 @@ These exact approved pairings are locked by tests.
 
 All other errors map to HTTP 503, `SYSTEM_ERROR`, `err.system.unavailable`, including TAS required-field errors, ReferenceDate failure, APIM failure, invalid array cardinality, join violations, visible missing/sentinel values, metadata failures, and missing effective precision.
 
-Malformed factsheet URL is the exception: log safely, omit, continue success.
+Malformed factsheet URL is the exception: log safely, omit, continue success. For `zh_HK`, a malformed `chin-fund-fact-sheet` is logged and `fund-fact-sheet` is used instead.
 
 ## Account Balance header profile
 

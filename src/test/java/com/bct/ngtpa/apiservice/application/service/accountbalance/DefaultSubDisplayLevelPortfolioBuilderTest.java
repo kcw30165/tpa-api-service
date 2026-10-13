@@ -116,7 +116,7 @@ class DefaultSubDisplayLevelPortfolioBuilderTest {
 
     static RawAccountBalanceFundDetail fund(String c, Integer q) {
       return new RawAccountBalanceFundDetail(
-          c, "N", "中", q, BigDecimal.ONE, "HKD", BigDecimal.ONE, "raw");
+          c, "N", "中", q, BigDecimal.ONE, "HKD", BigDecimal.ONE, "raw", null);
     }
 
     static RawAccountBalanceHolding hold(String d, String s, String f, String u, String n) {

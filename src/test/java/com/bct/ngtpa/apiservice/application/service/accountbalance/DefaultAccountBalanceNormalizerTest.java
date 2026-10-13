@@ -117,7 +117,7 @@ class DefaultAccountBalanceNormalizerTest {
   private static RawAccountBalanceFundDetail fund(
       String code, String price, String rate, String factsheet) {
     return new RawAccountBalanceFundDetail(
-        code, "Fund", "基金", 1, new BigDecimal(price), "HKD", new BigDecimal(rate), factsheet);
+        code, "Fund", "基金", 1, new BigDecimal(price), "HKD", new BigDecimal(rate), factsheet, null);
   }
 
   private static RawAccountBalanceHolding holding(

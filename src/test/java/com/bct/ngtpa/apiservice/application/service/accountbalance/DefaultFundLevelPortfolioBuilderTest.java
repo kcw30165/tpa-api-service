@@ -114,7 +114,7 @@ class DefaultFundLevelPortfolioBuilderTest {
 
   private static RawAccountBalanceFundDetail fund(String c, Integer q) {
     return new RawAccountBalanceFundDetail(
-        c, "N", "中", q, BigDecimal.ONE, "HKD", BigDecimal.ONE, "raw");
+        c, "N", "中", q, BigDecimal.ONE, "HKD", BigDecimal.ONE, "raw", null);
   }
 
   private static RawAccountBalanceHolding holding(

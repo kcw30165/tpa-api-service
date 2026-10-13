@@ -106,7 +106,8 @@ public final class ApimAccountBalanceSourceAdapter implements AccountBalanceSour
                         v.fundPrice(),
                         v.fundCurrency(),
                         v.exchangeRate(),
-                        v.fundFactsheet()))
+                        v.fundFactsheet(),
+                        v.chineseFundFactsheet()))
             .toList(),
         x.accountBalances().stream()
             .map(
