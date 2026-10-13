@@ -221,6 +221,35 @@ class UsernameRecoveryRequestProtectedOperationTest {
   }
 
   @Test
+  void anEnglishRequestLanguageOverridesAChineseLanguageStoredByStart() {
+    sessions.snapshot = snapshot(contextWithLanguage(Locale.forLanguageTag("zh-HK")));
+    StepVerifier.create(execute(commandWithRequestLanguage(REF, Locale.ENGLISH), CSRF, null))
+        .expectNextCount(1)
+        .verifyComplete();
+    assertThat(templates.lastType).isEqualTo(MessageDeliveryType.USERNAME_RECOVERY);
+    assertThat(templates.lastChannel).isEqualTo(MessageDeliveryChannel.EMAIL);
+    assertThat(templates.lastLocale).isEqualTo("en");
+    assertThat(deliveries.lastCommand.locale()).isEqualTo("en");
+    assertThat(deliveries.lastCommand.subject()).isEqualTo("subject");
+    assertThat(deliveries.lastCommand.body()).isEqualTo("body");
+  }
+
+  @Test
+  void aChineseRequestLanguageOverridesAnEnglishLanguageStoredByStart() {
+    sessions.snapshot = snapshot(contextWithLanguage(Locale.ENGLISH));
+    StepVerifier.create(
+            execute(commandWithRequestLanguage(REF, Locale.forLanguageTag("zh-HK")), CSRF, null))
+        .expectNextCount(1)
+        .verifyComplete();
+    assertThat(templates.lastType).isEqualTo(MessageDeliveryType.USERNAME_RECOVERY);
+    assertThat(templates.lastChannel).isEqualTo(MessageDeliveryChannel.EMAIL);
+    assertThat(templates.lastLocale).isEqualTo("zh-HK");
+    assertThat(deliveries.lastCommand.locale()).isEqualTo("zh-HK");
+    assertThat(deliveries.lastCommand.subject()).isEqualTo("subject");
+    assertThat(deliveries.lastCommand.body()).isEqualTo("body");
+  }
+
+  @Test
   void resolvesTemplateOnEveryRequestNotOnceAtConstruction() {
     StepVerifier.create(execute(CSRF, null)).expectNextCount(1).verifyComplete();
     assertThat(templates.resolveCalls).isEqualTo(1);
@@ -321,6 +350,15 @@ class UsernameRecoveryRequestProtectedOperationTest {
   private static UsernameRecoveryRequestCommand command(String ref) {
     return new UsernameRecoveryRequestCommand(
         new AuthFlowSessionId(SESSION), new UsernameRecoverySchemeRef(ref), "idem_key_1234", null);
+  }
+
+  private static UsernameRecoveryRequestCommand commandWithRequestLanguage(
+      String ref, Locale requestLanguage) {
+    return new UsernameRecoveryRequestCommand(
+        new AuthFlowSessionId(SESSION),
+        new UsernameRecoverySchemeRef(ref),
+        "idem_key_1234",
+        requestLanguage);
   }
 
   private void resetAvailable() {
