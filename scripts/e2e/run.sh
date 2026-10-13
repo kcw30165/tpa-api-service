@@ -5,7 +5,7 @@ source "$BASE/lib/runtime.sh"; source "$BASE/lib/preflight.sh"; source "$BASE/li
 source "$BASE/lib/private-runtime-state.sh"
 source "$BASE/lib/authenticated-login-journey.sh"
 : "${E2E_SCENARIO_PACK:=platform}"; : "${E2E_SCENARIO_ID:=controlled-assertion-self-test}"
-case "$E2E_SCENARIO_PACK/$E2E_SCENARIO_ID" in platform/readiness|platform/controlled-assertion-self-test|login/missing-request-id|login/missing-idempotency-key|login/invalid-request|login/valid-start|login/otp-send|login/otp-send-and-verify|login/otp-send-and-invalid-verify|login/otp-send-and-resend|login/start-and-cancel|login/otp-send-verify-and-logout|contributions/list-authenticated|account-balance/list-authenticated) ;; *) printf 'ERROR unknown or pending scenario\n' >&2; exit 2;; esac
+case "$E2E_SCENARIO_PACK/$E2E_SCENARIO_ID" in platform/readiness|platform/controlled-assertion-self-test|login/missing-request-id|login/missing-idempotency-key|login/invalid-request|login/valid-start|login/otp-send|login/otp-send-and-verify|login/otp-send-and-invalid-verify|login/otp-send-and-resend|login/start-and-cancel|login/otp-send-verify-and-logout|contributions/list-authenticated|account-balance/list-authenticated|forgot-password/resend-cooldown|forgot-password/resend-limit) ;; *) printf 'ERROR unknown or pending scenario\n' >&2; exit 2;; esac
 [[ "$E2E_SCENARIO_ID" == controlled-assertion-self-test ]] || preflight
 create_evidence_dir
 printf 'environment=%s\npack=%s\nscenario=%s\nbootstrap=%s\n' "$E2E_ENVIRONMENT" "$E2E_SCENARIO_PACK" "$E2E_SCENARIO_ID" "$E2E_BOOTSTRAP_MODE" >"$E2E_RUN_EVIDENCE_DIR/001-preflight.txt"
