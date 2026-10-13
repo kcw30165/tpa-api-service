@@ -1957,41 +1957,19 @@ BRD. They were checked against the three BRD documents (E0001 Registration, E000
 Password, E0003 Username Recovery) and gave two changes: the layout of the e-mail bodies, and the
 language Username Recovery renders its notice in.
 
-### F.1 E-mail body layout (script 213, `a5d4c13c`)
+### F.1 E-mail body layout — final BRD-aligned state (validated 2026-10-13)
 
-- The BRD documents are Word files. Each paragraph is a line, each empty paragraph is a blank line,
-  and the line starting `RE:` (English) or the line starting the Chinese `關於` carries a bottom
-  border, a horizontal rule. The eight e-mail bodies in `application.yml` (`registration-otp`,
-  `login-otp`, `forgot-password-otp` and `username-recovery`, each in `en` and `zh_HK`) now follow
-  that. Subjects, SMS templates, placeholders and the `{ttlValue}`/`{ttlUnit}` wording are
-  unchanged.
-- The rule becomes a separator line of 60 hyphens directly under that line. A Word border has no
-  character length, so the length is a choice; the script takes it as a parameter and the new test
-  follows the same value.
-- Registration: a separator and a blank line after the `RE:`/`關於` line, no blank line between the
-  one-time-password line and the expiry line, and a blank line after the company name.
-- Login and Forgot Password (one text): a separator and a blank line after the `RE:`/`關於` line, and
-  a blank line after the last line of the signature block.
-- Username Recovery: a separator after the `RE:`/`關於` line (a blank line already followed it), a
-  blank line after the sentence that introduces the username, and a blank line after the last line
-  of the signature block.
-- The Chinese subjects of Login, Forgot Password and Username Recovery already carried no trust
-  code, as in the BRD. A test now pins that.
+- The BRD documents are Word files. Each paragraph is a line, each empty paragraph is a blank line, and the line starting `RE:` (English) or the Chinese `關於` line carries a bottom border. In the plain-text e-mail templates that border is represented by a separator line of 60 hyphens directly below the `RE:`/`關於` line. A Word border has no character length, so 60 characters is an implementation choice pinned by the tests.
+- Registration: a separator and a blank line follow the `RE:`/`關於` line. The English OTP line is followed directly by the expiry line, with no empty line between them, and a blank line follows the company name.
+- Login and Forgot Password intentionally use the same notice text. A separator and a blank line follow the `RE:`/`關於` line, and a blank line follows the last line of the signature block. In the English bodies the OTP line is followed directly by the expiry line, with no empty line between them.
+- Username Recovery: a separator follows the `RE:`/`關於` line, a blank line follows the sentence that introduces the username, and a blank line follows the last line of the signature block.
+- The Login, Forgot Password and Username Recovery Chinese e-mail subjects include `{trustCode}`, matching the BRD. English and Chinese subjects use the same trust code from the member context.
+- The English SMS templates of Login, Forgot Password and Username Recovery use the `BCT-{trustCode}:` prefix. Registration's SMS wording remains its Registration-specific BRD wording.
+- Registration, Login and Forgot Password English OTP lines end in **exactly three trailing spaces**. Outlook was manually verified to preserve the line break before the expiry line with those spaces; without them Outlook removes the single plain-text line break and joins the OTP and expiry text.
+- `ApplicationYamlEmailBodiesMatchBrdTest` pins the exact BRD-aligned bodies, the three Chinese subjects and the English SMS prefixes. It uses a named three-space constant so accidental whitespace trimming fails the test. The final class contains 10 tests. The registry placeholder and rendered-content tests also require `{trustCode}` for the Chinese Login/Forgot Password e-mail subjects.
+- All notification variants were manually checked against the BRD after the final content update. The full Maven test suite and startup smoke test passed on the final code state before this docs-only amendment.
 
-`ApplicationYamlEmailBodiesMatchBrdTest` loads `src/main/resources/application.yml` from disk and
-asserts the exact text of all eight bodies and those three subjects (9 tests). Before the file was
-written, each body was checked against the text it was analysed against, and afterwards that no line
-outside the eight bodies changed. The gate was 60 template, renderer and rendered-content test
-classes.
-
-Known limits. The e-mail adapter sends `text/plain`, so the BRD's italic line ("[This is an
-automatically generated e-mail ...]") and a true horizontal rule are not reproduced. That needs an
-HTML part, a separate stage: a `multipart/alternative` message, an HTML body or a format flag in the
-template model, HTML escaping of the scheme name and the username, and tests.
-
-Open point. Nick's list said to insert a blank line after the English one-time-password line. The
-BRD documents have none between that line and the expiry line, and script 213 follows the documents.
-A blank line there is a three-line change if wanted.
+Known limits. The e-mail adapter sends `text/plain`, so the BRD's italic line ("[This is an automatically generated e-mail ...]") and a true horizontal rule are not reproduced. Supporting those faithfully requires an HTML-capable e-mail stage (for example, `multipart/alternative` or an HTML body), HTML escaping of substituted values, and corresponding tests.
 
 ### F.2 Username Recovery renders in the language of the `/request` call (scripts 215, 217, 218)
 
