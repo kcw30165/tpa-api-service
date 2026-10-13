@@ -263,6 +263,55 @@ class AuthUsernameRecoveryControllerTest {
   }
 
   @Test
+  void requestPassesItsAcceptLanguageToTheCommand() {
+    assertThat(commandLanguageForAcceptLanguage("zh-HK")).isEqualTo(Locale.forLanguageTag("zh-HK"));
+    assertThat(commandLanguageForAcceptLanguage("en")).isEqualTo(Locale.ENGLISH);
+  }
+
+  @Test
+  void requestWithoutAUsableAcceptLanguagePassesNoLanguageToTheCommand() {
+    assertThat(commandLanguageForAcceptLanguage(null)).isNull();
+    assertThat(commandLanguageForAcceptLanguage("   ")).isNull();
+    assertThat(commandLanguageForAcceptLanguage("*")).isNull();
+  }
+
+  private Locale commandLanguageForAcceptLanguage(String acceptLanguage) {
+    RecordingRequestUseCase requestUseCase =
+        new RecordingRequestUseCase(
+            Mono.just(
+                new UsernameRecoveryRequestResult(
+                    UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED,
+                    UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED,
+                    new UsernameRecoverySchemeRef("sch_1"),
+                    "p****c@ah.ozk",
+                    UsernameRecoveryDestinationType.EMAIL)));
+    var controller = controller(neverStart(), requestUseCase, neverCancel());
+    var response = new MockServerHttpResponse();
+    StepVerifier.create(
+            controller.request(
+                "afs_opaque",
+                "idem_124",
+                "csrf_abc",
+                "sch_1",
+                "https://portal.example",
+                "https://portal.example/ur",
+                acceptLanguage,
+                "req_124",
+                response))
+        .assertNext(
+            entity -> {
+              assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
+              assertThat(entity.getBody().success()).isTrue();
+              assertThat(entity.getBody().result().nextStep())
+                  .isEqualTo(WorkflowNextStep.SELECT_ACCOUNT);
+            })
+        .verifyComplete();
+
+    assertThat(requestUseCase.calls).hasSize(1);
+    return requestUseCase.calls.get(0).command.language();
+  }
+
+  @Test
   void requestMissingCookieReturns401() {
     var controller = controller(neverStart(), neverRequest(), neverCancel());
     StepVerifier.create(
