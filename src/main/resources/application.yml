@@ -580,21 +580,25 @@ notice-templates:
             Dear Member,
 
             RE: BCT Pension Member Portal- Account Registration
-            Your One-Time Password (OTP): {code}
+            ------------------------------------------------------------
 
+            Your One-Time Password (OTP): {code}
             This password expires in {ttlValue} {ttlUnit}.
 
             Bank Consortium Trust Company Limited
+
             [This is an automatically generated e-mail. Please do not reply to this e-mail address. Thank you for your co-operation.]
         zh_HK:
           subject: "BCT 退休金會員平台 - 帳戶登記的一次性密碼"
           body: |
             關於：BCT 銀聯集團 退休金會員平台 - 帳戶登記
-            您的一次性密碼(OTP)為：{code}
+            ------------------------------------------------------------
 
+            您的一次性密碼(OTP)為：{code}
             此密碼於{ttlValue}{ttlUnit}內有效。
 
             銀聯信託有限公司
+
             ［此乃經自動系統發出之電子郵件，請勿回覆。多謝合作。］
     login-otp:
       sms:
@@ -607,11 +611,14 @@ notice-templates:
             Dear Member,
 
             RE: {schemeName} ("the Plan")
+            ------------------------------------------------------------
+
             Your One-Time Password (OTP) for BCT Pension Member Portal is: {code}
             This password expires in {ttlValue} {ttlUnit}.
 
             Bank Consortium Trust Company Limited
             (Trustee and Administrator of the Plan)
+
             [This is an automatically generated e-mail. Please do not reply to this e-mail address. Thank you for your co-operation.]
         zh_HK:
           # NOTE: source docx Chinese subject has no trust-code placeholder,
@@ -621,11 +628,14 @@ notice-templates:
           subject: "BCT 退休計劃：成員的一次性密碼"
           body: |
             關於：{schemeNameChi}（「本計劃」）
+            ------------------------------------------------------------
+
             您的退休金會員平台的一次性密碼(OTP)為：{code}
             此密碼於{ttlValue}{ttlUnit}內有效。
 
             銀聯信託有限公司
             （本計劃的信託人及行政管理人)
+
             ［此乃經自動系統發出之電子郵件，請勿回覆。多謝合作。］
     forgot-password-otp:
       # Content intentionally identical to login-otp (resolved decision,
@@ -641,21 +651,27 @@ notice-templates:
             Dear Member,
 
             RE: {schemeName} ("the Plan")
+            ------------------------------------------------------------
+
             Your One-Time Password (OTP) for BCT Pension Member Portal is: {code}
             This password expires in {ttlValue} {ttlUnit}.
 
             Bank Consortium Trust Company Limited
             (Trustee and Administrator of the Plan)
+
             [This is an automatically generated e-mail. Please do not reply to this e-mail address. Thank you for your co-operation.]
         zh_HK:
           subject: "BCT 退休計劃：成員的一次性密碼"
           body: |
             關於：{schemeNameChi}（「本計劃」）
+            ------------------------------------------------------------
+
             您的退休金會員平台的一次性密碼(OTP)為：{code}
             此密碼於{ttlValue}{ttlUnit}內有效。
 
             銀聯信託有限公司
             （本計劃的信託人及行政管理人)
+
             ［此乃經自動系統發出之電子郵件，請勿回覆。多謝合作。］
     username-recovery:
       # No OTP/expiry per BRD notice inventory (section 3); no TTL
@@ -670,12 +686,15 @@ notice-templates:
             Dear Member,
 
             RE: {schemeName} ("the Plan")
+            ------------------------------------------------------------
 
             Your username of the above-mentioned Plan as below
+
             {username}
 
             Bank Consortium Trust Company Limited
             (Trustee and Administrator of the Plan)
+
             [This is an automatically generated e-mail. Please do not reply to this e-mail address. Thank you for your co-operation.]
         zh_HK:
           # NOTE: source docx Chinese subject has no trust-code placeholder,
@@ -685,10 +704,13 @@ notice-templates:
             親愛的成員：
 
             關於：{schemeNameChi}（「本計劃」）
+            ------------------------------------------------------------
 
             您於上述計劃的用戶名稱如下：
+
             {username}
 
             銀聯信託有限公司
             （本計劃的信託人及行政管理人)
+
             ［此乃經自動系統發出之電子郵件，請勿回覆。多謝合作。］
