@@ -21,12 +21,11 @@ import org.junit.jupiter.api.Test;
 class ExecutionLoggingAspectInvocationContextEqualsAndFactoryTest {
 
   private static Class<?> invocationContextClass() throws ClassNotFoundException {
-    for (Class<?> c : ExecutionLoggingAspect.class.getDeclaredClasses()) {
-      if (c.getSimpleName().equals("InvocationContext")) {
-        return c;
-      }
-    }
-    throw new ClassNotFoundException("InvocationContext not found");
+    // Avoid S1872 (classes should not be compared by name): InvocationContext is a
+    // private member class that cannot be referenced via a class literal from this
+    // test, so its Class<?> is constructed directly from the binary name instead of
+    // scanning getDeclaredClasses() with a getSimpleName().equals(...) check.
+    return Class.forName(ExecutionLoggingAspect.class.getName() + "$InvocationContext");
   }
 
   private static Object newContext(
