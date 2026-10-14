@@ -2,23 +2,29 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.csrf;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.csrf.RefreshCsrfTokenStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession;
-import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionCsrfRotationStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.LoadAuthenticatedSessionCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSession;
-import com.bct.ngtpa.apiservice.application.dto.session.authenticated.RotateAuthenticatedSessionCsrfHashCommand;
-import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionCsrfRotationPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionProtectorPort;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyResult;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenHasher;
 import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Objects;
+import java.util.function.UnaryOperator;
 import reactor.core.publisher.Mono;
 
-/** Validates without touching, then atomically rotates the authenticated CSRF hash. */
+/**
+ * Validates the authenticated session, then replaces only its CSRF hash through the revision-based
+ * compare-and-set of {@link AuthenticatedSessionConcurrencyService}.
+ *
+ * <p>The compare-and-set checks the stored {@code sessionRevision}, not the whole stored value, so
+ * a record whose protected attributes were serialized in another order is still updated. Lifecycle
+ * timestamps, expiry and the remaining Redis TTL are preserved. The raw token is returned only
+ * after the write is applied.
+ */
 public final class AuthenticatedSessionCsrfRefreshService {
   public record Outcome(RefreshCsrfTokenStatus status, String csrfToken) {
     public Outcome {
@@ -55,7 +61,7 @@ public final class AuthenticatedSessionCsrfRefreshService {
 
   private final AuthenticatedSessionPort sessions;
   private final AuthenticatedSessionProtectorPort protector;
-  private final AuthenticatedSessionCsrfRotationPort rotations;
+  private final AuthenticatedSessionConcurrencyService concurrency;
   private final CsrfTokenGenerator tokenGenerator;
   private final CsrfTokenHasher tokenHasher;
   private final Clock clock;
@@ -63,13 +69,13 @@ public final class AuthenticatedSessionCsrfRefreshService {
   public AuthenticatedSessionCsrfRefreshService(
       AuthenticatedSessionPort sessions,
       AuthenticatedSessionProtectorPort protector,
-      AuthenticatedSessionCsrfRotationPort rotations,
+      AuthenticatedSessionConcurrencyService concurrency,
       CsrfTokenGenerator tokenGenerator,
       CsrfTokenHasher tokenHasher,
       Clock clock) {
     this.sessions = Objects.requireNonNull(sessions);
     this.protector = Objects.requireNonNull(protector);
-    this.rotations = Objects.requireNonNull(rotations);
+    this.concurrency = Objects.requireNonNull(concurrency);
     this.tokenGenerator = Objects.requireNonNull(tokenGenerator);
     this.tokenHasher = Objects.requireNonNull(tokenHasher);
     this.clock = Objects.requireNonNull(clock);
@@ -88,77 +94,56 @@ public final class AuthenticatedSessionCsrfRefreshService {
         .flatMap(
             optional ->
                 optional
-                    .map(protectedSession -> rotate(protectedSession, correlationId))
+                    .map(envelope -> rotate(sessionId, envelope, correlationId))
                     .orElseGet(
                         () -> Mono.just(Outcome.failure(RefreshCsrfTokenStatus.SESSION_MISSING))))
         .onErrorReturn(Outcome.failure(RefreshCsrfTokenStatus.SYSTEM_FAILURE));
   }
 
   private Mono<Outcome> rotate(
-      ProtectedAuthenticatedSession expectedProtectedSession, String correlationId) {
+      AuthenticatedSessionId sessionId,
+      ProtectedAuthenticatedSession envelope,
+      String correlationId) {
     AuthenticatedSession current;
     try {
-      current = protector.unprotect(expectedProtectedSession);
+      current = protector.unprotect(envelope);
     } catch (RuntimeException exception) {
       return Mono.just(Outcome.failure(RefreshCsrfTokenStatus.SESSION_INVALID));
     }
-
-    Instant now = clock.instant();
-    if (!current.isUsable(now)) {
+    if (!current.isUsable(clock.instant())) {
       return Mono.just(Outcome.failure(RefreshCsrfTokenStatus.SESSION_NOT_USABLE));
     }
 
     String rawToken = tokenGenerator.generate();
     String replacementHash = tokenHasher.hash(rawToken);
-    // Carries the loaded session's existing revision forward unchanged: this mutation goes
-    // through the existing CSRF-specific compare-and-set port
-    // (AuthenticatedSessionCsrfRotationPort),
-    // not the new generic AuthenticatedSessionCasUpdatePort, per the ratified decision not to
-    // refactor working login/CSRF code in this delivery.
-    AuthenticatedSession replacement =
+    return concurrency
+        .updateIfUsable(sessionId, withCsrfHash(replacementHash), correlationId)
+        .map(result -> toOutcome(result, rawToken));
+  }
+
+  private static UnaryOperator<AuthenticatedSession> withCsrfHash(String csrfTokenHash) {
+    return session ->
         new AuthenticatedSession(
-            current.authenticatedSessionId(),
-            current.actorContext(),
-            current.accounts(),
-            current.status(),
-            replacementHash,
-            current.createdAt(),
-            current.lastAccessedAt(),
-            current.idleExpiresAt(),
-            current.absoluteExpiresAt(),
-            current.revision(),
-            current.fundPriceModeMetadata());
+            session.authenticatedSessionId(),
+            session.actorContext(),
+            session.accounts(),
+            session.status(),
+            csrfTokenHash,
+            session.createdAt(),
+            session.lastAccessedAt(),
+            session.idleExpiresAt(),
+            session.absoluteExpiresAt(),
+            session.revision(),
+            session.fundPriceModeMetadata());
+  }
 
-    Instant effectiveExpiry =
-        current.idleExpiresAt().isBefore(current.absoluteExpiresAt())
-            ? current.idleExpiresAt()
-            : current.absoluteExpiresAt();
-    Duration remainingTtl = Duration.between(now, effectiveExpiry);
-    if (remainingTtl.isZero() || remainingTtl.isNegative()) {
-      return Mono.just(Outcome.failure(RefreshCsrfTokenStatus.SESSION_NOT_USABLE));
-    }
-
-    return rotations
-        .rotateCsrfHashIfCurrent(
-            new RotateAuthenticatedSessionCsrfHashCommand(
-                current.authenticatedSessionId(),
-                expectedProtectedSession,
-                protector.protect(replacement),
-                current.csrfTokenHash(),
-                replacementHash,
-                remainingTtl,
-                correlationId))
-        .map(
-            result -> {
-              AuthenticatedSessionCsrfRotationStatus status = result.status();
-              return switch (status) {
-                case ROTATED -> Outcome.success(rawToken);
-                case CONFLICT -> Outcome.failure(RefreshCsrfTokenStatus.CONFLICT);
-                case NOT_FOUND -> Outcome.failure(RefreshCsrfTokenStatus.SESSION_MISSING);
-                case EXPIRED -> Outcome.failure(RefreshCsrfTokenStatus.SESSION_NOT_USABLE);
-                case SYSTEM_FAILURE -> Outcome.failure(RefreshCsrfTokenStatus.SYSTEM_FAILURE);
-              };
-            })
-        .onErrorReturn(Outcome.failure(RefreshCsrfTokenStatus.SYSTEM_FAILURE));
+  private static Outcome toOutcome(AuthenticatedSessionConcurrencyResult result, String rawToken) {
+    return switch (result.outcome()) {
+      case APPLIED -> Outcome.success(rawToken);
+      case SESSION_NOT_FOUND -> Outcome.failure(RefreshCsrfTokenStatus.SESSION_MISSING);
+      case SESSION_NOT_USABLE -> Outcome.failure(RefreshCsrfTokenStatus.SESSION_NOT_USABLE);
+      case REVISION_CONFLICT_EXHAUSTED -> Outcome.failure(RefreshCsrfTokenStatus.CONFLICT);
+      case SYSTEM_FAILURE -> Outcome.failure(RefreshCsrfTokenStatus.SYSTEM_FAILURE);
+    };
   }
 }
