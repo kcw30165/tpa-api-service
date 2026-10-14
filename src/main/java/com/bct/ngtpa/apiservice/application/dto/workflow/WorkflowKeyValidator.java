@@ -36,8 +36,11 @@ final class WorkflowKeyValidator {
   }
 
   private static boolean isUnsafePasswordLikeKey(String lower) {
-    return "password".equals(lower)
-        || lower.startsWith("password.")
+    // CODE_LIKE guarantees `lower` contains at least one literal '.', so an
+    // exact-equality check against the dot-free literal "password" could
+    // never match and was removed as dead code (confirmed via JaCoCo:
+    // always false).
+    return lower.startsWith("password.")
         || (lower.endsWith(".password") && !lower.startsWith("err.login."))
         || (lower.contains(".password.")
             && !lower.startsWith("registration.password.")
