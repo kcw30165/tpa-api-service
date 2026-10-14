@@ -7,8 +7,8 @@ import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 /**
- * Fail-first: confirms the generic port's shape -- ONE method, taking the command and returning the
- * generic result. Not scenario-specific, not CSRF-specific.
+ * Confirms the generic port's shape -- ONE method, taking the command and returning the generic
+ * result. Not scenario-specific, not CSRF-specific.
  */
 class AuthenticatedSessionCasUpdatePortContractTest {
 
@@ -19,19 +19,5 @@ class AuthenticatedSessionCasUpdatePortContractTest {
             .map(Method::getName)
             .toList();
     assertThat(names).contains("updateIfCurrent");
-  }
-
-  @Test
-  void doesNotExtendOrCoupleToTheCsrfSpecificPort() {
-    // AssertJ's ClassAssert only exposes the POSITIVE isAssignableFrom(...); the negative
-    // is expressed directly against the JDK's own Class#isAssignableFrom(Class) predicate.
-    assertThat(
-            AuthenticatedSessionCsrfRotationPort.class.isAssignableFrom(
-                AuthenticatedSessionCasUpdatePort.class))
-        .isFalse();
-    assertThat(
-            AuthenticatedSessionCasUpdatePort.class.isAssignableFrom(
-                AuthenticatedSessionCsrfRotationPort.class))
-        .isFalse();
   }
 }

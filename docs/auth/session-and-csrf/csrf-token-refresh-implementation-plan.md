@@ -778,3 +778,13 @@ Mitigation: update all session/CSRF documents in the same implementation round a
 ```text
 feat(auth): add session-aware CSRF token refresh endpoint
 ```
+
+## Superseded: authenticated rotation capability (2026-10-14)
+
+Section 6.4's "Possible abstractions: `AuthenticatedSessionCsrfRotationPort`" and the whole-value
+compare-and-set it led to have been removed. That mechanism made every CSRF refresh and
+committed-login replay fail with a false `CSRF_REFRESH_CONFLICT` whenever the stored session's
+encrypted attributes serialized in a different field order than the live JVM's re-serialization.
+See `docs/design/12-csrf-token-refresh-conflict/README.md` for the defect and the replacement:
+the pre-existing revision-based `AuthenticatedSessionCasUpdatePort` /
+`AuthenticatedSessionConcurrencyService`, which compares only the stored `sessionRevision`.
