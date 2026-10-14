@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.csrf;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.csrf.CsrfRefreshSessionType;
 import com.bct.ngtpa.apiservice.application.dto.auth.csrf.RefreshCsrfTokenResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.csrf.RefreshCsrfTokenStatus;
@@ -46,5 +47,17 @@ class CsrfTokenRefreshHttpContractTest {
                 .toResponse(RefreshCsrfTokenResult.failure(RefreshCsrfTokenStatus.SYSTEM_FAILURE))
                 .getStatusCode())
         .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+  }
+
+  @Test
+  void sessionTypeCookieMissingReturnsBadRequestValidationFailureWithNoResult() {
+    var entity = responses.sessionTypeCookieMissing();
+    assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(entity.getBody().success()).isFalse();
+    assertThat(entity.getBody().status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
+    assertThat(entity.getBody().result()).isNull();
+    assertThat(entity.getBody().errors()).hasSize(1);
+    assertThat(entity.getBody().errors().get(0).type()).isEqualTo("SESSION_TYPE_COOKIE_MISSING");
+    assertThat(entity.getBody().errors().get(0).code()).isEqualTo("err.request.validation.failed");
   }
 }

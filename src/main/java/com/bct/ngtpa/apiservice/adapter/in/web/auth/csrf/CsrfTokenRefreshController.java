@@ -1,9 +1,11 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.csrf;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.csrf.dto.CsrfTokenRefreshRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.csrf.dto.CsrfTokenRefreshResult;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
+import com.bct.ngtpa.apiservice.application.dto.auth.csrf.CsrfRefreshSessionType;
 import com.bct.ngtpa.apiservice.application.dto.auth.csrf.RefreshCsrfTokenCommand;
 import com.bct.ngtpa.apiservice.application.port.in.RefreshCsrfTokenUseCase;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
@@ -14,6 +16,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,8 +32,15 @@ public final class CsrfTokenRefreshController {
   private final AuthWorkflowProperties authWorkflowProperties;
   private final AuthFlowSessionProperties authFlowSessionProperties;
 
+  /**
+   * An explicit {@code sessionType} in the (optional) request body is authoritative when its
+   * corresponding cookie is present: it bypasses the default "authenticated wins" precedence below.
+   * When the body or the field is absent, behavior is byte-identical to before M4 - see the final
+   * block of this method, which is untouched.
+   */
   @PostMapping("/refresh")
   public Mono<ResponseEntity<MutationResponse<CsrfTokenRefreshResult>>> refresh(
+      @RequestBody(required = false) CsrfTokenRefreshRequest request,
       @RequestHeader(name = HttpHeaders.ORIGIN, required = false) String origin,
       @RequestHeader(name = HttpHeaders.REFERER, required = false) String referer,
       @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
@@ -49,6 +59,29 @@ public final class CsrfTokenRefreshController {
     }
     String authenticatedValue = value(authenticated);
     String preAuthValue = value(preAuth);
+    CsrfRefreshSessionType hint = request == null ? null : request.sessionType();
+
+    if (hint == CsrfRefreshSessionType.AUTHENTICATED) {
+      if (!hasText(authenticatedValue)) {
+        return Mono.just(responses.sessionTypeCookieMissing());
+      }
+      return useCase
+          .refresh(
+              new RefreshCsrfTokenCommand(
+                  clean(authenticatedValue), null, clean(origin), clean(referer), clean(requestId)))
+          .map(responses::toResponse);
+    }
+    if (hint == CsrfRefreshSessionType.PRE_AUTH) {
+      if (!hasText(preAuthValue)) {
+        return Mono.just(responses.sessionTypeCookieMissing());
+      }
+      return useCase
+          .refresh(
+              new RefreshCsrfTokenCommand(
+                  null, clean(preAuthValue), clean(origin), clean(referer), clean(requestId)))
+          .map(responses::toResponse);
+    }
+
     if (!empty(authenticated) && !hasText(authenticatedValue)) {
       return Mono.just(responses.unauthorized());
     }

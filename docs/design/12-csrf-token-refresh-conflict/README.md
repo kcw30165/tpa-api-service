@@ -188,3 +188,13 @@ authenticated refresh services themselves (`AuthenticatedSessionCsrfRefreshServi
 `PreAuthSessionCsrfRefreshService`) - only the orchestration layer and the controller's request
 parsing change; frontend behavior.
 
+### 6.6 Implementation note (recorded during sub-tasks 4.1+4.2)
+
+Section 6.4 above proposed threading the hint through `RefreshCsrfTokenCommand` and
+`RefreshCsrfTokenService`. That proved unnecessary: `RefreshCsrfTokenService` already prioritizes
+whichever of its two id fields has text, and the controller already holds both cookie values
+before building that command. The hint is therefore resolved entirely in the controller, which
+decides which single id value is allowed to flow into the existing, otherwise-untouched
+`RefreshCsrfTokenCommand`. `RefreshCsrfTokenCommand` and `RefreshCsrfTokenService` are not
+modified by M4; their existing tests pass unchanged. Sub-tasks 4.1 and 4.2 were implemented
+together as a result (too small and coupled to usefully split).

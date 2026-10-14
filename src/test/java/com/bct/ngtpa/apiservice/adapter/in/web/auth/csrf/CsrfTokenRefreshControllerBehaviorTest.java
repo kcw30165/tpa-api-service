@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.csrf;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.csrf.dto.CsrfTokenRefreshRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
 import com.bct.ngtpa.apiservice.application.dto.auth.csrf.CsrfRefreshSessionType;
 import com.bct.ngtpa.apiservice.application.dto.auth.csrf.RefreshCsrfTokenCommand;
@@ -37,7 +38,8 @@ class CsrfTokenRefreshControllerBehaviorTest {
 
     var entity =
         controller
-            .refresh("https://portal.example", null, "req-1", exchange, exchange.getResponse())
+            .refresh(
+                null, "https://portal.example", null, "req-1", exchange, exchange.getResponse())
             .block();
 
     assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -62,7 +64,8 @@ class CsrfTokenRefreshControllerBehaviorTest {
                   return Mono.just(
                       RefreshCsrfTokenResult.success(CsrfRefreshSessionType.PRE_AUTH, "token"));
                 })
-            .refresh("https://portal.example", null, "req-2", exchange, exchange.getResponse())
+            .refresh(
+                null, "https://portal.example", null, "req-2", exchange, exchange.getResponse())
             .block();
 
     assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -83,7 +86,8 @@ class CsrfTokenRefreshControllerBehaviorTest {
                   calls.incrementAndGet();
                   return Mono.empty();
                 })
-            .refresh("https://portal.example", null, "req-3", exchange, exchange.getResponse())
+            .refresh(
+                null, "https://portal.example", null, "req-3", exchange, exchange.getResponse())
             .block();
 
     assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -101,12 +105,203 @@ class CsrfTokenRefreshControllerBehaviorTest {
                   return Mono.just(
                       RefreshCsrfTokenResult.success(CsrfRefreshSessionType.PRE_AUTH, "new-token"));
                 })
-            .refresh(null, "https://portal.example/page", "req-4", exchange, exchange.getResponse())
+            .refresh(
+                null,
+                null,
+                "https://portal.example/page",
+                "req-4",
+                exchange,
+                exchange.getResponse())
             .block();
 
     assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(captured.get().authenticatedSessionId()).isNull();
     assertThat(captured.get().authFlowSessionId()).isEqualTo("afs_only");
+  }
+
+  // ----- M4: explicit session-type hint ---------------------------------------
+
+  @Test
+  void preAuthHintBypassesAuthenticatedEvenWhenBothCookiesAreValid() {
+    AtomicReference<RefreshCsrfTokenCommand> captured = new AtomicReference<>();
+    var exchange =
+        exchange(
+            new HttpCookie("portal_sid", "sid_authenticated"),
+            new HttpCookie("auth_flow_sid", "afs_pre_auth"));
+    var entity =
+        controller(
+                command -> {
+                  captured.set(command);
+                  return Mono.just(
+                      RefreshCsrfTokenResult.success(CsrfRefreshSessionType.PRE_AUTH, "new-token"));
+                })
+            .refresh(
+                new CsrfTokenRefreshRequest(CsrfRefreshSessionType.PRE_AUTH),
+                "https://portal.example",
+                null,
+                "req-5",
+                exchange,
+                exchange.getResponse())
+            .block();
+
+    assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(captured.get().authenticatedSessionId()).isNull();
+    assertThat(captured.get().authFlowSessionId()).isEqualTo("afs_pre_auth");
+  }
+
+  @Test
+  void authenticatedHintBypassesPreAuthEvenWhenBothCookiesAreValid() {
+    AtomicReference<RefreshCsrfTokenCommand> captured = new AtomicReference<>();
+    var exchange =
+        exchange(
+            new HttpCookie("portal_sid", "sid_authenticated"),
+            new HttpCookie("auth_flow_sid", "afs_pre_auth"));
+    var entity =
+        controller(
+                command -> {
+                  captured.set(command);
+                  return Mono.just(
+                      RefreshCsrfTokenResult.success(
+                          CsrfRefreshSessionType.AUTHENTICATED, "new-token"));
+                })
+            .refresh(
+                new CsrfTokenRefreshRequest(CsrfRefreshSessionType.AUTHENTICATED),
+                "https://portal.example",
+                null,
+                "req-6",
+                exchange,
+                exchange.getResponse())
+            .block();
+
+    assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(captured.get().authenticatedSessionId()).isEqualTo("sid_authenticated");
+    assertThat(captured.get().authFlowSessionId()).isNull();
+  }
+
+  @Test
+  void preAuthHintWithAbsentAuthFlowCookieIsRejectedWithoutCallingUseCase() {
+    AtomicInteger calls = new AtomicInteger();
+    var exchange = exchange(new HttpCookie("portal_sid", "sid_authenticated"));
+    var entity =
+        controller(
+                command -> {
+                  calls.incrementAndGet();
+                  return Mono.empty();
+                })
+            .refresh(
+                new CsrfTokenRefreshRequest(CsrfRefreshSessionType.PRE_AUTH),
+                "https://portal.example",
+                null,
+                "req-7",
+                exchange,
+                exchange.getResponse())
+            .block();
+
+    assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(calls).hasValue(0);
+  }
+
+  @Test
+  void authenticatedHintWithAbsentPortalSidCookieIsRejectedWithoutCallingUseCase() {
+    AtomicInteger calls = new AtomicInteger();
+    var exchange = exchange(new HttpCookie("auth_flow_sid", "afs_pre_auth"));
+    var entity =
+        controller(
+                command -> {
+                  calls.incrementAndGet();
+                  return Mono.empty();
+                })
+            .refresh(
+                new CsrfTokenRefreshRequest(CsrfRefreshSessionType.AUTHENTICATED),
+                "https://portal.example",
+                null,
+                "req-8",
+                exchange,
+                exchange.getResponse())
+            .block();
+
+    assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(calls).hasValue(0);
+  }
+
+  @Test
+  void preAuthHintWithBlankAuthFlowCookieIsRejectedWithoutCallingUseCase() {
+    AtomicInteger calls = new AtomicInteger();
+    var exchange =
+        exchange(
+            new HttpCookie("portal_sid", "sid_authenticated"),
+            new HttpCookie("auth_flow_sid", " "));
+    var entity =
+        controller(
+                command -> {
+                  calls.incrementAndGet();
+                  return Mono.empty();
+                })
+            .refresh(
+                new CsrfTokenRefreshRequest(CsrfRefreshSessionType.PRE_AUTH),
+                "https://portal.example",
+                null,
+                "req-9",
+                exchange,
+                exchange.getResponse())
+            .block();
+
+    assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(calls).hasValue(0);
+  }
+
+  @Test
+  void duplicateCookieIsRejectedBeforeTheHintIsEvenConsidered() {
+    AtomicInteger calls = new AtomicInteger();
+    var request =
+        MockServerHttpRequest.post("/api/v1/auth/csrf-token/refresh")
+            .cookie(
+                new HttpCookie("portal_sid", "sid-1"),
+                new HttpCookie("portal_sid", "sid-2"),
+                new HttpCookie("auth_flow_sid", "afs_valid"))
+            .build();
+    var exchange = MockServerWebExchange.from(request);
+    var entity =
+        controller(
+                command -> {
+                  calls.incrementAndGet();
+                  return Mono.empty();
+                })
+            .refresh(
+                new CsrfTokenRefreshRequest(CsrfRefreshSessionType.PRE_AUTH),
+                "https://portal.example",
+                null,
+                "req-10",
+                exchange,
+                exchange.getResponse())
+            .block();
+
+    assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(calls).hasValue(0);
+  }
+
+  @Test
+  void absentBodyBehavesIdenticallyToAnAbsentHint() {
+    AtomicReference<RefreshCsrfTokenCommand> captured = new AtomicReference<>();
+    var exchange =
+        exchange(
+            new HttpCookie("portal_sid", "sid_authenticated"),
+            new HttpCookie("auth_flow_sid", "afs_pre_auth"));
+    var entity =
+        controller(
+                command -> {
+                  captured.set(command);
+                  return Mono.just(
+                      RefreshCsrfTokenResult.success(
+                          CsrfRefreshSessionType.AUTHENTICATED, "new-token"));
+                })
+            .refresh(
+                null, "https://portal.example", null, "req-11", exchange, exchange.getResponse())
+            .block();
+
+    assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(captured.get().authenticatedSessionId()).isEqualTo("sid_authenticated");
+    assertThat(captured.get().authFlowSessionId()).isEqualTo("afs_pre_auth");
   }
 
   private static CsrfTokenRefreshController controller(RefreshCsrfTokenUseCase useCase) {

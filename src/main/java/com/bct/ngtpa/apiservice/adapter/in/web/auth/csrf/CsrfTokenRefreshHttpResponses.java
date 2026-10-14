@@ -62,6 +62,18 @@ public final class CsrfTokenRefreshHttpResponses {
         ErrorCodes.REQUEST_VALIDATION_FAILED);
   }
 
+  /**
+   * The request named an explicit {@code sessionType} (M4), but that session type's cookie was
+   * absent or blank. No silent fallback to whichever cookie happens to be present.
+   */
+  public ResponseEntity<MutationResponse<CsrfTokenRefreshResult>> sessionTypeCookieMissing() {
+    return failure(
+        HttpStatus.BAD_REQUEST,
+        ApiStatus.VALIDATION_FAILED,
+        "SESSION_TYPE_COOKIE_MISSING",
+        ErrorCodes.REQUEST_VALIDATION_FAILED);
+  }
+
   private ResponseEntity<MutationResponse<CsrfTokenRefreshResult>> failure(
       HttpStatus httpStatus, ApiStatus status, String code, String key) {
     var error = new ApiError(code, key, null, List.of("PAGE"), "ERROR", "SERVER");
