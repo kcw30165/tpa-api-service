@@ -10,6 +10,40 @@ import org.junit.jupiter.api.Test;
 
 class AuthenticatedSessionCsrfRefreshServiceContractTest {
   @Test
+  void successFactoryRejectsMissingOrBlankToken() {
+    assertThatThrownBy(() -> AuthenticatedSessionCsrfRefreshService.Outcome.success(null))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> AuthenticatedSessionCsrfRefreshService.Outcome.success("  "))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void failureFactoryRejectsSuccessStatus() {
+    assertThatThrownBy(
+            () ->
+                AuthenticatedSessionCsrfRefreshService.Outcome.failure(
+                    RefreshCsrfTokenStatus.SUCCESS))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void successToStringRedactsTheRawToken() {
+    var outcome = AuthenticatedSessionCsrfRefreshService.Outcome.success("raw-secret-token");
+    assertThat(outcome.csrfToken()).isEqualTo("raw-secret-token");
+    assertThat(outcome.toString())
+        .contains("status=SUCCESS", "csrfToken=<redacted>")
+        .doesNotContain("raw-secret-token");
+  }
+
+  @Test
+  void failureToStringShowsAbsentToken() {
+    var outcome =
+        AuthenticatedSessionCsrfRefreshService.Outcome.failure(
+            RefreshCsrfTokenStatus.SESSION_MISSING);
+    assertThat(outcome.toString()).contains("status=SESSION_MISSING", "csrfToken=null");
+  }
+
+  @Test
   void constructorUsesTheRevisionBasedConcurrencyService() {
     assertThat(AuthenticatedSessionCsrfRefreshService.class.getDeclaredConstructors())
         .anySatisfy(
