@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.application.usecase.accountswitch.AccountNotInSessionException;
 import com.bct.ngtpa.apiservice.application.usecase.accountswitch.SwitchAccountUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedCsrfValidationException;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
@@ -17,6 +18,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
@@ -24,16 +26,10 @@ import reactor.core.publisher.Mono;
  * Standalone controller tests (no Spring context), mirroring the confirmed LogoutController
  * sequencing: missing session cookie or missing CSRF both short-circuit to 401 before the session
  * is ever validated; a CSRF-validation failure maps to 403; an
- * AuthenticatedPortalContextResolutionException (session invalid OR target account not in
- * session -- both indistinguishable by design) maps to 401; a successful switch maps to 200 with
- * the mapped account fields.
- *
- * <p>{@code sessionValidation.validate(...)} returns {@code Mono<AuthenticatedSession>} (confirmed
- * via script 023 investigation). Stubbing it with {@code Mono.empty()} would mean the controller's
- * {@code flatMap(ignored -> ...)} function is never invoked at all (Reactor semantics: flatMap's
- * function only runs on an emitted value), so tests that expect the chain to proceed past
- * validation stub {@code Mono.just(mock(AuthenticatedSession.class))} instead -- the actual emitted
- * value is discarded by the controller either way, exactly like {@code LogoutController} does.
+ * AuthenticatedPortalContextResolutionException (session itself invalid/expired) maps to 401; an
+ * AccountNotInSessionException (valid session, target account not in its list) maps to 422 -- the
+ * two failure modes are now deliberately distinguished; a successful switch maps to 200 with the
+ * mapped account fields.
  */
 class AccountSwitchControllerTest {
 
@@ -105,11 +101,9 @@ class AccountSwitchControllerTest {
   }
 
   @Test
-  void returns401WhenTargetAccountNotInSession() {
+  void returns401WhenSessionItselfInvalid() {
     when(cookieReader.read(any())).thenReturn(Optional.of(SESSION_ID));
     when(sessionValidation.validate(any()))
-        .thenReturn(Mono.just(mock(AuthenticatedSession.class)));
-    when(useCase.switchAccount(any()))
         .thenReturn(Mono.error(new AuthenticatedPortalContextResolutionException()));
 
     client
@@ -121,6 +115,24 @@ class AccountSwitchControllerTest {
         .exchange()
         .expectStatus()
         .isUnauthorized();
+  }
+
+  @Test
+  void returns422WhenTargetAccountNotInSession() {
+    when(cookieReader.read(any())).thenReturn(Optional.of(SESSION_ID));
+    when(sessionValidation.validate(any()))
+        .thenReturn(Mono.just(mock(AuthenticatedSession.class)));
+    when(useCase.switchAccount(any())).thenReturn(Mono.error(new AccountNotInSessionException()));
+
+    client
+        .post()
+        .uri("/api/v1/account/switch")
+        .header("X-XSRF-TOKEN", CSRF)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue("{\"accountRef\":\"" + TARGET_REF + "\"}")
+        .exchange()
+        .expectStatus()
+        .isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
   }
 
   @Test

@@ -13,11 +13,11 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Tests for {@link SwitchAccountService}, now depending on the dedicated
- * {@link AccountSwitchLookupPort} instead of {@code PortalAccessContextPort}, resolving the
- * architecture-guard conflict identified against
- * {@code PortalAccessContextResponsibilityBoundaryGuardTest} and
- * {@code PortalAccessContextFinalMigrationEvidenceTest}.
+ * Tests for {@link SwitchAccountService}, depending on the dedicated
+ * {@link AccountSwitchLookupPort}. Covers both distinct failure modes the port may now emit:
+ * an invalid session ({@code AuthenticatedPortalContextResolutionException}) and a valid session
+ * whose account list lacks the target ({@code AccountNotInSessionException}) -- both simply
+ * propagate unchanged through this service either way.
  */
 class SwitchAccountServiceTest {
 
@@ -40,7 +40,7 @@ class SwitchAccountServiceTest {
   }
 
   @Test
-  void propagatesAuthenticatedPortalContextResolutionExceptionWhenTargetAccountNotInSession() {
+  void propagatesAuthenticatedPortalContextResolutionExceptionWhenSessionInvalid() {
     AccountSwitchLookupPort port = mock(AccountSwitchLookupPort.class);
     when(port.resolveTargetAccount(TARGET_REF, SESSION_ID.value()))
         .thenReturn(Mono.error(new AuthenticatedPortalContextResolutionException()));
@@ -50,6 +50,20 @@ class SwitchAccountServiceTest {
 
     StepVerifier.create(service.switchAccount(command))
         .expectError(AuthenticatedPortalContextResolutionException.class)
+        .verify();
+  }
+
+  @Test
+  void propagatesAccountNotInSessionExceptionWhenTargetAccountNotInSession() {
+    AccountSwitchLookupPort port = mock(AccountSwitchLookupPort.class);
+    when(port.resolveTargetAccount(TARGET_REF, SESSION_ID.value()))
+        .thenReturn(Mono.error(new AccountNotInSessionException()));
+
+    var service = new SwitchAccountService(port);
+    var command = new SwitchAccountCommand(SESSION_ID, TARGET_REF);
+
+    StepVerifier.create(service.switchAccount(command))
+        .expectError(AccountNotInSessionException.class)
         .verify();
   }
 }

@@ -21,6 +21,11 @@ import reactor.core.publisher.Mono;
  * port. It does not call, import, or otherwise depend on the web filter's external account/session
  * resolution port -- that port remains reserved for the inbound web filter boundary only, which is
  * unrelated to this switch-lookup capability.
+ *
+ * <p>Two distinct failure modes are now deliberately separated: an invalid/expired/not-found
+ * session errors with {@link AuthenticatedPortalContextResolutionException} (mapped to 401
+ * upstream); a valid session whose account list simply does not contain the requested target
+ * errors with {@link AccountNotInSessionException} (mapped to 422 upstream).
  */
 public final class AuthenticatedAccountSwitchLookupAdapter implements AccountSwitchLookupPort {
 
@@ -57,7 +62,7 @@ public final class AuthenticatedAccountSwitchLookupAdapter implements AccountSwi
                   .session()
                   .findAccount(ref)
                   .map(account -> Mono.just(toAccountContext(account)))
-                  .orElseGet(() -> Mono.error(new AuthenticatedPortalContextResolutionException()));
+                  .orElseGet(() -> Mono.error(new AccountNotInSessionException()));
             });
   }
 

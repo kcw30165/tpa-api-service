@@ -3,8 +3,10 @@ package com.bct.ngtpa.apiservice.adapter.in.web.accountswitch;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.HttpStatusClassification;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.application.usecase.accountswitch.AccountNotInSessionException;
 import com.bct.ngtpa.apiservice.application.usecase.accountswitch.SwitchAccountCommand;
 import com.bct.ngtpa.apiservice.application.usecase.accountswitch.SwitchAccountUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedCsrfValidationException;
@@ -36,9 +38,11 @@ import reactor.core.publisher.Mono;
  * {@code Account-Ref} header on every subsequent authenticated call as today.
  *
  * <p>Sequencing mirrors {@code LogoutController}: read the raw session cookie, require CSRF,
- * validate the session, then perform the business action. A target account not present in the
- * session's account list is indistinguishable, by design, from an invalid session -- both surface
- * as 401 via the same established {@code AuthenticatedPortalContextResolutionException} contract.
+ * validate the session, then perform the business action. Two distinct failure modes are mapped
+ * separately: an invalid/expired session (401, via the existing
+ * {@code AuthenticatedPortalContextResolutionException} contract) versus a valid session whose
+ * account list does not contain the requested target (422 business rejection, via the existing
+ * {@code BUSINESS_REJECTED -> UNPROCESSABLE_ENTITY} convention already used by other flows).
  */
 @RestController
 @RequestMapping("/api/v1/account")
@@ -76,6 +80,7 @@ public final class AccountSwitchController {
                 useCase.switchAccount(new SwitchAccountCommand(sessionId.get(), request.accountRef())))
         .map(account -> ResponseEntity.ok(mapper.toResponse(account)))
         .onErrorResume(AuthenticatedCsrfValidationException.class, ignored -> csrfInvalid())
+        .onErrorResume(AccountNotInSessionException.class, ignored -> accountNotFound())
         .onErrorResume(
             AuthenticatedPortalContextResolutionException.class, ignored -> unauthorized());
   }
@@ -92,6 +97,19 @@ public final class AccountSwitchController {
                             null,
                             List.of("PAGE"),
                             "SERVER")))));
+  }
+
+  private Mono<ResponseEntity<MutationResponse<AccountSwitchResponse>>> accountNotFound() {
+    MutationResponse<AccountSwitchResponse> body =
+        MutationResponse.failure(
+            ApiStatus.BUSINESS_REJECTED,
+            List.of(
+                ApiError.business(
+                    AccountSwitchErrorKey.ACCOUNT_NOT_FOUND.value(),
+                    null,
+                    List.of("PAGE"),
+                    "SERVER")));
+    return Mono.just(ResponseEntity.status(HttpStatusClassification.classify(body.status())).body(body));
   }
 
   private Mono<ResponseEntity<MutationResponse<AccountSwitchResponse>>> unauthorized() {
