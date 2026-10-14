@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.infrastructure.logging;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Constructor;
-import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -15,11 +14,12 @@ class ExecutionLoggingAspectInvocationContextToStringTest {
 
   @Test
   void toStringRendersArrayContentsInsteadOfDefaultIdentity() throws Exception {
+    // Avoid S1872 (classes should not be compared by name): InvocationContext is a
+    // private member class that cannot be referenced via a class literal from this
+    // test, so its Class<?> is constructed directly from the binary name instead of
+    // scanning getDeclaredClasses() with a getSimpleName().equals(...) check.
     Class<?> invocationContextClass =
-        Arrays.stream(ExecutionLoggingAspect.class.getDeclaredClasses())
-            .filter(c -> c.getSimpleName().equals("InvocationContext"))
-            .findFirst()
-            .orElseThrow();
+        Class.forName(ExecutionLoggingAspect.class.getName() + "$InvocationContext");
 
     Constructor<?> constructor =
         invocationContextClass.getDeclaredConstructor(
