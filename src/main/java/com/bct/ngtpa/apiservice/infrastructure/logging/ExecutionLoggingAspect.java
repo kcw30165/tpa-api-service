@@ -206,6 +206,23 @@ public class ExecutionLoggingAspect {
       boolean logResult,
       Object[] args) {
 
+    @Override
+    public String toString() {
+      return "InvocationContext[className="
+          + className
+          + ", methodName="
+          + methodName
+          + ", label="
+          + label
+          + ", logArgs="
+          + logArgs
+          + ", logResult="
+          + logResult
+          + ", args="
+          + Arrays.toString(args)
+          + "]";
+    }
+
     static InvocationContext from(ProceedingJoinPoint joinPoint, LogExecution logExecution) {
       MethodSignature signature = (MethodSignature) joinPoint.getSignature();
       return new InvocationContext(
