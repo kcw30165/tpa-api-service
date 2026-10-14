@@ -5,7 +5,7 @@ import java.util.regex.Pattern;
 
 final class WorkflowKeyValidator {
   private static final Pattern CODE_LIKE =
-      Pattern.compile("^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)+$");
+      Pattern.compile("^[a-z][A-Za-z0-9]*+(\\.[a-z][A-Za-z0-9]*+)++$");
   private static final Pattern LONG_DIGITS = Pattern.compile("\\d{8,}");
 
   private WorkflowKeyValidator() {}
