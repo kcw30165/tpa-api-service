@@ -24,12 +24,12 @@ final class WorkflowKeyValidator {
   }
 
   private static boolean containsUnsafeToken(String value) {
+    // CODE_LIKE already guarantees `value` contains no whitespace, '@', or
+    // '_', so the checks for those characters (and underscore-based tokens
+    // such as "csrf_"/"otp_") are unreachable here and were removed as
+    // dead code (confirmed via JaCoCo branch coverage: always-false).
     String lower = value.toLowerCase(Locale.ROOT);
-    return value.chars().anyMatch(Character::isWhitespace)
-        || value.contains("@")
-        || LONG_DIGITS.matcher(value).find()
-        || lower.contains("csrf_")
-        || lower.contains("otp_")
+    return LONG_DIGITS.matcher(value).find()
         || isUnsafePasswordLikeKey(lower)
         || lower.contains("bearer")
         || lower.contains("cookie");
