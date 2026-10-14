@@ -104,3 +104,87 @@ investigation and sub-task. Otherwise closed by M1.
 
 Retry-After or response contract changes; frontend behavior; registration
 Origin/Referer finding recorded in `csrf-refresh-after-expiry-investigation.md`.
+
+## 6. M4 - Explicit session-type hint for ambiguous dual-session refresh (new milestone)
+
+### 6.1 Scenario
+
+Reported by Nick (2026-10-14, separate from the M1/M2/M3 investigation): a user is logged in
+(valid `portal_sid`) in one browser context while concurrently running a separate pre-auth flow -
+for example, Forgot Username in another tab - which holds its own valid `auth_flow_sid`. Both
+cookies are sent together on a refresh call, and **both resolve to real, live sessions**. This is
+not the M3 scenario (a *stale* `portal_sid` with nothing behind it); here the backend cannot tell
+which of the two live sessions the caller actually means, because cookie presence alone is
+ambiguous and conveys no intent (confirmed in conversation: cookies "tells the backend a session
+exists" but not "which screen the user is looking at").
+
+`RefreshCsrfTokenService.refresh()` currently commits unconditionally to the authenticated path
+whenever `portal_sid` resolves (confirmed, script 020): "Selects authenticated context first and
+never downgrades to pre-auth." That rule is correct for M3's stale-cookie case but gives the wrong
+answer when the caller actually wanted the pre-auth session refreshed.
+
+### 6.2 Decision (5 points, confirmed by Nick 2026-10-14)
+
+1. Add an **optional** request field, not a required one and not a separate endpoint or URL path.
+   One endpoint (`POST /api/v1/auth/csrf-token/refresh`) is touched.
+2. Field name `sessionType`, JSON body, values matching the existing
+   `CsrfRefreshSessionType` enum: `"AUTHENTICATED"` / `"PRE_AUTH"`. No new enum.
+3. If the hint names a session type whose cookie is not actually present in the request
+   (e.g. `sessionType: AUTHENTICATED` but no `portal_sid` sent), reject with `400 BAD_REQUEST`,
+   following the existing `ambiguousCookie()` pattern in `CsrfTokenRefreshHttpResponses`. No
+   silent fallback to whatever cookie happens to be present.
+4. When the hint is omitted, behavior is byte-for-byte unchanged from M1/M2: authenticated wins
+   when `portal_sid` resolves, exactly as today. This is purely additive; no existing caller is
+   affected.
+5. The duplicate-cookie check (`ambiguous(authenticated) || ...`) still runs first, before the
+   hint is consulted. A request with two `portal_sid` cookies is still rejected at `400` before
+   any hint logic executes.
+
+### 6.3 Contract
+
+Request body (new, optional; the endpoint currently parses no body at all - confirmed, script
+020):
+
+```json
+{ "sessionType": "PRE_AUTH" }
+```
+
+- Absent field or absent body entirely -> current precedence (authenticated wins) unchanged.
+- `sessionType` present and its corresponding cookie present -> that session type is refreshed,
+  unconditionally, bypassing the authenticated-wins default.
+- `sessionType` present but its corresponding cookie absent -> `400 BAD_REQUEST`,
+  `VALIDATION_FAILED`, a new error code (name TBD in sub-task 4.1, following the
+  `AMBIGUOUS_SESSION_COOKIE` / `REQUEST_VALIDATION_FAILED` pattern already in
+  `CsrfTokenRefreshHttpResponses`).
+- Malformed JSON or an unrecognized `sessionType` value -> `400 BAD_REQUEST` via the same path
+  (Spring deserialization failure for an unknown enum constant is handled at the controller,
+  following the `@RequestBody(required = false)` + manual-null-check convention already used by
+  `CaptchaController`, `ForgotPasswordController`, `LoginController`, `RegistrationController` -
+  no Jakarta Bean Validation is used anywhere in this area, confirmed script 020).
+
+### 6.4 Milestone M4 sub-tasks
+
+- **4.1** New request DTO (e.g. `CsrfTokenRefreshRequest` record with one field
+  `CsrfRefreshSessionType sessionType`, nullable) in the controller's `dto` package, matching the
+  sibling convention. Add `@RequestBody(required = false)` to the controller method. Add the new
+  `400` response case to `CsrfTokenRefreshHttpResponses`.
+- **4.2** Thread the hint through `RefreshCsrfTokenCommand` (new nullable field) and
+  `RefreshCsrfTokenService.refresh()`: when present and its cookie is absent, short-circuit to the
+  new validation-error outcome before calling either session service; when present and its cookie
+  is present, call only that session service; when absent, keep current behavior unchanged.
+- Each sub-task is fail-first: a test is written first proving the current behavior lacks the new
+  branch (e.g. hint ignored / no such field exists), then implemented.
+- Sub-task gates: spotless apply/check, compile, test-compile, targeted tests (extend
+  `CsrfTokenRefreshControllerBehaviorTest`, `CsrfTokenRefreshHttpContractTest`,
+  `RefreshCsrfTokenServiceTest`; `CsrfTokenRefreshWebArchitectureGuardTest` and
+  `RefreshCsrfTokenServiceStructureTest` are expected to keep passing unchanged).
+- Milestone gates at the end of M4: full suite, coverage, startup smoke test, SonarQube - same
+  five gates used for M1/M2.
+
+### 6.5 Out of scope for M4
+
+Changing the no-fallback default when the hint is absent; any change to the pre-auth or
+authenticated refresh services themselves (`AuthenticatedSessionCsrfRefreshService`,
+`PreAuthSessionCsrfRefreshService`) - only the orchestration layer and the controller's request
+parsing change; frontend behavior.
+
