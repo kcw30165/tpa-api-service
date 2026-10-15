@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
  */
 public final class UsernameRecoveryStartValidator {
 
-  private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+  private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$");
   private static final Pattern HK_MOBILE = Pattern.compile("^[4-9][0-9]{7}$");
   private static final Pattern GPN = Pattern.compile("^[0-9]{8}$");
   private static final Pattern GPFS = Pattern.compile("^[0-9]{10}$");

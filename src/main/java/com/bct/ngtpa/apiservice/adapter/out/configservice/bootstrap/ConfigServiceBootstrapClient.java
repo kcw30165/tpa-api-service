@@ -68,7 +68,7 @@ public final class ConfigServiceBootstrapClient implements ConfigServiceBootstra
 
   private HttpRequest request(ConfigServiceBootstrapSettings settings) {
     String uri =
-        settings.baseUrl().replaceAll("/+$", "")
+        trimTrailingSlashes(settings.baseUrl())
             + CONFIGS_PATH
             + "?application="
             + encode(settings.application())
@@ -105,6 +105,14 @@ public final class ConfigServiceBootstrapClient implements ConfigServiceBootstra
     } catch (Exception exception) {
       throw new IllegalArgumentException("Config Service response could not be parsed");
     }
+  }
+
+  private static String trimTrailingSlashes(String value) {
+    int end = value.length();
+    while (end > 0 && value.charAt(end - 1) == '/') {
+      end--;
+    }
+    return value.substring(0, end);
   }
 
   private static String encode(String value) {

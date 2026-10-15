@@ -113,7 +113,7 @@ public class PersonalInformationUpdateWebMapper {
       }
       if ("email".equalsIgnoreCase(field.getControlType())
           && !text.isBlank()
-          && !Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$").matcher(text).matches()) {
+          && !Pattern.compile("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$").matcher(text).matches()) {
         throw new InvalidPersonalInformationUpdateException(
             "Personal information field must be email: " + fieldId);
       }

@@ -15,7 +15,7 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 public class RegistrationStartValidator {
-  private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+  private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$");
   private static final Pattern HK_MOBILE = Pattern.compile("^[4-9][0-9]{7}$");
   private static final Pattern SAFE_CAPTCHA = Pattern.compile("^[A-Za-z0-9_-]{6,128}$");
   private final RegistrationContactDeriver contactDeriver;
