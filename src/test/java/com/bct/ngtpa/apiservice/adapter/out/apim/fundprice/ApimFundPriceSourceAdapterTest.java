@@ -121,6 +121,21 @@ class ApimFundPriceSourceAdapterTest {
   }
 
   @Test
+  void fundListIsAlwaysSentAsAnEmptyStringForTheQueryPath() {
+    // Confirmed design (docs/design/9-fund-price/fund-price-decisions-open-questions.md,
+    // 2026-10-15): fund-list supports a later fund-comparison feature and is always "" for all
+    // current (non-comparison) usages. Populated solely here in the adapter.
+    stubSuccess(validItem());
+    var captor = org.mockito.ArgumentCaptor.forClass(ApimExchangeRequest.class);
+    newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))).block();
+    verify(executor).postEnvelope(captor.capture());
+    var request =
+        (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
+            captor.getValue().request();
+    assertThat(request.fundList()).isEqualTo("");
+  }
+
+  @Test
   void policyNoIsPassedThroughFromTheCommand() {
     stubSuccess(validItem());
     ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
@@ -251,6 +266,27 @@ class ApimFundPriceSourceAdapterTest {
     assertThat(request.fromDate()).isEqualTo("25/09/2023");
     assertThat(request.toDate()).isEqualTo("25/09/2026");
     assertThat(request.policyNo()).isEqualTo("00000008802");
+  }
+
+  @Test
+  void fundListIsAlwaysSentAsAnEmptyStringForTheExportPath() {
+    // Mirrors fundListIsAlwaysSentAsAnEmptyStringForTheQueryPath for the export/range path --
+    // both paths funnel through the same exchangeAndReconcile(...) construction site.
+    stubSuccess(validItem());
+    var captor = org.mockito.ArgumentCaptor.forClass(ApimExchangeRequest.class);
+    var rangeCommand =
+        new com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceRangeCommand(
+            "00000008802",
+            LocalDate.of(2023, 9, 25),
+            LocalDate.of(2026, 9, 25),
+            "DB",
+            ActorUserRole.ROLE_USER_MBR);
+    newAdapter().fetchPriceRange(rangeCommand).block();
+    verify(executor).postEnvelope(captor.capture());
+    var request =
+        (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
+            captor.getValue().request();
+    assertThat(request.fundList()).isEqualTo("");
   }
 
   @Test
