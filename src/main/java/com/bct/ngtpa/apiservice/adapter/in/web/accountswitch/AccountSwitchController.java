@@ -49,6 +49,8 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public final class AccountSwitchController {
 
+  private static final String SOURCE_SERVER = "SERVER";
+
   private final SwitchAccountUseCase useCase;
   private final AccountSwitchWebMapper mapper;
   private final ValidateAuthenticatedSessionUseCase sessionValidation;
@@ -97,7 +99,7 @@ public final class AccountSwitchController {
                             AccountSwitchErrorKey.CSRF_INVALID.value(),
                             null,
                             List.of("PAGE"),
-                            "SERVER")))));
+                            SOURCE_SERVER)))));
   }
 
   private Mono<ResponseEntity<MutationResponse<AccountSwitchResponse>>> accountNotFound() {
@@ -109,7 +111,7 @@ public final class AccountSwitchController {
                     AccountSwitchErrorKey.ACCOUNT_NOT_FOUND.value(),
                     null,
                     List.of("PAGE"),
-                    "SERVER")));
+                    SOURCE_SERVER)));
     return Mono.just(
         ResponseEntity.status(HttpStatusClassification.classify(body.status())).body(body));
   }
@@ -127,7 +129,7 @@ public final class AccountSwitchController {
                             null,
                             List.of("PAGE"),
                             "ERROR",
-                            "SERVER")))));
+                            SOURCE_SERVER)))));
   }
 
   private boolean hasText(String value) {
