@@ -22,6 +22,7 @@ It integrates a new downstream options operation, reuses the existing Fund Price
 5. [05-test-and-traceability.md](05-test-and-traceability.md)
 6. [06-decisions-and-non-goals.md](06-decisions-and-non-goals.md)
 
+- [07-implementation-plan.md](07-implementation-plan.md)
 ## Authoritative decisions
 
 - `ReferenceDatePort.resolveReferenceDate(accountEnv)` supplies the feature's reference date.
