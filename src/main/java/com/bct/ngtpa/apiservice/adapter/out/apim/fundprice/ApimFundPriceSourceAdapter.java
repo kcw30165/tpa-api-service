@@ -99,7 +99,14 @@ public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
       com.bct.ngtpa.apiservice.application.dto.ActorUserRole actorUserRole) {
     var request =
         new TrpGetFundPriceApimRequest(
-            policyNo, fromDate.format(formatter), toDate.format(formatter));
+            policyNo,
+            fromDate.format(formatter),
+            toDate.format(formatter),
+            // fund-list is always "" for all current (non-comparison) usages -- confirmed
+            // design, docs/design/9-fund-price/fund-price-decisions-open-questions.md
+            // (2026-10-15). A later fund-comparison feature will populate this with a
+            // comma-joined FE-supplied fund-code string.
+            "");
     var exchange =
         new ApimExchangeRequest<>(
             path,

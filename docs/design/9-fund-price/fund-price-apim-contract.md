@@ -52,9 +52,12 @@ Validation requires one data item, a supported nonblank mode, a supported nonbla
 {
   "policy-no": "00000008802",
   "from-date": "05/05/2026",
-  "to-date": "05/05/2026"
+  "to-date": "05/05/2026",
+  "fund-list": ""
 }
 ```
+
+`fund-list`: a comma-joined string of fund codes, added to support a later fund-comparison feature. For all current (non-comparison) usages it is always sent as an empty string `""`. This field is populated solely inside `ApimFundPriceSourceAdapter`; it is not threaded through `FetchFundPriceCommand`, `FetchFundPriceRangeCommand`, the fund-price use cases, or the controller -- those layers have no fund-code concept today. Fund comparison is out of scope for this change and may introduce its own command shape rather than reusing these two commands.
 
 ### Response
 

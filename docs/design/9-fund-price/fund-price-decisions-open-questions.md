@@ -49,3 +49,18 @@ These are not business assumptions. They must be resolved from live repository e
 7. Exact test and documentation files that form the authoritative APIM operation ledger and guard.
 
 No production code may guess these. Prompt 001 should first characterize them and add genuine fail-first tests.
+
+## fund-list request field (confirmed, 2026-10-15)
+
+- `TrpGetFundPriceApimRequest` gains a fourth field, `fund-list` (JSON property `fund-list`),
+  alongside `policy-no`/`from-date`/`to-date`.
+- For all current usages (query and export paths) `fund-list` is always sent as `""`.
+- A later fund-comparison feature will populate `fund-list` as a comma-joined string of FE-supplied
+  fund codes (e.g. `fundA,fundB,fundC`); Java converts an FE array into that string. That conversion
+  is NOT implemented by this change.
+- Scope decision (confirmed, Nick): `fund-list` is populated solely inside
+  `ApimFundPriceSourceAdapter.exchangeAndReconcile(...)`, the single construction site of
+  `TrpGetFundPriceApimRequest`. `FetchFundPriceCommand`, `FetchFundPriceRangeCommand`,
+  `FundPriceQueryUseCase`, `FundPriceExportUseCase`, and `FundPriceController` are NOT changed --
+  none of them carry a fund-code concept today, and fund comparison may require a different command
+  shape entirely rather than reusing these two.
