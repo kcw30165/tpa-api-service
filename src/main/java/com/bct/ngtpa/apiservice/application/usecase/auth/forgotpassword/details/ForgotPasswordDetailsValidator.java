@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 public final class ForgotPasswordDetailsValidator {
   private static final DateTimeFormatter DOB =
       DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
-  private static final Pattern EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+  private static final Pattern EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@.]+\\.[^\\s@]+$");
   private static final Pattern HK_MOBILE = Pattern.compile("^(?:\\+?852)?[456789]\\d{7}$");
 
   public ForgotPasswordDetailsValidation validate(String dob, String email, String mobile) {

@@ -413,7 +413,7 @@ public class PersonalInformationUpdateYamlValidator {
     if (!domainPart.contains(".")) {
       return false;
     }
-    return Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matcher(value).matches();
+    return Pattern.compile("^[^\\s@]+@[^\\s@.]+\\.[^\\s@]+$").matcher(value).matches();
   }
 
   private boolean isBlockedAddress(String value, String configuredValue) {

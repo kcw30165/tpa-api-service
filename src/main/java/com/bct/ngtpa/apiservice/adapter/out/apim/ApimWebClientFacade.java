@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -285,11 +286,13 @@ public class ApimWebClientFacade {
             });
   }
 
+  private static final Pattern TRANSIENT_STATUS_PATTERN =
+      Pattern.compile("status=(500|501|502|503|504|505|506|507|508|510|511)(?:\\s|\\b)");
+
   private boolean isTransientBusinessFailure(Throwable error) {
     if (error instanceof ApimException apimException) {
       String message = apimException.getMessage();
-      return message != null
-          && message.matches(".*status=(500|501|502|503|504|505|506|507|508|510|511)(?:\\s|\\b).*");
+      return message != null && TRANSIENT_STATUS_PATTERN.matcher(message).find();
     }
     if (error instanceof WebClientRequestException || error instanceof TimeoutException) {
       return true;

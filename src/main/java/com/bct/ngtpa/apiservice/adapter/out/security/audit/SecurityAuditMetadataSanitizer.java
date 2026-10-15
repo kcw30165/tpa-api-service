@@ -40,9 +40,9 @@ class SecurityAuditMetadataSanitizer {
           "smscontent",
           "emailbody",
           "body");
-  private static final Pattern EMAIL_VALUE = Pattern.compile(".+@.+\\..+");
-  private static final Pattern PHONE_LIKE_VALUE = Pattern.compile(".*\\d{8,}.*");
-  private static final Pattern BEARER_VALUE = Pattern.compile("(?i).*bearer\\s+[a-z0-9._\\-]+.*");
+  private static final Pattern EMAIL_VALUE = Pattern.compile("[^@]+@[^.]+\\..+");
+  private static final Pattern PHONE_LIKE_VALUE = Pattern.compile("\\d{8,}");
+  private static final Pattern BEARER_VALUE = Pattern.compile("(?i)bearer\\s+[a-z0-9._\\-]+");
 
   Map<String, String> sanitize(Map<String, String> metadata) {
     if (metadata == null || metadata.isEmpty()) {
@@ -75,11 +75,11 @@ class SecurityAuditMetadataSanitizer {
     }
     String lower = value.toLowerCase(Locale.ROOT);
     return EMAIL_VALUE.matcher(value).matches()
-        || PHONE_LIKE_VALUE.matcher(value).matches()
+        || PHONE_LIKE_VALUE.matcher(value).find()
         || lower.startsWith("csrf_")
         || lower.startsWith("reg_")
         || isSensitiveOtpValue(key, value)
-        || BEARER_VALUE.matcher(value).matches();
+        || BEARER_VALUE.matcher(value).find();
   }
 
   private boolean isSensitiveOtpValue(String key, String value) {
