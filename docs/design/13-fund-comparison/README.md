@@ -25,7 +25,7 @@ It integrates a new downstream options operation, reuses the existing Fund Price
 ## Authoritative decisions
 
 - `ReferenceDatePort.resolveReferenceDate(accountEnv)` supplies the feature's reference date.
-- accountEnv for this call is sourced from the authenticated `PortalAccessContext.AccountContext`, mirroring Fund Price's existing usage.
+- accountEnv for this call is resolved by the controller via `CurrentPortalAccessContextResolver.current()` and passed into the application layer as a primitive `String`; `PortalAccessContext` itself is never exposed to the application layer, mirroring Fund Price's existing controller-level resolution pattern.
 - Fund codes are the identifiers.
 - The BFF supports at most five unique, nonblank fund codes per price request.
 - A selected fund list is sent downstream as a comma-separated string without spaces.

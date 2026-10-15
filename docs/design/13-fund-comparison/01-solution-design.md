@@ -20,7 +20,7 @@ Allow an authenticated member to retrieve scheme-specific fund comparison option
 - Selects and sorts fund names using the existing Fund Price language-selection and sorting behavior.
 - Validates and converts time-range tokens.
 - Resolves `fromDate` and `toDate` using `ReferenceDatePort.resolveReferenceDate(accountEnv)`.
-- `accountEnv` is taken from `PortalAccessContext.AccountContext` (the same source as `policyNo`).
+- accountEnv is resolved by the controller via `CurrentPortalAccessContextResolver.current()` (the same source as `policyNo`) and passed into the application layer as a primitive; `PortalAccessContext` is not exposed to the application layer.
 - Extends the existing Fund Price downstream request shape with fund-list, via a new dedicated BFF command/port/adapter -- the existing Fund Price command, port, and adapter are not modified
 - Maps downstream `bid-price` to public `unitPrice`.
 - Groups returned price points by `fundCode`.
@@ -38,7 +38,7 @@ Allow an authenticated member to retrieve scheme-specific fund comparison option
 ### Options flow
 
 1. Controller accepts `POST /api/v1/fund-comparison/options`.
-2. Application service obtains account context and `policyNo`.
+2. Controller resolves `PortalAccessContext` via `CurrentPortalAccessContextResolver.current()` and passes `accountEnv` and `policyNo` as primitives to the application service; the application service never receives `PortalAccessContext` itself.
 3. Outbound adapter calls `POST /TRPGetFundCmpOpt`.
 4. Mapper splits `time-range`, trims tokens, validates tokens, drops invalid tokens with logging, and removes duplicates.
 5. If no valid token remains, the use case fails with `err.fund-comparison.retrieval.unavailable`.
