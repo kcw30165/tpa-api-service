@@ -34,15 +34,15 @@ import reactor.core.publisher.Mono;
 
 /**
  * Stateless account-switch endpoint: resolves display metadata for a different account within the
- * same authenticated session. No session mutation occurs; the frontend continues sending the
- * {@code Account-Ref} header on every subsequent authenticated call as today.
+ * same authenticated session. No session mutation occurs; the frontend continues sending the {@code
+ * Account-Ref} header on every subsequent authenticated call as today.
  *
  * <p>Sequencing mirrors {@code LogoutController}: read the raw session cookie, require CSRF,
  * validate the session, then perform the business action. Two distinct failure modes are mapped
- * separately: an invalid/expired session (401, via the existing
- * {@code AuthenticatedPortalContextResolutionException} contract) versus a valid session whose
- * account list does not contain the requested target (422 business rejection, via the existing
- * {@code BUSINESS_REJECTED -> UNPROCESSABLE_ENTITY} convention already used by other flows).
+ * separately: an invalid/expired session (401, via the existing {@code
+ * AuthenticatedPortalContextResolutionException} contract) versus a valid session whose account
+ * list does not contain the requested target (422 business rejection, via the existing {@code
+ * BUSINESS_REJECTED -> UNPROCESSABLE_ENTITY} convention already used by other flows).
  */
 @RestController
 @RequestMapping("/api/v1/account")
@@ -77,7 +77,8 @@ public final class AccountSwitchController {
         .validate(new ValidateAuthenticatedSessionCommand(sessionId.get(), csrf, clean(requestId)))
         .flatMap(
             ignored ->
-                useCase.switchAccount(new SwitchAccountCommand(sessionId.get(), request.accountRef())))
+                useCase.switchAccount(
+                    new SwitchAccountCommand(sessionId.get(), request.accountRef())))
         .map(account -> ResponseEntity.ok(mapper.toResponse(account)))
         .onErrorResume(AuthenticatedCsrfValidationException.class, ignored -> csrfInvalid())
         .onErrorResume(AccountNotInSessionException.class, ignored -> accountNotFound())
@@ -109,7 +110,8 @@ public final class AccountSwitchController {
                     null,
                     List.of("PAGE"),
                     "SERVER")));
-    return Mono.just(ResponseEntity.status(HttpStatusClassification.classify(body.status())).body(body));
+    return Mono.just(
+        ResponseEntity.status(HttpStatusClassification.classify(body.status())).body(body));
   }
 
   private Mono<ResponseEntity<MutationResponse<AccountSwitchResponse>>> unauthorized() {

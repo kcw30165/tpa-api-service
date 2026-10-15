@@ -6,9 +6,9 @@ import jakarta.validation.constraints.Pattern;
 /**
  * Request body for {@code POST /api/v1/account/switch}.
  *
- * <p>The pattern mirrors {@code AuthenticatedAccountRef}'s confirmed format
- * ({@code ^acc_[A-Za-z0-9_-]{20,124}$}), so a malformed ref is rejected by {@code @Valid} before
- * ever reaching the session/account lookup.
+ * <p>The pattern mirrors {@code AuthenticatedAccountRef}'s confirmed format ({@code
+ * ^acc_[A-Za-z0-9_-]{20,124}$}), so a malformed ref is rejected by {@code @Valid} before ever
+ * reaching the session/account lookup.
  */
 public record AccountSwitchRequest(
     @NotBlank

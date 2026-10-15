@@ -11,14 +11,15 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Wires the account-switch feature's beans. Mirrors the existing pattern in
- * AuthenticatedSessionConfig, which wires AuthenticatedAccountContextResolver using the same
- * {@link LoadAndTouchAuthenticatedSessionUseCase} bean.
+ * AuthenticatedSessionConfig, which wires AuthenticatedAccountContextResolver using the same {@link
+ * LoadAndTouchAuthenticatedSessionUseCase} bean.
  */
 @Configuration
 public class AccountSwitchConfig {
 
   @Bean
-  AccountSwitchLookupPort accountSwitchLookupPort(LoadAndTouchAuthenticatedSessionUseCase lifecycle) {
+  AccountSwitchLookupPort accountSwitchLookupPort(
+      LoadAndTouchAuthenticatedSessionUseCase lifecycle) {
     return new AuthenticatedAccountSwitchLookupAdapter(lifecycle);
   }
 

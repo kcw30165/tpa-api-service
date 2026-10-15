@@ -20,8 +20,7 @@ public final class DefaultAuthenticatedSessionCookieReader
 
   @Override
   public Optional<AuthenticatedSessionId> read(ServerWebExchange exchange) {
-    HttpCookie cookie =
-        exchange.getRequest().getCookies().getFirst(sessionCookies.cookieName());
+    HttpCookie cookie = exchange.getRequest().getCookies().getFirst(sessionCookies.cookieName());
     if (cookie == null) {
       return Optional.empty();
     }

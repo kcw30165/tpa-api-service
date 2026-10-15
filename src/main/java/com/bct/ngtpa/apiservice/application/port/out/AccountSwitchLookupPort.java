@@ -4,14 +4,14 @@ import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import reactor.core.publisher.Mono;
 
 /**
- * Outbound port dedicated to the account-switch capability: resolving a different account's
- * display metadata within the same authenticated session.
+ * Outbound port dedicated to the account-switch capability: resolving a different account's display
+ * metadata within the same authenticated session.
  *
- * <p>This is deliberately NOT {@link PortalAccessContextPort}. That port's
- * {@code resolvePortalAccessContext(accountRef, sessionId)} is architecture-guarded to be called
- * only from {@code PortalAccessContextWebFilter}
- * (see {@code PortalAccessContextResponsibilityBoundaryGuardTest} and
- * {@code PortalAccessContextFinalMigrationEvidenceTest}), which resolves the account bound to the
+ * <p>This is deliberately NOT {@link PortalAccessContextPort}. That port's {@code
+ * resolvePortalAccessContext(accountRef, sessionId)} is architecture-guarded to be called only from
+ * {@code PortalAccessContextWebFilter} (see {@code
+ * PortalAccessContextResponsibilityBoundaryGuardTest} and {@code
+ * PortalAccessContextFinalMigrationEvidenceTest}), which resolves the account bound to the
  * *current* request's {@code Account-Ref} header. The switch use case has a different need: an
  * explicit, user-commanded lookup of a *different* target account by ref, which the filter cannot
  * and must not be repurposed to provide. This port exists so that need is served without touching

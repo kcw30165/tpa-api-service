@@ -24,14 +24,15 @@ import reactor.core.publisher.Mono;
  *
  * <p>Two distinct failure modes are now deliberately separated: an invalid/expired/not-found
  * session errors with {@link AuthenticatedPortalContextResolutionException} (mapped to 401
- * upstream); a valid session whose account list simply does not contain the requested target
- * errors with {@link AccountNotInSessionException} (mapped to 422 upstream).
+ * upstream); a valid session whose account list simply does not contain the requested target errors
+ * with {@link AccountNotInSessionException} (mapped to 422 upstream).
  */
 public final class AuthenticatedAccountSwitchLookupAdapter implements AccountSwitchLookupPort {
 
   private final LoadAndTouchAuthenticatedSessionUseCase lifecycle;
 
-  public AuthenticatedAccountSwitchLookupAdapter(LoadAndTouchAuthenticatedSessionUseCase lifecycle) {
+  public AuthenticatedAccountSwitchLookupAdapter(
+      LoadAndTouchAuthenticatedSessionUseCase lifecycle) {
     this.lifecycle = Objects.requireNonNull(lifecycle);
   }
 

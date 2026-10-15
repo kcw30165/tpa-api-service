@@ -11,9 +11,9 @@ import reactor.core.publisher.Mono;
  * <p>Stateless: delegates to {@link AccountSwitchLookupPort#resolveTargetAccount(String, String)}
  * -- a dedicated port for this capability, separate from the web filter's external account/session
  * resolution port. No session mutation occurs. A resolution failure (target account not present in
- * the session's account list, or the session itself invalid) propagates unchanged as
- * {@code AuthenticatedPortalContextResolutionException}, which the existing authenticated-context
- * web exception handler already maps to 401 UNAUTHORIZED globally.
+ * the session's account list, or the session itself invalid) propagates unchanged as {@code
+ * AuthenticatedPortalContextResolutionException}, which the existing authenticated-context web
+ * exception handler already maps to 401 UNAUTHORIZED globally.
  */
 public final class SwitchAccountService implements SwitchAccountUseCase {
 
