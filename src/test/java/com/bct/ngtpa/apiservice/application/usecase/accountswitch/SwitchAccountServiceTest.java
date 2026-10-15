@@ -13,11 +13,11 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Tests for {@link SwitchAccountService}, depending on the dedicated
- * {@link AccountSwitchLookupPort}. Covers both distinct failure modes the port may now emit:
- * an invalid session ({@code AuthenticatedPortalContextResolutionException}) and a valid session
- * whose account list lacks the target ({@code AccountNotInSessionException}) -- both simply
- * propagate unchanged through this service either way.
+ * Tests for {@link SwitchAccountService}, depending on the dedicated {@link
+ * AccountSwitchLookupPort}. Covers both distinct failure modes the port may now emit: an invalid
+ * session ({@code AuthenticatedPortalContextResolutionException}) and a valid session whose account
+ * list lacks the target ({@code AccountNotInSessionException}) -- both simply propagate unchanged
+ * through this service either way.
  */
 class SwitchAccountServiceTest {
 

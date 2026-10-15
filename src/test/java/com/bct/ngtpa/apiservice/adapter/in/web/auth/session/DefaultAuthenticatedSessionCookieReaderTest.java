@@ -37,9 +37,7 @@ class DefaultAuthenticatedSessionCookieReaderTest {
   @Test
   void returnsEmptyWhenCookieIsBlank() {
     var request =
-        MockServerHttpRequest.get("/")
-            .cookie(ResponseCookie.from(COOKIE_NAME, "").build())
-            .build();
+        MockServerHttpRequest.get("/").cookie(ResponseCookie.from(COOKIE_NAME, "").build()).build();
     var exchange = MockServerWebExchange.from(request);
     var reader = new DefaultAuthenticatedSessionCookieReader(writer());
 

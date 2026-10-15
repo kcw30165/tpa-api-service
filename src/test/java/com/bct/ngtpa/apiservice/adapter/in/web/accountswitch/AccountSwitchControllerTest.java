@@ -17,8 +17,8 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.Valida
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
@@ -120,8 +120,7 @@ class AccountSwitchControllerTest {
   @Test
   void returns422WhenTargetAccountNotInSession() {
     when(cookieReader.read(any())).thenReturn(Optional.of(SESSION_ID));
-    when(sessionValidation.validate(any()))
-        .thenReturn(Mono.just(mock(AuthenticatedSession.class)));
+    when(sessionValidation.validate(any())).thenReturn(Mono.just(mock(AuthenticatedSession.class)));
     when(useCase.switchAccount(any())).thenReturn(Mono.error(new AccountNotInSessionException()));
 
     client
@@ -138,11 +137,10 @@ class AccountSwitchControllerTest {
   @Test
   void returns200WithMappedAccountOnSuccess() {
     var account =
-        new AccountContext(TARGET_REF, "AA", "1111111111111111111111111", "1", "BB", "CC",
-            TermStatus.BLANK, null);
+        new AccountContext(
+            TARGET_REF, "AA", "1111111111111111111111111", "1", "BB", "CC", TermStatus.BLANK, null);
     when(cookieReader.read(any())).thenReturn(Optional.of(SESSION_ID));
-    when(sessionValidation.validate(any()))
-        .thenReturn(Mono.just(mock(AuthenticatedSession.class)));
+    when(sessionValidation.validate(any())).thenReturn(Mono.just(mock(AuthenticatedSession.class)));
     when(useCase.switchAccount(any())).thenReturn(Mono.just(account));
 
     client
