@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSession
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.replay.RedisAuthenticatedLoginReplaySessionAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.replay.*;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.*;
 import java.time.Clock;
 import org.springframework.context.annotation.*;
@@ -25,10 +26,11 @@ public class AuthenticatedLoginReplayConfig {
       AuthenticatedLoginHandoffPort handoffs,
       AuthenticatedLoginReplaySessionPort replaySessions,
       AuthenticatedSessionProtectorPort protector,
+      AuthenticatedSessionConcurrencyService concurrency,
       CsrfTokenGenerator csrfTokens,
       CsrfTokenHasher csrfHasher,
       Clock clock) {
     return new RecoverCommittedLoginService(
-        handoffs, replaySessions, protector, csrfTokens, csrfHasher, clock);
+        handoffs, replaySessions, protector, concurrency, csrfTokens, csrfHasher, clock);
   }
 }

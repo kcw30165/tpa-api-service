@@ -67,15 +67,12 @@ class AuthenticatedLoginCommittedReplaySubtask006001a6005FailFirstTest {
       throws Exception {
     String replay = Files.readString(REPLAY);
     String port = Files.readString(REPLAY_PORT);
-    assertThat(port)
-        .contains("loadForReplay")
-        .contains("rotateCsrfHashIfCurrent")
-        .contains("RotateAuthenticatedSessionCsrfHashCommand");
+    assertThat(port).contains("loadForReplay").doesNotContain("rotateCsrfHashIfCurrent");
     assertThat(replay)
         .contains("csrfTokens.generate()")
         .contains("csrfHasher.hash(raw)")
-        .contains("rotateCsrfHashIfCurrent")
-        .contains("AuthenticatedSessionCsrfRotationStatus.ROTATED")
+        .contains("concurrency.updateIfUsable(")
+        .contains("AuthenticatedSessionConcurrencyOutcome.APPLIED")
         .contains("new RecoverCommittedLoginResult(true")
         .doesNotContain("storeRawCsrf")
         .doesNotContain("encryptedCsrf");

@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.application.port.in.RefreshCsrfTokenUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.csrf.*;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.*;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
 import java.time.Clock;
@@ -16,12 +17,12 @@ public class CsrfTokenRefreshApplicationConfig {
   AuthenticatedSessionCsrfRefreshService authenticatedSessionCsrfRefreshService(
       AuthenticatedSessionPort sessions,
       AuthenticatedSessionProtectorPort protector,
-      AuthenticatedSessionCsrfRotationPort rotations,
+      AuthenticatedSessionConcurrencyService concurrency,
       CsrfTokenGenerator tokens,
       CsrfTokenHasher hasher,
       Clock clock) {
     return new AuthenticatedSessionCsrfRefreshService(
-        sessions, protector, rotations, tokens, hasher, clock);
+        sessions, protector, concurrency, tokens, hasher, clock);
   }
 
   @Bean

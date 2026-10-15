@@ -205,3 +205,15 @@ docs(auth): lock CSRF token refresh implementation design
 ## Superseded response-envelope detail
 
 The original Phase 1 design showed `sessionType` and `csrfToken` directly under `result`. Final contract alignment supersedes that detail. Successful responses now expose the payload under `result.data`, specifically `result.data.sessionType` and `result.data.csrfToken`. The security, rotation, persistence, and no-cookie decisions in this design lock remain unchanged.
+
+## Superseded: authenticated rotation mechanism (2026-10-14)
+
+Section 4's "capability-scoped authenticated-session CSRF rotation port" direction was a
+whole-value compare-and-set (`AuthenticatedSessionCsrfRotationPort`,
+`RotateAuthenticatedSessionCsrfHashCommand`, `AuthenticatedSessionCsrfRotation{Result,Status}`,
+`RedisAuthenticatedLoginReplaySessionAdapter.rotateCsrfHashIfCurrent`). It made every CSRF refresh
+and committed-login replay fail with a false conflict whenever the stored session's encrypted
+attributes serialized in a different order than the live JVM's re-serialization (see
+`docs/design/12-csrf-token-refresh-conflict/README.md`). All of it has been removed and replaced
+by the pre-existing revision-based `AuthenticatedSessionCasUpdatePort` /
+`AuthenticatedSessionConcurrencyService`, which compares only the stored `sessionRevision`.

@@ -2,6 +2,8 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.login.replay;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -17,8 +19,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVe
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedAccountRef;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionAccount;
-import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionCsrfRotationResult;
-import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionCsrfRotationStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSession;
@@ -26,6 +26,9 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRev
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedLoginHandoffPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedLoginReplaySessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionProtectorPort;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyOutcome;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyResult;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenHasher;
 import java.time.Clock;
@@ -33,7 +36,9 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -62,7 +67,25 @@ class RecoverCommittedLoginByHandoffServiceTest {
         .verifyComplete();
 
     verify(fixture.replaySessions).loadForReplay(any());
-    verify(fixture.replaySessions).rotateCsrfHashIfCurrent(any());
+    verify(fixture.concurrency).updateIfUsable(eq(SESSION_ID), any(), eq("req"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void rotationReplacesOnlyTheCsrfHash() {
+    Fixture fixture = new Fixture(cleaned(NOW.plusSeconds(300)), usableSession());
+    fixture.service.recover(new RecoverCommittedLoginByHandoffCommand(HANDOFF, "req")).block();
+
+    ArgumentCaptor<UnaryOperator<AuthenticatedSession>> mutator =
+        ArgumentCaptor.forClass(UnaryOperator.class);
+    verify(fixture.concurrency).updateIfUsable(eq(SESSION_ID), mutator.capture(), eq("req"));
+    AuthenticatedSession original = usableSession();
+    AuthenticatedSession rotated = mutator.getValue().apply(original);
+    assertThat(rotated.csrfTokenHash()).isEqualTo("fresh-csrf-hash");
+    assertThat(rotated)
+        .usingRecursiveComparison()
+        .ignoringFields("csrfTokenHash")
+        .isEqualTo(original);
   }
 
   @Test
@@ -73,6 +96,7 @@ class RecoverCommittedLoginByHandoffServiceTest {
     assertFailed(cleaned(NOW), usableSession());
     assertFailed(null, usableSession());
     assertFailed(cleaned(NOW.plusSeconds(300)), unusableSession());
+    assertFailed(cleaned(NOW.plusSeconds(300)), null);
   }
 
   @Test
@@ -95,13 +119,40 @@ class RecoverCommittedLoginByHandoffServiceTest {
   }
 
   @Test
-  void directHandoffRecoveryRejectsCsrfRotationConflict() {
+  void nullOrBlankGeneratedTokenFailsWithoutWriting() {
+    for (String token : new String[] {null, "  "}) {
+      Fixture fixture = new Fixture(cleaned(NOW.plusSeconds(300)), usableSession());
+      when(fixture.generator.generate()).thenReturn(token);
+      StepVerifier.create(
+              fixture.service.recover(new RecoverCommittedLoginByHandoffCommand(HANDOFF, "req")))
+          .expectNext(RecoverCommittedLoginResult.failed())
+          .verifyComplete();
+      verify(fixture.concurrency, never()).updateIfUsable(any(), any(), any());
+    }
+  }
+
+  @Test
+  void directHandoffRecoveryRejectsRevisionConflict() {
     Fixture fixture = new Fixture(cleaned(NOW.plusSeconds(300)), usableSession());
-    when(fixture.replaySessions.rotateCsrfHashIfCurrent(any()))
-        .thenReturn(
+    doReturn(
             Mono.just(
-                new AuthenticatedSessionCsrfRotationResult(
-                    AuthenticatedSessionCsrfRotationStatus.CONFLICT)));
+                AuthenticatedSessionConcurrencyResult.of(
+                    AuthenticatedSessionConcurrencyOutcome.REVISION_CONFLICT_EXHAUSTED)))
+        .when(fixture.concurrency)
+        .updateIfUsable(any(), any(), any());
+
+    StepVerifier.create(
+            fixture.service.recover(new RecoverCommittedLoginByHandoffCommand(HANDOFF, "req")))
+        .expectNext(RecoverCommittedLoginResult.failed())
+        .verifyComplete();
+  }
+
+  @Test
+  void directHandoffRecoveryFailsClosedOnWriteError() {
+    Fixture fixture = new Fixture(cleaned(NOW.plusSeconds(300)), usableSession());
+    doReturn(Mono.error(new IllegalStateException("boom")))
+        .when(fixture.concurrency)
+        .updateIfUsable(any(), any(), any());
 
     StepVerifier.create(
             fixture.service.recover(new RecoverCommittedLoginByHandoffCommand(HANDOFF, "req")))
@@ -149,6 +200,7 @@ class RecoverCommittedLoginByHandoffServiceTest {
             fixture.service.recover(new RecoverCommittedLoginByHandoffCommand(HANDOFF, "req")))
         .expectNext(RecoverCommittedLoginResult.failed())
         .verifyComplete();
+    verify(fixture.concurrency, never()).updateIfUsable(any(), any(), any());
   }
 
   private static AuthenticatedLoginHandoff cleaned(Instant expiresAt) {
@@ -213,35 +265,39 @@ class RecoverCommittedLoginByHandoffServiceTest {
   private static final class Fixture {
     private final AuthenticatedLoginReplaySessionPort replaySessions =
         mock(AuthenticatedLoginReplaySessionPort.class);
+    private final AuthenticatedSessionConcurrencyService concurrency =
+        mock(AuthenticatedSessionConcurrencyService.class);
+    private final CsrfTokenGenerator generator = mock(CsrfTokenGenerator.class);
     private final RecoverCommittedLoginService service;
 
+    @SuppressWarnings("unchecked")
     private Fixture(AuthenticatedLoginHandoff handoff, AuthenticatedSession session) {
       AuthenticatedLoginHandoffPort handoffs = mock(AuthenticatedLoginHandoffPort.class);
       AuthenticatedSessionProtectorPort protector = mock(AuthenticatedSessionProtectorPort.class);
-      CsrfTokenGenerator generator = mock(CsrfTokenGenerator.class);
       CsrfTokenHasher hasher = mock(CsrfTokenHasher.class);
       ProtectedAuthenticatedSession expected = mock(ProtectedAuthenticatedSession.class);
-      ProtectedAuthenticatedSession replacement = mock(ProtectedAuthenticatedSession.class);
 
       when(handoffs.loadByHandoff(HANDOFF))
           .thenReturn(handoff == null ? Mono.empty() : Mono.just(handoff));
       when(replaySessions.loadForReplay(any()))
           .thenReturn(Mono.just(session == null ? Optional.empty() : Optional.of(expected)));
       when(protector.unprotect(expected)).thenReturn(session);
-      when(protector.protect(any(AuthenticatedSession.class))).thenReturn(replacement);
       when(generator.generate()).thenReturn("fresh-csrf");
       when(hasher.hash("fresh-csrf")).thenReturn("fresh-csrf-hash");
-      when(replaySessions.rotateCsrfHashIfCurrent(any()))
-          .thenReturn(
-              Mono.just(
-                  new AuthenticatedSessionCsrfRotationResult(
-                      AuthenticatedSessionCsrfRotationStatus.ROTATED)));
+      when(concurrency.updateIfUsable(any(), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                UnaryOperator<AuthenticatedSession> mutator = invocation.getArgument(1);
+                return Mono.just(
+                    AuthenticatedSessionConcurrencyResult.applied(mutator.apply(session)));
+              });
 
       service =
           new RecoverCommittedLoginService(
               handoffs,
               replaySessions,
               protector,
+              concurrency,
               generator,
               hasher,
               Clock.fixed(NOW, ZoneOffset.UTC));

@@ -23,13 +23,13 @@ class RefreshCsrfTokenServiceFailFirstTest {
   }
 
   @Test
-  void authenticatedRotationServiceMustDependOnCapabilityScopedPort() throws Exception {
+  void authenticatedRotationServiceMustDependOnRevisionBasedConcurrencyService() throws Exception {
     Class<?> service =
         Class.forName(
             "com.bct.ngtpa.apiservice.application.usecase.auth.csrf.AuthenticatedSessionCsrfRefreshService");
     Class<?> sharedPort =
         Class.forName(
-            "com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionCsrfRotationPort");
+            "com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyService");
 
     assertThat(service.getDeclaredConstructors())
         .anySatisfy(
