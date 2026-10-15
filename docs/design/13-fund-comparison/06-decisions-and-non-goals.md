@@ -8,6 +8,7 @@
 4. Options use the new `TRPGetFundCmpOpt` operation.
 5. Prices reuse `TRPGetFundPrice` with added `fund-list`.
 6. Existing callers use empty `fund-list`.
+- Fund Comparison uses a new dedicated command type, outbound port, and adapter for its TRPGetFundPrice call; FetchFundPriceRangeCommand, FundPriceSourcePort, and ApimFundPriceSourceAdapter are not modified or reused for this call. Only the shared downstream DTOs and FundPriceApimContentValidator are reused.
 7. The selected list is comma-separated without spaces.
 8. The BFF checks at most five unique funds but does not require two.
 9. Time-range membership is not persisted or revalidated against prior options.

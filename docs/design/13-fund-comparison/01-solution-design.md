@@ -21,7 +21,7 @@ Allow an authenticated member to retrieve scheme-specific fund comparison option
 - Validates and converts time-range tokens.
 - Resolves `fromDate` and `toDate` using `ReferenceDatePort.resolveReferenceDate(accountEnv)`.
 - `accountEnv` is taken from `PortalAccessContext.AccountContext` (the same source as `policyNo`).
-- Extends the existing Fund Price downstream request with `fund-list`.
+- Extends the existing Fund Price downstream request shape with fund-list, via a new dedicated BFF command/port/adapter -- the existing Fund Price command, port, and adapter are not modified
 - Maps downstream `bid-price` to public `unitPrice`.
 - Groups returned price points by `fundCode`.
 - Preserves the shared public response envelope.
@@ -55,7 +55,7 @@ Allow an authenticated member to retrieve scheme-specific fund comparison option
 4. Application service resolves the reference date via `ReferenceDatePort.resolveReferenceDate(accountEnv)`.
 5. Date range is calculated inclusively.
 6. Fund codes are joined with commas and no spaces.
-7. Existing Fund Price operation is called with `policy-no`, formatted `from-date`, formatted `to-date`, and `fund-list`.
+7. The downstream TRPGetFundPrice operation is called (via Fund Comparison's own dedicated adapter, not the existing FundPriceSourcePort/ApimFundPriceSourceAdapter) with policy-no, formatted from-date, formatted to-date, and fund-list
 8. Downstream rows are grouped into series by `fund-code`.
 9. Each `bid-price` becomes `unitPrice`; `offer-price` is ignored.
 10. Public dates use `dd/MM/yyyy`.

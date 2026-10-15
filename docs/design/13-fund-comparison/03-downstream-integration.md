@@ -82,7 +82,7 @@ POST /TRPGetFundPrice
 }
 ```
 
-The extension must preserve all current callers. The command/request model therefore needs a safe empty default or an explicit compatibility path consistent with the repository's current command-construction style.
+The extension must preserve all current callers. Confirmed (Nick): Fund Comparison introduces its own dedicated command type (not an extension of FetchFundPriceRangeCommand), plus its own outbound port and adapter. The existing FetchFundPriceRangeCommand, FundPriceSourcePort, and ApimFundPriceSourceAdapter remain completely unmodified and continue to send fund-list="" exactly as today; Fund Comparison's new adapter builds its own TrpGetFundPriceApimRequest with the comma-joined selected fund codes, reusing only the shared downstream DTOs and FundPriceApimContentValidator for response reconciliation.
 
 ### Downstream response
 
