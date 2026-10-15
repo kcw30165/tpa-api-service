@@ -15,11 +15,12 @@ Allow an authenticated member to retrieve scheme-specific fund comparison option
 
 ### BFF
 
-- Resolves `policyNo` from authenticated account context.
+- Resolves `policyNo` and `accountEnv` from authenticated account context.
 - Retrieves and normalizes Fund Comparison options.
 - Selects and sorts fund names using the existing Fund Price language-selection and sorting behavior.
 - Validates and converts time-range tokens.
-- Resolves `fromDate` and `toDate` using `ReferenceDatePort.resolveReferenceDate()`.
+- Resolves `fromDate` and `toDate` using `ReferenceDatePort.resolveReferenceDate(accountEnv)`.
+- `accountEnv` is taken from `PortalAccessContext.AccountContext` (the same source as `policyNo`).
 - Extends the existing Fund Price downstream request with `fund-list`.
 - Maps downstream `bid-price` to public `unitPrice`.
 - Groups returned price points by `fundCode`.
@@ -51,7 +52,7 @@ Allow an authenticated member to retrieve scheme-specific fund comparison option
 1. Controller accepts `POST /api/v1/fund-comparison/prices` with `fundCodes` and `timeRange`.
 2. Input validation rejects blank/duplicate-invalid inputs and more than five unique fund codes.
 3. Application service validates time-range syntax only. It does not persist or re-fetch prior options.
-4. Application service resolves the reference date.
+4. Application service resolves the reference date via `ReferenceDatePort.resolveReferenceDate(accountEnv)`.
 5. Date range is calculated inclusively.
 6. Fund codes are joined with commas and no spaces.
 7. Existing Fund Price operation is called with `policy-no`, formatted `from-date`, formatted `to-date`, and `fund-list`.
@@ -62,7 +63,7 @@ Allow an authenticated member to retrieve scheme-specific fund comparison option
 
 ## 1.4 Inclusive date rules
 
-Let `R` be the date returned by `ReferenceDatePort.resolveReferenceDate()`.
+Let `R` be the date returned by `ReferenceDatePort.resolveReferenceDate(accountEnv)`.
 
 - `XD`: `fromDate = R.minusDays(X - 1)`
 - `XM`: `fromDate = R.minusMonths(X).plusDays(1)`

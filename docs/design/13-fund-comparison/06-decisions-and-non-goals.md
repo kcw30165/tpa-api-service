@@ -11,7 +11,8 @@
 7. The selected list is comma-separated without spaces.
 8. The BFF checks at most five unique funds but does not require two.
 9. Time-range membership is not persisted or revalidated against prior options.
-10. `ReferenceDatePort.resolveReferenceDate()` is authoritative.
+10. `ReferenceDatePort.resolveReferenceDate(accountEnv)` is authoritative.
+- accountEnv is sourced from `PortalAccessContext.AccountContext.accountEnv()`, the same source Fund Price uses; it is not a no-arg call.
 11. All date windows are inclusive of the reference date.
 12. The public price is downstream `bid-price`, named `unitPrice`.
 13. Public dates use `dd/MM/yyyy`.
