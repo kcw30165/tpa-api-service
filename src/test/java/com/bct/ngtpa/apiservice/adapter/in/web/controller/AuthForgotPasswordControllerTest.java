@@ -64,7 +64,16 @@ class AuthForgotPasswordControllerTest {
             entity -> {
               assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
               assertThat(entity.getBody().result().data().csrfToken()).isEqualTo("csrf_secret");
-              assertThat(entity.getBody().result().data().identityType()).isEqualTo("STAFF_NO");
+              assertThat(entity.getBody().result().data().csrfToken()).isNotBlank();
+              assertThat(
+                      java.util.Arrays.stream(
+                              com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto
+                                  .ForgotPasswordStartDataResponse.class
+                                  .getRecordComponents())
+                          .map(java.lang.reflect.RecordComponent::getName)
+                          .toList())
+                  .containsExactly("csrfToken");
+              assertThat(entity.toString()).doesNotContain("identityType", "STAFF_NO");
               assertThat(entity.toString()).doesNotContain("afs_secret", "Member01");
             })
         .verifyComplete();

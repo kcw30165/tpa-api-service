@@ -56,7 +56,7 @@ public final class ForgotPasswordStartWebMapper {
               ApiStatus.SUCCESS,
               new ForgotPasswordWorkflowResultResponse<>(
                   WorkflowNextStep.ENTER_ID,
-                  new ForgotPasswordStartDataResponse(result.csrfToken(), result.identityType())),
+                  new ForgotPasswordStartDataResponse(result.csrfToken())),
               List.of());
       case USERNAME_NOT_FOUND ->
           failure(ApiStatus.BUSINESS_REJECTED, WorkflowNextStep.ENTER_USERNAME, result.errors());

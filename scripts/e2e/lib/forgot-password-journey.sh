@@ -129,7 +129,11 @@ fp_journey_to_otp_sent() {
   csrf="$(fp_json '.result.data.csrfToken // empty')"
   [[ -n "$csrf" ]] || { printf 'FAIL start did not return a csrfToken\n'; return 1; }
   write_private_value csrf_token "$csrf"
-  identity_type="${FORGOT_PASSWORD_TEST_IDENTITY_TYPE:-$(fp_json '.result.data.identityType // empty')}"
+  if [ -z "${FORGOT_PASSWORD_TEST_IDENTITY_TYPE:-}" ]; then
+    echo "FORGOT_PASSWORD_TEST_IDENTITY_TYPE must be set; /start no longer returns identityType" >&2
+    exit 1
+  fi
+  identity_type="$FORGOT_PASSWORD_TEST_IDENTITY_TYPE"
   [[ -n "$identity_type" ]] || { printf 'FAIL no identity type: set FORGOT_PASSWORD_TEST_IDENTITY_TYPE (GPN, GPFS, STAFF_NO or ID)\n'; return 1; }
   printf 'PASS fp_start_cookie_and_csrf_issued\n'
 
