@@ -114,4 +114,15 @@ class FundComparisonDateRangeCalculatorTest {
     assertThat(range.fromDate()).isEqualTo(LocalDate.of(2026, 10, 6));
     assertThat(range.toDate()).isEqualTo(R);
   }
+
+  @org.junit.jupiter.api.Test
+  void resolveFromDate_rejectsUnitOutsideDmy_throwsIllegalStateExceptionWithDiagnosticMessage() {
+    java.time.LocalDate reference = java.time.LocalDate.of(2026, 3, 31);
+    IllegalStateException ex =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalStateException.class,
+            () -> FundComparisonDateRangeCalculator.resolveFromDate(reference, 'X', 5));
+    org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("'X'"));
+    org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("value=5"));
+  }
 }
