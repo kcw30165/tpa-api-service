@@ -15,6 +15,10 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 public class RegistrationStartValidator {
+  private static final String TARGET_EMAIL = "email";
+
+  private static final String TARGET_MOBILE = "mobile";
+
   private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$");
   private static final Pattern HK_MOBILE = Pattern.compile("^[4-9][0-9]{7}$");
   private static final Pattern SAFE_CAPTCHA = Pattern.compile("^[A-Za-z0-9_-]{6,128}$");
@@ -36,40 +40,13 @@ public class RegistrationStartValidator {
     String mobile =
         RegistrationContactDeriver.normalizeMobile(input == null ? null : input.mobile());
     String captchaChallengeId = normalize(input == null ? null : input.captchaChallengeId());
-
-    if (identityType != null
-        && !RegistrationIdentityValueValidator.isValid(identityType, identityValue)) {
-      errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYVALUE_INVALID, "identityValue"));
-    } else if (identityType == null && identityValue.isBlank()) {
-      errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYVALUE_INVALID, "identityValue"));
-    }
-
-    if (!RegistrationDateOfBirthValidator.isValid(dateOfBirth)) {
-      errors.add(error(RegistrationErrorKey.REGISTRATION_DATEOFBIRTH_INVALID, "dateOfBirth"));
-    }
-
-    boolean hasEmail = !email.isBlank();
-    boolean hasMobile = !mobile.isBlank();
-    if (!hasEmail && !hasMobile) {
-      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_REQUIRED, "email"));
-      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_REQUIRED, "mobile"));
-    } else if (hasEmail && hasMobile) {
-      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_EXACTLYONEREQUIRED, "email"));
-      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_EXACTLYONEREQUIRED, "mobile"));
-    } else if (hasEmail && !isValidEmail(email)) {
-      errors.add(error(RegistrationErrorKey.REGISTRATION_EMAIL_INVALID, "email"));
-    } else if (hasMobile && !HK_MOBILE.matcher(mobile).matches()) {
-      errors.add(error(RegistrationErrorKey.REGISTRATION_MOBILE_INVALID, "mobile"));
-    }
-
-    if (!captchaChallengeId.isBlank() && !SAFE_CAPTCHA.matcher(captchaChallengeId).matches()) {
-      errors.add(error(RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID, "captchaChallengeId"));
-    }
-
+    validateIdentity(errors, identityType, identityValue);
+    validateDateOfBirth(errors, dateOfBirth);
+    validateContact(errors, email, mobile);
+    validateCaptcha(errors, captchaChallengeId);
     if (!errors.isEmpty()) {
       return RegistrationStartValidationResult.invalid(errors);
     }
-
     RegistrationStartContact contact = contactDeriver.derive(email, mobile);
     return RegistrationStartValidationResult.valid(
         new RegistrationStartCommand(
@@ -80,6 +57,50 @@ public class RegistrationStartValidator {
             contact.contactValue(),
             contact.maskedDestination(),
             captchaChallengeId));
+  }
+
+  private static void validateIdentity(
+      List<RegistrationStartValidationError> errors,
+      MemberIdentityType identityType,
+      String identityValue) {
+    if (identityType != null
+        && !RegistrationIdentityValueValidator.isValid(identityType, identityValue)) {
+      errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYVALUE_INVALID, "identityValue"));
+    } else if (identityType == null && identityValue.isBlank()) {
+      errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYVALUE_INVALID, "identityValue"));
+    }
+  }
+
+  private static void validateDateOfBirth(
+      List<RegistrationStartValidationError> errors, String dateOfBirth) {
+    if (!RegistrationDateOfBirthValidator.isValid(dateOfBirth)) {
+      errors.add(error(RegistrationErrorKey.REGISTRATION_DATEOFBIRTH_INVALID, "dateOfBirth"));
+    }
+  }
+
+  private static void validateContact(
+      List<RegistrationStartValidationError> errors, String email, String mobile) {
+    boolean hasEmail = !email.isBlank();
+    boolean hasMobile = !mobile.isBlank();
+    if (!hasEmail && !hasMobile) {
+      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_REQUIRED, TARGET_EMAIL));
+      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_REQUIRED, TARGET_MOBILE));
+    } else if (hasEmail && hasMobile) {
+      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_EXACTLYONEREQUIRED, TARGET_EMAIL));
+      errors.add(
+          error(RegistrationErrorKey.REGISTRATION_CONTACT_EXACTLYONEREQUIRED, TARGET_MOBILE));
+    } else if (hasEmail && !isValidEmail(email)) {
+      errors.add(error(RegistrationErrorKey.REGISTRATION_EMAIL_INVALID, TARGET_EMAIL));
+    } else if (hasMobile && !HK_MOBILE.matcher(mobile).matches()) {
+      errors.add(error(RegistrationErrorKey.REGISTRATION_MOBILE_INVALID, TARGET_MOBILE));
+    }
+  }
+
+  private static void validateCaptcha(
+      List<RegistrationStartValidationError> errors, String captchaChallengeId) {
+    if (!captchaChallengeId.isBlank() && !SAFE_CAPTCHA.matcher(captchaChallengeId).matches()) {
+      errors.add(error(RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID, "captchaChallengeId"));
+    }
   }
 
   private static MemberIdentityType parseIdentityType(

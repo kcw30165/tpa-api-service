@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public final class ForgotPasswordDetailsOtpWebMapper {
+  private static final String SEVERITY_ERROR = "ERROR";
+
   public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordOtpDataResponse>> map(
       ForgotPasswordDetailsOtpResult r) {
     if (r.status() == ForgotPasswordDetailsOtpResult.Status.SUCCESS)
@@ -29,7 +31,12 @@ public final class ForgotPasswordDetailsOtpWebMapper {
           new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.RESEND_OTP, null),
           List.of(
               new ApiError(
-                  "FORM", "err.forgot-password.otp.expired", null, List.of(), "ERROR", "BFF")));
+                  "FORM",
+                  "err.forgot-password.otp.expired",
+                  null,
+                  List.of(),
+                  SEVERITY_ERROR,
+                  "BFF")));
     if (r.status() == ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED)
       return MutationResponse.failure(
           ApiStatus.VALIDATION_FAILED,
@@ -39,7 +46,7 @@ public final class ForgotPasswordDetailsOtpWebMapper {
                   "err.forgot-password.details.invalid",
                   null,
                   r.targets(),
-                  "ERROR",
+                  SEVERITY_ERROR,
                   "BFF")));
     if (r.status() == ForgotPasswordDetailsOtpResult.Status.BUSINESS_REJECTED)
       return MutationResponse.failure(
@@ -50,10 +57,12 @@ public final class ForgotPasswordDetailsOtpWebMapper {
                   "err.forgot-password.member.notFound",
                   null,
                   List.of(),
-                  "ERROR",
+                  SEVERITY_ERROR,
                   "BFF")));
     return MutationResponse.failure(
         ApiStatus.SYSTEM_ERROR,
-        List.of(new ApiError("SYSTEM", "err.system.unavailable", null, List.of(), "ERROR", "BFF")));
+        List.of(
+            new ApiError(
+                "SYSTEM", "err.system.unavailable", null, List.of(), SEVERITY_ERROR, "BFF")));
   }
 }

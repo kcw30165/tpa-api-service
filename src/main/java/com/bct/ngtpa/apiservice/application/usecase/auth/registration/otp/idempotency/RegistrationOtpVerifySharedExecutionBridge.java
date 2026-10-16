@@ -24,6 +24,10 @@ import reactor.core.publisher.Mono;
 
 /** Typed transient and persisted-response bridge for OTP Verify shared execution. */
 public final class RegistrationOtpVerifySharedExecutionBridge {
+  private static final String FIELD_REMAINING_VERIFY_ATTEMPTS = "remainingVerifyAttempts";
+
+  private static final String FIELD_IDEMPOTENCY_OUTCOME = "idempotencyOutcome";
+
   private static final String MEDIA_TYPE = "application/json";
   private final ObjectMapper mapper =
       new ObjectMapper()
@@ -43,16 +47,16 @@ public final class RegistrationOtpVerifySharedExecutionBridge {
       wire.put("nextStep", result.nextStep().name());
       wire.set("unregisteredTrusts", mapper.valueToTree(result.unregisteredTrusts()));
       if (result.remainingVerifyAttempts() == null) {
-        wire.putNull("remainingVerifyAttempts");
+        wire.putNull(FIELD_REMAINING_VERIFY_ATTEMPTS);
       } else {
-        wire.put("remainingVerifyAttempts", result.remainingVerifyAttempts());
+        wire.put(FIELD_REMAINING_VERIFY_ATTEMPTS, result.remainingVerifyAttempts());
       }
       wire.set("messages", mapper.valueToTree(result.messages()));
       wire.set("errors", mapper.valueToTree(result.errors()));
       if (result.idempotencyOutcome() == null) {
-        wire.putNull("idempotencyOutcome");
+        wire.putNull(FIELD_IDEMPOTENCY_OUTCOME);
       } else {
-        wire.put("idempotencyOutcome", result.idempotencyOutcome().name());
+        wire.put(FIELD_IDEMPOTENCY_OUTCOME, result.idempotencyOutcome().name());
       }
       wire.set("replaySnapshot", mapper.valueToTree(result.replaySnapshot()));
       return new HydratedIdempotentResponse(
@@ -77,10 +81,10 @@ public final class RegistrationOtpVerifySharedExecutionBridge {
           VerifyRegistrationOtpResultStatus.valueOf(requiredText(wire, "status")),
           WorkflowNextStep.valueOf(requiredText(wire, "nextStep")),
           readList(wire, "unregisteredTrusts", RegistrationUnregisteredTrust[].class),
-          nullableInteger(wire, "remainingVerifyAttempts"),
+          nullableInteger(wire, FIELD_REMAINING_VERIFY_ATTEMPTS),
           readList(wire, "messages", WorkflowMessageDescriptor[].class),
           readList(wire, "errors", WorkflowErrorDescriptor[].class),
-          nullableEnum(wire, "idempotencyOutcome", RegistrationIdempotencyStartOutcome.class),
+          nullableEnum(wire, FIELD_IDEMPOTENCY_OUTCOME, RegistrationIdempotencyStartOutcome.class),
           nullableValue(wire, "replaySnapshot", RegistrationIdempotencyResponseSnapshot.class));
     } catch (JsonProcessingException | IllegalArgumentException exception) {
       throw new IllegalArgumentException(

@@ -168,27 +168,41 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
   private Mono<CheckRegistrationUsernameResult> processValidated(
       CheckRegistrationUsernameCommand command, AuthFlowSession session) {
     NormalizedInput normalized = normalize(command);
+    CheckRegistrationUsernameResult trustFailure = validateTrust(session, normalized);
+    if (trustFailure != null) {
+      return Mono.just(trustFailure);
+    }
+    if (!validUsername(normalized.username())) {
+      return Mono.just(validationFailure(ERROR_USERNAME_INCORRECT));
+    }
+    if (isSameUsernameCheckRepeat(session, normalized)) {
+      return Mono.just(success());
+    }
+    return checkAvailability(command, session, normalized);
+  }
+
+  private CheckRegistrationUsernameResult validateTrust(
+      AuthFlowSession session, NormalizedInput normalized) {
     if (normalized.selectedTrustMissing()) {
-      return Mono.just(validationFailure(ERROR_SELECTED_TRUST_REQUIRED));
+      return validationFailure(ERROR_SELECTED_TRUST_REQUIRED);
     }
     if (normalized.selectedTrustInvalid()) {
-      return Mono.just(validationFailure(ERROR_SELECTED_TRUST_INVALID));
+      return validationFailure(ERROR_SELECTED_TRUST_INVALID);
     }
     if (!RegistrationEligibleTrustSet.contains(
         session.data() == null || session.data().attributes() == null
             ? null
             : session.data().attributes().get(RegistrationEligibleTrustSet.ATTRIBUTE_NAME),
         new RegistrationSelectedTrust(normalized.trustCode(), normalized.accountEnv()))) {
-      return Mono.just(validationFailure(ERROR_SELECTED_TRUST_INVALID));
+      return validationFailure(ERROR_SELECTED_TRUST_INVALID);
     }
-    if (!validUsername(normalized.username())) {
-      return Mono.just(validationFailure(ERROR_USERNAME_INCORRECT));
-    }
+    return null;
+  }
 
-    if (isSameUsernameCheckRepeat(session, normalized)) {
-      return Mono.just(success());
-    }
-
+  private Mono<CheckRegistrationUsernameResult> checkAvailability(
+      CheckRegistrationUsernameCommand command,
+      AuthFlowSession session,
+      NormalizedInput normalized) {
     var availabilityCommand =
         new RegistrationUsernameAvailabilityCommand(
             new RegistrationSelectedTrust(normalized.trustCode(), normalized.accountEnv()),
@@ -354,28 +368,27 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
     if (username == null || username.isBlank()) {
       return false;
     }
-    if (policy != null) {
-      if (policy.minLength() > 0 && username.length() < policy.minLength()) {
-        return false;
-      }
-      if (policy.maxLength() > 0 && username.length() > policy.maxLength()) {
-        return false;
-      }
-      if (policy.noSpaces() && username.chars().anyMatch(Character::isWhitespace)) {
-        return false;
-      }
-      if (policy.requiredDigit() && username.chars().noneMatch(Character::isDigit)) {
-        return false;
-      }
-      if (policy.requiredSpecial()
-          && !containsAllowedSpecial(username, policy.allowedSpecialChars())) {
-        return false;
-      }
-      if (!allowedCharacters(username, policy.allowedSpecialChars())) {
-        return false;
-      }
+    return policy == null || satisfiesPolicy(username, policy);
+  }
+
+  private boolean satisfiesPolicy(String username, UsernamePolicy policy) {
+    if (policy.minLength() > 0 && username.length() < policy.minLength()) {
+      return false;
     }
-    return true;
+    if (policy.maxLength() > 0 && username.length() > policy.maxLength()) {
+      return false;
+    }
+    if (policy.noSpaces() && username.chars().anyMatch(Character::isWhitespace)) {
+      return false;
+    }
+    if (policy.requiredDigit() && username.chars().noneMatch(Character::isDigit)) {
+      return false;
+    }
+    if (policy.requiredSpecial()
+        && !containsAllowedSpecial(username, policy.allowedSpecialChars())) {
+      return false;
+    }
+    return allowedCharacters(username, policy.allowedSpecialChars());
   }
 
   private boolean containsAllowedSpecial(String username, String allowedSpecialChars) {

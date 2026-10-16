@@ -23,6 +23,7 @@ import reactor.core.publisher.Mono;
 @Component
 @Slf4j
 public class ExecutionLoggingAspect {
+  private static final String KEY_ELAPSED_MS = "elapsedMs";
 
   private final LoggingSanitizer loggingSanitizer;
   private final ObjectMapper objectMapper;
@@ -140,7 +141,7 @@ public class ExecutionLoggingAspect {
   private void logSuccess(
       InvocationContext context, long elapsedMillis, Object result, String requestId) {
     Map<String, Object> event = buildEventBase("method.execution.success", context, requestId);
-    event.put("elapsedMs", elapsedMillis);
+    event.put(KEY_ELAPSED_MS, elapsedMillis);
     if (context.logResult()) {
       event.put("result", loggingSanitizer.sanitizeValue(result));
     }
@@ -150,7 +151,7 @@ public class ExecutionLoggingAspect {
   private void logFluxSuccess(
       InvocationContext context, long elapsedMillis, long itemCount, String requestId) {
     Map<String, Object> event = buildEventBase("method.execution.success", context, requestId);
-    event.put("elapsedMs", elapsedMillis);
+    event.put(KEY_ELAPSED_MS, elapsedMillis);
     if (context.logResult()) {
       event.put("emittedItems", itemCount);
     }
@@ -161,7 +162,7 @@ public class ExecutionLoggingAspect {
       InvocationContext context, long elapsedMillis, Throwable throwable, String requestId) {
     Map<String, Object> event = buildEventBase("method.execution.error", context, requestId);
     if (elapsedMillis >= 0) {
-      event.put("elapsedMs", elapsedMillis);
+      event.put(KEY_ELAPSED_MS, elapsedMillis);
     }
     event.put("exceptionType", throwable.getClass().getSimpleName());
     event.put("errorMessage", loggingSanitizer.toSafeString(throwable.getMessage()));

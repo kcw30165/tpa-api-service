@@ -30,39 +30,35 @@ public class PersonalInformationUpdateWebMapper {
       throw new InvalidPersonalInformationUpdateException(
           "No personal information fields were submitted.");
     }
-
     var fieldsById = fieldsById();
     var mapped = new LinkedHashMap<String, Object>();
-
-    request
-        .fields()
-        .forEach(
-            (fieldId, value) -> {
-              var field = fieldsById.get(fieldId);
-              if (field == null) {
-                log.error("Unknown personal information update field submitted: {}", fieldId);
-                throw new InvalidPersonalInformationUpdateException(
-                    "Unknown personal information field: " + fieldId);
-              }
-
-              var binding = field.getApimBinding();
-              var dataKey = binding == null ? null : trimToNull(binding.getData());
-              if (dataKey == null) {
-                log.warn(
-                    "Personal information update field is UI-only and will be omitted: {}",
-                    fieldId);
-                return;
-              }
-
-              validateSubmittedValue(field, value);
-              mapped.put(dataKey, value);
-            });
-
+    request.fields().forEach((fieldId, value) -> applyField(fieldsById, mapped, fieldId, value));
     if (mapped.isEmpty()) {
       throw new InvalidPersonalInformationUpdateException(
           "No updatable personal information fields were submitted.");
     }
     return new UpdatePersonalInformationCommand(applyToAllAccounts, mapped);
+  }
+
+  private void applyField(
+      Map<String, FieldProperties> fieldsById,
+      Map<String, Object> mapped,
+      String fieldId,
+      Object value) {
+    var field = fieldsById.get(fieldId);
+    if (field == null) {
+      log.error("Unknown personal information update field submitted: {}", fieldId);
+      throw new InvalidPersonalInformationUpdateException(
+          "Unknown personal information field: " + fieldId);
+    }
+    var binding = field.getApimBinding();
+    var dataKey = binding == null ? null : trimToNull(binding.getData());
+    if (dataKey == null) {
+      log.warn("Personal information update field is UI-only and will be omitted: {}", fieldId);
+      return;
+    }
+    validateSubmittedValue(field, value);
+    mapped.put(dataKey, value);
   }
 
   private Map<String, FieldProperties> fieldsById() {
@@ -102,21 +98,26 @@ public class PersonalInformationUpdateWebMapper {
           "Personal information field must be string: " + fieldId);
     }
     if (value instanceof String text) {
-      if (field.getMaxLength() != null && text.length() > field.getMaxLength()) {
-        throw new InvalidPersonalInformationUpdateException(
-            "Personal information field exceeds maxLength: " + fieldId);
-      }
-      var pattern = trimToNull(field.getPattern());
-      if (pattern != null && !text.isBlank() && !Pattern.compile(pattern).matcher(text).matches()) {
-        throw new InvalidPersonalInformationUpdateException(
-            "Personal information field pattern mismatch: " + fieldId);
-      }
-      if ("email".equalsIgnoreCase(field.getControlType())
-          && !text.isBlank()
-          && !Pattern.compile("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$").matcher(text).matches()) {
-        throw new InvalidPersonalInformationUpdateException(
-            "Personal information field must be email: " + fieldId);
-      }
+      validateStringValue(field, text);
+    }
+  }
+
+  private void validateStringValue(FieldProperties field, String text) {
+    var fieldId = field.getId();
+    if (field.getMaxLength() != null && text.length() > field.getMaxLength()) {
+      throw new InvalidPersonalInformationUpdateException(
+          "Personal information field exceeds maxLength: " + fieldId);
+    }
+    var pattern = trimToNull(field.getPattern());
+    if (pattern != null && !text.isBlank() && !Pattern.compile(pattern).matcher(text).matches()) {
+      throw new InvalidPersonalInformationUpdateException(
+          "Personal information field pattern mismatch: " + fieldId);
+    }
+    if ("email".equalsIgnoreCase(field.getControlType())
+        && !text.isBlank()
+        && !Pattern.compile("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$").matcher(text).matches()) {
+      throw new InvalidPersonalInformationUpdateException(
+          "Personal information field must be email: " + fieldId);
     }
   }
 

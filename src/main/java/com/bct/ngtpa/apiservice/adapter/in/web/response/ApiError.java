@@ -14,41 +14,44 @@ public record ApiError(
     List<String> targets,
     String severity,
     String source) {
+  private static final String DEFAULT_SEVERITY = "ERROR";
 
   public ApiError {
     targets = targets == null ? List.of() : List.copyOf(targets);
     severity =
-        severity == null || severity.isBlank() ? "ERROR" : severity.trim().toUpperCase(Locale.ROOT);
+        severity == null || severity.isBlank()
+            ? DEFAULT_SEVERITY
+            : severity.trim().toUpperCase(Locale.ROOT);
   }
 
   public static ApiError field(String code, String message, List<String> targets, String source) {
-    return new ApiError("FIELD", code, message, targets, "ERROR", source);
+    return new ApiError("FIELD", code, message, targets, DEFAULT_SEVERITY, source);
   }
 
   public static ApiError crossField(
       String code, String message, List<String> targets, String source) {
-    return new ApiError("CROSS_FIELD", code, message, targets, "ERROR", source);
+    return new ApiError("CROSS_FIELD", code, message, targets, DEFAULT_SEVERITY, source);
   }
 
   public static ApiError form(String code, String message, List<String> targets, String source) {
-    return new ApiError("FORM", code, message, targets, "ERROR", source);
+    return new ApiError("FORM", code, message, targets, DEFAULT_SEVERITY, source);
   }
 
   public static ApiError business(
       String code, String message, List<String> targets, String source) {
-    return new ApiError("BUSINESS", code, message, targets, "ERROR", source);
+    return new ApiError("BUSINESS", code, message, targets, DEFAULT_SEVERITY, source);
   }
 
   public static ApiError system(String code, String message, String source) {
-    return new ApiError("SYSTEM", code, message, List.of(), "ERROR", source);
+    return new ApiError("SYSTEM", code, message, List.of(), DEFAULT_SEVERITY, source);
   }
 
   public static ApiError downstreamBusiness(
       String code, String message, List<String> targets, String source) {
-    return new ApiError("DOWNSTREAM_BUSINESS", code, message, targets, "ERROR", source);
+    return new ApiError("DOWNSTREAM_BUSINESS", code, message, targets, DEFAULT_SEVERITY, source);
   }
 
   public static ApiError downstreamSystem(String code, String message, String source) {
-    return new ApiError("DOWNSTREAM_SYSTEM", code, message, List.of(), "ERROR", source);
+    return new ApiError("DOWNSTREAM_SYSTEM", code, message, List.of(), DEFAULT_SEVERITY, source);
   }
 }

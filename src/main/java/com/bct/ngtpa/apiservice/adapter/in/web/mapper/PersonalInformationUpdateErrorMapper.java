@@ -19,6 +19,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PersonalInformationUpdateErrorMapper {
+  private static final String CODE_REQUIRED = "REQUIRED";
+
+  private static final String CODE_INVALID_FORMAT = "INVALID_FORMAT";
 
   private static final String PAGE_KEY = "personalInformation";
   private static final String SOURCE_SERVER = "SERVER";
@@ -38,20 +41,24 @@ public class PersonalInformationUpdateErrorMapper {
               List.of(),
               SOURCE_SERVER));
     }
-
     Map<String, String> frontendFieldByApimField = frontendFieldByApimField();
     List<ApiError> result = new ArrayList<>();
     for (UpdatePersonalInformationError raw : rawErrors) {
       if (raw == null) {
         continue;
       }
-      List<String> targets = toTargets(raw.fields(), frontendFieldByApimField);
-      String type = normalizeType(raw.type());
-      String code = resolveCode(raw.code(), targets, type);
-      String message = resolveMessage(code, raw.code(), targets, type);
-      result.add(new ApiError(type, code, message, targets, "ERROR", SOURCE_SERVER));
+      result.add(toApiError(raw, frontendFieldByApimField));
     }
     return List.copyOf(result);
+  }
+
+  private ApiError toApiError(
+      UpdatePersonalInformationError raw, Map<String, String> frontendFieldByApimField) {
+    List<String> targets = toTargets(raw.fields(), frontendFieldByApimField);
+    String type = normalizeType(raw.type());
+    String code = resolveCode(raw.code(), targets, type);
+    String message = resolveMessage(code, raw.code(), targets, type);
+    return new ApiError(type, code, message, targets, "ERROR", SOURCE_SERVER);
   }
 
   private List<String> toTargets(
@@ -79,22 +86,26 @@ public class PersonalInformationUpdateErrorMapper {
       return result;
     }
     for (SectionProperties section : page.getForm().getSections()) {
-      if (section == null || section.getFields() == null) {
-        continue;
-      }
-      for (FieldProperties field : section.getFields()) {
-        if (field == null || field.getId() == null || field.getId().isBlank()) {
-          continue;
-        }
-        ApimBindingProperties binding = field.getApimBinding();
-        if (binding == null) {
-          continue;
-        }
-        putReverse(result, binding.getData(), field.getId());
-        putReverse(result, binding.getConfig(), field.getId());
-      }
+      collectFieldBindings(section, result);
     }
     return result;
+  }
+
+  private void collectFieldBindings(SectionProperties section, Map<String, String> result) {
+    if (section == null || section.getFields() == null) {
+      return;
+    }
+    for (FieldProperties field : section.getFields()) {
+      if (field == null || field.getId() == null || field.getId().isBlank()) {
+        continue;
+      }
+      ApimBindingProperties binding = field.getApimBinding();
+      if (binding == null) {
+        continue;
+      }
+      putReverse(result, binding.getData(), field.getId());
+      putReverse(result, binding.getConfig(), field.getId());
+    }
   }
 
   private void putReverse(Map<String, String> result, String apimField, String frontendField) {
@@ -119,21 +130,26 @@ public class PersonalInformationUpdateErrorMapper {
     if ("AT_LEAST_ONE_REQUIRED".equals(normalized)) {
       return "personalInformation.address.atLeastOneRequired";
     }
-    if (!targets.isEmpty()) {
-      String fromYaml = findValidationCode(targets.get(0), normalized);
-      if (fromYaml != null) {
-        return fromYaml;
-      }
+    String fromYaml = yamlCodeIfPresent(targets, normalized);
+    if (fromYaml != null) {
+      return fromYaml;
     }
     String field = targets.isEmpty() ? "field" : targets.get(0);
     return switch (normalized) {
-      case "REQUIRED" -> "personalInformation." + toCodeToken(field) + ".required";
-      case "INVALID_FORMAT" -> "personalInformation." + toCodeToken(field) + ".invalid";
+      case CODE_REQUIRED -> "personalInformation." + toCodeToken(field) + ".required";
+      case CODE_INVALID_FORMAT -> "personalInformation." + toCodeToken(field) + ".invalid";
       default ->
           rawCode == null || rawCode.isBlank()
               ? "personalInformation.update.validationFailed"
               : rawCode.trim();
     };
+  }
+
+  private String yamlCodeIfPresent(List<String> targets, String normalized) {
+    if (targets.isEmpty()) {
+      return null;
+    }
+    return findValidationCode(targets.get(0), normalized);
   }
 
   private String findValidationCode(String frontendField, String normalizedBackendCode) {
@@ -146,8 +162,8 @@ public class PersonalInformationUpdateErrorMapper {
         continue;
       }
       String type = rule.getType() == null ? "" : rule.getType().trim().toUpperCase(Locale.ROOT);
-      if (("REQUIRED".equals(normalizedBackendCode) && "REQUIRED".equals(type))
-          || ("INVALID_FORMAT".equals(normalizedBackendCode)
+      if ((CODE_REQUIRED.equals(normalizedBackendCode) && CODE_REQUIRED.equals(type))
+          || (CODE_INVALID_FORMAT.equals(normalizedBackendCode)
               && ("EMAIL".equals(type) || "PATTERN".equals(type)))) {
         return rule.getCode();
       }
@@ -160,18 +176,23 @@ public class PersonalInformationUpdateErrorMapper {
     if ("personalInformation.address.atLeastOneRequired".equals(resolvedCode)) {
       return "Please input a residential address or correspondence address.";
     }
-    if (!targets.isEmpty()) {
-      String fromYaml = findValidationMessage(targets.get(0), rawCode);
-      if (fromYaml != null && !fromYaml.isBlank()) {
-        return fromYaml;
-      }
+    String fromYaml = yamlMessageIfPresent(targets, rawCode);
+    if (fromYaml != null && !fromYaml.isBlank()) {
+      return fromYaml;
     }
     String normalized = rawCode == null ? "" : rawCode.trim().toUpperCase(Locale.ROOT);
     return switch (normalized) {
-      case "REQUIRED" -> "This field is required.";
-      case "INVALID_FORMAT" -> "Please input a valid value.";
+      case CODE_REQUIRED -> "This field is required.";
+      case CODE_INVALID_FORMAT -> "Please input a valid value.";
       default -> "The submitted information is invalid.";
     };
+  }
+
+  private String yamlMessageIfPresent(List<String> targets, String rawCode) {
+    if (targets.isEmpty()) {
+      return null;
+    }
+    return findValidationMessage(targets.get(0), rawCode);
   }
 
   private String findValidationMessage(String frontendField, String rawCode) {
@@ -184,15 +205,19 @@ public class PersonalInformationUpdateErrorMapper {
       if (rule == null || rule.getMessage() == null || rule.getMessage().isEmpty()) {
         continue;
       }
-      String type = rule.getType() == null ? "" : rule.getType().trim().toUpperCase(Locale.ROOT);
-      if (("REQUIRED".equals(normalizedBackendCode) && "REQUIRED".equals(type))
-          || ("INVALID_FORMAT".equals(normalizedBackendCode)
-              && ("EMAIL".equals(type) || "PATTERN".equals(type)))) {
+      if (matchesBackendCode(normalizedBackendCode, rule.getType())) {
         String en = rule.getMessage().get("en");
         return en != null ? en : rule.getMessage().values().stream().findFirst().orElse(null);
       }
     }
     return null;
+  }
+
+  private boolean matchesBackendCode(String normalizedBackendCode, String rawType) {
+    String type = rawType == null ? "" : rawType.trim().toUpperCase(Locale.ROOT);
+    return (CODE_REQUIRED.equals(normalizedBackendCode) && CODE_REQUIRED.equals(type))
+        || (CODE_INVALID_FORMAT.equals(normalizedBackendCode)
+            && ("EMAIL".equals(type) || "PATTERN".equals(type)));
   }
 
   private FieldProperties findField(String frontendField) {

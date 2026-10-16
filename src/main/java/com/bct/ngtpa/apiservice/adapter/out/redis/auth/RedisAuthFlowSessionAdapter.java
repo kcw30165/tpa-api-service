@@ -30,6 +30,7 @@ import java.util.Optional;
 import reactor.core.publisher.Mono;
 
 public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
+  private static final String NOW_NOT_NULL = "now must not be null";
 
   private final CachePort cachePort;
   private final RedisCacheKeyFactory keyFactory;
@@ -229,7 +230,7 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
   @Override
   public Mono<AuthFlowSessionMutationResult> touchRevisioned(
       AuthFlowSessionSnapshot expected, Instant now) {
-    Objects.requireNonNull(now, "now must not be null");
+    Objects.requireNonNull(now, NOW_NOT_NULL);
     AuthFlowSession session = expected.session();
     return revisionedReplace(
         new RevisionedAuthFlowSessionMutationCommand(
@@ -239,7 +240,7 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
   @Override
   public Mono<AuthFlowSessionMutationResult> completeRevisioned(
       AuthFlowSessionSnapshot expected, Instant now) {
-    Objects.requireNonNull(now, "now must not be null");
+    Objects.requireNonNull(now, NOW_NOT_NULL);
     if (expected.session().isTerminal()) {
       return Mono.just(
           AuthFlowSessionMutationResult.outcome(AuthFlowSessionMutationOutcome.INVALID_TRANSITION));
@@ -252,7 +253,7 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
   @Override
   public Mono<AuthFlowSessionMutationResult> cancelRevisioned(
       AuthFlowSessionSnapshot expected, Instant now) {
-    Objects.requireNonNull(now, "now must not be null");
+    Objects.requireNonNull(now, NOW_NOT_NULL);
     if (expected.session().isTerminal()) {
       return Mono.just(
           AuthFlowSessionMutationResult.outcome(AuthFlowSessionMutationOutcome.INVALID_TRANSITION));
@@ -368,7 +369,7 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
 
   private Mono<AuthFlowSession> mutateExisting(
       AuthFlowSessionId id, Instant now, SessionMutation mutation) {
-    Objects.requireNonNull(now, "now must not be null");
+    Objects.requireNonNull(now, NOW_NOT_NULL);
     return load(id)
         .flatMap(
             optional ->

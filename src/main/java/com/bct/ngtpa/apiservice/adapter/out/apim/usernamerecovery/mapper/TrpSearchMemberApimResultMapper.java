@@ -59,39 +59,48 @@ public class TrpSearchMemberApimResultMapper {
     List<UsernameRecoveryLookupCandidate> candidates = new ArrayList<>();
     Set<String> seenEnvTrust = new HashSet<>();
     for (TrpSearchMemberApimDataItem item : items) {
-      if (item == null) {
+      if (!isValidItem(item, seenEnvTrust)) {
         return contractInvalid();
       }
-      String env = text(item.env());
-      String trustCode = text(item.trustCode());
-      Boolean registered = item.isRegistered();
-      if (env == null || trustCode == null || registered == null) {
-        return contractInvalid();
-      }
-      if (!seenEnvTrust.add(env + "|" + trustCode)) {
-        return contractInvalid();
-      }
-      if (!validTermCompleteDate(text(item.termCompleteDate()))) {
-        return contractInvalid();
-      }
-      String custId = text(item.custId());
-      if (registered && custId == null) {
-        return contractInvalid();
-      }
-      if (!registered && custId != null) {
-        return contractInvalid();
-      }
-      candidates.add(
-          new UsernameRecoveryLookupCandidate(
-              env,
-              trustCode,
-              registered,
-              registered ? custId : null,
-              text(item.schemeName()),
-              text(item.schemeNameChi())));
+      candidates.add(toCandidate(item));
     }
     return new UsernameRecoveryLookupResult(
         UsernameRecoveryLookupResult.Status.MATCHED, candidates);
+  }
+
+  private boolean isValidItem(TrpSearchMemberApimDataItem item, Set<String> seenEnvTrust) {
+    if (item == null) {
+      return false;
+    }
+    String env = text(item.env());
+    String trustCode = text(item.trustCode());
+    Boolean registered = item.isRegistered();
+    if (env == null || trustCode == null || registered == null) {
+      return false;
+    }
+    if (!seenEnvTrust.add(env + "|" + trustCode)) {
+      return false;
+    }
+    if (!validTermCompleteDate(text(item.termCompleteDate()))) {
+      return false;
+    }
+    String custId = text(item.custId());
+    if (registered && custId == null) {
+      return false;
+    }
+    return registered || custId == null;
+  }
+
+  private UsernameRecoveryLookupCandidate toCandidate(TrpSearchMemberApimDataItem item) {
+    Boolean registered = item.isRegistered();
+    String custId = text(item.custId());
+    return new UsernameRecoveryLookupCandidate(
+        text(item.env()),
+        text(item.trustCode()),
+        registered,
+        registered ? custId : null,
+        text(item.schemeName()),
+        text(item.schemeNameChi()));
   }
 
   private static boolean validTermCompleteDate(String value) {

@@ -11,6 +11,9 @@ import reactor.core.publisher.Mono;
 
 public final class ReactiveRevisionedAuthFlowSessionRedisOperations
     implements RevisionedAuthFlowSessionRedisOperations {
+  private static final String SESSION_KEY = "sessionKey";
+  private static final String REVISED_JSON = "revisedJson";
+
   private static final DefaultRedisScript<Long> CREATE =
       script("redis/auth-flow-session/create-revisioned.lua");
   private static final DefaultRedisScript<Long> INITIALIZE =
@@ -27,8 +30,8 @@ public final class ReactiveRevisionedAuthFlowSessionRedisOperations
 
   @Override
   public Mono<Boolean> createIfAbsent(String key, String json, Duration ttl) {
-    requireText(key, "sessionKey");
-    requireText(json, "revisedJson");
+    requireText(key, SESSION_KEY);
+    requireText(json, REVISED_JSON);
     requireTtl(ttl);
     return redis
         .execute(CREATE, List.of(key), List.of(json, Long.toString(ttl.toMillis())))
@@ -46,11 +49,11 @@ public final class ReactiveRevisionedAuthFlowSessionRedisOperations
       String token,
       String expectedLegacyJson,
       String revisedJson) {
-    requireText(sessionKey, "sessionKey");
+    requireText(sessionKey, SESSION_KEY);
     requireText(lockKey, "lockKey");
     requireText(token, "ownershipToken");
     requireText(expectedLegacyJson, "expectedLegacyJson");
-    requireText(revisedJson, "revisedJson");
+    requireText(revisedJson, REVISED_JSON);
     return redis
         .execute(
             INITIALIZE,
@@ -65,9 +68,9 @@ public final class ReactiveRevisionedAuthFlowSessionRedisOperations
   @Override
   public Mono<Long> replaceIfCurrent(
       String sessionKey, String expectedRevision, String revisedJson) {
-    requireText(sessionKey, "sessionKey");
+    requireText(sessionKey, SESSION_KEY);
     requireText(expectedRevision, "expectedRevision");
-    requireText(revisedJson, "revisedJson");
+    requireText(revisedJson, REVISED_JSON);
     return redis
         .execute(REPLACE, List.of(sessionKey), List.of(expectedRevision, revisedJson))
         .next()
@@ -78,7 +81,7 @@ public final class ReactiveRevisionedAuthFlowSessionRedisOperations
 
   @Override
   public Mono<Long> deleteIfCurrent(String sessionKey, String expectedRevision) {
-    requireText(sessionKey, "sessionKey");
+    requireText(sessionKey, SESSION_KEY);
     requireText(expectedRevision, "expectedRevision");
     return redis
         .execute(DELETE, List.of(sessionKey), List.of(expectedRevision))

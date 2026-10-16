@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseCase {
+  private static final String COMMAND_NOT_NULL = "command must not be null";
+
   private static final Logger LOG = LoggerFactory.getLogger(AuthFlowSessionCsrfService.class);
   private final AuthFlowSessionPort authFlowSessionPort;
   private final CsrfTokenGenerator csrfTokenGenerator;
@@ -44,19 +46,19 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
   @Override
   public Mono<CreateAuthFlowSessionCsrfResult> createForSession(
       CreateAuthFlowSessionCsrfCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_NOT_NULL);
     return bindToken(command.authFlowSessionId(), command.now(), command.ttlSeconds());
   }
 
   public Mono<CreateAuthFlowSessionCsrfResult> rotateForSession(
       RotateAuthFlowSessionCsrfCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_NOT_NULL);
     return bindToken(command.authFlowSessionId(), command.now(), command.ttlSeconds());
   }
 
   public Mono<ValidateAuthFlowSessionCsrfResult> validateForSession(
       ValidateAuthFlowSessionCsrfCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_NOT_NULL);
     return authFlowSessionPort
         .load(command.authFlowSessionId())
         .map(
@@ -66,7 +68,7 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
               }
               AuthFlowSession session = optional.orElseThrow();
               Objects.requireNonNull(session, "session must not be null");
-              Objects.requireNonNull(command, "command must not be null");
+              Objects.requireNonNull(command, COMMAND_NOT_NULL);
               if (!session.authFlowSessionId().equals(command.authFlowSessionId())) {
                 return result(AuthFlowSessionCsrfValidationStatus.SESSION_MISSING);
               }

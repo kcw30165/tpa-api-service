@@ -18,6 +18,8 @@ import java.util.Optional;
 import reactor.core.publisher.Mono;
 
 public class AuthFlowSessionLifecycleService {
+  private static final String COMMAND_NOT_NULL = "command must not be null";
+
   private final AuthFlowSessionPort authFlowSessionPort;
   private final SessionIdGenerator sessionIdGenerator;
   private final SessionTtlCalculator sessionTtlCalculator;
@@ -40,7 +42,7 @@ public class AuthFlowSessionLifecycleService {
   }
 
   public Mono<StartAuthFlowSessionResult> start(StartAuthFlowSessionCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_NOT_NULL);
     if (!command.ttlPolicy().enabled()) {
       return Mono.error(new IllegalArgumentException("Auth flow TTL policy must be enabled"));
     }
@@ -72,12 +74,12 @@ public class AuthFlowSessionLifecycleService {
   }
 
   public Mono<Optional<AuthFlowSession>> load(LoadAuthFlowSessionCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_NOT_NULL);
     return authFlowSessionPort.load(command.authFlowSessionId());
   }
 
   public Mono<AuthFlowSession> updateStatus(UpdateAuthFlowStatusCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_NOT_NULL);
     return mutateUsable(
         command.authFlowSessionId(),
         session ->
@@ -91,7 +93,7 @@ public class AuthFlowSessionLifecycleService {
   }
 
   public Mono<AuthFlowSession> updateActiveOtpChallenge(UpdateAuthFlowOtpCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_NOT_NULL);
     return mutateUsable(
         command.authFlowSessionId(),
         session ->
@@ -105,7 +107,7 @@ public class AuthFlowSessionLifecycleService {
   }
 
   public Mono<AuthFlowSession> updateDestination(UpdateAuthFlowDestinationCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_NOT_NULL);
     return mutateUsable(
         command.authFlowSessionId(),
         session -> {
@@ -124,7 +126,7 @@ public class AuthFlowSessionLifecycleService {
   }
 
   public Mono<AuthFlowSession> updateAttributes(UpdateAuthFlowAttributesCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_NOT_NULL);
     return mutateUsable(
         command.authFlowSessionId(),
         session -> {
@@ -143,17 +145,17 @@ public class AuthFlowSessionLifecycleService {
   }
 
   public Mono<AuthFlowSession> complete(CompleteAuthFlowSessionCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_NOT_NULL);
     return revisionWriter.complete(command.authFlowSessionId(), Instant.now(clock));
   }
 
   public Mono<AuthFlowSession> cancel(CancelAuthFlowSessionCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_NOT_NULL);
     return revisionWriter.cancel(command.authFlowSessionId(), Instant.now(clock));
   }
 
   public Mono<Void> delete(DeleteAuthFlowSessionCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_NOT_NULL);
     return revisionWriter.delete(command.authFlowSessionId());
   }
 

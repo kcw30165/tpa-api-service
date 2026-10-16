@@ -24,6 +24,8 @@ import reactor.core.publisher.Mono;
 
 /** Executes OTP_RESEND after shared idempotency ownership has been acquired. */
 public final class ForgotPasswordOtpResendProtectedOperation {
+  private static final String CHANNEL_EMAIL = "email";
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ForgotPasswordOtpResendProtectedOperation.class);
 
@@ -209,7 +211,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
         || blank(context.protectedDestination())
         || blank(context.maskedDestination())
         || !Objects.equals(
-            "email".equalsIgnoreCase(context.contactChannel())
+            CHANNEL_EMAIL.equalsIgnoreCase(context.contactChannel())
                 ? masker.maskEmail(context.protectedDestination())
                 : masker.maskMobile(context.protectedDestination()),
             context.maskedDestination())
@@ -297,11 +299,11 @@ public final class ForgotPasswordOtpResendProtectedOperation {
       ValidatedState validated) {
     Instant now = Instant.now(clock);
     OtpChannel channel =
-        "email".equalsIgnoreCase(validated.context.contactChannel())
+        CHANNEL_EMAIL.equalsIgnoreCase(validated.context.contactChannel())
             ? OtpChannel.EMAIL
             : OtpChannel.SMS;
     MessageDeliveryChannel deliveryChannel =
-        "email".equalsIgnoreCase(validated.context.contactChannel())
+        CHANNEL_EMAIL.equalsIgnoreCase(validated.context.contactChannel())
             ? MessageDeliveryChannel.EMAIL
             : MessageDeliveryChannel.SMS;
     NoticeTemplateDefinition definition =

@@ -17,6 +17,17 @@ public final class DefaultAccountBalanceNormalizer implements AccountBalanceNorm
     if (rawData == null) {
       throw systemFailure();
     }
+    Map<DisplaySourceKey, RawAccountBalanceDisplaySource> displaySources =
+        buildDisplaySources(rawData);
+    Map<FundKey, RawAccountBalanceFundDetail> funds = buildFunds(rawData);
+    Map<HoldingKey, RawAccountBalanceHolding> holdings =
+        buildHoldings(rawData, displaySources, funds);
+    return new NormalizedAccountBalanceData(
+        rawData.displayOptions(), rawData.currency(), displaySources, funds, holdings);
+  }
+
+  private static Map<DisplaySourceKey, RawAccountBalanceDisplaySource> buildDisplaySources(
+      RawAccountBalanceData rawData) {
     Map<DisplaySourceKey, RawAccountBalanceDisplaySource> displaySources = new LinkedHashMap<>();
     int sourceIndex = 0;
     for (RawAccountBalanceDisplaySource source : rawData.displaySources()) {
@@ -29,6 +40,11 @@ public final class DefaultAccountBalanceNormalizer implements AccountBalanceNorm
       if (displaySources.putIfAbsent(key, source) != null) throw systemFailure();
       sourceIndex++;
     }
+    return displaySources;
+  }
+
+  private static Map<FundKey, RawAccountBalanceFundDetail> buildFunds(
+      RawAccountBalanceData rawData) {
     Map<FundKey, RawAccountBalanceFundDetail> funds = new LinkedHashMap<>();
     int fundIndex = 0;
     for (RawAccountBalanceFundDetail fund : rawData.fundDetails()) {
@@ -38,6 +54,13 @@ public final class DefaultAccountBalanceNormalizer implements AccountBalanceNorm
       if (funds.putIfAbsent(key, fund) != null) throw systemFailure();
       fundIndex++;
     }
+    return funds;
+  }
+
+  private static Map<HoldingKey, RawAccountBalanceHolding> buildHoldings(
+      RawAccountBalanceData rawData,
+      Map<DisplaySourceKey, RawAccountBalanceDisplaySource> displaySources,
+      Map<FundKey, RawAccountBalanceFundDetail> funds) {
     Map<HoldingKey, RawAccountBalanceHolding> holdings = new LinkedHashMap<>();
     int holdingIndex = 0;
     for (RawAccountBalanceHolding holding : rawData.holdings()) {
@@ -57,8 +80,7 @@ public final class DefaultAccountBalanceNormalizer implements AccountBalanceNorm
       if (holdings.putIfAbsent(holdingKey, holding) != null) throw systemFailure();
       holdingIndex++;
     }
-    return new NormalizedAccountBalanceData(
-        rawData.displayOptions(), rawData.currency(), displaySources, funds, holdings);
+    return holdings;
   }
 
   private static String required(String value, Collection collection, int rowIndex, Field field) {

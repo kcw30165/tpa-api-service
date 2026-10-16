@@ -42,6 +42,15 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 public class PersonalInformationWebMapper {
+  private static final String KEY_LABEL = "label";
+
+  private static final String KEY_ITEM_ID = "item-id";
+
+  private static final String MAPPER_NAME = "PersonalInformationWebMapper";
+
+  private static final String KEY_FUNCTION = "function";
+
+  private static final String KEY_SCH_TYPE = "sch-type";
 
   private static final String PAGE_KEY = "personalInformation";
   private static final String DEFAULT_LANGUAGE = "en";
@@ -380,9 +389,9 @@ public class PersonalInformationWebMapper {
 
     putResolvedConfirmationText(
         securityResponse,
-        "label",
+        KEY_LABEL,
         stringValue(securityVerification.get("labelCode")),
-        localizedMap(securityVerification.get("label")),
+        localizedMap(securityVerification.get(KEY_LABEL)),
         pageSchema,
         language,
         accountEnv,
@@ -478,61 +487,81 @@ public class PersonalInformationWebMapper {
     Set<String> seenApimConfigItems = new HashSet<>();
 
     if (apimConfigItems != null && !apimConfigItems.isEmpty()) {
-      for (MemberInfoConfigItem configItem : apimConfigItems.values()) {
-        if (configItem == null || !hasText(configItem.itemId())) {
-          continue;
-        }
-        String configKey = configItem.itemId();
-        String configValue = configItem.configValue();
-        seenApimConfigItems.add(configKey);
-
-        MemberInfoConfigItemType itemType = configItem.itemType();
-        if (itemType == null || itemType == MemberInfoConfigItemType.UNKNOWN) {
-          logUnknownConfigItemType(configKey, configValue, configItem);
-          continue;
-        }
-        if (itemType == MemberInfoConfigItemType.RULE) {
-          continue;
-        }
-
-        BoundField boundField = fieldsByConfigItemId.get(configKey);
-        if (boundField == null) {
-          logMissingYamlBinding(configKey, configValue);
-          continue;
-        }
-        if ("HIDDEN".equalsIgnoreCase(configValue)) {
-          continue;
-        }
-        Object value =
-            itemType == MemberInfoConfigItemType.DATA ? resolveValue(apimData, configKey) : null;
-        fieldStates.put(
-            boundField.field().getId(),
-            new FieldState(configKey, configValue, value, boundField.location()));
-      }
+      applyApimConfigItems(
+          apimConfigItems, apimData, fieldsByConfigItemId, fieldStates, seenApimConfigItems);
     } else if (apimConfig != null) {
-      // Backward-compatible legacy path for the old Map<String, String> config shape.
-      for (Map.Entry<String, String> cfg : apimConfig.entrySet()) {
-        String configKey = cfg.getKey();
-        String configValue = cfg.getValue();
-        seenApimConfigItems.add(configKey);
-
-        BoundField boundField = fieldsByConfigItemId.get(configKey);
-        if (boundField == null) {
-          logMissingYamlBinding(configKey, configValue);
-          continue;
-        }
-        if ("HIDDEN".equalsIgnoreCase(configValue)) {
-          continue;
-        }
-        Object value = resolveValue(apimData, boundField.dataKey());
-        fieldStates.put(
-            boundField.field().getId(),
-            new FieldState(configKey, configValue, value, boundField.location()));
-      }
+      applyLegacyApimConfig(
+          apimConfig, apimData, fieldsByConfigItemId, fieldStates, seenApimConfigItems);
     }
 
     logMissingExpectedApimConfig(fieldsByConfigItemId, seenApimConfigItems);
     return fieldStates;
+  }
+
+  private void applyApimConfigItems(
+      Map<String, MemberInfoConfigItem> apimConfigItems,
+      Map<String, Object> apimData,
+      Map<String, BoundField> fieldsByConfigItemId,
+      Map<String, FieldState> fieldStates,
+      Set<String> seenApimConfigItems) {
+    for (MemberInfoConfigItem configItem : apimConfigItems.values()) {
+      if (configItem == null || !hasText(configItem.itemId())) {
+        continue;
+      }
+      String configKey = configItem.itemId();
+      String configValue = configItem.configValue();
+      seenApimConfigItems.add(configKey);
+
+      MemberInfoConfigItemType itemType = configItem.itemType();
+      if (itemType == null || itemType == MemberInfoConfigItemType.UNKNOWN) {
+        logUnknownConfigItemType(configKey, configValue, configItem);
+        continue;
+      }
+      if (itemType == MemberInfoConfigItemType.RULE) {
+        continue;
+      }
+
+      BoundField boundField = fieldsByConfigItemId.get(configKey);
+      if (boundField == null) {
+        logMissingYamlBinding(configKey, configValue);
+        continue;
+      }
+      if ("HIDDEN".equalsIgnoreCase(configValue)) {
+        continue;
+      }
+      Object value =
+          itemType == MemberInfoConfigItemType.DATA ? resolveValue(apimData, configKey) : null;
+      fieldStates.put(
+          boundField.field().getId(),
+          new FieldState(configKey, configValue, value, boundField.location()));
+    }
+  }
+
+  private void applyLegacyApimConfig(
+      Map<String, String> apimConfig,
+      Map<String, Object> apimData,
+      Map<String, BoundField> fieldsByConfigItemId,
+      Map<String, FieldState> fieldStates,
+      Set<String> seenApimConfigItems) {
+    // Backward-compatible legacy path for the old Map<String, String> config shape.
+    for (Map.Entry<String, String> cfg : apimConfig.entrySet()) {
+      String configKey = cfg.getKey();
+      String configValue = cfg.getValue();
+      seenApimConfigItems.add(configKey);
+
+      BoundField boundField = fieldsByConfigItemId.get(configKey);
+      if (boundField == null) {
+        logMissingYamlBinding(configKey, configValue);
+        continue;
+      }
+      if ("HIDDEN".equalsIgnoreCase(configValue)) {
+        continue;
+      }
+      Object value = resolveValue(apimData, boundField.dataKey());
+      fieldStates.put(
+          boundField.field().getId(),
+          new FieldState(configKey, configValue, value, boundField.location()));
+    }
   }
 
   private Map<String, BoundField> buildFieldsByConfigItemId(PageSchemaProperties pageSchema) {
@@ -543,28 +572,40 @@ public class PersonalInformationWebMapper {
       return fieldsByConfigItemId;
     }
     for (SectionProperties section : pageSchema.getForm().getSections()) {
-      if (section == null || section.getFields() == null) {
-        continue;
-      }
-      for (FieldProperties field : section.getFields()) {
-        if (field == null || !hasText(field.getId())) {
-          continue;
-        }
-        ApimBindingProperties binding = field.getApimBinding();
-        if (binding == null || !hasText(binding.getConfig())) {
-          continue;
-        }
-        String dataKey = hasText(binding.getData()) ? binding.getData() : binding.getConfig();
-        FieldLocation location = new FieldLocation(section.getId(), field);
-        BoundField previous =
-            fieldsByConfigItemId.putIfAbsent(
-                binding.getConfig(), new BoundField(field, location, dataKey));
-        if (previous != null) {
-          logDuplicateYamlBinding(binding.getConfig(), previous.field().getId(), field.getId());
-        }
-      }
+      collectSectionFieldBindings(section, fieldsByConfigItemId);
     }
     return fieldsByConfigItemId;
+  }
+
+  private void collectSectionFieldBindings(
+      SectionProperties section, Map<String, BoundField> fieldsByConfigItemId) {
+    if (section == null || section.getFields() == null) {
+      return;
+    }
+    for (FieldProperties field : section.getFields()) {
+      collectFieldBinding(section, field, fieldsByConfigItemId);
+    }
+  }
+
+  private void collectFieldBinding(
+      SectionProperties section,
+      FieldProperties field,
+      Map<String, BoundField> fieldsByConfigItemId) {
+    if (field == null || !hasText(field.getId())) {
+      return;
+    }
+    ApimBindingProperties binding = field.getApimBinding();
+    if (binding == null || !hasText(binding.getConfig())) {
+      return;
+    }
+    String dataKey = hasText(binding.getData()) ? binding.getData() : binding.getConfig();
+    FieldLocation location = new FieldLocation(section.getId(), field);
+    BoundField previous =
+        fieldsByConfigItemId.putIfAbsent(
+            binding.getConfig(), new BoundField(field, location, dataKey));
+    if (previous != null) {
+      logDuplicateYamlBinding(binding.getConfig(), previous.field().getId(), field.getId());
+    }
   }
 
   private List<FieldResponse> buildSectionFields(
@@ -589,61 +630,68 @@ public class PersonalInformationWebMapper {
         defaultFieldOrder += 10;
         continue;
       }
-      List<ValidationRuleResponse> validations =
-          mapValidationRules(
-              pageSchema,
-              fieldSchema.getValidations(),
-              language,
-              accountEnv,
-              trustCode,
-              schemeType);
       fields.add(
-          new FieldResponse(
-              fieldSchema.getId(),
-              resolvePageDisplayText(
-                  pageSchema,
-                  fieldSchema.getLabelCode(),
-                  fieldSchema.getLabel(),
-                  language,
-                  accountEnv,
-                  trustCode,
-                  schemeType),
-              hasText(fieldSchema.getDataType()) ? fieldSchema.getDataType() : null,
-              hasText(fieldSchema.getControlType()) ? fieldSchema.getControlType() : null,
-              state.value(),
-              state.value(),
-              isReadonly(state.configValue()),
-              isRequired(state.configValue()),
-              fieldSchema.getMinLength(),
-              fieldSchema.getMaxLength(),
-              hasText(fieldSchema.getPattern()) ? fieldSchema.getPattern() : null,
-              hasText(
-                      resolvePageDisplayText(
-                          pageSchema,
-                          fieldSchema.getPlaceholderCode(),
-                          fieldSchema.getPlaceholder(),
-                          language,
-                          accountEnv,
-                          trustCode,
-                          schemeType))
-                  ? resolvePageDisplayText(
-                      pageSchema,
-                      fieldSchema.getPlaceholderCode(),
-                      fieldSchema.getPlaceholder(),
-                      language,
-                      accountEnv,
-                      trustCode,
-                      schemeType)
-                  : null,
-              hasText(fieldSchema.getOptionSource()) ? fieldSchema.getOptionSource() : null,
-              fieldSchema.getCopyWhenChecked(),
-              fieldSchema.getDisplayOrder() != null
-                  ? fieldSchema.getDisplayOrder()
-                  : defaultFieldOrder,
-              validations));
+          toFieldResponse(
+              pageSchema,
+              fieldSchema,
+              state,
+              defaultFieldOrder,
+              new DisplayContext(language, accountEnv, trustCode, schemeType)));
       defaultFieldOrder += 10;
     }
     return fields;
+  }
+
+  private record DisplayContext(
+      String language, String accountEnv, String trustCode, String schemeType) {}
+
+  private FieldResponse toFieldResponse(
+      PageSchemaProperties pageSchema,
+      FieldProperties fieldSchema,
+      FieldState state,
+      int defaultFieldOrder,
+      DisplayContext ctx) {
+    List<ValidationRuleResponse> validations =
+        mapValidationRules(
+            pageSchema,
+            fieldSchema.getValidations(),
+            ctx.language(),
+            ctx.accountEnv(),
+            ctx.trustCode(),
+            ctx.schemeType());
+    String placeholder =
+        resolvePageDisplayText(
+            pageSchema,
+            fieldSchema.getPlaceholderCode(),
+            fieldSchema.getPlaceholder(),
+            ctx.language(),
+            ctx.accountEnv(),
+            ctx.trustCode(),
+            ctx.schemeType());
+    return new FieldResponse(
+        fieldSchema.getId(),
+        resolvePageDisplayText(
+            pageSchema,
+            fieldSchema.getLabelCode(),
+            fieldSchema.getLabel(),
+            ctx.language(),
+            ctx.accountEnv(),
+            ctx.trustCode(),
+            ctx.schemeType()),
+        hasText(fieldSchema.getDataType()) ? fieldSchema.getDataType() : null,
+        hasText(fieldSchema.getControlType()) ? fieldSchema.getControlType() : null,
+        state.value(),
+        state.value(),
+        isReadonly(state.configValue()),
+        isRequired(state.configValue()),
+        fieldSchema.getMinLength(),
+        fieldSchema.getMaxLength(),
+        hasText(fieldSchema.getPattern()) ? fieldSchema.getPattern() : null,
+        hasText(placeholder) ? placeholder : null,
+        hasText(fieldSchema.getOptionSource()) ? fieldSchema.getOptionSource() : null,
+        fieldSchema.getCopyWhenChecked(),
+        fieldSchema.getDisplayOrder() != null ? fieldSchema.getDisplayOrder() : defaultFieldOrder,
+        validations);
   }
 
   private List<ValidationRuleResponse> mapValidationRules(
@@ -812,7 +860,7 @@ public class PersonalInformationWebMapper {
       Map<String, Object> action = new LinkedHashMap<>();
       action.put("enabled", Boolean.TRUE);
       action.put(
-          "label",
+          KEY_LABEL,
           resolvePageDisplayText(
               pageSchema,
               actionSchema.getLabelCode(),
@@ -891,9 +939,9 @@ public class PersonalInformationWebMapper {
 
   private void logMissingYamlBinding(String configKey, String configValue) {
     Map<String, Object> event = new LinkedHashMap<>();
-    event.put("item-id", configKey);
-    event.put("function", "PersonalInformationWebMapper");
-    event.put("sch-type", "personalInformation");
+    event.put(KEY_ITEM_ID, configKey);
+    event.put(KEY_FUNCTION, MAPPER_NAME);
+    event.put(KEY_SCH_TYPE, PAGE_KEY);
     event.put("config-value", configValue);
     log.error(
         "Missing YAML apimBinding for APIM config item: {}", loggingSanitizer.toSafeString(event));
@@ -902,10 +950,9 @@ public class PersonalInformationWebMapper {
   private void logUnknownConfigItemType(
       String configKey, String configValue, MemberInfoConfigItem configItem) {
     Map<String, Object> event = new LinkedHashMap<>();
-    event.put("item-id", configKey);
-    event.put(
-        "function", configItem != null ? configItem.function() : "PersonalInformationWebMapper");
-    event.put("sch-type", configItem != null ? configItem.schType() : "personalInformation");
+    event.put(KEY_ITEM_ID, configKey);
+    event.put(KEY_FUNCTION, configItem != null ? configItem.function() : MAPPER_NAME);
+    event.put(KEY_SCH_TYPE, configItem != null ? configItem.schType() : PAGE_KEY);
     event.put("config-value", configValue);
     event.put("item-type", configItem != null ? configItem.itemType() : null);
     log.error("Unknown APIM config item type: {}", loggingSanitizer.toSafeString(event));
@@ -914,11 +961,11 @@ public class PersonalInformationWebMapper {
   private void logDuplicateYamlBinding(
       String configKey, String firstFieldId, String duplicateFieldId) {
     Map<String, Object> event = new LinkedHashMap<>();
-    event.put("item-id", configKey);
+    event.put(KEY_ITEM_ID, configKey);
     event.put("first-field", firstFieldId);
     event.put("duplicate-field", duplicateFieldId);
-    event.put("function", "PersonalInformationWebMapper");
-    event.put("sch-type", "personalInformation");
+    event.put(KEY_FUNCTION, MAPPER_NAME);
+    event.put(KEY_SCH_TYPE, PAGE_KEY);
     log.error("Duplicate YAML apimBinding config item: {}", loggingSanitizer.toSafeString(event));
   }
 

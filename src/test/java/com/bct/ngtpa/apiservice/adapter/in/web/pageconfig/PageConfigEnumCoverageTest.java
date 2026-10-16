@@ -11,34 +11,34 @@ class PageConfigEnumCoverageTest {
   void exposesWhenOperatorValues() {
     assertArrayEquals(
         new WhenOperator[] {
-          WhenOperator.notBlank,
-          WhenOperator.blank,
-          WhenOperator.changed,
-          WhenOperator.all,
-          WhenOperator.any,
-          WhenOperator.allGroupsEmpty
+          WhenOperator.NOT_BLANK,
+          WhenOperator.BLANK,
+          WhenOperator.CHANGED,
+          WhenOperator.ALL,
+          WhenOperator.ANY,
+          WhenOperator.ALL_GROUPS_EMPTY
         },
         WhenOperator.values());
-    assertEquals(WhenOperator.changed, WhenOperator.valueOf("changed"));
+    assertEquals(WhenOperator.CHANGED, WhenOperator.valueOf("CHANGED"));
   }
 
   @Test
   void exposesThenOperatorValues() {
     assertArrayEquals(
         new ThenOperator[] {
-          ThenOperator.fail,
-          ThenOperator.required,
-          ThenOperator.allRequired,
-          ThenOperator.showMessage
+          ThenOperator.FAIL,
+          ThenOperator.REQUIRED,
+          ThenOperator.ALL_REQUIRED,
+          ThenOperator.SHOW_MESSAGE
         },
         ThenOperator.values());
-    assertEquals(ThenOperator.showMessage, ThenOperator.valueOf("showMessage"));
+    assertEquals(ThenOperator.SHOW_MESSAGE, ThenOperator.valueOf("SHOW_MESSAGE"));
   }
 
   @Test
   void exposesSeverityValues() {
     assertArrayEquals(
-        new Severity[] {Severity.error, Severity.warning, Severity.info}, Severity.values());
-    assertEquals(Severity.warning, Severity.valueOf("warning"));
+        new Severity[] {Severity.ERROR, Severity.WARNING, Severity.INFO}, Severity.values());
+    assertEquals(Severity.WARNING, Severity.valueOf("WARNING"));
   }
 }

@@ -23,6 +23,7 @@ import java.util.Objects;
  * adapter.out, config, or infrastructure types.
  */
 public final class UsernameRecoveryWorkflowMapping {
+  private static final String CODE_NOT_NULL = "code must not be null";
 
   public static final WorkflowMessageKey MESSAGE_COMPLETE_REGISTRATION =
       new WorkflowMessageKey("label.usernamerecovery.complete.registration");
@@ -63,17 +64,15 @@ public final class UsernameRecoveryWorkflowMapping {
   }
 
   public static ApiError formError(String code, List<String> targets, String source) {
-    return ApiError.form(
-        Objects.requireNonNull(code, "code must not be null"), null, targets, source);
+    return ApiError.form(Objects.requireNonNull(code, CODE_NOT_NULL), null, targets, source);
   }
 
   public static ApiError businessError(String code, List<String> targets, String source) {
-    return ApiError.business(
-        Objects.requireNonNull(code, "code must not be null"), null, targets, source);
+    return ApiError.business(Objects.requireNonNull(code, CODE_NOT_NULL), null, targets, source);
   }
 
   public static ApiError systemError(String code, String source) {
-    return ApiError.system(Objects.requireNonNull(code, "code must not be null"), null, source);
+    return ApiError.system(Objects.requireNonNull(code, CODE_NOT_NULL), null, source);
   }
 
   /**

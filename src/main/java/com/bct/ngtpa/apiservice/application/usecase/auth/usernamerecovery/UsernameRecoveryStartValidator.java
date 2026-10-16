@@ -28,6 +28,9 @@ import java.util.regex.Pattern;
  * retained beyond the returned immutable value objects.
  */
 public final class UsernameRecoveryStartValidator {
+  private static final String TARGET_EMAIL = "email";
+
+  private static final String TARGET_MOBILE = "mobile";
 
   private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$");
   private static final Pattern HK_MOBILE = Pattern.compile("^[4-9][0-9]{7}$");
@@ -100,15 +103,15 @@ public final class UsernameRecoveryStartValidator {
     boolean hasEmail = !email.isBlank();
     boolean hasMobile = !mobile.isBlank();
     if (!hasEmail && !hasMobile) {
-      errors.add(new Error("email", Kind.CONTACT_REQUIRED));
-      errors.add(new Error("mobile", Kind.CONTACT_REQUIRED));
+      errors.add(new Error(TARGET_EMAIL, Kind.CONTACT_REQUIRED));
+      errors.add(new Error(TARGET_MOBILE, Kind.CONTACT_REQUIRED));
     } else if (hasEmail && hasMobile) {
-      errors.add(new Error("email", Kind.CONTACT_EXACTLY_ONE_REQUIRED));
-      errors.add(new Error("mobile", Kind.CONTACT_EXACTLY_ONE_REQUIRED));
+      errors.add(new Error(TARGET_EMAIL, Kind.CONTACT_EXACTLY_ONE_REQUIRED));
+      errors.add(new Error(TARGET_MOBILE, Kind.CONTACT_EXACTLY_ONE_REQUIRED));
     } else if (hasEmail && !isValidEmail(email)) {
-      errors.add(new Error("email", Kind.EMAIL_INVALID));
+      errors.add(new Error(TARGET_EMAIL, Kind.EMAIL_INVALID));
     } else if (hasMobile && !HK_MOBILE.matcher(mobile).matches()) {
-      errors.add(new Error("mobile", Kind.MOBILE_INVALID));
+      errors.add(new Error(TARGET_MOBILE, Kind.MOBILE_INVALID));
     }
 
     if (!errors.isEmpty()) {

@@ -50,34 +50,16 @@ public final class ForgotPasswordTrpSearchMemberMapper {
       return notFound();
     }
     String expected = requiredText(expectedCustomerId);
+    return findMatch(items, expected);
+  }
+
+  private ForgotPasswordDetailsLookupResult findMatch(
+      List<ForgotPasswordTrpSearchMemberDataItem> items, String expected) {
     Set<String> seenEnvironmentTrust = new HashSet<>();
     ForgotPasswordTrpSearchMemberDataItem matched = null;
     for (ForgotPasswordTrpSearchMemberDataItem item : items) {
-      if (item == null) {
-        throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
-      }
-      String env = text(item.env());
-      String trustCode = text(item.trustCode());
-      Boolean registered = item.isRegistered();
-      if (env == null || trustCode == null || registered == null) {
-        throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
-      }
-      if (!seenEnvironmentTrust.add(env + "|" + trustCode)) {
-        throw malformed(ForgotPasswordDetailsDownstreamException.Reason.AMBIGUOUS_DATA);
-      }
-      if (!validTermCompleteDate(text(item.termCompleteDate()))) {
-        throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
-      }
-      String customerId = text(item.customerId());
-      if (registered && customerId == null) {
-        throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
-      }
-      if (!registered && customerId != null) {
-        throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
-      }
-      if (registered
-          && IdentifierNormalizer.equalsNormalized(expected, customerId)
-          && matched == null) {
+      validateItem(item, seenEnvironmentTrust);
+      if (matched == null && isMatch(item, expected)) {
         matched = item;
       }
     }
@@ -88,6 +70,39 @@ public final class ForgotPasswordTrpSearchMemberMapper {
             text(matched.trustCode()),
             text(matched.schemeName()),
             text(matched.schemeNameChi()));
+  }
+
+  private void validateItem(
+      ForgotPasswordTrpSearchMemberDataItem item, Set<String> seenEnvironmentTrust) {
+    if (item == null) {
+      throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
+    }
+    String env = text(item.env());
+    String trustCode = text(item.trustCode());
+    Boolean registered = item.isRegistered();
+    if (env == null || trustCode == null || registered == null) {
+      throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
+    }
+    if (!seenEnvironmentTrust.add(env + "|" + trustCode)) {
+      throw malformed(ForgotPasswordDetailsDownstreamException.Reason.AMBIGUOUS_DATA);
+    }
+    if (!validTermCompleteDate(text(item.termCompleteDate()))) {
+      throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
+    }
+    String customerId = text(item.customerId());
+    if (registered && customerId == null) {
+      throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
+    }
+    if (!registered && customerId != null) {
+      throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
+    }
+  }
+
+  private boolean isMatch(ForgotPasswordTrpSearchMemberDataItem item, String expected) {
+    Boolean registered = item.isRegistered();
+    String customerId = text(item.customerId());
+    return Boolean.TRUE.equals(registered)
+        && IdentifierNormalizer.equalsNormalized(expected, customerId);
   }
 
   private static boolean validTermCompleteDate(String value) {

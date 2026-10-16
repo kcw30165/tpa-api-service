@@ -69,109 +69,7 @@ public final class VerifyForgotPasswordIdentityService
     Mono<VerifyForgotPasswordIdentityResult> work =
         sessions
             .loadSnapshot(c.sessionId())
-            .flatMap(
-                o -> {
-                  if (o.isEmpty())
-                    return Mono.just(
-                        VerifyForgotPasswordIdentityResult.of(
-                            VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
-                  AuthFlowSession reloaded = o.get().session();
-                  Instant now = Instant.now(clock);
-                  if (reloaded.isExpired(now)
-                      || reloaded.isTerminal()
-                      || reloaded.scenario() != AuthFlowScenario.FORGOT_PASSWORD
-                      || reloaded.status() != AuthFlowStatus.STARTED)
-                    return Mono.just(
-                        VerifyForgotPasswordIdentityResult.of(
-                            VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
-                  var q =
-                      new ForgotPasswordProtectedAuthFlowContextCommand(
-                          c.sessionId(),
-                          c.csrfToken(),
-                          c.origin(),
-                          c.referer(),
-                          c.requestId(),
-                          Set.of(AuthFlowStatus.STARTED),
-                          true);
-                  return loader
-                      .load(q)
-                      .flatMap(
-                          r -> {
-                            if (!r.isValid())
-                              return Mono.just(
-                                  VerifyForgotPasswordIdentityResult.of(
-                                      r.status()
-                                                  == ForgotPasswordProtectedAuthFlowContextStatus
-                                                      .CSRF_INVALID
-                                              || r.status()
-                                                  == ForgotPasswordProtectedAuthFlowContextStatus
-                                                      .ORIGIN_REFERER_INVALID
-                                          ? VerifyForgotPasswordIdentityStatus.SECURITY_REJECTED
-                                          : VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
-                            var context = r.context();
-                            if (context.phase() != ForgotPasswordProtectedPhase.USERNAME_VERIFIED)
-                              return Mono.just(
-                                  VerifyForgotPasswordIdentityResult.of(
-                                      VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
-                            if (!verifier.matches(
-                                c.identityType(),
-                                c.identityValue(),
-                                context.identityType(),
-                                context.identityValue()))
-                              return Mono.just(
-                                  VerifyForgotPasswordIdentityResult.of(
-                                      VerifyForgotPasswordIdentityStatus.INCORRECT_ID));
-                            var verifiedContext =
-                                context.withPhase(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
-                            return sessions
-                                .loadSnapshot(c.sessionId())
-                                .flatMap(
-                                    latest -> {
-                                      if (latest.isEmpty()) {
-                                        return Mono.just(
-                                            VerifyForgotPasswordIdentityResult.of(
-                                                VerifyForgotPasswordIdentityStatus
-                                                    .INVALID_AUTH_FLOW));
-                                      }
-                                      AuthFlowSession current = latest.get().session();
-                                      if (current.isExpired(now)
-                                          || current.isTerminal()
-                                          || current.scenario() != AuthFlowScenario.FORGOT_PASSWORD
-                                          || current.status() != AuthFlowStatus.STARTED) {
-                                        return Mono.just(
-                                            VerifyForgotPasswordIdentityResult.of(
-                                                VerifyForgotPasswordIdentityStatus
-                                                    .INVALID_AUTH_FLOW));
-                                      }
-                                      var encrypted = protector.protect(verifiedContext);
-                                      var attrs = new LinkedHashMap<>(current.data().attributes());
-                                      attrs.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());
-                                      attrs.put(CONTEXT_KEY_VERSION, encrypted.keyVersion());
-                                      attrs.put(CONTEXT_ALGORITHM, encrypted.algorithm());
-                                      AuthFlowSession updated =
-                                          new AuthFlowSession(
-                                              current.authFlowSessionId(),
-                                              current.scenario(),
-                                              AuthFlowStatus.IDENTITY_VERIFIED,
-                                              current.csrfTokenHash(),
-                                              current.activeOtpChallengeId(),
-                                              new AuthFlowSessionData(
-                                                  current.data().contactType(),
-                                                  current.data().maskedDestination(),
-                                                  attrs),
-                                              current.createdAt(),
-                                              now,
-                                              current.expiresAt());
-                                      return new com.bct.ngtpa.apiservice.application.usecase
-                                              .session.authflow.RevisionAwareAuthFlowSessionWriter(
-                                              sessions)
-                                          .updateExpected(current, updated)
-                                          .thenReturn(
-                                              VerifyForgotPasswordIdentityResult.of(
-                                                  VerifyForgotPasswordIdentityStatus.VERIFIED));
-                                    });
-                          });
-                })
+            .flatMap(o -> loadedSession(c, o))
             .onErrorReturn(
                 VerifyForgotPasswordIdentityResult.of(
                     VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED));
@@ -181,5 +79,102 @@ public final class VerifyForgotPasswordIdentityService
         ignored -> locks.release(h).onErrorReturn(false).then(),
         (ignored, error) -> locks.release(h).onErrorReturn(false).then(),
         ignored -> locks.release(h).onErrorReturn(false).then());
+  }
+
+  private Mono<VerifyForgotPasswordIdentityResult> loadedSession(
+      VerifyForgotPasswordIdentityCommand c, java.util.Optional<AuthFlowSessionSnapshot> o) {
+    if (o.isEmpty())
+      return Mono.just(
+          VerifyForgotPasswordIdentityResult.of(
+              VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
+    AuthFlowSession reloaded = o.get().session();
+    Instant now = Instant.now(clock);
+    if (reloaded.isExpired(now)
+        || reloaded.isTerminal()
+        || reloaded.scenario() != AuthFlowScenario.FORGOT_PASSWORD
+        || reloaded.status() != AuthFlowStatus.STARTED)
+      return Mono.just(
+          VerifyForgotPasswordIdentityResult.of(
+              VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
+    var q =
+        new ForgotPasswordProtectedAuthFlowContextCommand(
+            c.sessionId(),
+            c.csrfToken(),
+            c.origin(),
+            c.referer(),
+            c.requestId(),
+            Set.of(AuthFlowStatus.STARTED),
+            true);
+    return loader.load(q).flatMap(r -> loadedContext(c, r, now));
+  }
+
+  private Mono<VerifyForgotPasswordIdentityResult> loadedContext(
+      VerifyForgotPasswordIdentityCommand c,
+      ForgotPasswordProtectedAuthFlowContextResult r,
+      Instant now) {
+    if (!r.isValid())
+      return Mono.just(
+          VerifyForgotPasswordIdentityResult.of(
+              r.status() == ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID
+                      || r.status()
+                          == ForgotPasswordProtectedAuthFlowContextStatus.ORIGIN_REFERER_INVALID
+                  ? VerifyForgotPasswordIdentityStatus.SECURITY_REJECTED
+                  : VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
+    var context = r.context();
+    if (context.phase() != ForgotPasswordProtectedPhase.USERNAME_VERIFIED)
+      return Mono.just(
+          VerifyForgotPasswordIdentityResult.of(
+              VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
+    if (!verifier.matches(
+        c.identityType(), c.identityValue(), context.identityType(), context.identityValue()))
+      return Mono.just(
+          VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.INCORRECT_ID));
+    var verifiedContext = context.withPhase(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
+    return sessions
+        .loadSnapshot(c.sessionId())
+        .flatMap(latest -> persistVerified(c, latest, verifiedContext, now));
+  }
+
+  private Mono<VerifyForgotPasswordIdentityResult> persistVerified(
+      VerifyForgotPasswordIdentityCommand c,
+      java.util.Optional<AuthFlowSessionSnapshot> latest,
+      ForgotPasswordAuthFlowContext verifiedContext,
+      Instant now) {
+    if (latest.isEmpty()) {
+      return Mono.just(
+          VerifyForgotPasswordIdentityResult.of(
+              VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
+    }
+    AuthFlowSession current = latest.get().session();
+    if (current.isExpired(now)
+        || current.isTerminal()
+        || current.scenario() != AuthFlowScenario.FORGOT_PASSWORD
+        || current.status() != AuthFlowStatus.STARTED) {
+      return Mono.just(
+          VerifyForgotPasswordIdentityResult.of(
+              VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
+    }
+    var encrypted = protector.protect(verifiedContext);
+    var attrs = new LinkedHashMap<>(current.data().attributes());
+    attrs.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());
+    attrs.put(CONTEXT_KEY_VERSION, encrypted.keyVersion());
+    attrs.put(CONTEXT_ALGORITHM, encrypted.algorithm());
+    AuthFlowSession updated =
+        new AuthFlowSession(
+            current.authFlowSessionId(),
+            current.scenario(),
+            AuthFlowStatus.IDENTITY_VERIFIED,
+            current.csrfTokenHash(),
+            current.activeOtpChallengeId(),
+            new AuthFlowSessionData(
+                current.data().contactType(), current.data().maskedDestination(), attrs),
+            current.createdAt(),
+            now,
+            current.expiresAt());
+    return new com.bct.ngtpa.apiservice.application.usecase.session.authflow
+            .RevisionAwareAuthFlowSessionWriter(sessions)
+        .updateExpected(current, updated)
+        .thenReturn(
+            VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.VERIFIED));
   }
 }

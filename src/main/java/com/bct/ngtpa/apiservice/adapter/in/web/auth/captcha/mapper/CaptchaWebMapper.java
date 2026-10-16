@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class CaptchaWebMapper {
+  private static final String RESULT_NOT_NULL = "result must not be null";
 
   /**
    * Temporary source-compatibility target for existing tests that supplied a message-resolver
@@ -51,7 +52,7 @@ public class CaptchaWebMapper {
 
   public MutationResponse<CaptchaWorkflowResultResponse<CaptchaVerifyResponse>>
       toVerifyMutationResponse(VerifyCaptchaChallengeResult result, String acceptLanguage) {
-    Objects.requireNonNull(result, "result must not be null");
+    Objects.requireNonNull(result, RESULT_NOT_NULL);
     return switch (result.outcome()) {
       case VERIFIED ->
           MutationResponse.success(ApiStatus.SUCCESS, wrap(toVerifyResponse(result)), List.of());
@@ -126,7 +127,7 @@ public class CaptchaWebMapper {
   }
 
   private CaptchaChallengeResponse toChallengeResponse(CreateCaptchaChallengeResult result) {
-    Objects.requireNonNull(result, "result must not be null");
+    Objects.requireNonNull(result, RESULT_NOT_NULL);
     return new CaptchaChallengeResponse(
         result.captchaChallengeId().value(),
         result.image().imageBase64(),
@@ -135,7 +136,7 @@ public class CaptchaWebMapper {
   }
 
   private CaptchaVerifyResponse toVerifyResponse(VerifyCaptchaChallengeResult result) {
-    Objects.requireNonNull(result, "result must not be null");
+    Objects.requireNonNull(result, RESULT_NOT_NULL);
     return new CaptchaVerifyResponse(
         result.verified(),
         result.captchaChallengeId() == null ? null : result.captchaChallengeId().value(),
@@ -143,7 +144,7 @@ public class CaptchaWebMapper {
   }
 
   private CaptchaRefreshResponse toRefreshResponse(RefreshCaptchaChallengeResult result) {
-    Objects.requireNonNull(result, "result must not be null");
+    Objects.requireNonNull(result, RESULT_NOT_NULL);
     return new CaptchaRefreshResponse(
         result.captchaChallengeId().value(),
         result.image().imageBase64(),

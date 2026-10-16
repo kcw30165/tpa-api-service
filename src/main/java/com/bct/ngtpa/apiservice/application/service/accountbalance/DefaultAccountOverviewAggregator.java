@@ -16,6 +16,21 @@ public final class DefaultAccountOverviewAggregator implements AccountOverviewAg
     if (data == null || data.displayOptions() == null) throw systemFailure();
     boolean vestedVisible = data.displayOptions().vestedBalanceVisible();
     boolean pendingVisible = data.displayOptions().pendingSwitchInVisible();
+    Accumulation accumulation = accumulate(data, vestedVisible, pendingVisible);
+    List<RawDisplayAccountOverview> displayAccounts =
+        buildDisplayAccounts(accumulation.grouped(), vestedVisible);
+    return new RawAccountOverviewAggregation(
+        vestedVisible,
+        pendingVisible,
+        displayAccounts,
+        new RawAccountTotals(accumulation.totalBalance(), accumulation.pendingSwitchIn()));
+  }
+
+  private record Accumulation(
+      Map<String, Accumulator> grouped, BigDecimal totalBalance, BigDecimal pendingSwitchIn) {}
+
+  private static Accumulation accumulate(
+      NormalizedAccountBalanceData data, boolean vestedVisible, boolean pendingVisible) {
     Map<String, Accumulator> grouped = new HashMap<>();
     BigDecimal totalBalance = BigDecimal.ZERO;
     BigDecimal pendingSwitchIn = pendingVisible ? BigDecimal.ZERO : null;
@@ -37,24 +52,23 @@ public final class DefaultAccountOverviewAggregator implements AccountOverviewAg
       totalBalance = totalBalance.add(nav);
       if (pendingVisible) pendingSwitchIn = pendingSwitchIn.add(transit);
     }
-    List<RawDisplayAccountOverview> displayAccounts =
-        grouped.entrySet().stream()
-            .map(
-                entry ->
-                    new RawDisplayAccountOverview(
-                        entry.getKey(),
-                        entry.getValue().sequence,
-                        entry.getValue().balance,
-                        vestedVisible ? entry.getValue().vested : null))
-            .sorted(
-                Comparator.comparing(RawDisplayAccountOverview::displaySequence)
-                    .thenComparing(RawDisplayAccountOverview::displayAccountId))
-            .toList();
-    return new RawAccountOverviewAggregation(
-        vestedVisible,
-        pendingVisible,
-        displayAccounts,
-        new RawAccountTotals(totalBalance, pendingSwitchIn));
+    return new Accumulation(grouped, totalBalance, pendingSwitchIn);
+  }
+
+  private static List<RawDisplayAccountOverview> buildDisplayAccounts(
+      Map<String, Accumulator> grouped, boolean vestedVisible) {
+    return grouped.entrySet().stream()
+        .map(
+            entry ->
+                new RawDisplayAccountOverview(
+                    entry.getKey(),
+                    entry.getValue().sequence,
+                    entry.getValue().balance,
+                    vestedVisible ? entry.getValue().vested : null))
+        .sorted(
+            Comparator.comparing(RawDisplayAccountOverview::displaySequence)
+                .thenComparing(RawDisplayAccountOverview::displayAccountId))
+        .toList();
   }
 
   private static BigDecimal participating(BigDecimal value) {
