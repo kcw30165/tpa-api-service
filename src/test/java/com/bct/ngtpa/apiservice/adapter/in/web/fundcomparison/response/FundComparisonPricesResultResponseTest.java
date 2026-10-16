@@ -7,9 +7,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Fail-first test, mirroring {@code FundComparisonOptionsResultResponseTest}-style coverage for
- * the one-field "data" wrapper, per docs/design/13-fund-comparison/07-implementation-plan.md
- * section 7.4 (sub-task 3.4).
+ * Fail-first test, mirroring {@code FundComparisonOptionsResultResponseTest}-style coverage for the
+ * one-field "data" wrapper, per docs/design/13-fund-comparison/07-implementation-plan.md section
+ * 7.4 (sub-task 3.4).
  */
 class FundComparisonPricesResultResponseTest {
 

@@ -19,9 +19,8 @@ import reactor.test.StepVerifier;
 
 /**
  * Fail-first test for Fund Comparison Milestone 3, sub-task 3.3 (prices use case), per
- * docs/design/13-fund-comparison/07-implementation-plan.md section 7.4 and
- * 01-solution-design.md section 1.4 (inclusive date rules: R=15/10/2026, 10D -> 06/10/2026 to
- * 15/10/2026).
+ * docs/design/13-fund-comparison/07-implementation-plan.md section 7.4 and 01-solution-design.md
+ * section 1.4 (inclusive date rules: R=15/10/2026, 10D -> 06/10/2026 to 15/10/2026).
  */
 class FundComparisonPricesUseCaseTest {
 

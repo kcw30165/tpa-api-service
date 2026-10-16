@@ -12,13 +12,13 @@ import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FetchFundComparisonPricesCommand;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
+import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceRow;
 import com.bct.ngtpa.apiservice.application.exception.FundComparisonRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.FundComparisonPriceSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonPricesUseCase;
-import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
-import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceRow;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
@@ -42,9 +42,9 @@ import reactor.test.StepVerifier;
  *
  * <p>Unlike the Options controller test, the stubbed port here is at the {@link
  * FundComparisonPriceSourcePort} / {@link ReferenceDatePort} level (feeding the REAL {@link
- * FundComparisonPricesUseCase}), since this use case composes two ports internally (sub-task
- * 3.3) -- this also exercises the real date-range calculation and fund-list comma-joining
- * end-to-end through the controller.
+ * FundComparisonPricesUseCase}), since this use case composes two ports internally (sub-task 3.3)
+ * -- this also exercises the real date-range calculation and fund-list comma-joining end-to-end
+ * through the controller.
  */
 class FundComparisonPricesControllerTest {
 
@@ -111,7 +111,8 @@ class FundComparisonPricesControllerTest {
   private static ApiExceptionHandler advice() {
     ErrorMessageResolver resolver = (code, locale, accountEnv, trustCode, schemeType) -> code;
     return new ApiExceptionHandler(
-        resolver, new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())));
+        resolver,
+        new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())));
   }
 
   private static WebTestClient client(FundComparisonPricesUseCase useCase) {
@@ -178,8 +179,7 @@ class FundComparisonPricesControllerTest {
     clientWithAdvice(useCase(rawData))
         .post()
         .uri(ROUTE)
-        .bodyValue(
-            new FundComparisonPricesRequest(List.of("A", "B", "C", "D", "E", "F"), "10D"))
+        .bodyValue(new FundComparisonPricesRequest(List.of("A", "B", "C", "D", "E", "F"), "10D"))
         .exchange()
         .expectStatus()
         .isBadRequest()
@@ -234,7 +234,8 @@ class FundComparisonPricesControllerTest {
             resolver(Mono.error(new IllegalStateException("no context"))),
             new FundComparisonPricesWebMapper(FORMATTER));
 
-    StepVerifier.create(controller.getPrices(new FundComparisonPricesRequest(List.of("FAEU"), "10D")))
+    StepVerifier.create(
+            controller.getPrices(new FundComparisonPricesRequest(List.of("FAEU"), "10D")))
         .expectErrorMatches(IllegalStateException.class::isInstance)
         .verify();
 

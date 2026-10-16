@@ -12,8 +12,8 @@ import org.springframework.context.annotation.Configuration;
  * 066 evidence): the use case itself carries no Spring annotation (application layer must not
  * depend on Spring Framework), and is constructed explicitly here from its two port dependencies.
  *
- * <p>Neither {@link FundComparisonPriceSourcePort} nor {@link ReferenceDatePort} needs an
- * explicit {@code @Bean} method here: {@code ApimFundPriceSourceAdapter} (sub-task 3.1) and {@code
+ * <p>Neither {@link FundComparisonPriceSourcePort} nor {@link ReferenceDatePort} needs an explicit
+ * {@code @Bean} method here: {@code ApimFundPriceSourceAdapter} (sub-task 3.1) and {@code
  * ReferenceDateAdapter} are both already real, working beans elsewhere in the application
  * (confirmed, mirroring {@code FundPriceQueryExportUseCaseConfig}'s own documented precedent for
  * the identical {@link ReferenceDatePort} dependency). {@code FundComparisonPricesWebMapper}

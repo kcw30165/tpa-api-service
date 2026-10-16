@@ -23,20 +23,20 @@ import reactor.core.publisher.Mono;
 
 /**
  * {@code POST /api/v1/fund-comparison/prices}, per
- * docs/design/13-fund-comparison/02-api-contract.md section 2.3 (Milestone 3, sub-task 3.4 --
- * the final sub-task of Milestone 3).
+ * docs/design/13-fund-comparison/02-api-contract.md section 2.3 (Milestone 3, sub-task 3.4 -- the
+ * final sub-task of Milestone 3).
  *
  * <p>Mirrors {@code FundComparisonOptionsController}'s confirmed context-resolution pattern
  * (policyNo and accountEnv from the trusted {@code PortalAccessContext.AccountContext},
- * actorUserRole from {@code PortalAccessContext.ActorContext}). Unlike the options controller,
- * this one does NOT resolve {@code Accept-Language}: the prices response ({@code fundCode},
- * {@code priceDate}, {@code unitPrice}) has no localized fields, so there is nothing for a
- * language to select.
+ * actorUserRole from {@code PortalAccessContext.ActorContext}). Unlike the options controller, this
+ * one does NOT resolve {@code Accept-Language}: the prices response ({@code fundCode}, {@code
+ * priceDate}, {@code unitPrice}) has no localized fields, so there is nothing for a language to
+ * select.
  *
- * <p>Uses {@code @RequestBody(required = false)} rather than the Spring default ({@code required
- * = true}) so that a missing or malformed body reaches {@link
- * FundComparisonPricesWebMapper#validate} as a {@code null} request (producing the project's own
- * {@code err.fund-comparison.request.invalid} envelope, confirmed by {@code
+ * <p>Uses {@code @RequestBody(required = false)} rather than the Spring default ({@code required =
+ * true}) so that a missing or malformed body reaches {@link FundComparisonPricesWebMapper#validate}
+ * as a {@code null} request (producing the project's own {@code
+ * err.fund-comparison.request.invalid} envelope, confirmed by {@code
  * FundComparisonPricesWebMapperTest#nullRequestThrowsRequestInvalid}, sub-task 3.2) rather than a
  * generic Spring-framework-level 400 that would bypass the established error-code contract.
  * Validation runs inside {@link Mono#defer}, converting a thrown {@code

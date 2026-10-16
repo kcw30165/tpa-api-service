@@ -12,8 +12,8 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
  * InvalidNotificationRequestException}'s confirmed dedicated-handler precedent -- NOT the generic
  * {@code @ExceptionHandler(ApplicationException.class)} fallback, which hardcodes {@code
  * ApiStatus.BUSINESS_REJECTED} and error type {@code "BUSINESS"}, and would not satisfy
- * docs/design/13-fund-comparison/04-validation-and-error-handling.md section 4.3's confirmed
- * public mapping (API status: VALIDATION_FAILED; error type: VALIDATION).
+ * docs/design/13-fund-comparison/04-validation-and-error-handling.md section 4.3's confirmed public
+ * mapping (API status: VALIDATION_FAILED; error type: VALIDATION).
  */
 public class FundComparisonRequestInvalidException extends ApplicationException {
 

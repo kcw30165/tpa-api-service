@@ -13,8 +13,8 @@ import reactor.core.publisher.Mono;
 
 /**
  * Orchestrates the Milestone 3 prices flow (sub-task 3.3), per
- * docs/design/13-fund-comparison/07-implementation-plan.md section 7.4 and
- * 01-solution-design.md section 1.3 ("Prices flow"): resolves the reference date via {@link
+ * docs/design/13-fund-comparison/07-implementation-plan.md section 7.4 and 01-solution-design.md
+ * section 1.3 ("Prices flow"): resolves the reference date via {@link
  * ReferenceDatePort#resolveReferenceDate(String)}, computes the inclusive date window via {@link
  * FundComparisonDateRangeCalculator} (Milestone 1), joins the already-validated fund codes with
  * commas and no spaces, and calls {@link FundComparisonPriceSourcePort#fetchPrices}.
@@ -28,8 +28,8 @@ import reactor.core.publisher.Mono;
  * resolution and the price fetch) -- a {@link FundComparisonDateRangeCalculator} precondition
  * violation (a malformed time-range token reaching this class, which should never happen since
  * {@code FundComparisonPricesWebMapper#validate} already validated the same grammar) is
- * deliberately left unwrapped, per that calculator's own documented intent that such a violation
- * is a programming-error precondition failure, not a public retrieval-unavailable contract.
+ * deliberately left unwrapped, per that calculator's own documented intent that such a violation is
+ * a programming-error precondition failure, not a public retrieval-unavailable contract.
  */
 public final class FundComparisonPricesUseCase {
 

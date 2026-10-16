@@ -6,17 +6,17 @@ import java.util.Objects;
 
 /**
  * Inbound command for the Milestone 3 prices use case (sub-task 3.3), per
- * docs/design/13-fund-comparison/07-implementation-plan.md section 7.4: "Takes
- * accountEnv/policyNo as primitives (passed in by the controller, not PortalAccessContext)".
+ * docs/design/13-fund-comparison/07-implementation-plan.md section 7.4: "Takes accountEnv/policyNo
+ * as primitives (passed in by the controller, not PortalAccessContext)".
  *
- * <p>{@code fundCodes} and {@code timeRange} are expected to already be validated and
- * deduplicated by {@code FundComparisonPricesWebMapper#validate} (sub-task 3.2, which produces
- * {@code FundComparisonPricesValidatedRequest}) -- this record is intentionally self-contained
- * and flat, mirroring {@code FetchFundComparisonOptionsCommand}'s own flat style, rather than
- * nesting that validated-request type, so this use-case's input shape does not couple to the web
- * mapper's intermediate type. It re-enforces the same invariants defensively (non-blank
- * policyNo/accountEnv, 1-5 fund codes, non-blank timeRange), consistent with every other command
- * record in this codebase self-validating regardless of caller.
+ * <p>{@code fundCodes} and {@code timeRange} are expected to already be validated and deduplicated
+ * by {@code FundComparisonPricesWebMapper#validate} (sub-task 3.2, which produces {@code
+ * FundComparisonPricesValidatedRequest}) -- this record is intentionally self-contained and flat,
+ * mirroring {@code FetchFundComparisonOptionsCommand}'s own flat style, rather than nesting that
+ * validated-request type, so this use-case's input shape does not couple to the web mapper's
+ * intermediate type. It re-enforces the same invariants defensively (non-blank policyNo/accountEnv,
+ * 1-5 fund codes, non-blank timeRange), consistent with every other command record in this codebase
+ * self-validating regardless of caller.
  *
  * <p>Named with the "UseCaseCommand" suffix, not simply "FetchFundComparisonPricesCommand",
  * specifically to avoid a same-package class-name collision with the existing PORT-level {@code
