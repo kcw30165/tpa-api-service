@@ -79,7 +79,6 @@ public final class LoginOtpVerifyReplayCodec {
       return Mono.error(
           new IllegalArgumentException("Login OTP Verify replay headers are invalid"));
     }
-
     SafePayload payload =
         envelope.decodePayload(
             LoginIdempotencyAction.OTP_VERIFY, snapshot.serializedSafeBody(), SafePayload.class);
@@ -89,34 +88,46 @@ public final class LoginOtpVerifyReplayCodec {
           new IllegalArgumentException("Login OTP Verify replay HTTP status mismatch"));
     }
     if (status == VerifyLoginOtpStatus.ACCOUNTS_READY) {
-      if (!payload.clearAuthFlowCookie()
-          || payload.remainingVerifyAttempts() != null
-          || snapshot.protectedReplayReference() == null) {
-        return Mono.error(
-            new IllegalArgumentException("Login OTP Verify success snapshot is invalid"));
-      }
-      return protectedReplayResolver
-          .resolve(snapshot.protectedReplayReference(), correlationId)
-          .switchIfEmpty(
-              Mono.error(
-                  new IllegalArgumentException(
-                      "Login OTP Verify protected replay recovery is unavailable")))
-          .flatMap(
-              recovered -> {
-                try {
-                  validateResult(recovered);
-                  return recovered.status() == VerifyLoginOtpStatus.ACCOUNTS_READY
-                      ? Mono.just(recovered)
-                      : Mono.error(
-                          new IllegalArgumentException(
-                              "Login OTP Verify protected recovery result is invalid"));
-                } catch (IllegalArgumentException exception) {
-                  return Mono.error(
-                      new IllegalArgumentException(
-                          "Login OTP Verify protected recovery result is invalid"));
-                }
-              });
+      return hydrateAccountsReady(snapshot, payload, correlationId);
     }
+    return hydrateRejection(snapshot, payload, status);
+  }
+
+  private Mono<VerifyLoginOtpResult> hydrateAccountsReady(
+      IdempotentTerminalResponseSnapshot snapshot, SafePayload payload, String correlationId) {
+    if (!payload.clearAuthFlowCookie()
+        || payload.remainingVerifyAttempts() != null
+        || snapshot.protectedReplayReference() == null) {
+      return Mono.error(
+          new IllegalArgumentException("Login OTP Verify success snapshot is invalid"));
+    }
+    return protectedReplayResolver
+        .resolve(snapshot.protectedReplayReference(), correlationId)
+        .switchIfEmpty(
+            Mono.error(
+                new IllegalArgumentException(
+                    "Login OTP Verify protected replay recovery is unavailable")))
+        .flatMap(
+            recovered -> {
+              try {
+                validateResult(recovered);
+                return recovered.status() == VerifyLoginOtpStatus.ACCOUNTS_READY
+                    ? Mono.just(recovered)
+                    : Mono.error(
+                        new IllegalArgumentException(
+                            "Login OTP Verify protected recovery result is invalid"));
+              } catch (IllegalArgumentException exception) {
+                return Mono.error(
+                    new IllegalArgumentException(
+                        "Login OTP Verify protected recovery result is invalid"));
+              }
+            });
+  }
+
+  private Mono<VerifyLoginOtpResult> hydrateRejection(
+      IdempotentTerminalResponseSnapshot snapshot,
+      SafePayload payload,
+      VerifyLoginOtpStatus status) {
     if (snapshot.protectedReplayReference() != null) {
       return Mono.error(
           new IllegalArgumentException("Login OTP Verify rejection cannot carry protected replay"));

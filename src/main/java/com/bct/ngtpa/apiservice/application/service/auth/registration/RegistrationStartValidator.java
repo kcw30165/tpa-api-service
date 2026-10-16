@@ -40,18 +40,46 @@ public class RegistrationStartValidator {
     String mobile =
         RegistrationContactDeriver.normalizeMobile(input == null ? null : input.mobile());
     String captchaChallengeId = normalize(input == null ? null : input.captchaChallengeId());
+    validateIdentity(errors, identityType, identityValue);
+    validateDateOfBirth(errors, dateOfBirth);
+    validateContact(errors, email, mobile);
+    validateCaptcha(errors, captchaChallengeId);
+    if (!errors.isEmpty()) {
+      return RegistrationStartValidationResult.invalid(errors);
+    }
+    RegistrationStartContact contact = contactDeriver.derive(email, mobile);
+    return RegistrationStartValidationResult.valid(
+        new RegistrationStartCommand(
+            identityType,
+            identityValue,
+            dateOfBirth,
+            contact.contactType(),
+            contact.contactValue(),
+            contact.maskedDestination(),
+            captchaChallengeId));
+  }
 
+  private static void validateIdentity(
+      List<RegistrationStartValidationError> errors,
+      MemberIdentityType identityType,
+      String identityValue) {
     if (identityType != null
         && !RegistrationIdentityValueValidator.isValid(identityType, identityValue)) {
       errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYVALUE_INVALID, "identityValue"));
     } else if (identityType == null && identityValue.isBlank()) {
       errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYVALUE_INVALID, "identityValue"));
     }
+  }
 
+  private static void validateDateOfBirth(
+      List<RegistrationStartValidationError> errors, String dateOfBirth) {
     if (!RegistrationDateOfBirthValidator.isValid(dateOfBirth)) {
       errors.add(error(RegistrationErrorKey.REGISTRATION_DATEOFBIRTH_INVALID, "dateOfBirth"));
     }
+  }
 
+  private static void validateContact(
+      List<RegistrationStartValidationError> errors, String email, String mobile) {
     boolean hasEmail = !email.isBlank();
     boolean hasMobile = !mobile.isBlank();
     if (!hasEmail && !hasMobile) {
@@ -66,25 +94,13 @@ public class RegistrationStartValidator {
     } else if (hasMobile && !HK_MOBILE.matcher(mobile).matches()) {
       errors.add(error(RegistrationErrorKey.REGISTRATION_MOBILE_INVALID, TARGET_MOBILE));
     }
+  }
 
+  private static void validateCaptcha(
+      List<RegistrationStartValidationError> errors, String captchaChallengeId) {
     if (!captchaChallengeId.isBlank() && !SAFE_CAPTCHA.matcher(captchaChallengeId).matches()) {
       errors.add(error(RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID, "captchaChallengeId"));
     }
-
-    if (!errors.isEmpty()) {
-      return RegistrationStartValidationResult.invalid(errors);
-    }
-
-    RegistrationStartContact contact = contactDeriver.derive(email, mobile);
-    return RegistrationStartValidationResult.valid(
-        new RegistrationStartCommand(
-            identityType,
-            identityValue,
-            dateOfBirth,
-            contact.contactType(),
-            contact.contactValue(),
-            contact.maskedDestination(),
-            captchaChallengeId));
   }
 
   private static MemberIdentityType parseIdentityType(

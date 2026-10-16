@@ -30,39 +30,35 @@ public class PersonalInformationUpdateWebMapper {
       throw new InvalidPersonalInformationUpdateException(
           "No personal information fields were submitted.");
     }
-
     var fieldsById = fieldsById();
     var mapped = new LinkedHashMap<String, Object>();
-
-    request
-        .fields()
-        .forEach(
-            (fieldId, value) -> {
-              var field = fieldsById.get(fieldId);
-              if (field == null) {
-                log.error("Unknown personal information update field submitted: {}", fieldId);
-                throw new InvalidPersonalInformationUpdateException(
-                    "Unknown personal information field: " + fieldId);
-              }
-
-              var binding = field.getApimBinding();
-              var dataKey = binding == null ? null : trimToNull(binding.getData());
-              if (dataKey == null) {
-                log.warn(
-                    "Personal information update field is UI-only and will be omitted: {}",
-                    fieldId);
-                return;
-              }
-
-              validateSubmittedValue(field, value);
-              mapped.put(dataKey, value);
-            });
-
+    request.fields().forEach((fieldId, value) -> applyField(fieldsById, mapped, fieldId, value));
     if (mapped.isEmpty()) {
       throw new InvalidPersonalInformationUpdateException(
           "No updatable personal information fields were submitted.");
     }
     return new UpdatePersonalInformationCommand(applyToAllAccounts, mapped);
+  }
+
+  private void applyField(
+      Map<String, FieldProperties> fieldsById,
+      Map<String, Object> mapped,
+      String fieldId,
+      Object value) {
+    var field = fieldsById.get(fieldId);
+    if (field == null) {
+      log.error("Unknown personal information update field submitted: {}", fieldId);
+      throw new InvalidPersonalInformationUpdateException(
+          "Unknown personal information field: " + fieldId);
+    }
+    var binding = field.getApimBinding();
+    var dataKey = binding == null ? null : trimToNull(binding.getData());
+    if (dataKey == null) {
+      log.warn("Personal information update field is UI-only and will be omitted: {}", fieldId);
+      return;
+    }
+    validateSubmittedValue(field, value);
+    mapped.put(dataKey, value);
   }
 
   private Map<String, FieldProperties> fieldsById() {

@@ -53,6 +53,22 @@ public final class DefaultLoginProtectedAuthFlowContextLoader
       Optional<AuthFlowSession> o, LoginProtectedAuthFlowContextCommand c, Instant now) {
     if (o.isEmpty()) return invalid(LoginProtectedAuthFlowContextStatus.MISSING_SESSION);
     var s = o.get();
+    LoginProtectedAuthFlowContextResult sessionCheck = validateSessionState(s, c, now);
+    if (sessionCheck != null) {
+      return sessionCheck;
+    }
+    Map<String, String> a = s.data() == null ? Map.of() : s.data().attributes();
+    String v = a.get("loginContext.keyVersion"),
+        alg = a.get("loginContext.algorithm"),
+        iv = a.get("loginContext.iv"),
+        ct = a.get("loginContext.ciphertext");
+    if (blank(v) || blank(alg) || blank(iv) || blank(ct))
+      return invalid(LoginProtectedAuthFlowContextStatus.MISSING_CONTEXT);
+    return decryptAndBuildResult(s, c, v, alg, iv, ct);
+  }
+
+  private LoginProtectedAuthFlowContextResult validateSessionState(
+      AuthFlowSession s, LoginProtectedAuthFlowContextCommand c, Instant now) {
     if (s.isExpired(now) || s.isTerminal())
       return invalid(LoginProtectedAuthFlowContextStatus.EXPIRED_OR_TERMINAL_SESSION);
     if (s.scenario() != AuthFlowScenario.LOGIN)
@@ -61,13 +77,16 @@ public final class DefaultLoginProtectedAuthFlowContextLoader
       return invalid(LoginProtectedAuthFlowContextStatus.INVALID_STATUS);
     if (c.activeOtpRequired() && blank(s.activeOtpChallengeId()))
       return invalid(LoginProtectedAuthFlowContextStatus.INVALID_STATUS);
-    Map<String, String> a = s.data() == null ? Map.of() : s.data().attributes();
-    String v = a.get("loginContext.keyVersion"),
-        alg = a.get("loginContext.algorithm"),
-        iv = a.get("loginContext.iv"),
-        ct = a.get("loginContext.ciphertext");
-    if (blank(v) || blank(alg) || blank(iv) || blank(ct))
-      return invalid(LoginProtectedAuthFlowContextStatus.MISSING_CONTEXT);
+    return null;
+  }
+
+  private LoginProtectedAuthFlowContextResult decryptAndBuildResult(
+      AuthFlowSession s,
+      LoginProtectedAuthFlowContextCommand c,
+      String v,
+      String alg,
+      String iv,
+      String ct) {
     try {
       var context = protector.unprotect(new LoginPreAuthEncryptedContext(v, alg, iv, ct));
       LoginPreAuthDestination selected = null;
