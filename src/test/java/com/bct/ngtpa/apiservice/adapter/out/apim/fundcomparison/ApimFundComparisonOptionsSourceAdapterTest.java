@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.fundcomparison;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -243,6 +244,52 @@ class ApimFundComparisonOptionsSourceAdapterTest {
               assertThat(error).isInstanceOf(FundComparisonRetrievalException.class);
               assertThat(error.getMessage()).doesNotContain("10.0.0.1", "connection refused");
             })
+        .verify();
+  }
+
+  // ---- coverage closure (script 050): the production 2-arg (executor, properties)
+  // constructor, blank-path rejection, and null-errMessage/null-data handling were
+  // previously uncovered ----
+  @Test
+  void productionConstructorDelegatesToPackagePrivateConstructor() {
+    var properties = new FundComparisonOptionsApimProperties();
+    properties.setPath(PATH);
+    var adapterViaProductionConstructor =
+        new ApimFundComparisonOptionsSourceAdapter(executor, properties);
+
+    doReturn(Mono.just(envelopeWith("", List.of(validItem())))).when(executor).postEnvelope(any());
+
+    StepVerifier.create(adapterViaProductionConstructor.fetchOptions(command()))
+        .expectNextCount(1)
+        .verifyComplete();
+  }
+
+  @Test
+  void blankPathInPackagePrivateConstructorThrows() {
+    assertThatThrownBy(() -> new ApimFundComparisonOptionsSourceAdapter(executor, "   "))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("path");
+  }
+
+  @Test
+  void explicitNullErrMessageIsTreatedAsSuccessJustLikeEmptyString() {
+    // response.getErrMessage() returning null (as opposed to "") takes the false side
+    // of `errMessage != null && !errMessage.isEmpty()` via short-circuit -- distinct
+    // from the nonblank-string branch already covered by
+    // nonblankErrMessageMapsToGenericSystemFailure.
+    doReturn(Mono.just(envelopeWith(null, List.of(validItem()))))
+        .when(executor)
+        .postEnvelope(any());
+
+    StepVerifier.create(adapter.fetchOptions(command())).expectNextCount(1).verifyComplete();
+  }
+
+  @Test
+  void nullDataFailsClosedJustLikeEmptyOrOversizedData() {
+    doReturn(Mono.just(envelopeWith("", null))).when(executor).postEnvelope(any());
+
+    StepVerifier.create(adapter.fetchOptions(command()))
+        .expectErrorMatches(FundComparisonRetrievalException.class::isInstance)
         .verify();
   }
 }
