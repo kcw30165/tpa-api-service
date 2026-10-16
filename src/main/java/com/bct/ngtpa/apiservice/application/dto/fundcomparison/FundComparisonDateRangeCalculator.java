@@ -48,31 +48,15 @@ public final class FundComparisonDateRangeCalculator {
     } else {
       char unit = timeRangeToken.charAt(timeRangeToken.length() - 1);
       int value = Integer.parseInt(timeRangeToken.substring(0, timeRangeToken.length() - 1));
-      fromDate = resolveFromDate(referenceDate, unit, value);
+      fromDate =
+          switch (unit) {
+            case 'D' -> referenceDate.minusDays(value - 1L);
+            case 'M' -> referenceDate.minusMonths(value).plusDays(1);
+            case 'Y' -> referenceDate.minusYears(value).plusDays(1);
+            default -> throw new IllegalStateException("Unreachable: token already validated");
+          };
     }
 
     return new FundComparisonDateRange(fromDate, referenceDate);
-  }
-
-  /**
-   * Resolves {@code fromDate} for a single already-validated unit character ({@code D}, {@code M},
-   * or {@code Y}) and its numeric value.
-   *
-   * <p>Package-private (not {@code private}) solely so the test in this package can invoke it
-   * directly with an out-of-domain {@code unit}, exercising the {@code default} branch without
-   * weakening the public {@link #calculate} contract or resorting to reflection.
-   */
-  static LocalDate resolveFromDate(LocalDate referenceDate, char unit, int value) {
-    return switch (unit) {
-      case 'D' -> referenceDate.minusDays(value - 1L);
-      case 'M' -> referenceDate.minusMonths(value).plusDays(1);
-      case 'Y' -> referenceDate.minusYears(value).plusDays(1);
-      default ->
-          throw new IllegalStateException(
-              "Unreachable: unit '"
-                  + unit
-                  + "' not in {D,M,Y} despite VALID_TOKEN match; value="
-                  + value);
-    };
   }
 }
