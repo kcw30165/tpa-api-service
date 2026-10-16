@@ -27,16 +27,32 @@ public class RegistrationPasswordValidator {
             policyPort.registrationPolicy().password(),
             "Registration password policy must not be null");
     List<WorkflowErrorDescriptor> errors = new ArrayList<>();
+    appendRequiredErrors(errors, password, confirmPassword);
+    if (!errors.isEmpty()) {
+      return RegistrationPasswordValidationResult.failure(errors);
+    }
+    appendPolicyErrors(errors, password, confirmPassword, protectedUsername, policy);
+    return errors.isEmpty()
+        ? RegistrationPasswordValidationResult.success()
+        : RegistrationPasswordValidationResult.failure(errors);
+  }
 
+  private void appendRequiredErrors(
+      List<WorkflowErrorDescriptor> errors, String password, String confirmPassword) {
     if (password == null || password.isEmpty()) {
       errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_REQUIRED, TARGET_PASSWORD));
     }
     if (confirmPassword == null || confirmPassword.isEmpty()) {
       errors.add(error(CompleteRegistrationErrorKeys.CONFIRM_PASSWORD_REQUIRED, "confirmPassword"));
     }
-    if (!errors.isEmpty()) {
-      return RegistrationPasswordValidationResult.failure(errors);
-    }
+  }
+
+  private void appendPolicyErrors(
+      List<WorkflowErrorDescriptor> errors,
+      String password,
+      String confirmPassword,
+      String protectedUsername,
+      PasswordPolicy policy) {
     if (!password.equals(confirmPassword)) {
       errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_MISMATCH, "confirmPassword"));
     }
@@ -58,9 +74,6 @@ public class RegistrationPasswordValidator {
         && categoryCount(password, policy.specialChars()) < policy.requiredCategories()) {
       errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_CATEGORIES, TARGET_PASSWORD));
     }
-    return errors.isEmpty()
-        ? RegistrationPasswordValidationResult.success()
-        : RegistrationPasswordValidationResult.failure(errors);
   }
 
   private int categoryCount(String password, String configuredSpecials) {

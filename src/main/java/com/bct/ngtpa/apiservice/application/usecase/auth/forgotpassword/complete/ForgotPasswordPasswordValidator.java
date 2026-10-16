@@ -26,7 +26,18 @@ public class ForgotPasswordPasswordValidator {
             policyPort.registrationPolicy().password(),
             "Registration password policy must not be null");
     List<WorkflowErrorDescriptor> errors = new ArrayList<>();
+    appendRequiredErrors(errors, password, confirmPassword);
+    if (!errors.isEmpty()) {
+      return ForgotPasswordPasswordValidationResult.failure(errors);
+    }
+    appendPolicyErrors(errors, password, confirmPassword, protectedUsername, policy);
+    return errors.isEmpty()
+        ? ForgotPasswordPasswordValidationResult.success()
+        : ForgotPasswordPasswordValidationResult.failure(errors);
+  }
 
+  private void appendRequiredErrors(
+      List<WorkflowErrorDescriptor> errors, String password, String confirmPassword) {
     if (password == null || password.isEmpty()) {
       errors.add(error(ForgotPasswordCompleteErrorKeys.PASSWORD_REQUIRED, TARGET_PASSWORD));
     }
@@ -34,9 +45,14 @@ public class ForgotPasswordPasswordValidator {
       errors.add(
           error(ForgotPasswordCompleteErrorKeys.CONFIRM_PASSWORD_REQUIRED, "confirmPassword"));
     }
-    if (!errors.isEmpty()) {
-      return ForgotPasswordPasswordValidationResult.failure(errors);
-    }
+  }
+
+  private void appendPolicyErrors(
+      List<WorkflowErrorDescriptor> errors,
+      String password,
+      String confirmPassword,
+      String protectedUsername,
+      PasswordPolicy policy) {
     if (!password.equals(confirmPassword)) {
       errors.add(error(ForgotPasswordCompleteErrorKeys.PASSWORD_MISMATCH, "confirmPassword"));
     }
@@ -58,9 +74,6 @@ public class ForgotPasswordPasswordValidator {
         && categoryCount(password, policy.specialChars()) < policy.requiredCategories()) {
       errors.add(error(ForgotPasswordCompleteErrorKeys.PASSWORD_CATEGORIES, TARGET_PASSWORD));
     }
-    return errors.isEmpty()
-        ? ForgotPasswordPasswordValidationResult.success()
-        : ForgotPasswordPasswordValidationResult.failure(errors);
   }
 
   private int categoryCount(String password, String configuredSpecials) {
