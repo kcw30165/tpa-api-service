@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.mapper.FundComparisonOptionsMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.response.FundComparisonOptionsResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.response.FundComparisonOptionsResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
@@ -7,6 +8,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FetchFundComparisonOptionsCommand;
+import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsUseCase;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
@@ -24,17 +26,17 @@ import reactor.core.publisher.Mono;
  * {@code POST /api/v1/fund-comparison/options}, per
  * docs/design/13-fund-comparison/02-api-contract.md section 2.2.
  *
- * <p>Mirrors {@code FundFactSheetController}'s exact confirmed pattern (script 042 evidence): no
- * request body; policyNo and accountEnv come from the trusted {@code
- * PortalAccessContext.AccountContext}, actorUserRole from {@code PortalAccessContext.ActorContext},
- * and the language from {@code Accept-Language}. Session, CSRF and {@code Account-Ref} checks stay
- * in the existing web filter.
+ * <p>Mirrors {@code FundFactSheetController}'s exact confirmed pattern (script 042 evidence,
+ * constructor parameter order re-confirmed script 046 evidence): no request body; policyNo and
+ * accountEnv come from the trusted {@code PortalAccessContext.AccountContext}, actorUserRole from
+ * {@code PortalAccessContext.ActorContext}, and the language from {@code Accept-Language}. Session,
+ * CSRF and {@code Account-Ref} checks stay in the existing web filter.
  *
- * <p>Unlike {@code FundFactSheetController}, this controller has NO separate web mapper dependency:
- * {@link FundComparisonOptionsUseCase#getOptions} already returns the final public {@link
- * FundComparisonOptionsResponse} (the mapper runs inside the use case, confirmed sub-tasks 2.2/2.3)
- * -- this controller only wraps that result under {@code result.data} via {@link
- * FundComparisonOptionsResultResponse} and {@link MutationResponse}.
+ * <p>Corrected (script 047, closing a confirmed Clean Architecture violation): unlike the earlier
+ * version of this controller, {@link FundComparisonOptionsUseCase#getOptions} now returns the raw,
+ * application-layer {@link RawFundComparisonOptionsData} -- this controller, like {@code
+ * FundFactSheetController}, owns the final mapping to the public response via its own {@link
+ * FundComparisonOptionsMapper} dependency.
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -42,12 +44,16 @@ public class FundComparisonOptionsController {
 
   private final FundComparisonOptionsUseCase useCase;
   private final CurrentPortalAccessContextResolver contextResolver;
+  private final FundComparisonOptionsMapper webMapper;
 
   public FundComparisonOptionsController(
-      FundComparisonOptionsUseCase useCase, CurrentPortalAccessContextResolver contextResolver) {
+      FundComparisonOptionsUseCase useCase,
+      CurrentPortalAccessContextResolver contextResolver,
+      FundComparisonOptionsMapper webMapper) {
     this.useCase = Objects.requireNonNull(useCase, "useCase must not be null");
     this.contextResolver =
         Objects.requireNonNull(contextResolver, "contextResolver must not be null");
+    this.webMapper = Objects.requireNonNull(webMapper, "webMapper must not be null");
   }
 
   @PostMapping(value = "/fund-comparison/options", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -61,8 +67,8 @@ public class FundComparisonOptionsController {
           String language = RequestLanguageResolver.resolve(headers, acceptLanguage, "en");
           return contextResolver
               .current()
-              .flatMap(context -> useCase.getOptions(commandFrom(context), language))
-              .map(FundComparisonOptionsController::success);
+              .flatMap(context -> useCase.getOptions(commandFrom(context)))
+              .map(raw -> success(raw, language));
         });
   }
 
@@ -72,8 +78,9 @@ public class FundComparisonOptionsController {
         account.policyNo(), account.accountEnv(), context.actor().actorUserRole());
   }
 
-  private static MutationResponse<FundComparisonOptionsResultResponse> success(
-      FundComparisonOptionsResponse result) {
+  private MutationResponse<FundComparisonOptionsResultResponse> success(
+      RawFundComparisonOptionsData raw, String language) {
+    FundComparisonOptionsResponse result = webMapper.toResponse(raw, language);
     return MutationResponse.success(
         ApiStatus.SUCCESS, new FundComparisonOptionsResultResponse(result), List.of());
   }

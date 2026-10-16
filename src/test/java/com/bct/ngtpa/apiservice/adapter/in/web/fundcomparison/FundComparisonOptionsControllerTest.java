@@ -32,19 +32,15 @@ import reactor.test.StepVerifier;
 
 /**
  * Route and envelope tests, mirroring {@code FundFactSheetControllerTest}'s exact structure (script
- * 042 evidence). {@code resolver(...)} below is extracted VERBATIM from that already-compiling,
- * already-passing sibling test (script 044 evidence) rather than reimplemented, since {@code
- * CurrentPortalAccessContextResolver} has more than one abstract method and guessing its exact
- * shape a second time would repeat script 043's mistake.
+ * 042 evidence).
  *
- * <p>Unlike {@code FundFactSheetController}, which depends on an interface-based {@code
- * GetFundFactSheetUseCase} (a real {@code @FunctionalInterface}), {@code
- * FundComparisonOptionsUseCase} is a concrete FINAL class (confirmed, sub-task 2.3) with no
- * interface -- so these tests construct the REAL use case with a stub {@link
- * FundComparisonOptionsSourcePort} (a real {@code @FunctionalInterface}, sub-task 2.1) returning
- * {@link RawFundComparisonOptionsData}, and the REAL {@link FundComparisonOptionsMapper} (confirmed
- * no-arg constructor, pure logic, sub-task 2.2) -- letting production mapping logic (time-range
- * normalization, localized fund-name selection, sorting) run for real inside the test.
+ * <p>Corrected (script 047, closing a confirmed Clean Architecture violation): {@code
+ * FundComparisonOptionsUseCase} is now constructed with ONLY a {@link
+ * FundComparisonOptionsSourcePort} (no mapper); the controller takes the REAL {@link
+ * FundComparisonOptionsMapper} as its own third constructor dependency, mirroring {@code
+ * FundFactSheetController}'s exact confirmed parameter order (useCase, contextResolver, webMapper).
+ * All test scenarios are unchanged from before the correction -- only the construction calls
+ * differ.
  */
 class FundComparisonOptionsControllerTest {
 
@@ -61,7 +57,7 @@ class FundComparisonOptionsControllerTest {
           command.set(cmd);
           return Mono.just(raw);
         };
-    return new FundComparisonOptionsUseCase(sourcePort, new FundComparisonOptionsMapper());
+    return new FundComparisonOptionsUseCase(sourcePort);
   }
 
   private FundComparisonOptionsUseCase failingUseCase(RuntimeException error) {
@@ -70,7 +66,7 @@ class FundComparisonOptionsControllerTest {
           calls.incrementAndGet();
           return Mono.error(error);
         };
-    return new FundComparisonOptionsUseCase(sourcePort, new FundComparisonOptionsMapper());
+    return new FundComparisonOptionsUseCase(sourcePort);
   }
 
   private static RawFundComparisonOptionsData raw(
@@ -104,7 +100,8 @@ class FundComparisonOptionsControllerTest {
   }
 
   private static FundComparisonOptionsController controller(FundComparisonOptionsUseCase useCase) {
-    return new FundComparisonOptionsController(useCase, resolver(Mono.just(context())));
+    return new FundComparisonOptionsController(
+        useCase, resolver(Mono.just(context())), new FundComparisonOptionsMapper());
   }
 
   private static ApiExceptionHandler advice() {
@@ -219,7 +216,9 @@ class FundComparisonOptionsControllerTest {
     var data = raw("10D", fund("FAEU", "Name", ""));
     var controller =
         new FundComparisonOptionsController(
-            useCase(data), resolver(Mono.error(new IllegalStateException("no context"))));
+            useCase(data),
+            resolver(Mono.error(new IllegalStateException("no context"))),
+            new FundComparisonOptionsMapper());
 
     StepVerifier.create(controller.getOptions(null))
         .expectErrorMatches(IllegalStateException.class::isInstance)
@@ -233,12 +232,16 @@ class FundComparisonOptionsControllerTest {
     var data = raw("10D", fund("FAEU", "Name", ""));
     var useCase = useCase(data);
     var resolver = resolver(Mono.just(context()));
+    var mapper = new FundComparisonOptionsMapper();
 
-    assertThatThrownBy(() -> new FundComparisonOptionsController(null, resolver))
+    assertThatThrownBy(() -> new FundComparisonOptionsController(null, resolver, mapper))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("useCase");
-    assertThatThrownBy(() -> new FundComparisonOptionsController(useCase, null))
+    assertThatThrownBy(() -> new FundComparisonOptionsController(useCase, null, mapper))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("contextResolver");
+    assertThatThrownBy(() -> new FundComparisonOptionsController(useCase, resolver, null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("webMapper");
   }
 }

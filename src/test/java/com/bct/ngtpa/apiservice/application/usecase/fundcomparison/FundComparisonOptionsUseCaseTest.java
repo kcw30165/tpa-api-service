@@ -1,14 +1,12 @@
 package com.bct.ngtpa.apiservice.application.usecase.fundcomparison;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.mapper.FundComparisonOptionsMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.response.FundComparisonOptionsResponse;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FetchFundComparisonOptionsCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData;
@@ -21,24 +19,20 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Fail-first: FundComparisonOptionsUseCase does not exist yet.
- *
- * <p>Confirmed design (script 035 investigation): mirrors a simplified {@code
- * GetFundFactSheetService}-style orchestration -- calls {@link
- * FundComparisonOptionsSourcePort#fetchOptions} (the port, never a concrete adapter) then maps the
- * result through {@link FundComparisonOptionsMapper}. No caching, no session mutation (confirmed
- * non-goal, unlike {@code FundPriceModeUseCase}'s session-stamping pattern). Any exception that is
- * not already a {@link FundComparisonRetrievalException} is defensively wrapped into one, mirroring
- * {@code GetFundFactSheetService}'s exact safety net.
+ * Corrected (script 047, closing a confirmed Clean Architecture violation):
+ * FundComparisonOptionsUseCase no longer depends on {@code FundComparisonOptionsMapper} or {@code
+ * FundComparisonOptionsResponse} (both adapter.in.web types) -- it returns the raw,
+ * application-layer {@link RawFundComparisonOptionsData} directly. Mapping to the public response
+ * is now the controller's responsibility, mirroring {@code GetFundFactSheetService}'s real,
+ * confirmed pattern.
  */
 class FundComparisonOptionsUseCaseTest {
 
   private final FundComparisonOptionsSourcePort sourcePort =
       mock(FundComparisonOptionsSourcePort.class);
-  private final FundComparisonOptionsMapper mapper = mock(FundComparisonOptionsMapper.class);
 
   private FundComparisonOptionsUseCase newUseCase() {
-    return new FundComparisonOptionsUseCase(sourcePort, mapper);
+    return new FundComparisonOptionsUseCase(sourcePort);
   }
 
   private FetchFundComparisonOptionsCommand command() {
@@ -51,86 +45,37 @@ class FundComparisonOptionsUseCaseTest {
         List.of(new RawFundComparisonOption("FAEU", "Fidelity Advantage Portfolio Fund", "")));
   }
 
-  private FundComparisonOptionsResponse response() {
-    return new FundComparisonOptionsResponse(
-        List.of("10D", "1M", "3M", "6M", "1Y", "YTD", "3Y"), "10D", List.of());
-  }
-
-  // ----- happy path: port -> mapper, exact arguments passed through -------------
+  // ----- happy path: the port's raw result passes through unchanged -------------
   @Test
-  void fetchesThroughThePortAndMapsThroughTheMapperWithTheGivenLanguage() {
-    // response() constructs a NEW record instance on every call -- capture it ONCE
-    // into a local so the identity check below compares the mock's actual return
-    // value against itself, not against a freshly-constructed (value-equal but
-    // instance-distinct) record.
-    var expectedResponse = response();
-    when(sourcePort.fetchOptions(any())).thenReturn(Mono.just(rawData()));
-    when(mapper.toResponse(rawData(), "zh_HK")).thenReturn(expectedResponse);
+  void fetchesThroughThePortAndReturnsTheRawResultUnchanged() {
+    var expectedRaw = rawData();
+    when(sourcePort.fetchOptions(any())).thenReturn(Mono.just(expectedRaw));
 
-    StepVerifier.create(newUseCase().getOptions(command(), "zh_HK"))
-        .assertNext(result -> assertThat(result).isSameAs(expectedResponse))
+    StepVerifier.create(newUseCase().getOptions(command()))
+        .assertNext(result -> assertThat(result).isSameAs(expectedRaw))
         .verifyComplete();
 
     verify(sourcePort).fetchOptions(command());
-    verify(mapper).toResponse(rawData(), "zh_HK");
   }
 
-  // ----- port failure: propagates, mapper never called -------------------------
-  @Test
-  void sourcePortFailureNeverCallsTheMapperAndPropagatesAsFundComparisonRetrievalException() {
-    when(sourcePort.fetchOptions(any()))
-        .thenReturn(Mono.error(FundComparisonRetrievalException.systemFailure()));
-
-    StepVerifier.create(newUseCase().getOptions(command(), "en"))
-        .expectError(FundComparisonRetrievalException.class)
-        .verify();
-
-    verifyNoInteractions(mapper);
-  }
-
+  // ----- port failure: propagates unchanged --------------------------------------
   @Test
   void aRetrievalFailureFromTheSourcePassesThroughUnchanged() {
     var original = FundComparisonRetrievalException.systemFailure();
     when(sourcePort.fetchOptions(any())).thenReturn(Mono.error(original));
 
-    StepVerifier.create(newUseCase().getOptions(command(), "en"))
+    StepVerifier.create(newUseCase().getOptions(command()))
         .expectErrorSatisfies(error -> assertThat(error).isSameAs(original))
         .verify();
   }
 
-  // ----- mapper throws (e.g. all-invalid time-range) -> propagates unchanged ----
-  @Test
-  void aRetrievalExceptionThrownByTheMapperPassesThroughUnchanged() {
-    var original = FundComparisonRetrievalException.systemFailure();
-    when(sourcePort.fetchOptions(any())).thenReturn(Mono.just(rawData()));
-    when(mapper.toResponse(any(), any())).thenThrow(original);
-
-    StepVerifier.create(newUseCase().getOptions(command(), "en"))
-        .expectErrorSatisfies(error -> assertThat(error).isSameAs(original))
-        .verify();
-  }
-
-  // ----- defensive wrap: any OTHER exception type becomes the generic failure ---
-  @Test
-  void anUnexpectedExceptionFromTheMapperIsWrappedAsFundComparisonRetrievalException() {
-    when(sourcePort.fetchOptions(any())).thenReturn(Mono.just(rawData()));
-    when(mapper.toResponse(any(), any())).thenThrow(new IllegalStateException("unexpected"));
-
-    StepVerifier.create(newUseCase().getOptions(command(), "en"))
-        .expectErrorSatisfies(
-            error -> {
-              assertThat(error).isInstanceOf(FundComparisonRetrievalException.class);
-              assertThat(error.getMessage()).doesNotContain("unexpected");
-            })
-        .verify();
-  }
-
+  // ----- defensive wrap: any OTHER exception type becomes the generic failure -----
   @Test
   void anUnexpectedExceptionFromThePortIsWrappedAsFundComparisonRetrievalException() {
     when(sourcePort.fetchOptions(any()))
         .thenReturn(Mono.error(new IllegalStateException("connection refused")));
 
-    StepVerifier.create(newUseCase().getOptions(command(), "en"))
+    StepVerifier.create(newUseCase().getOptions(command()))
         .expectErrorSatisfies(
             error -> {
               assertThat(error).isInstanceOf(FundComparisonRetrievalException.class);
@@ -139,18 +84,13 @@ class FundComparisonOptionsUseCaseTest {
         .verify();
   }
 
-  // ----- constructor / method null-checks ---------------------------------------
+  // ----- constructor / method null-checks -----------------------------------------
   @Test
   void constructorAndMethodArgumentsRequireNonNull() {
-    org.assertj.core.api.Assertions.assertThatThrownBy(
-            () -> new FundComparisonOptionsUseCase(null, mapper))
+    assertThatThrownBy(() -> new FundComparisonOptionsUseCase(null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("sourcePort");
-    org.assertj.core.api.Assertions.assertThatThrownBy(
-            () -> new FundComparisonOptionsUseCase(sourcePort, null))
-        .isInstanceOf(NullPointerException.class)
-        .hasMessageContaining("mapper");
-    org.assertj.core.api.Assertions.assertThatThrownBy(() -> newUseCase().getOptions(null, "en"))
+    assertThatThrownBy(() -> newUseCase().getOptions(null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("command");
   }
