@@ -182,6 +182,7 @@ class AuthFlowSessionLifecycleServiceTest {
               assertThat(updated.data().contactType()).isEqualTo("EMAIL");
               assertThat(updated.data().maskedDestination()).isEqualTo("m****r@example.com");
               assertThat(recordComponentNames(AuthFlowSessionData.class))
+                  .isNotEmpty()
                   .doesNotContain("email", "mobile", "contactValue", "rawDestination");
             })
         .verifyComplete();

@@ -79,6 +79,7 @@ class CookieHttpResponsesTest {
         .assertNext(
             entity ->
                 assertThat(entity.getBody().errors())
+                    .isNotEmpty()
                     .allSatisfy(
                         error ->
                             assertThat(error.code())

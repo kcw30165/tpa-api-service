@@ -39,6 +39,7 @@ class HttpStatusClassificationOverrideTest {
   @Test
   void shouldCarryNoErrorCodeOrFeatureMetadata() {
     assertThat(Arrays.stream(HttpStatusClassificationOverride.class.getDeclaredFields()))
+        .isNotEmpty()
         .allSatisfy(
             field ->
                 assertThat(field.getType())

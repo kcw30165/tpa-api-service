@@ -196,7 +196,9 @@ class RedisAuthenticatedSessionCasUpdateAdapterTest {
         java.util.Arrays.stream(RedisAuthenticatedSessionCasUpdateAdapter.class.getMethods())
             .map(java.lang.reflect.Method::getName)
             .toList();
-    assertThat(methodNames).doesNotContain("initializeLegacyRevision", "initializeLegacy");
+    assertThat(methodNames)
+        .isNotEmpty()
+        .doesNotContain("initializeLegacyRevision", "initializeLegacy");
   }
 
   // ---- coverage closure (script 063): serialization must be a REAL envelope,

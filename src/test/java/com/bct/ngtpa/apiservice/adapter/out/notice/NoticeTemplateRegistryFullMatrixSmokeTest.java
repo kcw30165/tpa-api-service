@@ -128,6 +128,7 @@ class NoticeTemplateRegistryFullMatrixSmokeTest {
             adapter.resolve(MessageDeliveryType.USERNAME_RECOVERY, channel, locale);
         assertThat(definition.requiredPlaceholders())
             .as("username-recovery %s/%s", channel, locale)
+            .isNotEmpty()
             .doesNotContain("ttlValue", "ttlUnit", "code");
       }
     }

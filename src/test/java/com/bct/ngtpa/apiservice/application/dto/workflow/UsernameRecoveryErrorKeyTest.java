@@ -107,6 +107,8 @@ class UsernameRecoveryErrorKeyTest {
             .map(UsernameRecoveryErrorKey::value)
             .toList();
 
-    assertThat(usernameRecoveryValues).doesNotContainAnyElementsOf(valuesOwnedElsewhere);
+    assertThat(usernameRecoveryValues)
+        .isNotEmpty()
+        .doesNotContainAnyElementsOf(valuesOwnedElsewhere);
   }
 }

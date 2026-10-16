@@ -128,6 +128,7 @@ class UsernameRecoveryWebMapperSensitiveDataTest {
     assertThat(
             Arrays.stream(UsernameRecoveryStartRequest.class.getRecordComponents())
                 .map(RecordComponent::getName))
+        .isNotEmpty()
         .doesNotContain("captchaAnswer", "idempotencyKey", "requestId", "language", "csrfToken");
   }
 }

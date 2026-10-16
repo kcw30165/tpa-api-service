@@ -101,6 +101,7 @@ class P5LightweightWorkflowFoundationIntegrationTest {
             .toMutationResponse(WorkflowResult.success(WorkflowNextStep.VERIFY_OTP, "safePayload"));
 
     assertThat(recordComponentNames(response.result().getClass()))
+        .isNotEmpty()
         .doesNotContain("requestId", "xRequestId", "X-Request-Id");
     assertThat(response.toString()).doesNotContain("requestId", "xRequestId", "X-Request-Id");
   }
@@ -127,9 +128,8 @@ class P5LightweightWorkflowFoundationIntegrationTest {
 
   @Test
   void p5RegistrationStartApimMemberNotFoundMappingRemainsKeyOnly() {
-    assertThat("err.tpa.member.not.found").isEqualTo("err.tpa.member.not.found");
-    assertThat(RegistrationErrorKey.START_VERIFICATION_FAILED)
-        .isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED);
+    assertThat(RegistrationErrorKey.START_VERIFICATION_FAILED.value())
+        .isEqualTo("err.registration.start.verificationFailed");
     assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationStartAdapter");
     assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.RegistrationStartUseCase");
   }

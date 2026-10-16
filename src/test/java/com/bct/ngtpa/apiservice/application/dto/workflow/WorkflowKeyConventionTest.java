@@ -111,11 +111,8 @@ class WorkflowKeyConventionTest {
 
   @Test
   void registrationStartApimMemberNotFoundMappingIsDocumentedAsKeyOnly() {
-    assertThat("err.tpa.member.not.found").isEqualTo("err.tpa.member.not.found");
     assertThat(RegistrationErrorKey.START_VERIFICATION_FAILED.value())
         .isEqualTo("err.registration.start.verificationFailed");
-    assertThat(RegistrationErrorKey.START_VERIFICATION_FAILED)
-        .isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED);
   }
 
   @Test

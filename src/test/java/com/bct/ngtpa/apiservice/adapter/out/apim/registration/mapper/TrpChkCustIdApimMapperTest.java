@@ -26,6 +26,7 @@ class TrpChkCustIdApimMapperTest {
         .startsWith("com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.");
     assertThat(request.getClass().getName()).doesNotContain("adapter.in.web");
     assertThat(componentNames(request.getClass()))
+        .isNotEmpty()
         .doesNotContain("policyNo", "certNo", "password", "confirmPassword");
   }
 
