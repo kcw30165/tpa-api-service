@@ -636,46 +636,48 @@ public class PersonalInformationWebMapper {
               fieldSchema,
               state,
               defaultFieldOrder,
-              language,
-              accountEnv,
-              trustCode,
-              schemeType));
+              new DisplayContext(language, accountEnv, trustCode, schemeType)));
       defaultFieldOrder += 10;
     }
     return fields;
   }
+
+  private record DisplayContext(
+      String language, String accountEnv, String trustCode, String schemeType) {}
 
   private FieldResponse toFieldResponse(
       PageSchemaProperties pageSchema,
       FieldProperties fieldSchema,
       FieldState state,
       int defaultFieldOrder,
-      String language,
-      String accountEnv,
-      String trustCode,
-      String schemeType) {
+      DisplayContext ctx) {
     List<ValidationRuleResponse> validations =
         mapValidationRules(
-            pageSchema, fieldSchema.getValidations(), language, accountEnv, trustCode, schemeType);
+            pageSchema,
+            fieldSchema.getValidations(),
+            ctx.language(),
+            ctx.accountEnv(),
+            ctx.trustCode(),
+            ctx.schemeType());
     String placeholder =
         resolvePageDisplayText(
             pageSchema,
             fieldSchema.getPlaceholderCode(),
             fieldSchema.getPlaceholder(),
-            language,
-            accountEnv,
-            trustCode,
-            schemeType);
+            ctx.language(),
+            ctx.accountEnv(),
+            ctx.trustCode(),
+            ctx.schemeType());
     return new FieldResponse(
         fieldSchema.getId(),
         resolvePageDisplayText(
             pageSchema,
             fieldSchema.getLabelCode(),
             fieldSchema.getLabel(),
-            language,
-            accountEnv,
-            trustCode,
-            schemeType),
+            ctx.language(),
+            ctx.accountEnv(),
+            ctx.trustCode(),
+            ctx.schemeType()),
         hasText(fieldSchema.getDataType()) ? fieldSchema.getDataType() : null,
         hasText(fieldSchema.getControlType()) ? fieldSchema.getControlType() : null,
         state.value(),
