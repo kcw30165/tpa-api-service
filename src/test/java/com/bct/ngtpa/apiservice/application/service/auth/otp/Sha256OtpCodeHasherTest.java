@@ -86,7 +86,9 @@ class Sha256OtpCodeHasherTest {
             .map(RecordComponent::getName)
             .toList();
 
-    assertThat(componentNames).doesNotContain("rawCode", "code", "otpCode", "plainCode");
+    assertThat(componentNames)
+        .isNotEmpty()
+        .doesNotContain("rawCode", "code", "otpCode", "plainCode");
     assertThat(
             Arrays.stream(OtpChallenge.class.getMethods())
                 .map(method -> method.getName())

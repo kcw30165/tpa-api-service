@@ -36,6 +36,7 @@ class UsernameRecoveryLookupBoundaryReconciliationTest {
         Arrays.stream(UsernameRecoveryLookupResult.Status.values()).map(Enum::name).toList();
 
     assertThat(names)
+        .isNotEmpty()
         .doesNotContain(
             "DOWNSTREAM_REJECTED",
             "DOWNSTREAM_ERROR",

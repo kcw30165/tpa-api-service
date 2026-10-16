@@ -80,6 +80,7 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
     assertThat(id.value()).isEqualTo("afs_abc123").isNotEqualTo(cookieName);
     assertThat(redisKey).isEqualTo("ngtpa:auth:flow-session:afs_abc123").doesNotContain(cookieName);
     assertThat(recordComponentNames(AuthFlowSession.class))
+        .isNotEmpty()
         .doesNotContain("authFlowCookie", "cookieName", "cookieValue");
   }
 

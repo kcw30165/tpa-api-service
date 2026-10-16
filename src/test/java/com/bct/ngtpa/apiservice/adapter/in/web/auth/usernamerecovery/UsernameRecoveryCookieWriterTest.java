@@ -64,6 +64,7 @@ class UsernameRecoveryCookieWriterTest {
     assertThat(
             Arrays.stream(UsernameRecoveryCookieWriter.class.getDeclaredMethods())
                 .map(java.lang.reflect.Method::getName))
+        .isNotEmpty()
         .doesNotContain("xsrfCookie", "clearXsrfCookie");
   }
 

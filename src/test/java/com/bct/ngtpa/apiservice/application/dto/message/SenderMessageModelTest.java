@@ -35,6 +35,7 @@ class SenderMessageModelTest {
             .toList();
 
     assertThat(componentNames)
+        .isNotEmpty()
         .doesNotContain("username", "password", "sendId", "classCode", "smsContent");
     assertThat(
             Arrays.stream(SmsMessage.class.getMethods())
@@ -67,7 +68,9 @@ class SenderMessageModelTest {
             .map(RecordComponent::getName)
             .toList();
 
-    assertThat(componentNames).doesNotContain("smtpHost", "smtpPort", "username", "password");
+    assertThat(componentNames)
+        .isNotEmpty()
+        .doesNotContain("smtpHost", "smtpPort", "username", "password");
     assertThat(
             Arrays.stream(EmailMessage.class.getMethods())
                 .map(method -> method.getName())
@@ -97,6 +100,7 @@ class SenderMessageModelTest {
             .toList();
 
     assertThat(componentNames)
+        .isNotEmpty()
         .doesNotContain("sendId", "classCode", "smtpHost", "smtpPort", "smsContent");
     assertThat(
             Arrays.stream(MessageDeliveryCommand.class.getMethods())

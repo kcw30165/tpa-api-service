@@ -108,6 +108,7 @@ class MessageDeliveryModelTest {
             .toList();
 
     assertThat(componentNames)
+        .isNotEmpty()
         .doesNotContain(
             "username", "password", "sendId", "classCode", "country", "phone", "smsContent");
     assertThat(

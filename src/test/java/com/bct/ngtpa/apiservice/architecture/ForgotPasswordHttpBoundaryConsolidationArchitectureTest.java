@@ -38,7 +38,7 @@ class ForgotPasswordHttpBoundaryConsolidationArchitectureTest {
   @Test
   void oneControllerOwnsTheCompleteForgotPasswordHttpBoundary() {
     assertThat(TARGET_SOURCE).exists();
-    assertThat(LEGACY_SOURCES).allMatch(path -> !Files.exists(path));
+    assertThat(LEGACY_SOURCES).isNotEmpty().allMatch(path -> !Files.exists(path));
     assertThatCode(() -> Class.forName(ForgotPasswordController.class.getName()))
         .doesNotThrowAnyException();
     assertThat(ForgotPasswordController.class).hasAnnotation(RestController.class);

@@ -95,6 +95,8 @@ class SecurityAuditEventModelTest {
             "emailBody",
             "authorization");
 
+    assertThat(componentNames).isNotEmpty();
+    assertThat(accessorNames).isNotEmpty();
     forbiddenNames.forEach(
         name -> {
           assertThat(componentNames).doesNotContain(name);

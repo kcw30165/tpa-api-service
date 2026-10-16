@@ -36,6 +36,7 @@ class UsernameRecoveryLegacySessionUsageGuardTest {
   @Test
   void legacyUsernameRecoverySessionStackIsPhysicallyAbsent() {
     assertThat(REMOVED_PRODUCTION_PATHS)
+        .isNotEmpty()
         .allSatisfy(
             path ->
                 assertThat(Files.exists(Path.of(path)))

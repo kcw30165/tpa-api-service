@@ -33,6 +33,7 @@ class AuthFlowSessionLifecycleCommandTest {
   @Test
   void authFlowStatusStillDoesNotUseAmbiguousFailureStates() {
     assertThat(java.util.Arrays.stream(AuthFlowStatus.values()).map(Enum::name))
+        .isNotEmpty()
         .doesNotContain("FAILED", "UNKNOWN", "ERROR");
   }
 }

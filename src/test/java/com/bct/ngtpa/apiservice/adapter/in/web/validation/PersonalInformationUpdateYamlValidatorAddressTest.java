@@ -92,9 +92,7 @@ class PersonalInformationUpdateYamlValidatorAddressTest {
             null,
             null);
 
-    assertThat(errors)
-        .extracting(ApiError::code)
-        .doesNotContain("personalInformation.address.atLeastOneRequired");
+    assertThat(errors).isEmpty();
   }
 
   @Test
@@ -130,9 +128,7 @@ class PersonalInformationUpdateYamlValidatorAddressTest {
             null,
             null);
 
-    assertThat(errors)
-        .extracting(ApiError::code)
-        .doesNotContain("personalInformation.address.atLeastOneRequired");
+    assertThat(errors).isEmpty();
   }
 
   @Test
