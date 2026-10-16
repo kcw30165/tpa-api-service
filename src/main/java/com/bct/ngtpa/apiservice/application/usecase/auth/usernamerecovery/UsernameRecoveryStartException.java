@@ -22,7 +22,7 @@ import java.util.Objects;
 public final class UsernameRecoveryStartException extends RuntimeException {
 
   private final Reason reason;
-  private final List<UsernameRecoveryStartValidator.Error> validationErrors;
+  private final transient List<UsernameRecoveryStartValidator.Error> validationErrors;
 
   public enum Reason {
     VALIDATION_FAILED,

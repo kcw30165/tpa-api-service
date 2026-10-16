@@ -38,35 +38,45 @@ class SortEngineTest {
         path = "items",
         by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))
   })
-  static void nameAsc() {}
+  static void nameAsc() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
         path = "items",
         by = @SortBy(field = "name", direction = SortDirection.DESC, type = SortType.STRING))
   })
-  static void nameDesc() {}
+  static void nameDesc() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
         path = "items",
         by = @SortBy(field = "seq", direction = SortDirection.ASC, type = SortType.NUMBER))
   })
-  static void seqAsc() {}
+  static void seqAsc() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
         path = "items",
         by = @SortBy(field = "seq", direction = SortDirection.DESC, type = SortType.NUMBER))
   })
-  static void seqDesc() {}
+  static void seqDesc() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
         path = "items",
         by = @SortBy(field = "amount", direction = SortDirection.ASC, type = SortType.NUMBER))
   })
-  static void amountAsc() {}
+  static void amountAsc() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
@@ -78,7 +88,9 @@ class SortEngineTest {
                 type = SortType.DATE,
                 datePattern = "dd/MM/yyyy"))
   })
-  static void dateDesc() {}
+  static void dateDesc() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
@@ -90,7 +102,9 @@ class SortEngineTest {
                 type = SortType.DATE,
                 datePattern = "dd/MM/yyyy"))
   })
-  static void dateAsc() {}
+  static void dateAsc() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
@@ -104,7 +118,9 @@ class SortEngineTest {
           @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING)
         })
   })
-  static void dateDescNameAsc() {}
+  static void dateDescNameAsc() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
@@ -116,7 +132,9 @@ class SortEngineTest {
                 type = SortType.STRING,
                 nullsLast = true))
   })
-  static void nameAscNullsLast() {}
+  static void nameAscNullsLast() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
@@ -129,28 +147,36 @@ class SortEngineTest {
                 datePattern = "dd/MM/yyyy",
                 nullsLast = true))
   })
-  static void dateDescNullsLast() {}
+  static void dateDescNullsLast() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
         path = "data.items",
         by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))
   })
-  static void nestedDataItems() {}
+  static void nestedDataItems() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
         path = "nonExistentField",
         by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))
   })
-  static void badPath() {}
+  static void badPath() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
         path = "items",
         by = @SortBy(field = "unknownField", direction = SortDirection.ASC, type = SortType.STRING))
   })
-  static void badField() {}
+  static void badField() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   /** Retrieves the real {@link ApplySorts} annotation from a static placeholder method. */
   private ApplySorts annotation(String methodName) {
@@ -433,7 +459,9 @@ class SortEngineTest {
         path = "items",
         by = @SortBy(field = "flag", direction = SortDirection.DESC, type = SortType.BOOLEAN))
   })
-  static void booleanDesc() {}
+  static void booleanDesc() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
@@ -445,7 +473,9 @@ class SortEngineTest {
                 type = SortType.STRING,
                 nullsLast = false))
   })
-  static void nameAscNullsFirst() {}
+  static void nameAscNullsFirst() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
@@ -457,21 +487,27 @@ class SortEngineTest {
                 type = SortType.DATE,
                 datePattern = ""))
   })
-  static void dateAscIso() {}
+  static void dateAscIso() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
         path = "items",
         by = @SortBy(field = "seq", direction = SortDirection.ASC, type = SortType.NUMBER))
   })
-  static void seqAscForNonNumericStr() {}
+  static void seqAscForNonNumericStr() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @ApplySorts({
     @SortList(
         path = "items",
         by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))
   })
-  static void sortNullFieldValue() {}
+  static void sortNullFieldValue() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   // ─── BOOLEAN sorting ──────────────────────────────────────────────────────
 
@@ -570,7 +606,9 @@ class SortEngineTest {
         path = "items",
         by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))
   })
-  static void nonRecordSort() {}
+  static void nonRecordSort() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @Test
   void failsWhenTargetIsNotRecord() {
@@ -600,7 +638,9 @@ class SortEngineTest {
         path = "items",
         by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))
   })
-  static void nullNestedField() {}
+  static void nullNestedField() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @Test
   void failsWhenIntermediatePathIsNull() {
@@ -633,7 +673,9 @@ class SortEngineTest {
         path = "data.items",
         by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))
   })
-  static void twoSortLists() {}
+  static void twoSortLists() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   record ItemPair(List<Item> items, Container data) {}
 
@@ -661,7 +703,9 @@ class SortEngineTest {
         path = "name",
         by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))
   })
-  static void leafIsNotAList() {}
+  static void leafIsNotAList() {
+    /* intentionally empty: carries only the @ApplySorts annotation, read via reflection */
+  }
 
   @Test
   void failsFastWhenLeafFieldIsNotAList() {
