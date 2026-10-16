@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.AccountGainLossRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
+import com.bct.ngtpa.apiservice.application.exception.FundComparisonRequestInvalidException;
 import com.bct.ngtpa.apiservice.application.exception.FundComparisonRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.FundFactSheetRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
@@ -344,6 +345,13 @@ public class ApiExceptionHandler {
         ex.getMessage(),
         true,
         false);
+  }
+
+  @ExceptionHandler(FundComparisonRequestInvalidException.class)
+  public ResponseEntity<MutationResponse<Void>> handleFundComparisonRequestInvalidException(
+      FundComparisonRequestInvalidException ex, ServerWebExchange exchange) {
+    return handleApplicationException(
+        ex, exchange, HttpStatus.BAD_REQUEST, ApiStatus.VALIDATION_FAILED, "VALIDATION");
   }
 
   @ExceptionHandler(FundComparisonRetrievalException.class)
