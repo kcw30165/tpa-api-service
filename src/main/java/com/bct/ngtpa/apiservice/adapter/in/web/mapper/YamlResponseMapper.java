@@ -59,38 +59,45 @@ public class YamlResponseMapper {
       return null;
     }
     if (value instanceof Map<?, ?> map) {
-      if (looksLikeLocalizedLabel(map)) {
-        return resolveLabel((Map<String, String>) map, language);
-      }
-      Map<String, Object> result = new LinkedHashMap<>();
-      for (Map.Entry<?, ?> entry : map.entrySet()) {
-        String key = String.valueOf(entry.getKey());
-        if (shouldSkipKey(key)) {
-          continue;
-        }
-        Object normalizedValue = normalize(entry.getValue(), language);
-        if (("value".equals(key) || "originalValue".equals(key))
-            && map.containsKey(KEY_DATA_TYPE)) {
-          result.put(key, normalizeFieldValueByDataType(map.get(KEY_DATA_TYPE), entry.getValue()));
-          continue;
-        }
-        if (!isEmptyValue(normalizedValue)) {
-          result.put(key, normalizedValue);
-        }
-      }
-      return normalizeResponseMap(result);
+      return normalizeMapValue(map, language);
     }
     if (value instanceof List<?> list) {
-      List<Object> result = new ArrayList<>();
-      for (Object item : list) {
-        Object normalizedItem = normalize(item, language);
-        if (!isEmptyValue(normalizedItem)) {
-          result.add(normalizedItem);
-        }
-      }
-      return normalizeResponseMap(result);
+      return normalizeListValue(list, language);
     }
     return value;
+  }
+
+  private Object normalizeMapValue(Map<?, ?> map, String language) {
+    if (looksLikeLocalizedLabel(map)) {
+      return resolveLabel((Map<String, String>) map, language);
+    }
+    Map<String, Object> result = new LinkedHashMap<>();
+    for (Map.Entry<?, ?> entry : map.entrySet()) {
+      String key = String.valueOf(entry.getKey());
+      if (shouldSkipKey(key)) {
+        continue;
+      }
+      Object normalizedValue = normalize(entry.getValue(), language);
+      if (("value".equals(key) || "originalValue".equals(key)) && map.containsKey(KEY_DATA_TYPE)) {
+        result.put(key, normalizeFieldValueByDataType(map.get(KEY_DATA_TYPE), entry.getValue()));
+        continue;
+      }
+      if (!isEmptyValue(normalizedValue)) {
+        result.put(key, normalizedValue);
+      }
+    }
+    return normalizeResponseMap(result);
+  }
+
+  private Object normalizeListValue(List<?> list, String language) {
+    List<Object> result = new ArrayList<>();
+    for (Object item : list) {
+      Object normalizedItem = normalize(item, language);
+      if (!isEmptyValue(normalizedItem)) {
+        result.add(normalizedItem);
+      }
+    }
+    return normalizeResponseMap(result);
   }
 
   private boolean looksLikeLocalizedLabel(Map<?, ?> value) {

@@ -96,9 +96,45 @@ public class ContributionSummaryWebMapper {
       String schemeType,
       String currencyCode,
       String currencyText) {
+    ContributionPeriodResponse period = buildPeriod(row, lang, accountEnv, trustCode, schemeType);
+    ContributionDateValueResponse dealingDateResponse =
+        buildDealingDate(row, lang, accountEnv, trustCode, schemeType);
+    var currency =
+        new ContributionCurrencyValueResponse(
+            currencyCode != null ? currencyCode : "", currencyText);
+    BigDecimal totalAmount = row.totalAmount() != null ? row.totalAmount() : BigDecimal.ZERO;
+    String totalText =
+        amountDisplayPort.formatAmount(totalAmount, lang, accountEnv, trustCode, schemeType);
+    var totalContribution =
+        new ContributionTotalContributionResponse(
+            new ContributionAmountValueResponse(totalAmount, totalText));
+    List<ContributionBreakdownRowResponse> breakdownRows =
+        buildBreakdownRows(
+            row,
+            result,
+            displayConfig,
+            lang,
+            accountEnv,
+            trustCode,
+            schemeType,
+            totalAmount,
+            totalText);
+    return new ContributionItemResponse(
+        itemId,
+        ContributionItemType.CONTRIBUTION,
+        period,
+        dealingDateResponse,
+        currency,
+        totalContribution,
+        new ContributionBreakdownResponse(List.copyOf(breakdownRows)));
+  }
 
-    // Period: value=ISO, text=formatted via DateDisplayPort from the actual row
-    // period dates
+  private ContributionPeriodResponse buildPeriod(
+      ContributionSummaryRow row,
+      String lang,
+      String accountEnv,
+      String trustCode,
+      String schemeType) {
     LocalDate periodFrom = tryParseApimDate(row.coverFrom());
     LocalDate periodTo = tryParseApimDate(row.coverTo());
     String fromIso = periodFrom != null ? periodFrom.format(ISO_DATE_FORMATTER) : row.coverFrom();
@@ -111,42 +147,41 @@ public class ContributionSummaryWebMapper {
         periodTo != null
             ? dateDisplayPort.formatDate(periodTo, lang, accountEnv, trustCode, schemeType)
             : (StringUtils.hasText(row.coverTo()) ? row.coverTo() : "");
+    return new ContributionPeriodResponse(
+        new ContributionDateValueResponse(fromIso, fromText),
+        new ContributionDateValueResponse(toIso, toText));
+  }
 
-    var period =
-        new ContributionPeriodResponse(
-            new ContributionDateValueResponse(fromIso, fromText),
-            new ContributionDateValueResponse(toIso, toText));
-
-    // Dealing date: value=ISO, text=formatted via DateDisplayPort (same as period
-    // dates)
+  private ContributionDateValueResponse buildDealingDate(
+      ContributionSummaryRow row,
+      String lang,
+      String accountEnv,
+      String trustCode,
+      String schemeType) {
     LocalDate dealing = tryParseApimDate(row.dealingDate());
     String dealingIso = dealing != null ? dealing.format(ISO_DATE_FORMATTER) : row.dealingDate();
     String dealingText =
         dealing != null
             ? dateDisplayPort.formatDate(dealing, lang, accountEnv, trustCode, schemeType)
             : (StringUtils.hasText(row.dealingDate()) ? row.dealingDate() : "");
-    var dealingDateResponse = new ContributionDateValueResponse(dealingIso, dealingText);
+    return new ContributionDateValueResponse(dealingIso, dealingText);
+  }
 
-    // Currency
-    var currency =
-        new ContributionCurrencyValueResponse(
-            currencyCode != null ? currencyCode : "", currencyText);
-
-    // Total contribution
-    BigDecimal totalAmount = row.totalAmount() != null ? row.totalAmount() : BigDecimal.ZERO;
-    String totalText =
-        amountDisplayPort.formatAmount(totalAmount, lang, accountEnv, trustCode, schemeType);
-    var totalContribution =
-        new ContributionTotalContributionResponse(
-            new ContributionAmountValueResponse(totalAmount, totalText));
-
-    // Breakdown rows: total first, then by source order
+  private List<ContributionBreakdownRowResponse> buildBreakdownRows(
+      ContributionSummaryRow row,
+      ContributionSummaryReportResult result,
+      ContributionWebDisplayConfig displayConfig,
+      String lang,
+      String accountEnv,
+      String trustCode,
+      String schemeType,
+      BigDecimal totalAmount,
+      String totalText) {
     List<ContributionBreakdownRowResponse> breakdownRows = new ArrayList<>();
     breakdownRows.add(
         new ContributionBreakdownRowResponse(
             resolveTotalLabel(displayConfig, lang),
             new ContributionAmountValueResponse(totalAmount, totalText)));
-
     row.details(result.report().sources())
         .forEach(
             detail -> {
@@ -158,15 +193,7 @@ public class ContributionSummaryWebMapper {
                   new ContributionBreakdownRowResponse(
                       label, new ContributionAmountValueResponse(amt, amtText)));
             });
-
-    return new ContributionItemResponse(
-        itemId,
-        ContributionItemType.CONTRIBUTION,
-        period,
-        dealingDateResponse,
-        currency,
-        totalContribution,
-        new ContributionBreakdownResponse(List.copyOf(breakdownRows)));
+    return breakdownRows;
   }
 
   // --- Helpers ---

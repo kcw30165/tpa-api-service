@@ -41,20 +41,24 @@ public class PersonalInformationUpdateErrorMapper {
               List.of(),
               SOURCE_SERVER));
     }
-
     Map<String, String> frontendFieldByApimField = frontendFieldByApimField();
     List<ApiError> result = new ArrayList<>();
     for (UpdatePersonalInformationError raw : rawErrors) {
       if (raw == null) {
         continue;
       }
-      List<String> targets = toTargets(raw.fields(), frontendFieldByApimField);
-      String type = normalizeType(raw.type());
-      String code = resolveCode(raw.code(), targets, type);
-      String message = resolveMessage(code, raw.code(), targets, type);
-      result.add(new ApiError(type, code, message, targets, "ERROR", SOURCE_SERVER));
+      result.add(toApiError(raw, frontendFieldByApimField));
     }
     return List.copyOf(result);
+  }
+
+  private ApiError toApiError(
+      UpdatePersonalInformationError raw, Map<String, String> frontendFieldByApimField) {
+    List<String> targets = toTargets(raw.fields(), frontendFieldByApimField);
+    String type = normalizeType(raw.type());
+    String code = resolveCode(raw.code(), targets, type);
+    String message = resolveMessage(code, raw.code(), targets, type);
+    return new ApiError(type, code, message, targets, "ERROR", SOURCE_SERVER);
   }
 
   private List<String> toTargets(
@@ -122,11 +126,9 @@ public class PersonalInformationUpdateErrorMapper {
     if ("AT_LEAST_ONE_REQUIRED".equals(normalized)) {
       return "personalInformation.address.atLeastOneRequired";
     }
-    if (!targets.isEmpty()) {
-      String fromYaml = findValidationCode(targets.get(0), normalized);
-      if (fromYaml != null) {
-        return fromYaml;
-      }
+    String fromYaml = yamlCodeIfPresent(targets, normalized);
+    if (fromYaml != null) {
+      return fromYaml;
     }
     String field = targets.isEmpty() ? "field" : targets.get(0);
     return switch (normalized) {
@@ -137,6 +139,13 @@ public class PersonalInformationUpdateErrorMapper {
               ? "personalInformation.update.validationFailed"
               : rawCode.trim();
     };
+  }
+
+  private String yamlCodeIfPresent(List<String> targets, String normalized) {
+    if (targets.isEmpty()) {
+      return null;
+    }
+    return findValidationCode(targets.get(0), normalized);
   }
 
   private String findValidationCode(String frontendField, String normalizedBackendCode) {
@@ -163,11 +172,9 @@ public class PersonalInformationUpdateErrorMapper {
     if ("personalInformation.address.atLeastOneRequired".equals(resolvedCode)) {
       return "Please input a residential address or correspondence address.";
     }
-    if (!targets.isEmpty()) {
-      String fromYaml = findValidationMessage(targets.get(0), rawCode);
-      if (fromYaml != null && !fromYaml.isBlank()) {
-        return fromYaml;
-      }
+    String fromYaml = yamlMessageIfPresent(targets, rawCode);
+    if (fromYaml != null && !fromYaml.isBlank()) {
+      return fromYaml;
     }
     String normalized = rawCode == null ? "" : rawCode.trim().toUpperCase(Locale.ROOT);
     return switch (normalized) {
@@ -175,6 +182,13 @@ public class PersonalInformationUpdateErrorMapper {
       case CODE_INVALID_FORMAT -> "Please input a valid value.";
       default -> "The submitted information is invalid.";
     };
+  }
+
+  private String yamlMessageIfPresent(List<String> targets, String rawCode) {
+    if (targets.isEmpty()) {
+      return null;
+    }
+    return findValidationMessage(targets.get(0), rawCode);
   }
 
   private String findValidationMessage(String frontendField, String rawCode) {

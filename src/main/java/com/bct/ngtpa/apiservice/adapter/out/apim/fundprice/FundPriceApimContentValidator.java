@@ -51,14 +51,18 @@ final class FundPriceApimContentValidator {
     if (fundPrice == null || fundPrice.isEmpty() || fundInfo == null || fundInfo.isEmpty()) {
       throw FundPriceRetrievalException.systemFailure();
     }
+    Map<String, FundInfoEntry> infoByFundCode = buildFundInfoIndex(fundInfo);
+    List<RawFundPriceRow> rows = buildRows(fundPrice, infoByFundCode);
+    logOrphanFundInfo(infoByFundCode, rows);
+    return new RawFundPriceData(rows);
+  }
 
+  private static Map<String, FundInfoEntry> buildFundInfoIndex(List<FundInfoEntry> fundInfo) {
     Map<String, FundInfoEntry> infoByFundCode = new LinkedHashMap<>();
     for (FundInfoEntry entry : fundInfo) {
       // A null entry is already caught by requiredFundCode(...) below (entry == null ?
       // null : ...) evaluates to requiredFundCode(null), which fails the null/blank check
-      // and throws immediately -- so entry is guaranteed non-null past this line. A
-      // redundant "entry == null ||" on the next check was removed here as unreachable
-      // dead code (coverage-closure script 095), rather than left permanently uncovered.
+      // and throws immediately -- so entry is guaranteed non-null past this line.
       String fundCode = requiredFundCode(entry == null ? null : entry.fundCode());
       if (entry.fundName() == null || entry.fundName().isBlank()) {
         throw FundPriceRetrievalException.systemFailure();
@@ -69,7 +73,11 @@ final class FundPriceApimContentValidator {
         throw FundPriceRetrievalException.systemFailure();
       }
     }
+    return infoByFundCode;
+  }
 
+  private static List<RawFundPriceRow> buildRows(
+      List<FundPriceEntry> fundPrice, Map<String, FundInfoEntry> infoByFundCode) {
     Map<String, Boolean> seenFundCodePriceDatePairs = new LinkedHashMap<>();
     List<RawFundPriceRow> rows = new java.util.ArrayList<>();
     for (FundPriceEntry priceEntry : fundPrice) {
@@ -86,14 +94,12 @@ final class FundPriceApimContentValidator {
       if (priceEntry.bidPrice() == null || priceEntry.offerPrice() == null) {
         throw FundPriceRetrievalException.systemFailure();
       }
-
       FundInfoEntry matchedInfo = infoByFundCode.get(fundCode);
       if (matchedInfo == null) {
         // A FundPrice row with no matching FundInfo record is the REQUIRED direction: fails
         // closed, per the doc's invariant.
         throw FundPriceRetrievalException.systemFailure();
       }
-
       rows.add(
           new RawFundPriceRow(
               fundCode,
@@ -105,19 +111,22 @@ final class FundPriceApimContentValidator {
               priceEntry.offerPrice(),
               matchedInfo.riskLevel()));
     }
+    return rows;
+  }
 
+  private static void logOrphanFundInfo(
+      Map<String, FundInfoEntry> infoByFundCode, List<RawFundPriceRow> rows) {
     // FundInfo entries never visited above (no matching FundPrice row) are skipped, not an
     // error -- logged at WARN for operational visibility only.
     for (String fundCode : infoByFundCode.keySet()) {
       boolean matched = rows.stream().anyMatch(row -> row.fundCode().equals(fundCode));
       if (!matched) {
         LOGGER.warn(
-            "event=fund-price.reconciliation.orphan-fund-info fundCode=<redacted> "
-                + "reason=no-matching-fund-price-row-in-range");
+            "event=fund-price.reconciliation.orphan-fund-info fundCode={} "
+                + "reason=no-matching-fund-price-row-in-range",
+            fundCode);
       }
     }
-
-    return new RawFundPriceData(rows);
   }
 
   private static String requiredFundCode(String fundCode) {
