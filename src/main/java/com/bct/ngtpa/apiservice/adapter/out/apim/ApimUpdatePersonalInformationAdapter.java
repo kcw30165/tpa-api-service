@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -58,17 +59,14 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
       ApimResponseEnvelope<UpdateMemberInfoApimDataItem> response,
       UpdateMemberInfoCommand command) {
     var dataItems = ApimResponseValidator.requireSuccessData(response);
-    if (dataItems == null || dataItems.stream().noneMatch(item -> item != null)) {
+    if (dataItems == null || dataItems.stream().noneMatch(Objects::nonNull)) {
       throw new ApimException(
           HttpStatus.BAD_GATEWAY,
           ErrorCodes.APIM_RESPONSE_INVALID,
           "APIM personal information update response data is missing.");
     }
     var results =
-        dataItems.stream()
-            .filter(item -> item != null)
-            .map(item -> toResult(item, command))
-            .toList();
+        dataItems.stream().filter(Objects::nonNull).map(item -> toResult(item, command)).toList();
     if (results.stream().noneMatch(UpdatePersonalInformationResult::selected)) {
       throw new ApimException(
           HttpStatus.BAD_GATEWAY,

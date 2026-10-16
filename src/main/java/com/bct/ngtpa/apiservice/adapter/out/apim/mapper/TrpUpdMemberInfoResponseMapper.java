@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.response.TrpUpdMemberInfoRespon
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,7 +19,7 @@ public class TrpUpdMemberInfoResponseMapper {
       return List.of();
     }
     return response.response().data().stream()
-        .filter(data -> data != null)
+        .filter(Objects::nonNull)
         .map(data -> toResult(data, false, null, null, null))
         .toList();
   }
@@ -35,7 +36,7 @@ public class TrpUpdMemberInfoResponseMapper {
       return List.of();
     }
     return response.response().data().stream()
-        .filter(data -> data != null)
+        .filter(Objects::nonNull)
         .map(
             data ->
                 toResult(
