@@ -20,6 +20,10 @@ import reactor.core.publisher.Mono;
 @Component
 @RequiredArgsConstructor
 public class ConfigServiceWebClientAdapter implements ConfigServicePort {
+  private static final String LOG_ERROR_STATUS_TEMPLATE = "Config Service error: status={}";
+
+  private static final String ERROR_STATUS_MESSAGE_PREFIX =
+      "Config Service returned error status: ";
 
   private static final String CONFIGS_PATH = "/api/configs";
 
@@ -57,12 +61,10 @@ public class ConfigServiceWebClientAdapter implements ConfigServicePort {
                     .defaultIfEmpty("")
                     .map(
                         body -> {
-                          log.error(
-                              "Config Service error: status={}", response.statusCode().value());
+                          log.error(LOG_ERROR_STATUS_TEMPLATE, response.statusCode().value());
                           return new ConfigServiceException(
                               response.statusCode(),
-                              "Config Service returned error status: "
-                                  + response.statusCode().value());
+                              ERROR_STATUS_MESSAGE_PREFIX + response.statusCode().value());
                         }))
         .bodyToFlux(ConfigServiceResponse.class)
         .collectList()
@@ -92,12 +94,10 @@ public class ConfigServiceWebClientAdapter implements ConfigServicePort {
                     .defaultIfEmpty("")
                     .map(
                         body -> {
-                          log.error(
-                              "Config Service error: status={}", response.statusCode().value());
+                          log.error(LOG_ERROR_STATUS_TEMPLATE, response.statusCode().value());
                           return new ConfigServiceException(
                               response.statusCode(),
-                              "Config Service returned error status: "
-                                  + response.statusCode().value());
+                              ERROR_STATUS_MESSAGE_PREFIX + response.statusCode().value());
                         }))
         .bodyToMono(ConfigServiceResponse.class)
         .map(this::toConfigEntry);
@@ -131,12 +131,10 @@ public class ConfigServiceWebClientAdapter implements ConfigServicePort {
                     .defaultIfEmpty("")
                     .map(
                         body -> {
-                          log.error(
-                              "Config Service error: status={}", response.statusCode().value());
+                          log.error(LOG_ERROR_STATUS_TEMPLATE, response.statusCode().value());
                           return new ConfigServiceException(
                               response.statusCode(),
-                              "Config Service returned error status: "
-                                  + response.statusCode().value());
+                              ERROR_STATUS_MESSAGE_PREFIX + response.statusCode().value());
                         }))
         .toBodilessEntity()
         .then();

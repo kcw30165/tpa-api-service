@@ -16,6 +16,7 @@ import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 public class GetPersonalInformationService implements GetPersonalInformationUseCase {
+  private static final String KEY_CONFIG = "config";
 
   private final ApimMemberInfoPort apimMemberInfoPort;
 
@@ -55,7 +56,7 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
     }
     Map<String, Object> firstData = firstMap(payload.get("data"));
     if (!firstData.isEmpty()
-        && (firstData.containsKey("config") || firstData.containsKey("data"))) {
+        && (firstData.containsKey(KEY_CONFIG) || firstData.containsKey("data"))) {
       return firstData;
     }
     return payload;
@@ -78,7 +79,7 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
 
   private Map<String, String> extractConfig(Map<String, Object> payload) {
     Map<String, String> apimConfig = new LinkedHashMap<>();
-    Object cfgObj = payload.get("config");
+    Object cfgObj = payload.get(KEY_CONFIG);
     if (cfgObj instanceof Map<?, ?> cfgMap) {
       for (Map.Entry<?, ?> e : cfgMap.entrySet()) {
         apimConfig.put(String.valueOf(e.getKey()), String.valueOf(e.getValue()));
@@ -89,7 +90,7 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
 
   private Map<String, MemberInfoConfigItem> extractConfigItems(Map<String, Object> payload) {
     Map<String, MemberInfoConfigItem> configItems = new LinkedHashMap<>();
-    Object cfgObj = payload.get("config");
+    Object cfgObj = payload.get(KEY_CONFIG);
     if (cfgObj instanceof List<?> cfgList) {
       for (Object itemObj : cfgList) {
         if (itemObj instanceof Map<?, ?> itemMap) {

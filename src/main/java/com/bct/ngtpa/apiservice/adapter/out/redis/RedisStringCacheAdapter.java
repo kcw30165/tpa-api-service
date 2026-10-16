@@ -25,6 +25,7 @@ import reactor.core.publisher.Mono;
  * accessible only via the wrapped cause for secure diagnostic logging.
  */
 public class RedisStringCacheAdapter implements CachePort {
+  private static final String CACHE_KEY_BLANK_MESSAGE = "Cache key must not be blank";
 
   private final ReactiveStringRedisTemplate redisTemplate;
 
@@ -35,7 +36,7 @@ public class RedisStringCacheAdapter implements CachePort {
   @Override
   public Mono<Optional<String>> get(String cacheKey) {
     if (cacheKey == null || cacheKey.isBlank()) {
-      return Mono.error(new IllegalArgumentException("Cache key must not be blank"));
+      return Mono.error(new IllegalArgumentException(CACHE_KEY_BLANK_MESSAGE));
     }
     return redisTemplate
         .opsForValue()
@@ -48,7 +49,7 @@ public class RedisStringCacheAdapter implements CachePort {
   @Override
   public Mono<Void> set(String cacheKey, String value, Duration ttl) {
     if (cacheKey == null || cacheKey.isBlank()) {
-      return Mono.error(new IllegalArgumentException("Cache key must not be blank"));
+      return Mono.error(new IllegalArgumentException(CACHE_KEY_BLANK_MESSAGE));
     }
     if (ttl == null || ttl.isZero() || ttl.isNegative()) {
       return Mono.error(new IllegalArgumentException("Cache TTL must be a positive duration"));
@@ -63,7 +64,7 @@ public class RedisStringCacheAdapter implements CachePort {
   @Override
   public Mono<Boolean> evict(String cacheKey) {
     if (cacheKey == null || cacheKey.isBlank()) {
-      return Mono.error(new IllegalArgumentException("Cache key must not be blank"));
+      return Mono.error(new IllegalArgumentException(CACHE_KEY_BLANK_MESSAGE));
     }
     return redisTemplate
         .delete(cacheKey)

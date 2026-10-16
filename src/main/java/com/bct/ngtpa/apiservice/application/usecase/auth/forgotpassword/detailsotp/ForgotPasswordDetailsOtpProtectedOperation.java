@@ -53,6 +53,8 @@ import reactor.core.publisher.Mono;
 
 /** Executes DETAILS_AND_OTP after shared idempotency ownership has been acquired. */
 public final class ForgotPasswordDetailsOtpProtectedOperation {
+  private static final String CHANNEL_EMAIL = "email";
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ForgotPasswordDetailsOtpProtectedOperation.class);
 
@@ -177,11 +179,12 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
       SessionLockHandle handle,
       ForgotPasswordMutationLeaseBudget budget,
       ForgotPasswordAuthFlowContext context) {
-    String channel = command.email() != null && !command.email().isBlank() ? "email" : "mobile";
-    String destination = "email".equals(channel) ? command.email() : command.mobile();
-    OtpChannel otpChannel = "email".equals(channel) ? OtpChannel.EMAIL : OtpChannel.SMS;
+    String channel =
+        command.email() != null && !command.email().isBlank() ? CHANNEL_EMAIL : "mobile";
+    String destination = CHANNEL_EMAIL.equals(channel) ? command.email() : command.mobile();
+    OtpChannel otpChannel = CHANNEL_EMAIL.equals(channel) ? OtpChannel.EMAIL : OtpChannel.SMS;
     MessageDeliveryChannel deliveryChannel =
-        "email".equals(channel) ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
+        CHANNEL_EMAIL.equals(channel) ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
     NoticeTemplateDefinition definition =
         registry.resolve(
             MessageDeliveryType.FORGOT_PASSWORD_OTP, deliveryChannel, command.language());
@@ -239,7 +242,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
             challenge.otpChallengeId(),
             channel,
             destination,
-            "email".equals(channel)
+            CHANNEL_EMAIL.equals(channel)
                 ? masker.maskEmail(destination)
                 : masker.maskMobile(destination),
             challenge.expiresAt(),
@@ -275,7 +278,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                                   new ForgotPasswordDetailsOtpProtectedExecutionResult(
                                       new ForgotPasswordDetailsOtpResult(
                                           ForgotPasswordDetailsOtpResult.Status.SUCCESS,
-                                          "email".equals(channel)
+                                          CHANNEL_EMAIL.equals(channel)
                                               ? masker.maskEmail(destination)
                                               : masker.maskMobile(destination),
                                           challenge.expiresInSeconds(),

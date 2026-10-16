@@ -9,6 +9,8 @@ import reactor.core.publisher.Mono;
 
 /** Shared Redis lifecycle adapter. Duplicate reads never extend TTL or disclose ownership. */
 public final class RedisIdempotencyAdapter implements IdempotencyPort {
+  private static final String TRANSITION_FAILED_MESSAGE = "Shared idempotency transition failed";
+
   private final RedisIdempotencyOperations redis;
   private final RedisIdempotencyKeyFactory keys;
   private final RedisIdempotencyJsonMapper json;
@@ -150,8 +152,7 @@ public final class RedisIdempotencyAdapter implements IdempotencyPort {
         .get(key)
         .flatMap(
             found -> {
-              if (found.isEmpty())
-                return Mono.error(new CacheException("Shared idempotency transition failed"));
+              if (found.isEmpty()) return Mono.error(new CacheException(TRANSITION_FAILED_MESSAGE));
               String currentJson = found.get();
               IdempotencyRecord current = json.fromJson(currentJson);
               requireIdentity(operation, current);
@@ -159,7 +160,7 @@ public final class RedisIdempotencyAdapter implements IdempotencyPort {
                   || !current.fingerprint().equals(fingerprint)
                   || !current.reservationToken().equals(owner)
                   || current.status() != IdempotencyStatus.PROCESSING) {
-                return Mono.error(new CacheException("Shared idempotency transition failed"));
+                return Mono.error(new CacheException(TRANSITION_FAILED_MESSAGE));
               }
               IdempotencyRecord replacement =
                   new IdempotencyRecord(
@@ -175,8 +176,7 @@ public final class RedisIdempotencyAdapter implements IdempotencyPort {
               return redis
                   .transition(key, currentJson, replacementJson)
                   .filter(replacementJson::equals)
-                  .switchIfEmpty(
-                      Mono.error(new CacheException("Shared idempotency transition failed")))
+                  .switchIfEmpty(Mono.error(new CacheException(TRANSITION_FAILED_MESSAGE)))
                   .thenReturn(replacement);
             })
         .onErrorMap(this::safe);

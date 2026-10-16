@@ -11,6 +11,8 @@ import java.util.Objects;
 
 /** Validates completion passwords using the existing registration PasswordPolicy. */
 public class RegistrationPasswordValidator {
+  private static final String TARGET_PASSWORD = "password";
+
   private static final String SOURCE_SERVER = "SERVER";
   private final AuthWorkflowPolicyPort policyPort;
 
@@ -27,7 +29,7 @@ public class RegistrationPasswordValidator {
     List<WorkflowErrorDescriptor> errors = new ArrayList<>();
 
     if (password == null || password.isEmpty()) {
-      errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_REQUIRED, "password"));
+      errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_REQUIRED, TARGET_PASSWORD));
     }
     if (confirmPassword == null || confirmPassword.isEmpty()) {
       errors.add(error(CompleteRegistrationErrorKeys.CONFIRM_PASSWORD_REQUIRED, "confirmPassword"));
@@ -39,22 +41,22 @@ public class RegistrationPasswordValidator {
       errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_MISMATCH, "confirmPassword"));
     }
     if (policy.minLength() > 0 && password.length() < policy.minLength()) {
-      errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_MIN_LENGTH, "password"));
+      errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_MIN_LENGTH, TARGET_PASSWORD));
     }
     if (policy.maxLength() > 0 && password.length() > policy.maxLength()) {
-      errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_MAX_LENGTH, "password"));
+      errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_MAX_LENGTH, TARGET_PASSWORD));
     }
     if (policy.noSpaces() && password.chars().anyMatch(Character::isWhitespace)) {
-      errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_SPACES, "password"));
+      errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_SPACES, TARGET_PASSWORD));
     }
     if (policy.notSameAsUsernameIgnoreCase()
         && protectedUsername != null
         && password.equalsIgnoreCase(protectedUsername)) {
-      errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_SAME_AS_USERNAME, "password"));
+      errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_SAME_AS_USERNAME, TARGET_PASSWORD));
     }
     if (policy.requiredCategories() > 0
         && categoryCount(password, policy.specialChars()) < policy.requiredCategories()) {
-      errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_CATEGORIES, "password"));
+      errors.add(error(CompleteRegistrationErrorKeys.PASSWORD_CATEGORIES, TARGET_PASSWORD));
     }
     return errors.isEmpty()
         ? RegistrationPasswordValidationResult.success()

@@ -15,6 +15,8 @@ import reactor.core.publisher.Mono;
  * feature-owned semantics.
  */
 public final class IdempotencyHttpResponses {
+  private static final String SOURCE_SERVER = "SERVER";
+
   private IdempotencyHttpResponses() {}
 
   /** 400 response used when a required {@code Idempotency-Key} is missing. */
@@ -27,7 +29,7 @@ public final class IdempotencyHttpResponses {
                     SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(),
                     null,
                     List.of("Idempotency-Key"),
-                    "SERVER")));
+                    SOURCE_SERVER)));
     return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body));
   }
 
@@ -44,7 +46,7 @@ public final class IdempotencyHttpResponses {
                     SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS.value(),
                     null,
                     List.of(),
-                    "SERVER")));
+                    SOURCE_SERVER)));
     return Mono.just(
         ResponseEntity.status(HttpStatus.CONFLICT)
             .header(HttpHeaders.RETRY_AFTER, Integer.toString(retryAfterSeconds))
@@ -61,7 +63,7 @@ public final class IdempotencyHttpResponses {
                     SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value(),
                     null,
                     List.of("Idempotency-Key"),
-                    "SERVER")));
+                    SOURCE_SERVER)));
     return Mono.just(ResponseEntity.status(HttpStatus.CONFLICT).body(body));
   }
 

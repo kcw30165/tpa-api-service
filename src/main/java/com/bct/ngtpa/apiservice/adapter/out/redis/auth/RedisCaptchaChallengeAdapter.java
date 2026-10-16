@@ -17,6 +17,7 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import reactor.core.publisher.Mono;
 
 public class RedisCaptchaChallengeAdapter implements CaptchaChallengePort {
+  private static final String CHALLENGE_NOT_FOUND_MESSAGE = "Captcha challenge not found";
 
   private final RedisCacheKeyFactory keyFactory;
   private final RedisCaptchaChallengeJsonMapper jsonMapper;
@@ -268,11 +269,10 @@ public class RedisCaptchaChallengeAdapter implements CaptchaChallengePort {
                                           case NOT_FOUND ->
                                               Mono.error(
                                                   new IllegalStateException(
-                                                      "Captcha challenge not found"));
+                                                      CHALLENGE_NOT_FOUND_MESSAGE));
                                         }))
                     .orElseGet(
-                        () ->
-                            Mono.error(new IllegalStateException("Captcha challenge not found"))));
+                        () -> Mono.error(new IllegalStateException(CHALLENGE_NOT_FOUND_MESSAGE))));
   }
 
   @Override
@@ -314,8 +314,7 @@ public class RedisCaptchaChallengeAdapter implements CaptchaChallengePort {
                               .orElseGet(
                                   () ->
                                       Mono.error(
-                                          new IllegalStateException(
-                                              "Captcha challenge not found"))))
+                                          new IllegalStateException(CHALLENGE_NOT_FOUND_MESSAGE))))
                   .flatMap(
                       existing ->
                           redis

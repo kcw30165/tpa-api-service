@@ -42,6 +42,15 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 public class PersonalInformationWebMapper {
+  private static final String KEY_LABEL = "label";
+
+  private static final String KEY_ITEM_ID = "item-id";
+
+  private static final String MAPPER_NAME = "PersonalInformationWebMapper";
+
+  private static final String KEY_FUNCTION = "function";
+
+  private static final String KEY_SCH_TYPE = "sch-type";
 
   private static final String PAGE_KEY = "personalInformation";
   private static final String DEFAULT_LANGUAGE = "en";
@@ -380,9 +389,9 @@ public class PersonalInformationWebMapper {
 
     putResolvedConfirmationText(
         securityResponse,
-        "label",
+        KEY_LABEL,
         stringValue(securityVerification.get("labelCode")),
-        localizedMap(securityVerification.get("label")),
+        localizedMap(securityVerification.get(KEY_LABEL)),
         pageSchema,
         language,
         accountEnv,
@@ -812,7 +821,7 @@ public class PersonalInformationWebMapper {
       Map<String, Object> action = new LinkedHashMap<>();
       action.put("enabled", Boolean.TRUE);
       action.put(
-          "label",
+          KEY_LABEL,
           resolvePageDisplayText(
               pageSchema,
               actionSchema.getLabelCode(),
@@ -891,9 +900,9 @@ public class PersonalInformationWebMapper {
 
   private void logMissingYamlBinding(String configKey, String configValue) {
     Map<String, Object> event = new LinkedHashMap<>();
-    event.put("item-id", configKey);
-    event.put("function", "PersonalInformationWebMapper");
-    event.put("sch-type", "personalInformation");
+    event.put(KEY_ITEM_ID, configKey);
+    event.put(KEY_FUNCTION, MAPPER_NAME);
+    event.put(KEY_SCH_TYPE, PAGE_KEY);
     event.put("config-value", configValue);
     log.error(
         "Missing YAML apimBinding for APIM config item: {}", loggingSanitizer.toSafeString(event));
@@ -902,10 +911,9 @@ public class PersonalInformationWebMapper {
   private void logUnknownConfigItemType(
       String configKey, String configValue, MemberInfoConfigItem configItem) {
     Map<String, Object> event = new LinkedHashMap<>();
-    event.put("item-id", configKey);
-    event.put(
-        "function", configItem != null ? configItem.function() : "PersonalInformationWebMapper");
-    event.put("sch-type", configItem != null ? configItem.schType() : "personalInformation");
+    event.put(KEY_ITEM_ID, configKey);
+    event.put(KEY_FUNCTION, configItem != null ? configItem.function() : MAPPER_NAME);
+    event.put(KEY_SCH_TYPE, configItem != null ? configItem.schType() : PAGE_KEY);
     event.put("config-value", configValue);
     event.put("item-type", configItem != null ? configItem.itemType() : null);
     log.error("Unknown APIM config item type: {}", loggingSanitizer.toSafeString(event));
@@ -914,11 +922,11 @@ public class PersonalInformationWebMapper {
   private void logDuplicateYamlBinding(
       String configKey, String firstFieldId, String duplicateFieldId) {
     Map<String, Object> event = new LinkedHashMap<>();
-    event.put("item-id", configKey);
+    event.put(KEY_ITEM_ID, configKey);
     event.put("first-field", firstFieldId);
     event.put("duplicate-field", duplicateFieldId);
-    event.put("function", "PersonalInformationWebMapper");
-    event.put("sch-type", "personalInformation");
+    event.put(KEY_FUNCTION, MAPPER_NAME);
+    event.put(KEY_SCH_TYPE, PAGE_KEY);
     log.error("Duplicate YAML apimBinding config item: {}", loggingSanitizer.toSafeString(event));
   }
 

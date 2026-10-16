@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class YamlResponseMapper {
+  private static final String KEY_DATA_TYPE = "dataType";
 
   private static final String DEFAULT_LANGUAGE = "en";
   private static final String ZH_HK_LANGUAGE = "zh_HK";
@@ -68,8 +69,9 @@ public class YamlResponseMapper {
           continue;
         }
         Object normalizedValue = normalize(entry.getValue(), language);
-        if (("value".equals(key) || "originalValue".equals(key)) && map.containsKey("dataType")) {
-          result.put(key, normalizeFieldValueByDataType(map.get("dataType"), entry.getValue()));
+        if (("value".equals(key) || "originalValue".equals(key))
+            && map.containsKey(KEY_DATA_TYPE)) {
+          result.put(key, normalizeFieldValueByDataType(map.get(KEY_DATA_TYPE), entry.getValue()));
           continue;
         }
         if (!isEmptyValue(normalizedValue)) {
@@ -92,7 +94,9 @@ public class YamlResponseMapper {
   }
 
   private boolean looksLikeLocalizedLabel(Map<?, ?> value) {
-    return value.containsKey("en") || value.containsKey("zh_HK") || value.containsKey("zh-HK");
+    return value.containsKey("en")
+        || value.containsKey(ZH_HK_LANGUAGE)
+        || value.containsKey("zh-HK");
   }
 
   private String resolveLabel(Map<String, String> labels, String language) {
@@ -157,8 +161,9 @@ public class YamlResponseMapper {
       }
       Object normalizedValue = normalizeResponseValue(entry.getValue());
       if (("value".equals(entry.getKey()) || "originalValue".equals(entry.getKey()))
-          && source.containsKey("dataType")) {
-        normalizedValue = normalizeFieldValueByDataType(source.get("dataType"), entry.getValue());
+          && source.containsKey(KEY_DATA_TYPE)) {
+        normalizedValue =
+            normalizeFieldValueByDataType(source.get(KEY_DATA_TYPE), entry.getValue());
         normalized.put(entry.getKey(), normalizedValue);
         continue;
       }

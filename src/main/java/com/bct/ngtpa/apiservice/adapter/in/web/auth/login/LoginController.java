@@ -31,6 +31,8 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/auth/login")
 public final class LoginController {
+  private static final String IDEMPOTENCY_KEY_HEADER = "Idempotency-Key";
+
   private final StartLoginUseCase startLoginUseCase;
   private final LoginStartWebMapper loginStartMapper;
   private final AuthFlowCookieWriter authFlowCookieWriter;
@@ -48,7 +50,7 @@ public final class LoginController {
   public Mono<ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginStartDataResponse>>>>
       startLogin(
           @RequestBody(required = false) LoginStartRequest request,
-          @RequestHeader(name = "Idempotency-Key", required = false) String idem,
+          @RequestHeader(name = IDEMPOTENCY_KEY_HEADER, required = false) String idem,
           @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
               String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String lang,
@@ -119,7 +121,7 @@ public final class LoginController {
           @RequestBody(required = false) LoginOtpSendRequest request,
           @CookieValue(name = "auth_flow_sid", required = false) String session,
           @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
-          @RequestHeader(name = "Idempotency-Key", required = false) String idem,
+          @RequestHeader(name = IDEMPOTENCY_KEY_HEADER, required = false) String idem,
           @RequestHeader(name = "X-Request-Id", required = false) String req,
           @RequestHeader(name = "Accept-Language", required = false) String lang,
           @RequestHeader(name = "Origin", required = false) String origin,
@@ -129,7 +131,8 @@ public final class LoginController {
     if (!text(session)) return sendMissing(LoginErrorKey.AUTH_FLOW_INVALID.value(), "PAGE");
     if (!text(csrf)) return CsrfHttpResponses.missingToken();
     if (!text(idem))
-      return sendMissing(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key");
+      return sendMissing(
+          SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), IDEMPOTENCY_KEY_HEADER);
     if (!text(req)) return sendMissing("err.request.id.missing", "X-Request-Id");
     if (request == null || !text(request.destinationId()))
       return sendMissing(LoginErrorKey.OTP_DESTINATION_INVALID.value(), "destinationId");
@@ -164,7 +167,7 @@ public final class LoginController {
       resend(
           @CookieValue(name = "auth_flow_sid", required = false) String session,
           @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
-          @RequestHeader(name = "Idempotency-Key", required = false) String idem,
+          @RequestHeader(name = IDEMPOTENCY_KEY_HEADER, required = false) String idem,
           @RequestHeader(name = "X-Request-Id", required = false) String req,
           @RequestHeader(name = "Accept-Language", required = false) String lang,
           @RequestHeader(name = "Origin", required = false) String origin,
@@ -174,7 +177,8 @@ public final class LoginController {
     if (!text(session)) return resendMissing(LoginErrorKey.AUTH_FLOW_INVALID.value(), "PAGE");
     if (!text(csrf)) return CsrfHttpResponses.missingToken();
     if (!text(idem))
-      return resendMissing(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key");
+      return resendMissing(
+          SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), IDEMPOTENCY_KEY_HEADER);
     if (!text(req)) return resendMissing("err.request.id.missing", "X-Request-Id");
     try {
       return resendLoginOtpUseCase
@@ -215,7 +219,7 @@ public final class LoginController {
           @RequestBody(required = false) LoginOtpVerifyRequest request,
           @CookieValue(name = "auth_flow_sid", required = false) String session,
           @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
-          @RequestHeader(name = "Idempotency-Key", required = false) String idem,
+          @RequestHeader(name = IDEMPOTENCY_KEY_HEADER, required = false) String idem,
           @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String req,
           @RequestHeader(name = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false)
               String lang,
@@ -226,7 +230,8 @@ public final class LoginController {
     if (!text(session)) return verifyMissing(LoginErrorKey.AUTH_FLOW_INVALID.value(), "PAGE");
     if (!text(csrf)) return CsrfHttpResponses.missingToken();
     if (!text(idem))
-      return verifyMissing(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key");
+      return verifyMissing(
+          SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), IDEMPOTENCY_KEY_HEADER);
     if (request == null || !text(request.code()))
       return verifyMissing(LoginErrorKey.OTP_REQUIRED.value(), "otpCode");
     try {

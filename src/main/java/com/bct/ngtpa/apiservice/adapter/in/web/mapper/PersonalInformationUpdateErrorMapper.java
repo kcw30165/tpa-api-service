@@ -19,6 +19,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PersonalInformationUpdateErrorMapper {
+  private static final String CODE_REQUIRED = "REQUIRED";
+
+  private static final String CODE_INVALID_FORMAT = "INVALID_FORMAT";
 
   private static final String PAGE_KEY = "personalInformation";
   private static final String SOURCE_SERVER = "SERVER";
@@ -127,8 +130,8 @@ public class PersonalInformationUpdateErrorMapper {
     }
     String field = targets.isEmpty() ? "field" : targets.get(0);
     return switch (normalized) {
-      case "REQUIRED" -> "personalInformation." + toCodeToken(field) + ".required";
-      case "INVALID_FORMAT" -> "personalInformation." + toCodeToken(field) + ".invalid";
+      case CODE_REQUIRED -> "personalInformation." + toCodeToken(field) + ".required";
+      case CODE_INVALID_FORMAT -> "personalInformation." + toCodeToken(field) + ".invalid";
       default ->
           rawCode == null || rawCode.isBlank()
               ? "personalInformation.update.validationFailed"
@@ -146,8 +149,8 @@ public class PersonalInformationUpdateErrorMapper {
         continue;
       }
       String type = rule.getType() == null ? "" : rule.getType().trim().toUpperCase(Locale.ROOT);
-      if (("REQUIRED".equals(normalizedBackendCode) && "REQUIRED".equals(type))
-          || ("INVALID_FORMAT".equals(normalizedBackendCode)
+      if ((CODE_REQUIRED.equals(normalizedBackendCode) && CODE_REQUIRED.equals(type))
+          || (CODE_INVALID_FORMAT.equals(normalizedBackendCode)
               && ("EMAIL".equals(type) || "PATTERN".equals(type)))) {
         return rule.getCode();
       }
@@ -168,8 +171,8 @@ public class PersonalInformationUpdateErrorMapper {
     }
     String normalized = rawCode == null ? "" : rawCode.trim().toUpperCase(Locale.ROOT);
     return switch (normalized) {
-      case "REQUIRED" -> "This field is required.";
-      case "INVALID_FORMAT" -> "Please input a valid value.";
+      case CODE_REQUIRED -> "This field is required.";
+      case CODE_INVALID_FORMAT -> "Please input a valid value.";
       default -> "The submitted information is invalid.";
     };
   }
@@ -185,8 +188,8 @@ public class PersonalInformationUpdateErrorMapper {
         continue;
       }
       String type = rule.getType() == null ? "" : rule.getType().trim().toUpperCase(Locale.ROOT);
-      if (("REQUIRED".equals(normalizedBackendCode) && "REQUIRED".equals(type))
-          || ("INVALID_FORMAT".equals(normalizedBackendCode)
+      if ((CODE_REQUIRED.equals(normalizedBackendCode) && CODE_REQUIRED.equals(type))
+          || (CODE_INVALID_FORMAT.equals(normalizedBackendCode)
               && ("EMAIL".equals(type) || "PATTERN".equals(type)))) {
         String en = rule.getMessage().get("en");
         return en != null ? en : rule.getMessage().values().stream().findFirst().orElse(null);

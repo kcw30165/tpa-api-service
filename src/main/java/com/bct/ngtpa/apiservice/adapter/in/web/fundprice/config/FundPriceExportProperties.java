@@ -32,10 +32,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Getter
 @Setter
 public class FundPriceExportProperties {
+  private static final String TYPE_UNIT_PRICE = "UNIT PRICE";
+
+  private static final String TYPE_BIDOFFER_PRICE = "BIDOFFER PRICE";
 
   /** Fund-price-type values TRPGetFundPriceMode may return; each needs a sheet name. */
   public static final List<String> REQUIRED_FUND_PRICE_TYPES =
-      List.of("BIDOFFER PRICE", "UNIT PRICE");
+      List.of(TYPE_BIDOFFER_PRICE, TYPE_UNIT_PRICE);
 
   private static final int MAX_SHEET_NAME_LENGTH = 31;
   private static final String INVALID_SHEET_NAME_CHARACTERS = "[]:*?/\\";
@@ -46,8 +49,8 @@ public class FundPriceExportProperties {
 
   private static Map<String, String> defaultSheetNames() {
     Map<String, String> defaults = new LinkedHashMap<>();
-    defaults.put("BIDOFFER PRICE", "BIDOFFER PRICE");
-    defaults.put("UNIT PRICE", "UNIT PRICE");
+    defaults.put(TYPE_BIDOFFER_PRICE, TYPE_BIDOFFER_PRICE);
+    defaults.put(TYPE_UNIT_PRICE, TYPE_UNIT_PRICE);
     return defaults;
   }
 

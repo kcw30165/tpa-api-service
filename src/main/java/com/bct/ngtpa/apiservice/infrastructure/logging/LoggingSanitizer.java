@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class LoggingSanitizer {
+  private static final String NON_ALPHANUMERIC_PATTERN = "[^A-Za-z0-9]";
 
   private final ObjectMapper objectMapper;
   private final MaskingService maskingService;
@@ -166,9 +167,9 @@ public class LoggingSanitizer {
       return false;
     }
 
-    String normalized = key.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+    String normalized = key.replaceAll(NON_ALPHANUMERIC_PATTERN, "").toLowerCase(Locale.ROOT);
     return maskingService.sensitiveTokens().stream()
-        .map(token -> token.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT))
+        .map(token -> token.replaceAll(NON_ALPHANUMERIC_PATTERN, "").toLowerCase(Locale.ROOT))
         .anyMatch(normalized::contains);
   }
 
@@ -192,7 +193,7 @@ public class LoggingSanitizer {
 
   private String maskTokenAssignment(String value, String sensitiveToken) {
     String normalizedToken =
-        sensitiveToken == null ? "" : sensitiveToken.replaceAll("[^A-Za-z0-9]", "");
+        sensitiveToken == null ? "" : sensitiveToken.replaceAll(NON_ALPHANUMERIC_PATTERN, "");
     if (normalizedToken.isEmpty()) {
       return value;
     }

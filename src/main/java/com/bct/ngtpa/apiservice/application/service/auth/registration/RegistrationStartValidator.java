@@ -15,6 +15,10 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 public class RegistrationStartValidator {
+  private static final String TARGET_EMAIL = "email";
+
+  private static final String TARGET_MOBILE = "mobile";
+
   private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$");
   private static final Pattern HK_MOBILE = Pattern.compile("^[4-9][0-9]{7}$");
   private static final Pattern SAFE_CAPTCHA = Pattern.compile("^[A-Za-z0-9_-]{6,128}$");
@@ -51,15 +55,16 @@ public class RegistrationStartValidator {
     boolean hasEmail = !email.isBlank();
     boolean hasMobile = !mobile.isBlank();
     if (!hasEmail && !hasMobile) {
-      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_REQUIRED, "email"));
-      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_REQUIRED, "mobile"));
+      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_REQUIRED, TARGET_EMAIL));
+      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_REQUIRED, TARGET_MOBILE));
     } else if (hasEmail && hasMobile) {
-      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_EXACTLYONEREQUIRED, "email"));
-      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_EXACTLYONEREQUIRED, "mobile"));
+      errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_EXACTLYONEREQUIRED, TARGET_EMAIL));
+      errors.add(
+          error(RegistrationErrorKey.REGISTRATION_CONTACT_EXACTLYONEREQUIRED, TARGET_MOBILE));
     } else if (hasEmail && !isValidEmail(email)) {
-      errors.add(error(RegistrationErrorKey.REGISTRATION_EMAIL_INVALID, "email"));
+      errors.add(error(RegistrationErrorKey.REGISTRATION_EMAIL_INVALID, TARGET_EMAIL));
     } else if (hasMobile && !HK_MOBILE.matcher(mobile).matches()) {
-      errors.add(error(RegistrationErrorKey.REGISTRATION_MOBILE_INVALID, "mobile"));
+      errors.add(error(RegistrationErrorKey.REGISTRATION_MOBILE_INVALID, TARGET_MOBILE));
     }
 
     if (!captchaChallengeId.isBlank() && !SAFE_CAPTCHA.matcher(captchaChallengeId).matches()) {

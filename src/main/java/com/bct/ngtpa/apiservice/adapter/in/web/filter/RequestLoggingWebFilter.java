@@ -54,6 +54,11 @@ import reactor.util.context.Context;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @Slf4j
 public class RequestLoggingWebFilter implements WebFilter {
+  private static final String KEY_EVENT = "event";
+
+  private static final String KEY_REQUEST_ID = "requestId";
+
+  private static final String KEY_METHOD = "method";
 
   private final RequestLoggingProperties properties;
   private final LoggingSanitizer loggingSanitizer;
@@ -190,9 +195,9 @@ public class RequestLoggingWebFilter implements WebFilter {
       ServerWebExchange exchange, String requestId, String body, int maxBodyBytes) {
     ServerHttpRequest req = exchange.getRequest();
     Map<String, Object> event = new LinkedHashMap<>();
-    event.put("event", "http.request.start");
-    event.put("requestId", requestId);
-    event.put("method", req.getMethod().name());
+    event.put(KEY_EVENT, "http.request.start");
+    event.put(KEY_REQUEST_ID, requestId);
+    event.put(KEY_METHOD, req.getMethod().name());
     event.put("path", req.getPath().value());
 
     Map<String, Object> query = new LinkedHashMap<>();
@@ -219,9 +224,9 @@ public class RequestLoggingWebFilter implements WebFilter {
   private void logRequestEnd(ServerWebExchange exchange, String requestId, long startNanos) {
     int status = statusCode(exchange);
     Map<String, Object> event = new LinkedHashMap<>();
-    event.put("event", status >= 400 ? "http.request.failed" : "http.request.end");
-    event.put("requestId", requestId);
-    event.put("method", exchange.getRequest().getMethod().name());
+    event.put(KEY_EVENT, status >= 400 ? "http.request.failed" : "http.request.end");
+    event.put(KEY_REQUEST_ID, requestId);
+    event.put(KEY_METHOD, exchange.getRequest().getMethod().name());
     event.put("path", exchange.getRequest().getPath().value());
     event.put("status", status);
     event.put("elapsedMs", elapsedMillis(startNanos));
@@ -240,9 +245,9 @@ public class RequestLoggingWebFilter implements WebFilter {
       ServerWebExchange exchange, String requestId, long startNanos, Throwable throwable) {
     int status = statusCode(exchange);
     Map<String, Object> event = new LinkedHashMap<>();
-    event.put("event", "http.request.error");
-    event.put("requestId", requestId);
-    event.put("method", exchange.getRequest().getMethod().name());
+    event.put(KEY_EVENT, "http.request.error");
+    event.put(KEY_REQUEST_ID, requestId);
+    event.put(KEY_METHOD, exchange.getRequest().getMethod().name());
     event.put("path", exchange.getRequest().getPath().value());
     if (status > 0) {
       event.put("status", status);
@@ -255,8 +260,8 @@ public class RequestLoggingWebFilter implements WebFilter {
 
   private void logResponseBody(String requestId, String body, int maxBodyBytes) {
     Map<String, Object> event = new LinkedHashMap<>();
-    event.put("event", "http.response.body");
-    event.put("requestId", requestId);
+    event.put(KEY_EVENT, "http.response.body");
+    event.put(KEY_REQUEST_ID, requestId);
     event.put("responseBody", loggingSanitizer.sanitizeValue(truncate(body, maxBodyBytes)));
     log.info("{}", toJson(event));
   }
