@@ -168,67 +168,84 @@ public final class RedisLoginOtpVerifyPersistenceAdapter implements LoginOtpVeri
   public Mono<LoginOtpVerifyPersistenceResult> verify(RevisionedLoginOtpVerifyCommand c) {
     return challenges
         .findById(c.expectedChallengeId())
-        .flatMap(
-            found -> {
-              if (found.isEmpty())
-                return Mono.just(
-                    out(LoginOtpVerifyPersistenceOutcome.CHALLENGE_NOT_FOUND, 0, null));
-              OtpChallenge x = found.orElseThrow();
-              if (x.status() == OtpStatus.VERIFIED || x.status() == OtpStatus.CONSUMED)
-                return Mono.just(
-                    out(LoginOtpVerifyPersistenceOutcome.EXPECTED_STATE_CHANGED, 0, null));
-              if (x.status() == OtpStatus.LOCKED)
-                return Mono.just(out(LoginOtpVerifyPersistenceOutcome.LOCKED, 0, null));
-              if (x.status() == OtpStatus.EXPIRED || !x.expiresAt().isAfter(c.verificationTime()))
-                return Mono.just(out(LoginOtpVerifyPersistenceOutcome.EXPIRED, 0, null));
-              if (x.status() != OtpStatus.CREATED)
-                return Mono.just(
-                    out(LoginOtpVerifyPersistenceOutcome.EXPECTED_STATE_CHANGED, 0, null));
-              boolean match = hasher.matches(c.submittedOtp().revealForComparison(), x.codeHash());
-              int failures = x.failedAttemptCount() + (match ? 0 : 1);
-              boolean locked = failures >= x.maxVerifyAttempts();
-              OtpStatus status =
-                  match ? OtpStatus.CONSUMED : (locked ? OtpStatus.LOCKED : OtpStatus.CREATED);
-              OtpChallenge updated =
-                  new OtpChallenge(
-                      x.otpChallengeId(),
-                      x.scenario(),
-                      x.workflowRef(),
-                      x.channel(),
-                      x.destinationHash(),
-                      x.codeHash(),
-                      status,
-                      failures,
-                      x.maxVerifyAttempts(),
-                      x.resendAttemptCount(),
-                      x.maxResendAttempts(),
-                      x.createdAt(),
-                      x.expiresAt(),
-                      x.lastSentAt(),
-                      x.invalidatedAt(),
-                      match ? c.verificationTime() : x.verifiedAt());
-              LoginOtpConsumptionProof proof =
-                  match
-                      ? new LoginOtpConsumptionProof(
-                          c.reservationHash(),
-                          c.handoffReference(),
-                          c.operationReference(),
-                          "committed",
-                          c.verificationTime())
-                      : null;
-              return challenges
-                  .update(updated)
-                  .thenReturn(
-                      out(
-                          match
-                              ? LoginOtpVerifyPersistenceOutcome.VERIFIED_AND_CONSUMED
-                              : (locked
-                                  ? LoginOtpVerifyPersistenceOutcome.LOCKED
-                                  : LoginOtpVerifyPersistenceOutcome.INVALID),
-                          Math.max(0, x.maxVerifyAttempts() - failures),
-                          proof));
-            })
+        .flatMap(found -> verifyFound(found, c))
         .onErrorReturn(out(LoginOtpVerifyPersistenceOutcome.SYSTEM_FAILURE, null, null));
+  }
+
+  private Mono<LoginOtpVerifyPersistenceResult> verifyFound(
+      Optional<OtpChallenge> found, RevisionedLoginOtpVerifyCommand c) {
+    if (found.isEmpty()) {
+      return Mono.just(out(LoginOtpVerifyPersistenceOutcome.CHALLENGE_NOT_FOUND, 0, null));
+    }
+    OtpChallenge x = found.orElseThrow();
+    Mono<LoginOtpVerifyPersistenceResult> precondition = checkPreconditions(x, c);
+    if (precondition != null) {
+      return precondition;
+    }
+    return applyVerification(x, c);
+  }
+
+  private Mono<LoginOtpVerifyPersistenceResult> checkPreconditions(
+      OtpChallenge x, RevisionedLoginOtpVerifyCommand c) {
+    if (x.status() == OtpStatus.VERIFIED || x.status() == OtpStatus.CONSUMED) {
+      return Mono.just(out(LoginOtpVerifyPersistenceOutcome.EXPECTED_STATE_CHANGED, 0, null));
+    }
+    if (x.status() == OtpStatus.LOCKED) {
+      return Mono.just(out(LoginOtpVerifyPersistenceOutcome.LOCKED, 0, null));
+    }
+    if (x.status() == OtpStatus.EXPIRED || !x.expiresAt().isAfter(c.verificationTime())) {
+      return Mono.just(out(LoginOtpVerifyPersistenceOutcome.EXPIRED, 0, null));
+    }
+    if (x.status() != OtpStatus.CREATED) {
+      return Mono.just(out(LoginOtpVerifyPersistenceOutcome.EXPECTED_STATE_CHANGED, 0, null));
+    }
+    return null;
+  }
+
+  private Mono<LoginOtpVerifyPersistenceResult> applyVerification(
+      OtpChallenge x, RevisionedLoginOtpVerifyCommand c) {
+    boolean match = hasher.matches(c.submittedOtp().revealForComparison(), x.codeHash());
+    int failures = x.failedAttemptCount() + (match ? 0 : 1);
+    boolean locked = failures >= x.maxVerifyAttempts();
+    OtpStatus status = match ? OtpStatus.CONSUMED : (locked ? OtpStatus.LOCKED : OtpStatus.CREATED);
+    OtpChallenge updated =
+        new OtpChallenge(
+            x.otpChallengeId(),
+            x.scenario(),
+            x.workflowRef(),
+            x.channel(),
+            x.destinationHash(),
+            x.codeHash(),
+            status,
+            failures,
+            x.maxVerifyAttempts(),
+            x.resendAttemptCount(),
+            x.maxResendAttempts(),
+            x.createdAt(),
+            x.expiresAt(),
+            x.lastSentAt(),
+            x.invalidatedAt(),
+            match ? c.verificationTime() : x.verifiedAt());
+    LoginOtpConsumptionProof proof =
+        match
+            ? new LoginOtpConsumptionProof(
+                c.reservationHash(),
+                c.handoffReference(),
+                c.operationReference(),
+                "committed",
+                c.verificationTime())
+            : null;
+    return challenges
+        .update(updated)
+        .thenReturn(
+            out(
+                match
+                    ? LoginOtpVerifyPersistenceOutcome.VERIFIED_AND_CONSUMED
+                    : (locked
+                        ? LoginOtpVerifyPersistenceOutcome.LOCKED
+                        : LoginOtpVerifyPersistenceOutcome.INVALID),
+                Math.max(0, x.maxVerifyAttempts() - failures),
+                proof));
   }
 
   private Mono<LoginOtpVerifyReservation> mutate(

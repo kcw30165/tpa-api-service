@@ -38,37 +38,53 @@ public class PageSchemaLinter {
     Map<String, PageSchemaProperties> pages = properties.getPages();
     if (pages == null) return result;
     for (Map.Entry<String, PageSchemaProperties> e : pages.entrySet()) {
-      String pageKey = e.getKey();
-      PageSchemaProperties page = e.getValue();
-      if (page == null) continue;
-      validatePageVariants(result, pageKey, page);
-      Set<String> fieldIds = new HashSet<>();
-      if (page.getForm() != null && page.getForm().getSections() != null) {
-        for (SectionProperties s : page.getForm().getSections()) {
-          if (s == null || s.getFields() == null) continue;
-          for (FieldProperties f : s.getFields()) {
-            if (f != null && f.getId() != null) fieldIds.add(f.getId());
-          }
-        }
+      lintPage(result, e.getKey(), e.getValue());
+    }
+    return result;
+  }
+
+  private static void lintPage(LintResult result, String pageKey, PageSchemaProperties page) {
+    if (page == null) return;
+    validatePageVariants(result, pageKey, page);
+    Set<String> fieldIds = collectFieldIds(page);
+    validateFieldValidations(result, pageKey, fieldIds, page);
+    validatePageLevelValidations(result, pageKey, fieldIds, page);
+  }
+
+  private static Set<String> collectFieldIds(PageSchemaProperties page) {
+    Set<String> fieldIds = new HashSet<>();
+    if (page.getForm() == null || page.getForm().getSections() == null) {
+      return fieldIds;
+    }
+    for (SectionProperties s : page.getForm().getSections()) {
+      if (s == null || s.getFields() == null) continue;
+      for (FieldProperties f : s.getFields()) {
+        if (f != null && f.getId() != null) fieldIds.add(f.getId());
       }
-      if (page.getForm() != null && page.getForm().getSections() != null) {
-        for (SectionProperties s : page.getForm().getSections()) {
-          if (s == null || s.getFields() == null) continue;
-          for (FieldProperties f : s.getFields()) {
-            if (f == null || f.getValidations() == null) continue;
-            for (ValidationRuleProperties v : f.getValidations()) {
-              validateRule(result, pageKey, fieldIds, v);
-            }
-          }
-        }
-      }
-      if (page.getValidations() != null) {
-        for (ValidationRuleProperties v : page.getValidations()) {
+    }
+    return fieldIds;
+  }
+
+  private static void validateFieldValidations(
+      LintResult result, String pageKey, Set<String> fieldIds, PageSchemaProperties page) {
+    if (page.getForm() == null || page.getForm().getSections() == null) return;
+    for (SectionProperties s : page.getForm().getSections()) {
+      if (s == null || s.getFields() == null) continue;
+      for (FieldProperties f : s.getFields()) {
+        if (f == null || f.getValidations() == null) continue;
+        for (ValidationRuleProperties v : f.getValidations()) {
           validateRule(result, pageKey, fieldIds, v);
         }
       }
     }
-    return result;
+  }
+
+  private static void validatePageLevelValidations(
+      LintResult result, String pageKey, Set<String> fieldIds, PageSchemaProperties page) {
+    if (page.getValidations() == null) return;
+    for (ValidationRuleProperties v : page.getValidations()) {
+      validateRule(result, pageKey, fieldIds, v);
+    }
   }
 
   private static void validatePageVariants(

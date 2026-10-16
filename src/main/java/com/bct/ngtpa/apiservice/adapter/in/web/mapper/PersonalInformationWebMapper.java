@@ -487,61 +487,81 @@ public class PersonalInformationWebMapper {
     Set<String> seenApimConfigItems = new HashSet<>();
 
     if (apimConfigItems != null && !apimConfigItems.isEmpty()) {
-      for (MemberInfoConfigItem configItem : apimConfigItems.values()) {
-        if (configItem == null || !hasText(configItem.itemId())) {
-          continue;
-        }
-        String configKey = configItem.itemId();
-        String configValue = configItem.configValue();
-        seenApimConfigItems.add(configKey);
-
-        MemberInfoConfigItemType itemType = configItem.itemType();
-        if (itemType == null || itemType == MemberInfoConfigItemType.UNKNOWN) {
-          logUnknownConfigItemType(configKey, configValue, configItem);
-          continue;
-        }
-        if (itemType == MemberInfoConfigItemType.RULE) {
-          continue;
-        }
-
-        BoundField boundField = fieldsByConfigItemId.get(configKey);
-        if (boundField == null) {
-          logMissingYamlBinding(configKey, configValue);
-          continue;
-        }
-        if ("HIDDEN".equalsIgnoreCase(configValue)) {
-          continue;
-        }
-        Object value =
-            itemType == MemberInfoConfigItemType.DATA ? resolveValue(apimData, configKey) : null;
-        fieldStates.put(
-            boundField.field().getId(),
-            new FieldState(configKey, configValue, value, boundField.location()));
-      }
+      applyApimConfigItems(
+          apimConfigItems, apimData, fieldsByConfigItemId, fieldStates, seenApimConfigItems);
     } else if (apimConfig != null) {
-      // Backward-compatible legacy path for the old Map<String, String> config shape.
-      for (Map.Entry<String, String> cfg : apimConfig.entrySet()) {
-        String configKey = cfg.getKey();
-        String configValue = cfg.getValue();
-        seenApimConfigItems.add(configKey);
-
-        BoundField boundField = fieldsByConfigItemId.get(configKey);
-        if (boundField == null) {
-          logMissingYamlBinding(configKey, configValue);
-          continue;
-        }
-        if ("HIDDEN".equalsIgnoreCase(configValue)) {
-          continue;
-        }
-        Object value = resolveValue(apimData, boundField.dataKey());
-        fieldStates.put(
-            boundField.field().getId(),
-            new FieldState(configKey, configValue, value, boundField.location()));
-      }
+      applyLegacyApimConfig(
+          apimConfig, apimData, fieldsByConfigItemId, fieldStates, seenApimConfigItems);
     }
 
     logMissingExpectedApimConfig(fieldsByConfigItemId, seenApimConfigItems);
     return fieldStates;
+  }
+
+  private void applyApimConfigItems(
+      Map<String, MemberInfoConfigItem> apimConfigItems,
+      Map<String, Object> apimData,
+      Map<String, BoundField> fieldsByConfigItemId,
+      Map<String, FieldState> fieldStates,
+      Set<String> seenApimConfigItems) {
+    for (MemberInfoConfigItem configItem : apimConfigItems.values()) {
+      if (configItem == null || !hasText(configItem.itemId())) {
+        continue;
+      }
+      String configKey = configItem.itemId();
+      String configValue = configItem.configValue();
+      seenApimConfigItems.add(configKey);
+
+      MemberInfoConfigItemType itemType = configItem.itemType();
+      if (itemType == null || itemType == MemberInfoConfigItemType.UNKNOWN) {
+        logUnknownConfigItemType(configKey, configValue, configItem);
+        continue;
+      }
+      if (itemType == MemberInfoConfigItemType.RULE) {
+        continue;
+      }
+
+      BoundField boundField = fieldsByConfigItemId.get(configKey);
+      if (boundField == null) {
+        logMissingYamlBinding(configKey, configValue);
+        continue;
+      }
+      if ("HIDDEN".equalsIgnoreCase(configValue)) {
+        continue;
+      }
+      Object value =
+          itemType == MemberInfoConfigItemType.DATA ? resolveValue(apimData, configKey) : null;
+      fieldStates.put(
+          boundField.field().getId(),
+          new FieldState(configKey, configValue, value, boundField.location()));
+    }
+  }
+
+  private void applyLegacyApimConfig(
+      Map<String, String> apimConfig,
+      Map<String, Object> apimData,
+      Map<String, BoundField> fieldsByConfigItemId,
+      Map<String, FieldState> fieldStates,
+      Set<String> seenApimConfigItems) {
+    // Backward-compatible legacy path for the old Map<String, String> config shape.
+    for (Map.Entry<String, String> cfg : apimConfig.entrySet()) {
+      String configKey = cfg.getKey();
+      String configValue = cfg.getValue();
+      seenApimConfigItems.add(configKey);
+
+      BoundField boundField = fieldsByConfigItemId.get(configKey);
+      if (boundField == null) {
+        logMissingYamlBinding(configKey, configValue);
+        continue;
+      }
+      if ("HIDDEN".equalsIgnoreCase(configValue)) {
+        continue;
+      }
+      Object value = resolveValue(apimData, boundField.dataKey());
+      fieldStates.put(
+          boundField.field().getId(),
+          new FieldState(configKey, configValue, value, boundField.location()));
+    }
   }
 
   private Map<String, BoundField> buildFieldsByConfigItemId(PageSchemaProperties pageSchema) {

@@ -382,56 +382,84 @@ public class ApimWebClientFacade {
         .bodyToMono(String.class)
         .defaultIfEmpty("")
         .flatMap(
-            body -> {
-              if (statusCode.isError()) {
-                String errorCode = extractApimErrorCode(body);
-                if ("invalid_token".equals(errorCode)) {
-                  if (!retryContext.tokenRetry) {
-                    retryContext.tokenRetry = true;
-                    log.info(
-                        "APIM returned invalid_token for profileId={}; evicting cached token and retrying once.",
-                        profile.profileId());
-                    apimTokenService.evictToken(profile.profileId());
-                    return apimTokenService
-                        .refreshAccessToken(profile)
-                        .flatMap(e -> sendWithProfile(profile, path, requestBody, retryContext));
-                  }
-                }
-                if ("invalid_public_key".equals(errorCode)) {
-                  if (!retryContext.certificateRetry) {
-                    retryContext.certificateRetry = true;
-                    apimCertificateService.evictCertificate(profile.profileId());
-                    // If we have an encryption function attached to the retry context, obtain
-                    // a fresh public key and regenerate the encrypted payload before retrying.
-                    if (retryContext.encryptionFunction != null) {
-                      return apimCertificateService
-                          .refreshPublicKey(profile)
-                          .flatMap(
-                              newPk -> {
-                                retryContext.responseVerificationKey = newPk;
-                                Object newRequest =
-                                    retryContext.encryptionFunction.apply(profile, newPk);
-                                return sendWithProfile(profile, path, newRequest, retryContext);
-                              });
-                    }
-                    // A body-only call cannot safely regenerate encrypted ciphertext.
-                    // Do not retry stale requestBody after certificate invalidation.
-                  }
-                }
+            body ->
+                statusCode.isError()
+                    ? handleErrorBody(statusCode, body, profile, path, requestBody, retryContext)
+                    : Mono.just(body));
+  }
 
-                String sanitizedBody = loggingSanitizer.sanitizeText(body);
-                log.error(
-                    "APIM request failed with status={} body={}",
-                    statusCode.value(),
-                    sanitizedBody);
-                return Mono.error(
-                    new ApimException(
-                        HttpStatus.BAD_GATEWAY,
-                        mapUpstreamErrorCode(statusCode),
-                        "APIM request failed with status=%s body=%s"
-                            .formatted(statusCode.value(), sanitizedBody)));
-              }
-              return Mono.just(body);
+  private Mono<String> handleErrorBody(
+      HttpStatusCode statusCode,
+      String body,
+      ApimCredentialProfile profile,
+      String path,
+      Object requestBody,
+      RetryContext retryContext) {
+    String errorCode = extractApimErrorCode(body);
+    Mono<String> tokenRetryResult =
+        tryInvalidTokenRetry(errorCode, profile, path, requestBody, retryContext);
+    if (tokenRetryResult != null) {
+      return tokenRetryResult;
+    }
+    Mono<String> certRetryResult =
+        tryInvalidPublicKeyRetry(errorCode, profile, path, requestBody, retryContext);
+    if (certRetryResult != null) {
+      return certRetryResult;
+    }
+    String sanitizedBody = loggingSanitizer.sanitizeText(body);
+    log.error("APIM request failed with status={} body={}", statusCode.value(), sanitizedBody);
+    return Mono.error(
+        new ApimException(
+            HttpStatus.BAD_GATEWAY,
+            mapUpstreamErrorCode(statusCode),
+            "APIM request failed with status=%s body=%s"
+                .formatted(statusCode.value(), sanitizedBody)));
+  }
+
+  private Mono<String> tryInvalidTokenRetry(
+      String errorCode,
+      ApimCredentialProfile profile,
+      String path,
+      Object requestBody,
+      RetryContext retryContext) {
+    if (!"invalid_token".equals(errorCode) || retryContext.tokenRetry) {
+      return null;
+    }
+    retryContext.tokenRetry = true;
+    log.info(
+        "APIM returned invalid_token for profileId={}; evicting cached token and retrying once.",
+        profile.profileId());
+    apimTokenService.evictToken(profile.profileId());
+    return apimTokenService
+        .refreshAccessToken(profile)
+        .flatMap(e -> sendWithProfile(profile, path, requestBody, retryContext));
+  }
+
+  private Mono<String> tryInvalidPublicKeyRetry(
+      String errorCode,
+      ApimCredentialProfile profile,
+      String path,
+      Object requestBody,
+      RetryContext retryContext) {
+    if (!"invalid_public_key".equals(errorCode) || retryContext.certificateRetry) {
+      return null;
+    }
+    retryContext.certificateRetry = true;
+    apimCertificateService.evictCertificate(profile.profileId());
+    // If we have an encryption function attached to the retry context, obtain
+    // a fresh public key and regenerate the encrypted payload before retrying.
+    if (retryContext.encryptionFunction == null) {
+      // A body-only call cannot safely regenerate encrypted ciphertext.
+      // Do not retry stale requestBody after certificate invalidation.
+      return null;
+    }
+    return apimCertificateService
+        .refreshPublicKey(profile)
+        .flatMap(
+            newPk -> {
+              retryContext.responseVerificationKey = newPk;
+              Object newRequest = retryContext.encryptionFunction.apply(profile, newPk);
+              return sendWithProfile(profile, path, newRequest, retryContext);
             });
   }
 

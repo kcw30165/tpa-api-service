@@ -140,7 +140,12 @@ public class ApimProperties {
       throw new IllegalStateException(
           "apim.routing.non-account-profile-id must be set and non-blank");
     }
-    // Normalize and check mappings
+    Map<String, String> normalized = normalizeMappings(r);
+    List<String> profileIds = validateProfiles(getCredentialProfiles().getProfiles());
+    validateProfileReferences(r, profileIds, normalized);
+  }
+
+  private static Map<String, String> normalizeMappings(Routing r) {
     Map<String, String> normalized = new HashMap<>();
     for (Map.Entry<String, String> e : r.getAccountEnvProfileMappings().entrySet()) {
       String key = e.getKey();
@@ -161,9 +166,12 @@ public class ApimProperties {
       }
       normalized.put(norm, profileId);
     }
-    // Ensure every referenced profile exists and required fields present
+    return normalized;
+  }
+
+  private static List<String> validateProfiles(List<CredentialProfiles.Profile> profiles) {
     List<String> profileIds = new ArrayList<>();
-    for (CredentialProfiles.Profile p : getCredentialProfiles().getProfiles()) {
+    for (CredentialProfiles.Profile p : profiles) {
       profileIds.add(p.getProfileId());
       if (p.getProfileId() == null || p.getProfileId().isBlank()) {
         throw new IllegalStateException(
@@ -178,34 +186,25 @@ public class ApimProperties {
             "apim.credential-profiles.profile.tokenUri must be set for profile "
                 + p.getProfileId());
       }
-      // if (p.getClientId() == null || p.getClientId().isBlank()) {
-      //     throw new IllegalStateException("apim.credential-profiles.profile.clientId must be set
-      // for profile " + p.getProfileId());
-      // }
-      // if (p.getClientSecret() == null || p.getClientSecret().isBlank()) {
-      //     throw new IllegalStateException("apim.credential-profiles.profile.clientSecret must be
-      // set for profile " + p.getProfileId());
-      // }
       if (p.getScope() == null || p.getScope().isEmpty()) {
         throw new IllegalStateException(
             "apim.credential-profiles.profile.scope must be set for profile " + p.getProfileId());
       }
-      // if (p.getApiKey() == null || p.getApiKey().isBlank()) {
-      //     throw new IllegalStateException("apim.credential-profiles.profile.apiKey must be set
-      // for profile " + p.getProfileId());
-      // }
       if (p.getCertificatePath() == null || p.getCertificatePath().isBlank()) {
         throw new IllegalStateException(
             "apim.credential-profiles.profile.certificatePath must be set for profile "
                 + p.getProfileId());
       }
     }
-    // non-account profile referenced must exist
+    return profileIds;
+  }
+
+  private static void validateProfileReferences(
+      Routing r, List<String> profileIds, Map<String, String> normalized) {
     if (!profileIds.contains(r.getNonAccountProfileId())) {
       throw new IllegalStateException(
           "apim.routing.non-account-profile-id references unknown profile id");
     }
-    // every mapping target must exist
     for (String target : normalized.values()) {
       if (!profileIds.contains(target)) {
         throw new IllegalStateException(
