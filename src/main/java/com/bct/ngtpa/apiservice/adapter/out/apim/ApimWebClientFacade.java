@@ -401,8 +401,7 @@ public class ApimWebClientFacade {
     if (tokenRetryResult != null) {
       return tokenRetryResult;
     }
-    Mono<String> certRetryResult =
-        tryInvalidPublicKeyRetry(errorCode, profile, path, requestBody, retryContext);
+    Mono<String> certRetryResult = tryInvalidPublicKeyRetry(errorCode, profile, path, retryContext);
     if (certRetryResult != null) {
       return certRetryResult;
     }
@@ -436,11 +435,7 @@ public class ApimWebClientFacade {
   }
 
   private Mono<String> tryInvalidPublicKeyRetry(
-      String errorCode,
-      ApimCredentialProfile profile,
-      String path,
-      Object requestBody,
-      RetryContext retryContext) {
+      String errorCode, ApimCredentialProfile profile, String path, RetryContext retryContext) {
     if (!"invalid_public_key".equals(errorCode) || retryContext.certificateRetry) {
       return null;
     }
