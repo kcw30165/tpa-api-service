@@ -368,28 +368,27 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
     if (username == null || username.isBlank()) {
       return false;
     }
-    if (policy != null) {
-      if (policy.minLength() > 0 && username.length() < policy.minLength()) {
-        return false;
-      }
-      if (policy.maxLength() > 0 && username.length() > policy.maxLength()) {
-        return false;
-      }
-      if (policy.noSpaces() && username.chars().anyMatch(Character::isWhitespace)) {
-        return false;
-      }
-      if (policy.requiredDigit() && username.chars().noneMatch(Character::isDigit)) {
-        return false;
-      }
-      if (policy.requiredSpecial()
-          && !containsAllowedSpecial(username, policy.allowedSpecialChars())) {
-        return false;
-      }
-      if (!allowedCharacters(username, policy.allowedSpecialChars())) {
-        return false;
-      }
+    return policy == null || satisfiesPolicy(username, policy);
+  }
+
+  private boolean satisfiesPolicy(String username, UsernamePolicy policy) {
+    if (policy.minLength() > 0 && username.length() < policy.minLength()) {
+      return false;
     }
-    return true;
+    if (policy.maxLength() > 0 && username.length() > policy.maxLength()) {
+      return false;
+    }
+    if (policy.noSpaces() && username.chars().anyMatch(Character::isWhitespace)) {
+      return false;
+    }
+    if (policy.requiredDigit() && username.chars().noneMatch(Character::isDigit)) {
+      return false;
+    }
+    if (policy.requiredSpecial()
+        && !containsAllowedSpecial(username, policy.allowedSpecialChars())) {
+      return false;
+    }
+    return allowedCharacters(username, policy.allowedSpecialChars());
   }
 
   private boolean containsAllowedSpecial(String username, String allowedSpecialChars) {

@@ -98,21 +98,26 @@ public class PersonalInformationUpdateWebMapper {
           "Personal information field must be string: " + fieldId);
     }
     if (value instanceof String text) {
-      if (field.getMaxLength() != null && text.length() > field.getMaxLength()) {
-        throw new InvalidPersonalInformationUpdateException(
-            "Personal information field exceeds maxLength: " + fieldId);
-      }
-      var pattern = trimToNull(field.getPattern());
-      if (pattern != null && !text.isBlank() && !Pattern.compile(pattern).matcher(text).matches()) {
-        throw new InvalidPersonalInformationUpdateException(
-            "Personal information field pattern mismatch: " + fieldId);
-      }
-      if ("email".equalsIgnoreCase(field.getControlType())
-          && !text.isBlank()
-          && !Pattern.compile("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$").matcher(text).matches()) {
-        throw new InvalidPersonalInformationUpdateException(
-            "Personal information field must be email: " + fieldId);
-      }
+      validateStringValue(field, text);
+    }
+  }
+
+  private void validateStringValue(FieldProperties field, String text) {
+    var fieldId = field.getId();
+    if (field.getMaxLength() != null && text.length() > field.getMaxLength()) {
+      throw new InvalidPersonalInformationUpdateException(
+          "Personal information field exceeds maxLength: " + fieldId);
+    }
+    var pattern = trimToNull(field.getPattern());
+    if (pattern != null && !text.isBlank() && !Pattern.compile(pattern).matcher(text).matches()) {
+      throw new InvalidPersonalInformationUpdateException(
+          "Personal information field pattern mismatch: " + fieldId);
+    }
+    if ("email".equalsIgnoreCase(field.getControlType())
+        && !text.isBlank()
+        && !Pattern.compile("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$").matcher(text).matches()) {
+      throw new InvalidPersonalInformationUpdateException(
+          "Personal information field must be email: " + fieldId);
     }
   }
 

@@ -86,22 +86,26 @@ public class PersonalInformationUpdateErrorMapper {
       return result;
     }
     for (SectionProperties section : page.getForm().getSections()) {
-      if (section == null || section.getFields() == null) {
-        continue;
-      }
-      for (FieldProperties field : section.getFields()) {
-        if (field == null || field.getId() == null || field.getId().isBlank()) {
-          continue;
-        }
-        ApimBindingProperties binding = field.getApimBinding();
-        if (binding == null) {
-          continue;
-        }
-        putReverse(result, binding.getData(), field.getId());
-        putReverse(result, binding.getConfig(), field.getId());
-      }
+      collectFieldBindings(section, result);
     }
     return result;
+  }
+
+  private void collectFieldBindings(SectionProperties section, Map<String, String> result) {
+    if (section == null || section.getFields() == null) {
+      return;
+    }
+    for (FieldProperties field : section.getFields()) {
+      if (field == null || field.getId() == null || field.getId().isBlank()) {
+        continue;
+      }
+      ApimBindingProperties binding = field.getApimBinding();
+      if (binding == null) {
+        continue;
+      }
+      putReverse(result, binding.getData(), field.getId());
+      putReverse(result, binding.getConfig(), field.getId());
+    }
   }
 
   private void putReverse(Map<String, String> result, String apimField, String frontendField) {
@@ -201,15 +205,19 @@ public class PersonalInformationUpdateErrorMapper {
       if (rule == null || rule.getMessage() == null || rule.getMessage().isEmpty()) {
         continue;
       }
-      String type = rule.getType() == null ? "" : rule.getType().trim().toUpperCase(Locale.ROOT);
-      if ((CODE_REQUIRED.equals(normalizedBackendCode) && CODE_REQUIRED.equals(type))
-          || (CODE_INVALID_FORMAT.equals(normalizedBackendCode)
-              && ("EMAIL".equals(type) || "PATTERN".equals(type)))) {
+      if (matchesBackendCode(normalizedBackendCode, rule.getType())) {
         String en = rule.getMessage().get("en");
         return en != null ? en : rule.getMessage().values().stream().findFirst().orElse(null);
       }
     }
     return null;
+  }
+
+  private boolean matchesBackendCode(String normalizedBackendCode, String rawType) {
+    String type = rawType == null ? "" : rawType.trim().toUpperCase(Locale.ROOT);
+    return (CODE_REQUIRED.equals(normalizedBackendCode) && CODE_REQUIRED.equals(type))
+        || (CODE_INVALID_FORMAT.equals(normalizedBackendCode)
+            && ("EMAIL".equals(type) || "PATTERN".equals(type)));
   }
 
   private FieldProperties findField(String frontendField) {

@@ -173,30 +173,32 @@ public class ApimProperties {
     List<String> profileIds = new ArrayList<>();
     for (CredentialProfiles.Profile p : profiles) {
       profileIds.add(p.getProfileId());
-      if (p.getProfileId() == null || p.getProfileId().isBlank()) {
-        throw new IllegalStateException(
-            "apim.credential-profiles.profiles contains blank profileId");
-      }
-      if (p.getBaseUrl() == null || p.getBaseUrl().isBlank()) {
-        throw new IllegalStateException(
-            "apim.credential-profiles.profile.baseUrl must be set for profile " + p.getProfileId());
-      }
-      if (p.getTokenUri() == null || p.getTokenUri().isBlank()) {
-        throw new IllegalStateException(
-            "apim.credential-profiles.profile.tokenUri must be set for profile "
-                + p.getProfileId());
-      }
-      if (p.getScope() == null || p.getScope().isEmpty()) {
-        throw new IllegalStateException(
-            "apim.credential-profiles.profile.scope must be set for profile " + p.getProfileId());
-      }
-      if (p.getCertificatePath() == null || p.getCertificatePath().isBlank()) {
-        throw new IllegalStateException(
-            "apim.credential-profiles.profile.certificatePath must be set for profile "
-                + p.getProfileId());
-      }
+      validateProfile(p);
     }
     return profileIds;
+  }
+
+  private static void validateProfile(CredentialProfiles.Profile p) {
+    if (p.getProfileId() == null || p.getProfileId().isBlank()) {
+      throw new IllegalStateException("apim.credential-profiles.profiles contains blank profileId");
+    }
+    if (p.getBaseUrl() == null || p.getBaseUrl().isBlank()) {
+      throw new IllegalStateException(
+          "apim.credential-profiles.profile.baseUrl must be set for profile " + p.getProfileId());
+    }
+    if (p.getTokenUri() == null || p.getTokenUri().isBlank()) {
+      throw new IllegalStateException(
+          "apim.credential-profiles.profile.tokenUri must be set for profile " + p.getProfileId());
+    }
+    if (p.getScope() == null || p.getScope().isEmpty()) {
+      throw new IllegalStateException(
+          "apim.credential-profiles.profile.scope must be set for profile " + p.getProfileId());
+    }
+    if (p.getCertificatePath() == null || p.getCertificatePath().isBlank()) {
+      throw new IllegalStateException(
+          "apim.credential-profiles.profile.certificatePath must be set for profile "
+              + p.getProfileId());
+    }
   }
 
   private static void validateProfileReferences(

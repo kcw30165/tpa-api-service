@@ -94,28 +94,31 @@ public class PageSchemaLinter {
       return;
     }
     for (Map.Entry<String, PageVariantProperties> entry : variants.entrySet()) {
-      String variantKey = entry.getKey();
-      PageVariantProperties variant = entry.getValue();
-      if (variantKey == null || variantKey.isBlank()) {
-        result.addError(pageKey + ": page variant has blank key");
-      }
-      if (variant == null) {
-        result.addError(pageKey + PAGE_VARIANT_PREFIX + variantKey + " is null");
-        continue;
-      }
-      if (isBlankLocalizedMap(variant.getTitle())) {
-        result.addError(pageKey + PAGE_VARIANT_PREFIX + variantKey + " requires title");
-      }
-      if (isBlankLocalizedMap(variant.getBody())) {
-        result.addError(pageKey + PAGE_VARIANT_PREFIX + variantKey + " requires body");
-      }
-      if (variant.getActions() == null || variant.getActions().isEmpty()) {
-        result.addError(pageKey + PAGE_VARIANT_PREFIX + variantKey + " requires actions");
-        continue;
-      }
-      for (ActionProperties action : variant.getActions()) {
-        validateVariantAction(result, pageKey, variantKey, action);
-      }
+      validateVariantEntry(result, pageKey, entry.getKey(), entry.getValue());
+    }
+  }
+
+  private static void validateVariantEntry(
+      LintResult result, String pageKey, String variantKey, PageVariantProperties variant) {
+    if (variantKey == null || variantKey.isBlank()) {
+      result.addError(pageKey + ": page variant has blank key");
+    }
+    if (variant == null) {
+      result.addError(pageKey + PAGE_VARIANT_PREFIX + variantKey + " is null");
+      return;
+    }
+    if (isBlankLocalizedMap(variant.getTitle())) {
+      result.addError(pageKey + PAGE_VARIANT_PREFIX + variantKey + " requires title");
+    }
+    if (isBlankLocalizedMap(variant.getBody())) {
+      result.addError(pageKey + PAGE_VARIANT_PREFIX + variantKey + " requires body");
+    }
+    if (variant.getActions() == null || variant.getActions().isEmpty()) {
+      result.addError(pageKey + PAGE_VARIANT_PREFIX + variantKey + " requires actions");
+      return;
+    }
+    for (ActionProperties action : variant.getActions()) {
+      validateVariantAction(result, pageKey, variantKey, action);
     }
   }
 

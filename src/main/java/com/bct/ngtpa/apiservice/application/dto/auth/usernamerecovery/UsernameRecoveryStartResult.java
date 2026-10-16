@@ -44,54 +44,70 @@ public record UsernameRecoveryStartResult(
     Objects.requireNonNull(outcome, "outcome must not be null");
     schemes = schemes == null ? List.of() : List.copyOf(schemes);
     switch (outcome) {
-      case SESSION_CREATED -> {
-        if (csrfToken == null || csrfToken.isBlank()) {
-          throw new IllegalArgumentException(
-              "session-created result requires a nonblank csrfToken");
-        }
-        if (expiresInSeconds == null || expiresInSeconds <= 0) {
-          throw new IllegalArgumentException(
-              "session-created result requires a positive expiresInSeconds");
-        }
-        if (schemes.isEmpty()) {
-          throw new IllegalArgumentException(
-              "session-created result requires at least one scheme projection");
-        }
-        if (schemes.stream().noneMatch(UsernameRecoverySchemeProjection::registered)) {
-          throw new IllegalArgumentException(
-              "session-created result requires at least one registered scheme");
-        }
-        if (schemes.stream().anyMatch(s -> s.schemeRef() == null)) {
-          throw new IllegalArgumentException(
-              "session-created result requires a schemeRef for every projection");
-        }
-      }
-      case MEMBER_NOT_FOUND -> {
-        if (authFlowSessionId != null
-            || !schemes.isEmpty()
-            || csrfToken != null
-            || expiresInSeconds != null) {
-          throw new IllegalArgumentException(
-              "member-not-found result must not carry session data or schemes");
-        }
-      }
-      case ZERO_REGISTERED -> {
-        if (authFlowSessionId != null || csrfToken != null || expiresInSeconds != null) {
-          throw new IllegalArgumentException("zero-registered result must not carry session data");
-        }
-        if (schemes.isEmpty()) {
-          throw new IllegalArgumentException(
-              "zero-registered result requires at least one scheme projection");
-        }
-        if (schemes.stream().anyMatch(UsernameRecoverySchemeProjection::registered)) {
-          throw new IllegalArgumentException(
-              "zero-registered result must not contain registered schemes");
-        }
-        if (schemes.stream().anyMatch(s -> s.schemeRef() != null)) {
-          throw new IllegalArgumentException(
-              "zero-registered result projections must not carry schemeRef");
-        }
-      }
+      case SESSION_CREATED -> validateSessionCreated(csrfToken, expiresInSeconds, schemes);
+      case MEMBER_NOT_FOUND ->
+          validateMemberNotFound(authFlowSessionId, csrfToken, expiresInSeconds, schemes);
+      case ZERO_REGISTERED ->
+          validateZeroRegistered(authFlowSessionId, csrfToken, expiresInSeconds, schemes);
+    }
+  }
+
+  private static void validateSessionCreated(
+      String csrfToken, Integer expiresInSeconds, List<UsernameRecoverySchemeProjection> schemes) {
+    if (csrfToken == null || csrfToken.isBlank()) {
+      throw new IllegalArgumentException("session-created result requires a nonblank csrfToken");
+    }
+    if (expiresInSeconds == null || expiresInSeconds <= 0) {
+      throw new IllegalArgumentException(
+          "session-created result requires a positive expiresInSeconds");
+    }
+    if (schemes.isEmpty()) {
+      throw new IllegalArgumentException(
+          "session-created result requires at least one scheme projection");
+    }
+    if (schemes.stream().noneMatch(UsernameRecoverySchemeProjection::registered)) {
+      throw new IllegalArgumentException(
+          "session-created result requires at least one registered scheme");
+    }
+    if (schemes.stream().anyMatch(s -> s.schemeRef() == null)) {
+      throw new IllegalArgumentException(
+          "session-created result requires a schemeRef for every projection");
+    }
+  }
+
+  private static void validateMemberNotFound(
+      AuthFlowSessionId authFlowSessionId,
+      String csrfToken,
+      Integer expiresInSeconds,
+      List<UsernameRecoverySchemeProjection> schemes) {
+    if (authFlowSessionId != null
+        || !schemes.isEmpty()
+        || csrfToken != null
+        || expiresInSeconds != null) {
+      throw new IllegalArgumentException(
+          "member-not-found result must not carry session data or schemes");
+    }
+  }
+
+  private static void validateZeroRegistered(
+      AuthFlowSessionId authFlowSessionId,
+      String csrfToken,
+      Integer expiresInSeconds,
+      List<UsernameRecoverySchemeProjection> schemes) {
+    if (authFlowSessionId != null || csrfToken != null || expiresInSeconds != null) {
+      throw new IllegalArgumentException("zero-registered result must not carry session data");
+    }
+    if (schemes.isEmpty()) {
+      throw new IllegalArgumentException(
+          "zero-registered result requires at least one scheme projection");
+    }
+    if (schemes.stream().anyMatch(UsernameRecoverySchemeProjection::registered)) {
+      throw new IllegalArgumentException(
+          "zero-registered result must not contain registered schemes");
+    }
+    if (schemes.stream().anyMatch(s -> s.schemeRef() != null)) {
+      throw new IllegalArgumentException(
+          "zero-registered result projections must not carry schemeRef");
     }
   }
 

@@ -572,28 +572,40 @@ public class PersonalInformationWebMapper {
       return fieldsByConfigItemId;
     }
     for (SectionProperties section : pageSchema.getForm().getSections()) {
-      if (section == null || section.getFields() == null) {
-        continue;
-      }
-      for (FieldProperties field : section.getFields()) {
-        if (field == null || !hasText(field.getId())) {
-          continue;
-        }
-        ApimBindingProperties binding = field.getApimBinding();
-        if (binding == null || !hasText(binding.getConfig())) {
-          continue;
-        }
-        String dataKey = hasText(binding.getData()) ? binding.getData() : binding.getConfig();
-        FieldLocation location = new FieldLocation(section.getId(), field);
-        BoundField previous =
-            fieldsByConfigItemId.putIfAbsent(
-                binding.getConfig(), new BoundField(field, location, dataKey));
-        if (previous != null) {
-          logDuplicateYamlBinding(binding.getConfig(), previous.field().getId(), field.getId());
-        }
-      }
+      collectSectionFieldBindings(section, fieldsByConfigItemId);
     }
     return fieldsByConfigItemId;
+  }
+
+  private void collectSectionFieldBindings(
+      SectionProperties section, Map<String, BoundField> fieldsByConfigItemId) {
+    if (section == null || section.getFields() == null) {
+      return;
+    }
+    for (FieldProperties field : section.getFields()) {
+      collectFieldBinding(section, field, fieldsByConfigItemId);
+    }
+  }
+
+  private void collectFieldBinding(
+      SectionProperties section,
+      FieldProperties field,
+      Map<String, BoundField> fieldsByConfigItemId) {
+    if (field == null || !hasText(field.getId())) {
+      return;
+    }
+    ApimBindingProperties binding = field.getApimBinding();
+    if (binding == null || !hasText(binding.getConfig())) {
+      return;
+    }
+    String dataKey = hasText(binding.getData()) ? binding.getData() : binding.getConfig();
+    FieldLocation location = new FieldLocation(section.getId(), field);
+    BoundField previous =
+        fieldsByConfigItemId.putIfAbsent(
+            binding.getConfig(), new BoundField(field, location, dataKey));
+    if (previous != null) {
+      logDuplicateYamlBinding(binding.getConfig(), previous.field().getId(), field.getId());
+    }
   }
 
   private List<FieldResponse> buildSectionFields(
@@ -618,61 +630,66 @@ public class PersonalInformationWebMapper {
         defaultFieldOrder += 10;
         continue;
       }
-      List<ValidationRuleResponse> validations =
-          mapValidationRules(
+      fields.add(
+          toFieldResponse(
               pageSchema,
-              fieldSchema.getValidations(),
+              fieldSchema,
+              state,
+              defaultFieldOrder,
               language,
               accountEnv,
               trustCode,
-              schemeType);
-      fields.add(
-          new FieldResponse(
-              fieldSchema.getId(),
-              resolvePageDisplayText(
-                  pageSchema,
-                  fieldSchema.getLabelCode(),
-                  fieldSchema.getLabel(),
-                  language,
-                  accountEnv,
-                  trustCode,
-                  schemeType),
-              hasText(fieldSchema.getDataType()) ? fieldSchema.getDataType() : null,
-              hasText(fieldSchema.getControlType()) ? fieldSchema.getControlType() : null,
-              state.value(),
-              state.value(),
-              isReadonly(state.configValue()),
-              isRequired(state.configValue()),
-              fieldSchema.getMinLength(),
-              fieldSchema.getMaxLength(),
-              hasText(fieldSchema.getPattern()) ? fieldSchema.getPattern() : null,
-              hasText(
-                      resolvePageDisplayText(
-                          pageSchema,
-                          fieldSchema.getPlaceholderCode(),
-                          fieldSchema.getPlaceholder(),
-                          language,
-                          accountEnv,
-                          trustCode,
-                          schemeType))
-                  ? resolvePageDisplayText(
-                      pageSchema,
-                      fieldSchema.getPlaceholderCode(),
-                      fieldSchema.getPlaceholder(),
-                      language,
-                      accountEnv,
-                      trustCode,
-                      schemeType)
-                  : null,
-              hasText(fieldSchema.getOptionSource()) ? fieldSchema.getOptionSource() : null,
-              fieldSchema.getCopyWhenChecked(),
-              fieldSchema.getDisplayOrder() != null
-                  ? fieldSchema.getDisplayOrder()
-                  : defaultFieldOrder,
-              validations));
+              schemeType));
       defaultFieldOrder += 10;
     }
     return fields;
+  }
+
+  private FieldResponse toFieldResponse(
+      PageSchemaProperties pageSchema,
+      FieldProperties fieldSchema,
+      FieldState state,
+      int defaultFieldOrder,
+      String language,
+      String accountEnv,
+      String trustCode,
+      String schemeType) {
+    List<ValidationRuleResponse> validations =
+        mapValidationRules(
+            pageSchema, fieldSchema.getValidations(), language, accountEnv, trustCode, schemeType);
+    String placeholder =
+        resolvePageDisplayText(
+            pageSchema,
+            fieldSchema.getPlaceholderCode(),
+            fieldSchema.getPlaceholder(),
+            language,
+            accountEnv,
+            trustCode,
+            schemeType);
+    return new FieldResponse(
+        fieldSchema.getId(),
+        resolvePageDisplayText(
+            pageSchema,
+            fieldSchema.getLabelCode(),
+            fieldSchema.getLabel(),
+            language,
+            accountEnv,
+            trustCode,
+            schemeType),
+        hasText(fieldSchema.getDataType()) ? fieldSchema.getDataType() : null,
+        hasText(fieldSchema.getControlType()) ? fieldSchema.getControlType() : null,
+        state.value(),
+        state.value(),
+        isReadonly(state.configValue()),
+        isRequired(state.configValue()),
+        fieldSchema.getMinLength(),
+        fieldSchema.getMaxLength(),
+        hasText(fieldSchema.getPattern()) ? fieldSchema.getPattern() : null,
+        hasText(placeholder) ? placeholder : null,
+        hasText(fieldSchema.getOptionSource()) ? fieldSchema.getOptionSource() : null,
+        fieldSchema.getCopyWhenChecked(),
+        fieldSchema.getDisplayOrder() != null ? fieldSchema.getDisplayOrder() : defaultFieldOrder,
+        validations);
   }
 
   private List<ValidationRuleResponse> mapValidationRules(
