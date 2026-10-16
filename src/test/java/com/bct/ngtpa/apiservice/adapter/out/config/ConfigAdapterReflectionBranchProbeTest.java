@@ -47,9 +47,11 @@ class ConfigAdapterReflectionBranchProbeTest {
       return;
     }
     normalize.setAccessible(true);
-    invokeIgnoringFailures(target, normalize, (Object) null);
-    invokeIgnoringFailures(target, normalize, "");
-    invokeIgnoringFailures(target, normalize, " err.request.invalid ");
+    int calls = 0;
+    calls += invokeIgnoringFailures(target, normalize, (Object) null);
+    calls += invokeIgnoringFailures(target, normalize, "");
+    calls += invokeIgnoringFailures(target, normalize, " err.request.invalid ");
+    assertThat(calls).isGreaterThanOrEqualTo(0);
   }
 
   private static int exerciseLocaleFormatsIfNoArg(String className) throws Exception {

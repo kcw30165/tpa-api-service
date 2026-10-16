@@ -67,9 +67,10 @@ public final class AesGcmAuthenticatedSessionProtector
       int split = encrypted.length - TAG_BYTES;
       Map<String, String> attributes = new LinkedHashMap<>();
       attributes.put(
-          ProtectedAuthenticatedSession.CIPHERTEXT, encode(Arrays.copyOf(encrypted, split)));
-      attributes.put(ProtectedAuthenticatedSession.ALGORITHM, TRANSFORMATION);
-      attributes.put(ProtectedAuthenticatedSession.NONCE, encode(nonce));
+          ProtectedAuthenticatedSession.CIPHERTEXT_ATTRIBUTE,
+          encode(Arrays.copyOf(encrypted, split)));
+      attributes.put(ProtectedAuthenticatedSession.ALGORITHM_ATTRIBUTE, TRANSFORMATION);
+      attributes.put(ProtectedAuthenticatedSession.NONCE_ATTRIBUTE, encode(nonce));
       attributes.put(
           ProtectedAuthenticatedSession.AUTHENTICATION_TAG,
           encode(Arrays.copyOfRange(encrypted, split, encrypted.length)));

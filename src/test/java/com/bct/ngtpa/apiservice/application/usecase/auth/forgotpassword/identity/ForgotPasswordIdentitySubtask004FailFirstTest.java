@@ -12,11 +12,18 @@ import org.junit.jupiter.params.provider.MethodSource;
 class ForgotPasswordIdentitySubtask004FailFirstTest {
   @Test
   void identityCapabilityAndGenericMutationLockExist() throws Exception {
-    Class.forName(
-        "com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.ForgotPasswordIdentityVerifier");
-    Class.forName("com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort");
-    Class.forName(
-        "com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionMutationLockAdapter");
+    assertDoesNotThrow(
+        () ->
+            Class.forName(
+                "com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.ForgotPasswordIdentityVerifier"));
+    assertDoesNotThrow(
+        () ->
+            Class.forName(
+                "com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort"));
+    assertDoesNotThrow(
+        () ->
+            Class.forName(
+                "com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionMutationLockAdapter"));
   }
 
   static Stream<Arguments> mappings() {

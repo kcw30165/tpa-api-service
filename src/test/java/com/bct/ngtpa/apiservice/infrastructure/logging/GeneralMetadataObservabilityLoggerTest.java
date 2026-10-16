@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.infrastructure.logging;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
+
 import com.bct.ngtpa.apiservice.application.port.out.GeneralMetadataObservabilityPort.CacheResult;
 import com.bct.ngtpa.apiservice.application.port.out.GeneralMetadataObservabilityPort.Outcome;
 import com.bct.ngtpa.apiservice.application.port.out.GeneralMetadataObservabilityPort.Phase;
@@ -16,26 +18,31 @@ class GeneralMetadataObservabilityLoggerTest {
 
   @Test
   void cacheWithBlankRequestIdDoesNotThrow() {
-    logger.cache("", Phase.INITIAL_READ, CacheResult.HIT);
+    assertThatCode(() -> logger.cache("", Phase.INITIAL_READ, CacheResult.HIT))
+        .doesNotThrowAnyException();
   }
 
   @Test
   void cacheWithNullRequestIdDoesNotThrow() {
-    logger.cache(null, Phase.UNFILTERED, CacheResult.MISS);
+    assertThatCode(() -> logger.cache(null, Phase.UNFILTERED, CacheResult.MISS))
+        .doesNotThrowAnyException();
   }
 
   @Test
   void cacheIncompleteDoesNotThrow() {
-    logger.cache("req-1", Phase.CONFLICT_RECOVERY, CacheResult.INCOMPLETE);
+    assertThatCode(() -> logger.cache("req-1", Phase.CONFLICT_RECOVERY, CacheResult.INCOMPLETE))
+        .doesNotThrowAnyException();
   }
 
   @Test
   void resolutionSuccessDoesNotThrow() {
-    logger.resolution("req-1", Phase.TARGETED, Outcome.SUCCESS, 5, 100);
+    assertThatCode(() -> logger.resolution("req-1", Phase.TARGETED, Outcome.SUCCESS, 5, 100))
+        .doesNotThrowAnyException();
   }
 
   @Test
   void resolutionFailureWithNegativeValuesClampsToZero() {
-    logger.resolution("req-1", Phase.INITIAL_READ, Outcome.FAILURE, -1, -1);
+    assertThatCode(() -> logger.resolution("req-1", Phase.INITIAL_READ, Outcome.FAILURE, -1, -1))
+        .doesNotThrowAnyException();
   }
 }

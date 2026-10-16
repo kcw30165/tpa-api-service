@@ -22,9 +22,9 @@ class ProtectedAuthenticatedSessionRevisionFieldTest {
   private ProtectedAuthenticatedSession.Data data() {
     return new ProtectedAuthenticatedSession.Data(
         Map.of(
-            ProtectedAuthenticatedSession.CIPHERTEXT, "c",
-            ProtectedAuthenticatedSession.ALGORITHM, "AES/GCM/NoPadding",
-            ProtectedAuthenticatedSession.NONCE, "n",
+            ProtectedAuthenticatedSession.CIPHERTEXT_ATTRIBUTE, "c",
+            ProtectedAuthenticatedSession.ALGORITHM_ATTRIBUTE, "AES/GCM/NoPadding",
+            ProtectedAuthenticatedSession.NONCE_ATTRIBUTE, "n",
             ProtectedAuthenticatedSession.AUTHENTICATION_TAG, "t",
             ProtectedAuthenticatedSession.KEY_VERSION, "v1"));
   }

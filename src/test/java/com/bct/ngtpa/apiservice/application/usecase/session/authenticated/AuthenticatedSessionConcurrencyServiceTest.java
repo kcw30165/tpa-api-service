@@ -297,9 +297,9 @@ class AuthenticatedSessionConcurrencyServiceTest {
       var data =
           new ProtectedAuthenticatedSession.Data(
               Map.of(
-                  ProtectedAuthenticatedSession.CIPHERTEXT, token,
-                  ProtectedAuthenticatedSession.ALGORITHM, "AES/GCM/NoPadding",
-                  ProtectedAuthenticatedSession.NONCE, "n",
+                  ProtectedAuthenticatedSession.CIPHERTEXT_ATTRIBUTE, token,
+                  ProtectedAuthenticatedSession.ALGORITHM_ATTRIBUTE, "AES/GCM/NoPadding",
+                  ProtectedAuthenticatedSession.NONCE_ATTRIBUTE, "n",
                   ProtectedAuthenticatedSession.AUTHENTICATION_TAG, "t",
                   ProtectedAuthenticatedSession.KEY_VERSION, "v1"));
       return new ProtectedAuthenticatedSession(
