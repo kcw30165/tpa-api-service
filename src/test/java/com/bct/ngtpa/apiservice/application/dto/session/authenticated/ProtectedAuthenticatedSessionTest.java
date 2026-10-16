@@ -38,9 +38,9 @@ class ProtectedAuthenticatedSessionTest {
                     AuthenticatedSessionStatus.ACTIVE,
                     new ProtectedAuthenticatedSession.Data(
                         Map.of(
-                            ProtectedAuthenticatedSession.CIPHERTEXT, " ",
-                            ProtectedAuthenticatedSession.ALGORITHM, "AES/GCM/NoPadding",
-                            ProtectedAuthenticatedSession.NONCE, "nonce",
+                            ProtectedAuthenticatedSession.CIPHERTEXT_ATTRIBUTE, " ",
+                            ProtectedAuthenticatedSession.ALGORITHM_ATTRIBUTE, "AES/GCM/NoPadding",
+                            ProtectedAuthenticatedSession.NONCE_ATTRIBUTE, "nonce",
                             ProtectedAuthenticatedSession.AUTHENTICATION_TAG, "tag",
                             ProtectedAuthenticatedSession.KEY_VERSION, "v1")),
                     created,
@@ -61,9 +61,9 @@ class ProtectedAuthenticatedSessionTest {
                     AuthenticatedSessionStatus.ACTIVE,
                     new ProtectedAuthenticatedSession.Data(
                         Map.of(
-                            ProtectedAuthenticatedSession.CIPHERTEXT, "cipher",
-                            ProtectedAuthenticatedSession.ALGORITHM, "AES/GCM/NoPadding",
-                            ProtectedAuthenticatedSession.NONCE, "nonce",
+                            ProtectedAuthenticatedSession.CIPHERTEXT_ATTRIBUTE, "cipher",
+                            ProtectedAuthenticatedSession.ALGORITHM_ATTRIBUTE, "AES/GCM/NoPadding",
+                            ProtectedAuthenticatedSession.NONCE_ATTRIBUTE, "nonce",
                             ProtectedAuthenticatedSession.AUTHENTICATION_TAG, "tag",
                             ProtectedAuthenticatedSession.KEY_VERSION, "v1")),
                     created,

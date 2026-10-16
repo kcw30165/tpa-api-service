@@ -74,9 +74,9 @@ class AuthenticatedSessionCsrfRefreshServiceTest {
         AuthenticatedSessionStatus.ACTIVE,
         new ProtectedAuthenticatedSession.Data(
             Map.of(
-                ProtectedAuthenticatedSession.CIPHERTEXT, "ct",
-                ProtectedAuthenticatedSession.ALGORITHM, "AES_GCM_V1",
-                ProtectedAuthenticatedSession.NONCE, "nonce",
+                ProtectedAuthenticatedSession.CIPHERTEXT_ATTRIBUTE, "ct",
+                ProtectedAuthenticatedSession.ALGORITHM_ATTRIBUTE, "AES_GCM_V1",
+                ProtectedAuthenticatedSession.NONCE_ATTRIBUTE, "nonce",
                 ProtectedAuthenticatedSession.AUTHENTICATION_TAG, "tag",
                 ProtectedAuthenticatedSession.KEY_VERSION, "kv1")),
         NOW.minusSeconds(300),

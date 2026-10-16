@@ -30,9 +30,9 @@ class AuthenticatedSessionHybridEnvelopeTest {
     assertThat(envelope.absoluteExpiresAt()).isEqualTo(Instant.parse("2026-01-01T08:00:00Z"));
     assertThat(envelope.data().attributes())
         .containsOnlyKeys(
-            ProtectedAuthenticatedSession.CIPHERTEXT,
-            ProtectedAuthenticatedSession.ALGORITHM,
-            ProtectedAuthenticatedSession.NONCE,
+            ProtectedAuthenticatedSession.CIPHERTEXT_ATTRIBUTE,
+            ProtectedAuthenticatedSession.ALGORITHM_ATTRIBUTE,
+            ProtectedAuthenticatedSession.NONCE_ATTRIBUTE,
             ProtectedAuthenticatedSession.AUTHENTICATION_TAG,
             ProtectedAuthenticatedSession.KEY_VERSION);
     assertThat(envelope.data().attributes().toString())

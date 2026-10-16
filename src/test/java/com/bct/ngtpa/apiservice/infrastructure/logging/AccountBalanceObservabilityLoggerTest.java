@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.infrastructure.logging;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
+
 import com.bct.ngtpa.apiservice.application.port.out.AccountBalanceObservabilityPort.FailureCategory;
 import com.bct.ngtpa.apiservice.application.port.out.AccountBalanceObservabilityPort.Phase;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,17 +17,20 @@ class AccountBalanceObservabilityLoggerTest {
 
   @Test
   void completedWithBlankRequestIdDoesNotThrow() {
-    logger.completed("", Phase.COMPLETE, 100, -5, true, false);
+    assertThatCode(() -> logger.completed("", Phase.COMPLETE, 100, -5, true, false))
+        .doesNotThrowAnyException();
   }
 
   @Test
   void completedWithNullRequestIdDoesNotThrow() {
-    logger.completed(null, Phase.SOURCE, 100, 3, false, true);
+    assertThatCode(() -> logger.completed(null, Phase.SOURCE, 100, 3, false, true))
+        .doesNotThrowAnyException();
   }
 
   @Test
   void completedWithNegativeDurationClampsToZero() {
-    logger.completed("req-1", Phase.ASSEMBLY, -100, 0, false, false);
+    assertThatCode(() -> logger.completed("req-1", Phase.ASSEMBLY, -100, 0, false, false))
+        .doesNotThrowAnyException();
   }
 
   @Test

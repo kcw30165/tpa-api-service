@@ -26,9 +26,9 @@ public record ProtectedAuthenticatedSession(
     Instant absoluteExpiresAt,
     SessionRevision sessionRevision) {
 
-  public static final String CIPHERTEXT = "authenticatedContext.ciphertext";
-  public static final String ALGORITHM = "authenticatedContext.algorithm";
-  public static final String NONCE = "authenticatedContext.nonce";
+  public static final String CIPHERTEXT_ATTRIBUTE = "authenticatedContext.ciphertext";
+  public static final String ALGORITHM_ATTRIBUTE = "authenticatedContext.algorithm";
+  public static final String NONCE_ATTRIBUTE = "authenticatedContext.nonce";
   public static final String AUTHENTICATION_TAG = "authenticatedContext.authenticationTag";
   public static final String KEY_VERSION = "authenticatedContext.keyVersion";
 
@@ -50,23 +50,23 @@ public record ProtectedAuthenticatedSession(
       throw new IllegalArgumentException("invalid authenticated session lifecycle metadata");
     }
     java.util.Objects.requireNonNull(sessionRevision, "sessionRevision must not be null");
-    requiredAttribute(CIPHERTEXT, data.attributes());
-    requiredAttribute(ALGORITHM, data.attributes());
-    requiredAttribute(NONCE, data.attributes());
+    requiredAttribute(CIPHERTEXT_ATTRIBUTE, data.attributes());
+    requiredAttribute(ALGORITHM_ATTRIBUTE, data.attributes());
+    requiredAttribute(NONCE_ATTRIBUTE, data.attributes());
     requiredAttribute(AUTHENTICATION_TAG, data.attributes());
     requiredAttribute(KEY_VERSION, data.attributes());
   }
 
   public String ciphertext() {
-    return data.attributes().get(CIPHERTEXT);
+    return data.attributes().get(CIPHERTEXT_ATTRIBUTE);
   }
 
   public String algorithm() {
-    return data.attributes().get(ALGORITHM);
+    return data.attributes().get(ALGORITHM_ATTRIBUTE);
   }
 
   public String nonce() {
-    return data.attributes().get(NONCE);
+    return data.attributes().get(NONCE_ATTRIBUTE);
   }
 
   public String authenticationTag() {

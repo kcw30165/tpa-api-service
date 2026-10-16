@@ -14,9 +14,9 @@ public final class ProtectedAuthenticatedSessionTestFixtures {
         AuthenticatedSessionStatus.ACTIVE,
         new ProtectedAuthenticatedSession.Data(
             Map.of(
-                ProtectedAuthenticatedSession.CIPHERTEXT, ciphertext,
-                ProtectedAuthenticatedSession.ALGORITHM, "AES/GCM/NoPadding",
-                ProtectedAuthenticatedSession.NONCE, nonce,
+                ProtectedAuthenticatedSession.CIPHERTEXT_ATTRIBUTE, ciphertext,
+                ProtectedAuthenticatedSession.ALGORITHM_ATTRIBUTE, "AES/GCM/NoPadding",
+                ProtectedAuthenticatedSession.NONCE_ATTRIBUTE, nonce,
                 ProtectedAuthenticatedSession.AUTHENTICATION_TAG, authenticationTag,
                 ProtectedAuthenticatedSession.KEY_VERSION, keyVersion)),
         created,

@@ -47,7 +47,7 @@ class AesGcmAuthenticatedSessionProtectorTest {
   void ciphertextTamperingFailsClosedWithoutSecretLeakage() {
     var value = protector.protect(session());
     var attributes = new LinkedHashMap<>(value.data().attributes());
-    attributes.put(ProtectedAuthenticatedSession.CIPHERTEXT, value.ciphertext() + "A");
+    attributes.put(ProtectedAuthenticatedSession.CIPHERTEXT_ATTRIBUTE, value.ciphertext() + "A");
     var tampered =
         new ProtectedAuthenticatedSession(
             value.authenticatedSessionId(),
