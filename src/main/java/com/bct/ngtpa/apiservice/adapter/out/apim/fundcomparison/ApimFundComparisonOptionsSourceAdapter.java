@@ -16,7 +16,6 @@ import com.bct.ngtpa.apiservice.application.port.out.FundComparisonOptionsSource
 import java.util.List;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -43,7 +42,11 @@ public final class ApimFundComparisonOptionsSourceAdapter
 
   @Autowired
   public ApimFundComparisonOptionsSourceAdapter(
-      ApimExchangeExecutor executor, @Value("${apim.fund-comparison.options.path}") String path) {
+      ApimExchangeExecutor executor, FundComparisonOptionsApimProperties properties) {
+    this(executor, properties.getPath());
+  }
+
+  ApimFundComparisonOptionsSourceAdapter(ApimExchangeExecutor executor, String path) {
     this.executor = Objects.requireNonNull(executor, "executor must not be null");
     if (path == null || path.isBlank()) {
       throw new IllegalArgumentException("path must not be blank");
