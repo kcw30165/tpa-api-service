@@ -132,11 +132,10 @@ public final class VerifyForgotPasswordIdentityService
     var verifiedContext = context.withPhase(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
     return sessions
         .loadSnapshot(c.sessionId())
-        .flatMap(latest -> persistVerified(c, latest, verifiedContext, now));
+        .flatMap(latest -> persistVerified(latest, verifiedContext, now));
   }
 
   private Mono<VerifyForgotPasswordIdentityResult> persistVerified(
-      VerifyForgotPasswordIdentityCommand c,
       java.util.Optional<AuthFlowSessionSnapshot> latest,
       ForgotPasswordAuthFlowContext verifiedContext,
       Instant now) {

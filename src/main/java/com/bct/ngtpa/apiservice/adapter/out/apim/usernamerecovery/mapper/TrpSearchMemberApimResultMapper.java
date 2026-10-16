@@ -98,7 +98,7 @@ public class TrpSearchMemberApimResultMapper {
         text(item.env()),
         text(item.trustCode()),
         registered,
-        registered ? custId : null,
+        Boolean.TRUE.equals(registered) ? custId : null,
         text(item.schemeName()),
         text(item.schemeNameChi()));
   }

@@ -113,10 +113,7 @@ public class ContributionSummaryWebMapper {
             row,
             result,
             displayConfig,
-            lang,
-            accountEnv,
-            trustCode,
-            schemeType,
+            new ContributionBreakdownLocale(lang, accountEnv, trustCode, schemeType),
             totalAmount,
             totalText);
     return new ContributionItemResponse(
@@ -167,28 +164,33 @@ public class ContributionSummaryWebMapper {
     return new ContributionDateValueResponse(dealingIso, dealingText);
   }
 
+  private record ContributionBreakdownLocale(
+      String lang, String accountEnv, String trustCode, String schemeType) {}
+
   private List<ContributionBreakdownRowResponse> buildBreakdownRows(
       ContributionSummaryRow row,
       ContributionSummaryReportResult result,
       ContributionWebDisplayConfig displayConfig,
-      String lang,
-      String accountEnv,
-      String trustCode,
-      String schemeType,
+      ContributionBreakdownLocale locale,
       BigDecimal totalAmount,
       String totalText) {
     List<ContributionBreakdownRowResponse> breakdownRows = new ArrayList<>();
     breakdownRows.add(
         new ContributionBreakdownRowResponse(
-            resolveTotalLabel(displayConfig, lang),
+            resolveTotalLabel(displayConfig, locale.lang()),
             new ContributionAmountValueResponse(totalAmount, totalText)));
     row.details(result.report().sources())
         .forEach(
             detail -> {
               var amt = detail.amount() != null ? detail.amount() : BigDecimal.ZERO;
               String amtText =
-                  amountDisplayPort.formatAmount(amt, lang, accountEnv, trustCode, schemeType);
-              var label = resolveLabel(detail.source().labels(), lang);
+                  amountDisplayPort.formatAmount(
+                      amt,
+                      locale.lang(),
+                      locale.accountEnv(),
+                      locale.trustCode(),
+                      locale.schemeType());
+              var label = resolveLabel(detail.source().labels(), locale.lang());
               breakdownRows.add(
                   new ContributionBreakdownRowResponse(
                       label, new ContributionAmountValueResponse(amt, amtText)));

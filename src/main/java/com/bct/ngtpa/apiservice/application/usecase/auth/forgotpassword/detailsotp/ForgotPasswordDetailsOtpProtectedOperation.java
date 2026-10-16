@@ -234,6 +234,10 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
       ForgotPasswordAuthFlowContext context) {
     if (!budget.hasPersistenceBudget(policy.persistenceAllowance())) return failure();
     Instant now = clock.instant();
+    String maskedDestination =
+        CHANNEL_EMAIL.equals(channel)
+            ? masker.maskEmail(destination)
+            : masker.maskMobile(destination);
     var bind =
         new ForgotPasswordOtpBindingCommand(
             command.sessionId(),
@@ -242,9 +246,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
             challenge.otpChallengeId(),
             channel,
             destination,
-            CHANNEL_EMAIL.equals(channel)
-                ? masker.maskEmail(destination)
-                : masker.maskMobile(destination),
+            maskedDestination,
             challenge.expiresAt(),
             now.plusSeconds(60),
             now,
@@ -278,9 +280,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                                   new ForgotPasswordDetailsOtpProtectedExecutionResult(
                                       new ForgotPasswordDetailsOtpResult(
                                           ForgotPasswordDetailsOtpResult.Status.SUCCESS,
-                                          CHANNEL_EMAIL.equals(channel)
-                                              ? masker.maskEmail(destination)
-                                              : masker.maskMobile(destination),
+                                          maskedDestination,
                                           challenge.expiresInSeconds(),
                                           60,
                                           List.of()),

@@ -202,12 +202,19 @@ public final class RedisLoginOtpVerifyPersistenceAdapter implements LoginOtpVeri
     return null;
   }
 
+  private static OtpStatus nextOtpStatus(boolean match, boolean locked) {
+    if (match) {
+      return OtpStatus.CONSUMED;
+    }
+    return locked ? OtpStatus.LOCKED : OtpStatus.CREATED;
+  }
+
   private Mono<LoginOtpVerifyPersistenceResult> applyVerification(
       OtpChallenge x, RevisionedLoginOtpVerifyCommand c) {
     boolean match = hasher.matches(c.submittedOtp().revealForComparison(), x.codeHash());
     int failures = x.failedAttemptCount() + (match ? 0 : 1);
     boolean locked = failures >= x.maxVerifyAttempts();
-    OtpStatus status = match ? OtpStatus.CONSUMED : (locked ? OtpStatus.LOCKED : OtpStatus.CREATED);
+    OtpStatus status = nextOtpStatus(match, locked);
     OtpChallenge updated =
         new OtpChallenge(
             x.otpChallengeId(),
