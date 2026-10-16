@@ -107,17 +107,13 @@ public final class UsernameRecoveryRequestProtectedOperation {
       String correlationId,
       Instant now) {
     AuthFlowSession session = snapshot.session();
-    if (session.scenario() != AuthFlowScenario.USERNAME_RECOVERY) {
-      return Mono.error(UsernameRecoveryRequestException.sessionAbsent());
-    }
-    if (session.isExpired(now)) {
-      return Mono.error(UsernameRecoveryRequestException.sessionExpired());
+    UsernameRecoveryRequestProtectedExecutionResult sessionFailure =
+        validateSessionForReservation(session, rawCsrfToken, now);
+    if (sessionFailure != null) {
+      return Mono.just(sessionFailure);
     }
     if (session.isTerminal() || session.status() != AuthFlowStatus.STARTED) {
       return completed(UsernameRecoveryRequestResult.Outcome.WORKFLOW_COMPLETED);
-    }
-    if (!csrfTokenValidationService.validate(rawCsrfToken, session.csrfTokenHash()).valid()) {
-      return Mono.error(UsernameRecoveryRequestException.securityInvalid());
     }
     final UsernameRecoveryAuthFlowContext context;
     try {
@@ -126,14 +122,52 @@ public final class UsernameRecoveryRequestProtectedOperation {
       return Mono.just(UsernameRecoveryRequestProtectedExecutionResult.provenPreDispatch(error));
     }
     UsernameRecoverySessionCandidate candidate = findCandidate(context, command.schemeRef());
-    if (candidate == null)
-      return completed(UsernameRecoveryRequestResult.Outcome.INVALID_SCHEME_REF);
-    if (!candidate.registered()) {
-      return completed(UsernameRecoveryRequestResult.Outcome.UNREGISTERED_CANDIDATE);
+    UsernameRecoveryRequestResult.Outcome candidateFailure = validateCandidate(candidate);
+    if (candidateFailure != null) {
+      return completed(candidateFailure);
     }
+    return reserveAndDeliver(snapshot, session, context, command, correlationId, now);
+  }
+
+  private UsernameRecoveryRequestProtectedExecutionResult validateSessionForReservation(
+      AuthFlowSession session, String rawCsrfToken, Instant now) {
+    if (session.scenario() != AuthFlowScenario.USERNAME_RECOVERY) {
+      return UsernameRecoveryRequestProtectedExecutionResult.provenPreDispatch(
+          UsernameRecoveryRequestException.sessionAbsent());
+    }
+    if (session.isExpired(now)) {
+      return UsernameRecoveryRequestProtectedExecutionResult.provenPreDispatch(
+          UsernameRecoveryRequestException.sessionExpired());
+    }
+    if (session.isTerminal() || session.status() != AuthFlowStatus.STARTED) {
+      return null;
+    }
+    if (!csrfTokenValidationService.validate(rawCsrfToken, session.csrfTokenHash()).valid()) {
+      return UsernameRecoveryRequestProtectedExecutionResult.provenPreDispatch(
+          UsernameRecoveryRequestException.securityInvalid());
+    }
+    return null;
+  }
+
+  private UsernameRecoveryRequestResult.Outcome validateCandidate(
+      UsernameRecoverySessionCandidate candidate) {
+    if (candidate == null) return UsernameRecoveryRequestResult.Outcome.INVALID_SCHEME_REF;
+    if (!candidate.registered())
+      return UsernameRecoveryRequestResult.Outcome.UNREGISTERED_CANDIDATE;
     if (candidate.deliveryState() == UsernameRecoveryDeliveryState.REQUESTED) {
-      return completed(UsernameRecoveryRequestResult.Outcome.ALREADY_REQUESTED);
+      return UsernameRecoveryRequestResult.Outcome.ALREADY_REQUESTED;
     }
+    return null;
+  }
+
+  private Mono<UsernameRecoveryRequestProtectedExecutionResult> reserveAndDeliver(
+      AuthFlowSessionSnapshot snapshot,
+      AuthFlowSession session,
+      UsernameRecoveryAuthFlowContext context,
+      UsernameRecoveryRequestCommand command,
+      String correlationId,
+      Instant now) {
+    UsernameRecoverySessionCandidate candidate = findCandidate(context, command.schemeRef());
     if (candidate.deliveryState() != UsernameRecoveryDeliveryState.AVAILABLE) {
       return Mono.error(UsernameRecoveryRequestException.candidateNotAvailable());
     }
