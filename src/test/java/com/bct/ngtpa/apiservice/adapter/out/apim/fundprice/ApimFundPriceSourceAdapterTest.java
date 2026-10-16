@@ -35,12 +35,20 @@ import reactor.test.StepVerifier;
  * from-date and to-date -- mode has no effect on this adapter's downstream request shape (an
  * earlier version incorrectly expanded MONTHLY into a first/last-calendar-day range; there is no
  * such expansion).
+ *
+ * <p>Additively extended (script 057, docs/design/13-fund-comparison/07-implementation-plan.md
+ * section 7.4 corrected sub-task 3.1): new {@code fetchPrices} scenarios confirm the adapter also
+ * satisfies {@link com.bct.ngtpa.apiservice.application.port.out.FundComparisonPriceSourcePort},
+ * reusing the exact same {@code exchangeAndReconcile} path as {@code fetchPrice}/{@code
+ * fetchPriceRange} but with a REAL fund-list value instead of the hardcoded {@code ""} those two
+ * methods still send (confirmed unchanged below).
  */
 class ApimFundPriceSourceAdapterTest {
 
   private static final DateTimeFormatter FORMATTER =
       new com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.FundPriceDateFormatProperties()
           .fullDateFormatter();
+
   private static final String PATH = "/ws/NGTPA/v1/TRPGetFundPrice";
 
   private final ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);
@@ -70,11 +78,11 @@ class ApimFundPriceSourceAdapterTest {
   }
 
   // ----- mode-dependent date expansion (the core new behavior) -----------------
-
   @Test
   void dailyModeSetsFromDateAndToDateBothEqualToTheCommandDate() {
     stubSuccess(validItem());
-    ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
+    ArgumentCaptor<ApimExchangeRequest<?, ?>> captor =
+        ArgumentCaptor.forClass(ApimExchangeRequest.class);
 
     newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))).block();
 
@@ -95,7 +103,9 @@ class ApimFundPriceSourceAdapterTest {
     stubSuccess(validItem());
     ArgumentCaptor<ApimExchangeRequest<?, ?>> captor =
         ArgumentCaptor.forClass(ApimExchangeRequest.class);
+
     newAdapter().fetchPrice(command("MONTHLY", LocalDate.of(2026, 2, 15))).block();
+
     verify(executor).postEnvelope(captor.capture());
     var request =
         (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
@@ -111,7 +121,9 @@ class ApimFundPriceSourceAdapterTest {
     stubSuccess(validItem());
     ArgumentCaptor<ApimExchangeRequest<?, ?>> captor =
         ArgumentCaptor.forClass(ApimExchangeRequest.class);
+
     newAdapter().fetchPrice(command("MONTHLY", LocalDate.of(2028, 2, 29))).block();
+
     verify(executor).postEnvelope(captor.capture());
     var request =
         (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
@@ -127,7 +139,9 @@ class ApimFundPriceSourceAdapterTest {
     // current (non-comparison) usages. Populated solely here in the adapter.
     stubSuccess(validItem());
     var captor = org.mockito.ArgumentCaptor.forClass(ApimExchangeRequest.class);
+
     newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))).block();
+
     verify(executor).postEnvelope(captor.capture());
     var request =
         (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
@@ -138,7 +152,8 @@ class ApimFundPriceSourceAdapterTest {
   @Test
   void policyNoIsPassedThroughFromTheCommand() {
     stubSuccess(validItem());
-    ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
+    ArgumentCaptor<ApimExchangeRequest<?, ?>> captor =
+        ArgumentCaptor.forClass(ApimExchangeRequest.class);
 
     newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))).block();
 
@@ -150,11 +165,9 @@ class ApimFundPriceSourceAdapterTest {
   }
 
   // ----- successful reconciliation delegation -----------------------------------
-
   @Test
   void successfulResponseDelegatesToTheValidatorAndReturnsReconciledData() {
     stubSuccess(validItem());
-
     StepVerifier.create(newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))))
         .assertNext(
             result -> {
@@ -165,16 +178,9 @@ class ApimFundPriceSourceAdapterTest {
   }
 
   // ----- error mapping (mirrors ApimFundPriceModeSourceAdapterTest's style) -----
-
   @SuppressWarnings("unchecked")
   @Test
   void wrongDataItemCountMapsToSystemFailure() {
-    // Replaces the original nullEnvelopeMapsToSystemFailure test (script 099 fix): Mono.just(T)
-    // throws NullPointerException by contract when T is null, so that test never actually
-    // reached the adapter code under test -- and a Mono can never EMIT null through flatMap
-    // in the first place, making the adapter's own envelope==null check unreachable dead code
-    // (removed in the same fix). This test exercises a genuinely reachable failure path
-    // instead: response.getData() returning something other than exactly one item.
     var envelope = mock(ApimResponseEnvelope.class);
     var response = mock(com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody.class);
     when(response.getErrMessage()).thenReturn("");
@@ -190,8 +196,6 @@ class ApimFundPriceSourceAdapterTest {
   @SuppressWarnings("unchecked")
   @Test
   void nullResponseInsideEnvelopeMapsToSystemFailure() {
-    // Confirms the still-real, still-reachable check: a non-null envelope whose getResponse()
-    // itself returns null.
     var envelope = mock(ApimResponseEnvelope.class);
     when(envelope.getResponse()).thenReturn(null);
     when(executor.postEnvelope(any())).thenReturn(Mono.just(envelope));
@@ -218,8 +222,6 @@ class ApimFundPriceSourceAdapterTest {
   @SuppressWarnings("unchecked")
   @Test
   void validatorReconciliationFailureIsWrappedAsFundPriceRetrievalException() {
-    // An item that fails reconciliation (mismatched fund-code) should surface as the same
-    // single generic exception, not leak the validator's internal failure.
     var invalidItem =
         new TrpGetFundPriceApimDataItem(
             List.of(new FundPriceEntry("UNMATCHED", "2026-05-05", BigDecimal.ONE, BigDecimal.ONE)),
@@ -243,12 +245,11 @@ class ApimFundPriceSourceAdapterTest {
   }
 
   // ----- fetchPriceRange (export redesign, script 107): NO mode, explicit fromDate/toDate --------
-
   @Test
   void fetchPriceRangePassesFromDateAndToDateDirectlyWithNoModeLogic() {
     stubSuccess(validItem());
-    ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
-
+    ArgumentCaptor<ApimExchangeRequest<?, ?>> captor =
+        ArgumentCaptor.forClass(ApimExchangeRequest.class);
     var rangeCommand =
         new com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceRangeCommand(
             "00000008802",
@@ -281,7 +282,9 @@ class ApimFundPriceSourceAdapterTest {
             LocalDate.of(2026, 9, 25),
             "DB",
             ActorUserRole.ROLE_USER_MBR);
+
     newAdapter().fetchPriceRange(rangeCommand).block();
+
     verify(executor).postEnvelope(captor.capture());
     var request =
         (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
@@ -306,11 +309,10 @@ class ApimFundPriceSourceAdapterTest {
   }
 
   // ----- constructor validation --------------------------------------------------
-
   @Test
   void blankPathThrows() {
     org.assertj.core.api.Assertions.assertThatThrownBy(
-            () -> new ApimFundPriceSourceAdapter(executor, "  ", FORMATTER))
+            () -> new ApimFundPriceSourceAdapter(executor, " ", FORMATTER))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -341,9 +343,11 @@ class ApimFundPriceSourceAdapterTest {
     when(properties.getPath()).thenReturn(PATH);
     var adapter = new ApimFundPriceSourceAdapter(executor, properties, FORMATTER);
     stubSuccess(validItem());
+    ArgumentCaptor<ApimExchangeRequest<?, ?>> captor =
+        ArgumentCaptor.forClass(ApimExchangeRequest.class);
 
-    ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
     adapter.fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))).block();
+
     verify(executor).postEnvelope(captor.capture());
     assertThat(captor.getValue().path()).isEqualTo(PATH);
   }
@@ -402,5 +406,123 @@ class ApimFundPriceSourceAdapterTest {
     StepVerifier.create(newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))))
         .expectError(FundPriceRetrievalException.class)
         .verify();
+  }
+
+  // ===== fetchPrices (Fund Comparison's shared-adapter reuse, corrected design, =====
+  // ===== script 057): SAME exchangeAndReconcile path as fetchPrice/fetchPriceRange, =====
+  // ===== but with the REAL fund-list value, not "" =====
+  @Test
+  void fetchPricesPassesFromDateAndToDateDirectlyFromTheCommand() {
+    stubSuccess(validItem());
+    ArgumentCaptor<ApimExchangeRequest<?, ?>> captor =
+        ArgumentCaptor.forClass(ApimExchangeRequest.class);
+    var comparisonCommand =
+        new com.bct.ngtpa.apiservice.application.dto.fundcomparison
+            .FetchFundComparisonPricesCommand(
+            "00000008802",
+            LocalDate.of(2023, 9, 25),
+            LocalDate.of(2026, 9, 25),
+            "FAEU,FBAU",
+            "DB",
+            ActorUserRole.ROLE_USER_MBR);
+
+    newAdapter().fetchPrices(comparisonCommand).block();
+
+    verify(executor).postEnvelope(captor.capture());
+    var request =
+        (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
+            captor.getValue().request();
+    assertThat(request.fromDate()).isEqualTo("25/09/2023");
+    assertThat(request.toDate()).isEqualTo("25/09/2026");
+    assertThat(request.policyNo()).isEqualTo("00000008802");
+  }
+
+  @Test
+  void fetchPricesPassesTheRealCommaJoinedFundListNotAnEmptyString() {
+    // The single most important behavioral difference from fetchPrice/fetchPriceRange,
+    // both of which always send fund-list="" -- this confirms the shared
+    // exchangeAndReconcile path genuinely receives and forwards the real value.
+    stubSuccess(validItem());
+    var captor = org.mockito.ArgumentCaptor.forClass(ApimExchangeRequest.class);
+    var comparisonCommand =
+        new com.bct.ngtpa.apiservice.application.dto.fundcomparison
+            .FetchFundComparisonPricesCommand(
+            "00000008802",
+            LocalDate.of(2023, 9, 25),
+            LocalDate.of(2026, 9, 25),
+            "FAEU,FBAU",
+            "DB",
+            ActorUserRole.ROLE_USER_MBR);
+
+    newAdapter().fetchPrices(comparisonCommand).block();
+
+    verify(executor).postEnvelope(captor.capture());
+    var request =
+        (com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest)
+            captor.getValue().request();
+    assertThat(request.fundList()).isEqualTo("FAEU,FBAU");
+  }
+
+  @Test
+  void fetchPricesDelegatesToTheSameValidatorAndErrorMapping() {
+    stubSuccess(validItem());
+    var comparisonCommand =
+        new com.bct.ngtpa.apiservice.application.dto.fundcomparison
+            .FetchFundComparisonPricesCommand(
+            "00000008802",
+            LocalDate.of(2023, 9, 25),
+            LocalDate.of(2026, 9, 25),
+            "DUSM",
+            "DB",
+            ActorUserRole.ROLE_USER_MBR);
+
+    StepVerifier.create(newAdapter().fetchPrices(comparisonCommand))
+        .assertNext(result -> assertThat(result.rows()).hasSize(1))
+        .verifyComplete();
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void fetchPricesNonblankErrMessageMapsToSystemFailureJustLikeTheOtherTwoMethods() {
+    var envelope = mock(ApimResponseEnvelope.class);
+    var response = mock(com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody.class);
+    when(response.getErrMessage()).thenReturn("err.tpa.no.fund.price");
+    when(envelope.getResponse()).thenReturn(response);
+    when(executor.postEnvelope(any())).thenReturn(Mono.just(envelope));
+    var comparisonCommand =
+        new com.bct.ngtpa.apiservice.application.dto.fundcomparison
+            .FetchFundComparisonPricesCommand(
+            "00000008802",
+            LocalDate.of(2023, 9, 25),
+            LocalDate.of(2026, 9, 25),
+            "DUSM",
+            "DB",
+            ActorUserRole.ROLE_USER_MBR);
+
+    StepVerifier.create(newAdapter().fetchPrices(comparisonCommand))
+        .expectError(FundPriceRetrievalException.class)
+        .verify();
+  }
+
+  @Test
+  void theAdapterSatisfiesTheFundComparisonPriceSourcePortContract() {
+    // Confirms the ISP-compliant wiring itself: the SAME adapter instance is usable
+    // through the new, minimal FundComparisonPriceSourcePort interface type, exactly
+    // as it already is through FundPriceSourcePort.
+    stubSuccess(validItem());
+    com.bct.ngtpa.apiservice.application.port.out.FundComparisonPriceSourcePort port = newAdapter();
+    var comparisonCommand =
+        new com.bct.ngtpa.apiservice.application.dto.fundcomparison
+            .FetchFundComparisonPricesCommand(
+            "00000008802",
+            LocalDate.of(2023, 9, 25),
+            LocalDate.of(2026, 9, 25),
+            "DUSM",
+            "DB",
+            ActorUserRole.ROLE_USER_MBR);
+
+    StepVerifier.create(port.fetchPrices(comparisonCommand))
+        .assertNext(result -> assertThat(result.rows()).hasSize(1))
+        .verifyComplete();
   }
 }
