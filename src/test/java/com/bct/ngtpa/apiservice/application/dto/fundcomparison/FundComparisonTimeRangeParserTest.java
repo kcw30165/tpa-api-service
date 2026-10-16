@@ -75,6 +75,20 @@ class FundComparisonTimeRangeParserTest {
   }
 
   @Test
+  void blankTokensFromConsecutiveOrTrailingCommasAreSkipped() {
+    // Closes the confirmed jacoco gap on FundComparisonTimeRangeParser's
+    // token.isEmpty() guard (script 019 evidence, line 39/40): no prior test ever
+    // produced an actual empty string after trim(), so that branch's "true" outcome
+    // was never exercised. A consecutive comma and a trailing comma both produce an
+    // empty element from String.split(",", -1).
+    var consecutiveCommas = FundComparisonTimeRangeParser.parse("10D,,1M");
+    assertThat(consecutiveCommas.timeRanges()).containsExactly("10D", "1M");
+
+    var trailingComma = FundComparisonTimeRangeParser.parse("10D,");
+    assertThat(trailingComma.timeRanges()).containsExactly("10D");
+  }
+
+  @Test
   void removesDuplicatesRetainingFirstOccurrence() {
     var result = FundComparisonTimeRangeParser.parse("10D,1M,10D,YTD,1M");
     assertThat(result.timeRanges()).containsExactly("10D", "1M", "YTD");
