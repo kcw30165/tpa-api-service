@@ -156,6 +156,8 @@ public final class LoginOtpVerifyReplayCodec {
       case SESSION_CREATION_FAILED -> 503;
       case ACCOUNT_LIST_UNAVAILABLE -> 502;
       case ZERO_VALID_ACCOUNTS, INVALID, EXPIRED, AUTH_FLOW_INVALID -> 422;
+      case ALREADY_VERIFIED -> 409;
+      case SYSTEM_FAILED -> 500;
       default -> throw new IllegalArgumentException("Login OTP Verify result is not capturable");
     };
   }
