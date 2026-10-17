@@ -26,7 +26,7 @@ public final class DefaultFundLevelPortfolioBuilder implements FundLevelPortfoli
         if (src == null || fund == null || src.sequence() == null || fund.fundSequence() == null)
           fail();
         BigDecimal unit = participating(h.unit()), nav = participating(h.netAssetValue());
-        var d = displays.computeIfAbsent(k.displaySource(), x -> new DisplayAcc(x));
+        var d = displays.computeIfAbsent(k.displaySource(), DisplayAcc::new);
         d.sequence = Math.min(d.sequence, src.sequence());
         var f =
             d.funds.computeIfAbsent(
