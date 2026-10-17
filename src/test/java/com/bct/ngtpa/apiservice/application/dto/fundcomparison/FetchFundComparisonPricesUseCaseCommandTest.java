@@ -40,50 +40,55 @@ class FetchFundComparisonPricesUseCaseCommandTest {
 
   @Test
   void rejectsNullPolicyNo() {
+    var fundCodes = List.of("FAEU");
     assertThatThrownBy(
             () ->
                 new FetchFundComparisonPricesUseCaseCommand(
-                    null, "DB", ActorUserRole.ROLE_USER_MBR, List.of("FAEU"), "10D"))
+                    null, "DB", ActorUserRole.ROLE_USER_MBR, fundCodes, "10D"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("policyNo");
   }
 
   @Test
   void rejectsBlankPolicyNo() {
+    var fundCodes = List.of("FAEU");
     assertThatThrownBy(
             () ->
                 new FetchFundComparisonPricesUseCaseCommand(
-                    "  ", "DB", ActorUserRole.ROLE_USER_MBR, List.of("FAEU"), "10D"))
+                    "  ", "DB", ActorUserRole.ROLE_USER_MBR, fundCodes, "10D"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("policyNo");
   }
 
   @Test
   void rejectsNullAccountEnv() {
+    var fundCodes = List.of("FAEU");
     assertThatThrownBy(
             () ->
                 new FetchFundComparisonPricesUseCaseCommand(
-                    "00000008802", null, ActorUserRole.ROLE_USER_MBR, List.of("FAEU"), "10D"))
+                    "00000008802", null, ActorUserRole.ROLE_USER_MBR, fundCodes, "10D"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("accountEnv");
   }
 
   @Test
   void rejectsBlankAccountEnv() {
+    var fundCodes = List.of("FAEU");
     assertThatThrownBy(
             () ->
                 new FetchFundComparisonPricesUseCaseCommand(
-                    "00000008802", "  ", ActorUserRole.ROLE_USER_MBR, List.of("FAEU"), "10D"))
+                    "00000008802", "  ", ActorUserRole.ROLE_USER_MBR, fundCodes, "10D"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("accountEnv");
   }
 
   @Test
   void rejectsNullActorUserRole() {
+    var fundCodes = List.of("FAEU");
     assertThatThrownBy(
             () ->
                 new FetchFundComparisonPricesUseCaseCommand(
-                    "00000008802", "DB", null, List.of("FAEU"), "10D"))
+                    "00000008802", "DB", null, fundCodes, "10D"))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("actorUserRole");
   }
@@ -100,20 +105,22 @@ class FetchFundComparisonPricesUseCaseCommandTest {
 
   @Test
   void rejectsEmptyFundCodes() {
+    var fundCodes = List.<String>of();
     assertThatThrownBy(
             () ->
                 new FetchFundComparisonPricesUseCaseCommand(
-                    "00000008802", "DB", ActorUserRole.ROLE_USER_MBR, List.of(), "10D"))
+                    "00000008802", "DB", ActorUserRole.ROLE_USER_MBR, fundCodes, "10D"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fundCodes");
   }
 
   @Test
   void rejectsMoreThanFiveFundCodes() {
+    var fundCodes = codes(6);
     assertThatThrownBy(
             () ->
                 new FetchFundComparisonPricesUseCaseCommand(
-                    "00000008802", "DB", ActorUserRole.ROLE_USER_MBR, codes(6), "10D"))
+                    "00000008802", "DB", ActorUserRole.ROLE_USER_MBR, fundCodes, "10D"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("5");
   }
@@ -128,20 +135,22 @@ class FetchFundComparisonPricesUseCaseCommandTest {
 
   @Test
   void rejectsNullTimeRange() {
+    var fundCodes = List.of("FAEU");
     assertThatThrownBy(
             () ->
                 new FetchFundComparisonPricesUseCaseCommand(
-                    "00000008802", "DB", ActorUserRole.ROLE_USER_MBR, List.of("FAEU"), null))
+                    "00000008802", "DB", ActorUserRole.ROLE_USER_MBR, fundCodes, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("timeRange");
   }
 
   @Test
   void rejectsBlankTimeRange() {
+    var fundCodes = List.of("FAEU");
     assertThatThrownBy(
             () ->
                 new FetchFundComparisonPricesUseCaseCommand(
-                    "00000008802", "DB", ActorUserRole.ROLE_USER_MBR, List.of("FAEU"), " "))
+                    "00000008802", "DB", ActorUserRole.ROLE_USER_MBR, fundCodes, " "))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("timeRange");
   }

@@ -52,6 +52,8 @@ import reactor.core.publisher.Mono;
 public final class ApimFundPriceSourceAdapter
     implements FundPriceSourcePort, FundComparisonPriceSourcePort {
 
+  private static final String COMMAND_MUST_NOT_BE_NULL = "command must not be null";
+
   private final ApimExchangeExecutor executor;
   private final String path;
   private final DateTimeFormatter formatter;
@@ -76,7 +78,7 @@ public final class ApimFundPriceSourceAdapter
 
   @Override
   public Mono<RawFundPriceData> fetchPrice(FetchFundPriceCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_MUST_NOT_BE_NULL);
 
     // MONTHLY does not differ from DAILY in downstream range derivation (corrected,
     // Nick): FE always submits one exact validated date regardless of mode; Java sends
@@ -92,7 +94,7 @@ public final class ApimFundPriceSourceAdapter
 
   @Override
   public Mono<RawFundPriceData> fetchPriceRange(FetchFundPriceRangeCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_MUST_NOT_BE_NULL);
     // NO mode logic at all -- the explicit fromDate/toDate range is passed straight
     // through, confirmed design (export has no mode concept).
     return exchangeAndReconcile(
@@ -106,7 +108,7 @@ public final class ApimFundPriceSourceAdapter
 
   @Override
   public Mono<RawFundPriceData> fetchPrices(FetchFundComparisonPricesCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_MUST_NOT_BE_NULL);
     // Fund Comparison's own command already carries the real, comma-joined fund-code
     // string (joined by the use case, confirmed design) -- passed straight through to
     // the same shared exchange-and-reconcile path fetchPrice/fetchPriceRange use.

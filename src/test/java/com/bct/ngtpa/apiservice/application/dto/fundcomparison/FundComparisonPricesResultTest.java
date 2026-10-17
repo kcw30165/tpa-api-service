@@ -33,48 +33,43 @@ class FundComparisonPricesResultTest {
 
   @Test
   void nullFromDateThrows() {
-    assertThatThrownBy(
-            () ->
-                new FundComparisonPricesResult(
-                    null, TO_DATE, List.of("FAEU"), new RawFundPriceData(List.of())))
+    var fundCodes = List.of("FAEU");
+    var rawData = new RawFundPriceData(List.of());
+    assertThatThrownBy(() -> new FundComparisonPricesResult(null, TO_DATE, fundCodes, rawData))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("fromDate");
   }
 
   @Test
   void nullToDateThrows() {
-    assertThatThrownBy(
-            () ->
-                new FundComparisonPricesResult(
-                    FROM_DATE, null, List.of("FAEU"), new RawFundPriceData(List.of())))
+    var fundCodes = List.of("FAEU");
+    var rawData = new RawFundPriceData(List.of());
+    assertThatThrownBy(() -> new FundComparisonPricesResult(FROM_DATE, null, fundCodes, rawData))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("toDate");
   }
 
   @Test
   void fromDateAfterToDateThrows() {
-    assertThatThrownBy(
-            () ->
-                new FundComparisonPricesResult(
-                    TO_DATE, FROM_DATE, List.of("FAEU"), new RawFundPriceData(List.of())))
+    var fundCodes = List.of("FAEU");
+    var rawData = new RawFundPriceData(List.of());
+    assertThatThrownBy(() -> new FundComparisonPricesResult(TO_DATE, FROM_DATE, fundCodes, rawData))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fromDate");
   }
 
   @Test
   void nullFundCodesThrows() {
-    assertThatThrownBy(
-            () ->
-                new FundComparisonPricesResult(
-                    FROM_DATE, TO_DATE, null, new RawFundPriceData(List.of())))
+    var rawData = new RawFundPriceData(List.of());
+    assertThatThrownBy(() -> new FundComparisonPricesResult(FROM_DATE, TO_DATE, null, rawData))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("fundCodes");
   }
 
   @Test
   void nullRawDataThrows() {
-    assertThatThrownBy(
-            () -> new FundComparisonPricesResult(FROM_DATE, TO_DATE, List.of("FAEU"), null))
+    var fundCodes = List.of("FAEU");
+    assertThatThrownBy(() -> new FundComparisonPricesResult(FROM_DATE, TO_DATE, fundCodes, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("rawData");
   }

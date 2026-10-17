@@ -26,7 +26,6 @@ import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData.RawFundComparisonOption;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
-import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceRow;
 import com.bct.ngtpa.apiservice.application.exception.FundComparisonRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.FundComparisonOptionsSourcePort;
@@ -39,7 +38,6 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -107,11 +105,6 @@ class FundComparisonBrdTraceabilityTest {
     return new ApiExceptionHandler(
         errorResolver,
         new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())));
-  }
-
-  private static RawFundPriceRow priceRow(String fundCode, LocalDate date, String bid) {
-    return new RawFundPriceRow(
-        fundCode, "Name", "Name", date, "HKD", new BigDecimal(bid), new BigDecimal("1"), "3");
   }
 
   private WebTestClient pricesClient(FundComparisonPriceSourcePort sourcePort) {

@@ -41,40 +41,45 @@ class FundComparisonPricesWebMapperTest {
 
   @Test
   void nullRequestThrowsRequestInvalid() {
-    assertThatThrownBy(() -> newMapper().validate(null))
+    var mapper = newMapper();
+    assertThatThrownBy(() -> mapper.validate(null))
         .isInstanceOf(FundComparisonRequestInvalidException.class);
   }
 
   @Test
   void missingFundCodesThrowsRequestInvalid() {
+    var mapper = newMapper();
     var request = new FundComparisonPricesRequest(null, "10D");
-    assertThatThrownBy(() -> newMapper().validate(request))
+    assertThatThrownBy(() -> mapper.validate(request))
         .isInstanceOf(FundComparisonRequestInvalidException.class)
         .hasMessageContaining("fund code");
   }
 
   @Test
   void blankFundCodeEntryThrowsRequestInvalid() {
+    var mapper = newMapper();
     var request = new FundComparisonPricesRequest(List.of("FAEU", " "), "10D");
-    assertThatThrownBy(() -> newMapper().validate(request))
+    assertThatThrownBy(() -> mapper.validate(request))
         .isInstanceOf(FundComparisonRequestInvalidException.class)
         .hasMessageContaining("blank");
   }
 
   @Test
   void nullFundCodeEntryThrowsRequestInvalid() {
+    var mapper = newMapper();
     var codes = new ArrayList<String>();
     codes.add("FAEU");
     codes.add(null);
     var request = new FundComparisonPricesRequest(codes, "10D");
-    assertThatThrownBy(() -> newMapper().validate(request))
+    assertThatThrownBy(() -> mapper.validate(request))
         .isInstanceOf(FundComparisonRequestInvalidException.class);
   }
 
   @Test
   void moreThanFiveUniqueFundCodesThrowsRequestInvalid() {
+    var mapper = newMapper();
     var request = new FundComparisonPricesRequest(List.of("A", "B", "C", "D", "E", "F"), "10D");
-    assertThatThrownBy(() -> newMapper().validate(request))
+    assertThatThrownBy(() -> mapper.validate(request))
         .isInstanceOf(FundComparisonRequestInvalidException.class)
         .hasMessageContaining("5");
   }
@@ -97,24 +102,27 @@ class FundComparisonPricesWebMapperTest {
 
   @Test
   void nullTimeRangeThrowsRequestInvalid() {
+    var mapper = newMapper();
     var request = new FundComparisonPricesRequest(List.of("FAEU"), null);
-    assertThatThrownBy(() -> newMapper().validate(request))
+    assertThatThrownBy(() -> mapper.validate(request))
         .isInstanceOf(FundComparisonRequestInvalidException.class)
         .hasMessageContaining("timeRange");
   }
 
   @Test
   void blankTimeRangeThrowsRequestInvalid() {
+    var mapper = newMapper();
     var request = new FundComparisonPricesRequest(List.of("FAEU"), " ");
-    assertThatThrownBy(() -> newMapper().validate(request))
+    assertThatThrownBy(() -> mapper.validate(request))
         .isInstanceOf(FundComparisonRequestInvalidException.class);
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"10X", "-1D", "1.5M", "10d", "0D", "abc", "D10", "YTDD"})
   void syntacticallyInvalidTimeRangeTokensThrowRequestInvalid(String invalidToken) {
+    var mapper = newMapper();
     var request = new FundComparisonPricesRequest(List.of("FAEU"), invalidToken);
-    assertThatThrownBy(() -> newMapper().validate(request))
+    assertThatThrownBy(() -> mapper.validate(request))
         .isInstanceOf(FundComparisonRequestInvalidException.class);
   }
 
@@ -236,6 +244,7 @@ class FundComparisonPricesWebMapperTest {
 
   @Test
   void nullResultThrowsNullPointerException() {
-    assertThatThrownBy(() -> newMapper().toResponse(null)).isInstanceOf(NullPointerException.class);
+    var mapper = newMapper();
+    assertThatThrownBy(() -> mapper.toResponse(null)).isInstanceOf(NullPointerException.class);
   }
 }

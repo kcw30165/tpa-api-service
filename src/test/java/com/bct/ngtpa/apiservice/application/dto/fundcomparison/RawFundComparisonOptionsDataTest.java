@@ -24,14 +24,16 @@ class RawFundComparisonOptionsDataTest {
   // ----- RawFundComparisonOptionsData's own guards --------------------------------
   @Test
   void rejectsNullRawTimeRange() {
-    assertThatThrownBy(() -> new RawFundComparisonOptionsData(null, List.of(validOption())))
+    var funds = List.of(validOption());
+    assertThatThrownBy(() -> new RawFundComparisonOptionsData(null, funds))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("rawTimeRange");
   }
 
   @Test
   void rejectsBlankRawTimeRange() {
-    assertThatThrownBy(() -> new RawFundComparisonOptionsData("   ", List.of(validOption())))
+    var funds = List.of(validOption());
+    assertThatThrownBy(() -> new RawFundComparisonOptionsData("   ", funds))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("rawTimeRange");
   }
@@ -45,7 +47,8 @@ class RawFundComparisonOptionsDataTest {
 
   @Test
   void rejectsEmptyFunds() {
-    assertThatThrownBy(() -> new RawFundComparisonOptionsData("10D", List.of()))
+    var emptyFunds = List.<RawFundComparisonOption>of();
+    assertThatThrownBy(() -> new RawFundComparisonOptionsData("10D", emptyFunds))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("funds");
   }

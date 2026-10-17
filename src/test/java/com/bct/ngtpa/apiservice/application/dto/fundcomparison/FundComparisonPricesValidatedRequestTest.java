@@ -30,7 +30,8 @@ class FundComparisonPricesValidatedRequestTest {
 
   @Test
   void emptyFundCodesThrows() {
-    assertThatThrownBy(() -> new FundComparisonPricesValidatedRequest(List.of(), "10D"))
+    var emptyCodes = List.<String>of();
+    assertThatThrownBy(() -> new FundComparisonPricesValidatedRequest(emptyCodes, "10D"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fundCodes");
   }
@@ -52,14 +53,16 @@ class FundComparisonPricesValidatedRequestTest {
 
   @Test
   void nullTimeRangeThrows() {
-    assertThatThrownBy(() -> new FundComparisonPricesValidatedRequest(List.of("FAEU"), null))
+    var fundCodes = List.of("FAEU");
+    assertThatThrownBy(() -> new FundComparisonPricesValidatedRequest(fundCodes, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("timeRange");
   }
 
   @Test
   void blankTimeRangeThrows() {
-    assertThatThrownBy(() -> new FundComparisonPricesValidatedRequest(List.of("FAEU"), " "))
+    var fundCodes = List.of("FAEU");
+    assertThatThrownBy(() -> new FundComparisonPricesValidatedRequest(fundCodes, " "))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("timeRange");
   }

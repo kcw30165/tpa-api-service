@@ -43,8 +43,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class FundComparisonPricesWebMapper {
 
-  private static final Pattern VALID_TIME_RANGE_TOKEN =
-      Pattern.compile("^(?:[1-9][0-9]*[DMY]|YTD)$");
+  private static final Pattern VALID_TIME_RANGE_TOKEN = Pattern.compile("^(?:[1-9]\\d*[DMY]|YTD)$");
   private static final int MAX_FUND_CODES = 5;
 
   private final DateTimeFormatter publicDateFormatter;

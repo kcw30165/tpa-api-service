@@ -87,10 +87,11 @@ class FundComparisonOptionsUseCaseTest {
   // ----- constructor / method null-checks -----------------------------------------
   @Test
   void constructorAndMethodArgumentsRequireNonNull() {
+    var useCase = newUseCase();
     assertThatThrownBy(() -> new FundComparisonOptionsUseCase(null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("sourcePort");
-    assertThatThrownBy(() -> newUseCase().getOptions(null))
+    assertThatThrownBy(() -> useCase.getOptions(null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("command");
   }

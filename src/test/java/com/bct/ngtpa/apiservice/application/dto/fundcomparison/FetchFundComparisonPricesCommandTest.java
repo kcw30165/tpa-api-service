@@ -48,75 +48,54 @@ class FetchFundComparisonPricesCommandTest {
 
   @Test
   void rejectsNullPolicyNo() {
+    var fromDate = LocalDate.of(2026, 10, 6);
+    var toDate = LocalDate.of(2026, 10, 15);
     assertThatThrownBy(
-            () ->
-                validCommand(
-                    null,
-                    LocalDate.of(2026, 10, 6),
-                    LocalDate.of(2026, 10, 15),
-                    "FAEU",
-                    "DB",
-                    ActorUserRole.ROLE_USER_MBR))
+            () -> validCommand(null, fromDate, toDate, "FAEU", "DB", ActorUserRole.ROLE_USER_MBR))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("policyNo");
   }
 
   @Test
   void rejectsBlankPolicyNo() {
+    var fromDate = LocalDate.of(2026, 10, 6);
+    var toDate = LocalDate.of(2026, 10, 15);
     assertThatThrownBy(
-            () ->
-                validCommand(
-                    "   ",
-                    LocalDate.of(2026, 10, 6),
-                    LocalDate.of(2026, 10, 15),
-                    "FAEU",
-                    "DB",
-                    ActorUserRole.ROLE_USER_MBR))
+            () -> validCommand("   ", fromDate, toDate, "FAEU", "DB", ActorUserRole.ROLE_USER_MBR))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("policyNo");
   }
 
   @Test
   void rejectsNullFromDate() {
+    var toDate = LocalDate.of(2026, 10, 15);
     assertThatThrownBy(
             () ->
                 validCommand(
-                    "00000008802",
-                    null,
-                    LocalDate.of(2026, 10, 15),
-                    "FAEU",
-                    "DB",
-                    ActorUserRole.ROLE_USER_MBR))
+                    "00000008802", null, toDate, "FAEU", "DB", ActorUserRole.ROLE_USER_MBR))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("fromDate");
   }
 
   @Test
   void rejectsNullToDate() {
+    var fromDate = LocalDate.of(2026, 10, 6);
     assertThatThrownBy(
             () ->
                 validCommand(
-                    "00000008802",
-                    LocalDate.of(2026, 10, 6),
-                    null,
-                    "FAEU",
-                    "DB",
-                    ActorUserRole.ROLE_USER_MBR))
+                    "00000008802", fromDate, null, "FAEU", "DB", ActorUserRole.ROLE_USER_MBR))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("toDate");
   }
 
   @Test
   void rejectsFromDateAfterToDate() {
+    var fromDate = LocalDate.of(2026, 10, 16);
+    var toDate = LocalDate.of(2026, 10, 15);
     assertThatThrownBy(
             () ->
                 validCommand(
-                    "00000008802",
-                    LocalDate.of(2026, 10, 16),
-                    LocalDate.of(2026, 10, 15),
-                    "FAEU",
-                    "DB",
-                    ActorUserRole.ROLE_USER_MBR))
+                    "00000008802", fromDate, toDate, "FAEU", "DB", ActorUserRole.ROLE_USER_MBR))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -131,75 +110,57 @@ class FetchFundComparisonPricesCommandTest {
 
   @Test
   void rejectsNullFundList() {
+    var fromDate = LocalDate.of(2026, 10, 6);
+    var toDate = LocalDate.of(2026, 10, 15);
     assertThatThrownBy(
             () ->
                 validCommand(
-                    "00000008802",
-                    LocalDate.of(2026, 10, 6),
-                    LocalDate.of(2026, 10, 15),
-                    null,
-                    "DB",
-                    ActorUserRole.ROLE_USER_MBR))
+                    "00000008802", fromDate, toDate, null, "DB", ActorUserRole.ROLE_USER_MBR))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fundList");
   }
 
   @Test
   void rejectsBlankFundList() {
+    var fromDate = LocalDate.of(2026, 10, 6);
+    var toDate = LocalDate.of(2026, 10, 15);
     assertThatThrownBy(
             () ->
                 validCommand(
-                    "00000008802",
-                    LocalDate.of(2026, 10, 6),
-                    LocalDate.of(2026, 10, 15),
-                    "   ",
-                    "DB",
-                    ActorUserRole.ROLE_USER_MBR))
+                    "00000008802", fromDate, toDate, "   ", "DB", ActorUserRole.ROLE_USER_MBR))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fundList");
   }
 
   @Test
   void rejectsNullAccountEnv() {
+    var fromDate = LocalDate.of(2026, 10, 6);
+    var toDate = LocalDate.of(2026, 10, 15);
     assertThatThrownBy(
             () ->
                 validCommand(
-                    "00000008802",
-                    LocalDate.of(2026, 10, 6),
-                    LocalDate.of(2026, 10, 15),
-                    "FAEU",
-                    null,
-                    ActorUserRole.ROLE_USER_MBR))
+                    "00000008802", fromDate, toDate, "FAEU", null, ActorUserRole.ROLE_USER_MBR))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("accountEnv");
   }
 
   @Test
   void rejectsBlankAccountEnv() {
+    var fromDate = LocalDate.of(2026, 10, 6);
+    var toDate = LocalDate.of(2026, 10, 15);
     assertThatThrownBy(
             () ->
                 validCommand(
-                    "00000008802",
-                    LocalDate.of(2026, 10, 6),
-                    LocalDate.of(2026, 10, 15),
-                    "FAEU",
-                    "   ",
-                    ActorUserRole.ROLE_USER_MBR))
+                    "00000008802", fromDate, toDate, "FAEU", "   ", ActorUserRole.ROLE_USER_MBR))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("accountEnv");
   }
 
   @Test
   void rejectsNullActorUserRole() {
-    assertThatThrownBy(
-            () ->
-                validCommand(
-                    "00000008802",
-                    LocalDate.of(2026, 10, 6),
-                    LocalDate.of(2026, 10, 15),
-                    "FAEU",
-                    "DB",
-                    null))
+    var fromDate = LocalDate.of(2026, 10, 6);
+    var toDate = LocalDate.of(2026, 10, 15);
+    assertThatThrownBy(() -> validCommand("00000008802", fromDate, toDate, "FAEU", "DB", null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("actorUserRole");
   }
