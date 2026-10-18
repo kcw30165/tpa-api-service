@@ -8,10 +8,13 @@ import org.junit.jupiter.api.Test;
 /**
  * Locks in the full HTTP status mapping for every {@link VerifyLoginOtpStatus} value.
  *
- * <p>Regression guard for the defect where {@code SYSTEM_FAILED} and {@code ALREADY_VERIFIED}
- * had no explicit case in {@link LoginOtpVerifyReplayCodec#httpStatus(VerifyLoginOtpStatus)} and
- * therefore fell through to the default throw, surfacing as an unexplained 500 on login OTP
- * verify replay capture/hydrate.
+ * <p>Regression guard for the defect where {@code SYSTEM_FAILED} had no explicit case in {@link
+ * LoginOtpVerifyReplayCodec#httpStatus(VerifyLoginOtpStatus)} and therefore fell through to the
+ * default throw, surfacing as an unexplained 500 on login OTP verify replay capture/hydrate. {@code
+ * ALREADY_VERIFIED} was originally part of this same regression (and this class's own guard test
+ * for it), but was later confirmed to be dead code -- never produced by {@code
+ * LoginOtpVerifyService} or any other caller -- and removed from {@link VerifyLoginOtpStatus}
+ * entirely.
  */
 class LoginOtpVerifyReplayCodecHttpStatusTest {
 
@@ -53,12 +56,6 @@ class LoginOtpVerifyReplayCodecHttpStatusTest {
     assertThat(LoginOtpVerifyReplayCodec.httpStatus(VerifyLoginOtpStatus.EXPIRED)).isEqualTo(422);
     assertThat(LoginOtpVerifyReplayCodec.httpStatus(VerifyLoginOtpStatus.AUTH_FLOW_INVALID))
         .isEqualTo(422);
-  }
-
-  @Test
-  void mapsAlreadyVerifiedTo409() {
-    assertThat(LoginOtpVerifyReplayCodec.httpStatus(VerifyLoginOtpStatus.ALREADY_VERIFIED))
-        .isEqualTo(409);
   }
 
   @Test
