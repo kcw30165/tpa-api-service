@@ -30,6 +30,14 @@ public final class LoginHttpResponses {
     if (code.equals(LoginErrorKey.CREDENTIALS_UNAVAILABLE.value())) return HttpStatus.BAD_GATEWAY;
     if (code.equals(LoginErrorKey.SESSION_CREATION_FAILED.value()))
       return HttpStatus.SERVICE_UNAVAILABLE;
+    // SYSTEM_FAILED gets its own dedicated 500, matching
+    // LoginOtpVerifyReplayCodec.httpStatus()'s already-established precedent
+    // for this exact status (confirmed, same feature's idempotency-replay
+    // path) -- checked BEFORE the generic ApiStatus.SYSTEM_ERROR -> 502
+    // fallback below, so this status no longer collapses into the
+    // inconsistent 502 a client cannot distinguish from a genuine
+    // downstream/APIM failure.
+    if (code.equals(LoginErrorKey.SYSTEM_FAILED.value())) return HttpStatus.INTERNAL_SERVER_ERROR;
     if (body.status() == ApiStatus.BUSINESS_REJECTED) return HttpStatus.UNPROCESSABLE_ENTITY;
     if (body.status() == ApiStatus.SYSTEM_ERROR) return HttpStatus.BAD_GATEWAY;
     return HttpStatus.BAD_REQUEST;

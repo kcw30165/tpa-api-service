@@ -30,6 +30,7 @@ public final class LoginOtpVerifyWebMapper {
           case ACCOUNT_LIST_UNAVAILABLE -> LoginErrorKey.ACCOUNT_LIST_UNAVAILABLE.value();
           case ZERO_VALID_ACCOUNTS -> LoginErrorKey.NO_ACCESSIBLE_ACCOUNTS.value();
           case SESSION_CREATION_FAILED -> LoginErrorKey.SESSION_CREATION_FAILED.value();
+          case SYSTEM_FAILED -> LoginErrorKey.SYSTEM_FAILED.value();
           default -> SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value();
         };
     List<LoginOtpActionResponse> actions =
@@ -44,15 +45,24 @@ public final class LoginOtpVerifyWebMapper {
                     || result.status() == VerifyLoginOtpStatus.SESSION_CREATION_FAILED
                 ? ApiStatus.SYSTEM_ERROR
                 : ApiStatus.BUSINESS_REJECTED;
-    return MutationResponse.failure(
-        status,
-        payload(next, result, actions, false),
-        List.of(
-            ApiError.form(
+    // SYSTEM_FAILED is reported via ApiError.system(...) (established codebase
+    // convention for system/idempotency failures -- "type": "SYSTEM", confirmed
+    // precedent: SystemHttpResponses, AccountBalanceRetrievalResponsePolicy,
+    // UsernameRecoveryWorkflowMapping, AuthenticatedLogoutWebMapper,
+    // AccountGainLossRetrievalResponsePolicy, ApiExceptionHandler), NOT
+    // ApiError.form(...) ("type": "FORM", which implies a user-correctable
+    // input error -- not an accurate description of a system failure).
+    ApiError apiError =
+        result.status() == VerifyLoginOtpStatus.SYSTEM_FAILED
+            ? ApiError.system(
+                code, null, result.status() == VerifyLoginOtpStatus.CSRF_INVALID ? "SERVER" : "BFF")
+            : ApiError.form(
                 code,
                 null,
                 List.of(result.status() == VerifyLoginOtpStatus.INVALID ? "otpCode" : "PAGE"),
-                result.status() == VerifyLoginOtpStatus.CSRF_INVALID ? "SERVER" : "BFF")));
+                result.status() == VerifyLoginOtpStatus.CSRF_INVALID ? "SERVER" : "BFF");
+    return MutationResponse.failure(
+        status, payload(next, result, actions, false), List.of(apiError));
   }
 
   public MutationResponse<LoginWorkflowResultResponse<LoginOtpVerifyDataResponse>> missing(

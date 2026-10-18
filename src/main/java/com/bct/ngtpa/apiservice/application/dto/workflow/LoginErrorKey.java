@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.dto.workflow;
 
 /** Canonical public errors owned by the login workflow. */
 public enum LoginErrorKey implements WorkflowErrorKey {
+  SYSTEM_FAILED("err.login.otp.verify.system.failed"),
   REQUEST_INVALID("err.login.request.invalid"),
   CREDENTIALS_INVALID("err.login.credentials.invalid"),
   CREDENTIALS_UNAVAILABLE("err.login.credentials.unavailable"),

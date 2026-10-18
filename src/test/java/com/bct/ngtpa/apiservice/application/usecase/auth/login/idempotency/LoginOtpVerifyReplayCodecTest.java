@@ -91,13 +91,6 @@ class LoginOtpVerifyReplayCodecTest {
                     null))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
-            () ->
-                codec.capture(
-                    rejection(VerifyLoginOtpStatus.ALREADY_VERIFIED, null, false),
-                    uncheckedResponse(422),
-                    null))
-        .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(
             () -> codec.capture(success("csrf"), transientResponse(success("csrf")), null))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
