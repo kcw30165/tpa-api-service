@@ -16,6 +16,19 @@ public final class LoginHttpResponses {
     if (body == null) return HttpStatus.INTERNAL_SERVER_ERROR;
     if (body.success()) return HttpStatus.OK;
     String code = firstCode(body.errors());
+    HttpStatus codeStatus = statusForCode(code);
+    if (codeStatus != null) return codeStatus;
+    if (body.status() == ApiStatus.BUSINESS_REJECTED) return HttpStatus.UNPROCESSABLE_ENTITY;
+    if (body.status() == ApiStatus.SYSTEM_ERROR) return HttpStatus.BAD_GATEWAY;
+    return HttpStatus.BAD_REQUEST;
+  }
+
+  // Extracted from status() to resolve SonarQube java:S3776 (confirmed new
+  // issue: Cognitive Complexity 16 vs 15 allowed, introduced by this file's
+  // own added SYSTEM_FAILED check below). Pure extraction -- same checks,
+  // same order, same returned HttpStatus for every input; only split across
+  // two methods so each stays under the complexity threshold.
+  private static HttpStatus statusForCode(String code) {
     if (code.equals(LoginErrorKey.CSRF_INVALID.value())
         || code.equals(LoginErrorKey.ORIGIN_INVALID.value())) return HttpStatus.FORBIDDEN;
     if (code.equals(SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS.value())
@@ -33,14 +46,12 @@ public final class LoginHttpResponses {
     // SYSTEM_FAILED gets its own dedicated 500, matching
     // LoginOtpVerifyReplayCodec.httpStatus()'s already-established precedent
     // for this exact status (confirmed, same feature's idempotency-replay
-    // path) -- checked BEFORE the generic ApiStatus.SYSTEM_ERROR -> 502
-    // fallback below, so this status no longer collapses into the
-    // inconsistent 502 a client cannot distinguish from a genuine
-    // downstream/APIM failure.
+    // path) -- returned here among the other code-specific checks, before the
+    // generic ApiStatus.SYSTEM_ERROR -> 502 fallback in status() above, so
+    // this status no longer collapses into the inconsistent 502 a client
+    // cannot distinguish from a genuine downstream/APIM failure.
     if (code.equals(LoginErrorKey.SYSTEM_FAILED.value())) return HttpStatus.INTERNAL_SERVER_ERROR;
-    if (body.status() == ApiStatus.BUSINESS_REJECTED) return HttpStatus.UNPROCESSABLE_ENTITY;
-    if (body.status() == ApiStatus.SYSTEM_ERROR) return HttpStatus.BAD_GATEWAY;
-    return HttpStatus.BAD_REQUEST;
+    return null;
   }
 
   private static String firstCode(List<ApiError> errors) {

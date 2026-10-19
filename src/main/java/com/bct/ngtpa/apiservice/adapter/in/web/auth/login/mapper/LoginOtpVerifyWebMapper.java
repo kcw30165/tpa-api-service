@@ -7,6 +7,9 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify.*;
 import java.util.List;
 
 public final class LoginOtpVerifyWebMapper {
+  private static final String SOURCE_SERVER = "SERVER";
+  private static final String SOURCE_BFF = "BFF";
+
   public MutationResponse<LoginWorkflowResultResponse<LoginOtpVerifyDataResponse>>
       toMutationResponse(VerifyLoginOtpResult result) {
     if (result.status() == VerifyLoginOtpStatus.ACCOUNTS_READY) {
@@ -51,16 +54,21 @@ public final class LoginOtpVerifyWebMapper {
     // UsernameRecoveryWorkflowMapping, AuthenticatedLogoutWebMapper,
     // AccountGainLossRetrievalResponsePolicy, ApiExceptionHandler), NOT
     // ApiError.form(...) ("type": "FORM", which implies a user-correctable
-    // input error -- not an accurate description of a system failure).
-    ApiError apiError =
-        result.status() == VerifyLoginOtpStatus.SYSTEM_FAILED
-            ? ApiError.system(
-                code, null, result.status() == VerifyLoginOtpStatus.CSRF_INVALID ? "SERVER" : "BFF")
-            : ApiError.form(
-                code,
-                null,
-                List.of(result.status() == VerifyLoginOtpStatus.INVALID ? "otpCode" : "PAGE"),
-                result.status() == VerifyLoginOtpStatus.CSRF_INVALID ? "SERVER" : "BFF");
+    // input error -- not an accurate description of a system failure). Built
+    // via if/else (not a nested ternary) to resolve SonarQube java:S3358
+    // (confirmed new issue: the prior single ternary-of-ternaries here nested
+    // 3 levels deep -- the errorSource ternary, the otpCode/PAGE ternary, and
+    // this method's own outer system/form ternary). Zero behavior change --
+    // identical values for every input, just restructured.
+    String errorSource =
+        result.status() == VerifyLoginOtpStatus.CSRF_INVALID ? SOURCE_SERVER : SOURCE_BFF;
+    ApiError apiError;
+    if (result.status() == VerifyLoginOtpStatus.SYSTEM_FAILED) {
+      apiError = ApiError.system(code, null, errorSource);
+    } else {
+      String target = result.status() == VerifyLoginOtpStatus.INVALID ? "otpCode" : "PAGE";
+      apiError = ApiError.form(code, null, List.of(target), errorSource);
+    }
     return MutationResponse.failure(
         status, payload(next, result, actions, false), List.of(apiError));
   }
@@ -70,7 +78,7 @@ public final class LoginOtpVerifyWebMapper {
     return MutationResponse.failure(
         ApiStatus.VALIDATION_FAILED,
         payload(WorkflowNextStep.VERIFY_OTP, null, List.of(), false),
-        List.of(ApiError.form(code, null, List.of(target), "BFF")));
+        List.of(ApiError.form(code, null, List.of(target), SOURCE_BFF)));
   }
 
   private LoginWorkflowResultResponse<LoginOtpVerifyDataResponse> payload(
@@ -108,6 +116,7 @@ public final class LoginOtpVerifyWebMapper {
         ApiStatus.VALIDATION_FAILED,
         payload(WorkflowNextStep.VERIFY_OTP, null, List.of(), false),
         List.of(
-            ApiError.form(LoginErrorKey.CSRF_INVALID.value(), null, List.of("PAGE"), "SERVER")));
+            ApiError.form(
+                LoginErrorKey.CSRF_INVALID.value(), null, List.of("PAGE"), SOURCE_SERVER)));
   }
 }
