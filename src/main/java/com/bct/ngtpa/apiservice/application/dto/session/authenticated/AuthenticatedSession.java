@@ -85,6 +85,33 @@ public record AuthenticatedSession(
         Map.of());
   }
 
+  /**
+   * Returns a copy with one feature-state entry set; every other field, including the revision and
+   * the other feature-state entries, is unchanged. Features use this instead of the canonical
+   * constructor so a future session field never touches feature code (Fund Comparison M5.2).
+   */
+  public AuthenticatedSession withFeatureState(String key, String value) {
+    if (key == null || key.isBlank()) {
+      throw new IllegalArgumentException("feature-state key must not be blank");
+    }
+    Objects.requireNonNull(value, "feature-state value must not be null");
+    Map<String, String> next = new LinkedHashMap<>(featureState);
+    next.put(key, value);
+    return new AuthenticatedSession(
+        authenticatedSessionId,
+        actorContext,
+        accounts,
+        status,
+        csrfTokenHash,
+        createdAt,
+        lastAccessedAt,
+        idleExpiresAt,
+        absoluteExpiresAt,
+        revision,
+        fundPriceModeMetadata,
+        next);
+  }
+
   public boolean isUsable(Instant now) {
     Objects.requireNonNull(now);
     return status == AuthenticatedSessionStatus.ACTIVE

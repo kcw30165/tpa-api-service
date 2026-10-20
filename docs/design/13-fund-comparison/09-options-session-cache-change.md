@@ -101,7 +101,7 @@ Key: `fund-comparison.options`.
 ### 9.5.3 Session access
 
 - **Session ID:** both Fund Comparison controllers obtain it through `AuthenticatedSessionCookieReader`. If none is available, the cache is not read or written, and prices validates against freshly fetched options.
-- **Read:** the existing session read path used by Fund Price query (`LoadAndTouchAuthenticatedSessionUseCase`). The exact read entry point is confirmed fail-first in sub-task 5.2.
+- **Read (revised 2026-10-20, script 086):** a plain `AuthenticatedSessionPort.load` plus `AuthenticatedSessionProtectorPort.unprotect`, not `loadAndTouch`. `PortalAccessContextWebFilter` already calls `loadAndTouch` twice on every authenticated request, so another touch would add a Redis write and widen the overwrite race in 9.10. A missing, unreadable, or unusable session is a cache miss.
 - **Write:** `AuthenticatedSessionConcurrencyService.updateIfUsable`. Non-`APPLIED` outcomes are logged with a reason and skipped.
 
 ### 9.5.4 Normalization and matching
@@ -132,8 +132,9 @@ Every event carries `requestId`. Never log `policyNo`, `accountRef`, session IDs
 | Event | Fields |
 |---|---|
 | `event=fund-comparison.options-cache.hit` | `requestId` |
-| `event=fund-comparison.options-cache.miss` | `requestId`, `reason=absent\|account-mismatch\|unreadable\|no-session` |
+| `event=fund-comparison.options-cache.miss` | `requestId`, `reason=session-missing\|session-unreadable\|session-unusable\|absent\|unreadable\|account-mismatch\|failed` |
 | `event=fund-comparison.options-cache.write.skipped` | `requestId`, `reason=conflict\|session-missing\|session-not-usable\|failed\|no-session` |
+| `event=fund-comparison.options-cache.write.applied` | `requestId` |
 | `event=fund-comparison.options-cache.stale-refresh` | `requestId`, `timeRange`, `unlistedFundCodes` |
 | `event=fund-comparison.membership.rejected` (ERROR) | `requestId`, `reason=time-range-not-offered\|fund-code-not-offered`, `timeRange`, `unlistedFundCodes`, `source=fresh` |
 | `event=fund-price.downstream.invalid-date` (D6) | `requestId`, `operation` |
