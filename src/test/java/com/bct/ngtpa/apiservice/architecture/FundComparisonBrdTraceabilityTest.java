@@ -27,6 +27,7 @@ import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparison
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData.RawFundComparisonOption;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
 import com.bct.ngtpa.apiservice.application.exception.FundComparisonRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.FundPriceInvalidDateException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.FundComparisonOptionsSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.FundComparisonPriceSourcePort;
@@ -396,5 +397,26 @@ class FundComparisonBrdTraceabilityTest {
         .jsonPath("$.errors.length()")
         .isEqualTo(1);
     assertThat(priceCalls).hasValue(0);
+  }
+
+  // ===== Scenario 9 (D6, script 096): TRPGetFundPrice err.tpa.invalid.date maps to HTTP 400,
+  // not HTTP 503, for Fund Comparison prices =====
+  @Test
+  void scenario9_downstreamInvalidDateMapsToRequestInvalidNotRetrievalUnavailable() {
+    FundComparisonPriceSourcePort sourcePort =
+        cmd -> Mono.error(FundPriceInvalidDateException.forInvalidDate());
+
+    pricesClient(sourcePort)
+        .post()
+        .uri("/api/v1/fund-comparison/prices")
+        .bodyValue(new FundComparisonPricesRequest(List.of("FAEU"), "10D"))
+        .exchange()
+        .expectStatus()
+        .isBadRequest()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("VALIDATION_FAILED")
+        .jsonPath("$.errors[0].code")
+        .isEqualTo("err.fund-comparison.request.invalid");
   }
 }

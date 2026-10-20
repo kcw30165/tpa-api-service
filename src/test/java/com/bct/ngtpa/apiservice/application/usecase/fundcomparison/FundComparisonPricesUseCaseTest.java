@@ -9,7 +9,9 @@ import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FetchFundComparisonPricesCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FetchFundComparisonPricesUseCaseCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
+import com.bct.ngtpa.apiservice.application.exception.FundComparisonRequestInvalidException;
 import com.bct.ngtpa.apiservice.application.exception.FundComparisonRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.FundPriceInvalidDateException;
 import com.bct.ngtpa.apiservice.application.port.out.FundComparisonPriceSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import java.time.LocalDate;
@@ -218,5 +220,18 @@ class FundComparisonPricesUseCaseTest {
                     sourcePort, referenceDatePort, optionsUseCase, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("cache");
+  }
+
+  @Test
+  void aDownstreamInvalidDateExceptionIsTranslatedToFundComparisonRequestInvalidException() {
+    var useCase =
+        useCase(
+            portCommand -> Mono.error(FundPriceInvalidDateException.forInvalidDate()),
+            referenceDatePort(REFERENCE_DATE));
+
+    StepVerifier.create(useCase.fetchPrices(command(List.of("FAEU"), "10D")))
+        .expectErrorSatisfies(
+            error -> assertThat(error).isInstanceOf(FundComparisonRequestInvalidException.class))
+        .verify();
   }
 }

@@ -11,7 +11,9 @@ import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FundComparisonPri
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FundComparisonSelectionMatcher;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.application.exception.FundComparisonRequestInvalidException;
 import com.bct.ngtpa.apiservice.application.exception.FundComparisonRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.FundPriceInvalidDateException;
 import com.bct.ngtpa.apiservice.application.port.out.FundComparisonPriceSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import java.util.Objects;
@@ -171,7 +173,7 @@ public final class FundComparisonPricesUseCase {
             command.actorUserRole());
     return sourcePort
         .fetchPrices(portCommand)
-        .onErrorMap(FundComparisonPricesUseCase::toRetrievalException)
+        .onErrorMap(FundComparisonPricesUseCase::toPricesException)
         .map(
             rawData ->
                 new FundComparisonPricesResult(
@@ -193,5 +195,18 @@ public final class FundComparisonPricesUseCase {
     return exception instanceof FundComparisonRetrievalException
         ? exception
         : FundComparisonRetrievalException.systemFailure();
+  }
+
+  /**
+   * Prices-fetch-specific error mapping (D6): a downstream err.tpa.invalid.date is a public
+   * request-validation failure, not a retrieval failure, per
+   * docs/design/13-fund-comparison/09-options-session-cache-change.md section 9.6.
+   */
+  private static Throwable toPricesException(Throwable exception) {
+    if (exception instanceof FundPriceInvalidDateException) {
+      return new FundComparisonRequestInvalidException(
+          "downstream rejected the requested date range");
+    }
+    return toRetrievalException(exception);
   }
 }

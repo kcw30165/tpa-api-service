@@ -14,6 +14,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceAp
 import com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimDataItem.FundPriceEntry;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceCommand;
+import com.bct.ngtpa.apiservice.application.exception.FundPriceInvalidDateException;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -524,5 +525,78 @@ class ApimFundPriceSourceAdapterTest {
     StepVerifier.create(port.fetchPrices(comparisonCommand))
         .assertNext(result -> assertThat(result.rows()).hasSize(1))
         .verifyComplete();
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void invalidDateErrMessageOnFetchPriceMapsToFundPriceInvalidDateException() {
+    var envelope = mock(ApimResponseEnvelope.class);
+    var response = mock(com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody.class);
+    when(response.getErrMessage()).thenReturn("err.tpa.invalid.date");
+    when(envelope.getResponse()).thenReturn(response);
+    when(executor.postEnvelope(any())).thenReturn(Mono.just(envelope));
+
+    StepVerifier.create(newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))))
+        .expectError(FundPriceInvalidDateException.class)
+        .verify();
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void invalidDateErrMessageOnFetchPriceRangeMapsToFundPriceInvalidDateException() {
+    var envelope = mock(ApimResponseEnvelope.class);
+    var response = mock(com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody.class);
+    when(response.getErrMessage()).thenReturn("err.tpa.invalid.date");
+    when(envelope.getResponse()).thenReturn(response);
+    when(executor.postEnvelope(any())).thenReturn(Mono.just(envelope));
+    var rangeCommand =
+        new com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceRangeCommand(
+            "00000008802",
+            LocalDate.of(2023, 9, 25),
+            LocalDate.of(2026, 9, 25),
+            "DB",
+            ActorUserRole.ROLE_USER_MBR);
+
+    StepVerifier.create(newAdapter().fetchPriceRange(rangeCommand))
+        .expectError(FundPriceInvalidDateException.class)
+        .verify();
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void invalidDateErrMessageOnFetchPricesMapsToFundPriceInvalidDateException() {
+    var envelope = mock(ApimResponseEnvelope.class);
+    var response = mock(com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody.class);
+    when(response.getErrMessage()).thenReturn("err.tpa.invalid.date");
+    when(envelope.getResponse()).thenReturn(response);
+    when(executor.postEnvelope(any())).thenReturn(Mono.just(envelope));
+    var comparisonCommand =
+        new com.bct.ngtpa.apiservice.application.dto.fundcomparison
+            .FetchFundComparisonPricesCommand(
+            "00000008802",
+            LocalDate.of(2023, 9, 25),
+            LocalDate.of(2026, 9, 25),
+            "FAEU",
+            "DB",
+            ActorUserRole.ROLE_USER_MBR);
+
+    StepVerifier.create(newAdapter().fetchPrices(comparisonCommand))
+        .expectError(FundPriceInvalidDateException.class)
+        .verify();
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void anErrMessageThatOnlyContainsTheInvalidDateTokenAsASubstringStillMapsToSystemFailure() {
+    // D6 requires an EXACT match; a superstring must not accidentally qualify.
+    var envelope = mock(ApimResponseEnvelope.class);
+    var response = mock(com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody.class);
+    when(response.getErrMessage()).thenReturn("err.tpa.invalid.date.extra");
+    when(envelope.getResponse()).thenReturn(response);
+    when(executor.postEnvelope(any())).thenReturn(Mono.just(envelope));
+
+    StepVerifier.create(newAdapter().fetchPrice(command("DAILY", LocalDate.of(2026, 5, 5))))
+        .expectError(FundPriceRetrievalException.class)
+        .verify();
   }
 }

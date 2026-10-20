@@ -12,6 +12,7 @@ import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FetchFundComparis
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceRangeCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
+import com.bct.ngtpa.apiservice.application.exception.FundPriceInvalidDateException;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.out.FundComparisonPriceSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.FundPriceSourcePort;
@@ -30,7 +31,9 @@ import reactor.core.publisher.Mono;
  * docs/design/9-fund-price/fund-price-apim-contract.md: {@link ApimDatabaseScope#ACCOUNT_ENV},
  * caller-supplied actor role and account environment, {@link
  * ApimRetryEligibility#SAFE_BUSINESS_CALL}. Every nonblank downstream {@code err-message} maps to
- * the single generic {@link FundPriceRetrievalException}.
+ * the single generic {@link FundPriceRetrievalException}, except the exact {@code
+ * err.tpa.invalid.date}, which maps to {@link FundPriceInvalidDateException} (D6, docs/design/
+ * 13-fund-comparison/09-options-session-cache-change.md, script 097).
  *
  * <p>The command carries ONE FE-validated date, unmanipulated. Both DAILY and MONTHLY modes send
  * that exact date as both the downstream request's from-date and to-date -- mode has no effect on
@@ -53,6 +56,7 @@ public final class ApimFundPriceSourceAdapter
     implements FundPriceSourcePort, FundComparisonPriceSourcePort {
 
   private static final String COMMAND_MUST_NOT_BE_NULL = "command must not be null";
+  private static final String INVALID_DATE_ERR_MESSAGE = "err.tpa.invalid.date";
 
   private final ApimExchangeExecutor executor;
   private final String path;
@@ -157,6 +161,9 @@ public final class ApimFundPriceSourceAdapter
                 return Mono.error(FundPriceRetrievalException.systemFailure());
               }
               String errMessage = response.getErrMessage();
+              if (INVALID_DATE_ERR_MESSAGE.equals(errMessage)) {
+                return Mono.error(FundPriceInvalidDateException.forInvalidDate());
+              }
               if (errMessage != null && !errMessage.isEmpty()) {
                 return Mono.error(FundPriceRetrievalException.systemFailure());
               }
@@ -173,6 +180,7 @@ public final class ApimFundPriceSourceAdapter
         .onErrorMap(
             exception ->
                 exception instanceof FundPriceRetrievalException
+                        || exception instanceof FundPriceInvalidDateException
                     ? exception
                     : FundPriceRetrievalException.systemFailure());
   }
