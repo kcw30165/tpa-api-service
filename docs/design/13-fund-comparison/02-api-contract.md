@@ -163,8 +163,10 @@ X-Request-Id: <request-id>
 ## 2.5 Membership validation (Change Request, 2026-10-20)
 
 After syntax validation, `POST /api/v1/fund-comparison/prices` validates `timeRange` and every
-fund code against the session-cached options (09 section 9.4). A selection that is not offered
-by the current options returns HTTP 400 using the invalid-request response above
-(`VALIDATION_FAILED`, `err.fund-comparison.request.invalid`); TRPGetFundPrice is not called.
-Open item Q1 may introduce a distinct code for this case. Pending D6:
-TRPGetFundPrice `err.tpa.invalid.date` returns the same HTTP 400.
+fund code against the current options (09 section 9.4). A selection still not offered after one
+refresh returns HTTP 503 using the retrieval-unavailable response above (`SYSTEM_ERROR`,
+`err.fund-comparison.retrieval.unavailable`); `TRPGetFundPrice` is not called. Syntax failures
+keep the HTTP 400 invalid-request response.
+
+If `TRPGetFundPrice` returns `err.tpa.invalid.date`, the endpoint returns HTTP 400 using the
+invalid-request response above (`VALIDATION_FAILED`, `err.fund-comparison.request.invalid`).

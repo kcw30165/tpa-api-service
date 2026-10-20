@@ -50,8 +50,8 @@ Reuses the downstream `TRPGetFundPrice` *operation* only; the existing Fund Pric
 ### 7.6 Milestone 5 -- Session-cached options validation (Change Request)
 
 Sub-tasks 5.1-5.6, gates, and Phase 3 E2E scenarios are defined in
-09-options-session-cache-change.md sections 9.9 and 9.11. 5.5 (D6) is a separate commit and is
-not merged until downstream confirmation.
+09-options-session-cache-change.md sections 9.9 and 9.11. 5.5 (D6) was confirmed on 2026-10-20
+and is built as a normal sub-task commit.
 
 ### Change log
 
@@ -64,3 +64,8 @@ not merged until downstream confirmation.
   syntactically valid period appeared in an earlier options response"; 07 sub-tasks 2.3 and 3.2
   non-goal notes. 04 section 4.4 gains the pending D6 exception. Replacement design:
   09-options-session-cache-change.md.
+- **2026-10-20 -- Q1 and D6 resolved.** Membership failure against current options is HTTP 503
+  `SYSTEM_ERROR`, `err.fund-comparison.retrieval.unavailable` (D8 revised; a mismatch after a fresh
+  refresh indicates a Java or downstream fault). D6 confirmed: `err.tpa.invalid.date` from
+  TRPGetFundPrice is HTTP 400 `VALIDATION_FAILED` for Fund Comparison and for Fund Price query and
+  export; Fund Price's other 400s stay `BUSINESS_REJECTED`. 5.5 is no longer held.

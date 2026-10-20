@@ -59,7 +59,7 @@ Public mapping:
 
 The implementation must reuse the existing Fund Price application-exception and shared response mechanism rather than independently constructing the envelope.
 
-Fund codes are trimmed and deduplicated case-insensitively while preserving first occurrence order. Superseded 2026-10-20: after syntax validation the BFF validates the time range and every fund code for membership in the session-cached options, with one refresh-and-recheck. A membership failure against current options is HTTP 400 `VALIDATION_FAILED`, `err.fund-comparison.request.invalid`, and TRPGetFundPrice is not called (09 sections 9.4-9.6).
+Fund codes are trimmed and deduplicated case-insensitively while preserving first occurrence order. Superseded 2026-10-20: after syntax validation the BFF validates the time range and every fund code for membership in the session-cached options, with one refresh-and-recheck. A membership failure against current options is HTTP 503 `SYSTEM_ERROR`, `err.fund-comparison.retrieval.unavailable` (section 4.4), and TRPGetFundPrice is not called (09 sections 9.4-9.6).
 
 ## 4.4 Retrieval unavailable
 
@@ -68,12 +68,13 @@ The following conditions use the Fund Price retrieval-unavailable practice:
 - required authenticated account context, including `policyNo`, is unavailable;
 - downstream transport, timeout, decryption, or response mapping fails;
 - the downstream envelope is missing or malformed;
-- downstream `err-message` is missing or nonblank (exception pending confirmation, D6: TRPGetFundPrice `err.tpa.invalid.date` maps to HTTP 400, 09 section 9.6);
+- downstream `err-message` is missing or nonblank (exception, D6 confirmed 2026-10-20: TRPGetFundPrice `err.tpa.invalid.date` maps to HTTP 400 `VALIDATION_FAILED`, `err.fund-comparison.request.invalid`, 09 section 9.6);
 - options `data` is missing, empty, or structurally unusable;
 - options `time-range` is missing, null, or blank;
 - no valid options time-range token remains after normalization;
 - required downstream fund or price content is structurally invalid;
-- options retrieval fails while the prices endpoint refreshes the options cache (cache miss or recheck).
+- options retrieval fails while the prices endpoint refreshes the options cache (cache miss or recheck);
+- after the single refresh, the requested time range or a fund code is still not in the current options (membership failure, Q1).
 
 Public mapping:
 

@@ -91,6 +91,8 @@ Using a stubbed `ReferenceDatePort`:
 
 ## 5.7 Options session cache and membership (Change Request, 2026-10-20)
 
-Required cases are listed in 09-options-session-cache-change.md section 9.8. The section 5.6
-scenario "missing/blank/invalid request time range uses only `err.fund-comparison.request.invalid`"
-now also covers syntactically valid but unoffered time ranges and unlisted fund codes.
+Required cases are listed in 09-options-session-cache-change.md section 9.8. Syntactically valid
+but unoffered time ranges and unlisted fund codes return HTTP 503
+`err.fund-comparison.retrieval.unavailable` after the single refresh (Q1). The section 5.6
+request-invalid scenarios still cover syntax failures only. TRPGetFundPrice `err.tpa.invalid.date`
+returns HTTP 400 `VALIDATION_FAILED` (D6).

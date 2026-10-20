@@ -53,5 +53,6 @@ If the code differs materially from this design's confirmed behavioral model, st
 
 ## 6.4 Change Request decisions (2026-10-20)
 
-Decisions D1-D8, open item Q1, and the session feature-state slot decision are recorded in
-09-options-session-cache-change.md section 9.3. D6 is pending downstream confirmation.
+Decisions D1-D8 and the session feature-state slot decision are recorded in
+09-options-session-cache-change.md section 9.3. Q1 is resolved (membership failure is HTTP 503,
+D8 revised) and D6 is confirmed (HTTP 400 `VALIDATION_FAILED`), both on 2026-10-20.

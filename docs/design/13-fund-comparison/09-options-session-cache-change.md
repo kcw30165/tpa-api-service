@@ -3,8 +3,8 @@
 ## 9.0 Status
 
 - Phase 1 design. Decisions D1-D8 confirmed by Nick on 2026-10-20.
-- D6 is **pending downstream confirmation**. It is implemented as a separate commit and is not merged until Nick confirms.
-- Q1 is **open**.
+- D6 confirmed by Nick on 2026-10-20: `err.tpa.invalid.date` from `TRPGetFundPrice` is HTTP 400 `VALIDATION_FAILED` for every `TRPGetFundPrice` caller. Built as a normal sub-task (5.5), not held.
+- Q1 resolved by Nick on 2026-10-20: a membership failure is HTTP 503 `SYSTEM_ERROR` (D8 revised).
 - Implementation (Milestone 5) starts only after Nick approves this design.
 
 ## 9.1 Background (end-to-end finding)
@@ -31,9 +31,9 @@
 | D3 | Store only the raw downstream `time-range` string and the downstream fund codes. No fund names, no default time range. |
 | D4 | The options endpoint always calls `TRPGetFundCmpOpt` and overwrites the cache entry through the existing generic CAS service (`AuthenticatedSessionConcurrencyService`, unchanged, including its retry on revision conflict). No feature-specific port. A failed or skipped write is logged and never fails the options response. |
 | D5 | Prices: syntax validation, cache read-through, membership validation with a single refresh-and-recheck (see 9.4). |
-| D6 | **Pending confirmation.** `TRPGetFundPrice` `err-message` exactly equal to `err.tpa.invalid.date` becomes HTTP 400 for every `TRPGetFundPrice` caller (Fund Comparison prices, Fund Price query, Fund Price export). `TRPGetFundPriceMode` is excluded (it has no time range) and keeps HTTP 503. Every other nonblank `err-message` stays HTTP 503. |
+| D6 | **Confirmed 2026-10-20.** `TRPGetFundPrice` `err-message` exactly equal to `err.tpa.invalid.date` becomes HTTP 400 `VALIDATION_FAILED` for every `TRPGetFundPrice` caller (Fund Comparison prices: `err.fund-comparison.request.invalid`; Fund Price query and export: `err.fund-price.request.invalid`). `TRPGetFundPriceMode` is excluded (it has no time range) and keeps HTTP 503. Every other nonblank `err-message` stays HTTP 503. |
 | D7 | The cache never replaces a downstream check. Downstream remains the owner of fund availability and the config matrix. |
-| D8 | HTTP 400 `VALIDATION_FAILED` is the status for every Fund Comparison membership failure. No 422, 403, 409, or 404. |
+| D8 | **Revised 2026-10-20 (Q1).** A membership failure against current options is HTTP 503 `SYSTEM_ERROR`, `err.fund-comparison.retrieval.unavailable`, logged at ERROR. The FE only offers what the options endpoint returned, and the check runs against freshly fetched options, so a remaining mismatch indicates a Java or downstream fault, not a user error. Syntax failures stay HTTP 400 `VALIDATION_FAILED`. No 422, 403, 409, or 404. |
 
 Resolved details (Nick, 2026-10-20):
 
@@ -43,7 +43,8 @@ Resolved details (Nick, 2026-10-20):
 - **Write conflicts:** reuse the concurrency service's existing retry; an exhausted conflict is logged and skipped.
 - **Logging:** use `requestId`; never log `policyNo` or `accountRef` (9.7).
 - **Session storage (Option 2):** add a generic feature-state slot to `AuthenticatedSession` instead of another positional field (9.5.1).
-- **D6 for Fund Price:** maps to the existing `err.fund-price.request.invalid` (HTTP 400, `BUSINESS_REJECTED`, via the generic `ApplicationException` handler). Fund Comparison maps to `err.fund-comparison.request.invalid` (HTTP 400, `VALIDATION_FAILED`). The status difference between the two features is a recorded known inconsistency (9.10).
+- **D6 status per feature:** Fund Comparison returns `err.fund-comparison.request.invalid` (HTTP 400, `VALIDATION_FAILED`, existing handler). Fund Price query and export return `err.fund-price.request.invalid` with HTTP 400 `VALIDATION_FAILED` through a dedicated handler for this case only; Fund Price's other 400s (for example an invalid date input) stay `BUSINESS_REJECTED`.
+- **D6 rationale (recorded):** every date that reaches `TRPGetFundPrice` is already calculated or validated by Java, so a rejection points to inconsistent downstream configuration. Nick chose HTTP 400 so the response states that downstream rejected the date range.
 - **Rolling deploy:** only DEV exists today, so mixed old/new pods are not handled in this change (future item in 9.10).
 
 ## 9.4 Prices flow
@@ -53,9 +54,9 @@ Resolved details (Nick, 2026-10-20):
 3. **Membership validation**, with at most one options fetch per prices request:
    - `timeRange` is in the options' time ranges **and** every requested fund code is in the options' fund codes: continue to step 5.
    - Membership fails against a **cached** entry (not fetched in step 2 of this request): fetch `TRPGetFundCmpOpt` once, write the refreshed entry (non-fatal), and validate again.
-   - Membership fails against **fresh** options (from step 2 or from the recheck): 400 `VALIDATION_FAILED`, `err.fund-comparison.request.invalid`. `TRPGetFundPrice` is **not** called.
+   - Membership fails against **fresh** options (from step 2 or from the recheck): 503 `SYSTEM_ERROR`, `err.fund-comparison.retrieval.unavailable`, logged at ERROR. `TRPGetFundPrice` is **not** called.
    - Never loop: one fetch at most.
-   - Reason: a 400 blames the client, so it is returned only when the options checked are current. A config change during the session must not reject a selection the user legitimately picked from the page.
+   - Reason: the FE only offers what the options endpoint returned, so a selection that fails against current options means Java or downstream has a fault. Checking fresh options first also means a config change during the session never rejects a selection the user legitimately picked from the page.
 4. **Options retrieval failure** during step 2 or the recheck: 503 `SYSTEM_ERROR`, `err.fund-comparison.retrieval.unavailable`, the same as the options endpoint.
 5. **Price fetch.** Calculate dates from the cached spelling of the time-range token and call `TRPGetFundPrice` with the cached spelling of each fund code (9.5.4).
 
@@ -115,12 +116,12 @@ Key: `fund-comparison.options`.
 | Condition | HTTP | API status | Code |
 |---|---|---|---|
 | Syntax invalid | 400 | `VALIDATION_FAILED` | `err.fund-comparison.request.invalid` |
-| Membership fails against fresh options | 400 | `VALIDATION_FAILED` | `err.fund-comparison.request.invalid` (Q1 open) |
+| Membership fails against fresh options | 503 | `SYSTEM_ERROR` | `err.fund-comparison.retrieval.unavailable` (Q1, ERROR log) |
 | Options retrieval fails during prices (miss or recheck) | 503 | `SYSTEM_ERROR` | `err.fund-comparison.retrieval.unavailable` |
 | Cache read failure or unreadable entry | - | - | treated as a miss |
 | Cache write failure, conflict, or missing session | - | - | logged and skipped |
-| `TRPGetFundPrice` `err.tpa.invalid.date` (D6, pending) | 400 | `VALIDATION_FAILED` | `err.fund-comparison.request.invalid` |
-| Same, Fund Price query/export (D6, pending) | 400 | `BUSINESS_REJECTED` | `err.fund-price.request.invalid` |
+| `TRPGetFundPrice` `err.tpa.invalid.date` (D6), Fund Comparison | 400 | `VALIDATION_FAILED` | `err.fund-comparison.request.invalid` |
+| Same, Fund Price query/export (D6) | 400 | `VALIDATION_FAILED` | `err.fund-price.request.invalid` |
 | Any other nonblank `TRPGetFundPrice` `err-message` | 503 | `SYSTEM_ERROR` | unchanged per feature |
 | `TRPGetFundPriceMode` any nonblank `err-message` | 503 | `SYSTEM_ERROR` | unchanged |
 
@@ -134,7 +135,7 @@ Every event carries `requestId`. Never log `policyNo`, `accountRef`, session IDs
 | `event=fund-comparison.options-cache.miss` | `requestId`, `reason=absent\|account-mismatch\|unreadable\|no-session` |
 | `event=fund-comparison.options-cache.write.skipped` | `requestId`, `reason=conflict\|session-missing\|session-not-usable\|failed\|no-session` |
 | `event=fund-comparison.options-cache.stale-refresh` | `requestId`, `timeRange`, `unlistedFundCodes` |
-| `event=fund-comparison.membership.rejected` | `requestId`, `reason=time-range-not-offered\|fund-code-not-offered`, `timeRange`, `unlistedFundCodes`, `source=fresh` |
+| `event=fund-comparison.membership.rejected` (ERROR) | `requestId`, `reason=time-range-not-offered\|fund-code-not-offered`, `timeRange`, `unlistedFundCodes`, `source=fresh` |
 | `event=fund-price.downstream.invalid-date` (D6) | `requestId`, `operation` |
 
 ## 9.8 Test strategy (required cases)
@@ -145,15 +146,15 @@ Every event carries `requestId`. Never log `policyNo`, `accountRef`, session IDs
 - Unreadable entry: treated as a miss.
 - Membership passes on cache: zero options calls.
 - Membership fails on cache, passes after refresh: exactly one options call, cache updated, `TRPGetFundPrice` called.
-- Membership fails on cache and after refresh: exactly one options call, 400.
-- Membership fails on options fetched after a miss: no second fetch, 400.
-- Unoffered `timeRange` (`10Y`, `2D`): 400. Unlisted fund code: 400.
+- Membership fails on cache and after refresh: exactly one options call, 503, ERROR log.
+- Membership fails on options fetched after a miss: no second fetch, 503.
+- Unoffered `timeRange` (`10Y`, `2D`) or unlisted fund code after the refresh: 503 `err.fund-comparison.retrieval.unavailable`. Syntax-invalid input: 400.
 - Options failure during the miss fetch or the recheck: 503.
 - `TRPGetFundPrice` never invoked when membership validation fails.
 - Options endpoint succeeds when the cache write fails, conflicts, or has no session.
 - Refresh-and-recheck succeeds even when the refreshed cache write fails.
 - Case and whitespace: `" faeu "` matches `FAEU`; downstream and response use `FAEU`.
-- D6: `err.tpa.invalid.date` gives 400 for comparison, query, and export; any other nonblank `err-message` gives 503; mode is unchanged.
+- D6: `err.tpa.invalid.date` gives 400 `VALIDATION_FAILED` for comparison (`err.fund-comparison.request.invalid`) and for Fund Price query and export (`err.fund-price.request.invalid`); Fund Price's other 400s stay `BUSINESS_REJECTED`; any other nonblank `err-message` gives 503; mode is unchanged.
 - Feature-state slot: each of the six rebuild sites preserves `featureState`; protector round-trip; absent value reads as empty.
 - Existing Fund Price callers and responses unchanged, apart from D6.
 
@@ -165,17 +166,17 @@ Each sub-task is fail-first. Sub-task gate: failing test evidence, implementatio
 - **5.2 Options cache model and access.** Cache entry record, codec, application service: read (hit, miss, account mismatch, unreadable) and write (via the concurrency service, non-fatal, reason-logged).
 - **5.3 Options endpoint writes the cache.** Session ID through `AuthenticatedSessionCookieReader`; write failure non-fatal.
 - **5.4 Prices membership validation.** Normalization (9.5.4), read-through, refresh-and-recheck, cached-spelling propagation; prices use case gains `FundComparisonOptionsSourcePort` and the cache service; wiring.
-- **5.5 D6 backstop (separate commit, held).** A dedicated exception thrown by the `TRPGetFundPrice` adapter path only, for the exact `err.tpa.invalid.date`. Fund Comparison maps it to `err.fund-comparison.request.invalid`; Fund Price query and export map it to `FundPriceRequestInvalidException`. Mode unchanged. Fund Price docs move from "pending" to final. Not merged until Nick confirms.
+- **5.5 D6 (confirmed).** A dedicated application exception thrown only on the `TRPGetFundPrice` adapter path for the exact `err.tpa.invalid.date`. Fund Price: a dedicated `ApiExceptionHandler` method returns HTTP 400 `VALIDATION_FAILED` `err.fund-price.request.invalid`. Fund Comparison: the prices use case translates it to `FundComparisonRequestInvalidException` (its current error mapping wraps every non-retrieval exception as 503, so this needs an explicit branch). Mode unchanged. Fund Price docs move from "decided" to implemented.
 - **5.6 Old-behavior tests.** Update or replace tests that assert the old behavior (including the `10d` syntax case and the BRD traceability suite).
 
 Milestone-end gate (once, after all sub-tasks are committed): full `mvn test`; `mvn spotless:apply` then `spotless:check`, then compile and test-compile again; tiered coverage review; startup smoke test; SonarQube quality gate.
 
 ## 9.10 Open items, future revamps, known limitations
 
-Open:
+Resolved (Nick, 2026-10-20):
 
-- **Q1:** should membership failures use a distinct public code, for example `err.fund-comparison.selection.unavailable` (still HTTP 400), so FE can reload options and tell the user the selection is no longer available? Default: reuse `err.fund-comparison.request.invalid`.
-- **D6:** pending downstream confirmation that `err.tpa.invalid.date` has a single trigger (the config-matrix lower bound).
+- **Q1:** membership failure is HTTP 503 `SYSTEM_ERROR`, `err.fund-comparison.retrieval.unavailable` (D8 revised). No distinct code.
+- **D6:** confirmed; HTTP 400 `VALIDATION_FAILED` (D6 row in 9.3).
 
 Future revamps (not in this change):
 
@@ -187,7 +188,8 @@ Future revamps (not in this change):
 Known limitations:
 
 - `loadAndTouch` rewrites the whole session without a revision check. A concurrent request can overwrite a just-written cache entry. Effect: a later cache miss and refetch, never a wrong answer.
-- Fund Price 400s use `BUSINESS_REJECTED` while Fund Comparison 400s use `VALIDATION_FAILED`.
+- Fund Price's existing 400s use `BUSINESS_REJECTED`, while D6 and every Fund Comparison 400 use `VALIDATION_FAILED`.
+- Accepted trade-off (Q1): a request built outside the page with an unoffered value (for example `10Y` via Postman) gets HTTP 503, not 400. `TRPGetFundPrice` is not called.
 - Existing doc discrepancies, not changed by this CR: 01 sections 1.2/1.3 and 03 section 3.2 still describe a separate dedicated Fund Comparison price adapter (the existing adapter was extended instead); 02's error examples show `targets: ["SERVER"]` and `type: SYSTEM`, while the code emits `targets: []`, `type: FORM` for retrieval failures, and a `message` field.
 
 ## 9.11 Phase 3 local E2E scenarios
@@ -195,9 +197,10 @@ Known limitations:
 Curl scenarios against the local instance:
 
 1. Options, then prices with an offered selection: 200.
-2. Unoffered `timeRange` (`10Y`, `2D`): 400, `TRPGetFundPrice` not called.
-3. Unlisted fund code: 400.
+2. Unoffered `timeRange` (`10Y`, `2D`): 503 `err.fund-comparison.retrieval.unavailable`, `TRPGetFundPrice` not called.
+3. Unlisted fund code: 503.
 4. Prices without a prior options call (cache miss): fetched, then validated.
 5. Account switch (different `Account-Ref`): treated as a miss.
 6. Stale cache corrected by the recheck: alter the cached entry in Redis, then call prices with a currently offered value: 200, one options call.
 7. The four confirmed downstream behaviors in 9.2.
+8. D6: an offered time range that downstream's config matrix rejects: 400 `VALIDATION_FAILED`, `err.fund-comparison.request.invalid`.

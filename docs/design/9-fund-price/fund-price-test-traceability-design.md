@@ -48,7 +48,7 @@ exactly like DAILY -- confirmed there is NO calendar-month expansion. A regressi
 test must assert this explicitly, including for dates in leap-February, to guard
 against any future reintroduction of the incorrect expansion.
 - fund-seq is not present anywhere in the web response or the workbook.
-- All nonblank downstream errors return 503 `SYSTEM_ERROR`. (Pending change, Fund Comparison CR D6, awaiting downstream confirmation: `err.tpa.invalid.date` from TRPGetFundPrice will map to HTTP 400 `err.fund-price.request.invalid`; TRPGetFundPriceMode is unchanged. See docs/design/13-fund-comparison/09-options-session-cache-change.md.)
+- All nonblank downstream errors return 503 `SYSTEM_ERROR`. (Decided 2026-10-20, Fund Comparison CR D6, takes effect with Fund Comparison Milestone 5 sub-task 5.5: `err.tpa.invalid.date` from TRPGetFundPrice maps to HTTP 400 `VALIDATION_FAILED` `err.fund-price.request.invalid`; TRPGetFundPriceMode is unchanged. See docs/design/13-fund-comparison/09-options-session-cache-change.md.)
 - Session metadata old-session readability, account mismatch, stale reference date, persistence error, and concurrent update behavior.
 
 ## 95% gate
