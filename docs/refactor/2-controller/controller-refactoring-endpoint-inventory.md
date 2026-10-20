@@ -550,7 +550,7 @@
 - Path variables: None declared
 - Query parameters: `page (optional)`, `size (optional)`, `dateFormat (optional)`, `timezone (optional)`
 - Request body type: `NONE`
-- Java response type: `Mono<NotificationListResponse>`
+- Java response type: `Mono<MutationResponse<NotificationListResultResponse>>`
 - Success/status selection: Runtime-dependent; no direct status selector statically resolved in controller method
 - Validation annotations: None declared at method boundary
 - Immediate call chain: WEB_COLLABORATOR `CurrentPortalAccessContextResolver.current`; APPLICATION_INPUT_PORT `GetNotificationsUseCase.execute` -> immediate implementation(s): src/main/java/com/bct/ngtpa/apiservice/application/usecase/GetNotificationsService.java
@@ -567,7 +567,7 @@
 - Path variables: None declared
 - Query parameters: None declared
 - Request body type: `UpdateNotificationsReadStatusRequest`
-- Java response type: `Mono<MutationResponse<UpdateNotificationsReadStatusResponse>>`
+- Java response type: `Mono<MutationResponse<UpdateNotificationsReadStatusResultResponse>>`
 - Success/status selection: Runtime-dependent; no direct status selector statically resolved in controller method
 - Validation annotations: `@Valid`
 - Immediate call chain: WEB_COLLABORATOR `CurrentPortalAccessContextResolver.current`; APPLICATION_INPUT_PORT `UpdateNotificationsReadStatusUseCase.execute` -> immediate implementation(s): src/main/java/com/bct/ngtpa/apiservice/application/usecase/UpdateNotificationsReadStatusService.java

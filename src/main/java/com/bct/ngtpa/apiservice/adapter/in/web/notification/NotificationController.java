@@ -23,11 +23,12 @@ public class NotificationController {
   private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
 
   @GetMapping(value = "/notifications", produces = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<NotificationListResponse> getNotifications(
+  public Mono<MutationResponse<NotificationListResultResponse>> getNotifications(
       @RequestParam(value = "page", required = false) Integer page,
       @RequestParam(value = "size", required = false) Integer size,
       @RequestParam(value = "dateFormat", required = false) String dateFormat,
-      @RequestParam(value = "timezone", required = false) String timezone) {
+      @RequestParam(value = "timezone", required = false) String timezone,
+      @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage) {
     return currentPortalAccessContextResolver
         .current()
         .flatMap(
@@ -44,14 +45,14 @@ public class NotificationController {
                         ctx.account().certNo(),
                         ctx.actor().actorUserId(),
                         null)))
-        .map(notificationWebMapper::toResponse);
+        .map(result -> notificationWebMapper.toResponse(result, acceptLanguage));
   }
 
   @PatchMapping(
       value = "/notifications",
       consumes = MediaType.APPLICATION_JSON_VALUE,
       produces = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<MutationResponse<UpdateNotificationsReadStatusResponse>>
+  public Mono<MutationResponse<UpdateNotificationsReadStatusResultResponse>>
       updateNotificationsReadStatus(
           @Valid @RequestBody UpdateNotificationsReadStatusRequest request) {
     return currentPortalAccessContextResolver

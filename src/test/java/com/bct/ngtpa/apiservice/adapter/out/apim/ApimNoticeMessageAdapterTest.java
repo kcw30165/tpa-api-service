@@ -17,6 +17,7 @@ import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -49,13 +50,11 @@ class ApimNoticeMessageAdapterTest {
     assertThat(exchange.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
     assertThat(exchange.credentialContext().accountEnv()).isEqualTo("JP");
     assertThat(exchange.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
-    assertThat(body.getAccountEnv()).isEqualTo("JP");
     assertThat(body.getLoginUserRole()).isEqualTo("role_user_mbr");
     assertThat(result.notifications()).hasSize(1);
     assertThat(result.notifications().getFirst().msgCode()).isEqualTo("SHORT-001");
     assertThat(result.notifications().getFirst().msgCodeLong()).isEqualTo("LONG-001");
     assertThat(result.notifications().getFirst().category()).isEqualTo("IMP_NOTE");
-    assertThat(result.notifications().getFirst().msgTitle()).isEqualTo("IMPORTANT NOTICE");
     assertThat(result.notifications().getFirst().isRead()).isTrue();
     assertThat(result.notifications().getFirst().startDatetime())
         .isEqualTo(LocalDateTime.of(2026, 4, 29, 14, 15));
@@ -88,13 +87,16 @@ class ApimNoticeMessageAdapterTest {
   }
 
   @Test
-  void validRequestPayloadExcludesPageAndSizeAndKeepsEnvJsonContract() throws Exception {
+  void validRequestPayloadHasExactKeySetWithoutEnvPageAndSize() throws Exception {
     AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
     new ApimNoticeMessageAdapter(capturing(captured, new AtomicInteger(), emptyEnvelope()))
         .fetchNotifications(command("DEV", ActorUserRole.ROLE_USER_MBR))
         .block();
     var node = JSON.readTree(JSON.writeValueAsString(captured.get().request()));
-    assertThat(node.get("env").asText()).isEqualTo("DEV");
+    assertThat(node.has("env")).isFalse();
+    assertThat(requestKeys(node))
+        .containsExactlyInAnyOrder(
+            "policy-no", "cert-no", "login-user-id", "login-user-role", "ref-date");
     assertThat(node.get("login-user-role").asText()).isEqualTo("role_user_mbr");
     assertThat(node.has("page")).isFalse();
     assertThat(node.has("size")).isFalse();
@@ -191,9 +193,15 @@ class ApimNoticeMessageAdapterTest {
             .fetchNotifications(command("JP", ActorUserRole.ROLE_USER_MBR))
             .block();
     assertThat(result.notifications()).hasSize(1);
-    assertThat(result.notifications().getFirst().msgTitle()).isEqualTo("custom-type");
+    assertThat(result.notifications().getFirst().category()).isEqualTo("custom-type");
     assertThat(result.notifications().getFirst().msgStatus()).isEqualTo(MessageStatus.UNREAD);
     assertThat(result.notifications().getFirst().startDatetime()).isNull();
+  }
+
+  private static List<String> requestKeys(JsonNode node) {
+    List<String> keys = new ArrayList<>();
+    node.fieldNames().forEachRemaining(keys::add);
+    return keys;
   }
 
   private static ApimExchangeExecutor capturing(

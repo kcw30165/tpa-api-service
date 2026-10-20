@@ -57,7 +57,6 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
         .loginUserId(command.userId())
         .loginUserRole(command.mbrType().toApimValue())
         .refDate(command.refDate())
-        .accountEnv(command.accountEnv())
         .msgCodeLong(String.join(",", command.notificationIds()))
         .build();
   }

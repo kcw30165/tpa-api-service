@@ -14,7 +14,6 @@ import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.domain.model.AudienceType;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
-import com.bct.ngtpa.apiservice.domain.model.MessageType;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import java.time.LocalDateTime;
@@ -62,7 +61,6 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
     return GetMessageBoardApimRequest.builder()
         .policyNo(command.policyNo())
         .certNo(command.certNo())
-        .accountEnv(command.accountEnv())
         .loginUserId(command.userId())
         .loginUserRole(command.mbrType().toApimValue())
         .refDate(command.refDate())
@@ -93,8 +91,6 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
         item.getMsgCodeLong(),
         item.getSeq(),
         category,
-        MessageType.fromCode(category),
-        MessageType.titleFor(category),
         item.getMsgContentChi(),
         item.getMsgContentEng(),
         status.isRead(),

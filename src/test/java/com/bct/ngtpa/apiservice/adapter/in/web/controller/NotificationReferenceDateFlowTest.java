@@ -18,7 +18,6 @@ import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.usecase.GetNotificationsService;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
-import com.bct.ngtpa.apiservice.domain.model.MessageType;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
 import java.time.Clock;
 import java.time.Duration;
@@ -105,8 +104,6 @@ class NotificationReferenceDateFlowTest {
                           "MSG-1-LONG",
                           1,
                           "GENERAL",
-                          MessageType.IMPORTANT_NOTICE,
-                          "Reference Date Notice",
                           "Content zh",
                           "Content",
                           MessageStatus.UNREAD.isRead(),
@@ -138,10 +135,26 @@ class NotificationReferenceDateFlowTest {
         .expectStatus()
         .isOk()
         .expectBody()
-        .jsonPath("$.notifications[0].msgTitle")
-        .isEqualTo("Reference Date Notice")
-        .jsonPath("$.notifications[0].msgCode")
-        .isEqualTo("MSG-1-LONG");
+        .jsonPath("$.success")
+        .isEqualTo(true)
+        .jsonPath("$.status")
+        .isEqualTo("SUCCESS")
+        .jsonPath("$.messages")
+        .isEmpty()
+        .jsonPath("$.errors")
+        .isEmpty()
+        .jsonPath("$.result.data.notifications[0].category")
+        .isEqualTo("GENERAL")
+        .jsonPath("$.result.data.notifications[0].msgTitle")
+        .doesNotExist()
+        .jsonPath("$.result.data.notifications[0].msgCode")
+        .isEqualTo("MSG-1-LONG")
+        .jsonPath("$.result.data.notifications[0].msgContent")
+        .isEqualTo("Content")
+        .jsonPath("$.result.data.notifications[0].msgContentChi")
+        .doesNotExist()
+        .jsonPath("$.result.data.notifications[0].msgContentEng")
+        .doesNotExist();
 
     assertThat(redisRead.get()).isTrue();
     assertThat(cacheWriteCalled.get()).isFalse();

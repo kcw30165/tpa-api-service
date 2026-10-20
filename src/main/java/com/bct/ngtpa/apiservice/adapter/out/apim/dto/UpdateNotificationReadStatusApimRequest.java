@@ -24,9 +24,6 @@ public class UpdateNotificationReadStatusApimRequest {
   @JsonProperty("ref-date")
   private String refDate;
 
-  @JsonProperty("env")
-  private String accountEnv;
-
   @JsonProperty("msg-code-long")
   private String msgCodeLong;
 }

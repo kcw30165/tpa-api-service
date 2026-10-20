@@ -6,8 +6,6 @@ public record NotificationDto(
     String msgCode,
     String sequence,
     String category,
-    String msgTitle,
-    String msgContentChi,
-    String msgContentEng,
+    String msgContent,
     @JsonProperty("isRead") boolean isRead,
     String startDateTime) {}

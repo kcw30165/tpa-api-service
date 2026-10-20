@@ -37,7 +37,11 @@ class ApiResponseExceptionHandlingBoundaryTest {
     assertTrue(
         containsIgnoringWhitespace(
             notificationController,
-            "Mono<MutationResponse<UpdateNotificationsReadStatusResponse>> updateNotificationsReadStatus"));
+            "Mono<MutationResponse<UpdateNotificationsReadStatusResultResponse>> updateNotificationsReadStatus"));
+    assertTrue(
+        containsIgnoringWhitespace(
+            notificationController,
+            "Mono<MutationResponse<NotificationListResultResponse>> getNotifications"));
 
     String personalInformationController = readController("PersonalInformationController.java");
     assertTrue(
@@ -48,11 +52,6 @@ class ApiResponseExceptionHandlingBoundaryTest {
 
   @Test
   void legacyFrontendBoundSuccessEndpointsRemainUnwrapped() throws IOException {
-    String notificationController = readController("NotificationController.java");
-    assertTrue(
-        containsIgnoringWhitespace(
-            notificationController, "Mono<NotificationListResponse> getNotifications"));
-
     String contributionController = readController("ContributionController.java");
     assertTrue(
         containsIgnoringWhitespace(

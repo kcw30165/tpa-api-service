@@ -27,8 +27,6 @@ class NoticeMessageTest {
     assertEquals("msg-code-long", noticeMessage.msgCodeLong());
     assertEquals(3, noticeMessage.seq());
     assertEquals("GENERAL", noticeMessage.category());
-    assertEquals(MessageType.ACTION_REQUIRED, noticeMessage.msgType());
-    assertEquals("Title", noticeMessage.msgTitle());
     assertEquals("Chi", noticeMessage.msgContentChi());
     assertEquals("Eng", noticeMessage.msgContentEng());
     assertTrue(noticeMessage.isRead());
@@ -111,8 +109,6 @@ class NoticeMessageTest {
         "msg-code-long",
         3,
         "GENERAL",
-        MessageType.ACTION_REQUIRED,
-        "Title",
         "Chi",
         "Eng",
         true,

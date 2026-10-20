@@ -13,8 +13,6 @@ public record NoticeMessage(
     String msgCodeLong,
     Integer seq,
     String category,
-    MessageType msgType,
-    String msgTitle,
     String msgContentChi,
     String msgContentEng,
     boolean isRead,
