@@ -262,4 +262,17 @@ class FundComparisonPricesUseCaseMembershipTest {
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("sessionId");
   }
+
+  @Test
+  void aStaleCacheRefreshSucceedsEvenWhenTheRefreshedCacheWriteFails() {
+    // 09 section 9.8: "Refresh-and-recheck succeeds even when the refreshed cache write fails."
+    cached(ALL_RANGES, "FAEU");
+    when(cache.write(any(), any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("simulated cache write failure")));
+
+    StepVerifier.create(run(command(List.of("FBAU"), "10D"))).expectNextCount(1).verifyComplete();
+
+    assertThat(optionsCalls).hasValue(1);
+    assertThat(priceCalls).hasValue(1);
+  }
 }

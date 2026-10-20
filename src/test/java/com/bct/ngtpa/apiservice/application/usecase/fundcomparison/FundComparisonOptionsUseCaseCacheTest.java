@@ -122,4 +122,21 @@ class FundComparisonOptionsUseCaseCacheTest {
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("sessionId");
   }
+
+  @Test
+  void aCacheWriteFailureDoesNotFailTheOptionsCall() {
+    // D4 (09-options-session-cache-change.md): "A failed or skipped write is logged and never
+    // fails the options response." The real FundComparisonOptionsCacheService.write() is
+    // documented to never itself emit an error, but this use case must defend the same boundary
+    // independently of that contract (gap found by script 098's investigation).
+    var raw = raw();
+    when(sourcePort.fetchOptions(any())).thenReturn(Mono.just(raw));
+    when(cache.write(any(), any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("simulated cache write failure")));
+
+    StepVerifier.create(
+            useCase().getOptionsAndCache(command(), Optional.of(SID), ACCOUNT_REF, "req-1"))
+        .assertNext(result -> assertThat(result).isSameAs(raw))
+        .verifyComplete();
+  }
 }

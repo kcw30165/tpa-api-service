@@ -86,6 +86,15 @@ public final class FundComparisonOptionsUseCase {
           requestId);
       return Mono.empty();
     }
-    return cache.write(sessionId.get(), entry, requestId);
+    return cache
+        .write(sessionId.get(), entry, requestId)
+        .onErrorResume(
+            exception -> {
+              LOG.warn(
+                  "event=fund-comparison.options-cache.write.skipped reason=failed exceptionType={} requestId={}",
+                  exception.getClass().getSimpleName(),
+                  requestId);
+              return Mono.empty();
+            });
   }
 }
