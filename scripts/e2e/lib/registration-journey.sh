@@ -218,7 +218,7 @@ reg_journey_to_username_checked() {
     '{selectedTrust: {accountEnv:$env, trustCode:$trust}, username:$username}')"
   reg_call "$flow" username-check /username/check "$body" - yes
   body=''
-  reg_assert_response "reg_${flow}_username_check" 200 SUCCESS USERNAME_CHECK || return 1
+  reg_assert_response "reg_${flow}_username_check" 200 SUCCESS PASSWORD_SETUP || return 1
   reg_note "flow_${flow}_username_check_attempts=1 (candidate username shared across flow A and flow B)"
 }
 
