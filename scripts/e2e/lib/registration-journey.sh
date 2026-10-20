@@ -26,6 +26,31 @@ reg_progress() {
 
 reg_new_key() { printf 'reg-%s-%s-%s' "$1" "$(date +%s)" "$$"; }
 
+# reg_prompt_masked <prompt text> -- reads one line from /dev/tty, echoing one
+# '*' per character typed (with backspace support) so the operator can see that
+# keystrokes are being received, without ever revealing the real value. Prints
+# the entered value on stdout.
+reg_prompt_masked() {
+  local prompt="$1" value="" ch
+  printf '%s' "$prompt" >/dev/tty
+  while IFS= read -r -s -n 1 ch </dev/tty; do
+    if [[ -z "$ch" ]]; then
+      break
+    fi
+    if [[ "$ch" == $'\x7f' || "$ch" == $'\b' ]]; then
+      if [[ -n "$value" ]]; then
+        value="${value%?}"
+        printf '\b \b' >/dev/tty
+      fi
+      continue
+    fi
+    value+="$ch"
+    printf '*' >/dev/tty
+  done
+  printf '\n' >/dev/tty
+  printf '%s' "$value"
+}
+
 reg_require_inputs() {
   local flow name var email_var mobile_var
   local -a missing=()
@@ -165,9 +190,7 @@ reg_journey_to_username_checked() {
   reg_note "flow_${flow}_start_attempts=1"
 
   if [[ -z "$otp_code" ]]; then
-    printf 'Flow %s OTP (just delivered to the contact above): ' "$flow" >/dev/tty
-    read -r -s otp_code </dev/tty >/dev/tty
-    printf '\n' >/dev/tty
+    otp_code="$(reg_prompt_masked "Flow ${flow} OTP (just delivered to the contact above): ")"
   fi
   [[ -n "$otp_code" ]] || {
     printf 'FAIL OTP is required for flow %s\n' "$flow"
