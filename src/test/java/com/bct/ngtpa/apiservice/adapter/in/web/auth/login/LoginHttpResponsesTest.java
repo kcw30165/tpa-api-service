@@ -69,8 +69,7 @@ class LoginHttpResponsesTest {
 
   @Test
   void invalidAccountCodeMapsToUnauthorized() {
-    assertThat(statusFor(LoginErrorKey.INVALID_ACCOUNT.value()))
-        .isEqualTo(HttpStatus.UNAUTHORIZED);
+    assertThat(statusFor(LoginErrorKey.INVALID_ACCOUNT.value())).isEqualTo(HttpStatus.UNAUTHORIZED);
   }
 
   @Test

@@ -57,6 +57,7 @@ class LoginOtpVerifyWebMapperTest {
         .contains("\"actions\":[{\"code\":\"RESTART_FLOW\"}]")
         .doesNotContain("pageId", "pageRef", "variant", "nextStep\":\"RETURN_TO_LOGIN\"");
   }
+
   @Test
   void expiredRemainsOnVerifyOtpWithOtpExpiredCode() {
     var r =
@@ -181,5 +182,4 @@ class LoginOtpVerifyWebMapperTest {
     assertThat(r.errors().getFirst().targets()).containsExactly("PAGE");
     assertThat(r.errors().getFirst().source()).isEqualTo("SERVER");
   }
-
 }
