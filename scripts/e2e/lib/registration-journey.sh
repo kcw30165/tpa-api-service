@@ -177,6 +177,12 @@ reg_journey_to_username_checked() {
   reg_call "$flow" start /start "$body" "$(reg_new_key "${flow}-start")" no
   body=''
   reg_assert_response "reg_${flow}_start" 200 SUCCESS VERIFY_OTP || return 1
+  # Diagnostic only: this is the server's OWN already-masked value (e.g.
+  # "d****k@bcthk.com"), the same partially-redacted destination shown to a
+  # real user. Printed to the terminal only, never written to any evidence
+  # file, to help confirm which contact the OTP was actually sent to.
+  printf 'Flow %s OTP destination (server-masked): %s\n' "$flow" \
+    "$(reg_json '.result.data.maskedDestination // "<unknown>"')" >/dev/tty
   [[ -f "$E2E_PRIVATE_STATE_DIR/${flow}_auth_flow_cookie" ]] || {
     printf 'FAIL flow %s start did not issue an auth_flow_sid cookie\n' "$flow"
     return 1
