@@ -23,7 +23,7 @@ public class NotificationController {
   private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
 
   @GetMapping(value = "/notifications", produces = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<NotificationListResponse> getNotifications(
+  public Mono<MutationResponse<NotificationListResultResponse>> getNotifications(
       @RequestParam(value = "page", required = false) Integer page,
       @RequestParam(value = "size", required = false) Integer size,
       @RequestParam(value = "dateFormat", required = false) String dateFormat,

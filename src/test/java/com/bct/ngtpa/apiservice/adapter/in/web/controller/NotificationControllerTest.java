@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -9,7 +10,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.notification.NotificationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.NotificationListResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdateNotificationsReadStatusResponse;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
@@ -23,12 +23,14 @@ import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusRes
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
 class NotificationControllerTest {
+  private static final ObjectMapper JSON = new ObjectMapper();
 
   @Test
   void getNotificationsPassesQueryOnlyCommandWithoutAccountRef() {
@@ -40,21 +42,21 @@ class NotificationControllerTest {
         };
     UpdateNotificationsReadStatusUseCase updateUseCase =
         command -> Mono.just(new UpdateNotificationsReadStatusResult(List.of()));
-    NotificationWebMapper notificationWebMapper = mock(NotificationWebMapper.class);
-    NotificationListResponse expected = mock(NotificationListResponse.class);
-    when(notificationWebMapper.toResponse(org.mockito.ArgumentMatchers.any())).thenReturn(expected);
 
     var actual =
         new NotificationController(
                 getUseCase,
                 updateUseCase,
-                notificationWebMapper,
+                new NotificationWebMapper(),
                 mock(NotificationReadStatusWebMapper.class),
                 resolver())
             .getNotifications(2, 50, "yyyy-MM-dd", "Asia/Hong_Kong")
             .block();
 
-    assertEquals(expected, actual);
+    var node = JSON.valueToTree(actual);
+    assertTrue(node.at("/success").asBoolean());
+    assertTrue(node.at("/result/data/notifications").isArray());
+    assertEquals(0, node.at("/result/data/notifications").size());
     assertEquals(2, captured.get().page());
     assertEquals(50, captured.get().size());
     assertEquals("yyyy-MM-dd", captured.get().dateFormat());

@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bct.ngtpa.apiservice.application.dto.NotificationDateOptions;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
@@ -10,11 +10,15 @@ import com.bct.ngtpa.apiservice.domain.model.Hyperlink;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.domain.model.MessageType;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class NotificationWebMapperTest {
+
+  private static final ObjectMapper JSON = new ObjectMapper();
 
   private final NotificationWebMapper mapper = new NotificationWebMapper();
 
@@ -24,9 +28,9 @@ class NotificationWebMapperTest {
         new NotificationListResult(
             List.of(noticeMessage("SHORT", "LONG", 1)), NotificationDateOptions.defaults());
 
-    var response = mapper.toResponse(result);
+    var first = firstNotification(result);
 
-    assertEquals("LONG", response.notifications().getFirst().msgCode());
+    assertEquals("LONG", first.at("/msgCode").asText());
   }
 
   @Test
@@ -35,9 +39,9 @@ class NotificationWebMapperTest {
         new NotificationListResult(
             List.of(noticeMessage("SHORT", null, 1)), NotificationDateOptions.defaults());
 
-    var response = mapper.toResponse(result);
+    var first = firstNotification(result);
 
-    assertEquals("SHORT", response.notifications().getFirst().msgCode());
+    assertEquals("SHORT", first.at("/msgCode").asText());
   }
 
   @Test
@@ -46,9 +50,10 @@ class NotificationWebMapperTest {
         new NotificationListResult(
             List.of(noticeMessage("SHORT", "LONG", 42)), NotificationDateOptions.defaults());
 
-    var response = mapper.toResponse(result);
+    var first = firstNotification(result);
 
-    assertEquals("42", response.notifications().getFirst().sequence());
+    assertEquals("42", first.at("/sequence").asText());
+    assertTrue(first.at("/sequence").isTextual());
   }
 
   @Test
@@ -57,9 +62,9 @@ class NotificationWebMapperTest {
         new NotificationListResult(
             List.of(noticeMessage("SHORT", null, null)), NotificationDateOptions.defaults());
 
-    var response = mapper.toResponse(result);
+    var first = firstNotification(result);
 
-    assertNull(response.notifications().getFirst().sequence());
+    assertTrue(first.at("/sequence").isNull());
   }
 
   @Test
@@ -67,20 +72,52 @@ class NotificationWebMapperTest {
     var options = NotificationDateOptions.resolve("yyyy-MM-dd HH:mm", "UTC");
     var result = new NotificationListResult(List.of(noticeMessage("SHORT", "LONG", 1)), options);
 
-    var response = mapper.toResponse(result);
+    var first = firstNotification(result);
 
-    assertEquals("2026-05-04 08:30", response.notifications().getFirst().startDateTime());
+    assertEquals("2026-05-04 08:30", first.at("/startDateTime").asText());
   }
 
   @Test
   void toResponseUsesDefaultDateOptionsWhenResultDateOptionsIsNull() {
     var result = new NotificationListResult(List.of(noticeMessage("SHORT", "LONG", 1)), null);
 
-    var response = mapper.toResponse(result);
+    var first = firstNotification(result);
 
     // default format is "dd/MM/yyyy HH:mm" at system timezone; just verify non-null and non-empty
-    var startDateTime = response.notifications().getFirst().startDateTime();
-    assertEquals("04/05/2026 08:30", startDateTime);
+    assertEquals("04/05/2026 08:30", first.at("/startDateTime").asText());
+  }
+
+  @Test
+  void toResponseWrapsNotificationsInSuccessEnvelope() {
+    var result =
+        new NotificationListResult(
+            List.of(noticeMessage("SHORT", "LONG", 1)), NotificationDateOptions.defaults());
+
+    JsonNode root = JSON.valueToTree(mapper.toResponse(result));
+
+    assertTrue(root.at("/success").asBoolean());
+    assertEquals("SUCCESS", root.at("/status").asText());
+    assertTrue(root.at("/messages").isArray());
+    assertEquals(0, root.at("/messages").size());
+    assertTrue(root.at("/errors").isArray());
+    assertEquals(0, root.at("/errors").size());
+    assertEquals(1, root.at("/result/data/notifications").size());
+  }
+
+  @Test
+  void toResponseKeepsEmptyNotificationsUnderData() {
+    var result = new NotificationListResult(List.of(), NotificationDateOptions.defaults());
+
+    JsonNode root = JSON.valueToTree(mapper.toResponse(result));
+    JsonNode notifications = root.at("/result/data/notifications");
+
+    assertTrue(notifications.isArray());
+    assertEquals(0, notifications.size());
+  }
+
+  private JsonNode firstNotification(NotificationListResult result) {
+    JsonNode root = JSON.valueToTree(mapper.toResponse(result));
+    return root.at("/result/data/notifications/0");
   }
 
   private static NoticeMessage noticeMessage(String msgCode, String msgCodeLong, Integer seq) {

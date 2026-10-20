@@ -138,9 +138,17 @@ class NotificationReferenceDateFlowTest {
         .expectStatus()
         .isOk()
         .expectBody()
-        .jsonPath("$.notifications[0].msgTitle")
+        .jsonPath("$.success")
+        .isEqualTo(true)
+        .jsonPath("$.status")
+        .isEqualTo("SUCCESS")
+        .jsonPath("$.messages")
+        .isEmpty()
+        .jsonPath("$.errors")
+        .isEmpty()
+        .jsonPath("$.result.data.notifications[0].msgTitle")
         .isEqualTo("Reference Date Notice")
-        .jsonPath("$.notifications[0].msgCode")
+        .jsonPath("$.result.data.notifications[0].msgCode")
         .isEqualTo("MSG-1-LONG");
 
     assertThat(redisRead.get()).isTrue();
