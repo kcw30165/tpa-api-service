@@ -6,7 +6,7 @@ items U1-U5 refer to that document.
 ## 1. Milestone
 
 One milestone, **M1: notifications use the MutationResponse data shape and the aligned downstream
-requests**, split into five sub-tasks.
+requests**, split into six sub-tasks (ST-6 was added on 2026-10-20).
 
 ## 2. Sub-tasks
 
@@ -84,7 +84,25 @@ set the design status to implemented.
 
 Commit: `docs(notice-board): update notifications endpoint inventory and design status`
 
-## 3. Sub-task gates (ST-2 to ST-5, in order, from the worktree root)
+### ST-6 Single msgContent by Accept-Language (GET only)
+
+Added after the live GET response showed both `msgContentChi` and `msgContentEng` (design section 13).
+
+Fail-first (compiles against the current types and fails on assertions):
+
+- `NotificationGetLanguageHttpContractTest` (new): the real controller and mapper through `WebTestClient` with
+  different `Accept-Language` values; asserts `msgContent` and the absence of the two bilingual fields.
+- `NotificationReferenceDateFlowTest`: asserts `msgContent` and the absence of the bilingual fields.
+- `NotificationResponseSerializationContractTest`: the exact key set holds `msgContent`.
+
+Implementation: `NotificationDto` (one content field), `NotificationWebMapper.toResponse(result, language)`,
+`NotificationController` GET (`Accept-Language` header), and the callers in `NotificationDtoTest`,
+`NotificationListResponseTest`, `NotificationWebMapperTest` (with new language tests),
+`NotificationControllerTest` and `NotificationResponseSerializationContractTest`.
+
+Commit: `refactor(notice-board): select single msgContent by Accept-Language on GET /notifications`
+
+## 3. Sub-task gates (ST-2 to ST-6, in order, from the worktree root)
 
 1. Fail-first (ST-2 to ST-4): write the new or changed tests and run only those with
    `mvn -Dtest=<classes> test`; they must fail on the missing behaviour, not on a compile error.
@@ -122,7 +140,8 @@ section 10 of the design so the frontend change ships in the same release.
 | ST-3 GET `result.data` | Done | `f73e98c7` |
 | ST-4 PATCH `result.data` | Done | `8f4fc5d5` |
 | ST-5 docs | Done in this commit | |
-| Milestone gates | Pending | |
+| ST-6 msgContent by Accept-Language | Designed | |
+| Milestone gates | Pending (re-run after ST-6) | |
 
-No ST-6 exists: making the notification error responses label-free is deferred to the central
+Making the notification error responses label-free is not a sub-task of this branch: it is deferred to the central
 `ApiExceptionHandler` consolidation (decision by Nick, 2026-10-20).

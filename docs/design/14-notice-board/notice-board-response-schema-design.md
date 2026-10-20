@@ -5,7 +5,7 @@
 | Branch | `refactor/notice-board` |
 | Base | `origin/dev` at `c9aa7987a68f939d4170f1c78a8fc4763ed26a57` |
 | Owner | Nick (solution design and approval) |
-| Status | Implemented on the branch (ST-2 to ST-4); milestone gates pending |
+| Status | Implemented on the branch (ST-2 to ST-4); ST-6 (single msgContent) designed; milestone gates pending |
 
 Labels: **Confirmed** means read from the source at the base commit (investigation scripts 001, 002,
 004 and 005). **Unverified** means not read yet; the named gate settles it.
@@ -93,8 +93,7 @@ GET success:
           "sequence": "1",
           "category": "GENERAL",
           "msgTitle": "Title",
-          "msgContentChi": "Chi",
-          "msgContentEng": "Eng",
+          "msgContent": "Eng",
           "isRead": false,
           "startDateTime": "04/05/2026 08:30"
         }
@@ -261,3 +260,91 @@ Outcomes that settled earlier open points:
 
 Pending: the milestone gates (full `mvn test`, coverage, smoke test, SonarQube) and the frontend change for
 the two breaking JSON paths in section 10.
+
+## 13. Amendment: single `msgContent` selected by Accept-Language (ST-6)
+
+Added on 2026-10-20 after a live GET response showed `msgContentChi` and `msgContentEng` on every
+notification, which leaves the choice of language to the frontend. This amendment changes section 5 for the
+GET response only. PATCH is not affected.
+
+### 13.1 Confirmed (script 018)
+
+- The downstream item `GetMessageBoardMessageItem` carries `msg-content-chi` and `msg-content-eng`. The
+  adapter maps both to `NoticeMessage.msgContentChi` and `NoticeMessage.msgContentEng`, and
+  `NotificationDto` exposes both.
+- Existing precedent: `FundFactSheetWebMapper` chooses by language in the web mapper. For zh_HK it uses the
+  Chinese text when it is not null or blank, otherwise the English text; for every other language it uses the
+  English text. The command carries no language.
+- `RequestLanguageResolver.isZhHk(language)` normalizes the value: `zh`, `zh-HK` and `zh_HK` select zh_HK;
+  every other value, including null and blank, selects English (`en`, `en-US`, `fr` and `zh-TW` all give
+  English).
+- `NotificationCurrentContextBoundaryGuardTest` forbids the strings `RequestHeaderContext`, `Account-Ref` and
+  `resolveRequiredAccountRef` in `NotificationController`. The controller therefore reads the plain header
+  `@RequestHeader(name = "Accept-Language", required = false)`, as the Login and Forgot Password controllers
+  do, and does not use `RequestHeaderContext` or `RequestHeaderContextKeys`.
+
+### 13.2 Decisions
+
+| ID | Decision | Reason |
+|---|---|---|
+| D12 | Each notification in the GET response has one field `msgContent`; `msgContentChi` and `msgContentEng` are removed. | The frontend must not choose between two languages. |
+| D13 | Selection happens in `NotificationWebMapper`: for zh_HK, `msgContent` is the Chinese content when it is not null or blank, otherwise the English content; for every other language, and for a missing or blank header, it is the English content. There is no fallback from English to Chinese. | Same rule as Fund Fact Sheet and Fund Price. |
+| D14 | `NoticeMessage`, the APIM DTOs, the adapter, the commands, the use cases and the services are unchanged. The domain keeps both texts. | Language selection belongs to the web mapper; the command carries no language. |
+| D15 | `NotificationWebMapper.toResponse(NotificationListResult, String language)` replaces the one-argument method; no overload is kept. `NotificationController.getNotifications` gains the last parameter `@RequestHeader(name = "Accept-Language", required = false) String acceptLanguage` and passes it through unchanged. | Nothing is released; the mapper normalizes the value. |
+| D16 | Java adds no text. `msgContent` is downstream text; Java only chooses which of the two texts to return. | Label rule (section 3). |
+| D17 | `msgTitle` is not changed by this amendment (see U6). | Out of scope until Nick decides. |
+
+### 13.3 Target contract
+
+One item of `GET /api/v1/notifications` for `Accept-Language: en`, or without the header:
+
+```json
+{
+  "msgCode": "CPState-20260201",
+  "sequence": "32",
+  "category": "DOC_AVAIL",
+  "msgTitle": "DOCUMENT AVAILABLE",
+  "msgContent": "Your Contribution Payment Statement for Jan-Mar 2026 is ready.",
+  "isRead": true,
+  "startDateTime": "01/02/2026 00:00"
+}
+```
+
+For `Accept-Language: zh_HK` (or `zh-HK`, or `zh`) the same item has the Chinese content in `msgContent`
+when the downstream sent one; otherwise it has the English content.
+
+### 13.4 Consumer impact
+
+| Endpoint | Old path | New path |
+|---|---|---|
+| GET | `$.result.data.notifications[*].msgContentChi` and `$.result.data.notifications[*].msgContentEng` | `$.result.data.notifications[*].msgContent` |
+
+The frontend must send `Accept-Language` on `GET /api/v1/notifications` and must show `msgContent` as
+received. This is a second breaking change on the GET path, in the same release as section 10.
+
+### 13.5 Class-level changes and tests
+
+| Class | Change |
+|---|---|
+| `NotificationDto` | The two content components become one component `msgContent`. |
+| `NotificationWebMapper` | `toResponse(result, language)`; `msgContent` is chosen as in D13. |
+| `NotificationController` | `getNotifications` gets the `Accept-Language` header parameter, last. |
+
+Tests changed: `NotificationDtoTest`, `NotificationListResponseTest`, `NotificationWebMapperTest` (call
+signature, plus language tests), `NotificationControllerTest` (new argument), `NotificationReferenceDateFlowTest`
+and `NotificationResponseSerializationContractTest`. New: `NotificationGetLanguageHttpContractTest`, which
+sends real requests with different `Accept-Language` values. Unchanged: `ApimNoticeMessageAdapterTest` and
+`NoticeMessageTest`, because the adapter and the domain keep both texts.
+
+The milestone gates (full `mvn test`, coverage, smoke test, SonarQube) ran before this change and are re-run
+after it.
+
+### 13.6 Open and unverified
+
+| ID | Item | Settled by |
+|---|---|---|
+| U6 | `msgTitle` is not the downstream `msg-title`: the adapter ignores that field and passes `MessageType.titleFor(category)` (for example "DOCUMENT AVAILABLE"), which is English text produced in Java. `ApimNoticeMessageAdapterTest` expects "IMPORTANT NOTICE" for category `IMP_NOTE` and the category itself for an unknown one. This conflicts with the label rule (section 3). The source of `MessageType.titleFor` has not been read. | Decision by Nick: keep it, return a code for the frontend to render, or use the downstream `msg-title`. Not part of ST-6. |
+| U7 | Whether the frontend already sends `Accept-Language` on this request, and which values it sends. | Frontend confirmation before release. |
+| U8 | Whether a Chinese variant other than `zh` and `zh-HK` (for example `zh-TW`) must select Chinese. The shared resolver gives English. | Decision by Nick; a change belongs in `RequestLanguageResolver` and affects every endpoint. |
+
+Status: designed; implementation pending.
