@@ -136,7 +136,7 @@ class RegistrationDslRuntimeBindingRegressionTest {
           var alreadyRegistered =
               resolver.resolve(
                   RegistrationErrorKey.COMPLETE_MEMBER_ALREADY_REGISTERED.value(), "en");
-          assertThat(alreadyRegistered.nextStep()).isEqualTo(WorkflowNextStep.RETURN_TO_LOGIN);
+          assertThat(alreadyRegistered.nextStep()).isEqualTo(WorkflowNextStep.USERNAME_CHECK);
         });
   }
 

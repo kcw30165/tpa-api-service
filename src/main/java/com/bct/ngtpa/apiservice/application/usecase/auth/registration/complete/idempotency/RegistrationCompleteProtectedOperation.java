@@ -137,8 +137,6 @@ public final class RegistrationCompleteProtectedOperation {
         .flatMap(
             completionResult ->
                 completionResult.status() == RegistrationCompletionResult.Status.REGISTERED
-                        || "err.tpa.member.registered"
-                            .equals(completionResult.downstreamErrorCode())
                     ? refreshTrusts(input, completing)
                     : reject(input, completing, completionResult.downstreamErrorCode()));
   }
@@ -219,6 +217,15 @@ public final class RegistrationCompleteProtectedOperation {
                   CompleteRegistrationResultStatus.DOWNSTREAM_REJECTED,
                   WorkflowNextStep.USERNAME_CHECK,
                   RegistrationErrorKey.USERNAME_ALREADY_REGISTERED.value()));
+    }
+    if ("err.tpa.member.registered".equals(downstreamCode)) {
+      return sessionTransitions
+          .transition(session, AuthFlowStatus.TRUST_SELECTION_READY, clock.instant(), true)
+          .thenReturn(
+              failure(
+                  CompleteRegistrationResultStatus.DOWNSTREAM_REJECTED,
+                  WorkflowNextStep.USERNAME_CHECK,
+                  RegistrationErrorKey.COMPLETE_MEMBER_ALREADY_REGISTERED.value()));
     }
     return Mono.just(
         failure(
