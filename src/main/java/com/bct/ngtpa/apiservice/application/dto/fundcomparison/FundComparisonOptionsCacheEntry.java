@@ -16,9 +16,9 @@ public record FundComparisonOptionsCacheEntry(
     String accountRef, String policyNo, String rawTimeRange, List<String> fundCodes) {
 
   public FundComparisonOptionsCacheEntry {
-    accountRef = requireText(accountRef, "accountRef");
-    policyNo = requireText(policyNo, "policyNo");
-    rawTimeRange = requireText(rawTimeRange, "rawTimeRange");
+    requireText(accountRef, "accountRef");
+    requireText(policyNo, "policyNo");
+    requireText(rawTimeRange, "rawTimeRange");
     Objects.requireNonNull(fundCodes, "fundCodes must not be null");
     if (fundCodes.isEmpty()) {
       throw new IllegalArgumentException("fundCodes must not be empty");

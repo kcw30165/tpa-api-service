@@ -111,9 +111,10 @@ class FundComparisonPricesUseCaseLoggingTest {
         listAppender.list.stream().filter(event -> event.getLevel() == Level.WARN).toList();
     assertThat(warnEvents).hasSize(1);
     var message = warnEvents.get(0).getFormattedMessage();
-    assertThat(message).contains("event=fund-comparison.options-cache.stale-refresh");
-    assertThat(message).contains("reason=fund-code-not-offered");
-    assertThat(message).contains("requestId=req-log-1");
+    assertThat(message)
+        .contains("event=fund-comparison.options-cache.stale-refresh")
+        .contains("reason=fund-code-not-offered")
+        .contains("requestId=req-log-1");
   }
 
   @Test
@@ -132,9 +133,10 @@ class FundComparisonPricesUseCaseLoggingTest {
         listAppender.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
     assertThat(errorEvents).hasSize(1);
     var message = errorEvents.get(0).getFormattedMessage();
-    assertThat(message).contains("event=fund-comparison.membership.rejected");
-    assertThat(message).contains("reason=fund-code-not-offered");
-    assertThat(message).contains("source=fresh");
-    assertThat(message).contains("requestId=req-log-2");
+    assertThat(message)
+        .contains("event=fund-comparison.membership.rejected")
+        .contains("reason=fund-code-not-offered")
+        .contains("source=fresh")
+        .contains("requestId=req-log-2");
   }
 }

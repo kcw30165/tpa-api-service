@@ -94,8 +94,7 @@ class FundComparisonOptionsControllerCacheTest {
             .block();
 
     assertThat(response).isNotNull();
-    verify(useCase)
-        .getOptionsAndCache(eq(expectedCommand()), eq(Optional.of(SID)), eq("ACC-1"), eq("req-9"));
+    verify(useCase).getOptionsAndCache(expectedCommand(), Optional.of(SID), "ACC-1", "req-9");
   }
 
   @Test

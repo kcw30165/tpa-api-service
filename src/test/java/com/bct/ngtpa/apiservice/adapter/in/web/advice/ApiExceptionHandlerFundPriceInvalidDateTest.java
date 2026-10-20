@@ -97,8 +97,8 @@ class ApiExceptionHandlerFundPriceInvalidDateTest {
 
   @Test
   void theErrorCodeIsDistinctFromTheFundPriceRetrievalUnavailableCode() {
-    assertThat(ErrorCodes.FUND_PRICE_REQUEST_INVALID).isEqualTo("err.fund-price.request.invalid");
     assertThat(ErrorCodes.FUND_PRICE_REQUEST_INVALID)
+        .isEqualTo("err.fund-price.request.invalid")
         .isNotEqualTo(ErrorCodes.FUND_PRICE_RETRIEVAL_UNAVAILABLE);
   }
 }

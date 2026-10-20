@@ -148,10 +148,12 @@ public final class FundComparisonOptionsCacheService {
       LOG.info("event=fund-comparison.options-cache.write.applied requestId={}", requestId);
       return;
     }
-    LOG.warn(
-        "event=fund-comparison.options-cache.write.skipped reason={} requestId={}",
-        skipReason(result.outcome()),
-        requestId);
+    if (LOG.isWarnEnabled()) {
+      LOG.warn(
+          "event=fund-comparison.options-cache.write.skipped reason={} requestId={}",
+          skipReason(result.outcome()),
+          requestId);
+    }
   }
 
   private static String skipReason(AuthenticatedSessionConcurrencyOutcome outcome) {

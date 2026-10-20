@@ -18,7 +18,8 @@ class FundPriceInvalidDateExceptionTest {
   void isARuntimeExceptionNotAnApplicationException() {
     var exception = FundPriceInvalidDateException.forInvalidDate();
 
-    assertThat(exception).isInstanceOf(RuntimeException.class);
-    assertThat(exception).isNotInstanceOf(ApplicationException.class);
+    assertThat(exception)
+        .isInstanceOf(RuntimeException.class)
+        .isNotInstanceOf(ApplicationException.class);
   }
 }
