@@ -134,7 +134,8 @@ public final class AuthenticatedSessionCsrfRefreshService {
             session.idleExpiresAt(),
             session.absoluteExpiresAt(),
             session.revision(),
-            session.fundPriceModeMetadata());
+            session.fundPriceModeMetadata(),
+            session.featureState());
   }
 
   private static Outcome toOutcome(AuthenticatedSessionConcurrencyResult result, String rawToken) {

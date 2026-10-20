@@ -72,7 +72,8 @@ public final class FundPriceModeUseCase {
             current.idleExpiresAt(),
             current.absoluteExpiresAt(),
             current.revision(),
-            metadata);
+            metadata,
+            current.featureState());
   }
 
   private static FundPriceModeUseCaseResult toUseCaseResult(

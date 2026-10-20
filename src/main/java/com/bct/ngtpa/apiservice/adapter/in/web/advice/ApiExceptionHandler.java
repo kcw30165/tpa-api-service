@@ -10,7 +10,10 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.AccountGainLossRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
+import com.bct.ngtpa.apiservice.application.exception.FundComparisonRequestInvalidException;
+import com.bct.ngtpa.apiservice.application.exception.FundComparisonRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.FundFactSheetRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.FundPriceInvalidDateException;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
@@ -331,6 +334,49 @@ public class ApiExceptionHandler {
   public ResponseEntity<MutationResponse<Void>> handleFundPriceRetrievalException(
       FundPriceRetrievalException ex, ServerWebExchange exchange) {
     String errorCode = ErrorCodes.FUND_PRICE_RETRIEVAL_UNAVAILABLE;
+    ApiError error =
+        ApiError.form(
+            errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);
+    return buildMutationErrorResponse(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        ApiStatus.SYSTEM_ERROR,
+        List.of(error),
+        exchange,
+        ex,
+        ex.getMessage(),
+        true,
+        false);
+  }
+
+  @ExceptionHandler(FundPriceInvalidDateException.class)
+  public ResponseEntity<MutationResponse<Void>> handleFundPriceInvalidDateException(
+      FundPriceInvalidDateException ex, ServerWebExchange exchange) {
+    String errorCode = ErrorCodes.FUND_PRICE_REQUEST_INVALID;
+    ApiError error =
+        ApiError.form(
+            errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);
+    return buildMutationErrorResponse(
+        HttpStatus.BAD_REQUEST,
+        ApiStatus.VALIDATION_FAILED,
+        List.of(error),
+        exchange,
+        ex,
+        ex.getMessage(),
+        false,
+        false);
+  }
+
+  @ExceptionHandler(FundComparisonRequestInvalidException.class)
+  public ResponseEntity<MutationResponse<Void>> handleFundComparisonRequestInvalidException(
+      FundComparisonRequestInvalidException ex, ServerWebExchange exchange) {
+    return handleApplicationException(
+        ex, exchange, HttpStatus.BAD_REQUEST, ApiStatus.VALIDATION_FAILED, "VALIDATION");
+  }
+
+  @ExceptionHandler(FundComparisonRetrievalException.class)
+  public ResponseEntity<MutationResponse<Void>> handleFundComparisonRetrievalException(
+      FundComparisonRetrievalException ex, ServerWebExchange exchange) {
+    String errorCode = ErrorCodes.FUND_COMPARISON_RETRIEVAL_UNAVAILABLE;
     ApiError error =
         ApiError.form(
             errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);

@@ -30,7 +30,8 @@ public record AuthenticatedSession(
     Instant idleExpiresAt,
     Instant absoluteExpiresAt,
     SessionRevision revision,
-    FundPriceModeSessionMetadata fundPriceModeMetadata) {
+    FundPriceModeSessionMetadata fundPriceModeMetadata,
+    Map<String, String> featureState) {
   public AuthenticatedSession {
     Objects.requireNonNull(authenticatedSessionId);
     Objects.requireNonNull(actorContext);
@@ -41,6 +42,7 @@ public record AuthenticatedSession(
     Objects.requireNonNull(idleExpiresAt);
     Objects.requireNonNull(absoluteExpiresAt);
     Objects.requireNonNull(revision, "revision must not be null");
+    featureState = featureState == null ? Map.of() : Map.copyOf(featureState);
     if (!createdAt.equals(lastAccessedAt) && createdAt.isAfter(lastAccessedAt))
       throw new IllegalArgumentException("lastAccessedAt precedes createdAt");
     if (idleExpiresAt.isBefore(lastAccessedAt) || absoluteExpiresAt.isBefore(createdAt))
@@ -49,6 +51,65 @@ public record AuthenticatedSession(
     for (var a : accounts)
       if (!refs.add(a.accountRef().value()))
         throw new IllegalArgumentException("Duplicate account reference");
+  }
+
+  /**
+   * Pre-featureState signature, kept so existing callers compile; starts with no feature state.
+   * Production code that rebuilds an existing session must use the canonical constructor and pass
+   * {@code featureState()} through (Fund Comparison M5.1).
+   */
+  public AuthenticatedSession(
+      AuthenticatedSessionId authenticatedSessionId,
+      ActorContext actorContext,
+      List<AuthenticatedSessionAccount> accounts,
+      AuthenticatedSessionStatus status,
+      String csrfTokenHash,
+      Instant createdAt,
+      Instant lastAccessedAt,
+      Instant idleExpiresAt,
+      Instant absoluteExpiresAt,
+      SessionRevision revision,
+      FundPriceModeSessionMetadata fundPriceModeMetadata) {
+    this(
+        authenticatedSessionId,
+        actorContext,
+        accounts,
+        status,
+        csrfTokenHash,
+        createdAt,
+        lastAccessedAt,
+        idleExpiresAt,
+        absoluteExpiresAt,
+        revision,
+        fundPriceModeMetadata,
+        Map.of());
+  }
+
+  /**
+   * Returns a copy with one feature-state entry set; every other field, including the revision and
+   * the other feature-state entries, is unchanged. Features use this instead of the canonical
+   * constructor so a future session field never touches feature code (Fund Comparison M5.2).
+   */
+  public AuthenticatedSession withFeatureState(String key, String value) {
+    if (key == null || key.isBlank()) {
+      throw new IllegalArgumentException("feature-state key must not be blank");
+    }
+    Objects.requireNonNull(value, "feature-state value must not be null");
+    Map<String, String> next = new LinkedHashMap<>(featureState);
+    next.put(key, value);
+    return new AuthenticatedSession(
+        authenticatedSessionId,
+        actorContext,
+        accounts,
+        status,
+        csrfTokenHash,
+        createdAt,
+        lastAccessedAt,
+        idleExpiresAt,
+        absoluteExpiresAt,
+        revision,
+        fundPriceModeMetadata,
+        next);
   }
 
   public boolean isUsable(Instant now) {
@@ -77,6 +138,6 @@ public record AuthenticatedSession(
         + idleExpiresAt
         + ", absoluteExpiresAt="
         + absoluteExpiresAt
-        + ", revision=<redacted>, fundPriceModeMetadata=<redacted>]";
+        + ", revision=<redacted>, fundPriceModeMetadata=<redacted>, featureState=<redacted>]";
   }
 }

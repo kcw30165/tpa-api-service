@@ -7,10 +7,14 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.fundprice.dto.TrpGetFundPriceApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FetchFundComparisonPricesCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FetchFundPriceRangeCommand;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
+import com.bct.ngtpa.apiservice.application.exception.FundPriceInvalidDateException;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
+import com.bct.ngtpa.apiservice.application.port.out.FundComparisonPriceSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.FundPriceSourcePort;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -27,16 +31,32 @@ import reactor.core.publisher.Mono;
  * docs/design/9-fund-price/fund-price-apim-contract.md: {@link ApimDatabaseScope#ACCOUNT_ENV},
  * caller-supplied actor role and account environment, {@link
  * ApimRetryEligibility#SAFE_BUSINESS_CALL}. Every nonblank downstream {@code err-message} maps to
- * the single generic {@link FundPriceRetrievalException}.
+ * the single generic {@link FundPriceRetrievalException}, except the exact {@code
+ * err.tpa.invalid.date}, which maps to {@link FundPriceInvalidDateException} (D6, docs/design/
+ * 13-fund-comparison/09-options-session-cache-change.md, script 097).
  *
  * <p>The command carries ONE FE-validated date, unmanipulated. Both DAILY and MONTHLY modes send
  * that exact date as both the downstream request's from-date and to-date -- mode has no effect on
  * this adapter's downstream request shape (corrected, Nick: an earlier version of this adapter
  * incorrectly expanded MONTHLY into a first/last-calendar-day range; there is no such expansion).
  * Mode exists solely so FE can choose the correct picker UI.
+ *
+ * <p>Additively extended (docs/design/13-fund-comparison/07-implementation-plan.md section 7.4,
+ * corrected sub-task 3.1, script 057): also implements {@link FundComparisonPriceSourcePort} so
+ * Fund Comparison's prices flow can reuse this SAME downstream wire integration (same
+ * request/response DTOs, same {@link FundPriceApimContentValidator} reconciliation, same error
+ * mapping) rather than duplicating it in a separate adapter class. {@link #fetchPrice} and {@link
+ * #fetchPriceRange}'s own behavior is byte-for-byte unchanged -- both still send {@code
+ * fund-list=""} exactly as before, now explicitly at their own call sites instead of via a single
+ * hardcoded literal inside {@link #exchangeAndReconcile}, which now accepts {@code fundList} as a
+ * parameter.
  */
 @Component
-public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
+public final class ApimFundPriceSourceAdapter
+    implements FundPriceSourcePort, FundComparisonPriceSourcePort {
+
+  private static final String COMMAND_MUST_NOT_BE_NULL = "command must not be null";
+  private static final String INVALID_DATE_ERR_MESSAGE = "err.tpa.invalid.date";
 
   private final ApimExchangeExecutor executor;
   private final String path;
@@ -62,31 +82,45 @@ public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
 
   @Override
   public Mono<RawFundPriceData> fetchPrice(FetchFundPriceCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command, COMMAND_MUST_NOT_BE_NULL);
 
-    LocalDate fromDate;
-    LocalDate toDate;
     // MONTHLY does not differ from DAILY in downstream range derivation (corrected,
     // Nick): FE always submits one exact validated date regardless of mode; Java sends
     // that same date as both from-date and to-date. mode has no effect on this
     // adapter's downstream request shape and exists only so FE can choose the correct
     // picker UI.
-    fromDate = command.date();
-    toDate = command.date();
+    LocalDate fromDate = command.date();
+    LocalDate toDate = command.date();
 
     return exchangeAndReconcile(
-        command.policyNo(), fromDate, toDate, command.accountEnv(), command.actorUserRole());
+        command.policyNo(), fromDate, toDate, "", command.accountEnv(), command.actorUserRole());
   }
 
   @Override
   public Mono<RawFundPriceData> fetchPriceRange(FetchFundPriceRangeCommand command) {
-    Objects.requireNonNull(command, "command must not be null");
-    // NO mode logic at all -- the explicit fromDate/toDate range is passed straight through,
-    // confirmed design (export has no mode concept).
+    Objects.requireNonNull(command, COMMAND_MUST_NOT_BE_NULL);
+    // NO mode logic at all -- the explicit fromDate/toDate range is passed straight
+    // through, confirmed design (export has no mode concept).
     return exchangeAndReconcile(
         command.policyNo(),
         command.fromDate(),
         command.toDate(),
+        "",
+        command.accountEnv(),
+        command.actorUserRole());
+  }
+
+  @Override
+  public Mono<RawFundPriceData> fetchPrices(FetchFundComparisonPricesCommand command) {
+    Objects.requireNonNull(command, COMMAND_MUST_NOT_BE_NULL);
+    // Fund Comparison's own command already carries the real, comma-joined fund-code
+    // string (joined by the use case, confirmed design) -- passed straight through to
+    // the same shared exchange-and-reconcile path fetchPrice/fetchPriceRange use.
+    return exchangeAndReconcile(
+        command.policyNo(),
+        command.fromDate(),
+        command.toDate(),
+        command.fundList(),
         command.accountEnv(),
         command.actorUserRole());
   }
@@ -95,18 +129,12 @@ public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
       String policyNo,
       LocalDate fromDate,
       LocalDate toDate,
+      String fundList,
       String accountEnv,
-      com.bct.ngtpa.apiservice.application.dto.ActorUserRole actorUserRole) {
+      ActorUserRole actorUserRole) {
     var request =
         new TrpGetFundPriceApimRequest(
-            policyNo,
-            fromDate.format(formatter),
-            toDate.format(formatter),
-            // fund-list is always "" for all current (non-comparison) usages -- confirmed
-            // design, docs/design/9-fund-price/fund-price-decisions-open-questions.md
-            // (2026-10-15). A later fund-comparison feature will populate this with a
-            // comma-joined FE-supplied fund-code string.
-            "");
+            policyNo, fromDate.format(formatter), toDate.format(formatter), fundList);
     var exchange =
         new ApimExchangeRequest<>(
             path,
@@ -133,6 +161,9 @@ public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
                 return Mono.error(FundPriceRetrievalException.systemFailure());
               }
               String errMessage = response.getErrMessage();
+              if (INVALID_DATE_ERR_MESSAGE.equals(errMessage)) {
+                return Mono.error(FundPriceInvalidDateException.forInvalidDate());
+              }
               if (errMessage != null && !errMessage.isEmpty()) {
                 return Mono.error(FundPriceRetrievalException.systemFailure());
               }
@@ -149,6 +180,7 @@ public final class ApimFundPriceSourceAdapter implements FundPriceSourcePort {
         .onErrorMap(
             exception ->
                 exception instanceof FundPriceRetrievalException
+                        || exception instanceof FundPriceInvalidDateException
                     ? exception
                     : FundPriceRetrievalException.systemFailure());
   }

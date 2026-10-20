@@ -79,3 +79,12 @@ per feature.
 ## No hidden refresh
 
 Price and export endpoints do not silently call the mode operation. Missing or stale metadata requires FE to reload the page/mode endpoint or receives the approved system failure according to the final web policy.
+
+
+## Generic feature-state slot (2026-10-20, Fund Comparison CR)
+
+`AuthenticatedSession` gains a generic `featureState` slot (feature key to opaque encoded value,
+stored inside the encrypted payload) so a new per-session feature no longer requires changing
+every session rebuild site. Fund Comparison is its first user. `fundPriceModeMetadata` stays a
+dedicated field in this change; migrating it into the slot is a recorded future revamp. See
+docs/design/13-fund-comparison/09-options-session-cache-change.md section 9.5.1.
