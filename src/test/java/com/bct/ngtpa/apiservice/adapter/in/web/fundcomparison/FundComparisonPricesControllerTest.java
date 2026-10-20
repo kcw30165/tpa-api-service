@@ -26,7 +26,6 @@ import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonPricesUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonSelectedPricesUseCase;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
@@ -47,15 +46,9 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Route and envelope tests for {@code POST /api/v1/fund-comparison/prices}, mirroring {@code
- * FundComparisonOptionsControllerTest}'s exact structure (sub-task 2.4 precedent), per
- * docs/design/13-fund-comparison/07-implementation-plan.md section 7.4 (sub-task 3.4).
- *
- * <p>Unlike the Options controller test, the stubbed port here is at the {@link
- * FundComparisonPriceSourcePort} / {@link ReferenceDatePort} level (feeding the REAL {@link
- * FundComparisonPricesUseCase}), since this use case composes two ports internally (sub-task 3.3)
- * -- this also exercises the real date-range calculation and fund-list comma-joining end-to-end
- * through the controller.
+ * Route and envelope tests for {@code POST /api/v1/fund-comparison/prices}. The real {@link
+ * FundComparisonPricesUseCase} is wired with stubbed ports: options that offer FAEU and FBAU with
+ * the standard time ranges, no session (so the cache is never used), and a counting price port.
  */
 class FundComparisonPricesControllerTest {
 
@@ -63,9 +56,16 @@ class FundComparisonPricesControllerTest {
   private static final AuthenticatedSessionCookieReader NO_SESSION = exchange -> Optional.empty();
   private static final MockServerWebExchange EXCHANGE =
       MockServerWebExchange.from(MockServerHttpRequest.post(ROUTE).build());
+  private static final LocalDate REFERENCE_DATE = LocalDate.of(2026, 10, 15);
+  private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-  /** Wraps the real prices use case with options that offer every code these tests request. */
-  private static FundComparisonSelectedPricesUseCase selected(FundComparisonPricesUseCase prices) {
+  private final AtomicReference<FetchFundComparisonPricesCommand> portCommand =
+      new AtomicReference<>();
+  private final AtomicInteger calls = new AtomicInteger();
+
+  private static FundComparisonPricesUseCase pricesUseCase(
+      FundComparisonPriceSourcePort sourcePort) {
+    ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(REFERENCE_DATE);
     FundComparisonOptionsSourcePort offered =
         cmd ->
             Mono.just(
@@ -75,36 +75,25 @@ class FundComparisonPricesControllerTest {
                         new RawFundComparisonOption("FAEU", "A Fund", ""),
                         new RawFundComparisonOption("FBAU", "B Fund", ""))));
     var cache = mock(FundComparisonOptionsCacheService.class);
-    return new FundComparisonSelectedPricesUseCase(
-        new FundComparisonOptionsUseCase(offered, cache), cache, prices);
+    return new FundComparisonPricesUseCase(
+        sourcePort, referenceDatePort, new FundComparisonOptionsUseCase(offered, cache), cache);
   }
 
-  private static final LocalDate REFERENCE_DATE = LocalDate.of(2026, 10, 15);
-  private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-  private final AtomicReference<FetchFundComparisonPricesCommand> portCommand =
-      new AtomicReference<>();
-  private final AtomicInteger calls = new AtomicInteger();
-
   private FundComparisonPricesUseCase useCase(RawFundPriceData rawData) {
-    FundComparisonPriceSourcePort sourcePort =
+    return pricesUseCase(
         portCmd -> {
           calls.incrementAndGet();
           portCommand.set(portCmd);
           return Mono.just(rawData);
-        };
-    ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(REFERENCE_DATE);
-    return new FundComparisonPricesUseCase(sourcePort, referenceDatePort);
+        });
   }
 
   private FundComparisonPricesUseCase failingUseCase(RuntimeException error) {
-    FundComparisonPriceSourcePort sourcePort =
+    return pricesUseCase(
         portCmd -> {
           calls.incrementAndGet();
           return Mono.error(error);
-        };
-    ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(REFERENCE_DATE);
-    return new FundComparisonPricesUseCase(sourcePort, referenceDatePort);
+        });
   }
 
   private static RawFundPriceRow row(String fundCode, LocalDate date, String bid) {
@@ -135,7 +124,7 @@ class FundComparisonPricesControllerTest {
 
   private static FundComparisonPricesController controller(FundComparisonPricesUseCase useCase) {
     return new FundComparisonPricesController(
-        selected(useCase),
+        useCase,
         resolver(Mono.just(context())),
         new FundComparisonPricesWebMapper(FORMATTER),
         NO_SESSION);
@@ -159,6 +148,7 @@ class FundComparisonPricesControllerTest {
   @Test
   void returnsTheSuccessEnvelopeAsJsonWithTheDataUnderResultData() {
     var rawData = new RawFundPriceData(List.of(row("FAEU", LocalDate.of(2026, 10, 6), "159.7628")));
+
     client(useCase(rawData))
         .post()
         .uri(ROUTE)
@@ -189,8 +179,7 @@ class FundComparisonPricesControllerTest {
 
   @Test
   void forwardsPolicyNoAccountEnvActorUserRoleAndJoinedFundListToThePortCommand() {
-    var rawData = new RawFundPriceData(List.of());
-    client(useCase(rawData))
+    client(useCase(new RawFundPriceData(List.of())))
         .post()
         .uri(ROUTE)
         .bodyValue(new FundComparisonPricesRequest(List.of("FAEU", "FBAU"), "10D"))
@@ -208,8 +197,7 @@ class FundComparisonPricesControllerTest {
 
   @Test
   void aValidationFailureIsABadRequestAndTheUseCaseIsNeverCalled() {
-    var rawData = new RawFundPriceData(List.of());
-    clientWithAdvice(useCase(rawData))
+    clientWithAdvice(useCase(new RawFundPriceData(List.of())))
         .post()
         .uri(ROUTE)
         .bodyValue(new FundComparisonPricesRequest(List.of("A", "B", "C", "D", "E", "F"), "10D"))
@@ -223,6 +211,7 @@ class FundComparisonPricesControllerTest {
         .isEqualTo("VALIDATION_FAILED")
         .jsonPath("$.errors[0].code")
         .isEqualTo("err.fund-comparison.request.invalid");
+
     assertThat(calls).hasValue(0);
   }
 
@@ -237,6 +226,7 @@ class FundComparisonPricesControllerTest {
         .expectBody()
         .jsonPath("$.errors[0].code")
         .isEqualTo("err.fund-comparison.request.invalid");
+
     assertThat(calls).hasValue(0);
   }
 
@@ -259,11 +249,28 @@ class FundComparisonPricesControllerTest {
   }
 
   @Test
+  void anUnofferedTimeRangeIsAServiceUnavailableAndThePricesAreNeverFetched() {
+    clientWithAdvice(useCase(new RawFundPriceData(List.of())))
+        .post()
+        .uri(ROUTE)
+        .bodyValue(new FundComparisonPricesRequest(List.of("FAEU"), "10Y"))
+        .exchange()
+        .expectStatus()
+        .isEqualTo(503)
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("SYSTEM_ERROR")
+        .jsonPath("$.errors[0].code")
+        .isEqualTo("err.fund-comparison.retrieval.unavailable");
+
+    assertThat(calls).hasValue(0);
+  }
+
+  @Test
   void theUseCaseIsNotCalledWhenTheContextCannotBeResolved() {
-    var rawData = new RawFundPriceData(List.of());
     var controller =
         new FundComparisonPricesController(
-            selected(useCase(rawData)),
+            useCase(new RawFundPriceData(List.of())),
             resolver(Mono.error(new IllegalStateException("no context"))),
             new FundComparisonPricesWebMapper(FORMATTER),
             NO_SESSION);
@@ -278,8 +285,7 @@ class FundComparisonPricesControllerTest {
 
   @Test
   void theConstructorRequiresEveryDependency() {
-    var rawData = new RawFundPriceData(List.of());
-    var useCase = selected(useCase(rawData));
+    var useCase = useCase(new RawFundPriceData(List.of()));
     var resolver = resolver(Mono.just(context()));
     var mapper = new FundComparisonPricesWebMapper(FORMATTER);
 

@@ -34,7 +34,6 @@ import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonPricesUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonSelectedPricesUseCase;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
@@ -44,6 +43,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
@@ -112,19 +112,19 @@ class FundComparisonBrdTraceabilityTest {
 
   private WebTestClient pricesClient(FundComparisonPriceSourcePort sourcePort) {
     ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(REFERENCE_DATE);
-    var useCase = new FundComparisonPricesUseCase(sourcePort, referenceDatePort);
+    var useCase = pricesUseCase(sourcePort, referenceDatePort);
     var controller =
         new FundComparisonPricesController(
-            selectedPrices(useCase),
+            useCase,
             resolver(),
             new FundComparisonPricesWebMapper(FORMATTER),
             exchange -> Optional.empty());
     return WebTestClient.bindToController(controller).controllerAdvice(advice()).build();
   }
 
-  /** Wraps the real prices use case with options that offer every code these scenarios use. */
-  private static FundComparisonSelectedPricesUseCase selectedPrices(
-      FundComparisonPricesUseCase prices) {
+  /** Real prices use case whose options offer every code these scenarios use; no session. */
+  private static FundComparisonPricesUseCase pricesUseCase(
+      FundComparisonPriceSourcePort sourcePort, ReferenceDatePort referenceDatePort) {
     FundComparisonOptionsSourcePort offered =
         cmd ->
             Mono.just(
@@ -133,8 +133,8 @@ class FundComparisonBrdTraceabilityTest {
                     new RawFundComparisonOption("FAEU", "A Fund", ""),
                     new RawFundComparisonOption("FBAU", "B Fund", "")));
     var cache = mock(FundComparisonOptionsCacheService.class);
-    return new FundComparisonSelectedPricesUseCase(
-        new FundComparisonOptionsUseCase(offered, cache), cache, prices);
+    return new FundComparisonPricesUseCase(
+        sourcePort, referenceDatePort, new FundComparisonOptionsUseCase(offered, cache), cache);
   }
 
   // ----- shared fixtures: options flow (fake-port based, for scenarios other than 3) ----------
@@ -145,17 +145,10 @@ class FundComparisonBrdTraceabilityTest {
 
   private WebTestClient optionsClient(FundComparisonOptionsSourcePort sourcePort) {
     var useCase =
-        new FundComparisonOptionsUseCase(
-            sourcePort,
-            mock(
-                com.bct.ngtpa.apiservice.application.usecase.fundcomparison
-                    .FundComparisonOptionsCacheService.class));
+        new FundComparisonOptionsUseCase(sourcePort, mock(FundComparisonOptionsCacheService.class));
     var controller =
         new FundComparisonOptionsController(
-            useCase,
-            resolver(),
-            new FundComparisonOptionsMapper(),
-            exchange -> java.util.Optional.empty());
+            useCase, resolver(), new FundComparisonOptionsMapper(), exchange -> Optional.empty());
     return WebTestClient.bindToController(controller).controllerAdvice(advice()).build();
   }
 
@@ -377,5 +370,31 @@ class FundComparisonBrdTraceabilityTest {
         .isArray()
         .jsonPath("$.result.data.series.length()")
         .isEqualTo(0);
+  }
+
+  // ===== Scenario 8 (M5.4, D8): an unoffered time range is HTTP 503; prices never fetched =====
+  @Test
+  void scenario8_unofferedTimeRangeIsHttp503AndThePricesAreNeverFetched() {
+    var priceCalls = new AtomicInteger();
+    FundComparisonPriceSourcePort sourcePort =
+        cmd -> {
+          priceCalls.incrementAndGet();
+          return Mono.just(new RawFundPriceData(List.of()));
+        };
+    pricesClient(sourcePort)
+        .post()
+        .uri("/api/v1/fund-comparison/prices")
+        .bodyValue(new FundComparisonPricesRequest(List.of("FAEU"), "10Y"))
+        .exchange()
+        .expectStatus()
+        .isEqualTo(503)
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("SYSTEM_ERROR")
+        .jsonPath("$.errors[0].code")
+        .isEqualTo("err.fund-comparison.retrieval.unavailable")
+        .jsonPath("$.errors.length()")
+        .isEqualTo(1);
+    assertThat(priceCalls).hasValue(0);
   }
 }

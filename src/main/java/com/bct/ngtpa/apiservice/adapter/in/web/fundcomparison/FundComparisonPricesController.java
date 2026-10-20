@@ -12,7 +12,7 @@ import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FetchFundComparis
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FundComparisonPricesResult;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FundComparisonPricesValidatedRequest;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
-import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonSelectedPricesUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonPricesUseCase;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.util.List;
@@ -39,20 +39,20 @@ import reactor.core.publisher.Mono;
  * invalid request never reaches the use case.
  *
  * <p>Sub-task 5.4: the validated request is checked against the session-cached options by {@link
- * FundComparisonSelectedPricesUseCase}; the session id comes from {@link
- * AuthenticatedSessionCookieReader} and the request id from {@link RequestHeaderContext}.
+ * FundComparisonPricesUseCase}; the session id comes from {@link AuthenticatedSessionCookieReader}
+ * and the request id from {@link RequestHeaderContext}.
  */
 @RestController
 @RequestMapping("/api/v1")
 public class FundComparisonPricesController {
 
-  private final FundComparisonSelectedPricesUseCase useCase;
+  private final FundComparisonPricesUseCase useCase;
   private final CurrentPortalAccessContextResolver contextResolver;
   private final FundComparisonPricesWebMapper webMapper;
   private final AuthenticatedSessionCookieReader sessionCookieReader;
 
   public FundComparisonPricesController(
-      FundComparisonSelectedPricesUseCase useCase,
+      FundComparisonPricesUseCase useCase,
       CurrentPortalAccessContextResolver contextResolver,
       FundComparisonPricesWebMapper webMapper,
       AuthenticatedSessionCookieReader sessionCookieReader) {

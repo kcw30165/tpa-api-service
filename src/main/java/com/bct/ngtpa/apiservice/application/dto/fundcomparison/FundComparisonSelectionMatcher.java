@@ -13,13 +13,18 @@ import java.util.Objects;
  * <p>Both sides are trimmed and lower-cased for comparison. The offered time ranges are parsed with
  * {@link FundComparisonTimeRangeParser}, so cached and freshly fetched options use the same
  * grammar. On a match the result carries the offered spelling of every fund code (in request order)
- * and of the time-range token. A pure function: no logging, no I/O.
+ * and of the time-range token. No I/O; the only logging is the parser's own warning for dropped
+ * downstream tokens.
  */
 public final class FundComparisonSelectionMatcher {
 
+  public static final String TIME_RANGE_NOT_OFFERED = "time-range-not-offered";
+  public static final String FUND_CODE_NOT_OFFERED = "fund-code-not-offered";
+  public static final String NO_VALID_TIME_RANGE = "no-valid-time-range";
+
   private FundComparisonSelectionMatcher() {}
 
-  public static FundComparisonSelectionMatch match(
+  public static Match match(
       String offeredRawTimeRange,
       List<String> offeredFundCodes,
       List<String> requestedFundCodes,
@@ -42,20 +47,17 @@ public final class FundComparisonSelectionMatcher {
     try {
       offeredTimeRanges = FundComparisonTimeRangeParser.parse(offeredRawTimeRange).timeRanges();
     } catch (FundComparisonRetrievalException exception) {
-      return FundComparisonSelectionMatch.rejected(
-          FundComparisonSelectionMatch.NO_VALID_TIME_RANGE, unlisted);
+      return Match.rejected(NO_VALID_TIME_RANGE, unlisted);
     }
     String canonicalTimeRange = findOffered(offeredTimeRanges, requestedTimeRange);
     if (canonicalTimeRange == null) {
-      return FundComparisonSelectionMatch.rejected(
-          FundComparisonSelectionMatch.TIME_RANGE_NOT_OFFERED, unlisted);
+      return Match.rejected(TIME_RANGE_NOT_OFFERED, unlisted);
     }
     if (!unlisted.isEmpty()) {
-      return FundComparisonSelectionMatch.rejected(
-          FundComparisonSelectionMatch.FUND_CODE_NOT_OFFERED, unlisted);
+      return Match.rejected(FUND_CODE_NOT_OFFERED, unlisted);
     }
-    return FundComparisonSelectionMatch.matched(
-        new FundComparisonSelection(canonicalCodes, canonicalTimeRange));
+    return Match.matched(
+        new FundComparisonPricesValidatedRequest(canonicalCodes, canonicalTimeRange));
   }
 
   private static String findOffered(List<String> offered, String requested) {
@@ -73,5 +75,36 @@ public final class FundComparisonSelectionMatcher {
 
   private static String normalize(String value) {
     return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+  }
+
+  /**
+   * Either a selection in the offered spelling, or a rejection reason, never both. {@code
+   * unlistedFundCodes} lists requested codes that were not offered (logged; fund codes are not
+   * personal data).
+   */
+  public record Match(
+      FundComparisonPricesValidatedRequest selection,
+      String reason,
+      List<String> unlistedFundCodes) {
+
+    public Match {
+      if ((selection == null) == (reason == null)) {
+        throw new IllegalArgumentException("exactly one of selection or reason must be present");
+      }
+      unlistedFundCodes = unlistedFundCodes == null ? List.of() : List.copyOf(unlistedFundCodes);
+    }
+
+    public static Match matched(FundComparisonPricesValidatedRequest selection) {
+      Objects.requireNonNull(selection, "selection must not be null");
+      return new Match(selection, null, List.of());
+    }
+
+    public static Match rejected(String reason, List<String> unlistedFundCodes) {
+      return new Match(null, reason, unlistedFundCodes);
+    }
+
+    public boolean isMatched() {
+      return selection != null;
+    }
   }
 }

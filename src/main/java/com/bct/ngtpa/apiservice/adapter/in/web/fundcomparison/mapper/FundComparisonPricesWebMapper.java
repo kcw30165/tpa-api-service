@@ -28,7 +28,7 @@ import org.springframework.stereotype.Component;
  * <p>Normalization (09 section 9.5.4, sub-task 5.4): fund codes are trimmed and de-duplicated
  * case-insensitively, keeping the first spelling; the time range is trimmed and its syntax is
  * checked in upper case, so {@code 10d} passes. Membership against the offered options, and the
- * switch to the offered spelling, happen later in {@code FundComparisonSelectedPricesUseCase}.
+ * switch to the offered spelling, happen later in {@code FundComparisonPricesUseCase}.
  *
  * <p>The grammar check here ({@link #VALID_TIME_RANGE_TOKEN}) intentionally duplicates {@code
  * FundComparisonDateRangeCalculator}'s pattern rather than reusing {@code

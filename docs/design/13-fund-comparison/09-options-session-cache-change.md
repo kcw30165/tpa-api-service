@@ -136,7 +136,7 @@ Every event carries `requestId`. Never log `policyNo`, `accountRef`, session IDs
 | `event=fund-comparison.options-cache.write.skipped` | `requestId`, `reason=conflict\|session-missing\|session-not-usable\|failed\|no-session` |
 | `event=fund-comparison.options-cache.write.applied` | `requestId` |
 | `event=fund-comparison.options-cache.stale-refresh` | `requestId`, `timeRange`, `unlistedFundCodes` |
-| `event=fund-comparison.membership.rejected` (ERROR) | `requestId`, `reason=time-range-not-offered\|fund-code-not-offered`, `timeRange`, `unlistedFundCodes`, `source=fresh` |
+| `event=fund-comparison.membership.rejected` (ERROR) | `requestId`, `reason=time-range-not-offered\|fund-code-not-offered\|no-valid-time-range`, `timeRange`, `unlistedFundCodes`, `source=fresh` |
 | `event=fund-price.downstream.invalid-date` (D6) | `requestId`, `operation` |
 
 ## 9.8 Test strategy (required cases)
@@ -166,7 +166,7 @@ Each sub-task is fail-first. Sub-task gate: failing test evidence, implementatio
 - **5.1 Feature-state slot.** Add `featureState` to `AuthenticatedSession` and `SensitiveContext`; migrate the six rebuild sites. Pure refactor, no behavior change. Regression tests per rebuild site.
 - **5.2 Options cache model and access.** Cache entry record, codec, application service: read (hit, miss, account mismatch, unreadable) and write (via the concurrency service, non-fatal, reason-logged).
 - **5.3 Options endpoint writes the cache.** Session ID through `AuthenticatedSessionCookieReader`; write failure non-fatal.
-- **5.4 Prices membership validation.** Normalization (9.5.4) in `FundComparisonPricesWebMapper`; a pure `FundComparisonSelectionMatcher`; and a new `FundComparisonSelectedPricesUseCase` that reads the cache, refreshes at most once through `FundComparisonOptionsUseCase.getOptionsAndCache`, and calls the unchanged `FundComparisonPricesUseCase` with the offered spelling (implemented 2026-10-20, script 091; replaces the earlier plan to extend the prices use case directly); wiring.
+- **5.4 Prices membership validation.** Normalization (9.5.4) in FundComparisonPricesWebMapper; a pure FundComparisonSelectionMatcher; FundComparisonPricesUseCase gains FundComparisonOptionsUseCase and FundComparisonOptionsCacheService, reads the cache, refreshes at most once through FundComparisonOptionsUseCase.getOptionsAndCache, and fetches prices with the offered spelling; wiring. Implemented 2026-10-20 (script 091; merged into the prices use case by script 095, after script 094 landed the formatting commit).
 - **5.5 D6 (confirmed).** A dedicated application exception thrown only on the `TRPGetFundPrice` adapter path for the exact `err.tpa.invalid.date`. Fund Price: a dedicated `ApiExceptionHandler` method returns HTTP 400 `VALIDATION_FAILED` `err.fund-price.request.invalid`. Fund Comparison: the prices use case translates it to `FundComparisonRequestInvalidException` (its current error mapping wraps every non-retrieval exception as 503, so this needs an explicit branch). Mode unchanged. Fund Price docs move from "decided" to implemented.
 - **5.6 Old-behavior tests.** Update or replace tests that assert the old behavior (including the `10d` syntax case and the BRD traceability suite).
 

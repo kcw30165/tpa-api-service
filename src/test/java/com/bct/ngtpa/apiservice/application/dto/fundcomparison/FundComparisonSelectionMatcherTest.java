@@ -3,6 +3,8 @@ package com.bct.ngtpa.apiservice.application.dto.fundcomparison;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FundComparisonSelectionMatcher.Match;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -41,7 +43,7 @@ class FundComparisonSelectionMatcherTest {
         FundComparisonSelectionMatcher.match(OFFERED_RANGES, OFFERED_FUNDS, List.of("FAEU"), "10Y");
 
     assertThat(match.isMatched()).isFalse();
-    assertThat(match.reason()).isEqualTo(FundComparisonSelectionMatch.TIME_RANGE_NOT_OFFERED);
+    assertThat(match.reason()).isEqualTo(FundComparisonSelectionMatcher.TIME_RANGE_NOT_OFFERED);
     assertThat(match.selection()).isNull();
   }
 
@@ -52,7 +54,7 @@ class FundComparisonSelectionMatcherTest {
             OFFERED_RANGES, OFFERED_FUNDS, List.of("FAEU", "XXXX"), "1M");
 
     assertThat(match.isMatched()).isFalse();
-    assertThat(match.reason()).isEqualTo(FundComparisonSelectionMatch.FUND_CODE_NOT_OFFERED);
+    assertThat(match.reason()).isEqualTo(FundComparisonSelectionMatcher.FUND_CODE_NOT_OFFERED);
     assertThat(match.unlistedFundCodes()).containsExactly("XXXX");
   }
 
@@ -61,7 +63,7 @@ class FundComparisonSelectionMatcherTest {
     var match =
         FundComparisonSelectionMatcher.match(OFFERED_RANGES, OFFERED_FUNDS, List.of("XXXX"), "2D");
 
-    assertThat(match.reason()).isEqualTo(FundComparisonSelectionMatch.TIME_RANGE_NOT_OFFERED);
+    assertThat(match.reason()).isEqualTo(FundComparisonSelectionMatcher.TIME_RANGE_NOT_OFFERED);
     assertThat(match.unlistedFundCodes()).containsExactly("XXXX");
   }
 
@@ -70,7 +72,7 @@ class FundComparisonSelectionMatcherTest {
     var match = FundComparisonSelectionMatcher.match("bogus", OFFERED_FUNDS, List.of("FAEU"), "1M");
 
     assertThat(match.isMatched()).isFalse();
-    assertThat(match.reason()).isEqualTo(FundComparisonSelectionMatch.NO_VALID_TIME_RANGE);
+    assertThat(match.reason()).isEqualTo(FundComparisonSelectionMatcher.NO_VALID_TIME_RANGE);
   }
 
   @Test
@@ -78,12 +80,33 @@ class FundComparisonSelectionMatcherTest {
     var match =
         FundComparisonSelectionMatcher.match(OFFERED_RANGES, OFFERED_FUNDS, List.of("FAEU"), null);
 
-    assertThat(match.reason()).isEqualTo(FundComparisonSelectionMatch.TIME_RANGE_NOT_OFFERED);
+    assertThat(match.reason()).isEqualTo(FundComparisonSelectionMatcher.TIME_RANGE_NOT_OFFERED);
+  }
+
+  @Test
+  void aBlankRequestedFundCodeIsUnlisted() {
+    var match =
+        FundComparisonSelectionMatcher.match(OFFERED_RANGES, OFFERED_FUNDS, List.of(" "), "1M");
+
+    assertThat(match.reason()).isEqualTo(FundComparisonSelectionMatcher.FUND_CODE_NOT_OFFERED);
+    assertThat(match.unlistedFundCodes()).containsExactly(" ");
+  }
+
+  @Test
+  void aNullOfferedFundCodeIsSkipped() {
+    var offered = Arrays.asList(null, "FAEU");
+
+    var match =
+        FundComparisonSelectionMatcher.match(OFFERED_RANGES, offered, List.of("faeu"), "1M");
+
+    assertThat(match.isMatched()).isTrue();
+    assertThat(match.selection().fundCodes()).containsExactly("FAEU");
   }
 
   @Test
   void requiresTheFundCodeLists() {
     var requested = List.of("FAEU");
+
     assertThatThrownBy(
             () -> FundComparisonSelectionMatcher.match(OFFERED_RANGES, null, requested, "1M"))
         .isInstanceOf(NullPointerException.class);
@@ -94,32 +117,14 @@ class FundComparisonSelectionMatcherTest {
 
   @Test
   void theMatchRecordHoldsExactlyOneOfSelectionOrReason() {
-    var selection = new FundComparisonSelection(List.of("FAEU"), "1M");
+    var selection = new FundComparisonPricesValidatedRequest(List.of("FAEU"), "1M");
     var unlisted = List.<String>of();
 
-    assertThatThrownBy(() -> new FundComparisonSelectionMatch(null, null, unlisted))
+    assertThatThrownBy(() -> new Match(null, null, unlisted))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new FundComparisonSelectionMatch(selection, "reason", unlisted))
+    assertThatThrownBy(() -> new Match(selection, "reason", unlisted))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThat(new FundComparisonSelectionMatch(null, "reason", null).unlistedFundCodes())
-        .isEmpty();
-    assertThatThrownBy(() -> FundComparisonSelectionMatch.matched(null))
-        .isInstanceOf(NullPointerException.class);
-  }
-
-  @Test
-  void theSelectionRecordValidatesItsValues() {
-    var empty = List.<String>of();
-    var blank = List.of(" ");
-    var codes = List.of("FAEU");
-
-    assertThatThrownBy(() -> new FundComparisonSelection(null, "1M"))
-        .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> new FundComparisonSelection(empty, "1M"))
-        .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new FundComparisonSelection(blank, "1M"))
-        .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new FundComparisonSelection(codes, " "))
-        .isInstanceOf(IllegalArgumentException.class);
+    assertThat(new Match(null, "reason", null).unlistedFundCodes()).isEmpty();
+    assertThatThrownBy(() -> Match.matched(null)).isInstanceOf(NullPointerException.class);
   }
 }

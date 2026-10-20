@@ -21,7 +21,7 @@ import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FundComparisonPri
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
-import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonSelectedPricesUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonPricesUseCase;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.time.LocalDate;
@@ -41,8 +41,7 @@ class FundComparisonPricesControllerSelectionTest {
   private static final FundComparisonPricesWebMapper MAPPER =
       new FundComparisonPricesWebMapper(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 
-  private final FundComparisonSelectedPricesUseCase useCase =
-      mock(FundComparisonSelectedPricesUseCase.class);
+  private final FundComparisonPricesUseCase useCase = mock(FundComparisonPricesUseCase.class);
 
   private static PortalAccessContext context() {
     return new PortalAccessContext(

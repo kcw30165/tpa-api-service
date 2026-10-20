@@ -2,6 +2,8 @@ package com.bct.ngtpa.apiservice.application.usecase.fundcomparison;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FetchFundComparisonPricesCommand;
@@ -18,23 +20,42 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Fail-first test for Fund Comparison Milestone 3, sub-task 3.3 (prices use case), per
- * docs/design/13-fund-comparison/07-implementation-plan.md section 7.4 and 01-solution-design.md
- * section 1.4 (inclusive date rules: R=15/10/2026, 10D -> 06/10/2026 to 15/10/2026).
+ * Fetch-and-assemble part of the prices use case ({@code fetchPrices}, already-matched selection),
+ * per docs/design/13-fund-comparison/01-solution-design.md section 1.4 (R=15/10/2026, 10D -&gt;
+ * 06/10/2026 to 15/10/2026). Membership validation is covered by {@code
+ * FundComparisonPricesUseCaseMembershipTest}.
  */
 class FundComparisonPricesUseCaseTest {
 
   private static final LocalDate REFERENCE_DATE = LocalDate.of(2026, 10, 15);
 
-  private ReferenceDatePort referenceDatePort(LocalDate referenceDate) {
+  private final FundComparisonOptionsUseCase optionsUseCase =
+      mock(FundComparisonOptionsUseCase.class);
+  private final FundComparisonOptionsCacheService cache =
+      mock(FundComparisonOptionsCacheService.class);
+
+  private static ReferenceDatePort referenceDatePort(LocalDate referenceDate) {
     return accountEnv -> Mono.just(referenceDate);
   }
 
-  private ReferenceDatePort failingReferenceDatePort(RuntimeException error) {
+  private static ReferenceDatePort failingReferenceDatePort(RuntimeException error) {
     return accountEnv -> Mono.error(error);
   }
 
-  private FetchFundComparisonPricesUseCaseCommand command(
+  private static FundComparisonPriceSourcePort capturing(
+      AtomicReference<FetchFundComparisonPricesCommand> captured) {
+    return portCommand -> {
+      captured.set(portCommand);
+      return Mono.just(new RawFundPriceData(List.of()));
+    };
+  }
+
+  private FundComparisonPricesUseCase useCase(
+      FundComparisonPriceSourcePort sourcePort, ReferenceDatePort referenceDatePort) {
+    return new FundComparisonPricesUseCase(sourcePort, referenceDatePort, optionsUseCase, cache);
+  }
+
+  private static FetchFundComparisonPricesUseCaseCommand command(
       List<String> fundCodes, String timeRange) {
     return new FetchFundComparisonPricesUseCaseCommand(
         "00000008802", "DB", ActorUserRole.ROLE_USER_MBR, fundCodes, timeRange);
@@ -43,66 +64,48 @@ class FundComparisonPricesUseCaseTest {
   @Test
   void resolvesTheInclusiveDateRangeFromTheReferenceDatePort() {
     var captured = new AtomicReference<FetchFundComparisonPricesCommand>();
-    FundComparisonPriceSourcePort sourcePort =
-        portCommand -> {
-          captured.set(portCommand);
-          return Mono.just(new RawFundPriceData(List.of()));
-        };
-    var useCase = new FundComparisonPricesUseCase(sourcePort, referenceDatePort(REFERENCE_DATE));
+    var useCase = useCase(capturing(captured), referenceDatePort(REFERENCE_DATE));
 
-    StepVerifier.create(useCase.getPrices(command(List.of("FAEU"), "10D")))
+    StepVerifier.create(useCase.fetchPrices(command(List.of("FAEU"), "10D")))
         .expectNextCount(1)
         .verifyComplete();
 
-    var portCommand = captured.get();
-    assertThat(portCommand.fromDate()).isEqualTo(LocalDate.of(2026, 10, 6));
-    assertThat(portCommand.toDate()).isEqualTo(REFERENCE_DATE);
+    assertThat(captured.get().fromDate()).isEqualTo(LocalDate.of(2026, 10, 6));
+    assertThat(captured.get().toDate()).isEqualTo(REFERENCE_DATE);
   }
 
   @Test
   void joinsFundCodesWithCommasAndNoSpaces() {
     var captured = new AtomicReference<FetchFundComparisonPricesCommand>();
-    FundComparisonPriceSourcePort sourcePort =
-        portCommand -> {
-          captured.set(portCommand);
-          return Mono.just(new RawFundPriceData(List.of()));
-        };
-    var useCase = new FundComparisonPricesUseCase(sourcePort, referenceDatePort(REFERENCE_DATE));
+    var useCase = useCase(capturing(captured), referenceDatePort(REFERENCE_DATE));
 
-    StepVerifier.create(useCase.getPrices(command(List.of("FAEU", "FBAU"), "10D")))
+    StepVerifier.create(useCase.fetchPrices(command(List.of("FAEU", "FBAU", "FCSU"), "1M")))
         .expectNextCount(1)
         .verifyComplete();
 
-    assertThat(captured.get().fundList()).isEqualTo("FAEU,FBAU");
+    assertThat(captured.get().fundList()).isEqualTo("FAEU,FBAU,FCSU");
   }
 
   @Test
   void passesPolicyNoAccountEnvAndActorUserRoleThroughToThePortCommand() {
     var captured = new AtomicReference<FetchFundComparisonPricesCommand>();
-    FundComparisonPriceSourcePort sourcePort =
-        portCommand -> {
-          captured.set(portCommand);
-          return Mono.just(new RawFundPriceData(List.of()));
-        };
-    var useCase = new FundComparisonPricesUseCase(sourcePort, referenceDatePort(REFERENCE_DATE));
+    var useCase = useCase(capturing(captured), referenceDatePort(REFERENCE_DATE));
 
-    StepVerifier.create(useCase.getPrices(command(List.of("FAEU"), "10D")))
+    StepVerifier.create(useCase.fetchPrices(command(List.of("FAEU"), "10D")))
         .expectNextCount(1)
         .verifyComplete();
 
-    var portCommand = captured.get();
-    assertThat(portCommand.policyNo()).isEqualTo("00000008802");
-    assertThat(portCommand.accountEnv()).isEqualTo("DB");
-    assertThat(portCommand.actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
+    assertThat(captured.get().policyNo()).isEqualTo("00000008802");
+    assertThat(captured.get().accountEnv()).isEqualTo("DB");
+    assertThat(captured.get().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
   }
 
   @Test
   void assemblesTheResultWithTheComputedDateRangeRequestedFundCodesAndRawData() {
     var rawData = new RawFundPriceData(List.of());
-    FundComparisonPriceSourcePort sourcePort = portCommand -> Mono.just(rawData);
-    var useCase = new FundComparisonPricesUseCase(sourcePort, referenceDatePort(REFERENCE_DATE));
+    var useCase = useCase(portCommand -> Mono.just(rawData), referenceDatePort(REFERENCE_DATE));
 
-    StepVerifier.create(useCase.getPrices(command(List.of("FAEU", "FBAU"), "10D")))
+    StepVerifier.create(useCase.fetchPrices(command(List.of("FAEU", "FBAU"), "10D")))
         .assertNext(
             result -> {
               assertThat(result.fromDate()).isEqualTo(LocalDate.of(2026, 10, 6));
@@ -115,71 +118,105 @@ class FundComparisonPricesUseCaseTest {
 
   @Test
   void referenceDatePortFailureIsWrappedAsRetrievalUnavailable() {
-    FundComparisonPriceSourcePort sourcePort =
-        portCommand -> Mono.just(new RawFundPriceData(List.of()));
+    var captured = new AtomicReference<FetchFundComparisonPricesCommand>();
     var useCase =
-        new FundComparisonPricesUseCase(
-            sourcePort, failingReferenceDatePort(new IllegalStateException("downstream failure")));
+        useCase(
+            capturing(captured),
+            failingReferenceDatePort(new IllegalStateException("downstream failure")));
 
-    StepVerifier.create(useCase.getPrices(command(List.of("FAEU"), "10D")))
-        .expectErrorMatches(FundComparisonRetrievalException.class::isInstance)
+    StepVerifier.create(useCase.fetchPrices(command(List.of("FAEU"), "10D")))
+        .expectErrorSatisfies(
+            error -> assertThat(error).isInstanceOf(FundComparisonRetrievalException.class))
         .verify();
+
+    assertThat(captured.get()).isNull();
   }
 
   @Test
   void referenceDatePortFailureThatIsAlreadyARetrievalExceptionIsPassedThroughUnchanged() {
     var original = FundComparisonRetrievalException.systemFailure();
-    FundComparisonPriceSourcePort sourcePort =
-        portCommand -> Mono.just(new RawFundPriceData(List.of()));
-    var useCase = new FundComparisonPricesUseCase(sourcePort, failingReferenceDatePort(original));
+    var useCase =
+        useCase(
+            portCommand -> Mono.just(new RawFundPriceData(List.of())),
+            failingReferenceDatePort(original));
 
-    StepVerifier.create(useCase.getPrices(command(List.of("FAEU"), "10D")))
-        .expectErrorMatches(original::equals)
+    StepVerifier.create(useCase.fetchPrices(command(List.of("FAEU"), "10D")))
+        .expectErrorSatisfies(error -> assertThat(error).isSameAs(original))
         .verify();
   }
 
   @Test
   void sourcePortFailureIsWrappedAsRetrievalUnavailable() {
-    FundComparisonPriceSourcePort sourcePort =
-        portCommand -> Mono.error(new IllegalStateException("downstream price failure"));
-    var useCase = new FundComparisonPricesUseCase(sourcePort, referenceDatePort(REFERENCE_DATE));
+    var useCase =
+        useCase(
+            portCommand -> Mono.error(new IllegalStateException("downstream price failure")),
+            referenceDatePort(REFERENCE_DATE));
 
-    StepVerifier.create(useCase.getPrices(command(List.of("FAEU"), "10D")))
-        .expectErrorMatches(FundComparisonRetrievalException.class::isInstance)
+    StepVerifier.create(useCase.fetchPrices(command(List.of("FAEU"), "10D")))
+        .expectErrorSatisfies(
+            error -> assertThat(error).isInstanceOf(FundComparisonRetrievalException.class))
         .verify();
   }
 
   @Test
   void sourcePortFailureThatIsAlreadyARetrievalExceptionIsPassedThroughUnchanged() {
     var original = FundComparisonRetrievalException.systemFailure();
-    FundComparisonPriceSourcePort sourcePort = portCommand -> Mono.error(original);
-    var useCase = new FundComparisonPricesUseCase(sourcePort, referenceDatePort(REFERENCE_DATE));
+    var useCase = useCase(portCommand -> Mono.error(original), referenceDatePort(REFERENCE_DATE));
 
-    StepVerifier.create(useCase.getPrices(command(List.of("FAEU"), "10D")))
-        .expectErrorMatches(original::equals)
+    StepVerifier.create(useCase.fetchPrices(command(List.of("FAEU"), "10D")))
+        .expectErrorSatisfies(error -> assertThat(error).isSameAs(original))
         .verify();
   }
 
   @Test
-  void nullCommandThrowsNullPointerException() {
-    FundComparisonPriceSourcePort sourcePort =
-        portCommand -> Mono.just(new RawFundPriceData(List.of()));
-    var useCase = new FundComparisonPricesUseCase(sourcePort, referenceDatePort(REFERENCE_DATE));
+  void fetchPricesNeverTouchesTheOptionsOrTheCache() {
+    var useCase =
+        useCase(
+            portCommand -> Mono.just(new RawFundPriceData(List.of())),
+            referenceDatePort(REFERENCE_DATE));
 
-    assertThatThrownBy(() -> useCase.getPrices(null)).isInstanceOf(NullPointerException.class);
+    StepVerifier.create(useCase.fetchPrices(command(List.of("FAEU"), "10D")))
+        .expectNextCount(1)
+        .verifyComplete();
+
+    verifyNoInteractions(optionsUseCase, cache);
   }
 
   @Test
-  void constructorRequiresBothDependencies() {
+  void nullCommandThrowsNullPointerException() {
+    var useCase =
+        useCase(
+            portCommand -> Mono.just(new RawFundPriceData(List.of())),
+            referenceDatePort(REFERENCE_DATE));
+
+    assertThatThrownBy(() -> useCase.fetchPrices(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("command");
+  }
+
+  @Test
+  void constructorRequiresEveryDependency() {
     FundComparisonPriceSourcePort sourcePort =
         portCommand -> Mono.just(new RawFundPriceData(List.of()));
     ReferenceDatePort referenceDatePort = referenceDatePort(REFERENCE_DATE);
 
-    assertThatThrownBy(() -> new FundComparisonPricesUseCase(null, referenceDatePort))
+    assertThatThrownBy(
+            () -> new FundComparisonPricesUseCase(null, referenceDatePort, optionsUseCase, cache))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("sourcePort");
-    assertThatThrownBy(() -> new FundComparisonPricesUseCase(sourcePort, null))
+    assertThatThrownBy(
+            () -> new FundComparisonPricesUseCase(sourcePort, null, optionsUseCase, cache))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("referenceDatePort");
+    assertThatThrownBy(
+            () -> new FundComparisonPricesUseCase(sourcePort, referenceDatePort, null, cache))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("optionsUseCase");
+    assertThatThrownBy(
+            () ->
+                new FundComparisonPricesUseCase(
+                    sourcePort, referenceDatePort, optionsUseCase, null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("cache");
   }
 }

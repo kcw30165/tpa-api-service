@@ -38,9 +38,10 @@ import reactor.test.StepVerifier;
 /**
  * Fund Comparison M5.4: prices requests are validated against the session-cached options with a
  * single refresh-and-recheck (docs/design/13-fund-comparison/09-options-session-cache-change.md
- * sections 9.4 and 9.8).
+ * sections 9.4 and 9.8). Uses the real options use case with a counting source port and a mocked
+ * cache service.
  */
-class FundComparisonSelectedPricesUseCaseTest {
+class FundComparisonPricesUseCaseMembershipTest {
 
   private static final AuthenticatedSessionId SID =
       new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
@@ -72,23 +73,21 @@ class FundComparisonSelectedPricesUseCaseTest {
             .toList());
   }
 
-  private FundComparisonSelectedPricesUseCase useCase() {
+  private FundComparisonPricesUseCase useCase() {
     FundComparisonOptionsSourcePort optionsPort =
-        command -> {
+        optionsCommand -> {
           optionsCalls.incrementAndGet();
           return freshOptions;
         };
     FundComparisonPriceSourcePort pricePort =
-        command -> {
+        portCommand -> {
           priceCalls.incrementAndGet();
-          priceCommand.set(command);
+          priceCommand.set(portCommand);
           return Mono.just(new RawFundPriceData(List.of()));
         };
     ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(REFERENCE_DATE);
-    return new FundComparisonSelectedPricesUseCase(
-        new FundComparisonOptionsUseCase(optionsPort, cache),
-        cache,
-        new FundComparisonPricesUseCase(pricePort, referenceDatePort));
+    return new FundComparisonPricesUseCase(
+        pricePort, referenceDatePort, new FundComparisonOptionsUseCase(optionsPort, cache), cache);
   }
 
   private static FetchFundComparisonPricesUseCaseCommand command(
@@ -124,6 +123,7 @@ class FundComparisonSelectedPricesUseCaseTest {
     assertThat(priceCalls).hasValue(1);
     assertThat(priceCommand.get().fundList()).isEqualTo("FAEU");
     verify(cache).read(SID, ACCOUNT_REF, POLICY_NO, "req-1");
+    verify(cache, never()).write(any(), any(), any());
   }
 
   @Test
@@ -142,7 +142,8 @@ class FundComparisonSelectedPricesUseCaseTest {
     var useCase = useCase();
 
     StepVerifier.create(
-            useCase.getPrices(command(List.of("FAEU"), "10D"), Optional.empty(), ACCOUNT_REF, "r"))
+            useCase.getPrices(
+                command(List.of("FAEU"), "10D"), Optional.empty(), ACCOUNT_REF, "req-1"))
         .expectNextCount(1)
         .verifyComplete();
 
@@ -227,18 +228,15 @@ class FundComparisonSelectedPricesUseCaseTest {
   }
 
   @Test
-  void caseAndWhitespaceDifferencesUseTheCachedSpellingDownstream() {
+  void caseAndWhitespaceDifferencesUseTheOfferedSpellingDownstreamAndInTheResult() {
     cached(ALL_RANGES, "FAEU", "FBAU");
 
     StepVerifier.create(run(command(List.of("faeu"), "10d")))
-        .assertNext(
-            result -> {
-              assertThat(result.fundCodes()).containsExactly("FAEU");
-              assertThat(result.fromDate()).isEqualTo(LocalDate.of(2026, 10, 6));
-            })
+        .assertNext(result -> assertThat(result.fundCodes()).containsExactly("FAEU"))
         .verifyComplete();
 
     assertThat(priceCommand.get().fundList()).isEqualTo("FAEU");
+    assertThat(priceCommand.get().fromDate()).isEqualTo(LocalDate.of(2026, 10, 6));
     assertThat(optionsCalls).hasValue(0);
   }
 
@@ -253,24 +251,10 @@ class FundComparisonSelectedPricesUseCaseTest {
   }
 
   @Test
-  void requiresItsDependenciesAndArguments() {
-    var options = new FundComparisonOptionsUseCase(command -> freshOptions, cache);
-    var prices =
-        new FundComparisonPricesUseCase(
-            command -> Mono.just(new RawFundPriceData(List.of())),
-            accountEnv -> Mono.just(REFERENCE_DATE));
+  void requiresTheCommandAndTheSessionOptional() {
     var useCase = useCase();
     var command = command(List.of("FAEU"), "10D");
 
-    assertThatThrownBy(() -> new FundComparisonSelectedPricesUseCase(null, cache, prices))
-        .isInstanceOf(NullPointerException.class)
-        .hasMessageContaining("optionsUseCase");
-    assertThatThrownBy(() -> new FundComparisonSelectedPricesUseCase(options, null, prices))
-        .isInstanceOf(NullPointerException.class)
-        .hasMessageContaining("cache");
-    assertThatThrownBy(() -> new FundComparisonSelectedPricesUseCase(options, cache, null))
-        .isInstanceOf(NullPointerException.class)
-        .hasMessageContaining("pricesUseCase");
     assertThatThrownBy(() -> useCase.getPrices(null, SESSION, ACCOUNT_REF, "r"))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("command");

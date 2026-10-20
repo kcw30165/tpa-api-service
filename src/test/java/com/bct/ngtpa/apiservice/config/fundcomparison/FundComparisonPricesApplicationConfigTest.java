@@ -8,15 +8,14 @@ import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonPricesUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonSelectedPricesUseCase;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
-/** Fund Comparison M5.4: the prices configuration wires the selected-prices use case. */
+/** Fund Comparison M5.4: the prices configuration wires the single prices use case. */
 class FundComparisonPricesApplicationConfigTest {
 
   @Test
-  void wiresThePricesAndSelectedPricesUseCases() {
+  void wiresThePricesUseCaseWithTheOptionsUseCaseAndTheCache() {
     new ApplicationContextRunner()
         .withBean(
             FundComparisonPriceSourcePort.class, () -> mock(FundComparisonPriceSourcePort.class))
@@ -31,7 +30,6 @@ class FundComparisonPricesApplicationConfigTest {
             context -> {
               assertThat(context).hasNotFailed();
               assertThat(context).hasSingleBean(FundComparisonPricesUseCase.class);
-              assertThat(context).hasSingleBean(FundComparisonSelectedPricesUseCase.class);
             });
   }
 }
