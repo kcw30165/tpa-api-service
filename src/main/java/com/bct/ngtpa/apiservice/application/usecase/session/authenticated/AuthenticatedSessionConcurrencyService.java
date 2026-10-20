@@ -116,7 +116,8 @@ public final class AuthenticatedSessionConcurrencyService {
                       mutated.idleExpiresAt(),
                       mutated.absoluteExpiresAt(),
                       freshRevision,
-                      mutated.fundPriceModeMetadata());
+                      mutated.fundPriceModeMetadata(),
+                      mutated.featureState());
               ProtectedAuthenticatedSession replacementEnvelope = protector.protect(replacement);
               var command =
                   new AuthenticatedSessionCasUpdateCommand(

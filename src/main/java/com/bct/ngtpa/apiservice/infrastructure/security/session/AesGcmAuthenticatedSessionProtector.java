@@ -192,14 +192,16 @@ public final class AesGcmAuthenticatedSessionProtector
       ActorUserRole actorUserRole,
       List<WireAccount> accounts,
       String csrfTokenHash,
-      FundPriceModeSessionMetadata fundPriceModeSessionMetadata) {
+      FundPriceModeSessionMetadata fundPriceModeSessionMetadata,
+      Map<String, String> featureState) {
     static SensitiveContext from(AuthenticatedSession session) {
       return new SensitiveContext(
           session.actorContext().actorUserId(),
           session.actorContext().actorUserRole(),
           session.accounts().stream().map(WireAccount::from).toList(),
           session.csrfTokenHash(),
-          session.fundPriceModeMetadata());
+          session.fundPriceModeMetadata(),
+          session.featureState());
     }
 
     AuthenticatedSession toDomain(ProtectedAuthenticatedSession envelope) {
@@ -214,7 +216,8 @@ public final class AesGcmAuthenticatedSessionProtector
           envelope.idleExpiresAt(),
           envelope.absoluteExpiresAt(),
           envelope.sessionRevision(),
-          fundPriceModeSessionMetadata);
+          fundPriceModeSessionMetadata,
+          featureState);
     }
   }
 

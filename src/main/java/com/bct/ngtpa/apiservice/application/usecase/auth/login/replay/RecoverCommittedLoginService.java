@@ -124,7 +124,8 @@ public final class RecoverCommittedLoginService
             session.idleExpiresAt(),
             session.absoluteExpiresAt(),
             session.revision(),
-            session.fundPriceModeMetadata());
+            session.fundPriceModeMetadata(),
+            session.featureState());
   }
 
   private List<LoginSessionAccount> reconstructLoginAccounts(
