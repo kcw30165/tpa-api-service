@@ -18,6 +18,7 @@ run_scenario() {
     return 1
   fi
 
+  create_private_runtime_state
   reg_require_inputs || return 1
 
   reg_progress "Flow A: start -> otp/verify -> username/check (candidate username shared with flow B)"
