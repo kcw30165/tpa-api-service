@@ -5,7 +5,7 @@
 | Branch | `refactor/notice-board` |
 | Base | `origin/dev` at `c9aa7987a68f939d4170f1c78a8fc4763ed26a57` |
 | Owner | Nick (solution design and approval) |
-| Status | Implemented on the branch (ST-2 to ST-4 and ST-6); ST-7 (no Java-authored title) designed; milestone gates re-run pending |
+| Status | Implemented on the branch (ST-2 to ST-4, ST-6 and ST-7); milestone gates re-run pending |
 
 Labels: **Confirmed** means read from the source at the base commit (investigation scripts 001, 002,
 004 and 005). **Unverified** means not read yet; the named gate settles it.
@@ -433,4 +433,4 @@ after ST-7.
 | U9 | The alias normalization of `MessageType.fromCode` is gone, so the response carries the downstream category as received. Whether the downstream sends only the six short codes. | Frontend and downstream confirmation; the live response showed `DOC_AVAIL`. |
 | U10 | The frontend renders the title from `category` in the same release. | Frontend confirmation before release. |
 
-ST-7 status: designed; implementation pending.
+ST-7 status: implemented; the milestone gates are re-run after it.

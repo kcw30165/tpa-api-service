@@ -9,13 +9,11 @@ class NotificationDtoTest {
 
   @Test
   void recordFieldsAreAccessible() {
-    var dto =
-        new NotificationDto("CODE", "1", "GENERAL", "Title", "Content", false, "01/01/2026 00:00");
+    var dto = new NotificationDto("CODE", "1", "GENERAL", "Content", false, "01/01/2026 00:00");
 
     assertEquals("CODE", dto.msgCode());
     assertEquals("1", dto.sequence());
     assertEquals("GENERAL", dto.category());
-    assertEquals("Title", dto.msgTitle());
     assertEquals("Content", dto.msgContent());
     assertFalse(dto.isRead());
     assertEquals("01/01/2026 00:00", dto.startDateTime());

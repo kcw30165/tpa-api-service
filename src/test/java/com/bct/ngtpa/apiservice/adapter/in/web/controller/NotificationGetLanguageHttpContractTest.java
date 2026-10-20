@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextR
 import com.bct.ngtpa.apiservice.domain.model.AudienceType;
 import com.bct.ngtpa.apiservice.domain.model.Hyperlink;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
-import com.bct.ngtpa.apiservice.domain.model.MessageType;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -63,6 +62,15 @@ class NotificationGetLanguageHttpContractTest {
         .doesNotExist();
   }
 
+  @Test
+  void responseCarriesCategoryCodeAndNoJavaAuthoredTitle() {
+    get("en", CHINESE, ENGLISH)
+        .jsonPath("$.result.data.notifications[0].category")
+        .isEqualTo("GENERAL")
+        .jsonPath("$.result.data.notifications[0].msgTitle")
+        .doesNotExist();
+  }
+
   private static WebTestClient.BodyContentSpec get(
       String language, String chinese, String english) {
     var controller =
@@ -86,8 +94,6 @@ class NotificationGetLanguageHttpContractTest {
         "MSG-1-LONG",
         1,
         "GENERAL",
-        MessageType.IMPORTANT_NOTICE,
-        "Title",
         chinese,
         english,
         false,

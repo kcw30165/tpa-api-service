@@ -18,7 +18,6 @@ import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.usecase.GetNotificationsService;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
-import com.bct.ngtpa.apiservice.domain.model.MessageType;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
 import java.time.Clock;
 import java.time.Duration;
@@ -105,8 +104,6 @@ class NotificationReferenceDateFlowTest {
                           "MSG-1-LONG",
                           1,
                           "GENERAL",
-                          MessageType.IMPORTANT_NOTICE,
-                          "Reference Date Notice",
                           "Content zh",
                           "Content",
                           MessageStatus.UNREAD.isRead(),
@@ -146,8 +143,10 @@ class NotificationReferenceDateFlowTest {
         .isEmpty()
         .jsonPath("$.errors")
         .isEmpty()
+        .jsonPath("$.result.data.notifications[0].category")
+        .isEqualTo("GENERAL")
         .jsonPath("$.result.data.notifications[0].msgTitle")
-        .isEqualTo("Reference Date Notice")
+        .doesNotExist()
         .jsonPath("$.result.data.notifications[0].msgCode")
         .isEqualTo("MSG-1-LONG")
         .jsonPath("$.result.data.notifications[0].msgContent")

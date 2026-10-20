@@ -55,7 +55,6 @@ class ApimNoticeMessageAdapterTest {
     assertThat(result.notifications().getFirst().msgCode()).isEqualTo("SHORT-001");
     assertThat(result.notifications().getFirst().msgCodeLong()).isEqualTo("LONG-001");
     assertThat(result.notifications().getFirst().category()).isEqualTo("IMP_NOTE");
-    assertThat(result.notifications().getFirst().msgTitle()).isEqualTo("IMPORTANT NOTICE");
     assertThat(result.notifications().getFirst().isRead()).isTrue();
     assertThat(result.notifications().getFirst().startDatetime())
         .isEqualTo(LocalDateTime.of(2026, 4, 29, 14, 15));
@@ -194,7 +193,7 @@ class ApimNoticeMessageAdapterTest {
             .fetchNotifications(command("JP", ActorUserRole.ROLE_USER_MBR))
             .block();
     assertThat(result.notifications()).hasSize(1);
-    assertThat(result.notifications().getFirst().msgTitle()).isEqualTo("custom-type");
+    assertThat(result.notifications().getFirst().category()).isEqualTo("custom-type");
     assertThat(result.notifications().getFirst().msgStatus()).isEqualTo(MessageStatus.UNREAD);
     assertThat(result.notifications().getFirst().startDatetime()).isNull();
   }

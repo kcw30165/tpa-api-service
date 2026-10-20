@@ -10,7 +10,6 @@ import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusRes
 import com.bct.ngtpa.apiservice.domain.model.AudienceType;
 import com.bct.ngtpa.apiservice.domain.model.Hyperlink;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
-import com.bct.ngtpa.apiservice.domain.model.MessageType;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
 import com.bct.ngtpa.apiservice.domain.model.NotificationReadStatus;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -36,7 +35,7 @@ class NotificationResponseSerializationContractTest {
     assertThat(keys(root.at("/result/data"))).containsExactly("notifications");
     assertThat(keys(root.at("/result/data/notifications/0")))
         .containsExactlyInAnyOrder(
-            "msgCode", "sequence", "category", "msgTitle", "msgContent", "isRead", "startDateTime");
+            "msgCode", "sequence", "category", "msgContent", "isRead", "startDateTime");
     assertThat(root.at("/status").asText()).isEqualTo("SUCCESS");
     assertThat(root.at("/result/data/notifications/0/isRead").isBoolean()).isTrue();
   }
@@ -83,8 +82,6 @@ class NotificationResponseSerializationContractTest {
         "LONG",
         1,
         "GENERAL",
-        MessageType.IMPORTANT_NOTICE,
-        "Title",
         "Chi",
         "Eng",
         false,

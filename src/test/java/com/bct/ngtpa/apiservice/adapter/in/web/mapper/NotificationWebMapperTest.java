@@ -9,7 +9,6 @@ import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.domain.model.AudienceType;
 import com.bct.ngtpa.apiservice.domain.model.Hyperlink;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
-import com.bct.ngtpa.apiservice.domain.model.MessageType;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -168,6 +167,17 @@ class NotificationWebMapperTest {
     assertFalse(first.has("msgContentEng"));
   }
 
+  @Test
+  void toResponseOmitsMsgTitleAndKeepsCategoryCode() {
+    var result = resultOf(contentMessage("Chi content", "Eng content"));
+
+    JsonNode first =
+        JSON.valueToTree(mapper.toResponse(result, "en")).at("/result/data/notifications/0");
+
+    assertFalse(first.has("msgTitle"));
+    assertEquals("GENERAL", first.at("/category").asText());
+  }
+
   private JsonNode firstNotification(NotificationListResult result) {
     JsonNode root = JSON.valueToTree(mapper.toResponse(result, "en"));
     return root.at("/result/data/notifications/0");
@@ -188,8 +198,6 @@ class NotificationWebMapperTest {
         "LONG",
         1,
         "GENERAL",
-        MessageType.IMPORTANT_NOTICE,
-        "Title",
         chinese,
         english,
         false,
@@ -207,8 +215,6 @@ class NotificationWebMapperTest {
         msgCodeLong,
         seq,
         "GENERAL",
-        MessageType.IMPORTANT_NOTICE,
-        "Title",
         "Chi",
         "Eng",
         false,

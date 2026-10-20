@@ -37,7 +37,6 @@ public class NotificationWebMapper {
         message.msgCodeLong() != null ? message.msgCodeLong() : message.msgCode(),
         message.seq() != null ? message.seq().toString() : null,
         message.category(),
-        message.msgTitle(),
         content(message, chinese),
         message.isRead(),
         dateOptions.format(message.startDatetime()));
