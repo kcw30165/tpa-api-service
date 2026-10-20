@@ -112,3 +112,17 @@ Stop on a compile failure and repair all compile errors before the targeted test
 
 Only after the milestone gates pass. The MR description lists the two breaking JSON paths from
 section 10 of the design so the frontend change ships in the same release.
+
+## 6. Execution status
+
+| Sub-task | Status | Commit |
+|---|---|---|
+| ST-1 design pack | Done | `2aff1c9f` |
+| ST-2 env removal | Done | `f82bf7bd` |
+| ST-3 GET `result.data` | Done | `f73e98c7` |
+| ST-4 PATCH `result.data` | Done | `8f4fc5d5` |
+| ST-5 docs | Done in this commit | |
+| Milestone gates | Pending | |
+
+No ST-6 exists: making the notification error responses label-free is deferred to the central
+`ApiExceptionHandler` consolidation (decision by Nick, 2026-10-20).

@@ -5,7 +5,7 @@
 | Branch | `refactor/notice-board` |
 | Base | `origin/dev` at `c9aa7987a68f939d4170f1c78a8fc4763ed26a57` |
 | Owner | Nick (solution design and approval) |
-| Status | Design, pending implementation |
+| Status | Implemented on the branch (ST-2 to ST-4); milestone gates pending |
 
 Labels: **Confirmed** means read from the source at the base commit (investigation scripts 001, 002,
 004 and 005). **Unverified** means not read yet; the named gate settles it.
@@ -232,11 +232,32 @@ change.
 
 | ID | Item | Settled by |
 |---|---|---|
-| U1 | Purpose of the controller list in `InboundWebControllerArchitectureTest` (it contains `NotificationController.class`), and what `NotificationsAuthenticatedExecutorBoundaryTest` asserts beyond the `command.accountEnv()` tokens. | Every sub-task runs the architecture and boundary tests that mention the notification classes; the milestone gate runs the full suite. |
-| U2 | JSON key of `NotificationReadStatusDto.isRead`, which has no `@JsonProperty`. | `NotificationResponseSerializationContractTest`. If the key is not `isRead`, add `@JsonProperty("isRead")` in the PATCH sub-task. |
+| U1 | Whether the architecture and boundary guards constrain the notification controller and adapters. | Settled for the guards by the ST-2 to ST-4 targeted runs: `InboundWebControllerArchitectureTest`, `StandaloneCapabilityControllerArchitectureTest`, `NotificationCurrentContextBoundaryGuardTest`, `NotificationsAuthenticatedExecutorBoundaryTest` and the `SecurityConfig*Test` classes passed. The full suite still runs at the milestone gate. |
+| U2 | JSON key of `NotificationReadStatusDto.isRead`. | Settled by the ST-4 fail-first run: the key already serializes as `isRead`; no annotation was added. |
 | U3 | Whether any test reads `controller-refactoring-endpoint-inventory.md`. | Full test run at the milestone gate. |
-| U4 | Whether `ApiExceptionHandler` fills error text for the notification exceptions (label rule). | Evidence file `05-label-audit-readonly.txt` of script 006; any finding goes to Nick for a decision. |
+| U4 | Whether `ApiExceptionHandler` fills error text for the notification exceptions (label rule). | Settled: it does, through `ErrorMessageResolver` (evidence: script 006 `05-label-audit-readonly.txt`). Deferred by Nick (2026-10-20) to the central `ApiExceptionHandler` consolidation; no change on this branch. |
 | U5 | Whether the downstream accepts `cert-no` as a JSON string (D11). | Local functional run against the downstream. |
 
 Deferred, not part of this branch: `PARTIAL_SUCCESS` for PATCH, any rename of `msgCode`, a shared
 response builder, and consolidation of `ApiExceptionHandler`.
+
+## 12. Implementation record
+
+| Sub-task | Commit | Result |
+|---|---|---|
+| ST-1 design pack | `2aff1c9f` | Docs only. |
+| ST-2 env removed from `TRPGetMsgBoard` and `TRPUpdMsgRead` requests | `f82bf7bd` | Targeted run: 13 classes, 67 tests, 0 failures. |
+| ST-3 GET `result.data` | `f73e98c7` | Targeted run: 23 classes, 132 tests, 0 failures. |
+| ST-4 PATCH `result.data` | `8f4fc5d5` | Targeted run: 26 classes, 141 tests, 0 failures. |
+
+Outcomes that settled earlier open points:
+
+- U2: the PATCH response serializes the key `isRead` without an annotation; `NotificationReadStatusDto`
+  was not changed.
+- U4: `ApiExceptionHandler` fills `errors[].message` for the notification exceptions through
+  `ErrorMessageResolver`. Making those error responses label-free is deferred by Nick (2026-10-20) to the
+  central `ApiExceptionHandler` consolidation. There is no change on this branch.
+- Success responses of both endpoints are label-free: `messages` and `errors` are `[]`.
+
+Pending: the milestone gates (full `mvn test`, coverage, smoke test, SonarQube) and the frontend change for
+the two breaking JSON paths in section 10.
