@@ -131,6 +131,38 @@ reg_call() {
 
 reg_json() { jq -r "$1" "$REG_RAW_BODY" 2>/dev/null || true; }
 
+# reg_assert_response_any_code <label> <http status> <api status> <next step> <code1> [code2 ...]
+# Same as reg_assert_response, but accepts any one of several valid error codes.
+# Used where the real downstream system can legitimately return more than one
+# business-rejection code for the same logical outcome (confirmed: TRPRegMember
+# may return either err.tpa.member.registered or err.tpa.cust.id.duplicated for
+# a duplicate-username-at-complete race, and Java passes the code through
+# verbatim with no logic selecting between them).
+reg_assert_response_any_code() {
+  local label="$1" http="$2" api="$3" next="$4"
+  shift 4
+  local -a acceptable=("$@")
+  local rc=0 actual
+  assert_eq 0 "$REG_CURL_EXIT" "${label}_curl_exit" || rc=1
+  assert_eq "$http" "$REG_HTTP_STATUS" "${label}_http_status" || rc=1
+  actual="$(reg_json '.status // "<absent>"')"
+  assert_eq "$api" "${actual:-<not-json>}" "${label}_api_status" || rc=1
+  actual="$(reg_json '.result.nextStep // "<absent>"')"
+  assert_eq "$next" "${actual:-<not-json>}" "${label}_next_step" || rc=1
+  actual="$(reg_json '.errors[0].code // "<absent>"')"
+  local matched=false code
+  for code in "${acceptable[@]}"; do
+    [[ "$actual" == "$code" ]] && matched=true && break
+  done
+  if [[ "$matched" == true ]]; then
+    printf 'PASS %s_error_code=%s\n' "$label" "$actual"
+  else
+    printf 'FAIL %s_error_code actual=%s expected one of: %s\n' "$label" "${actual:-<not-json>}" "${acceptable[*]}"
+    rc=1
+  fi
+  return "$rc"
+}
+
 # reg_assert_response <label> <http status> <api status> <next step or -> [error code]
 # Asserts on the raw body: the evidence copy redacts every sensitive key.
 reg_assert_response() {

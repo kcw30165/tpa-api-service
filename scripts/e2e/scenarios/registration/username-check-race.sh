@@ -48,8 +48,14 @@ run_scenario() {
 
   reg_progress "Flow B: complete (expected to be rejected -- username now registered by flow A)"
   reg_complete B
-  reg_assert_response reg_B_complete 422 BUSINESS_REJECTED USERNAME_CHECK \
-    err.registration.complete.memberAlreadyRegistered || return 1
+  # The real downstream TRPRegMember can legitimately return either of these two
+  # codes for the same duplicate-username-at-complete race (confirmed via a real
+  # local run plus source review of TrpRegMemberApimResultMapper, which passes
+  # the downstream code through verbatim with no selection logic). Both already
+  # correctly resolve to the same outcome: 422 / BUSINESS_REJECTED / USERNAME_CHECK.
+  reg_assert_response_any_code reg_B_complete 422 BUSINESS_REJECTED USERNAME_CHECK \
+    err.registration.complete.memberAlreadyRegistered \
+    err.registration.username.isRegistered || return 1
   reg_note "flow_B was correctly rejected: the first registration (flow A) wins, matching commits 3c5fe448/abe4382e"
 
   printf 'PASS registration_username_check_race_scenario_complete\n'
