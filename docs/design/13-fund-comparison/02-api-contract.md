@@ -158,3 +158,13 @@ X-Request-Id: <request-id>
 - Time ranges preserve normalized downstream order.
 - Price points within each series are ordered by date ascending.
 - Series order follows the request's first occurrence order after validation/deduplication.
+
+
+## 2.5 Membership validation (Change Request, 2026-10-20)
+
+After syntax validation, `POST /api/v1/fund-comparison/prices` validates `timeRange` and every
+fund code against the session-cached options (09 section 9.4). A selection that is not offered
+by the current options returns HTTP 400 using the invalid-request response above
+(`VALIDATION_FAILED`, `err.fund-comparison.request.invalid`); TRPGetFundPrice is not called.
+Open item Q1 may introduce a distinct code for this case. Pending D6:
+TRPGetFundPrice `err.tpa.invalid.date` returns the same HTTP 400.

@@ -35,7 +35,7 @@ Using a stubbed `ReferenceDatePort`:
 - rejects more than five unique funds;
 - rejects missing/blank fund codes;
 - deduplicates repeated fund codes;
-- validates time-range syntax only;
+- validates time-range syntax, then membership against the session-cached options (superseded 2026-10-20; required cases in 09 section 9.8);
 - joins fund codes without spaces;
 - maps `bid-price` to `unitPrice`;
 - does not expose `offer-price`;
@@ -87,3 +87,10 @@ Using a stubbed `ReferenceDatePort`:
 - all-invalid downstream tokens return HTTP 503;
 - raw downstream `err-message` is never exposed;
 - legitimate empty `FundPrice` remains HTTP 200 with empty series.
+
+
+## 5.7 Options session cache and membership (Change Request, 2026-10-20)
+
+Required cases are listed in 09-options-session-cache-change.md section 9.8. The section 5.6
+scenario "missing/blank/invalid request time range uses only `err.fund-comparison.request.invalid`"
+now also covers syntactically valid but unoffered time ranges and unlisted fund codes.

@@ -28,6 +28,8 @@ Every nonblank `err-message` from either operation maps to HTTP 503 `SYSTEM_ERRO
 - `err.tpa.no.fund.price`
 - unknown or generic downstream errors
 
+Pending change (Fund Comparison CR D6, awaiting downstream confirmation): `err.tpa.invalid.date` from TRPGetFundPrice (Fund Price query, Fund Price export, Fund Comparison prices) will map to HTTP 400 `err.fund-price.request.invalid` (`BUSINESS_REJECTED`) for Fund Price. TRPGetFundPriceMode is unchanged. See docs/design/13-fund-comparison/09-options-session-cache-change.md.
+
 Transport, timeout, token, certificate, crypto, deserialization, empty data, invalid item count, duplicate/unmatched fund codes, and workbook generation failures also map to HTTP 503 `SYSTEM_ERROR`.
 
 Raw downstream messages and internal exception text are never returned to FE.

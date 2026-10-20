@@ -59,7 +59,7 @@ Public mapping:
 
 The implementation must reuse the existing Fund Price application-exception and shared response mechanism rather than independently constructing the envelope.
 
-Duplicate valid fund codes are deduplicated while preserving first occurrence order. The BFF does not validate a syntactically valid period against a previously returned options list.
+Fund codes are trimmed and deduplicated case-insensitively while preserving first occurrence order. Superseded 2026-10-20: after syntax validation the BFF validates the time range and every fund code for membership in the session-cached options, with one refresh-and-recheck. A membership failure against current options is HTTP 400 `VALIDATION_FAILED`, `err.fund-comparison.request.invalid`, and TRPGetFundPrice is not called (09 sections 9.4-9.6).
 
 ## 4.4 Retrieval unavailable
 
@@ -68,11 +68,12 @@ The following conditions use the Fund Price retrieval-unavailable practice:
 - required authenticated account context, including `policyNo`, is unavailable;
 - downstream transport, timeout, decryption, or response mapping fails;
 - the downstream envelope is missing or malformed;
-- downstream `err-message` is missing or nonblank;
+- downstream `err-message` is missing or nonblank (exception pending confirmation, D6: TRPGetFundPrice `err.tpa.invalid.date` maps to HTTP 400, 09 section 9.6);
 - options `data` is missing, empty, or structurally unusable;
 - options `time-range` is missing, null, or blank;
 - no valid options time-range token remains after normalization;
-- required downstream fund or price content is structurally invalid.
+- required downstream fund or price content is structurally invalid;
+- options retrieval fails while the prices endpoint refreshes the options cache (cache miss or recheck).
 
 Public mapping:
 
@@ -117,4 +118,4 @@ Log without exposing protected values:
 - legitimate no-price data at an appropriate non-error level;
 - technical failures with request correlation and preserved root causes.
 
-Do not log policy numbers, full downstream payloads, or other protected account data.
+Do not log policy numbers, `accountRef`, full downstream payloads, or other protected account data. Cache and membership events are defined in 09 section 9.7.

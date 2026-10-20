@@ -23,6 +23,8 @@ It integrates a new downstream options operation, reuses the existing Fund Price
 6. [06-decisions-and-non-goals.md](06-decisions-and-non-goals.md)
 
 - [07-implementation-plan.md](07-implementation-plan.md)
+- [08-m4-1-regression-proof.md](08-m4-1-regression-proof.md)
+- [09-options-session-cache-change.md](09-options-session-cache-change.md)
 ## Authoritative decisions
 
 - `ReferenceDatePort.resolveReferenceDate(accountEnv)` supplies the feature's reference date.
@@ -37,4 +39,4 @@ It integrates a new downstream options operation, reuses the existing Fund Price
 - Retrieval, downstream-contract, and unusable-options failures use `err.fund-comparison.retrieval.unavailable`.
 - An options response with no valid time-range token is a retrieval failure, not an empty success.
 - Successful responses retain the shared envelope and include top-level `messages: []` and `errors: []`.
-- No Fund Comparison caching is introduced.
+- Options are cached in the authenticated session, and prices requests are validated against the cached options (superseded 2026-10-20; see [09-options-session-cache-change.md](09-options-session-cache-change.md)).

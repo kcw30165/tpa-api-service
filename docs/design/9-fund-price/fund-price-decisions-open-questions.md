@@ -10,7 +10,7 @@
 - `DAILY` and `MONTHLY` have defined Java behavior.
 - Unsupported mode fails closed; Java does not invent `WEEKLY`.
 - FE/downstream full date and FE month formats are separately configurable. The available-date response format is dd/MM/yyyy, aligned with the FE/downstream full-date format -- it is NOT an independently configured pattern (correcting an earlier yyyy-MM-dd assumption in this design pack).
-- All nonblank downstream errors map to HTTP 503 `SYSTEM_ERROR`.
+- All nonblank downstream errors map to HTTP 503 `SYSTEM_ERROR`. (Pending change, Fund Comparison CR D6, awaiting downstream confirmation: `err.tpa.invalid.date` from TRPGetFundPrice will map to HTTP 400 `err.fund-price.request.invalid`; TRPGetFundPriceMode is unchanged. See docs/design/13-fund-comparison/09-options-session-cache-change.md.)
 - Duplicate, missing, or unmatched Fund Price/Fund Info data maps to HTTP 503 `SYSTEM_ERROR`.
 - Export filename is `fund_price_info.xlsx`.
 - Export uses cached maximum history months and no FE range.

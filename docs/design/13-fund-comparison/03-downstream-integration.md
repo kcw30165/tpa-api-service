@@ -114,3 +114,15 @@ The extension must preserve all current callers. Confirmed (Nick): Fund Comparis
 - `offer-price` -> not exposed
 
 The adapter should reuse the existing Fund Price envelope parsing and localized fund-name behavior rather than creating parallel logic.
+
+
+## 3.3 Confirmed TRPGetFundPrice behavior (Change Request, 2026-10-20)
+
+1. All fund codes invalid: empty `FundInfo` and empty `FundPrice`.
+2. Valid fund code with no prices in the range: non-empty `FundInfo`, empty `FundPrice`.
+3. `from-date` earlier than the config-matrix limit: `err-message` `err.tpa.invalid.date`.
+4. One invalid fund code mixed with valid ones: normal response; the invalid code is dropped.
+
+Because of 3 and 4, the BFF validates selections against the current options before calling
+TRPGetFundPrice (09-options-session-cache-change.md). The downstream system remains the owner of
+fund availability and the config matrix (D7).

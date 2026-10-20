@@ -45,13 +45,14 @@ Allow an authenticated member to retrieve scheme-specific fund comparison option
 6. Mapper selects localized fund names from the downstream fund list using the existing Fund Price language behavior.
 7. Funds are ordered using the existing Fund Price fund-name sorting behavior.
 8. Default time range is selected using `D < M < Y < YTD`; within a unit the smallest positive integer wins.
-9. Controller returns the shared success envelope.
+9. The raw time-range and fund codes are written to the session options cache; a write failure is logged and never fails the response (09 section 9.3, D4).
+10. Controller returns the shared success envelope.
 
 ### Prices flow
 
 1. Controller accepts `POST /api/v1/fund-comparison/prices` with `fundCodes` and `timeRange`.
 2. Input validation rejects blank/duplicate-invalid inputs and more than five unique fund codes.
-3. Application service validates time-range syntax only. It does not persist or re-fetch prior options.
+3. After syntax validation, the time range and fund codes are validated for membership against the session-cached options, with one refresh-and-recheck (09 section 9.4). Superseded 2026-10-20: the earlier syntax-only rule.
 4. Application service resolves the reference date via `ReferenceDatePort.resolveReferenceDate(accountEnv)`.
 5. Date range is calculated inclusively.
 6. Fund codes are joined with commas and no spaces.
@@ -82,4 +83,4 @@ Examples for `R = 15/10/2026`:
 
 ## 1.5 State and caching
 
-The feature is stateless. It does not store options in Redis or another server-side store. The prices endpoint validates the time-range syntax rather than membership in an earlier options response.
+Superseded 2026-10-20 (Fund Comparison CR, D1-D5). The options endpoint caches the raw time-range and fund codes in the authenticated session (Redis, encrypted), keyed by `accountRef` and `policyNo`. The prices endpoint validates membership against that cache with one refresh-and-recheck. See 09-options-session-cache-change.md.
