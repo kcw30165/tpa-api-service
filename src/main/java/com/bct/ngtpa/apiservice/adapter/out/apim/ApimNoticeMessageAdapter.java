@@ -62,7 +62,6 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
     return GetMessageBoardApimRequest.builder()
         .policyNo(command.policyNo())
         .certNo(command.certNo())
-        .accountEnv(command.accountEnv())
         .loginUserId(command.userId())
         .loginUserRole(command.mbrType().toApimValue())
         .refDate(command.refDate())

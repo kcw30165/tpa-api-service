@@ -16,6 +16,8 @@ import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCom
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -24,6 +26,8 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
 class ApimNotificationReadStatusAdapterTest {
+  private static final ObjectMapper JSON = new ObjectMapper();
+
   @Test
   void sendsExactTypedAuthenticatedExchangeExactlyOnceAndMapsValidSuccess() {
     AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
@@ -47,11 +51,30 @@ class ApimNotificationReadStatusAdapterTest {
     assertThat(exchange.retryEligibility()).isEqualTo(ApimRetryEligibility.IDEMPOTENT_MUTATION);
     assertThat(body.getMsgCodeLong()).isEqualTo("msgCode1,msgCode2");
     // assertThat(body.getStatus()).isEqualTo("READ");
-    assertThat(body.getAccountEnv()).isEqualTo("JP");
     assertThat(result.notifications())
         .extracting("msgCode")
         .containsExactly("msgCode1", "msgCode2");
     assertThat(result.notifications()).extracting("isRead").containsExactly(true, false);
+  }
+
+  @Test
+  void requestPayloadHasExactKeySetWithoutEnvAndReqStatus() throws Exception {
+    AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
+    new ApimNotificationReadStatusAdapter(capturing(captured, new AtomicInteger(), emptyEnvelope()))
+        .updateReadStatus(command("DEV", ActorUserRole.ROLE_USER_MBR, MessageStatus.READ))
+        .block();
+    var node = JSON.readTree(JSON.writeValueAsString(captured.get().request()));
+    assertThat(node.has("env")).isFalse();
+    assertThat(node.has("req-status")).isFalse();
+    assertThat(requestKeys(node))
+        .containsExactlyInAnyOrder(
+            "policy-no",
+            "cert-no",
+            "login-user-id",
+            "login-user-role",
+            "ref-date",
+            "msg-code-long");
+    assertThat(node.get("msg-code-long").asText()).isEqualTo("msgCode1,msgCode2");
   }
 
   @Test
@@ -161,6 +184,12 @@ class ApimNotificationReadStatusAdapterTest {
     assertThat(result.notifications().getFirst().msgCode()).isEqualTo("fallback-code");
     assertThat(result.notifications().getFirst().status()).isEqualTo(MessageStatus.UNKNOWN);
     assertThat(result.notifications().getFirst().isRead()).isFalse();
+  }
+
+  private static List<String> requestKeys(JsonNode node) {
+    List<String> keys = new ArrayList<>();
+    node.fieldNames().forEachRemaining(keys::add);
+    return keys;
   }
 
   private static ApimExchangeExecutor capturing(

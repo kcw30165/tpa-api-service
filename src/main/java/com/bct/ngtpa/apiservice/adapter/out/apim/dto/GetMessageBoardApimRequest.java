@@ -26,9 +26,6 @@ public class GetMessageBoardApimRequest {
   @JsonProperty("cert-no")
   private String certNo;
 
-  @JsonProperty("env")
-  private String accountEnv;
-
   @JsonProperty("login-user-id")
   private String loginUserId;
 
