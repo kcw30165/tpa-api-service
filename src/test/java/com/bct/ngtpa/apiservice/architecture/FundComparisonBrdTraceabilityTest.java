@@ -31,11 +31,10 @@ import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextR
 import com.bct.ngtpa.apiservice.application.port.out.FundComparisonOptionsSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.FundComparisonPriceSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
+import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonPricesUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonSelectedPricesUseCase;
-import java.util.Optional;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
@@ -44,6 +43,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
@@ -144,10 +144,18 @@ class FundComparisonBrdTraceabilityTest {
   }
 
   private WebTestClient optionsClient(FundComparisonOptionsSourcePort sourcePort) {
-    var useCase = new FundComparisonOptionsUseCase(sourcePort, mock(com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService.class));
+    var useCase =
+        new FundComparisonOptionsUseCase(
+            sourcePort,
+            mock(
+                com.bct.ngtpa.apiservice.application.usecase.fundcomparison
+                    .FundComparisonOptionsCacheService.class));
     var controller =
         new FundComparisonOptionsController(
-            useCase, resolver(), new FundComparisonOptionsMapper(), exchange -> java.util.Optional.empty());
+            useCase,
+            resolver(),
+            new FundComparisonOptionsMapper(),
+            exchange -> java.util.Optional.empty());
     return WebTestClient.bindToController(controller).controllerAdvice(advice()).build();
   }
 

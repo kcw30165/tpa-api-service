@@ -39,7 +39,9 @@ public record FundComparisonOptionsCacheEntry(
         accountRef,
         policyNo,
         raw.rawTimeRange(),
-        raw.funds().stream().map(RawFundComparisonOptionsData.RawFundComparisonOption::fundCode).toList());
+        raw.funds().stream()
+            .map(RawFundComparisonOptionsData.RawFundComparisonOption::fundCode)
+            .toList());
   }
 
   /** True only when both identifiers match (D2); anything else is a cache miss. */

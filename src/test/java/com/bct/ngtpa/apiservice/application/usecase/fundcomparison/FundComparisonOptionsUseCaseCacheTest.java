@@ -58,7 +58,8 @@ class FundComparisonOptionsUseCaseCacheTest {
     when(sourcePort.fetchOptions(any())).thenReturn(Mono.just(raw));
     when(cache.write(any(), any(), any())).thenReturn(Mono.empty());
 
-    StepVerifier.create(useCase().getOptionsAndCache(command(), Optional.of(SID), ACCOUNT_REF, "req-1"))
+    StepVerifier.create(
+            useCase().getOptionsAndCache(command(), Optional.of(SID), ACCOUNT_REF, "req-1"))
         .assertNext(result -> assertThat(result).isSameAs(raw))
         .verifyComplete();
 
@@ -76,7 +77,8 @@ class FundComparisonOptionsUseCaseCacheTest {
     var raw = raw();
     when(sourcePort.fetchOptions(any())).thenReturn(Mono.just(raw));
 
-    StepVerifier.create(useCase().getOptionsAndCache(command(), Optional.empty(), ACCOUNT_REF, "req-1"))
+    StepVerifier.create(
+            useCase().getOptionsAndCache(command(), Optional.empty(), ACCOUNT_REF, "req-1"))
         .assertNext(result -> assertThat(result).isSameAs(raw))
         .verifyComplete();
 
@@ -100,7 +102,8 @@ class FundComparisonOptionsUseCaseCacheTest {
     var failure = FundComparisonRetrievalException.systemFailure();
     when(sourcePort.fetchOptions(any())).thenReturn(Mono.error(failure));
 
-    StepVerifier.create(useCase().getOptionsAndCache(command(), Optional.of(SID), ACCOUNT_REF, "req-1"))
+    StepVerifier.create(
+            useCase().getOptionsAndCache(command(), Optional.of(SID), ACCOUNT_REF, "req-1"))
         .expectErrorSatisfies(error -> assertThat(error).isSameAs(failure))
         .verify();
 

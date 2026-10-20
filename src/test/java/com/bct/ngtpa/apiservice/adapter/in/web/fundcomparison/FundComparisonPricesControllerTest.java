@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.mapper.FundComparisonPricesWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.request.FundComparisonPricesRequest;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
@@ -13,23 +14,19 @@ import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FetchFundComparisonPricesCommand;
+import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData;
+import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData.RawFundComparisonOption;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceData;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.RawFundPriceRow;
 import com.bct.ngtpa.apiservice.application.exception.FundComparisonRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.port.out.FundComparisonOptionsSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.FundComparisonPriceSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
-import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonPricesUseCase;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
-import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData;
-import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData.RawFundComparisonOption;
-import com.bct.ngtpa.apiservice.application.port.out.FundComparisonOptionsSourcePort;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonPricesUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonSelectedPricesUseCase;
-import java.util.Optional;
-import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
-import org.springframework.mock.web.server.MockServerWebExchange;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
@@ -39,9 +36,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -78,6 +78,7 @@ class FundComparisonPricesControllerTest {
     return new FundComparisonSelectedPricesUseCase(
         new FundComparisonOptionsUseCase(offered, cache), cache, prices);
   }
+
   private static final LocalDate REFERENCE_DATE = LocalDate.of(2026, 10, 15);
   private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -288,7 +289,8 @@ class FundComparisonPricesControllerTest {
     assertThatThrownBy(() -> new FundComparisonPricesController(useCase, null, mapper, NO_SESSION))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("contextResolver");
-    assertThatThrownBy(() -> new FundComparisonPricesController(useCase, resolver, null, NO_SESSION))
+    assertThatThrownBy(
+            () -> new FundComparisonPricesController(useCase, resolver, null, NO_SESSION))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("webMapper");
     assertThatThrownBy(() -> new FundComparisonPricesController(useCase, resolver, mapper, null))

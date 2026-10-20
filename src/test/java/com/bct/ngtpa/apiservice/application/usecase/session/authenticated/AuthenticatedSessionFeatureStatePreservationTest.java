@@ -41,8 +41,8 @@ import reactor.core.publisher.Mono;
 /**
  * Fund Comparison M5.1 regression guard: every production site that rebuilds an
  * AuthenticatedSession must carry featureState through unchanged (09 section 9.5.1). The three
- * private static mutator factories are reached by reflection because their only public entry
- * points need far wider fixtures than the property under test.
+ * private static mutator factories are reached by reflection because their only public entry points
+ * need far wider fixtures than the property under test.
  */
 @SuppressWarnings({"unchecked", "java:S3011"})
 class AuthenticatedSessionFeatureStatePreservationTest {
@@ -88,11 +88,11 @@ class AuthenticatedSessionFeatureStatePreservationTest {
         session.revision());
   }
 
-  private static AuthenticatedSessionProtectorPort protectorReturning(AuthenticatedSession session) {
+  private static AuthenticatedSessionProtectorPort protectorReturning(
+      AuthenticatedSession session) {
     AuthenticatedSessionProtectorPort protector = mock(AuthenticatedSessionProtectorPort.class);
     when(protector.unprotect(any())).thenReturn(session);
-    when(protector.protect(any()))
-        .thenAnswer(invocation -> envelope(invocation.getArgument(0)));
+    when(protector.protect(any())).thenAnswer(invocation -> envelope(invocation.getArgument(0)));
     return protector;
   }
 

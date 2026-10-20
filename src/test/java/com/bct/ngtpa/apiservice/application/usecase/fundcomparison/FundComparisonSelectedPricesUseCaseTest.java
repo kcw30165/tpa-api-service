@@ -56,7 +56,8 @@ class FundComparisonSelectedPricesUseCaseTest {
       new AtomicReference<>();
   private final FundComparisonOptionsCacheService cache =
       mock(FundComparisonOptionsCacheService.class);
-  private Mono<RawFundComparisonOptionsData> freshOptions = Mono.just(options(ALL_RANGES, "FAEU", "FBAU"));
+  private Mono<RawFundComparisonOptionsData> freshOptions =
+      Mono.just(options(ALL_RANGES, "FAEU", "FBAU"));
 
   @BeforeEach
   void cacheWritesComplete() {
@@ -66,7 +67,9 @@ class FundComparisonSelectedPricesUseCaseTest {
   private static RawFundComparisonOptionsData options(String rawTimeRange, String... codes) {
     return new RawFundComparisonOptionsData(
         rawTimeRange,
-        Arrays.stream(codes).map(code -> new RawFundComparisonOption(code, code + " Fund", "")).toList());
+        Arrays.stream(codes)
+            .map(code -> new RawFundComparisonOption(code, code + " Fund", ""))
+            .toList());
   }
 
   private FundComparisonSelectedPricesUseCase useCase() {

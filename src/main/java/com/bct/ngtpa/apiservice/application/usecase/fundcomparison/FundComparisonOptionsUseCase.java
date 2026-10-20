@@ -23,8 +23,9 @@ import reactor.core.publisher.Mono;
  * FundComparisonOptionsCacheService#write} never errors.
  *
  * <p>Returns the raw, application-layer {@link RawFundComparisonOptionsData}; mapping to the public
- * response stays in the controller (script 047). Not annotated with a Spring stereotype (application
- * layer stays framework-free); wired from {@code FundComparisonOptionsApplicationConfig}.
+ * response stays in the controller (script 047). Not annotated with a Spring stereotype
+ * (application layer stays framework-free); wired from {@code
+ * FundComparisonOptionsApplicationConfig}.
  */
 public final class FundComparisonOptionsUseCase {
 

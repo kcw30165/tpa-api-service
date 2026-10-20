@@ -90,7 +90,8 @@ class FundComparisonPricesControllerSelectionTest {
   void passesTheValidatedSelectionSessionIdAccountRefAndRequestId() {
     useCaseReturnsPrices();
     var controller =
-        new FundComparisonPricesController(useCase, resolver(), MAPPER, exchange -> Optional.of(SID));
+        new FundComparisonPricesController(
+            useCase, resolver(), MAPPER, exchange -> Optional.of(SID));
 
     var response =
         controller
@@ -111,14 +112,16 @@ class FundComparisonPricesControllerSelectionTest {
   void passesAnEmptySessionWhenTheCookieIsMissing() {
     useCaseReturnsPrices();
     var controller =
-        new FundComparisonPricesController(useCase, resolver(), MAPPER, exchange -> Optional.empty());
+        new FundComparisonPricesController(
+            useCase, resolver(), MAPPER, exchange -> Optional.empty());
 
     var response =
-        controller.getPrices(new FundComparisonPricesRequest(List.of("faeu"), "10d"), exchange()).block();
+        controller
+            .getPrices(new FundComparisonPricesRequest(List.of("faeu"), "10d"), exchange())
+            .block();
 
     assertThat(response).isNotNull();
-    verify(useCase)
-        .getPrices(eq(expectedCommand()), eq(Optional.empty()), eq("ACC-1"), isNull());
+    verify(useCase).getPrices(eq(expectedCommand()), eq(Optional.empty()), eq("ACC-1"), isNull());
   }
 
   @Test

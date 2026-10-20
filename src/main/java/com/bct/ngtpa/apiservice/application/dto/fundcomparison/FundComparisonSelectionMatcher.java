@@ -11,9 +11,9 @@ import java.util.Objects;
  * docs/design/13-fund-comparison/09-options-session-cache-change.md section 9.5.4.
  *
  * <p>Both sides are trimmed and lower-cased for comparison. The offered time ranges are parsed with
- * {@link FundComparisonTimeRangeParser}, so cached and freshly fetched options use the same grammar.
- * On a match the result carries the offered spelling of every fund code (in request order) and of
- * the time-range token. A pure function: no logging, no I/O.
+ * {@link FundComparisonTimeRangeParser}, so cached and freshly fetched options use the same
+ * grammar. On a match the result carries the offered spelling of every fund code (in request order)
+ * and of the time-range token. A pure function: no logging, no I/O.
  */
 public final class FundComparisonSelectionMatcher {
 

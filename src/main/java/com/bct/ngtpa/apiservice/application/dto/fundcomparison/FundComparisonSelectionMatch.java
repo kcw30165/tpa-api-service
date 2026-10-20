@@ -27,7 +27,8 @@ public record FundComparisonSelectionMatch(
     return new FundComparisonSelectionMatch(selection, null, List.of());
   }
 
-  public static FundComparisonSelectionMatch rejected(String reason, List<String> unlistedFundCodes) {
+  public static FundComparisonSelectionMatch rejected(
+      String reason, List<String> unlistedFundCodes) {
     return new FundComparisonSelectionMatch(null, reason, unlistedFundCodes);
   }
 

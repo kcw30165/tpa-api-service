@@ -25,8 +25,8 @@ import reactor.core.publisher.Mono;
  *   <li>A cached entry that matches the request is used as is: no options call.
  *   <li>A miss, or a cached entry that does not match, triggers exactly one options fetch, which
  *       also rewrites the cache ({@link FundComparisonOptionsUseCase#getOptionsAndCache}).
- *   <li>A request that does not match freshly fetched options is a retrieval failure (HTTP 503,
- *       Q1) logged at ERROR; TRPGetFundPrice is not called. An options failure is also a retrieval
+ *   <li>A request that does not match freshly fetched options is a retrieval failure (HTTP 503, Q1)
+ *       logged at ERROR; TRPGetFundPrice is not called. An options failure is also a retrieval
  *       failure.
  *   <li>Otherwise prices are fetched with the offered spelling of every fund code and of the
  *       time-range token ({@link FundComparisonPricesUseCase}).

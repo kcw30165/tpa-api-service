@@ -67,8 +67,7 @@ class FundComparisonSelectionMatcherTest {
 
   @Test
   void optionsWithoutAnyValidTimeRangeAreRejected() {
-    var match =
-        FundComparisonSelectionMatcher.match("bogus", OFFERED_FUNDS, List.of("FAEU"), "1M");
+    var match = FundComparisonSelectionMatcher.match("bogus", OFFERED_FUNDS, List.of("FAEU"), "1M");
 
     assertThat(match.isMatched()).isFalse();
     assertThat(match.reason()).isEqualTo(FundComparisonSelectionMatch.NO_VALID_TIME_RANGE);

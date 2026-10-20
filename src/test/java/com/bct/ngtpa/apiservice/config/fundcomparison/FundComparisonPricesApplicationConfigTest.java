@@ -18,9 +18,11 @@ class FundComparisonPricesApplicationConfigTest {
   @Test
   void wiresThePricesAndSelectedPricesUseCases() {
     new ApplicationContextRunner()
-        .withBean(FundComparisonPriceSourcePort.class, () -> mock(FundComparisonPriceSourcePort.class))
+        .withBean(
+            FundComparisonPriceSourcePort.class, () -> mock(FundComparisonPriceSourcePort.class))
         .withBean(ReferenceDatePort.class, () -> mock(ReferenceDatePort.class))
-        .withBean(FundComparisonOptionsUseCase.class, () -> mock(FundComparisonOptionsUseCase.class))
+        .withBean(
+            FundComparisonOptionsUseCase.class, () -> mock(FundComparisonOptionsUseCase.class))
         .withBean(
             FundComparisonOptionsCacheService.class,
             () -> mock(FundComparisonOptionsCacheService.class))

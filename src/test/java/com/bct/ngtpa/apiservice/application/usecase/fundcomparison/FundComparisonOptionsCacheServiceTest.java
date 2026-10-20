@@ -281,10 +281,13 @@ class FundComparisonOptionsCacheServiceTest {
             () -> new FundComparisonOptionsCacheService(sessions, protector, null, json, CLOCK))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(
-            () -> new FundComparisonOptionsCacheService(sessions, protector, concurrency, null, CLOCK))
+            () ->
+                new FundComparisonOptionsCacheService(
+                    sessions, protector, concurrency, null, CLOCK))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(
-            () -> new FundComparisonOptionsCacheService(sessions, protector, concurrency, json, null))
+            () ->
+                new FundComparisonOptionsCacheService(sessions, protector, concurrency, json, null))
         .isInstanceOf(NullPointerException.class);
   }
 }

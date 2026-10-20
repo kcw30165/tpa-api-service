@@ -118,14 +118,15 @@ class FundComparisonOptionsCacheServiceLoggingTest {
 
   @Test
   void hitMissAndSkippedWriteAreLoggedWithoutAccountData() {
-    var entry =
-        new FundComparisonOptionsCacheEntry(ACCOUNT_REF, POLICY_NO, "10D", List.of("FAEU"));
+    var entry = new FundComparisonOptionsCacheEntry(ACCOUNT_REF, POLICY_NO, "10D", List.of("FAEU"));
     var stored =
-        "{\"accountRef\":\"" + ACCOUNT_REF + "\",\"policyNo\":\"" + POLICY_NO
+        "{\"accountRef\":\""
+            + ACCOUNT_REF
+            + "\",\"policyNo\":\""
+            + POLICY_NO
             + "\",\"rawTimeRange\":\"10D\",\"fundCodes\":[\"FAEU\"]}";
     when(sessions.load(any())).thenReturn(Mono.just(Optional.of(envelope())));
-    when(protector.unprotect(any()))
-        .thenReturn(session(Map.of("fund-comparison.options", stored)));
+    when(protector.unprotect(any())).thenReturn(session(Map.of("fund-comparison.options", stored)));
     when(concurrency.updateIfUsable(any(), any(), any()))
         .thenReturn(
             Mono.just(

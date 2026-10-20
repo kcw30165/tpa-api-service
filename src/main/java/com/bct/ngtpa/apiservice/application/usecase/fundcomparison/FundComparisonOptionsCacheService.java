@@ -32,14 +32,15 @@ import reactor.core.publisher.Mono;
  * revision-checked {@link AuthenticatedSessionConcurrencyService} (D4). A write that is not
  * applied, or fails, is logged and skipped; it never fails the caller.
  *
- * <p>Logs carry the request id and a reason only; {@code policyNo} and {@code accountRef} are
- * never logged. Not a Spring bean by annotation (application layer stays framework-free).
+ * <p>Logs carry the request id and a reason only; {@code policyNo} and {@code accountRef} are never
+ * logged. Not a Spring bean by annotation (application layer stays framework-free).
  */
 public final class FundComparisonOptionsCacheService {
 
   static final String FEATURE_KEY = "fund-comparison.options";
 
-  private static final Logger LOG = LoggerFactory.getLogger(FundComparisonOptionsCacheService.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(FundComparisonOptionsCacheService.class);
 
   private final AuthenticatedSessionPort sessions;
   private final AuthenticatedSessionProtectorPort protector;
@@ -90,7 +91,9 @@ public final class FundComparisonOptionsCacheService {
         .flatMap(
             encoded ->
                 concurrency.updateIfUsable(
-                    sessionId, session -> session.withFeatureState(FEATURE_KEY, encoded), requestId))
+                    sessionId,
+                    session -> session.withFeatureState(FEATURE_KEY, encoded),
+                    requestId))
         .doOnNext(result -> logWriteOutcome(result, requestId))
         .onErrorResume(
             error -> {
@@ -104,7 +107,10 @@ public final class FundComparisonOptionsCacheService {
   }
 
   private Optional<FundComparisonOptionsCacheEntry> evaluate(
-      ProtectedAuthenticatedSession envelope, String accountRef, String policyNo, String requestId) {
+      ProtectedAuthenticatedSession envelope,
+      String accountRef,
+      String policyNo,
+      String requestId) {
     AuthenticatedSession session;
     try {
       session = protector.unprotect(envelope);
@@ -136,7 +142,8 @@ public final class FundComparisonOptionsCacheService {
     return Optional.empty();
   }
 
-  private static void logWriteOutcome(AuthenticatedSessionConcurrencyResult result, String requestId) {
+  private static void logWriteOutcome(
+      AuthenticatedSessionConcurrencyResult result, String requestId) {
     if (result.outcome() == AuthenticatedSessionConcurrencyOutcome.APPLIED) {
       LOG.info("event=fund-comparison.options-cache.write.applied requestId={}", requestId);
       return;

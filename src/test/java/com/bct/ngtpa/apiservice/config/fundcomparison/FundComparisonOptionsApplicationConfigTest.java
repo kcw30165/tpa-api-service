@@ -20,7 +20,9 @@ class FundComparisonOptionsApplicationConfigTest {
   @Test
   void wiresTheCacheServiceAndTheOptionsUseCase() {
     new ApplicationContextRunner()
-        .withBean(FundComparisonOptionsSourcePort.class, () -> mock(FundComparisonOptionsSourcePort.class))
+        .withBean(
+            FundComparisonOptionsSourcePort.class,
+            () -> mock(FundComparisonOptionsSourcePort.class))
         .withBean(AuthenticatedSessionPort.class, () -> mock(AuthenticatedSessionPort.class))
         .withBean(
             AuthenticatedSessionProtectorPort.class,
