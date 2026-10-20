@@ -123,9 +123,10 @@ class FundComparisonBrdTraceabilityTest {
   }
 
   private WebTestClient optionsClient(FundComparisonOptionsSourcePort sourcePort) {
-    var useCase = new FundComparisonOptionsUseCase(sourcePort);
+    var useCase = new FundComparisonOptionsUseCase(sourcePort, mock(com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService.class));
     var controller =
-        new FundComparisonOptionsController(useCase, resolver(), new FundComparisonOptionsMapper());
+        new FundComparisonOptionsController(
+            useCase, resolver(), new FundComparisonOptionsMapper(), exchange -> java.util.Optional.empty());
     return WebTestClient.bindToController(controller).controllerAdvice(advice()).build();
   }
 

@@ -45,6 +45,13 @@ import reactor.test.StepVerifier;
 class FundComparisonOptionsControllerTest {
 
   private static final String ROUTE = "/api/v1/fund-comparison/options";
+  private static final com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService NO_CACHE =
+      org.mockito.Mockito.mock(com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService.class);
+  private static final com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader NO_SESSION =
+      exchange -> java.util.Optional.empty();
+  private static final org.springframework.mock.web.server.MockServerWebExchange EXCHANGE =
+      org.springframework.mock.web.server.MockServerWebExchange.from(
+          org.springframework.mock.http.server.reactive.MockServerHttpRequest.post(ROUTE).build());
 
   private final AtomicReference<FetchFundComparisonOptionsCommand> command =
       new AtomicReference<>();
@@ -57,7 +64,7 @@ class FundComparisonOptionsControllerTest {
           command.set(cmd);
           return Mono.just(raw);
         };
-    return new FundComparisonOptionsUseCase(sourcePort);
+    return new FundComparisonOptionsUseCase(sourcePort, NO_CACHE);
   }
 
   private FundComparisonOptionsUseCase failingUseCase(RuntimeException error) {
@@ -66,7 +73,7 @@ class FundComparisonOptionsControllerTest {
           calls.incrementAndGet();
           return Mono.error(error);
         };
-    return new FundComparisonOptionsUseCase(sourcePort);
+    return new FundComparisonOptionsUseCase(sourcePort, NO_CACHE);
   }
 
   private static RawFundComparisonOptionsData raw(
@@ -101,7 +108,7 @@ class FundComparisonOptionsControllerTest {
 
   private static FundComparisonOptionsController controller(FundComparisonOptionsUseCase useCase) {
     return new FundComparisonOptionsController(
-        useCase, resolver(Mono.just(context())), new FundComparisonOptionsMapper());
+        useCase, resolver(Mono.just(context())), new FundComparisonOptionsMapper(), NO_SESSION);
   }
 
   private static ApiExceptionHandler advice() {
@@ -218,9 +225,9 @@ class FundComparisonOptionsControllerTest {
         new FundComparisonOptionsController(
             useCase(data),
             resolver(Mono.error(new IllegalStateException("no context"))),
-            new FundComparisonOptionsMapper());
+            new FundComparisonOptionsMapper(), NO_SESSION);
 
-    StepVerifier.create(controller.getOptions(null))
+    StepVerifier.create(controller.getOptions(null, EXCHANGE))
         .expectErrorMatches(IllegalStateException.class::isInstance)
         .verify();
 
@@ -234,14 +241,17 @@ class FundComparisonOptionsControllerTest {
     var resolver = resolver(Mono.just(context()));
     var mapper = new FundComparisonOptionsMapper();
 
-    assertThatThrownBy(() -> new FundComparisonOptionsController(null, resolver, mapper))
+    assertThatThrownBy(() -> new FundComparisonOptionsController(null, resolver, mapper, NO_SESSION))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("useCase");
-    assertThatThrownBy(() -> new FundComparisonOptionsController(useCase, null, mapper))
+    assertThatThrownBy(() -> new FundComparisonOptionsController(useCase, null, mapper, NO_SESSION))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("contextResolver");
-    assertThatThrownBy(() -> new FundComparisonOptionsController(useCase, resolver, null))
+    assertThatThrownBy(() -> new FundComparisonOptionsController(useCase, resolver, null, NO_SESSION))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("webMapper");
+    assertThatThrownBy(() -> new FundComparisonOptionsController(useCase, resolver, mapper, null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("sessionCookieReader");
   }
 }

@@ -30,9 +30,11 @@ class FundComparisonOptionsUseCaseTest {
 
   private final FundComparisonOptionsSourcePort sourcePort =
       mock(FundComparisonOptionsSourcePort.class);
+  private final FundComparisonOptionsCacheService cache =
+      mock(FundComparisonOptionsCacheService.class);
 
   private FundComparisonOptionsUseCase newUseCase() {
-    return new FundComparisonOptionsUseCase(sourcePort);
+    return new FundComparisonOptionsUseCase(sourcePort, cache);
   }
 
   private FetchFundComparisonOptionsCommand command() {
@@ -88,7 +90,7 @@ class FundComparisonOptionsUseCaseTest {
   @Test
   void constructorAndMethodArgumentsRequireNonNull() {
     var useCase = newUseCase();
-    assertThatThrownBy(() -> new FundComparisonOptionsUseCase(null))
+    assertThatThrownBy(() -> new FundComparisonOptionsUseCase(null, cache))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("sourcePort");
     assertThatThrownBy(() -> useCase.getOptions(null))

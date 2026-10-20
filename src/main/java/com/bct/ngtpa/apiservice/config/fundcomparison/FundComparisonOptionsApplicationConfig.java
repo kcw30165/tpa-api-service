@@ -1,30 +1,43 @@
 package com.bct.ngtpa.apiservice.config.fundcomparison;
 
+import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.FundComparisonOptionsSourcePort;
+import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
+import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyService;
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Wires {@link FundComparisonOptionsUseCase}, mirroring {@code FundFactSheetApplicationConfig}'s
- * exact confirmed pattern (script 042 evidence): the use case itself carries no Spring annotation
- * (application layer must not depend on Spring Framework), and is constructed explicitly here from
- * its dependencies.
+ * Wires {@link FundComparisonOptionsUseCase} and the session options cache it writes to (sub-task
+ * 5.3). Neither class carries a Spring annotation (application layer stays framework-free).
  *
- * <p>Corrected (script 047): the use case constructor no longer takes {@code
- * FundComparisonOptionsMapper} (moved to the controller, closing a Clean Architecture violation);
- * this {@code @Bean} factory method signature now matches.
- *
- * <p>{@link FundComparisonOptionsSourcePort} needs no explicit {@code @Bean} method: {@code
- * ApimFundComparisonOptionsSourceAdapter} is already a {@code @Component}, exactly as every other
- * adapter-to-port binding already works in this codebase.
+ * <p>Every dependency already exists as a bean: {@code AuthenticatedSessionConfig} (session port,
+ * protector), {@code AuthenticatedSessionConcurrencyConfig} (concurrency service), the shared
+ * {@link TransientJsonPort} ({@code @ConditionalOnMissingBean} in the login and username-recovery
+ * configs), {@code ApplicationClockConfig} ({@link Clock}), and {@code
+ * ApimFundComparisonOptionsSourceAdapter} ({@link FundComparisonOptionsSourcePort}, a
+ * {@code @Component}).
  */
 @Configuration(proxyBeanMethods = false)
 public class FundComparisonOptionsApplicationConfig {
 
   @Bean
+  FundComparisonOptionsCacheService fundComparisonOptionsCacheService(
+      AuthenticatedSessionPort sessions,
+      AuthenticatedSessionProtectorPort protector,
+      AuthenticatedSessionConcurrencyService concurrency,
+      TransientJsonPort json,
+      Clock clock) {
+    return new FundComparisonOptionsCacheService(sessions, protector, concurrency, json, clock);
+  }
+
+  @Bean
   FundComparisonOptionsUseCase fundComparisonOptionsUseCase(
-      FundComparisonOptionsSourcePort sourcePort) {
-    return new FundComparisonOptionsUseCase(sourcePort);
+      FundComparisonOptionsSourcePort sourcePort, FundComparisonOptionsCacheService cacheService) {
+    return new FundComparisonOptionsUseCase(sourcePort, cacheService);
   }
 }
