@@ -6,7 +6,7 @@ items U1-U5 refer to that document.
 ## 1. Milestone
 
 One milestone, **M1: notifications use the MutationResponse data shape and the aligned downstream
-requests**, split into six sub-tasks (ST-6 was added on 2026-10-20).
+requests**, split into seven sub-tasks (ST-6 and ST-7 were added on 2026-10-20).
 
 ## 2. Sub-tasks
 
@@ -102,7 +102,26 @@ Implementation: `NotificationDto` (one content field), `NotificationWebMapper.to
 
 Commit: `refactor(notice-board): select single msgContent by Accept-Language on GET /notifications`
 
-## 3. Sub-task gates (ST-2 to ST-6, in order, from the worktree root)
+### ST-7 No Java-authored title; remove MessageType (GET only)
+
+Added after Nick decided that the title is a label for the frontend (design section 14).
+
+Fail-first (compiles against the current types and fails on assertions):
+
+- `NotificationGetLanguageHttpContractTest`: a new test asserts that the response carries `category` and no
+  `msgTitle`.
+- `NotificationReferenceDateFlowTest`: asserts that `msgTitle` does not exist and that `category` is present.
+- `NotificationResponseSerializationContractTest`: the exact key set no longer holds `msgTitle`.
+- `NotificationWebMapperTest`: a new test asserts that `msgTitle` is omitted and the category kept.
+
+Implementation: `NotificationDto`, `NotificationWebMapper`, `NoticeMessage` (two components removed),
+`ApimNoticeMessageAdapter`, deletion of `MessageType` and `MessageTypeTest`, and the callers in the eight test
+classes of design section 14.5. The adapter and domain change is compile-guarded: the removed components stop
+existing, so any remaining reader fails to compile.
+
+Commit: `refactor(notice-board): drop Java-authored msgTitle and remove MessageType`
+
+## 3. Sub-task gates (ST-2 to ST-7, in order, from the worktree root)
 
 1. Fail-first (ST-2 to ST-4): write the new or changed tests and run only those with
    `mvn -Dtest=<classes> test`; they must fail on the missing behaviour, not on a compile error.
@@ -140,8 +159,9 @@ section 10 of the design so the frontend change ships in the same release.
 | ST-3 GET `result.data` | Done | `f73e98c7` |
 | ST-4 PATCH `result.data` | Done | `8f4fc5d5` |
 | ST-5 docs | Done in this commit | |
-| ST-6 msgContent by Accept-Language | Done | |
-| Milestone gates | Pending (re-run after ST-6) | |
+| ST-6 msgContent by Accept-Language | Done | `c83bcea8` |
+| ST-7 no Java-authored title; MessageType removed | Designed | |
+| Milestone gates | Pending (re-run after ST-7) | |
 
 Making the notification error responses label-free is not a sub-task of this branch: it is deferred to the central
 `ApiExceptionHandler` consolidation (decision by Nick, 2026-10-20).

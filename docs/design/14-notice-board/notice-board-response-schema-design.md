@@ -5,7 +5,7 @@
 | Branch | `refactor/notice-board` |
 | Base | `origin/dev` at `c9aa7987a68f939d4170f1c78a8fc4763ed26a57` |
 | Owner | Nick (solution design and approval) |
-| Status | Implemented on the branch (ST-2 to ST-4 and ST-6); milestone gates re-run pending |
+| Status | Implemented on the branch (ST-2 to ST-4 and ST-6); ST-7 (no Java-authored title) designed; milestone gates re-run pending |
 
 Labels: **Confirmed** means read from the source at the base commit (investigation scripts 001, 002,
 004 and 005). **Unverified** means not read yet; the named gate settles it.
@@ -92,7 +92,6 @@ GET success:
           "msgCode": "MSG-1-LONG",
           "sequence": "1",
           "category": "GENERAL",
-          "msgTitle": "Title",
           "msgContent": "Eng",
           "isRead": false,
           "startDateTime": "04/05/2026 08:30"
@@ -292,7 +291,7 @@ GET response only. PATCH is not affected.
 | D14 | `NoticeMessage`, the APIM DTOs, the adapter, the commands, the use cases and the services are unchanged. The domain keeps both texts. | Language selection belongs to the web mapper; the command carries no language. |
 | D15 | `NotificationWebMapper.toResponse(NotificationListResult, String language)` replaces the one-argument method; no overload is kept. `NotificationController.getNotifications` gains the last parameter `@RequestHeader(name = "Accept-Language", required = false) String acceptLanguage` and passes it through unchanged. | Nothing is released; the mapper normalizes the value. |
 | D16 | Java adds no text. `msgContent` is downstream text; Java only chooses which of the two texts to return. | Label rule (section 3). |
-| D17 | `msgTitle` is not changed by this amendment (see U6). | Out of scope until Nick decides. |
+| D17 | `msgTitle` is not changed by ST-6. | Superseded by D18 (section 14): ST-7 removes `msgTitle`. |
 
 ### 13.3 Target contract
 
@@ -303,7 +302,6 @@ One item of `GET /api/v1/notifications` for `Accept-Language: en`, or without th
   "msgCode": "CPState-20260201",
   "sequence": "32",
   "category": "DOC_AVAIL",
-  "msgTitle": "DOCUMENT AVAILABLE",
   "msgContent": "Your Contribution Payment Statement for Jan-Mar 2026 is ready.",
   "isRead": true,
   "startDateTime": "01/02/2026 00:00"
@@ -343,8 +341,96 @@ after it.
 
 | ID | Item | Settled by |
 |---|---|---|
-| U6 | `msgTitle` is not the downstream `msg-title`: the adapter ignores that field and passes `MessageType.titleFor(category)` (for example "DOCUMENT AVAILABLE"), which is English text produced in Java. `ApimNoticeMessageAdapterTest` expects "IMPORTANT NOTICE" for category `IMP_NOTE` and the category itself for an unknown one. This conflicts with the label rule (section 3). The source of `MessageType.titleFor` has not been read. | Decision by Nick: keep it, return a code for the frontend to render, or use the downstream `msg-title`. Not part of ST-6. |
+| U6 | `msgTitle` was Java-authored English text (`MessageType.titleFor`), which conflicts with the label rule (section 3). | Settled by Nick on 2026-10-20: the title moves to the frontend; see D18 to D21 (section 14). |
 | U7 | Whether the frontend already sends `Accept-Language` on this request, and which values it sends. | Frontend confirmation before release. |
 | U8 | Whether a Chinese variant other than `zh` and `zh-HK` (for example `zh-TW`) must select Chinese. The shared resolver gives English. | Decision by Nick; a change belongs in `RequestLanguageResolver` and affects every endpoint. |
 
 Status: implemented (ST-6); the milestone gates are re-run after it.
+
+## 14. Amendment: no Java-authored title; MessageType removed (ST-7)
+
+Added on 2026-10-20 after Nick decided that the notification title is a label and belongs to the frontend
+(section 3). This amendment changes the GET response again. PATCH is not affected.
+
+### 14.1 Confirmed (script 022)
+
+- `msgTitle` was produced in Java: the adapter called `MessageType.titleFor(category)`, which returns English
+  text such as "DOCUMENT AVAILABLE", and ignored the downstream `msg-title`.
+- `MessageType` has seven values (ACT_REQ, DOC_AVAIL, INV_WS, MKT_UPD, SYS_MAINT, IMP_NOTE, UNKNOWN) and the
+  methods `fromCode` and `titleFor`. In main code it is used only by `ApimNoticeMessageAdapter` (two calls)
+  and as the type of the component `NoticeMessage.msgType`. No document other than this design, no script,
+  no resource and no architecture guard references it. The other `messageType` names in the repository belong
+  to unrelated types (`WorkflowMessageType`, `MessageDeliveryType`).
+- `NotificationWebMapper` is the only main class that reads `NoticeMessage.msgTitle()`.
+- `NoticeMessage` is constructed in one main class (the adapter) and in five test classes.
+- `category` reaches the response unchanged from the downstream `msg-cate`; the live response showed
+  `DOC_AVAIL`.
+- Unverified: whether any main code reads `NoticeMessage.msgType()`. Script 024 checks this before it edits
+  anything and stops if it finds a reader.
+
+### 14.2 Decisions
+
+| ID | Decision | Reason |
+|---|---|---|
+| D18 | `GET /api/v1/notifications` no longer returns `msgTitle`. Java returns the category code in `category`; the frontend renders the title text for the language it shows. | Label rule (section 3): the title is a label. |
+| D19 | `MessageType` and `MessageTypeTest` are deleted. `NoticeMessage` loses the components `msgType` and `msgTitle`. The adapter passes the downstream `msg-cate` unchanged as `category`, without normalization. | Nothing else uses them (14.1). |
+| D20 | `GetMessageBoardMessageItem.msgTitle` (the downstream response field `msg-title`) is unchanged; the adapter still ignores it. | It is a response field of the downstream contract, not a Java label. |
+| D21 | D17 is superseded and U6 is settled by D18. | The title question is decided. |
+
+### 14.3 Target contract
+
+One item of `GET /api/v1/notifications`. This replaces the item samples in sections 5 and 13.3.
+
+```json
+{
+  "msgCode": "CPState-20260201",
+  "sequence": "32",
+  "category": "DOC_AVAIL",
+  "msgContent": "Your Contribution Payment Statement for Jan-Mar 2026 is ready.",
+  "isRead": true,
+  "startDateTime": "01/02/2026 00:00"
+}
+```
+
+### 14.4 Consumer impact
+
+| Endpoint | Change |
+|---|---|
+| GET | `$.result.data.notifications[*].msgTitle` is removed. The frontend renders the title from `$.result.data.notifications[*].category`. |
+
+This is a third breaking change on the GET path, in the same release as sections 10 and 13.4.
+
+The old title mapping tolerated variants (case, spaces, hyphens and long names such as DOCUMENT_AVAILABLE),
+returned the raw value for an unknown code and "UNKNOWN" for a blank category. The response now carries the
+downstream category as received, so the frontend must map the codes the downstream sends (known: ACT_REQ,
+DOC_AVAIL, INV_WS, MKT_UPD, SYS_MAINT, IMP_NOTE) and handle any other or blank value itself.
+
+### 14.5 Class-level changes and tests
+
+| Class | Change |
+|---|---|
+| `NotificationDto` | The component `msgTitle` is removed. |
+| `NotificationWebMapper` | `toDto` no longer passes a title. |
+| `NoticeMessage` | The components `msgType` and `msgTitle` are removed. |
+| `ApimNoticeMessageAdapter` | `toNoticeMessage` passes `category` and no longer calls `MessageType`. |
+| `MessageType` | Deleted. |
+
+Tests changed: `NotificationDtoTest`, `NotificationListResponseTest`, `NotificationWebMapperTest`,
+`NotificationResponseSerializationContractTest`, `NotificationGetLanguageHttpContractTest`,
+`NotificationReferenceDateFlowTest`, `NoticeMessageTest` and `ApimNoticeMessageAdapterTest` (the title
+assertions are replaced by category assertions). Deleted: `MessageTypeTest`. New wire-level checks: the
+response carries the category code and no title (`NotificationGetLanguageHttpContractTest`,
+`NotificationWebMapperTest`). Unchanged: the APIM request and response DTOs, the controller, the use cases and
+the PATCH side.
+
+The milestone gates (full `mvn test`, coverage, smoke test, SonarQube) ran at the ST-6 commit and are re-run
+after ST-7.
+
+### 14.6 Open and unverified
+
+| ID | Item | Settled by |
+|---|---|---|
+| U9 | The alias normalization of `MessageType.fromCode` is gone, so the response carries the downstream category as received. Whether the downstream sends only the six short codes. | Frontend and downstream confirmation; the live response showed `DOC_AVAIL`. |
+| U10 | The frontend renders the title from `category` in the same release. | Frontend confirmation before release. |
+
+ST-7 status: designed; implementation pending.
