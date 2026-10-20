@@ -79,7 +79,8 @@ class FundComparisonOptionsCacheEntryTest {
     withNull.add(null);
 
     assertThatThrownBy(() -> entry(null)).isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> entry(List.of())).isInstanceOf(IllegalArgumentException.class);
+    var emptyFundCodes = List.<String>of();
+    assertThatThrownBy(() -> entry(emptyFundCodes)).isInstanceOf(IllegalArgumentException.class);
     var blankFundCode = List.of("FAEU", " ");
     assertThatThrownBy(() -> entry(blankFundCode)).isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> entry(withNull)).isInstanceOf(IllegalArgumentException.class);
