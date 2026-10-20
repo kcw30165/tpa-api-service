@@ -3,14 +3,11 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationReadStatusWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.notification.NotificationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdateNotificationsReadStatusResponse;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
@@ -23,6 +20,8 @@ import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusRes
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
+import com.bct.ngtpa.apiservice.domain.model.NotificationReadStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -64,7 +63,6 @@ class NotificationControllerTest {
   }
 
   @Test
-  @SuppressWarnings({"rawtypes", "unchecked"})
   void updateNotificationsPassesNotificationIdsOnlyCommandWithoutAccountRef() {
     AtomicReference<UpdateNotificationsReadStatusCommand> captured = new AtomicReference<>();
     GetNotificationsUseCase getUseCase =
@@ -72,26 +70,26 @@ class NotificationControllerTest {
     UpdateNotificationsReadStatusUseCase updateUseCase =
         command -> {
           captured.set(command);
-          return Mono.just(new UpdateNotificationsReadStatusResult(List.of()));
+          return Mono.just(
+              new UpdateNotificationsReadStatusResult(
+                  List.of(new NotificationReadStatus("N-1", MessageStatus.READ, true))));
         };
-    NotificationReadStatusWebMapper readStatusWebMapper =
-        mock(NotificationReadStatusWebMapper.class);
-    MutationResponse<UpdateNotificationsReadStatusResponse> expectedResponse =
-        mock(MutationResponse.class);
-    when(readStatusWebMapper.toResponse(org.mockito.ArgumentMatchers.any()))
-        .thenReturn(expectedResponse);
 
     var actual =
         new NotificationController(
                 getUseCase,
                 updateUseCase,
                 mock(NotificationWebMapper.class),
-                readStatusWebMapper,
+                new NotificationReadStatusWebMapper(),
                 resolver())
             .updateNotificationsReadStatus(new UpdateNotificationsReadStatusRequest(List.of("N-1")))
             .block();
 
-    assertEquals(expectedResponse, actual);
+    var node = JSON.valueToTree(actual);
+    assertTrue(node.at("/success").asBoolean());
+    assertEquals("UPDATED", node.at("/status").asText());
+    assertEquals("N-1", node.at("/result/data/notifications/0/msgCode").asText());
+    assertTrue(node.at("/result/data/notifications/0/isRead").asBoolean());
     assertEquals(List.of("N-1"), captured.get().notificationIds());
   }
 

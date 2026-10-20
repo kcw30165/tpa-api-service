@@ -7,10 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.domain.model.NotificationReadStatus;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class NotificationReadStatusWebMapperTest {
+
+  private static final ObjectMapper JSON = new ObjectMapper();
 
   private final NotificationReadStatusWebMapper mapper = new NotificationReadStatusWebMapper();
 
@@ -20,14 +24,15 @@ class NotificationReadStatusWebMapperTest {
         new UpdateNotificationsReadStatusResult(
             List.of(new NotificationReadStatus("code-01", MessageStatus.READ, true)));
 
-    var response = mapper.toResponse(result);
+    JsonNode root = JSON.valueToTree(mapper.toResponse(result));
 
-    assertEquals("code-01", response.result().notifications().getFirst().msgCode());
-    assertTrue(response.success());
-    assertEquals(
-        com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus.UPDATED, response.status());
-    assertTrue(response.messages().isEmpty());
-    assertTrue(response.errors().isEmpty());
+    assertEquals("code-01", root.at("/result/data/notifications/0/msgCode").asText());
+    assertTrue(root.at("/success").asBoolean());
+    assertEquals("UPDATED", root.at("/status").asText());
+    assertTrue(root.at("/messages").isArray());
+    assertEquals(0, root.at("/messages").size());
+    assertTrue(root.at("/errors").isArray());
+    assertEquals(0, root.at("/errors").size());
   }
 
   @Test
@@ -36,9 +41,10 @@ class NotificationReadStatusWebMapperTest {
         new UpdateNotificationsReadStatusResult(
             List.of(new NotificationReadStatus("code-01", MessageStatus.READ, true)));
 
-    var response = mapper.toResponse(result);
+    JsonNode first = notifications(result).path(0);
 
-    assertTrue(response.result().notifications().getFirst().isRead());
+    assertTrue(first.at("/isRead").isBoolean());
+    assertTrue(first.at("/isRead").asBoolean());
   }
 
   @Test
@@ -47,9 +53,10 @@ class NotificationReadStatusWebMapperTest {
         new UpdateNotificationsReadStatusResult(
             List.of(new NotificationReadStatus("code-01", MessageStatus.READ, false)));
 
-    var response = mapper.toResponse(result);
+    JsonNode first = notifications(result).path(0);
 
-    assertFalse(response.result().notifications().getFirst().isRead());
+    assertTrue(first.at("/isRead").isBoolean());
+    assertFalse(first.at("/isRead").asBoolean());
   }
 
   @Test
@@ -60,12 +67,27 @@ class NotificationReadStatusWebMapperTest {
                 new NotificationReadStatus("code-01", MessageStatus.READ, true),
                 new NotificationReadStatus("code-02", MessageStatus.READ, false)));
 
-    var response = mapper.toResponse(result);
+    JsonNode notifications = notifications(result);
 
-    assertEquals(2, response.result().notifications().size());
-    assertEquals("code-01", response.result().notifications().get(0).msgCode());
-    assertTrue(response.result().notifications().get(0).isRead());
-    assertEquals("code-02", response.result().notifications().get(1).msgCode());
-    assertFalse(response.result().notifications().get(1).isRead());
+    assertEquals(2, notifications.size());
+    assertEquals("code-01", notifications.get(0).at("/msgCode").asText());
+    assertTrue(notifications.get(0).at("/isRead").asBoolean());
+    assertEquals("code-02", notifications.get(1).at("/msgCode").asText());
+    assertFalse(notifications.get(1).at("/isRead").asBoolean());
+  }
+
+  @Test
+  void toResponseKeepsEmptyNotificationsUnderData() {
+    var result = new UpdateNotificationsReadStatusResult(List.of());
+
+    JsonNode notifications = notifications(result);
+
+    assertTrue(notifications.isArray());
+    assertEquals(0, notifications.size());
+  }
+
+  private JsonNode notifications(UpdateNotificationsReadStatusResult result) {
+    JsonNode root = JSON.valueToTree(mapper.toResponse(result));
+    return root.at("/result/data/notifications");
   }
 }

@@ -51,7 +51,7 @@ public class NotificationController {
       value = "/notifications",
       consumes = MediaType.APPLICATION_JSON_VALUE,
       produces = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<MutationResponse<UpdateNotificationsReadStatusResponse>>
+  public Mono<MutationResponse<UpdateNotificationsReadStatusResultResponse>>
       updateNotificationsReadStatus(
           @Valid @RequestBody UpdateNotificationsReadStatusRequest request) {
     return currentPortalAccessContextResolver

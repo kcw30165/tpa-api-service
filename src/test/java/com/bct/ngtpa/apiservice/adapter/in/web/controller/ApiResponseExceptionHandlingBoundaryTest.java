@@ -37,7 +37,7 @@ class ApiResponseExceptionHandlingBoundaryTest {
     assertTrue(
         containsIgnoringWhitespace(
             notificationController,
-            "Mono<MutationResponse<UpdateNotificationsReadStatusResponse>> updateNotificationsReadStatus"));
+            "Mono<MutationResponse<UpdateNotificationsReadStatusResultResponse>> updateNotificationsReadStatus"));
     assertTrue(
         containsIgnoringWhitespace(
             notificationController,
