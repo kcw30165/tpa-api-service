@@ -140,7 +140,7 @@ section 10 of the design so the frontend change ships in the same release.
 | ST-3 GET `result.data` | Done | `f73e98c7` |
 | ST-4 PATCH `result.data` | Done | `8f4fc5d5` |
 | ST-5 docs | Done in this commit | |
-| ST-6 msgContent by Accept-Language | Designed | |
+| ST-6 msgContent by Accept-Language | Done | |
 | Milestone gates | Pending (re-run after ST-6) | |
 
 Making the notification error responses label-free is not a sub-task of this branch: it is deferred to the central

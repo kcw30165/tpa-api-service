@@ -5,7 +5,7 @@
 | Branch | `refactor/notice-board` |
 | Base | `origin/dev` at `c9aa7987a68f939d4170f1c78a8fc4763ed26a57` |
 | Owner | Nick (solution design and approval) |
-| Status | Implemented on the branch (ST-2 to ST-4); ST-6 (single msgContent) designed; milestone gates pending |
+| Status | Implemented on the branch (ST-2 to ST-4 and ST-6); milestone gates re-run pending |
 
 Labels: **Confirmed** means read from the source at the base commit (investigation scripts 001, 002,
 004 and 005). **Unverified** means not read yet; the named gate settles it.
@@ -347,4 +347,4 @@ after it.
 | U7 | Whether the frontend already sends `Accept-Language` on this request, and which values it sends. | Frontend confirmation before release. |
 | U8 | Whether a Chinese variant other than `zh` and `zh-HK` (for example `zh-TW`) must select Chinese. The shared resolver gives English. | Decision by Nick; a change belongs in `RequestLanguageResolver` and affects every endpoint. |
 
-Status: designed; implementation pending.
+Status: implemented (ST-6); the milestone gates are re-run after it.

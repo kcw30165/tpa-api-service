@@ -49,7 +49,7 @@ class NotificationControllerTest {
                 new NotificationWebMapper(),
                 mock(NotificationReadStatusWebMapper.class),
                 resolver())
-            .getNotifications(2, 50, "yyyy-MM-dd", "Asia/Hong_Kong")
+            .getNotifications(2, 50, "yyyy-MM-dd", "Asia/Hong_Kong", "en")
             .block();
 
     var node = JSON.valueToTree(actual);

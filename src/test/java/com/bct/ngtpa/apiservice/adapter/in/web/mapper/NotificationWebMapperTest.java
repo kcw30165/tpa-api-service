@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bct.ngtpa.apiservice.application.dto.NotificationDateOptions;
@@ -13,6 +14,7 @@ import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -93,7 +95,7 @@ class NotificationWebMapperTest {
         new NotificationListResult(
             List.of(noticeMessage("SHORT", "LONG", 1)), NotificationDateOptions.defaults());
 
-    JsonNode root = JSON.valueToTree(mapper.toResponse(result));
+    JsonNode root = JSON.valueToTree(mapper.toResponse(result, "en"));
 
     assertTrue(root.at("/success").asBoolean());
     assertEquals("SUCCESS", root.at("/status").asText());
@@ -108,16 +110,95 @@ class NotificationWebMapperTest {
   void toResponseKeepsEmptyNotificationsUnderData() {
     var result = new NotificationListResult(List.of(), NotificationDateOptions.defaults());
 
-    JsonNode root = JSON.valueToTree(mapper.toResponse(result));
+    JsonNode root = JSON.valueToTree(mapper.toResponse(result, "en"));
     JsonNode notifications = root.at("/result/data/notifications");
 
     assertTrue(notifications.isArray());
     assertEquals(0, notifications.size());
   }
 
+  @Test
+  void toResponseSelectsChineseContentForZhHk() {
+    var result = resultOf(contentMessage("Chi content", "Eng content"));
+
+    assertEquals("Chi content", content(result, "zh_HK"));
+  }
+
+  @Test
+  void toResponseAcceptsHyphenatedAndBareChineseTags() {
+    var result = resultOf(contentMessage("Chi content", "Eng content"));
+
+    for (String language : List.of("zh-HK", "zh", "ZH-hk")) {
+      assertEquals("Chi content", content(result, language), language);
+    }
+  }
+
+  @Test
+  void toResponseFallsBackToEnglishWhenChineseContentIsNull() {
+    var result = resultOf(contentMessage(null, "Eng content"));
+
+    assertEquals("Eng content", content(result, "zh_HK"));
+  }
+
+  @Test
+  void toResponseFallsBackToEnglishWhenChineseContentIsBlank() {
+    var result = resultOf(contentMessage("  ", "Eng content"));
+
+    assertEquals("Eng content", content(result, "zh_HK"));
+  }
+
+  @Test
+  void toResponseUsesEnglishForEnglishUnsupportedMissingAndBlankLanguage() {
+    var result = resultOf(contentMessage("Chi content", "Eng content"));
+
+    for (String language : Arrays.asList(null, "", " ", "en", "en-US", "fr")) {
+      assertEquals("Eng content", content(result, language), String.valueOf(language));
+    }
+  }
+
+  @Test
+  void toResponseOmitsTheBilingualContentFields() {
+    var result = resultOf(contentMessage("Chi content", "Eng content"));
+
+    JsonNode first =
+        JSON.valueToTree(mapper.toResponse(result, "zh_HK")).at("/result/data/notifications/0");
+
+    assertTrue(first.has("msgContent"));
+    assertFalse(first.has("msgContentChi"));
+    assertFalse(first.has("msgContentEng"));
+  }
+
   private JsonNode firstNotification(NotificationListResult result) {
-    JsonNode root = JSON.valueToTree(mapper.toResponse(result));
+    JsonNode root = JSON.valueToTree(mapper.toResponse(result, "en"));
     return root.at("/result/data/notifications/0");
+  }
+
+  private String content(NotificationListResult result, String language) {
+    JsonNode root = JSON.valueToTree(mapper.toResponse(result, language));
+    return root.at("/result/data/notifications/0/msgContent").asText();
+  }
+
+  private static NotificationListResult resultOf(NoticeMessage message) {
+    return new NotificationListResult(List.of(message), NotificationDateOptions.defaults());
+  }
+
+  private static NoticeMessage contentMessage(String chinese, String english) {
+    return new NoticeMessage(
+        "SHORT",
+        "LONG",
+        1,
+        "GENERAL",
+        MessageType.IMPORTANT_NOTICE,
+        "Title",
+        chinese,
+        english,
+        false,
+        LocalDateTime.of(2026, 5, 4, 8, 30),
+        null,
+        MessageStatus.UNREAD,
+        (AudienceType) null,
+        null,
+        List.<Hyperlink>of());
   }
 
   private static NoticeMessage noticeMessage(String msgCode, String msgCodeLong, Integer seq) {

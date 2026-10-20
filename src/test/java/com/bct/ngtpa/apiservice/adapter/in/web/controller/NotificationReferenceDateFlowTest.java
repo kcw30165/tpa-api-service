@@ -149,7 +149,13 @@ class NotificationReferenceDateFlowTest {
         .jsonPath("$.result.data.notifications[0].msgTitle")
         .isEqualTo("Reference Date Notice")
         .jsonPath("$.result.data.notifications[0].msgCode")
-        .isEqualTo("MSG-1-LONG");
+        .isEqualTo("MSG-1-LONG")
+        .jsonPath("$.result.data.notifications[0].msgContent")
+        .isEqualTo("Content")
+        .jsonPath("$.result.data.notifications[0].msgContentChi")
+        .doesNotExist()
+        .jsonPath("$.result.data.notifications[0].msgContentEng")
+        .doesNotExist();
 
     assertThat(redisRead.get()).isTrue();
     assertThat(cacheWriteCalled.get()).isFalse();

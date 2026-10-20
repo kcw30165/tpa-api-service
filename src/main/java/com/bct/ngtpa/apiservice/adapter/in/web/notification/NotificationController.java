@@ -27,7 +27,8 @@ public class NotificationController {
       @RequestParam(value = "page", required = false) Integer page,
       @RequestParam(value = "size", required = false) Integer size,
       @RequestParam(value = "dateFormat", required = false) String dateFormat,
-      @RequestParam(value = "timezone", required = false) String timezone) {
+      @RequestParam(value = "timezone", required = false) String timezone,
+      @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage) {
     return currentPortalAccessContextResolver
         .current()
         .flatMap(
@@ -44,7 +45,7 @@ public class NotificationController {
                         ctx.account().certNo(),
                         ctx.actor().actorUserId(),
                         null)))
-        .map(notificationWebMapper::toResponse);
+        .map(result -> notificationWebMapper.toResponse(result, acceptLanguage));
   }
 
   @PatchMapping(

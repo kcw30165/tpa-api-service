@@ -28,7 +28,7 @@ class NotificationResponseSerializationContractTest {
   void getResponseSerializesExactEnvelopeResultDataAndNotificationKeys() {
     var result = new NotificationListResult(List.of(message()), NotificationDateOptions.defaults());
 
-    JsonNode root = JSON.valueToTree(new NotificationWebMapper().toResponse(result));
+    JsonNode root = JSON.valueToTree(new NotificationWebMapper().toResponse(result, "en"));
 
     assertThat(keys(root))
         .containsExactlyInAnyOrder("success", "status", "result", "messages", "errors");
@@ -36,14 +36,7 @@ class NotificationResponseSerializationContractTest {
     assertThat(keys(root.at("/result/data"))).containsExactly("notifications");
     assertThat(keys(root.at("/result/data/notifications/0")))
         .containsExactlyInAnyOrder(
-            "msgCode",
-            "sequence",
-            "category",
-            "msgTitle",
-            "msgContentChi",
-            "msgContentEng",
-            "isRead",
-            "startDateTime");
+            "msgCode", "sequence", "category", "msgTitle", "msgContent", "isRead", "startDateTime");
     assertThat(root.at("/status").asText()).isEqualTo("SUCCESS");
     assertThat(root.at("/result/data/notifications/0/isRead").isBoolean()).isTrue();
   }

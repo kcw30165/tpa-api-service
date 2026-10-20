@@ -10,8 +10,7 @@ class NotificationListResponseTest {
   @Test
   void recordFieldIsAccessible() {
     var dto =
-        new NotificationDto(
-            "CODE", "1", "GENERAL", "Title", "Chi", "Eng", false, "01/01/2026 00:00");
+        new NotificationDto("CODE", "1", "GENERAL", "Title", "Content", false, "01/01/2026 00:00");
     var response = new NotificationListResponse(List.of(dto));
 
     assertEquals(1, response.notifications().size());
