@@ -43,8 +43,7 @@ class RegistrationEndToEndRegressionContractTest {
             "next-step: VERIFY_OTP",
             "next-step: SELECT_TRUST",
             "next-step: USERNAME_CHECK",
-            "next-step: PASSWORD_SETUP",
-            "next-step: RETURN_TO_LOGIN");
+            "next-step: PASSWORD_SETUP");
     assertThat(yaml).contains("targets:", "next-step:").doesNotContain("messages:", "zh_HK:");
   }
 }

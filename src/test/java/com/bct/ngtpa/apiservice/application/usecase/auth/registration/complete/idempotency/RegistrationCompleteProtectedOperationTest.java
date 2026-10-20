@@ -205,6 +205,25 @@ class RegistrationCompleteProtectedOperationTest {
   }
 
   @Test
+  void memberRegisteredDuplicateRoutesToUsernameCheckInsteadOfSuccess() {
+    when(completion.complete(any()))
+        .thenReturn(Mono.just(RegistrationCompletionResult.rejected("err.tpa.member.registered")));
+    CompleteRegistrationResult result = operation.execute(input()).block();
+    assertThat(result.status()).isEqualTo(CompleteRegistrationResultStatus.DOWNSTREAM_REJECTED);
+    assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.USERNAME_CHECK);
+    assertThat(result.registered()).isFalse();
+    assertThat(result.clearAuthFlowCookie()).isFalse();
+    assertThat(state.status()).isEqualTo(AuthFlowStatus.TRUST_SELECTION_READY);
+    assertThat(result.errors())
+        .singleElement()
+        .satisfies(
+            error ->
+                assertThat(error.code())
+                    .isEqualTo("err.registration.complete.memberAlreadyRegistered"));
+    verify(lookup, never()).searchMember(any());
+  }
+
+  @Test
   void continuationLookupFailureIsDeterministicAfterConfirmedRegistration() {
     when(lookup.searchMember(any()))
         .thenReturn(Mono.error(new IllegalStateException("lookup detail")));

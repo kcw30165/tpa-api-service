@@ -166,7 +166,7 @@ workflow-error-contract:
       source: SERVER
       targets:
         - PAGE
-      next-step: RETURN_TO_LOGIN
+      next-step: USERNAME_CHECK
     - code: err.registration.complete.failed
       type: BUSINESS
       severity: ERROR
