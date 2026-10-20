@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.mapper.FundComparisonPricesWebMapper;
@@ -19,6 +20,16 @@ import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextR
 import com.bct.ngtpa.apiservice.application.port.out.FundComparisonPriceSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonPricesUseCase;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
+import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData;
+import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData.RawFundComparisonOption;
+import com.bct.ngtpa.apiservice.application.port.out.FundComparisonOptionsSourcePort;
+import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService;
+import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonSelectedPricesUseCase;
+import java.util.Optional;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
@@ -49,6 +60,24 @@ import reactor.test.StepVerifier;
 class FundComparisonPricesControllerTest {
 
   private static final String ROUTE = "/api/v1/fund-comparison/prices";
+  private static final AuthenticatedSessionCookieReader NO_SESSION = exchange -> Optional.empty();
+  private static final MockServerWebExchange EXCHANGE =
+      MockServerWebExchange.from(MockServerHttpRequest.post(ROUTE).build());
+
+  /** Wraps the real prices use case with options that offer every code these tests request. */
+  private static FundComparisonSelectedPricesUseCase selected(FundComparisonPricesUseCase prices) {
+    FundComparisonOptionsSourcePort offered =
+        cmd ->
+            Mono.just(
+                new RawFundComparisonOptionsData(
+                    "10D,1M,3M,6M,1Y,YTD,3Y",
+                    List.of(
+                        new RawFundComparisonOption("FAEU", "A Fund", ""),
+                        new RawFundComparisonOption("FBAU", "B Fund", ""))));
+    var cache = mock(FundComparisonOptionsCacheService.class);
+    return new FundComparisonSelectedPricesUseCase(
+        new FundComparisonOptionsUseCase(offered, cache), cache, prices);
+  }
   private static final LocalDate REFERENCE_DATE = LocalDate.of(2026, 10, 15);
   private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -105,7 +134,10 @@ class FundComparisonPricesControllerTest {
 
   private static FundComparisonPricesController controller(FundComparisonPricesUseCase useCase) {
     return new FundComparisonPricesController(
-        useCase, resolver(Mono.just(context())), new FundComparisonPricesWebMapper(FORMATTER));
+        selected(useCase),
+        resolver(Mono.just(context())),
+        new FundComparisonPricesWebMapper(FORMATTER),
+        NO_SESSION);
   }
 
   private static ApiExceptionHandler advice() {
@@ -230,12 +262,13 @@ class FundComparisonPricesControllerTest {
     var rawData = new RawFundPriceData(List.of());
     var controller =
         new FundComparisonPricesController(
-            useCase(rawData),
+            selected(useCase(rawData)),
             resolver(Mono.error(new IllegalStateException("no context"))),
-            new FundComparisonPricesWebMapper(FORMATTER));
+            new FundComparisonPricesWebMapper(FORMATTER),
+            NO_SESSION);
 
     StepVerifier.create(
-            controller.getPrices(new FundComparisonPricesRequest(List.of("FAEU"), "10D")))
+            controller.getPrices(new FundComparisonPricesRequest(List.of("FAEU"), "10D"), EXCHANGE))
         .expectErrorMatches(IllegalStateException.class::isInstance)
         .verify();
 
@@ -245,18 +278,21 @@ class FundComparisonPricesControllerTest {
   @Test
   void theConstructorRequiresEveryDependency() {
     var rawData = new RawFundPriceData(List.of());
-    var useCase = useCase(rawData);
+    var useCase = selected(useCase(rawData));
     var resolver = resolver(Mono.just(context()));
     var mapper = new FundComparisonPricesWebMapper(FORMATTER);
 
-    assertThatThrownBy(() -> new FundComparisonPricesController(null, resolver, mapper))
+    assertThatThrownBy(() -> new FundComparisonPricesController(null, resolver, mapper, NO_SESSION))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("useCase");
-    assertThatThrownBy(() -> new FundComparisonPricesController(useCase, null, mapper))
+    assertThatThrownBy(() -> new FundComparisonPricesController(useCase, null, mapper, NO_SESSION))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("contextResolver");
-    assertThatThrownBy(() -> new FundComparisonPricesController(useCase, resolver, null))
+    assertThatThrownBy(() -> new FundComparisonPricesController(useCase, resolver, null, NO_SESSION))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("webMapper");
+    assertThatThrownBy(() -> new FundComparisonPricesController(useCase, resolver, mapper, null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("sessionCookieReader");
   }
 }

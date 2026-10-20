@@ -33,6 +33,9 @@ import com.bct.ngtpa.apiservice.application.port.out.FundComparisonPriceSourcePo
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonPricesUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService;
+import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonSelectedPricesUseCase;
+import java.util.Optional;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
@@ -112,8 +115,26 @@ class FundComparisonBrdTraceabilityTest {
     var useCase = new FundComparisonPricesUseCase(sourcePort, referenceDatePort);
     var controller =
         new FundComparisonPricesController(
-            useCase, resolver(), new FundComparisonPricesWebMapper(FORMATTER));
+            selectedPrices(useCase),
+            resolver(),
+            new FundComparisonPricesWebMapper(FORMATTER),
+            exchange -> Optional.empty());
     return WebTestClient.bindToController(controller).controllerAdvice(advice()).build();
+  }
+
+  /** Wraps the real prices use case with options that offer every code these scenarios use. */
+  private static FundComparisonSelectedPricesUseCase selectedPrices(
+      FundComparisonPricesUseCase prices) {
+    FundComparisonOptionsSourcePort offered =
+        cmd ->
+            Mono.just(
+                optionsRaw(
+                    "10D,1M,3M,6M,1Y,YTD,3Y",
+                    new RawFundComparisonOption("FAEU", "A Fund", ""),
+                    new RawFundComparisonOption("FBAU", "B Fund", "")));
+    var cache = mock(FundComparisonOptionsCacheService.class);
+    return new FundComparisonSelectedPricesUseCase(
+        new FundComparisonOptionsUseCase(offered, cache), cache, prices);
   }
 
   // ----- shared fixtures: options flow (fake-port based, for scenarios other than 3) ----------

@@ -118,7 +118,7 @@ class FundComparisonPricesWebMapperTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"10X", "-1D", "1.5M", "10d", "0D", "abc", "D10", "YTDD"})
+  @ValueSource(strings = {"10X", "-1D", "1.5M", "0D", "abc", "D10", "YTDD"})
   void syntacticallyInvalidTimeRangeTokensThrowRequestInvalid(String invalidToken) {
     var mapper = newMapper();
     var request = new FundComparisonPricesRequest(List.of("FAEU"), invalidToken);

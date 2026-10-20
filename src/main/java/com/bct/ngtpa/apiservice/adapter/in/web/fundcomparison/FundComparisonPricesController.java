@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.mapper.FundComparisonPricesWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.request.FundComparisonPricesRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.response.FundComparisonPricesResponse;
@@ -11,7 +12,9 @@ import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FetchFundComparis
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FundComparisonPricesResult;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FundComparisonPricesValidatedRequest;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
-import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonPricesUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonSelectedPricesUseCase;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.http.MediaType;
@@ -19,60 +22,71 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /**
  * {@code POST /api/v1/fund-comparison/prices}, per
- * docs/design/13-fund-comparison/02-api-contract.md section 2.3 (Milestone 3, sub-task 3.4 -- the
- * final sub-task of Milestone 3).
+ * docs/design/13-fund-comparison/02-api-contract.md section 2.3.
  *
- * <p>Mirrors {@code FundComparisonOptionsController}'s confirmed context-resolution pattern
- * (policyNo and accountEnv from the trusted {@code PortalAccessContext.AccountContext},
- * actorUserRole from {@code PortalAccessContext.ActorContext}). Unlike the options controller, this
- * one does NOT resolve {@code Accept-Language}: the prices response ({@code fundCode}, {@code
- * priceDate}, {@code unitPrice}) has no localized fields, so there is nothing for a language to
- * select.
+ * <p>policyNo, accountEnv and accountRef come from the trusted {@code PortalAccessContext},
+ * actorUserRole from its actor. No language is resolved: the prices response has no localized
+ * fields.
  *
- * <p>Uses {@code @RequestBody(required = false)} rather than the Spring default ({@code required =
- * true}) so that a missing or malformed body reaches {@link FundComparisonPricesWebMapper#validate}
- * as a {@code null} request (producing the project's own {@code
- * err.fund-comparison.request.invalid} envelope, confirmed by {@code
- * FundComparisonPricesWebMapperTest#nullRequestThrowsRequestInvalid}, sub-task 3.2) rather than a
- * generic Spring-framework-level 400 that would bypass the established error-code contract.
- * Validation runs inside {@link Mono#defer}, converting a thrown {@code
- * FundComparisonRequestInvalidException} into a normal {@code onError} signal (handled by the
- * already-wired {@code ApiExceptionHandler}) -- and, since validation precedes {@code
- * contextResolver.current()} in the reactive chain, an invalid request never triggers a context
- * resolution or use-case call.
+ * <p>Uses {@code @RequestBody(required = false)} so a missing or malformed body reaches {@link
+ * FundComparisonPricesWebMapper#validate} as {@code null} and produces the project's own {@code
+ * err.fund-comparison.request.invalid} envelope. Validation runs before context resolution, so an
+ * invalid request never reaches the use case.
+ *
+ * <p>Sub-task 5.4: the validated request is checked against the session-cached options by {@link
+ * FundComparisonSelectedPricesUseCase}; the session id comes from {@link
+ * AuthenticatedSessionCookieReader} and the request id from {@link RequestHeaderContext}.
  */
 @RestController
 @RequestMapping("/api/v1")
 public class FundComparisonPricesController {
 
-  private final FundComparisonPricesUseCase useCase;
+  private final FundComparisonSelectedPricesUseCase useCase;
   private final CurrentPortalAccessContextResolver contextResolver;
   private final FundComparisonPricesWebMapper webMapper;
+  private final AuthenticatedSessionCookieReader sessionCookieReader;
 
   public FundComparisonPricesController(
-      FundComparisonPricesUseCase useCase,
+      FundComparisonSelectedPricesUseCase useCase,
       CurrentPortalAccessContextResolver contextResolver,
-      FundComparisonPricesWebMapper webMapper) {
+      FundComparisonPricesWebMapper webMapper,
+      AuthenticatedSessionCookieReader sessionCookieReader) {
     this.useCase = Objects.requireNonNull(useCase, "useCase must not be null");
     this.contextResolver =
         Objects.requireNonNull(contextResolver, "contextResolver must not be null");
     this.webMapper = Objects.requireNonNull(webMapper, "webMapper must not be null");
+    this.sessionCookieReader =
+        Objects.requireNonNull(sessionCookieReader, "sessionCookieReader must not be null");
   }
 
   @PostMapping(value = "/fund-comparison/prices", produces = MediaType.APPLICATION_JSON_VALUE)
   public Mono<MutationResponse<FundComparisonPricesResultResponse>> getPrices(
-      @RequestBody(required = false) FundComparisonPricesRequest request) {
-    return Mono.defer(() -> Mono.just(webMapper.validate(request)))
-        .flatMap(
-            validated ->
-                contextResolver
-                    .current()
-                    .flatMap(context -> useCase.getPrices(commandFrom(validated, context))))
-        .map(this::success);
+      @RequestBody(required = false) FundComparisonPricesRequest request,
+      ServerWebExchange exchange) {
+    return Mono.deferContextual(
+        view -> {
+          RequestHeaderContext headers =
+              view.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
+          String requestId = headers == null ? null : headers.requestId();
+          return Mono.defer(() -> Mono.just(webMapper.validate(request)))
+              .flatMap(
+                  validated ->
+                      contextResolver
+                          .current()
+                          .flatMap(
+                              context ->
+                                  useCase.getPrices(
+                                      commandFrom(validated, context),
+                                      sessionCookieReader.read(exchange),
+                                      context.account().accountRef(),
+                                      requestId)))
+              .map(this::success);
+        });
   }
 
   private static FetchFundComparisonPricesUseCaseCommand commandFrom(

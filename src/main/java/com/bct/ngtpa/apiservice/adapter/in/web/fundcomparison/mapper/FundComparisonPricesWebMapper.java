@@ -12,8 +12,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -23,22 +23,20 @@ import org.springframework.stereotype.Component;
  * Validates the inbound {@code POST /api/v1/fund-comparison/prices} request and maps the resolved
  * {@link FundComparisonPricesResult} to the public {@link FundComparisonPricesResponse}, per
  * docs/design/13-fund-comparison/04-validation-and-error-handling.md section 4.3 and
- * 02-api-contract.md section 2.3 (Milestone 3, sub-task 3.2).
+ * 02-api-contract.md section 2.3.
  *
- * <p>The time-range grammar check here ({@link #VALID_TIME_RANGE_TOKEN}) intentionally duplicates
- * {@code FundComparisonDateRangeCalculator}'s own internal pattern rather than reusing {@code
- * FundComparisonTimeRangeParser}: that parser normalizes a comma-separated downstream options
- * string and throws {@code FundComparisonRetrievalException} on failure, whereas a single malformed
- * request-level token here is a public request-validation failure ({@link
- * FundComparisonRequestInvalidException}), per section 4.3. This mirrors {@code
- * FundComparisonOptionsMapper}'s own documented precedent of small, intentional cross-layer
- * duplication where two call sites have genuinely different exception semantics.
+ * <p>Normalization (09 section 9.5.4, sub-task 5.4): fund codes are trimmed and de-duplicated
+ * case-insensitively, keeping the first spelling; the time range is trimmed and its syntax is
+ * checked in upper case, so {@code 10d} passes. Membership against the offered options, and the
+ * switch to the offered spelling, happen later in {@code FundComparisonSelectedPricesUseCase}.
  *
- * <p>Series construction (section 4.5's "legitimate empty price result" and section 2.4's "group
- * rows by fund-code into series, ordered by request's first-occurrence order"): a fund code with
- * zero matching price rows is OMITTED from the series entirely, never included with an empty {@code
- * prices} array -- confirmed by section 4.5's own example, where a wholly empty downstream result
- * maps to {@code series: []} (zero entries), not one empty entry per requested fund.
+ * <p>The grammar check here ({@link #VALID_TIME_RANGE_TOKEN}) intentionally duplicates {@code
+ * FundComparisonDateRangeCalculator}'s pattern rather than reusing {@code
+ * FundComparisonTimeRangeParser}: a malformed request token is a public request-validation failure
+ * ({@link FundComparisonRequestInvalidException}), not a retrieval failure.
+ *
+ * <p>Series construction: a fund code with zero matching price rows is omitted from the series
+ * entirely, never included with an empty {@code prices} array (section 4.5).
  */
 @Component
 public class FundComparisonPricesWebMapper {
@@ -58,27 +56,29 @@ public class FundComparisonPricesWebMapper {
     if (request == null) {
       throw new FundComparisonRequestInvalidException("request body must not be null");
     }
-    var dedupedCodes = new LinkedHashSet<String>();
+    Map<String, String> codesByKey = new LinkedHashMap<>();
     for (String code : request.fundCodes()) {
       if (code == null || code.isBlank()) {
         throw new FundComparisonRequestInvalidException("fundCodes must not contain a blank entry");
       }
-      dedupedCodes.add(code);
+      String trimmed = code.trim();
+      codesByKey.putIfAbsent(trimmed.toLowerCase(Locale.ROOT), trimmed);
     }
-    if (dedupedCodes.isEmpty()) {
+    if (codesByKey.isEmpty()) {
       throw new FundComparisonRequestInvalidException(
           "fundCodes must contain at least one fund code");
     }
-    if (dedupedCodes.size() > MAX_FUND_CODES) {
+    if (codesByKey.size() > MAX_FUND_CODES) {
       throw new FundComparisonRequestInvalidException(
           "fundCodes must not contain more than " + MAX_FUND_CODES + " unique fund codes");
     }
-    String timeRange = request.timeRange();
-    if (timeRange == null || !VALID_TIME_RANGE_TOKEN.matcher(timeRange).matches()) {
+    String timeRange = request.timeRange() == null ? null : request.timeRange().trim();
+    if (timeRange == null
+        || !VALID_TIME_RANGE_TOKEN.matcher(timeRange.toUpperCase(Locale.ROOT)).matches()) {
       throw new FundComparisonRequestInvalidException(
           "timeRange must be a valid XD/XM/XY/YTD token");
     }
-    return new FundComparisonPricesValidatedRequest(List.copyOf(dedupedCodes), timeRange);
+    return new FundComparisonPricesValidatedRequest(List.copyOf(codesByKey.values()), timeRange);
   }
 
   public FundComparisonPricesResponse toResponse(FundComparisonPricesResult result) {
