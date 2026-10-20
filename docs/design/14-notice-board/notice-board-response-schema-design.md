@@ -1,0 +1,242 @@
+# Notice Board - Notifications Public Contract and Downstream Request Alignment
+
+| Item | Value |
+|---|---|
+| Branch | `refactor/notice-board` |
+| Base | `origin/dev` at `c9aa7987a68f939d4170f1c78a8fc4763ed26a57` |
+| Owner | Nick (solution design and approval) |
+| Status | Design, pending implementation |
+
+Labels: **Confirmed** means read from the source at the base commit (investigation scripts 001, 002,
+004 and 005). **Unverified** means not read yet; the named gate settles it.
+
+## 1. Goal
+
+1. `GET /api/v1/notifications` and `PATCH /api/v1/notifications` return their success body in the
+   shared `MutationResponse` envelope with the payload under `result.data`:
+
+   ```json
+   {
+     "success": true,
+     "status": "SUCCESS",
+     "result": { "data": {} },
+     "messages": [],
+     "errors": []
+   }
+   ```
+
+2. The downstream requests `TRPGetMsgBoard` and `TRPUpdMsgRead` no longer carry `env`.
+
+## 2. Scope
+
+In scope: the success response schema of the two endpoints, the downstream request payloads of the
+two APIM operations, and the tests, guards and docs that pin either.
+
+Out of scope (unchanged): the public request contracts (query parameters, PATCH body), use cases,
+ports, `accountEnv` inside the commands and services, domain model, field names inside the payload
+(including `msgCode` and `sequence`), error responses, security, request logging, and the
+partial-success semantics of PATCH.
+
+## 3. Label rule (standing)
+
+Java has no label responsibility. Text that a person reads, in `messages` and in `errors`, comes
+from the downstream system or is rendered by the frontend from a code that Java passes. Java returns
+codes and targets only.
+
+Consequences for this contract:
+
+- Success responses of both endpoints carry `messages: []` and `errors: []` (D5).
+- Java adds no message text for these endpoints.
+- Confirmed: the shared model still has text arguments, for example
+  `ApiMessage.success(code, text, source)` and `ApiError.field(code, text, targets, source)`
+  (`MutationResponseContractTest`).
+- Unverified: whether the shared `ApiExceptionHandler` fills error text for the notification
+  exceptions (U4). Script 006 records the handler source as evidence. The handler is a shared,
+  deferred workstream (Central `ApiExceptionHandler` consolidation); this branch does not change it.
+
+## 4. Baseline (Confirmed)
+
+| Endpoint | Controller return type | Success body today | Status today |
+|---|---|---|---|
+| GET | `Mono<NotificationListResponse>` | `{ "notifications": [ ... ] }` | none (bare body) |
+| PATCH | `Mono<MutationResponse<UpdateNotificationsReadStatusResponse>>` | `{ success, status, result: { notifications: [ { msgCode, isRead } ] }, messages, errors }` | `UPDATED` |
+
+- PATCH already uses `MutationResponse` but its `result` is the payload itself; this refactor adds the
+  `data` level so that both endpoints follow the same shape.
+- Failure responses of both endpoints already use `MutationResponse.failure(...)` through
+  `ApiExceptionHandler`. Only the success path changes.
+- `ApiResponseExceptionHandlingBoundaryTest` pins GET as unwrapped
+  (`Mono<NotificationListResponse> getNotifications`) and PATCH as
+  `Mono<MutationResponse<UpdateNotificationsReadStatusResponse>> updateNotificationsReadStatus`.
+  Both assertions must change.
+- Existing convention for the `data` level: `FundFactSheetResultResponse`,
+  `FundPriceModeResultResponse` and `FundPriceQueryResultResponse` are
+  `record XxxResultResponse(XxxResponse data)` with `Objects.requireNonNull(data, ...)`;
+  `AccountSummaryResultResponse`, `AccountGainLossResultResponse`, `AccountResultResponse` and
+  `AccountsResultResponse` have the same shape without the null check.
+- `NotificationDto` declares `@JsonProperty("isRead")`; `NotificationReadStatusDto` is
+  `record NotificationReadStatusDto(String msgCode, boolean isRead)` without it.
+
+## 5. Target public contract
+
+GET success:
+
+```json
+{
+  "success": true,
+  "status": "SUCCESS",
+  "result": {
+    "data": {
+      "notifications": [
+        {
+          "msgCode": "MSG-1-LONG",
+          "sequence": "1",
+          "category": "GENERAL",
+          "msgTitle": "Title",
+          "msgContentChi": "Chi",
+          "msgContentEng": "Eng",
+          "isRead": false,
+          "startDateTime": "04/05/2026 08:30"
+        }
+      ]
+    }
+  },
+  "messages": [],
+  "errors": []
+}
+```
+
+PATCH success:
+
+```json
+{
+  "success": true,
+  "status": "UPDATED",
+  "result": {
+    "data": {
+      "notifications": [
+        { "msgCode": "MSG-1-LONG", "isRead": true }
+      ]
+    }
+  },
+  "messages": [],
+  "errors": []
+}
+```
+
+An empty result is `"data": { "notifications": [] }` for both endpoints.
+
+## 6. Downstream request alignment (env removal)
+
+Confirmed from the sources:
+
+- `GetMessageBoardApimRequest` and `UpdateNotificationReadStatusApimRequest` each declare
+  `@JsonProperty("env") private String accountEnv`.
+- Both adapters set it from `command.accountEnv()` and also build
+  `new ApimCredentialResolutionContext(command.mbrType(), command.accountEnv())` with
+  `ApimDatabaseScope.ACCOUNT_ENV`. A blank environment fails fast with `IllegalArgumentException`
+  before the executor runs.
+- `GetNotificationsService` and `UpdateNotificationsReadStatusService` resolve `ref-date` through
+  `ReferenceDatePort.resolveReferenceDate(command.accountEnv())`.
+- The APIM `request-fields` encryption list does not contain `env`, so the YAML needs no change.
+  It contains `policy-no`, `cert-no`, `user-id`, `login-user-id`, `search-value`, `cust-id`, `email`
+  and `mobile-number`.
+
+Therefore `accountEnv` stays inside the BFF (routing and reference date) and only leaves the wire.
+
+Request payloads after the change:
+
+| Field | `TRPGetMsgBoard` | `TRPUpdMsgRead` | Source |
+|---|---|---|---|
+| `policy-no` | yes | yes | `AccountContext.policyNo` |
+| `cert-no` | yes | yes | `AccountContext.certNo` |
+| `ref-date` | yes | yes | resolved reference date |
+| `login-user-id` | yes | yes | actor user id |
+| `login-user-role` | yes | yes | actor role APIM value |
+| `msg-code-long` | no | yes | comma-joined notification ids |
+| `env` | removed | removed | not sent |
+| `req-status` | no | no | not sent (see D9) |
+
+`policy-no` and `cert-no` still come from the account resolved from `Account-Ref`.
+
+## 7. Decisions
+
+| ID | Decision | Reason |
+|---|---|---|
+| D1 | The inner payloads stay as they are: `NotificationListResponse` and `UpdateNotificationsReadStatusResponse` become the content of `data`. | Smallest change; field names unchanged; `GenericResponseTest`, `NotificationDtoTest` and `NotificationListResponseTest` stay valid. |
+| D2 | Two new records follow the existing convention: `NotificationListResultResponse(NotificationListResponse data)` and `UpdateNotificationsReadStatusResultResponse(UpdateNotificationsReadStatusResponse data)`, in `adapter.in.web.response`, each with `Objects.requireNonNull(data, "data must not be null")`. | Same convention as Fund Fact Sheet and Fund Price. |
+| D3 | Status: GET `SUCCESS`; PATCH `UPDATED` (as today, confirmed by Nick). | Keeps the status the PATCH already returns. |
+| D4 | Both web mappers return `MutationResponse<...>`. Controller methods only chain `.map(mapper::toResponse)` and change their return types; the controller gains no header or context access. | `NotificationCurrentContextBoundaryGuardTest` forbids `Account-Ref`, `RequestHeaderContext` and `resolveRequiredAccountRef` in the controller. |
+| D5 | `messages` and `errors` are `[]` on success for both endpoints. | Label rule (section 3). |
+| D6 | PATCH partial failure is unchanged: the envelope stays `success: true` / `UPDATED`, and an item APIM did not update reports `isRead: false`. `PARTIAL_SUCCESS` is deferred. | A behaviour change outside this refactor. |
+| D7 | The error path is unchanged. | Already a `MutationResponse` failure envelope. |
+| D8 | The success schema change is breaking and is accepted. | The schema was not finalized. |
+| D9 | `req-status` is not added to `UpdateNotificationReadStatusApimRequest`. | It is a development-time backdoor of the downstream developer for moving a message back from READ to UNREAD, not part of the BFF contract. |
+| D10 | Remove the `accountEnv` field (`env`) from the two APIM request DTOs and the `.accountEnv(...)` call in the two adapters' `toApimRequest`. `GetNotificationsCommand`, `UpdateNotificationsReadStatusCommand`, both services, the controller, `ApimCredentialResolutionContext` and the reference-date lookup keep `accountEnv`. | Routing and `ref-date` still need it (section 6). |
+| D11 | `cert-no` remains a JSON string as the DTOs declare it today. | Not part of this change; revisit only if the downstream rejects it. |
+
+## 8. Class-level changes
+
+| Class | Change |
+|---|---|
+| `NotificationListResultResponse` (new) | `record NotificationListResultResponse(NotificationListResponse data)` with a null check on `data`. |
+| `UpdateNotificationsReadStatusResultResponse` (new) | `record UpdateNotificationsReadStatusResultResponse(UpdateNotificationsReadStatusResponse data)` with a null check on `data`. |
+| `NotificationWebMapper` | `toResponse` returns `MutationResponse<NotificationListResultResponse>` with `ApiStatus.SUCCESS` and no messages. `toDto` is unchanged. |
+| `NotificationReadStatusWebMapper` | `toResponse` returns `MutationResponse<UpdateNotificationsReadStatusResultResponse>` with `ApiStatus.UPDATED` and no messages. |
+| `NotificationController` | `getNotifications` returns `Mono<MutationResponse<NotificationListResultResponse>>`; `updateNotificationsReadStatus` returns `Mono<MutationResponse<UpdateNotificationsReadStatusResultResponse>>`. |
+| `GetMessageBoardApimRequest` | Remove the `env` / `accountEnv` field. |
+| `UpdateNotificationReadStatusApimRequest` | Remove the `env` / `accountEnv` field. |
+| `ApimNoticeMessageAdapter`, `ApimNotificationReadStatusAdapter` | Remove `.accountEnv(command.accountEnv())` from `toApimRequest`; the credential context call is unchanged. |
+
+Unchanged: use cases, ports, commands and results, `UpdateNotificationsReadStatusRequest`,
+`NotificationListResponse`, `UpdateNotificationsReadStatusResponse`, `NotificationDto`,
+`NotificationReadStatusDto`, `application.yml`.
+
+## 9. Tests affected
+
+Changed:
+
+- `NotificationWebMapperTest`, `NotificationReadStatusWebMapperTest`, `NotificationControllerTest`,
+  `NotificationReferenceDateFlowTest` and `ApiResponseExceptionHandlingBoundaryTest` for the response
+  schema.
+- `ApimNoticeMessageAdapterTest` (the `body.getAccountEnv()` assertion and the test that pins the
+  `env` JSON key) and `ApimNotificationReadStatusAdapterTest` (the `body.getAccountEnv()` assertion)
+  for the request payloads.
+
+New:
+
+- `NotificationListResultResponseTest`, `UpdateNotificationsReadStatusResultResponseTest`.
+- `NotificationResponseSerializationContractTest` (success bodies of both endpoints, including empty
+  `messages` and `errors`).
+- A request-payload test per operation that serializes the DTO and asserts the exact key set.
+
+Must stay green unchanged: `GenericResponseTest`, `NotificationDtoTest`,
+`NotificationListResponseTest`, `UpdateNotificationsReadStatusDtoTest`,
+`NotificationCurrentContextBoundaryGuardTest`, `NotificationsAuthenticatedExecutorBoundaryTest`,
+`ApimRoutingLedgerCharacterizationTest`, `ApimPayloadCryptoService*Test`, `ApiExceptionHandlerTest`,
+`ApiExceptionHandlerMutationResponseContractTest`.
+
+## 10. Consumer impact
+
+| Endpoint | Old path | New path |
+|---|---|---|
+| GET | `$.notifications` | `$.result.data.notifications` |
+| PATCH | `$.result.notifications` | `$.result.data.notifications` |
+
+The frontend must change in the same release. No script, test resource or doc under `scripts/`,
+`src/test/resources/` or `docs/` references the `notifications` JSON key (confirmed by script 002),
+so there is no repository-side client to update. The downstream request change needs no frontend
+change.
+
+## 11. Unverified items and deferred work
+
+| ID | Item | Settled by |
+|---|---|---|
+| U1 | Purpose of the controller list in `InboundWebControllerArchitectureTest` (it contains `NotificationController.class`), and what `NotificationsAuthenticatedExecutorBoundaryTest` asserts beyond the `command.accountEnv()` tokens. | Every sub-task runs the architecture and boundary tests that mention the notification classes; the milestone gate runs the full suite. |
+| U2 | JSON key of `NotificationReadStatusDto.isRead`, which has no `@JsonProperty`. | `NotificationResponseSerializationContractTest`. If the key is not `isRead`, add `@JsonProperty("isRead")` in the PATCH sub-task. |
+| U3 | Whether any test reads `controller-refactoring-endpoint-inventory.md`. | Full test run at the milestone gate. |
+| U4 | Whether `ApiExceptionHandler` fills error text for the notification exceptions (label rule). | Evidence file `05-label-audit-readonly.txt` of script 006; any finding goes to Nick for a decision. |
+| U5 | Whether the downstream accepts `cert-no` as a JSON string (D11). | Local functional run against the downstream. |
+
+Deferred, not part of this branch: `PARTIAL_SUCCESS` for PATCH, any rename of `msgCode`, a shared
+response builder, and consolidation of `ApiExceptionHandler`.
