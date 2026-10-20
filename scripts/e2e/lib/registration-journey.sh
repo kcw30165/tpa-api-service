@@ -165,9 +165,14 @@ reg_journey_to_username_checked() {
   reg_note "flow_${flow}_start_attempts=1"
 
   if [[ -z "$otp_code" ]]; then
-    printf 'FAIL set REGISTRATION_RACE_%s_OTP_CODE with the real OTP code delivered to the flow %s contact\n' "$flow" "$flow"
-    return 1
+    printf 'Flow %s OTP (just delivered to the contact above): ' "$flow" >/dev/tty
+    read -r -s otp_code </dev/tty >/dev/tty
+    printf '\n' >/dev/tty
   fi
+  [[ -n "$otp_code" ]] || {
+    printf 'FAIL OTP is required for flow %s\n' "$flow"
+    return 1
+  }
   body="$(jq -cn --arg code "$otp_code" '{code:$code}')"
   reg_call "$flow" otp-verify /otp/verify "$body" "$(reg_new_key "${flow}-otp")" yes
   body=''
