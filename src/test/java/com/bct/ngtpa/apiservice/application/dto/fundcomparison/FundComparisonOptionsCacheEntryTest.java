@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.RawFundComparisonOptionsData.RawFundComparisonOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -75,15 +76,14 @@ class FundComparisonOptionsCacheEntryTest {
 
   @Test
   void rejectsMissingEmptyOrBlankFundCodes() {
-    var withNull = new ArrayList<String>();
-    withNull.add(null);
-
     assertThatThrownBy(() -> entry(null)).isInstanceOf(NullPointerException.class);
     var emptyFundCodes = List.<String>of();
     assertThatThrownBy(() -> entry(emptyFundCodes)).isInstanceOf(IllegalArgumentException.class);
     var blankFundCode = List.of("FAEU", " ");
     assertThatThrownBy(() -> entry(blankFundCode)).isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> entry(withNull)).isInstanceOf(IllegalArgumentException.class);
+    var fundCodeWithNullElement = Arrays.asList((String) null);
+    assertThatThrownBy(() -> entry(fundCodeWithNullElement))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
