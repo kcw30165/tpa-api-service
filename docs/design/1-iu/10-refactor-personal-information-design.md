@@ -41,6 +41,10 @@ central `ApiExceptionHandler` consolidation (deferred workstream); PUT response 
 | D-16 | YAML is aligned with the BRD: D1 phones keep `minLength: 8` (non-blank only); D2 `mailingAddressLine1.minLength: 5` enabled (non-blank only); D3 email regex allows only letters, digits, `.`, `_`, `-`; D4 the email `minLength` rule (including the JP variant) is removed; D5 fax allows digits, space and `-` only, no maximum length in YAML (field attributes follow the TAS setting); D6 the `aeoiReminder.whenResidentialCountryChanged` rule is removed. | Nick |
 | D-17 | The GET change is breaking for the frontend; the frontend is aligned. | Nick |
 | D-18 | A group that is HIDDEN or READONLY is simply not sent by FE. Java never rejects a request because a group is absent. Absent group => unchanged. | Nick (Q-O) |
+| D-19 | Group-wide access normalization in the shared access resolver (GET and PUT): within a field group, if any field is not READONLY then all fields of the group are treated as not READONLY; if any field is REQUIRED (EDITABLE_COM) then all fields of the group are REQUIRED. A group whose fields disagree is logged at ERROR level. Reason: the config matrix is not designed to provide a group feature; in theory all fields of a group carry the same values. | Nick |
+| D-20 | FE contract for the address groups: the FE sends the entire group (4 keys) when the group is editable; when both groups are editable, any change to either group sends both groups (8 keys); a group that is not editable is not sent. Java derives the same set from the session-cached config (D-05, D-18). | Nick |
+| D-21 | `fieldGroups` is Java-only YAML under `bff-pages.pages.personalInformation.fieldGroups` (name + fields) and is not serialized to the GET response. `address.atLeastOneRequired` keeps its inline groups because the FE reads them; a guard test keeps both definitions in sync. The linter checks: unique non-blank names, non-empty known fields, no field in two groups. | Nick (Q-S) |
+| D-22 | Rule groups (`when.groups[].fields`) are read through `RuleGroupFields.of(...)`, which accepts a list or an index-keyed map. Probe 011 (Spring Boot binder harness, real YAML, HEAD 081b2d9e) showed the group `fields` bound as `LinkedHashMap`, so `address.atLeastOneRequired` did not fire when all address fields were absent; the existing unit tests build the groups as lists and did not show it. The linter uses the helper in M2.1, the validator in M2.3. Consequence for the MR: after M2.3 a PUT that submits both address groups blank returns 400 `VALIDATION_FAILED` (behavior change visible to FE). | Probe 011 |
 
 Flagged unknown U-1: whether `overseasPhoneExtension` belongs to the overseasPhone group or is standalone. Stakeholder
 confirmation is pending. Because groups are YAML-defined (D-07), the answer is a YAML-only change. Until confirmed it is
@@ -114,7 +118,7 @@ is resolved by one shared pure class, extracted from the logic `PersonalInformat
 
 Standalone fields: homeTel, hongKongMobilePhone, faxNo, emailAddress, smsLanguage (and overseasPhoneExtension, U-1).
 
-Group presence rule (D-05): required keys of a group = its fields minus the fields whose access is HIDDEN or READONLY.
+Group presence rule (D-05): after group normalization (D-19) a group is either editable or not; the required keys of an editable group are all of its fields, and a group that is not editable is never required.
 Missing required keys => 400, code `personalInformation.<group>.incomplete`, targets = the missing keys.
 A group with no key present is untouched (D-18).
 
@@ -152,6 +156,18 @@ YAML changes follow D-16.
 
 A field whose item id is absent from the config follows the existing GET mapper behaviour; sub-task 3.1 records that
 behaviour in a characterization test and the design is amended if it is not the agreed fail-safe.
+
+### 4.6 Group-wide access normalization (D-19, D-20)
+
+The config matrix assigns access per field, but the fields of a group should carry the same values. The shared access resolver therefore normalizes each group (sub-task 3.1b), for GET and PUT alike:
+
+- any field of the group is not READONLY => all fields of the group are not READONLY;
+- any field of the group is REQUIRED (EDITABLE_COM) => all fields of the group are REQUIRED;
+- a group whose fields disagree is logged at ERROR level (group name and item ids only, no member data).
+
+After normalization a group is either fully editable or fully non-editable, so D-14 (reject submitted READONLY fields) never rejects a field inside an editable group, and the presence rule of 4.2 needs no per-field exception.
+
+Open for 3.1b: how a HIDDEN field inside an otherwise editable group is treated. It is not covered by D-19 and is logged as an inconsistency until Nick confirms.
 
 ## 5. Session cache (D-11 to D-13)
 
