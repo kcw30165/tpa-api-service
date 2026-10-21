@@ -172,7 +172,7 @@ behaviour in a characterization test and the design is amended if it is not the 
 |---|---|
 | `GetMemberInfoApimRequest` | remove the `env` body field |
 | `UpdateMemberInfoApimRequest` | remove the `env` body field |
-| `UpdateMemberInfoRequest` | remove the `env` body field |
+| `UpdateMemberInfoRequest` | deleted: the record had no references (removed in M1.5) |
 | `ApimMemberInfoAdapter`, `ApimUpdatePersonalInformationAdapter` | stop populating `.accountEnv(...)` in the body; routing and credential context unchanged |
 
 The adapter's response matching on `policy-no`, `cert-no`, `env` stays (D-02).
