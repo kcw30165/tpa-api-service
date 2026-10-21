@@ -37,6 +37,7 @@ class GetMemberInfoApimRequestTest {
   void declaresNoEnvironmentField() {
     assertThat(
             Arrays.stream(GetMemberInfoApimRequest.class.getDeclaredFields()).map(Field::getName))
+        .isNotEmpty()
         .doesNotContain("accountEnv", "env");
   }
 }

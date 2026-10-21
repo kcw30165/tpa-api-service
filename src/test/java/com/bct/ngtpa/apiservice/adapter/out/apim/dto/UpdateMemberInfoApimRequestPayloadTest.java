@@ -41,6 +41,7 @@ class UpdateMemberInfoApimRequestPayloadTest {
     assertThat(
             Arrays.stream(UpdateMemberInfoApimRequest.class.getDeclaredFields())
                 .map(Field::getName))
+        .isNotEmpty()
         .doesNotContain("accountEnv", "env");
   }
 }
