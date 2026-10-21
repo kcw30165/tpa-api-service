@@ -134,31 +134,39 @@ public class PersonalInformationUpdateYamlValidator {
       return;
     }
     String type = rule.getType();
-    if (!"required".equals(type) && !fieldSubmitted) {
+    if (!fieldSubmitted) {
       return;
     }
+    boolean blank = isBlankValue(value);
     boolean failed =
         switch (type) {
-          case "required" -> isBlankValue(value);
+          case "required" -> blank;
           case "minLength" ->
-              stringValue(value).length()
-                  < intValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType), 0);
+              !blank
+                  && stringValue(value).length()
+                      < intValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType), 0);
           case "maxLength" ->
-              stringValue(value).length()
-                  > intValue(
-                      resolveRuleValue(rule, accountEnv, trustCode, schemeType), Integer.MAX_VALUE);
+              !blank
+                  && stringValue(value).length()
+                      > intValue(
+                          resolveRuleValue(rule, accountEnv, trustCode, schemeType),
+                          Integer.MAX_VALUE);
           case "pattern" ->
-              !Pattern.compile(
-                      stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType)))
-                  .matcher(stringValue(value))
-                  .matches();
+              !blank
+                  && !Pattern.compile(
+                          stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType)))
+                      .matcher(stringValue(value))
+                      .matches();
           case "email" ->
-              !isValidEmail(
-                  stringValue(value), resolveRuleValue(rule, accountEnv, trustCode, schemeType));
+              !blank
+                  && !isValidEmail(
+                      stringValue(value),
+                      resolveRuleValue(rule, accountEnv, trustCode, schemeType));
           case "blockedAddress" ->
-              isBlockedAddress(
-                  stringValue(value),
-                  stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType)));
+              !blank
+                  && isBlockedAddress(
+                      stringValue(value),
+                      stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType)));
           default -> false;
         };
     if (failed) {

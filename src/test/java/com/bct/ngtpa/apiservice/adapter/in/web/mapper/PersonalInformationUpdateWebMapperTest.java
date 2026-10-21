@@ -202,6 +202,37 @@ class PersonalInformationUpdateWebMapperTest {
   }
 
   @Test
+  void updateMapperNormalizesNullTextValueToEmptyStringForOptionalField() {
+    PersonalInformationUpdateWebMapper mapper =
+        new PersonalInformationUpdateWebMapper(
+            properties(
+                section(field("displayName", "display-name", null, "text", null, null, false))));
+    Map<String, Object> fields = new LinkedHashMap<>();
+    fields.put("displayName", null);
+    var command =
+        mapper.toCommand(false, new UpdatePersonalInformationRequest("1.0", false, fields));
+    assertThat(command.updateFields()).containsEntry("display-name", "");
+  }
+
+  @Test
+  void updateMapperOmitsNullValueForNonTextLikeOptionalField() {
+    PersonalInformationUpdateWebMapper mapper =
+        new PersonalInformationUpdateWebMapper(
+            properties(
+                section(
+                    field("applyToAll", "apply-all", "boolean", "checkbox", null, null, false),
+                    field("displayName", "display-name", null, "text", null, null, false))));
+    Map<String, Object> fields = new LinkedHashMap<>();
+    fields.put("applyToAll", null);
+    fields.put("displayName", "Nick");
+    var command =
+        mapper.toCommand(false, new UpdatePersonalInformationRequest("1.0", false, fields));
+    assertThat(command.updateFields())
+        .containsEntry("display-name", "Nick")
+        .doesNotContainKey("apply-all");
+  }
+
+  @Test
   void errorMapperReturnsDefaultBusinessErrorWhenRawErrorsMissing() {
     PersonalInformationUpdateErrorMapper mapper =
         new PersonalInformationUpdateErrorMapper(properties(section()));

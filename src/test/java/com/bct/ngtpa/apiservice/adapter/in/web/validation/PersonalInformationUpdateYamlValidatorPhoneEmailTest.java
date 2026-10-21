@@ -172,8 +172,13 @@ class PersonalInformationUpdateYamlValidatorPhoneEmailTest {
   }
 
   @Test
-  void blankEmailReturnsRequiredOnlyAndInvalidEmailReturnsEmailError() {
-    List<ApiError> blankErrors = validate(Map.of());
+  void absentEmailProducesNoErrors() {
+    assertThat(validate(Map.of())).isEmpty();
+  }
+
+  @Test
+  void blankSubmittedEmailReturnsRequiredOnlyAndInvalidEmailReturnsEmailError() {
+    List<ApiError> blankErrors = validate(Map.of("emailAddress", ""));
     assertThat(blankErrors)
         .anySatisfy(
             error ->

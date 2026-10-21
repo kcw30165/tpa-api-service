@@ -58,6 +58,12 @@ public class PersonalInformationUpdateWebMapper {
       return;
     }
     validateSubmittedValue(field, value);
+    if (value == null) {
+      if (isTextLike(field)) {
+        mapped.put(dataKey, "");
+      }
+      return;
+    }
     mapped.put(dataKey, value);
   }
 

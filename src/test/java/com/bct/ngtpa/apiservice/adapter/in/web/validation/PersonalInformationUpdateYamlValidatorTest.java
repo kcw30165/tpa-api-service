@@ -112,13 +112,13 @@ class PersonalInformationUpdateYamlValidatorTest {
   }
 
   @Test
-  void nullRequestFieldsMapUsesEmptyDefaultAndStillEvaluatesRequired() {
+  void nullRequestFieldsMapUsesEmptyDefaultAndNeverEvaluatesRequired() {
     PageSchemaProperties page = pageOf(section(field("f1", rule("v1", "required", null))));
     UpdatePersonalInformationRequest request =
         new UpdatePersonalInformationRequest("1.0", false, null);
     List<ApiError> errors =
         newValidator(propertiesOf(page)).validate(request, "en", "env1", "trust1", "SCHEME_A");
-    assertThat(errors).hasSize(1);
+    assertThat(errors).isEmpty();
   }
 
   // ----- field skip conditions --------------------------------------------------
@@ -186,11 +186,20 @@ class PersonalInformationUpdateYamlValidatorTest {
   // ----- field rules: required/minLength/maxLength/pattern/email/blockedAddress -----
 
   @Test
-  void requiredRuleFailsWhenFieldMissingEntirely() {
+  void requiredRuleNeverFailsWhenFieldIsNotSubmittedAtAll() {
     PageSchemaProperties page = pageOf(section(field("f1", rule("v1", "required", null))));
     List<ApiError> errors =
         newValidator(propertiesOf(page))
             .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+    assertThat(errors).isEmpty();
+  }
+
+  @Test
+  void requiredRuleFailsWhenFieldIsSubmittedBlank() {
+    PageSchemaProperties page = pageOf(section(field("f1", rule("v1", "required", null))));
+    List<ApiError> errors =
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of("f1", "")), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).hasSize(1);
     assertThat(errors.get(0).type()).isEqualTo("FIELD");
     assertThat(errors.get(0).targets()).containsExactly("f1");
@@ -480,7 +489,7 @@ class PersonalInformationUpdateYamlValidatorTest {
     page.setDisplay(Map.of("myMessageCode", Map.of("en", "Resolved via display config")));
     List<ApiError> errors =
         newValidator(propertiesOf(page))
-            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+            .validate(requestOf(Map.of("f1", "")), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).hasSize(1);
     assertThat(errors.get(0).message()).isEqualTo("Resolved via display config");
   }
@@ -492,7 +501,7 @@ class PersonalInformationUpdateYamlValidatorTest {
     PageSchemaProperties page = pageOf(section(field("f1", validationRule)));
     List<ApiError> errors =
         newValidatorNoDisplayResolver(propertiesOf(page))
-            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+            .validate(requestOf(Map.of("f1", "")), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).hasSize(1);
     assertThat(errors.get(0).message()).isEqualTo("Inline fallback message");
   }
@@ -504,7 +513,7 @@ class PersonalInformationUpdateYamlValidatorTest {
     PageSchemaProperties page = pageOf(section(field("f1", validationRule)));
     List<ApiError> errors =
         newValidatorNoDisplayResolver(propertiesOf(page))
-            .validate(requestOf(Map.of()), "fr", "env1", "trust1", "SCHEME_A");
+            .validate(requestOf(Map.of("f1", "")), "fr", "env1", "trust1", "SCHEME_A");
     assertThat(errors).hasSize(1);
     assertThat(errors.get(0).message()).isEqualTo("English message");
   }
@@ -516,7 +525,7 @@ class PersonalInformationUpdateYamlValidatorTest {
     PageSchemaProperties page = pageOf(section(field("f1", validationRule)));
     List<ApiError> errors =
         newValidatorNoDisplayResolver(propertiesOf(page))
-            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+            .validate(requestOf(Map.of("f1", "")), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).hasSize(1);
     assertThat(errors.get(0).message()).isEqualTo("my.error.code");
     assertThat(errors.get(0).code()).isEqualTo("my.error.code");
