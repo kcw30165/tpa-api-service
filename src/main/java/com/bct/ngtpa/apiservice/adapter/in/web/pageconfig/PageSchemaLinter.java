@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.pageconfig;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,8 @@ public class PageSchemaLinter {
   private static final String PAGE_VARIANT_PREFIX = ": page variant ";
 
   private static final String IN_RULE_SUFFIX = " in rule ";
+
+  private static final String FIELD_GROUP_PREFIX = ": field group ";
 
   private static final Set<String> SUPPORTED_TYPES =
       Set.of(
@@ -49,6 +52,7 @@ public class PageSchemaLinter {
     Set<String> fieldIds = collectFieldIds(page);
     validateFieldValidations(result, pageKey, fieldIds, page);
     validatePageLevelValidations(result, pageKey, fieldIds, page);
+    validateFieldGroups(result, pageKey, fieldIds, page);
   }
 
   private static Set<String> collectFieldIds(PageSchemaProperties page) {
@@ -84,6 +88,76 @@ public class PageSchemaLinter {
     if (page.getValidations() == null) return;
     for (ValidationRuleProperties v : page.getValidations()) {
       validateRule(result, pageKey, fieldIds, v);
+    }
+  }
+
+  private static void validateFieldGroups(
+      LintResult result, String pageKey, Set<String> fieldIds, PageSchemaProperties page) {
+    Set<String> names = new HashSet<>();
+    Map<String, String> owners = new HashMap<>();
+    for (FieldGroupProperties group : page.getFieldGroups()) {
+      validateFieldGroup(result, pageKey, fieldIds, group, names, owners);
+    }
+  }
+
+  private static void validateFieldGroup(
+      LintResult result,
+      String pageKey,
+      Set<String> fieldIds,
+      FieldGroupProperties group,
+      Set<String> names,
+      Map<String, String> owners) {
+    if (group == null) {
+      result.addError(pageKey + ": field group is null");
+      return;
+    }
+    String name = group.getName();
+    if (isBlank(name)) {
+      result.addError(pageKey + ": field group has blank name");
+    } else if (!names.add(name)) {
+      result.addError(pageKey + FIELD_GROUP_PREFIX + name + " is defined more than once");
+    }
+    if (group.getFields().isEmpty()) {
+      result.addError(pageKey + FIELD_GROUP_PREFIX + name + " has no fields");
+      return;
+    }
+    for (String ref : group.getFields()) {
+      validateFieldGroupMember(result, pageKey, fieldIds, String.valueOf(name), ref, owners);
+    }
+  }
+
+  private static void validateFieldGroupMember(
+      LintResult result,
+      String pageKey,
+      Set<String> fieldIds,
+      String groupName,
+      String ref,
+      Map<String, String> owners) {
+    if (isBlank(ref)) {
+      result.addError(pageKey + FIELD_GROUP_PREFIX + groupName + " contains a blank field");
+      return;
+    }
+    if (!fieldIds.contains(ref)) {
+      result.addError(
+          pageKey + FIELD_GROUP_PREFIX + groupName + " references unknown field " + ref);
+    }
+    String previous = owners.putIfAbsent(ref, groupName);
+    if (previous == null) {
+      return;
+    }
+    if (previous.equals(groupName)) {
+      result.addError(
+          pageKey + ": field " + ref + " is listed more than once in field group " + groupName);
+    } else {
+      result.addError(
+          pageKey
+              + ": field "
+              + ref
+              + " belongs to more than one field group ("
+              + previous
+              + ", "
+              + groupName
+              + ")");
     }
   }
 
@@ -224,13 +298,8 @@ public class PageSchemaLinter {
       if (group == null) {
         continue;
       }
-      Object rawFields = group.get("fields");
-      if (!(rawFields instanceof List<?> fields)) {
-        continue;
-      }
-      for (Object ref : fields) {
-        validateReferencedField(
-            result, pageKey, fieldIds, ruleId, ref == null ? null : ref.toString());
+      for (String ref : RuleGroupFields.of(group.get("fields"))) {
+        validateReferencedField(result, pageKey, fieldIds, ruleId, ref);
       }
     }
   }

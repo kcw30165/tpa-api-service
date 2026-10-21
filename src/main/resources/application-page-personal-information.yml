@@ -762,6 +762,28 @@ bff-pages:
         reviewMessageCode: personalInformation.confirmation.reviewMessage
         beforeLabelCode: personalInformation.confirmation.beforeLabel
         afterLabelCode: personalInformation.confirmation.afterLabel
+      fieldGroups:
+        - name: residentialAddress
+          fields:
+            - residentialAddressLine1
+            - residentialAddressLine2
+            - residentialAddressLine3
+            - residentialCountry
+        - name: mailingAddress
+          fields:
+            - mailingAddressLine1
+            - mailingAddressLine2
+            - mailingAddressLine3
+            - mailingCountry
+        - name: businessPhone
+          fields:
+            - hongKongBusinessPhone
+            - hongKongBusinessPhoneExtension
+        - name: overseasPhone
+          fields:
+            - overseasCountryCode
+            - overseasAreaCode
+            - overseasPhoneNumber
       validations:
         - id: address.atLeastOneRequired
           type: groupRequirement
