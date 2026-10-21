@@ -52,7 +52,6 @@ class ApimPersonalInformationAdapterTest {
     assertThat(body.getPolicyNo()).isEqualTo("POL-1");
     assertThat(body.getCertNo()).isEqualTo("CERT-1");
     assertThat(body.getLoginUserId()).isEqualTo("USER-1");
-    assertThat(body.getAccountEnv()).isEqualTo("JP");
     assertThat(result.getPayload()).containsOnlyKeys("config", "data");
     Map<?, ?> config = (Map<?, ?>) result.getPayload().get("config");
     Map<?, ?> data = (Map<?, ?>) result.getPayload().get("data");
@@ -61,7 +60,7 @@ class ApimPersonalInformationAdapterTest {
   }
 
   @Test
-  void serializedRequestRetainsExactTrpGetMemberInfoFieldContractAndNoFrontendAuthority()
+  void serializedRequestContainsExactTrpGetMemberInfoFieldsWithoutEnvAndNoFrontendAuthority()
       throws Exception {
     AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
     new ApimMemberInfoAdapter(capturing(captured, new AtomicInteger(), emptyEnvelope()))
@@ -73,7 +72,9 @@ class ApimPersonalInformationAdapterTest {
     assertThat(node.get("cert-no").asText()).isEqualTo("CERT-1");
     assertThat(node.get("login-user-id").asText()).isEqualTo("USER-1");
     assertThat(node.get("login-user-role").asText()).isEqualTo("role_user_mbr");
-    assertThat(node.get("env").asText()).isEqualTo("JP");
+    assertThat(node.size()).isEqualTo(4);
+    assertThat(node.has("env")).isFalse();
+    assertThat(node.has("accountEnv")).isFalse();
     assertThat(node.has("accountRef")).isFalse();
     assertThat(node.has("actorUserRole")).isFalse();
     assertThat(node.has("databaseScope")).isFalse();
