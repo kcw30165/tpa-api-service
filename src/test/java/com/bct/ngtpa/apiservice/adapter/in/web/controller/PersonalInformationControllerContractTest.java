@@ -39,7 +39,7 @@ import reactor.core.publisher.Mono;
 class PersonalInformationControllerContractTest {
 
   @Test
-  void getPersonalInformationReturns200WithGenericFormPageResponse() {
+  void getPersonalInformationReturns200WithMutationResponseResultData() {
     var result = new PersonalInformationResult(Map.of(), Map.of());
     GetPersonalInformationUseCase useCase = command -> Mono.just(result);
     PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
@@ -58,8 +58,8 @@ class PersonalInformationControllerContractTest {
 
     assertEquals(true, body.success());
     assertEquals(ApiStatus.SUCCESS, body.status());
-    assertEquals("personalInformationPage", body.page().id());
-    assertEquals("personalInformationForm", body.form().id());
+    assertEquals("personalInformationPage", body.result().data().page().id());
+    assertEquals("personalInformationForm", body.result().data().form().id());
     assertTrue(body.errors().isEmpty());
   }
 
@@ -130,7 +130,8 @@ class PersonalInformationControllerContractTest {
                         new RequestHeaderContext("ACC-123", "req-1", "en")))
             .block();
 
-    assertEquals(expected, actual);
+    assertEquals(expected.page(), actual.result().data().page());
+    assertEquals(expected.form(), actual.result().data().form());
     verify(mapper).toFormPageResponse(result, "en", "JP", "JPM", "OE");
   }
 

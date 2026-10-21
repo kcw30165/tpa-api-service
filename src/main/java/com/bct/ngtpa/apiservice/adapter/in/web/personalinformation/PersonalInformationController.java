@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
@@ -49,7 +50,7 @@ public class PersonalInformationController {
   private final PersonalInformationUpdateYamlValidator validator;
 
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<FormPageResponse<FormSchemaResponse>> getPersonalInformation(
+  public Mono<MutationResponse<PersonalInformationResultResponse>> getPersonalInformation(
       @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false)
           String acceptLanguage) {
     return Mono.deferContextual(
@@ -71,12 +72,13 @@ public class PersonalInformationController {
                                 portalAccessContext.actor().actorUserRole()))
                         .map(
                             result ->
-                                personalInformationWebMapper.toFormPageResponse(
-                                    result,
-                                    language,
-                                    accountEnv(portalAccessContext),
-                                    trustCode(portalAccessContext),
-                                    schemeType(portalAccessContext)));
+                                success(
+                                    personalInformationWebMapper.toFormPageResponse(
+                                        result,
+                                        language,
+                                        accountEnv(portalAccessContext),
+                                        trustCode(portalAccessContext),
+                                        schemeType(portalAccessContext))));
                   });
         });
   }
@@ -123,6 +125,12 @@ public class PersonalInformationController {
                                   .execute(command)
                                   .map(responseMapper::toResponse);
                             })));
+  }
+
+  private static MutationResponse<PersonalInformationResultResponse> success(
+      FormPageResponse<FormSchemaResponse> formPage) {
+    return MutationResponse.success(
+        ApiStatus.SUCCESS, PersonalInformationResultResponse.from(formPage), List.of());
   }
 
   private String requireAccountRef(PortalAccessContext context) {

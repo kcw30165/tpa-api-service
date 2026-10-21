@@ -86,7 +86,7 @@ class ApiResponseExceptionHandlingBoundaryTest {
     assertTrue(
         containsIgnoringWhitespace(
             personalInformationController,
-            "Mono<FormPageResponse<FormSchemaResponse>> getPersonalInformation"));
+            "Mono<MutationResponse<PersonalInformationResultResponse>> getPersonalInformation"));
   }
 
   @Test

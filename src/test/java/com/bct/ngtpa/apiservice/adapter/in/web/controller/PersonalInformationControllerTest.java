@@ -14,7 +14,9 @@ import com.bct.ngtpa.apiservice.adapter.in.web.personalinformation.PersonalInfor
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PageResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
@@ -52,7 +54,7 @@ class PersonalInformationControllerTest {
     when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE")))
         .thenReturn(response("zh_HK", "個人資料"));
 
-    FormPageResponse<FormSchemaResponse> response =
+    MutationResponse<PersonalInformationResultResponse> response =
         controller(useCase, mapper, resolver(context("ACC-123")))
             .getPersonalInformation("en")
             .contextWrite(
@@ -64,10 +66,10 @@ class PersonalInformationControllerTest {
 
     assertEquals(true, response.success());
     assertEquals(ApiStatus.SUCCESS, response.status());
-    assertEquals("personalInformationPage", response.page().id());
-    assertEquals("個人資料", response.page().title());
-    assertEquals("zh_HK", response.page().lang());
-    assertEquals("personalInformationForm", response.form().id());
+    assertEquals("personalInformationPage", response.result().data().page().id());
+    assertEquals("個人資料", response.result().data().page().title());
+    assertEquals("zh_HK", response.result().data().page().lang());
+    assertEquals("personalInformationForm", response.result().data().form().id());
     assertTrue(response.messages().isEmpty());
     assertTrue(response.errors().isEmpty());
     assertEquals("zh_HK", captured.get().language());
