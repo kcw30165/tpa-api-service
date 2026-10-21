@@ -48,7 +48,6 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
     return UpdateMemberInfoApimRequest.builder()
         .policyNo(command.policyNo())
         .certNo(command.certNo())
-        .accountEnv(command.accountEnv())
         .updateFields(command.updateFields())
         .loginUserId(command.userId())
         .loginUserRole(command.userRole().toApimValue())

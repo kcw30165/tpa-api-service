@@ -16,9 +16,6 @@ public class UpdateMemberInfoApimRequest {
   @JsonProperty("cert-no")
   private String certNo;
 
-  @JsonProperty("env")
-  private String accountEnv;
-
   @JsonProperty("update-fields")
   private Map<String, Object> updateFields;
 

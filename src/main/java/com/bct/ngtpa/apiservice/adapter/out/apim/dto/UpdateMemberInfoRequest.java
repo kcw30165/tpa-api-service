@@ -6,7 +6,6 @@ import java.util.Map;
 public record UpdateMemberInfoRequest(
     @JsonProperty("policy-no") String policyNo,
     @JsonProperty("cert-no") String certNo,
-    @JsonProperty("env") String env,
     @JsonProperty("update-fields") Map<String, Object> updateFields,
     @JsonProperty("login-user-id") String loginUserId,
     @JsonProperty("login-user-role") String loginUserRole) {}
