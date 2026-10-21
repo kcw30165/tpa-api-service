@@ -1,693 +1,701 @@
 {
-	"page": {
-		"id": "personalInformationPage",
-		"title": "Personal Information",
-		"lang": "en"
-	},
-	"form": {
-		"id": "personalInformationForm",
-		"version": "1.0",
-		"mode": "view",
-		"sections": [
-			{
-				"id": "addressInformation",
-				"label": "Address Information",
-				"displayOrder": 10,
-				"fields": [
-					{
-						"name": "residentialAddressLine1",
-						"label": "Residential Address Line 1",
-						"dataType": "string",
-						"controlType": "text",
-						"value": "Flat 15B, Block 2, Garden Villa Estate",
-						"originalValue": "Flat 15B, Block 2, Garden Villa Estate",
-						"readonly": false,
-						"required": true,
-						"maxLength": 40,
-						"placeholder": "Enter residential address line 1",
-						"displayOrder": 10,
-						"validations": [
-							{
-								"type": "required",
-								"code": "personalInformation.residentialAddress.required",
-								"message": "Please input a residential address."
-							},
-							{
-								"type": "minLength",
-								"value": 5,
-								"when": {
-									"fieldRequired": true
-								},
-								"code": "personalInformation.residentialAddress.invalid",
-								"message": "Please input a valid residential address."
-							},
-							{
-								"type": "blockedAddress",
-								"code": "personalInformation.address.poBoxBlocked",
-								"message": "PO Box address will not be accepted, please re-enter your address as our record."
-							}
-						]
-					},
-					{
-						"name": "residentialAddressLine2",
-						"label": "Residential Address Line 2",
-						"dataType": "string",
-						"controlType": "text",
-						"value": "Tai Po",
-						"originalValue": "Tai Po",
-						"readonly": false,
-						"required": false,
-						"maxLength": 40,
-						"placeholder": "Enter residential address line 2",
-						"displayOrder": 20
-					},
-					{
-						"name": "residentialAddressLine3",
-						"label": "Residential Address Line 3",
-						"dataType": "string",
-						"controlType": "text",
-						"value": "New Territories",
-						"originalValue": "New Territories",
-						"readonly": false,
-						"required": false,
-						"maxLength": 40,
-						"placeholder": "Enter residential address line 3",
-						"displayOrder": 30
-					},
-					{
-						"name": "residentialCountry",
-						"label": "Country",
-						"dataType": "string",
-						"controlType": "select",
-						"value": "HK",
-						"originalValue": "HK",
-						"displayValue": "Hong Kong",
-						"readonly": false,
-						"required": true,
-						"optionSource": "countries",
-						"placeholder": "Country",
-						"displayOrder": 40,
-						"validations": [
-							{
-								"type": "required",
-								"code": "personalInformation.residentialCountry.required",
-								"message": "Please select a country."
-							}
-						]
-					},
-					{
-						"name": "mailingAddressSameAsResidential",
-						"label": "Same as Residential Address",
-						"dataType": "boolean",
-						"controlType": "checkbox",
-						"value": true,
-						"originalValue": true,
-						"readonly": false,
-						"required": false,
-						"displayOrder": 50,
-						"copyWhenChecked": {
-							"fromTo": {
-								"residentialAddressLine1": "mailingAddressLine1",
-								"residentialAddressLine2": "mailingAddressLine2",
-								"residentialAddressLine3": "mailingAddressLine3",
-								"residentialCountry": "mailingCountry"
-							}
-						}
-					},
-					{
-						"name": "mailingAddressLine1",
-						"label": "Correspondence Address Line 1",
-						"dataType": "string",
-						"controlType": "text",
-						"value": "Flat 15B, Block 2, Garden Villa Estate",
-						"originalValue": "Flat 15B, Block 2, Garden Villa Estate",
-						"readonly": false,
-						"required": false,
-						"maxLength": 40,
-						"placeholder": "Enter correspondence address line 1",
-						"displayOrder": 60,
-						"validations": [
-							{
-								"type": "minLength",
-								"value": 5,
-								"when": {
-									"fieldRequired": true
-								},
-								"code": "personalInformation.mailingAddress.invalid",
-								"message": "Please input a valid correspondence address."
-							},
-							{
-								"type": "blockedAddress",
-								"code": "personalInformation.address.poBoxBlocked",
-								"message": "PO Box address will not be accepted, please re-enter your address as our record."
-							}
-						]
-					},
-					{
-						"name": "mailingAddressLine2",
-						"label": "Correspondence Address Line 2",
-						"dataType": "string",
-						"controlType": "text",
-						"value": "Tai Po",
-						"originalValue": "Tai Po",
-						"readonly": false,
-						"required": false,
-						"maxLength": 40,
-						"placeholder": "Enter correspondence address line 2",
-						"displayOrder": 70
-					},
-					{
-						"name": "mailingAddressLine3",
-						"label": "Correspondence Address Line 3",
-						"dataType": "string",
-						"controlType": "text",
-						"value": "New Territories",
-						"originalValue": "New Territories",
-						"readonly": false,
-						"required": false,
-						"maxLength": 40,
-						"placeholder": "Enter correspondence address line 3",
-						"displayOrder": 80
-					},
-					{
-						"name": "mailingCountry",
-						"label": "Country",
-						"dataType": "string",
-						"controlType": "select",
-						"value": "HK",
-						"originalValue": "HK",
-						"displayValue": "Hong Kong",
-						"readonly": false,
-						"required": false,
-						"optionSource": "countries",
-						"placeholder": "Country",
-						"displayOrder": 90
-					}
-				]
-			},
-			{
-				"id": "localContactNumber",
-				"label": "Phone Numbers",
-				"displayOrder": 20,
-				"fields": [
-					{
-						"name": "hongKongBusinessPhone",
-						"label": "Hong Kong Business Telephone Number",
-						"dataType": "string",
-						"controlType": "tel",
-						"value": "21234567",
-						"originalValue": "21234567",
-						"readonly": false,
-						"required": false,
-						"maxLength": 8,
-						"pattern": "^[0-9]*$",
-						"placeholder": "Enter 8-digit phone number",
-						"displayOrder": 10,
-						"validations": [
-							{
-								"type": "pattern",
-								"code": "personalInformation.businessPhone.invalid",
-								"message": "Please input a valid Hong Kong Business Telephone Number."
-							}
-						]
-					},
-					{
-						"name": "hongKongBusinessPhoneExtension",
-						"label": "Ext.",
-						"dataType": "string",
-						"controlType": "text",
-						"value": "1234",
-						"originalValue": "1234",
-						"readonly": false,
-						"required": false,
-						"maxLength": 4,
-						"pattern": "^[0-9]*$",
-						"placeholder": "Ext.",
-						"displayOrder": 20,
-						"validations": [
-							{
-								"type": "pattern",
-								"code": "personalInformation.businessPhoneExtension.invalid",
-								"message": "Please input a valid Ext."
-							}
-						]
-					},
-					{
-						"name": "homeTel",
-						"label": "Hong Kong Home Telephone Number",
-						"dataType": "string",
-						"controlType": "tel",
-						"value": "",
-						"originalValue": "",
-						"readonly": false,
-						"required": false,
-						"maxLength": 8,
-						"pattern": "^[0-9]*$",
-						"placeholder": "Enter 8-digit home telephone number",
-						"displayOrder": 30,
-						"validations": [
-							{
-								"type": "pattern",
-								"code": "personalInformation.homeTel.invalid",
-								"message": "Please input a valid Hong Kong Home Telephone Number."
-							}
-						]
-					},
-					{
-						"name": "hongKongMobilePhone",
-						"label": "Hong Kong Mobile Phone Number",
-						"dataType": "string",
-						"controlType": "tel",
-						"value": "98765432",
-						"originalValue": "98765432",
-						"readonly": false,
-						"required": false,
-						"maxLength": 8,
-						"pattern": "^[4-9][0-9]{7}$",
-						"placeholder": "Enter 8-digit mobile number",
-						"displayOrder": 40,
-						"validations": [
-							{
-								"type": "pattern",
-								"code": "personalInformation.mobilePhone.invalid",
-								"message": "Please input a valid Hong Kong Mobile Telephone Number."
-							}
-						]
-					},
-					{
-						"name": "faxNo",
-						"label": "Fax No.",
-						"dataType": "string",
-						"controlType": "text",
-						"value": "",
-						"originalValue": "",
-						"readonly": false,
-						"required": false,
-						"pattern": "^[0-9+\\- ]*$",
-						"placeholder": "Enter fax number",
-						"displayOrder": 50,
-						"validations": [
-							{
-								"type": "pattern",
-								"code": "personalInformation.faxNo.invalid",
-								"message": "Please input a valid Fax No."
-							}
-						]
-					}
-				]
-			},
-			{
-				"id": "overseasContacts",
-				"label": "Overseas Contact",
-				"displayOrder": 30,
-				"fields": [
-					{
-						"name": "overseasCountryCode",
-						"label": "Country Code",
-						"dataType": "string",
-						"controlType": "select",
-						"value": "852",
-						"originalValue": "852",
-						"displayValue": "+852 Hong Kong",
-						"readonly": false,
-						"required": false,
-						"optionSource": "countryCallingCodes",
-						"placeholder": "Country Code",
-						"displayOrder": 10,
-						"validations": [
-							{
-								"type": "pattern",
-								"value": "^[0-9]*$",
-								"code": "personalInformation.overseasCountryCode.invalid",
-								"message": "Please input a valid Country Code."
-							}
-						]
-					},
-					{
-						"name": "overseasAreaCode",
-						"label": "Area Code",
-						"dataType": "string",
-						"controlType": "text",
-						"value": "212",
-						"originalValue": "212",
-						"readonly": false,
-						"required": false,
-						"pattern": "^[0-9]*$",
-						"placeholder": "Area Code",
-						"displayOrder": 20,
-						"validations": [
-							{
-								"type": "pattern",
-								"code": "personalInformation.overseasAreaCode.invalid",
-								"message": "Please input a valid Area Code."
-							}
-						]
-					},
-					{
-						"name": "overseasPhoneNumber",
-						"label": "Phone Number",
-						"dataType": "string",
-						"controlType": "tel",
-						"value": "5550123",
-						"originalValue": "5550123",
-						"readonly": false,
-						"required": false,
-						"maxLength": 17,
-						"pattern": "^[0-9]*$",
-						"placeholder": "Phone Number",
-						"displayOrder": 30,
-						"validations": [
-							{
-								"type": "pattern",
-								"code": "personalInformation.overseasPhoneNumber.invalid",
-								"message": "Please input a valid Overseas Phone Number."
-							}
-						]
-					}
-				]
-			},
-			{
-				"id": "electronicContacts",
-				"label": "Email Contact",
-				"displayOrder": 40,
-				"fields": [
-					{
-						"name": "emailAddress",
-						"label": "Email Address",
-						"dataType": "string",
-						"controlType": "email",
-						"value": "john.doe@example.com",
-						"originalValue": "john.doe@example.com",
-						"readonly": false,
-						"required": true,
-						"maxLength": 120,
-						"placeholder": "Enter email address",
-						"displayOrder": 10,
-						"validations": [
-							{
-								"type": "required",
-								"code": "personalInformation.email.required",
-								"message": "Please provide a valid email address."
-							},
-							{
-								"type": "email",
-								"code": "personalInformation.email.invalid",
-								"message": "Please provide a valid email address."
-							}
-						]
-					}
-				]
-			},
-			{
-				"id": "communicationSettings",
-				"label": "Communication Settings",
-				"displayOrder": 50,
-				"fields": [
-					{
-						"name": "smsLanguage",
-						"label": "Language Selection of SMS (Optional)",
-						"dataType": "string",
-						"controlType": "radio",
-						"value": "EN",
-						"originalValue": "EN",
-						"displayValue": "English",
-						"readonly": false,
-						"required": false,
-						"optionSource": "smsLanguages",
-						"displayOrder": 10
-					}
-				]
-			},
-			{
-				"id": "importantNotes",
-				"label": "Important Notes",
-				"displayOrder": 60,
-				"fields": [
-					{
-						"name": "importantNotes",
-						"label": "Important Notes",
-						"dataType": "array",
-						"controlType": "noteList",
-						"value": [
-							"Please remember to submit your AEOI Self-Certificate by clicking Self Certification for Tax Residency function."
-						],
-						"readonly": true,
-						"required": false,
-						"displayOrder": 10
-					}
-				]
-			},
-			{
-				"id": "controlInformation",
-				"label": "Control Information",
-				"displayOrder": 70,
-				"fields": [
-					{
-						"name": "applyToAllMemberAccounts",
-						"label": "Apply update to all member accounts under the plan",
-						"dataType": "boolean",
-						"controlType": "checkbox",
-						"value": true,
-						"originalValue": true,
-						"readonly": true,
-						"required": false,
-						"displayOrder": 10
-					}
-				]
-			}
-		],
-		"validationRules": [
-			{
-				"id": "address.atLeastOneRequired",
-				"type": "groupRequirement",
-				"severity": "error",
-				"when": {
-					"operator": "allGroupsEmpty",
-					"groups": [
-						{
-							"id": "residentialAddress",
-							"existsWhen": {
-								"field": "residentialAddressLine1",
-								"operator": "notBlank"
-							}
-						},
-						{
-							"id": "mailingAddress",
-							"existsWhen": {
-								"field": "mailingAddressLine1",
-								"operator": "notBlank"
-							}
-						}
-					]
-				},
-				"then": {
-					"operator": "fail",
-					"targets": [
-						"residentialAddressLine1",
-						"mailingAddressLine1"
-					]
-				},
-				"code": "personalInformation.address.atLeastOneRequired",
-				"message": "Please input a residential address or correspondence address."
-			},
-			{
-				"id": "residentialAddress.completeWhenStarted",
-				"type": "conditionalRequired",
-				"severity": "error",
-				"when": {
-					"operator": "notBlank",
-					"field": "residentialAddressLine1"
-				},
-				"then": {
-					"operator": "allRequired",
-					"fields": [
-						"residentialAddressLine1",
-						"residentialCountry"
-					],
-					"targets": [
-						"residentialAddressLine1",
-						"residentialCountry"
-					]
-				},
-				"code": "personalInformation.residentialAddress.incomplete",
-				"message": "Please input a residential address."
-			},
-			{
-				"id": "mailingAddress.completeWhenStarted",
-				"type": "conditionalRequired",
-				"severity": "error",
-				"when": {
-					"operator": "notBlank",
-					"field": "mailingAddressLine1"
-				},
-				"then": {
-					"operator": "allRequired",
-					"fields": [
-						"mailingAddressLine1",
-						"mailingCountry"
-					],
-					"targets": [
-						"mailingAddressLine1",
-						"mailingCountry"
-					]
-				},
-				"code": "personalInformation.mailingAddress.incomplete",
-				"message": "Please input a correspondence address."
-			},
-			{
-				"id": "businessPhone.requiredWhenExtensionPresent",
-				"type": "conditionalRequired",
-				"severity": "error",
-				"when": {
-					"operator": "notBlank",
-					"field": "hongKongBusinessPhoneExtension"
-				},
-				"then": {
-					"operator": "required",
-					"field": "hongKongBusinessPhone",
-					"targets": [
-						"hongKongBusinessPhone"
-					]
-				},
-				"code": "personalInformation.businessPhone.requiredWhenExtensionPresent",
-				"message": "Please input a valid Hong Kong Business Phone Number."
-			},
-			{
-				"id": "overseasCountryCode.requiredWhenPhonePresent",
-				"type": "conditionalRequired",
-				"severity": "error",
-				"when": {
-					"operator": "notBlank",
-					"field": "overseasPhoneNumber"
-				},
-				"then": {
-					"operator": "required",
-					"field": "overseasCountryCode",
-					"targets": [
-						"overseasCountryCode"
-					]
-				},
-				"code": "personalInformation.overseasCountryCode.requiredWhenPhonePresent",
-				"message": "Please input a valid Country Code."
-			},
-			{
-				"id": "overseasPhone.requiredWhenCodePresent",
-				"type": "conditionalRequired",
-				"severity": "error",
-				"when": {
-					"operator": "any",
-					"conditions": [
-						{
-							"field": "overseasCountryCode",
-							"operator": "notBlank"
-						},
-						{
-							"field": "overseasAreaCode",
-							"operator": "notBlank"
-						}
-					]
-				},
-				"then": {
-					"operator": "required",
-					"field": "overseasPhoneNumber",
-					"targets": [
-						"overseasPhoneNumber"
-					]
-				},
-				"code": "personalInformation.overseasPhoneNumber.requiredWhenCodePresent",
-				"message": "Please input a valid Overseas Phone Number."
-			},
-			{
-				"id": "aeoiReminder.whenResidentialCountryChanged",
-				"type": "conditionalWarning",
-				"severity": "warning",
-				"when": {
-					"operator": "changed",
-					"field": "residentialCountry",
-					"compareWith": "originalValue"
-				},
-				"then": {
-					"operator": "showMessage",
-					"targets": [
-						"residentialCountry"
-					]
-				},
-				"code": "personalInformation.aeoiReminder",
-				"message": "Please remember to submit your AEOI Self-Certificate by clicking Self Certification for Tax Residency function."
-			}
-		],
-		"confirmation": {
-			"enabled": true,
-			"title": "Confirm Information Update",
-			"reviewMessage": "Please review the changes you've made to your information before confirming.",
-			"beforeLabel": "Before Changes",
-			"afterLabel": "After Changes",
-			"securityVerification": {
-				"label": "Security Verification",
-				"instruction": "Please enter your password to confirm these changes",
-				"passwordField": {
-					"name": "password",
-					"label": "Password",
-					"dataType": "string",
-					"controlType": "password",
-					"required": true,
-					"minLength": 8,
-					"maxLength": 16,
-					"placeholder": "Enter your password (8-16 characters)",
-					"validations": [
-						{
-							"type": "required",
-							"code": "personalInformation.password.required",
-							"message": "Please enter your password."
-						},
-						{
-							"type": "minLength",
-							"value": 8,
-							"code": "personalInformation.password.invalid",
-							"message": "The password is incorrect. Please try again."
-						},
-						{
-							"type": "maxLength",
-							"value": 16,
-							"code": "personalInformation.password.invalid",
-							"message": "The password is incorrect. Please try again."
-						},
-						{
-							"type": "noSpaces",
-							"code": "personalInformation.password.invalid",
-							"message": "The password is incorrect. Please try again."
-						}
-					]
-				}
-			},
-			"actions": {
-				"cancel": {
-					"enabled": true,
-					"label": "Cancel"
-				},
-				"confirmSubmit": {
-					"enabled": true,
-					"label": "Confirm & Submit"
-				}
-			}
-		},
-		"actions": {
-			"edit": {
-				"enabled": true,
-				"label": "Edit Information"
-			},
-			"submit": {
-				"enabled": true,
-				"label": "Submit"
-			},
-			"reset": {
-				"enabled": true,
-				"label": "Reset"
-			},
-			"cancel": {
-				"enabled": true,
-				"label": "Cancel"
-			}
-		}
-	}
+  "success": true,
+  "status": "SUCCESS",
+  "result": {
+    "data": {
+      "page": {
+        "id": "personalInformationPage",
+        "title": "Personal Information",
+        "lang": "en"
+      },
+      "form": {
+        "id": "personalInformationForm",
+        "version": "1.0",
+        "mode": "view",
+        "sections": [
+          {
+            "id": "addressInformation",
+            "label": "Address Information",
+            "displayOrder": 10,
+            "fields": [
+              {
+                "name": "residentialAddressLine1",
+                "label": "Residential Address Line 1",
+                "dataType": "string",
+                "controlType": "text",
+                "value": "Flat 15B, Block 2, Garden Villa Estate",
+                "originalValue": "Flat 15B, Block 2, Garden Villa Estate",
+                "readonly": false,
+                "required": true,
+                "maxLength": 40,
+                "placeholder": "Enter residential address line 1",
+                "displayOrder": 10,
+                "validations": [
+                  {
+                    "type": "required",
+                    "code": "personalInformation.residentialAddress.required",
+                    "message": "Please input a residential address."
+                  },
+                  {
+                    "type": "minLength",
+                    "value": 5,
+                    "when": {
+                      "fieldRequired": true
+                    },
+                    "code": "personalInformation.residentialAddress.invalid",
+                    "message": "Please input a valid residential address."
+                  },
+                  {
+                    "type": "blockedAddress",
+                    "code": "personalInformation.address.poBoxBlocked",
+                    "message": "PO Box address will not be accepted, please re-enter your address as our record."
+                  }
+                ]
+              },
+              {
+                "name": "residentialAddressLine2",
+                "label": "Residential Address Line 2",
+                "dataType": "string",
+                "controlType": "text",
+                "value": "Tai Po",
+                "originalValue": "Tai Po",
+                "readonly": false,
+                "required": false,
+                "maxLength": 40,
+                "placeholder": "Enter residential address line 2",
+                "displayOrder": 20
+              },
+              {
+                "name": "residentialAddressLine3",
+                "label": "Residential Address Line 3",
+                "dataType": "string",
+                "controlType": "text",
+                "value": "New Territories",
+                "originalValue": "New Territories",
+                "readonly": false,
+                "required": false,
+                "maxLength": 40,
+                "placeholder": "Enter residential address line 3",
+                "displayOrder": 30
+              },
+              {
+                "name": "residentialCountry",
+                "label": "Country",
+                "dataType": "string",
+                "controlType": "select",
+                "value": "HK",
+                "originalValue": "HK",
+                "displayValue": "Hong Kong",
+                "readonly": false,
+                "required": true,
+                "optionSource": "countries",
+                "placeholder": "Country",
+                "displayOrder": 40,
+                "validations": [
+                  {
+                    "type": "required",
+                    "code": "personalInformation.residentialCountry.required",
+                    "message": "Please select a country."
+                  }
+                ]
+              },
+              {
+                "name": "mailingAddressSameAsResidential",
+                "label": "Same as Residential Address",
+                "dataType": "boolean",
+                "controlType": "checkbox",
+                "value": true,
+                "originalValue": true,
+                "readonly": false,
+                "required": false,
+                "displayOrder": 50,
+                "copyWhenChecked": {
+                  "fromTo": {
+                    "residentialAddressLine1": "mailingAddressLine1",
+                    "residentialAddressLine2": "mailingAddressLine2",
+                    "residentialAddressLine3": "mailingAddressLine3",
+                    "residentialCountry": "mailingCountry"
+                  }
+                }
+              },
+              {
+                "name": "mailingAddressLine1",
+                "label": "Correspondence Address Line 1",
+                "dataType": "string",
+                "controlType": "text",
+                "value": "Flat 15B, Block 2, Garden Villa Estate",
+                "originalValue": "Flat 15B, Block 2, Garden Villa Estate",
+                "readonly": false,
+                "required": false,
+                "maxLength": 40,
+                "placeholder": "Enter correspondence address line 1",
+                "displayOrder": 60,
+                "validations": [
+                  {
+                    "type": "minLength",
+                    "value": 5,
+                    "when": {
+                      "fieldRequired": true
+                    },
+                    "code": "personalInformation.mailingAddress.invalid",
+                    "message": "Please input a valid correspondence address."
+                  },
+                  {
+                    "type": "blockedAddress",
+                    "code": "personalInformation.address.poBoxBlocked",
+                    "message": "PO Box address will not be accepted, please re-enter your address as our record."
+                  }
+                ]
+              },
+              {
+                "name": "mailingAddressLine2",
+                "label": "Correspondence Address Line 2",
+                "dataType": "string",
+                "controlType": "text",
+                "value": "Tai Po",
+                "originalValue": "Tai Po",
+                "readonly": false,
+                "required": false,
+                "maxLength": 40,
+                "placeholder": "Enter correspondence address line 2",
+                "displayOrder": 70
+              },
+              {
+                "name": "mailingAddressLine3",
+                "label": "Correspondence Address Line 3",
+                "dataType": "string",
+                "controlType": "text",
+                "value": "New Territories",
+                "originalValue": "New Territories",
+                "readonly": false,
+                "required": false,
+                "maxLength": 40,
+                "placeholder": "Enter correspondence address line 3",
+                "displayOrder": 80
+              },
+              {
+                "name": "mailingCountry",
+                "label": "Country",
+                "dataType": "string",
+                "controlType": "select",
+                "value": "HK",
+                "originalValue": "HK",
+                "displayValue": "Hong Kong",
+                "readonly": false,
+                "required": false,
+                "optionSource": "countries",
+                "placeholder": "Country",
+                "displayOrder": 90
+              }
+            ]
+          },
+          {
+            "id": "localContactNumber",
+            "label": "Phone Numbers",
+            "displayOrder": 20,
+            "fields": [
+              {
+                "name": "hongKongBusinessPhone",
+                "label": "Hong Kong Business Telephone Number",
+                "dataType": "string",
+                "controlType": "tel",
+                "value": "21234567",
+                "originalValue": "21234567",
+                "readonly": false,
+                "required": false,
+                "maxLength": 8,
+                "pattern": "^[0-9]*$",
+                "placeholder": "Enter 8-digit phone number",
+                "displayOrder": 10,
+                "validations": [
+                  {
+                    "type": "pattern",
+                    "code": "personalInformation.businessPhone.invalid",
+                    "message": "Please input a valid Hong Kong Business Telephone Number."
+                  }
+                ]
+              },
+              {
+                "name": "hongKongBusinessPhoneExtension",
+                "label": "Ext.",
+                "dataType": "string",
+                "controlType": "text",
+                "value": "1234",
+                "originalValue": "1234",
+                "readonly": false,
+                "required": false,
+                "maxLength": 4,
+                "pattern": "^[0-9]*$",
+                "placeholder": "Ext.",
+                "displayOrder": 20,
+                "validations": [
+                  {
+                    "type": "pattern",
+                    "code": "personalInformation.businessPhoneExtension.invalid",
+                    "message": "Please input a valid Ext."
+                  }
+                ]
+              },
+              {
+                "name": "homeTel",
+                "label": "Hong Kong Home Telephone Number",
+                "dataType": "string",
+                "controlType": "tel",
+                "value": "",
+                "originalValue": "",
+                "readonly": false,
+                "required": false,
+                "maxLength": 8,
+                "pattern": "^[0-9]*$",
+                "placeholder": "Enter 8-digit home telephone number",
+                "displayOrder": 30,
+                "validations": [
+                  {
+                    "type": "pattern",
+                    "code": "personalInformation.homeTel.invalid",
+                    "message": "Please input a valid Hong Kong Home Telephone Number."
+                  }
+                ]
+              },
+              {
+                "name": "hongKongMobilePhone",
+                "label": "Hong Kong Mobile Phone Number",
+                "dataType": "string",
+                "controlType": "tel",
+                "value": "98765432",
+                "originalValue": "98765432",
+                "readonly": false,
+                "required": false,
+                "maxLength": 8,
+                "pattern": "^[4-9][0-9]{7}$",
+                "placeholder": "Enter 8-digit mobile number",
+                "displayOrder": 40,
+                "validations": [
+                  {
+                    "type": "pattern",
+                    "code": "personalInformation.mobilePhone.invalid",
+                    "message": "Please input a valid Hong Kong Mobile Telephone Number."
+                  }
+                ]
+              },
+              {
+                "name": "faxNo",
+                "label": "Fax No.",
+                "dataType": "string",
+                "controlType": "text",
+                "value": "",
+                "originalValue": "",
+                "readonly": false,
+                "required": false,
+                "pattern": "^[0-9+\\- ]*$",
+                "placeholder": "Enter fax number",
+                "displayOrder": 50,
+                "validations": [
+                  {
+                    "type": "pattern",
+                    "code": "personalInformation.faxNo.invalid",
+                    "message": "Please input a valid Fax No."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "overseasContacts",
+            "label": "Overseas Contact",
+            "displayOrder": 30,
+            "fields": [
+              {
+                "name": "overseasCountryCode",
+                "label": "Country Code",
+                "dataType": "string",
+                "controlType": "select",
+                "value": "852",
+                "originalValue": "852",
+                "displayValue": "+852 Hong Kong",
+                "readonly": false,
+                "required": false,
+                "optionSource": "countryCallingCodes",
+                "placeholder": "Country Code",
+                "displayOrder": 10,
+                "validations": [
+                  {
+                    "type": "pattern",
+                    "value": "^[0-9]*$",
+                    "code": "personalInformation.overseasCountryCode.invalid",
+                    "message": "Please input a valid Country Code."
+                  }
+                ]
+              },
+              {
+                "name": "overseasAreaCode",
+                "label": "Area Code",
+                "dataType": "string",
+                "controlType": "text",
+                "value": "212",
+                "originalValue": "212",
+                "readonly": false,
+                "required": false,
+                "pattern": "^[0-9]*$",
+                "placeholder": "Area Code",
+                "displayOrder": 20,
+                "validations": [
+                  {
+                    "type": "pattern",
+                    "code": "personalInformation.overseasAreaCode.invalid",
+                    "message": "Please input a valid Area Code."
+                  }
+                ]
+              },
+              {
+                "name": "overseasPhoneNumber",
+                "label": "Phone Number",
+                "dataType": "string",
+                "controlType": "tel",
+                "value": "5550123",
+                "originalValue": "5550123",
+                "readonly": false,
+                "required": false,
+                "maxLength": 17,
+                "pattern": "^[0-9]*$",
+                "placeholder": "Phone Number",
+                "displayOrder": 30,
+                "validations": [
+                  {
+                    "type": "pattern",
+                    "code": "personalInformation.overseasPhoneNumber.invalid",
+                    "message": "Please input a valid Overseas Phone Number."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "electronicContacts",
+            "label": "Email Contact",
+            "displayOrder": 40,
+            "fields": [
+              {
+                "name": "emailAddress",
+                "label": "Email Address",
+                "dataType": "string",
+                "controlType": "email",
+                "value": "john.doe@example.com",
+                "originalValue": "john.doe@example.com",
+                "readonly": false,
+                "required": true,
+                "maxLength": 120,
+                "placeholder": "Enter email address",
+                "displayOrder": 10,
+                "validations": [
+                  {
+                    "type": "required",
+                    "code": "personalInformation.email.required",
+                    "message": "Please provide a valid email address."
+                  },
+                  {
+                    "type": "email",
+                    "code": "personalInformation.email.invalid",
+                    "message": "Please provide a valid email address."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "communicationSettings",
+            "label": "Communication Settings",
+            "displayOrder": 50,
+            "fields": [
+              {
+                "name": "smsLanguage",
+                "label": "Language Selection of SMS (Optional)",
+                "dataType": "string",
+                "controlType": "radio",
+                "value": "EN",
+                "originalValue": "EN",
+                "displayValue": "English",
+                "readonly": false,
+                "required": false,
+                "optionSource": "smsLanguages",
+                "displayOrder": 10
+              }
+            ]
+          },
+          {
+            "id": "importantNotes",
+            "label": "Important Notes",
+            "displayOrder": 60,
+            "fields": [
+              {
+                "name": "importantNotes",
+                "label": "Important Notes",
+                "dataType": "array",
+                "controlType": "noteList",
+                "value": [
+                  "Please remember to submit your AEOI Self-Certificate by clicking Self Certification for Tax Residency function."
+                ],
+                "readonly": true,
+                "required": false,
+                "displayOrder": 10
+              }
+            ]
+          },
+          {
+            "id": "controlInformation",
+            "label": "Control Information",
+            "displayOrder": 70,
+            "fields": [
+              {
+                "name": "applyToAllMemberAccounts",
+                "label": "Apply update to all member accounts under the plan",
+                "dataType": "boolean",
+                "controlType": "checkbox",
+                "value": true,
+                "originalValue": true,
+                "readonly": true,
+                "required": false,
+                "displayOrder": 10
+              }
+            ]
+          }
+        ],
+        "validationRules": [
+          {
+            "id": "address.atLeastOneRequired",
+            "type": "groupRequirement",
+            "severity": "error",
+            "when": {
+              "operator": "allGroupsEmpty",
+              "groups": [
+                {
+                  "id": "residentialAddress",
+                  "existsWhen": {
+                    "field": "residentialAddressLine1",
+                    "operator": "notBlank"
+                  }
+                },
+                {
+                  "id": "mailingAddress",
+                  "existsWhen": {
+                    "field": "mailingAddressLine1",
+                    "operator": "notBlank"
+                  }
+                }
+              ]
+            },
+            "then": {
+              "operator": "fail",
+              "targets": [
+                "residentialAddressLine1",
+                "mailingAddressLine1"
+              ]
+            },
+            "code": "personalInformation.address.atLeastOneRequired",
+            "message": "Please input a residential address or correspondence address."
+          },
+          {
+            "id": "residentialAddress.completeWhenStarted",
+            "type": "conditionalRequired",
+            "severity": "error",
+            "when": {
+              "operator": "notBlank",
+              "field": "residentialAddressLine1"
+            },
+            "then": {
+              "operator": "allRequired",
+              "fields": [
+                "residentialAddressLine1",
+                "residentialCountry"
+              ],
+              "targets": [
+                "residentialAddressLine1",
+                "residentialCountry"
+              ]
+            },
+            "code": "personalInformation.residentialAddress.incomplete",
+            "message": "Please input a residential address."
+          },
+          {
+            "id": "mailingAddress.completeWhenStarted",
+            "type": "conditionalRequired",
+            "severity": "error",
+            "when": {
+              "operator": "notBlank",
+              "field": "mailingAddressLine1"
+            },
+            "then": {
+              "operator": "allRequired",
+              "fields": [
+                "mailingAddressLine1",
+                "mailingCountry"
+              ],
+              "targets": [
+                "mailingAddressLine1",
+                "mailingCountry"
+              ]
+            },
+            "code": "personalInformation.mailingAddress.incomplete",
+            "message": "Please input a correspondence address."
+          },
+          {
+            "id": "businessPhone.requiredWhenExtensionPresent",
+            "type": "conditionalRequired",
+            "severity": "error",
+            "when": {
+              "operator": "notBlank",
+              "field": "hongKongBusinessPhoneExtension"
+            },
+            "then": {
+              "operator": "required",
+              "field": "hongKongBusinessPhone",
+              "targets": [
+                "hongKongBusinessPhone"
+              ]
+            },
+            "code": "personalInformation.businessPhone.requiredWhenExtensionPresent",
+            "message": "Please input a valid Hong Kong Business Phone Number."
+          },
+          {
+            "id": "overseasCountryCode.requiredWhenPhonePresent",
+            "type": "conditionalRequired",
+            "severity": "error",
+            "when": {
+              "operator": "notBlank",
+              "field": "overseasPhoneNumber"
+            },
+            "then": {
+              "operator": "required",
+              "field": "overseasCountryCode",
+              "targets": [
+                "overseasCountryCode"
+              ]
+            },
+            "code": "personalInformation.overseasCountryCode.requiredWhenPhonePresent",
+            "message": "Please input a valid Country Code."
+          },
+          {
+            "id": "overseasPhone.requiredWhenCodePresent",
+            "type": "conditionalRequired",
+            "severity": "error",
+            "when": {
+              "operator": "any",
+              "conditions": [
+                {
+                  "field": "overseasCountryCode",
+                  "operator": "notBlank"
+                },
+                {
+                  "field": "overseasAreaCode",
+                  "operator": "notBlank"
+                }
+              ]
+            },
+            "then": {
+              "operator": "required",
+              "field": "overseasPhoneNumber",
+              "targets": [
+                "overseasPhoneNumber"
+              ]
+            },
+            "code": "personalInformation.overseasPhoneNumber.requiredWhenCodePresent",
+            "message": "Please input a valid Overseas Phone Number."
+          },
+          {
+            "id": "aeoiReminder.whenResidentialCountryChanged",
+            "type": "conditionalWarning",
+            "severity": "warning",
+            "when": {
+              "operator": "changed",
+              "field": "residentialCountry",
+              "compareWith": "originalValue"
+            },
+            "then": {
+              "operator": "showMessage",
+              "targets": [
+                "residentialCountry"
+              ]
+            },
+            "code": "personalInformation.aeoiReminder",
+            "message": "Please remember to submit your AEOI Self-Certificate by clicking Self Certification for Tax Residency function."
+          }
+        ],
+        "confirmation": {
+          "enabled": true,
+          "title": "Confirm Information Update",
+          "reviewMessage": "Please review the changes you've made to your information before confirming.",
+          "beforeLabel": "Before Changes",
+          "afterLabel": "After Changes",
+          "securityVerification": {
+            "label": "Security Verification",
+            "instruction": "Please enter your password to confirm these changes",
+            "passwordField": {
+              "name": "password",
+              "label": "Password",
+              "dataType": "string",
+              "controlType": "password",
+              "required": true,
+              "minLength": 8,
+              "maxLength": 16,
+              "placeholder": "Enter your password (8-16 characters)",
+              "validations": [
+                {
+                  "type": "required",
+                  "code": "personalInformation.password.required",
+                  "message": "Please enter your password."
+                },
+                {
+                  "type": "minLength",
+                  "value": 8,
+                  "code": "personalInformation.password.invalid",
+                  "message": "The password is incorrect. Please try again."
+                },
+                {
+                  "type": "maxLength",
+                  "value": 16,
+                  "code": "personalInformation.password.invalid",
+                  "message": "The password is incorrect. Please try again."
+                },
+                {
+                  "type": "noSpaces",
+                  "code": "personalInformation.password.invalid",
+                  "message": "The password is incorrect. Please try again."
+                }
+              ]
+            }
+          },
+          "actions": {
+            "cancel": {
+              "enabled": true,
+              "label": "Cancel"
+            },
+            "confirmSubmit": {
+              "enabled": true,
+              "label": "Confirm & Submit"
+            }
+          }
+        },
+        "actions": {
+          "edit": {
+            "enabled": true,
+            "label": "Edit Information"
+          },
+          "submit": {
+            "enabled": true,
+            "label": "Submit"
+          },
+          "reset": {
+            "enabled": true,
+            "label": "Reset"
+          },
+          "cancel": {
+            "enabled": true,
+            "label": "Cancel"
+          }
+        }
+      }
+    }
+  },
+  "messages": [],
+  "errors": []
 }

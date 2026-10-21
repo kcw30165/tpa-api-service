@@ -1,6 +1,12 @@
 
 # Information Update — Extracted BRD and Config Matrix Rules
 
+> **Refactor note (refactor/personal-information):** where this extract conflicts with
+> `10-refactor-personal-information-design.md`, the design document prevails. Affected areas: partial PUT
+> semantics, group presence, section 9 (any of address lines 1-3 counts as an address line; the country is
+> mandatory), field attribute and validation rules for fax, email and phones, and the removal of the AEOI
+> country-change rule.
+
 Date: 2026-06-02  
 Scope: Rules related only to **Information Update / Personal Information** from BRD 6.3 and Config Matrix 6.3.
 
