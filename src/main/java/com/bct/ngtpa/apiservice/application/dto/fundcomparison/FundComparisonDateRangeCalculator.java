@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
  */
 public final class FundComparisonDateRangeCalculator {
 
-  private static final Pattern VALID_TOKEN = Pattern.compile("^(?:[1-9][0-9]*[DMY]|YTD)$");
+  private static final Pattern VALID_TOKEN = Pattern.compile("^(?:[1-9]\\d*[DMY]|YTD)$");
 
   private FundComparisonDateRangeCalculator() {}
 

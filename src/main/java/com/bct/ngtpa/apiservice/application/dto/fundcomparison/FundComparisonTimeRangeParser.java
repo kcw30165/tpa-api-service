@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 public final class FundComparisonTimeRangeParser {
 
   private static final Logger LOG = LoggerFactory.getLogger(FundComparisonTimeRangeParser.class);
-  private static final Pattern VALID_TOKEN = Pattern.compile("^(?:[1-9][0-9]*[DMY]|YTD)$");
+  private static final Pattern VALID_TOKEN = Pattern.compile("^(?:[1-9]\\d*[DMY]|YTD)$");
 
   private FundComparisonTimeRangeParser() {}
 
@@ -36,11 +36,7 @@ public final class FundComparisonTimeRangeParser {
     var validTokens = new LinkedHashSet<String>();
     for (String rawToken : rawTimeRange.split(",", -1)) {
       String token = rawToken.trim();
-      if (token.isEmpty()) {
-        continue;
-      }
-      if (!VALID_TOKEN.matcher(token).matches()) {
-        LOG.warn("Dropping invalid Fund Comparison time-range token: {}", token);
+      if (!isUsableToken(token)) {
         continue;
       }
       if (!validTokens.add(token)) {
@@ -56,6 +52,17 @@ public final class FundComparisonTimeRangeParser {
     List<String> orderedTokens = new ArrayList<>(validTokens);
     String defaultToken = selectDefault(orderedTokens);
     return new FundComparisonTimeRangeParseResult(orderedTokens, defaultToken);
+  }
+
+  private static boolean isUsableToken(String token) {
+    if (token.isEmpty()) {
+      return false;
+    }
+    if (!VALID_TOKEN.matcher(token).matches()) {
+      LOG.warn("Dropping invalid Fund Comparison time-range token: {}", token);
+      return false;
+    }
+    return true;
   }
 
   private static String selectDefault(List<String> tokens) {
