@@ -45,7 +45,9 @@ class ApimUpdatePersonalInformationRequestBodyTest {
   void routingStillCarriesTheAccountEnvironmentThroughTheCredentialContext() {
     AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
 
-    new ApimUpdatePersonalInformationAdapter(capturing(captured)).updateMemberInfo(command()).block();
+    new ApimUpdatePersonalInformationAdapter(capturing(captured))
+        .updateMemberInfo(command())
+        .block();
 
     assertThat(captured.get().databaseScope()).isEqualTo(ApimDatabaseScope.ACCOUNT_ENV);
     assertThat(captured.get().credentialContext().accountEnv()).isEqualTo("DB");

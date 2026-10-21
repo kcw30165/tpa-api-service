@@ -21,8 +21,7 @@ class PersonalInformationGetResponseContractTest {
     assertThat(json.path("status").asText()).isEqualTo("SUCCESS");
     assertThat(json.path("result").path("data").path("page").path("id").asText())
         .isEqualTo("personalInformationPage");
-    assertThat(json.path("result").path("data").path("page").path("lang").asText())
-        .isEqualTo("en");
+    assertThat(json.path("result").path("data").path("page").path("lang").asText()).isEqualTo("en");
     assertThat(json.path("result").path("data").path("form").path("id").asText())
         .isEqualTo("personalInformationForm");
     assertThat(json.path("messages").isArray()).isTrue();
@@ -48,7 +47,8 @@ class PersonalInformationGetResponseContractTest {
     FormPageResponse<FormSchemaResponse> formPage =
         FormPageResponse.success(
             new PageResponse("personalInformationPage", "Personal Information", "en"),
-            new FormSchemaResponse("personalInformationForm", "1.0", "view", null, null, null, null));
+            new FormSchemaResponse(
+                "personalInformationForm", "1.0", "view", null, null, null, null));
     return MutationResponse.success(
         ApiStatus.SUCCESS, PersonalInformationResultResponse.from(formPage), List.of());
   }
