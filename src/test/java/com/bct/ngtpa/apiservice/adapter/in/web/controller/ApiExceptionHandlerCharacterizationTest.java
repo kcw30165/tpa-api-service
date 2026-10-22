@@ -80,6 +80,15 @@ import org.springframework.web.server.ServerWebInputException;
  * public behaviour change"); the two rows below are updated from "bypasses logger and request id
  * header" to assert the new header and log behaviour, matching every other handler row in this
  * pack. Status and body remain unchanged.
+ *
+ * <p>SonarQube fix (post-M1 quality gate, java:S1874): three tests below assert against {@code
+ * HttpStatus.UNPROCESSABLE_ENTITY}, which spring-web 7.0.7 flags as deprecated in favour of {@code
+ * HttpStatus.UNPROCESSABLE_CONTENT}. Production (the Account Balance / Account Gain-Loss response
+ * policies, both outside this branch's scope) still returns {@code UNPROCESSABLE_ENTITY}, and it is
+ * not yet confirmed whether the two constants are reference-equal or distinct enum entries with the
+ * same numeric code -- swapping the literal without that confirmation risks a false test failure.
+ * Suppressed on each affected method rather than guessed; migrating the whole codebase to {@code
+ * UNPROCESSABLE_CONTENT} is a separate, broader workstream.
  */
 class ApiExceptionHandlerCharacterizationTest {
 
@@ -157,6 +166,7 @@ class ApiExceptionHandlerCharacterizationTest {
 
   // ───────────────────────── AccountBalanceRetrievalException ─────────────────────────
 
+  @SuppressWarnings("deprecation")
   @Test
   void accountBalanceAccountNotFound_unprocessableBusinessRejectedLoggedAtWarn() {
     var response =
@@ -175,6 +185,7 @@ class ApiExceptionHandlerCharacterizationTest {
         Level.WARN, "AccountBalanceRetrievalException", "err.ab.account.not.exist", false);
   }
 
+  @SuppressWarnings("deprecation")
   @Test
   void accountBalanceAccountMismatch_unprocessableBusinessRejectedLoggedAtWarn() {
     var response =
@@ -242,6 +253,7 @@ class ApiExceptionHandlerCharacterizationTest {
 
   // ───────────────────────── AccountGainLossRetrievalException ─────────────────────────
 
+  @SuppressWarnings("deprecation")
   @Test
   void
       accountGainLossFundSwitchingInProgress_unprocessableBusinessRejectedLoggedAtWarnWithRequestId() {

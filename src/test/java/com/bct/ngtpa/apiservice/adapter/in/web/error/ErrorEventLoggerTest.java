@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.adapter.in.web.error;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -23,6 +22,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 
+/**
+ * SonarQube fix (post-M1 quality gate): all calls to {@link ErrorEventLogger#log} updated to the
+ * new 6-parameter signature introduced to resolve java:S107 (status/errorCode/logAtError/
+ * includeStackTrace are now carried by a single {@link ErrorLogDirective}). Also fixes java:S5785
+ * in {@code omitsSanitizedMessageFieldWhenBothDiagnosticAndExceptionMessageAreBlank} (use
+ * assertNull instead of a manual null-check assertion). No assertions or test intent changed.
+ */
 class ErrorEventLoggerTest {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -71,13 +77,11 @@ class ErrorEventLoggerTest {
     ErrorEventLogger.log(
         logger,
         loggingSanitizer,
-        HttpStatus.SERVICE_UNAVAILABLE,
-        "err.system.unavailable",
+        new ErrorLogDirective(
+            HttpStatus.SERVICE_UNAVAILABLE, "err.system.unavailable", true, false),
         exchangeWithRequestId("req-1"),
         new IllegalStateException("boom"),
-        "diagnostic message",
-        true,
-        false);
+        "diagnostic message");
 
     assertEquals(1, listAppender.list.size());
     ILoggingEvent event = listAppender.list.getFirst();
@@ -102,13 +106,10 @@ class ErrorEventLoggerTest {
     ErrorEventLogger.log(
         logger,
         loggingSanitizer,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        "SYSTEM_UNEXPECTED",
+        new ErrorLogDirective(HttpStatus.INTERNAL_SERVER_ERROR, "SYSTEM_UNEXPECTED", true, true),
         exchangeWithRequestId("req-2"),
         exception,
-        exception.getMessage(),
-        true,
-        true);
+        exception.getMessage());
 
     assertEquals(1, listAppender.list.size());
     ILoggingEvent event = listAppender.list.getFirst();
@@ -121,13 +122,11 @@ class ErrorEventLoggerTest {
     ErrorEventLogger.log(
         logger,
         loggingSanitizer,
-        HttpStatus.BAD_REQUEST,
-        "err.request.validation.failed",
+        new ErrorLogDirective(
+            HttpStatus.BAD_REQUEST, "err.request.validation.failed", false, false),
         exchangeWithRequestId("req-3"),
         new IllegalArgumentException("invalid"),
-        "invalid",
-        false,
-        false);
+        "invalid");
 
     assertEquals(1, listAppender.list.size());
     ILoggingEvent event = listAppender.list.getFirst();
@@ -142,13 +141,10 @@ class ErrorEventLoggerTest {
     ErrorEventLogger.log(
         logger,
         loggingSanitizer,
-        HttpStatus.BAD_REQUEST,
-        "err.request.validation.failed",
+        new ErrorLogDirective(HttpStatus.BAD_REQUEST, "err.request.validation.failed", false, true),
         exchangeWithRequestId("req-4"),
         exception,
-        exception.getMessage(),
-        false,
-        true);
+        exception.getMessage());
 
     assertEquals(1, listAppender.list.size());
     ILoggingEvent event = listAppender.list.getFirst();
@@ -165,13 +161,10 @@ class ErrorEventLoggerTest {
     ErrorEventLogger.log(
         logger,
         loggingSanitizer,
-        HttpStatus.BAD_REQUEST,
-        "err.code",
+        new ErrorLogDirective(HttpStatus.BAD_REQUEST, "err.code", false, false),
         exchange,
         new IllegalStateException("boom"),
-        "diagnostic",
-        false,
-        false);
+        "diagnostic");
 
     JsonNode payload = parse(listAppender.list.getFirst());
     assertFalse(payload.has("requestId"));
@@ -182,13 +175,10 @@ class ErrorEventLoggerTest {
     ErrorEventLogger.log(
         logger,
         loggingSanitizer,
-        HttpStatus.BAD_REQUEST,
-        "err.code",
+        new ErrorLogDirective(HttpStatus.BAD_REQUEST, "err.code", false, false),
         exchangeWithRequestId("req-5"),
         new IllegalStateException("fallback message"),
-        "   ",
-        false,
-        false);
+        "   ");
 
     JsonNode payload = parse(listAppender.list.getFirst());
     assertEquals("fallback message", payload.get("sanitizedMessage").asText());
@@ -199,15 +189,12 @@ class ErrorEventLoggerTest {
     ErrorEventLogger.log(
         logger,
         loggingSanitizer,
-        HttpStatus.BAD_REQUEST,
-        "err.code",
+        new ErrorLogDirective(HttpStatus.BAD_REQUEST, "err.code", false, false),
         exchangeWithRequestId("req-6"),
         new IllegalStateException((String) null),
-        null,
-        false,
-        false);
+        null);
 
     JsonNode payload = parse(listAppender.list.getFirst());
-    assertTrue(payload.get("sanitizedMessage") == null);
+    assertNull(payload.get("sanitizedMessage"));
   }
 }

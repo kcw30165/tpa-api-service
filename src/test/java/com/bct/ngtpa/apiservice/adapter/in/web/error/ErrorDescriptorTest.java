@@ -10,6 +10,14 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
+/**
+ * SonarQube fix (post-M1 quality gate, java:S5778): every {@code assertThrows} lambda that
+ * previously contained two or more method invocations that could each throw (for example a {@code
+ * List.of()} argument expression evaluated alongside the constructor call under test) now has every
+ * "safe" invocation extracted into a local variable before the {@code assertThrows} call, leaving
+ * only the single invocation actually expected to throw inside the lambda. No assertions or test
+ * intent changed.
+ */
 class ErrorDescriptorTest {
 
   @Test
@@ -49,8 +57,8 @@ class ErrorDescriptorTest {
             true);
 
     assertTrue(descriptor.targets().isEmpty());
-    assertThrows(
-        UnsupportedOperationException.class, () -> descriptor.targets().add("notificationId"));
+    List<String> targets = descriptor.targets();
+    assertThrows(UnsupportedOperationException.class, () -> targets.add("notificationId"));
   }
 
   @Test
@@ -70,11 +78,13 @@ class ErrorDescriptorTest {
     mutableTargets.add("another");
 
     assertEquals(List.of("notificationId"), descriptor.targets());
-    assertThrows(UnsupportedOperationException.class, () -> descriptor.targets().add("x"));
+    List<String> targets = descriptor.targets();
+    assertThrows(UnsupportedOperationException.class, () -> targets.add("x"));
   }
 
   @Test
   void rejectsNullHttpStatus() {
+    List<String> targets = List.of();
     assertThrows(
         NullPointerException.class,
         () ->
@@ -83,7 +93,7 @@ class ErrorDescriptorTest {
                 ApiStatus.SYSTEM_ERROR,
                 "SYSTEM",
                 "code",
-                List.of(),
+                targets,
                 "http.api.error",
                 LogLevel.ERROR,
                 true));
@@ -91,6 +101,7 @@ class ErrorDescriptorTest {
 
   @Test
   void rejectsNullApiStatus() {
+    List<String> targets = List.of();
     assertThrows(
         NullPointerException.class,
         () ->
@@ -99,7 +110,7 @@ class ErrorDescriptorTest {
                 null,
                 "SYSTEM",
                 "code",
-                List.of(),
+                targets,
                 "http.api.error",
                 LogLevel.ERROR,
                 true));
@@ -107,6 +118,7 @@ class ErrorDescriptorTest {
 
   @Test
   void rejectsNullErrorType() {
+    List<String> targets = List.of();
     assertThrows(
         NullPointerException.class,
         () ->
@@ -115,7 +127,7 @@ class ErrorDescriptorTest {
                 ApiStatus.SYSTEM_ERROR,
                 null,
                 "code",
-                List.of(),
+                targets,
                 "http.api.error",
                 LogLevel.ERROR,
                 true));
@@ -123,6 +135,7 @@ class ErrorDescriptorTest {
 
   @Test
   void rejectsNullErrorCode() {
+    List<String> targets = List.of();
     assertThrows(
         NullPointerException.class,
         () ->
@@ -131,7 +144,7 @@ class ErrorDescriptorTest {
                 ApiStatus.SYSTEM_ERROR,
                 "SYSTEM",
                 null,
-                List.of(),
+                targets,
                 "http.api.error",
                 LogLevel.ERROR,
                 true));
@@ -139,6 +152,7 @@ class ErrorDescriptorTest {
 
   @Test
   void rejectsNullLogEventName() {
+    List<String> targets = List.of();
     assertThrows(
         NullPointerException.class,
         () ->
@@ -147,7 +161,7 @@ class ErrorDescriptorTest {
                 ApiStatus.SYSTEM_ERROR,
                 "SYSTEM",
                 "code",
-                List.of(),
+                targets,
                 null,
                 LogLevel.ERROR,
                 true));
@@ -155,6 +169,7 @@ class ErrorDescriptorTest {
 
   @Test
   void rejectsNullLogLevel() {
+    List<String> targets = List.of();
     assertThrows(
         NullPointerException.class,
         () ->
@@ -163,7 +178,7 @@ class ErrorDescriptorTest {
                 ApiStatus.SYSTEM_ERROR,
                 "SYSTEM",
                 "code",
-                List.of(),
+                targets,
                 "http.api.error",
                 null,
                 true));

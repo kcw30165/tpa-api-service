@@ -11,7 +11,13 @@ import org.springframework.http.HttpStatus;
  * ApiExceptionHandler}). This is the mandatory catch-all supplied to {@link
  * ExceptionMappingRegistry}; it is returned whenever no more specific mapping is registered for an
  * exception or any of its ancestors.
+ *
+ * <p>The single shared {@link #INSTANCE} is intentional: {@code ExceptionMappingRegistryConfig}
+ * passes the same object to every {@link ExceptionMappingRegistry} it builds, and tests compare it
+ * by reference. SonarQube's generic singleton-pattern advisory (java:S6548) is suppressed here
+ * because that is exactly the required contract, not an accidental singleton.
  */
+@SuppressWarnings("java:S6548")
 public final class CatchAllExceptionMapping implements ExceptionMapping<Throwable> {
 
   public static final CatchAllExceptionMapping INSTANCE = new CatchAllExceptionMapping();

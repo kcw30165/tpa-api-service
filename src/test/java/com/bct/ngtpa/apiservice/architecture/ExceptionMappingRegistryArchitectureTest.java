@@ -15,6 +15,10 @@ import org.junit.jupiter.api.Test;
  * ApiExceptionHandler} (the single {@code @RestControllerAdvice}). This guards against a future
  * change reintroducing scattered {@code @ExceptionHandler} methods elsewhere under {@code
  * adapter.in.web}.
+ *
+ * <p>SonarQube fix (post-M1 quality gate, java:S5838): both assertions below replaced the {@code
+ * assertThat(x.toString()).isEqualTo(y)} idiom with AssertJ's {@code hasToString(y)}, which avoids
+ * the intermediate manual {@code .toString()} call. Same assertion outcome.
  */
 class ExceptionMappingRegistryArchitectureTest {
 
@@ -33,9 +37,9 @@ class ExceptionMappingRegistryArchitectureTest {
       if (!source.contains("@ExceptionHandler")) {
         continue;
       }
-      assertThat(file.getFileName().toString())
+      assertThat(file.getFileName())
           .as("@ExceptionHandler found outside ApiExceptionHandler in %s", file)
-          .isEqualTo(ALLOWED_FILE_NAME);
+          .hasToString(ALLOWED_FILE_NAME);
     }
   }
 
@@ -48,7 +52,7 @@ class ExceptionMappingRegistryArchitectureTest {
       if (!source.contains("@RestControllerAdvice") && !source.contains("@ControllerAdvice")) {
         continue;
       }
-      assertThat(file.getFileName().toString()).isEqualTo(ALLOWED_FILE_NAME);
+      assertThat(file.getFileName()).hasToString(ALLOWED_FILE_NAME);
     }
   }
 

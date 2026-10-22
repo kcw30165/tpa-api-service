@@ -35,6 +35,12 @@ import reactor.test.StepVerifier;
  * error type/code and targets from the shared registry; this pack now passes the real production
  * registry ({@code ExceptionMappingRegistryConfig}) so every pinned assertion below still exercises
  * genuine, unchanged behaviour.
+ *
+ * <p>SonarQube fix (post-M1 quality gate): removed the unused {@code throws Exception} declaration
+ * from {@code jsonSerializationFailureFallsBackToUnauthorizedWithNoBody} (java:S1130 -- nothing in
+ * the method body throws a checked exception) and reworded its explanatory comment so it no longer
+ * contains a code-like {@code catch(...)} token that SonarQube's heuristic mistook for
+ * commented-out code (java:S125). No behaviour or assertion changed.
  */
 class AuthenticatedPortalContextWebExceptionHandlerCharacterizationTest {
 
@@ -145,9 +151,9 @@ class AuthenticatedPortalContextWebExceptionHandlerCharacterizationTest {
   }
 
   @Test
-  void jsonSerializationFailureFallsBackToUnauthorizedWithNoBody() throws Exception {
-    // Pins the catch(Exception) fallback: if body serialization ever throws, the handler still
-    // completes with 401 and an empty body rather than propagating.
+  void jsonSerializationFailureFallsBackToUnauthorizedWithNoBody() {
+    // Pins the exception-handling fallback: if JSON serialization throws, the handler still
+    // completes with 401 and an empty body rather than propagating the failure.
     var throwingMapper =
         new ObjectMapper() {
           @Override

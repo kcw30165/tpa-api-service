@@ -5,7 +5,6 @@ import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 
@@ -18,6 +17,14 @@ import org.springframework.web.server.ServerWebExchange;
  * a logger) so the emitted events keep the exact logger category they have today (for example
  * {@code ApiExceptionHandler}), which is what the sub-task 1.1 characterization tests (Logback
  * {@code ListAppender} attached to that category) assert against.
+ *
+ * <p>SonarQube fix (post-M1 quality gate): {@code status}, {@code errorCode}, {@code logAtError}
+ * and {@code includeStackTrace} are now carried by a single {@link ErrorLogDirective} parameter
+ * object instead of 4 separate primitives, bringing {@link #log} from 9 parameters down to 6
+ * (java:S107). The redundant {@code exchange.getRequest().getMethod() != null} guard was also
+ * removed (java:S2589): on the project's current spring-web version (7.0.7), {@code
+ * ServerHttpRequest.getMethod()} always returns a non-null {@code HttpMethod}, so the condition
+ * could never be false. Event shape, field order, and every other behaviour are unchanged.
  */
 public final class ErrorEventLogger {
 
@@ -26,13 +33,10 @@ public final class ErrorEventLogger {
   public static void log(
       Logger logger,
       LoggingSanitizer loggingSanitizer,
-      HttpStatusCode status,
-      String errorCode,
+      ErrorLogDirective directive,
       ServerWebExchange exchange,
       Throwable exception,
-      String diagnosticMessage,
-      boolean logAtError,
-      boolean includeStackTrace) {
+      String diagnosticMessage) {
     Map<String, Object> event = new LinkedHashMap<>();
     event.put("event", "http.api.error");
     String requestId =
@@ -40,12 +44,10 @@ public final class ErrorEventLogger {
     if (requestId != null) {
       event.put("requestId", requestId);
     }
-    if (exchange.getRequest().getMethod() != null) {
-      event.put("httpMethod", exchange.getRequest().getMethod().name());
-    }
+    event.put("httpMethod", exchange.getRequest().getMethod().name());
     event.put("path", exchange.getRequest().getPath().value());
-    event.put("httpStatus", status.value());
-    event.put("errorCode", errorCode);
+    event.put("httpStatus", directive.status().value());
+    event.put("errorCode", directive.errorCode());
     event.put("exceptionType", exception.getClass().getSimpleName());
     String sanitizedMessage =
         loggingSanitizer.sanitizeText(firstNonBlank(diagnosticMessage, exception.getMessage()));
@@ -53,15 +55,15 @@ public final class ErrorEventLogger {
       event.put("sanitizedMessage", sanitizedMessage);
     }
     String payload = loggingSanitizer.toSafeString(event);
-    if (logAtError) {
-      if (includeStackTrace) {
+    if (directive.logAtError()) {
+      if (directive.includeStackTrace()) {
         logger.error("{}", payload, exception);
       } else {
         logger.error("{}", payload);
       }
       return;
     }
-    if (includeStackTrace) {
+    if (directive.includeStackTrace()) {
       logger.warn("{}", payload, exception);
       return;
     }

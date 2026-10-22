@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.accountbalance.AccountBalanceRetr
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorContext;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorDescriptor;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorLogDirective;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistry;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.LogLevel;
@@ -31,10 +32,8 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.web.PortalAccessContextKeys;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -87,7 +86,7 @@ public class ApiExceptionHandler {
       AccountBalanceRetrievalException exception, ServerWebExchange exchange) {
     var failure = exception.normalizationFailure();
     if (failure != null) {
-      Map<String, Object> event = new LinkedHashMap<>();
+      java.util.Map<String, Object> event = new java.util.LinkedHashMap<>();
       event.put("event", "account.balance.normalization.failed");
       String requestId = getRequestId(exchange);
       if (requestId != null) event.put("requestId", requestId);
@@ -137,13 +136,14 @@ public class ApiExceptionHandler {
     ErrorEventLogger.log(
         log,
         loggingSanitizer,
-        mapped.getStatusCode(),
-        primaryErrorCode(body.errors()),
+        new ErrorLogDirective(
+            mapped.getStatusCode(),
+            primaryErrorCode(body.errors()),
+            exception.reason() == AccountGainLossRetrievalException.Reason.SYSTEM_FAILURE,
+            false),
         exchange,
         exception,
-        exception.getMessage(),
-        exception.reason() == AccountGainLossRetrievalException.Reason.SYSTEM_FAILURE,
-        false);
+        exception.getMessage());
     return ErrorResponseRenderer.render(
         mapped.getStatusCode(), body.status(), body.errors(), getRequestId(exchange));
   }
@@ -313,13 +313,10 @@ public class ApiExceptionHandler {
     ErrorEventLogger.log(
         log,
         loggingSanitizer,
-        status,
-        primaryErrorCode(safeErrors),
+        new ErrorLogDirective(status, primaryErrorCode(safeErrors), logAtError, includeStackTrace),
         exchange,
         exception,
-        diagnosticMessage,
-        logAtError,
-        includeStackTrace);
+        diagnosticMessage);
 
     String requestId = getRequestId(exchange);
     return ErrorResponseRenderer.render(status, apiStatus, safeErrors, requestId);
@@ -466,10 +463,6 @@ public class ApiExceptionHandler {
 
   private String firstNonBlank(String first, String second) {
     return StringUtils.hasText(first) ? first : second;
-  }
-
-  private String firstNonBlank(String first, String second, String third) {
-    return firstNonBlank(firstNonBlank(first, second), third);
   }
 
   private String trimToNull(Object value) {

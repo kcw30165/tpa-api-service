@@ -9,6 +9,14 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
+/**
+ * SonarQube fix (post-M1 quality gate, java:S5778): every {@code assertThrows} lambda that
+ * previously contained two or more method invocations that could each throw (for example a {@code
+ * catchAll()} or {@code List.of(...)} argument expression evaluated alongside the
+ * constructor/method call under test) now has every "safe" invocation extracted into a local
+ * variable before the {@code assertThrows} call, leaving only the single invocation actually
+ * expected to throw inside the lambda. No assertions or test intent changed.
+ */
 class ExceptionMappingRegistryTest {
 
   private static final ErrorContext CONTEXT =
@@ -125,11 +133,13 @@ class ExceptionMappingRegistryTest {
   void duplicateMappingForTheSameExceptionTypeFailsAtConstruction() {
     var first = mappingFor(ParentException.class, "parent-first");
     var second = mappingFor(ParentException.class, "parent-second");
+    var mappings = List.of(first, second);
+    var catchAllMapping = catchAll();
 
     IllegalStateException ex =
         assertThrows(
             IllegalStateException.class,
-            () -> new ExceptionMappingRegistry(List.of(first, second), catchAll()));
+            () -> new ExceptionMappingRegistry(mappings, catchAllMapping));
 
     assertTrue(ex.getMessage().contains(ParentException.class.getName()));
   }
@@ -151,16 +161,15 @@ class ExceptionMappingRegistryTest {
 
   @Test
   void constructorRejectsNullMappingsList() {
-    assertThrows(NullPointerException.class, () -> new ExceptionMappingRegistry(null, catchAll()));
+    var catchAllMapping = catchAll();
+    assertThrows(
+        NullPointerException.class, () -> new ExceptionMappingRegistry(null, catchAllMapping));
   }
 
   @Test
   void constructorRejectsNullCatchAll() {
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new ExceptionMappingRegistry(
-                List.of(mappingFor(ParentException.class, "parent")), null));
+    var mappings = List.of(mappingFor(ParentException.class, "parent"));
+    assertThrows(NullPointerException.class, () -> new ExceptionMappingRegistry(mappings, null));
   }
 
   @Test
@@ -172,7 +181,7 @@ class ExceptionMappingRegistryTest {
   @Test
   void resolveRejectsNullContext() {
     var registry = new ExceptionMappingRegistry(List.of(), catchAll());
-    assertThrows(
-        NullPointerException.class, () -> registry.resolve(new IllegalStateException(), null));
+    var exception = new IllegalStateException();
+    assertThrows(NullPointerException.class, () -> registry.resolve(exception, null));
   }
 }

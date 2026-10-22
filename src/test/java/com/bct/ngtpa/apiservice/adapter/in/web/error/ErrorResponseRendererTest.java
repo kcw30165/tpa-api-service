@@ -41,6 +41,18 @@ class ErrorResponseRendererTest {
     assertNull(response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
   }
 
+  /**
+   * SonarQube fix (post-M1 quality gate, java:S1874): {@code HttpStatus.UNPROCESSABLE_ENTITY} is
+   * flagged as deprecated in spring-web 7.0.7 in favour of {@code
+   * HttpStatus.UNPROCESSABLE_CONTENT}. Production code elsewhere in the codebase (outside this
+   * branch's scope) still returns {@code UNPROCESSABLE_ENTITY}, and it is not yet confirmed whether
+   * the two constants are reference-equal or distinct enum entries with the same numeric code --
+   * swapping this test's literal to {@code UNPROCESSABLE_CONTENT} without that confirmation risks a
+   * false failure if production still returns the old constant. Suppressed here rather than
+   * guessed; migrating the whole codebase to {@code UNPROCESSABLE_CONTENT} is a separate, broader
+   * workstream.
+   */
+  @SuppressWarnings("deprecation")
   @Test
   void bodyIsAFailureMutationResponseCarryingTheGivenStatusAndErrors() {
     ApiError first = ApiError.business("err.one", "first", List.of(), "SERVER");
