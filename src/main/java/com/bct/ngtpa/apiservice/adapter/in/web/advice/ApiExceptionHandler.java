@@ -124,9 +124,28 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(AccountGainLossRetrievalException.class)
   public ResponseEntity<MutationResponse<Void>> handleAccountGainLossRetrievalException(
-      AccountGainLossRetrievalException exception) {
-    return com.bct.ngtpa.apiservice.adapter.in.web.accountgainloss
-        .AccountGainLossRetrievalResponsePolicy.map(exception);
+      AccountGainLossRetrievalException exception, ServerWebExchange exchange) {
+    // Sub-task 1.6: status and body are reconstructed unchanged from the same policy-mapped
+    // status/errors (D5's one planned exception); the only behaviour change is that this
+    // handler now also sets X-Request-Id (via ErrorResponseRenderer, reused verbatim like every
+    // other handler) and emits the http.api.error log line (via ErrorEventLogger), WARN for
+    // FUND_SWITCHING_IN_PROGRESS and ERROR for SYSTEM_FAILURE.
+    var mapped =
+        com.bct.ngtpa.apiservice.adapter.in.web.accountgainloss
+            .AccountGainLossRetrievalResponsePolicy.map(exception);
+    var body = java.util.Objects.requireNonNull(mapped.getBody());
+    ErrorEventLogger.log(
+        log,
+        loggingSanitizer,
+        mapped.getStatusCode(),
+        primaryErrorCode(body.errors()),
+        exchange,
+        exception,
+        exception.getMessage(),
+        exception.reason() == AccountGainLossRetrievalException.Reason.SYSTEM_FAILURE,
+        false);
+    return ErrorResponseRenderer.render(
+        mapped.getStatusCode(), body.status(), body.errors(), getRequestId(exchange));
   }
 
   @ExceptionHandler(ApimException.class)

@@ -66,17 +66,20 @@ import org.springframework.web.server.ServerWebInputException;
 /**
  * M1 sub-task 1.1 characterization pack (docs/design/15-exception-handling/05-milestones.md).
  *
- * <p>Pins, for every current {@link ApiExceptionHandler} handler method and for the {@link
- * AccountGainLossRetrievalException} bypass: HTTP status, response body (ApiStatus, error
- * type/code/targets/severity/source), the {@code X-Request-Id} response header, the log event name,
- * the log level, and whether a stack trace is attached. No production behaviour changes in this
- * sub-task; this test only pins the behaviour captured in sub-task 1.0 so M1's later refactor steps
- * (1.2-1.6) can be verified against it.
+ * <p>Pins, for every current {@link ApiExceptionHandler} handler method: HTTP status, response body
+ * (ApiStatus, error type/code/targets/severity/source), the {@code X-Request-Id} response header,
+ * the log event name, the log level, and whether a stack trace is attached.
  *
  * <p>Sub-task 1.4 update: {@code ApiExceptionHandler} gained a third constructor parameter, {@code
  * ExceptionMappingRegistry}, when its mappings moved into per-capability {@code *ExceptionMappings}
  * components; this pack now passes the real production registry ({@code
  * ExceptionMappingRegistryConfig}) so every pinned row still exercises genuine behaviour.
+ *
+ * <p>Sub-task 1.6 update: {@code handleAccountGainLossRetrievalException} gained the {@code
+ * X-Request-Id} header and the {@code http.api.error} log line (D5's one planned exception to "no
+ * public behaviour change"); the two rows below are updated from "bypasses logger and request id
+ * header" to assert the new header and log behaviour, matching every other handler row in this
+ * pack. Status and body remain unchanged.
  */
 class ApiExceptionHandlerCharacterizationTest {
 
@@ -237,51 +240,51 @@ class ApiExceptionHandlerCharacterizationTest {
     assertNull(errorEvent.getThrowableProxy());
   }
 
-  // ───────────────────────── AccountGainLossRetrievalException (bypass) ─────────────────────────
+  // ───────────────────────── AccountGainLossRetrievalException ─────────────────────────
 
   @Test
-  void accountGainLossFundSwitchingInProgress_bypassesLoggerAndRequestIdHeader() {
+  void
+      accountGainLossFundSwitchingInProgress_unprocessableBusinessRejectedLoggedAtWarnWithRequestId() {
     var exception = AccountGainLossRetrievalException.fundSwitchingInProgress();
 
-    var response = handler.handleAccountGainLossRetrievalException(exception);
+    var response =
+        handler.handleAccountGainLossRetrievalException(exception, exchangeWithRequestId("req-25"));
 
-    assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
-    assertNull(response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
-    MutationResponse<Void> body = response.getBody();
-    assertNotNull(body);
-    assertFalse(body.success());
-    assertEquals(ApiStatus.BUSINESS_REJECTED, body.status());
-    assertEquals(1, body.errors().size());
-    assertEquals("BUSINESS", body.errors().getFirst().type());
-    assertEquals("err.fund.switching.in.progress", body.errors().getFirst().code());
-    assertTrue(
-        listAppender.list.isEmpty(),
-        "AccountGainLoss path must not log through ApiExceptionHandler");
+    assertMutationFailure(
+        response,
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        ApiStatus.BUSINESS_REJECTED,
+        "BUSINESS",
+        "err.fund.switching.in.progress",
+        List.of(),
+        "req-25");
+    assertLoggedOnce(
+        Level.WARN, "AccountGainLossRetrievalException", "err.fund.switching.in.progress", false);
   }
 
   @Test
-  void accountGainLossSystemFailure_bypassesLoggerAndRequestIdHeader() {
+  void accountGainLossSystemFailure_serviceUnavailableSystemErrorLoggedAtErrorWithRequestId() {
     var exception = AccountGainLossRetrievalException.systemFailure();
 
-    var response = handler.handleAccountGainLossRetrievalException(exception);
+    var response =
+        handler.handleAccountGainLossRetrievalException(exception, exchangeWithRequestId("req-26"));
 
-    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
-    assertNull(response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
-    MutationResponse<Void> body = response.getBody();
-    assertNotNull(body);
-    assertEquals(ApiStatus.SYSTEM_ERROR, body.status());
-    assertEquals("SYSTEM", body.errors().getFirst().type());
-    assertEquals("err.system.unavailable", body.errors().getFirst().code());
-    assertTrue(
-        listAppender.list.isEmpty(),
-        "AccountGainLoss path must not log through ApiExceptionHandler");
+    assertMutationFailure(
+        response,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        ApiStatus.SYSTEM_ERROR,
+        "SYSTEM",
+        "err.system.unavailable",
+        List.of(),
+        "req-26");
+    assertLoggedOnce(
+        Level.ERROR, "AccountGainLossRetrievalException", "err.system.unavailable", false);
   }
 
   @Test
   void accountGainLossResponsePolicyMatchesHandlerDelegation() {
-    // The handler delegates verbatim to the policy; pin that the policy is the single source of
-    // truth so a future refactor (1.6) that routes this through the renderer/logger can diff
-    // against the same mapping.
+    // The handler reconstructs its status/body from the same policy mapping; pin that the policy
+    // is the single source of truth for status/body so a future change to either stays detected.
     ResponseEntity<MutationResponse<Void>> viaPolicy =
         AccountGainLossRetrievalResponsePolicy.map(
             AccountGainLossRetrievalException.systemFailure());
