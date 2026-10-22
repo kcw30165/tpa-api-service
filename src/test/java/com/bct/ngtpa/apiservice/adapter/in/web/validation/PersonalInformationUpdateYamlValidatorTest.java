@@ -270,6 +270,15 @@ class PersonalInformationUpdateYamlValidatorTest {
   }
 
   @Test
+  void emailRuleSkipsBlankSubmittedValue() {
+    PageSchemaProperties page = pageOf(section(field("f1", rule("v1", "email", null))));
+    List<ApiError> errors =
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of("f1", "")), "en", "env1", "trust1", "SCHEME_A");
+    assertThat(errors).isEmpty();
+  }
+
+  @Test
   void blockedAddressRuleFailsWhenMatchingConfiguredPattern() {
     PageSchemaProperties page =
         pageOf(section(field("f1", rule("v1", "blockedAddress", "P\\.?O\\.?\\s*BOX"))));

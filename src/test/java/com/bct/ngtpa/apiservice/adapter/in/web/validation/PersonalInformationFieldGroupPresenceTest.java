@@ -133,6 +133,181 @@ class PersonalInformationFieldGroupPresenceTest {
   }
 
   @Test
+  void nullGroupEntryInFieldGroupsListIsSkipped() {
+    List<FieldGroupProperties> groups = new ArrayList<>();
+    groups.add(null);
+    groups.add(group(GROUP, LINE1, LINE2, LINE3, COUNTRY));
+    groups.add(group(MAILING_GROUP, MLINE1, MLINE2, MLINE3, MCOUNTRY));
+    List<ApiError> errors =
+        validateWithGroups(groups, Map.of(LINE1, "Flat 1", "emailAddress", "a@b.test"));
+
+    assertThat(errors)
+        .anySatisfy(
+            error ->
+                assertThat(error.code()).isEqualTo("personalInformation." + GROUP + ".incomplete"));
+  }
+
+  @Test
+  void groupWithBlankNameIsSkipped() {
+    FieldGroupProperties blankNamed = group(GROUP, LINE1, LINE2, LINE3, COUNTRY);
+    blankNamed.setName("  ");
+    List<ApiError> errors =
+        validateWithGroups(
+            List.of(blankNamed), Map.of(LINE1, "Flat 1", "emailAddress", "a@b.test"));
+
+    assertThat(errors).noneMatch(error -> error.code().endsWith(".incomplete"));
+  }
+
+  @Test
+  void groupWithNoFieldsIsSkipped() {
+    FieldGroupProperties empty = new FieldGroupProperties();
+    empty.setName("emptyGroup");
+    List<ApiError> errors =
+        validateWithGroups(List.of(empty), Map.of(LINE1, "Flat 1", "emailAddress", "a@b.test"));
+
+    assertThat(errors).noneMatch(error -> error.code().endsWith(".incomplete"));
+  }
+
+  @Test
+  void nonAddressGroupFullySubmittedSkipsCountryRuleAndProducesNoError() {
+    PageSchemaProperties page = new PageSchemaProperties();
+    page.setForm(form(field("hongKongBusinessPhone"), field("hongKongBusinessPhoneExtension")));
+    page.setFieldGroups(
+        List.of(group("businessPhone", "hongKongBusinessPhone", "hongKongBusinessPhoneExtension")));
+    BffPagesProperties properties = new BffPagesProperties();
+    properties.setPages(Map.of("personalInformation", page));
+    PersonalInformationUpdateYamlValidator validator =
+        new PersonalInformationUpdateYamlValidator(
+            properties,
+            new PageDisplayTextResolver(new ConfigVariantCandidateGenerator()),
+            new ConfigVariantCandidateGenerator());
+
+    List<ApiError> errors =
+        validator.validate(
+            new UpdatePersonalInformationRequest(
+                "1.0",
+                false,
+                Map.of(
+                    "hongKongBusinessPhone", "21234567",
+                    "hongKongBusinessPhoneExtension", "123")),
+            "en",
+            "JP",
+            "JPM",
+            "OE");
+
+    assertThat(errors)
+        .noneMatch(error -> error.code().equals("personalInformation.businessPhone.incomplete"));
+  }
+
+  @Test
+  void groupErrorFallsBackToCodeWhenDisplayResolverIsNull() {
+    PersonalInformationUpdateYamlValidator validator =
+        new PersonalInformationUpdateYamlValidator(
+            properties(), null, new ConfigVariantCandidateGenerator());
+
+    List<ApiError> errors =
+        validator.validate(
+            new UpdatePersonalInformationRequest(
+                "1.0", false, Map.of(LINE1, "Flat 1", "emailAddress", "a@b.test")),
+            "en",
+            "JP",
+            "JPM",
+            "OE");
+
+    assertThat(errors)
+        .anySatisfy(
+            error -> {
+              assertThat(error.code()).isEqualTo("personalInformation." + GROUP + ".incomplete");
+              assertThat(error.message()).isEqualTo("personalInformation." + GROUP + ".incomplete");
+            });
+  }
+
+  @Test
+  void groupErrorUsesDisplayResolvedMessageWhenConfigured() {
+    PageSchemaProperties page = new PageSchemaProperties();
+    page.setForm(
+        form(field(LINE1), field(LINE2), field(LINE3), field(COUNTRY), field("emailAddress")));
+    page.setFieldGroups(List.of(group(GROUP, LINE1, LINE2, LINE3, COUNTRY)));
+    page.setDisplay(
+        Map.of(
+            "personalInformation." + GROUP + ".incomplete.message",
+            Map.of("en", "Resolved group message")));
+    BffPagesProperties properties = new BffPagesProperties();
+    properties.setPages(Map.of("personalInformation", page));
+    PersonalInformationUpdateYamlValidator validator =
+        new PersonalInformationUpdateYamlValidator(
+            properties,
+            new PageDisplayTextResolver(new ConfigVariantCandidateGenerator()),
+            new ConfigVariantCandidateGenerator());
+
+    List<ApiError> errors =
+        validator.validate(
+            new UpdatePersonalInformationRequest(
+                "1.0", false, Map.of(LINE1, "Flat 1", "emailAddress", "a@b.test")),
+            "en",
+            "JP",
+            "JPM",
+            "OE");
+
+    assertThat(errors)
+        .anySatisfy(
+            error -> {
+              assertThat(error.code()).isEqualTo("personalInformation." + GROUP + ".incomplete");
+              assertThat(error.message()).isEqualTo("Resolved group message");
+            });
+  }
+
+  @Test
+  void nullGroupEntryInRuleGroupsListPreventsAtLeastOneRequiredFromFiring() {
+    PageSchemaProperties page = properties().getPages().get("personalInformation");
+    ValidationRuleProperties rule =
+        page.getValidations().stream()
+            .filter(r -> "address.atLeastOneRequired".equals(r.getId()))
+            .findFirst()
+            .orElseThrow();
+    List<Map<String, Object>> groupsWithNull = new ArrayList<>();
+    groupsWithNull.add(null);
+    groupsWithNull.add(Map.of("name", GROUP, "fields", List.of(LINE1, LINE2, LINE3, COUNTRY)));
+    groupsWithNull.add(
+        Map.of("name", MAILING_GROUP, "fields", List.of(MLINE1, MLINE2, MLINE3, MCOUNTRY)));
+    rule.getWhen().setGroups(groupsWithNull);
+    BffPagesProperties properties = new BffPagesProperties();
+    properties.setPages(Map.of("personalInformation", page));
+    PersonalInformationUpdateYamlValidator validator =
+        new PersonalInformationUpdateYamlValidator(
+            properties,
+            new PageDisplayTextResolver(new ConfigVariantCandidateGenerator()),
+            new ConfigVariantCandidateGenerator());
+
+    List<ApiError> errors =
+        validator.validate(
+            new UpdatePersonalInformationRequest("1.0", false, Map.of("emailAddress", "a@b.test")),
+            "en",
+            "JP",
+            "JPM",
+            "OE");
+
+    assertThat(errors)
+        .noneMatch(error -> "personalInformation.address.atLeastOneRequired".equals(error.code()));
+  }
+
+  @Test
+  void bothGroupsFullySubmittedWithNonBlankFieldDoesNotFireAtLeastOneRequired() {
+    Map<String, Object> fields = new LinkedHashMap<>();
+    fields.put(LINE1, "Flat 1, Block 2");
+    fields.put(LINE2, "");
+    fields.put(LINE3, "");
+    fields.put(COUNTRY, "HK");
+    for (String f : List.of(MLINE1, MLINE2, MLINE3, MCOUNTRY)) fields.put(f, "");
+    fields.put("emailAddress", "a@b.test");
+
+    List<ApiError> errors = validate(fields);
+
+    assertThat(errors)
+        .noneMatch(error -> "personalInformation.address.atLeastOneRequired".equals(error.code()));
+  }
+
+  @Test
   void genericGroupPresenceAppliesToNonAddressGroupsToo() {
     PageSchemaProperties page = new PageSchemaProperties();
     page.setForm(form(field("hongKongBusinessPhone"), field("hongKongBusinessPhoneExtension")));
@@ -167,6 +342,21 @@ class PersonalInformationFieldGroupPresenceTest {
     PersonalInformationUpdateYamlValidator validator =
         new PersonalInformationUpdateYamlValidator(
             properties(),
+            new PageDisplayTextResolver(new ConfigVariantCandidateGenerator()),
+            new ConfigVariantCandidateGenerator());
+    return validator.validate(
+        new UpdatePersonalInformationRequest("1.0", false, fields), "en", "JP", "JPM", "OE");
+  }
+
+  private List<ApiError> validateWithGroups(
+      List<FieldGroupProperties> groups, Map<String, Object> fields) {
+    PageSchemaProperties page = properties().getPages().get("personalInformation");
+    page.setFieldGroups(groups);
+    BffPagesProperties properties = new BffPagesProperties();
+    properties.setPages(Map.of("personalInformation", page));
+    PersonalInformationUpdateYamlValidator validator =
+        new PersonalInformationUpdateYamlValidator(
+            properties,
             new PageDisplayTextResolver(new ConfigVariantCandidateGenerator()),
             new ConfigVariantCandidateGenerator());
     return validator.validate(
