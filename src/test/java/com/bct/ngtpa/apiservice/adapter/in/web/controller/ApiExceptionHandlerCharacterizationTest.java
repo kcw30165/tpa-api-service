@@ -71,30 +71,26 @@ import org.springframework.web.server.ServerWebInputException;
  * the log event name, the log level, and whether a stack trace is attached.
  *
  * <p>Sub-task 1.4 update: {@code ApiExceptionHandler} gained a third constructor parameter, {@code
- * ExceptionMappingRegistry}, when its mappings moved into per-capability {@code *ExceptionMappings}
- * components; this pack now passes the real production registry ({@code
+ * ExceptionMappingRegistry}; this pack passes the real production registry ({@code
  * ExceptionMappingRegistryConfig}) so every pinned row still exercises genuine behaviour.
  *
  * <p>Sub-task 1.6 update: {@code handleAccountGainLossRetrievalException} gained the {@code
  * X-Request-Id} header and the {@code http.api.error} log line (D5's one planned exception to "no
- * public behaviour change"); the two rows below are updated from "bypasses logger and request id
- * header" to assert the new header and log behaviour, matching every other handler row in this
- * pack. Status and body remain unchanged.
+ * public behaviour change"); status and body remain unchanged.
  *
- * <p>Sub-task 1.6b (M1 closure, pin-only, no behaviour change expected): extends {@link
- * #assertMutationFailure} with an {@code expectedMessage} parameter and asserts {@code
- * error.message()} on every existing row, to make visible -- ahead of the sub-task 1.7 move into
- * {@code ExceptionMapping}s -- which exceptions currently bypass message resolution entirely
- * (always {@code null}: {@code AccountBalanceRetrievalException}'s 3 reasons, {@code
- * AccountGainLossRetrievalException}'s 2 reasons, and {@code FundFactSheetRetrievalException}) and
- * which resolve a message via {@code resolvePublicMessage} (every row that goes through {@code
- * delegate(...)}, plus {@code WebExchangeBindException}, which calls {@code resolvePublicMessage}
- * directly in {@code validationErrors(...)}). Also adds two new rows: one proving a pre-login path
- * (for example {@code /api/v1/auth/login}) suppresses the resolved message for a {@code
- * delegate(...)}-routed exception back to {@code null}, and one proving that a {@code
- * WebExchangeBindException} with two field errors produces two {@link ApiError} entries, both
- * carrying the same resolved message, in field order. This sub-task must pass on unchanged
- * production code; it only adds assertions to the existing characterization pack.
+ * <p>Sub-task 1.6b (M1 closure, pin-only): extends {@link #assertMutationFailure} with an {@code
+ * expectedMessage} parameter and asserts {@code error.message()} on every row, including two new
+ * rows (pre-login suppression, two-field-error WebExchangeBind).
+ *
+ * <p>Sub-task 1.7 (M1 closure, Option A, approved A2): every {@code handleXxx} method is now a
+ * one-line {@code delegate(...)} call, including the four previously-inline handlers
+ * (AccountBalance, AccountGainLoss, FundFactSheet, WebExchangeBind). Every assertion from sub-task
+ * 1.6b is unchanged -- same status, body, header, message, log level and stack-trace presence --
+ * EXCEPT the one row A2 approved changing: {@code accountBalanceNormalizationFailure_...} now
+ * asserts exactly ONE {@code http.api.error} log event carrying the merged {@code
+ * collection}/{@code rowIndex}/{@code field}/{@code reason} fields, instead of the pre-1.7 two
+ * separate events (a value-free {@code account.balance.normalization.failed} event followed by the
+ * {@code http.api.error} event).
  *
  * <p>SonarQube fix (post-M1 quality gate, java:S1874): three tests below assert against {@code
  * HttpStatus.UNPROCESSABLE_ENTITY}, which spring-web 7.0.7 flags as deprecated in favour of {@code
@@ -242,8 +238,14 @@ class ApiExceptionHandlerCharacterizationTest {
         Level.ERROR, "AccountBalanceRetrievalException", "err.system.unavailable", false);
   }
 
+  /**
+   * Sub-task 1.7 (A2, approved 2026-10-22): rewritten to assert exactly ONE {@code http.api.error}
+   * log event carrying the merged {@code collection}/{@code rowIndex}/{@code field}/{@code reason}
+   * fields, instead of the pre-1.7 two separate events. This is the one row A1/A2 explicitly
+   * permitted to change.
+   */
   @Test
-  void accountBalanceNormalizationFailure_logsOneExtraValueFreeEventBeforeTheErrorEvent() {
+  void accountBalanceNormalizationFailure_logsOneEventWithMergedValueFreeFields() {
     var failure =
         new AccountBalanceRetrievalException.NormalizationFailure(
             AccountBalanceRetrievalException.Collection.FUND_DTL,
@@ -255,20 +257,20 @@ class ApiExceptionHandlerCharacterizationTest {
         AccountBalanceRetrievalException.normalizationFailure(failure),
         exchangeWithRequestId("req-6"));
 
-    assertEquals(2, listAppender.list.size());
-    ILoggingEvent normalizationEvent = listAppender.list.get(0);
-    assertEquals(Level.ERROR, normalizationEvent.getLevel());
-    assertTrue(
-        normalizationEvent.getFormattedMessage().contains("account.balance.normalization.failed"));
-    assertTrue(normalizationEvent.getFormattedMessage().contains("req-6"));
-    assertTrue(normalizationEvent.getFormattedMessage().contains("fundDtl"));
-    assertTrue(normalizationEvent.getFormattedMessage().contains("fund-code"));
-    assertTrue(normalizationEvent.getFormattedMessage().contains("EMPTY"));
-    assertNull(normalizationEvent.getThrowableProxy());
+    assertEquals(1, listAppender.list.size());
+    ILoggingEvent event = listAppender.list.getFirst();
+    assertEquals(Level.ERROR, event.getLevel());
+    assertNull(event.getThrowableProxy());
 
-    ILoggingEvent errorEvent = listAppender.list.get(1);
-    assertEquals(Level.ERROR, errorEvent.getLevel());
-    assertNull(errorEvent.getThrowableProxy());
+    JsonNode payload = parse(event);
+    assertEquals("http.api.error", payload.get("event").asText());
+    assertEquals("req-6", payload.get("requestId").asText());
+    assertEquals("err.system.unavailable", payload.get("errorCode").asText());
+    assertEquals("fundDtl", payload.get("collection").asText());
+    assertEquals(3, payload.get("rowIndex").asInt());
+    assertEquals("fund-code", payload.get("field").asText());
+    assertEquals("EMPTY", payload.get("reason").asText());
+    assertEquals("AccountBalanceRetrievalException", payload.get("exceptionType").asText());
   }
 
   // ───────────────────────── AccountGainLossRetrievalException ─────────────────────────
@@ -317,8 +319,6 @@ class ApiExceptionHandlerCharacterizationTest {
 
   @Test
   void accountGainLossResponsePolicyMatchesHandlerDelegation() {
-    // The handler reconstructs its status/body from the same policy mapping; pin that the policy
-    // is the single source of truth for status/body so a future change to either stays detected.
     ResponseEntity<MutationResponse<Void>> viaPolicy =
         AccountGainLossRetrievalResponsePolicy.map(
             AccountGainLossRetrievalException.systemFailure());

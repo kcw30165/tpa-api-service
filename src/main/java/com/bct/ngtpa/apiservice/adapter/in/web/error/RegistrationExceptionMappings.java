@@ -10,6 +10,9 @@ import org.springframework.http.HttpStatus;
  * Sub-task 1.4: verbatim move of {@code
  * ApiExceptionHandler.handleRegistrationLookupDownstreamException}'s mapping, including its
  * reason-qualified diagnostic message.
+ *
+ * <p>Sub-task 1.7 (M1 closure, Option A): built via {@link ErrorDescriptor#single} instead of the
+ * record constructor directly (one {@link MessagePolicy#RESOLVE} entry); no behaviour change.
  */
 public final class RegistrationExceptionMappings {
 
@@ -25,7 +28,7 @@ public final class RegistrationExceptionMappings {
       @Override
       public ErrorDescriptor describe(
           RegistrationLookupDownstreamException exception, ErrorContext context) {
-        return new ErrorDescriptor(
+        return ErrorDescriptor.single(
             HttpStatus.SERVICE_UNAVAILABLE,
             ApiStatus.SYSTEM_ERROR,
             "DOWNSTREAM_SYSTEM",

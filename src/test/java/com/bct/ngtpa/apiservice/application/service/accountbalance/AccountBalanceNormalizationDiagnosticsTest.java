@@ -18,6 +18,18 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 
+/**
+ * Sub-task 1.7 (M1 closure, A2) fix: this test pinned the pre-1.7 behaviour of TWO separate
+ * loggingSanitizer.toSafeString(...) calls -- a standalone {@code
+ * account.balance.normalization.failed} event followed by the {@code http.api.error} event. A2
+ * (approved 2026-10-22) merges these into a SINGLE {@code http.api.error} event carrying the {@code
+ * collection}/{@code rowIndex}/{@code field}/{@code reason} fields alongside the normal event
+ * fields (requestId, httpMethod, path, httpStatus, errorCode, exceptionType). This test was not in
+ * sub-task 1.7's targeted test lists and was missed when {@code
+ * ApiExceptionHandlerCharacterizationTest}'s equivalent assertion was updated; fixed here to match
+ * the same approved behaviour. No other assertion in this file (status, reason,
+ * normalizationFailure, private-name redaction) changes.
+ */
 class AccountBalanceNormalizationDiagnosticsTest {
   @Test
   void identifiesBothDisplayFieldsAndAllThreeReasonsWithoutRawValues() {
@@ -64,22 +76,21 @@ class AccountBalanceNormalizationDiagnosticsTest {
                 .value())
         .isEqualTo(503);
     var captor = ArgumentCaptor.forClass(Object.class);
-    verify(sanitizer, times(2)).toSafeString(captor.capture());
-    assertThat(captor.getAllValues().getFirst())
+    verify(sanitizer, times(1)).toSafeString(captor.capture());
+    assertThat(captor.getValue())
         .isEqualTo(
-            Map.of(
-                "event",
-                "account.balance.normalization.failed",
-                "requestId",
-                "diagnostic-request",
-                "collection",
-                "dispSrc",
-                "rowIndex",
-                1,
-                "field",
-                field == Field.DISP_SRC ? "disp-src" : "sub-disp-src",
-                "reason",
-                reason.name()));
+            Map.ofEntries(
+                Map.entry("event", "http.api.error"),
+                Map.entry("requestId", "diagnostic-request"),
+                Map.entry("httpMethod", "GET"),
+                Map.entry("path", "/api/v1/account/summary"),
+                Map.entry("httpStatus", 503),
+                Map.entry("errorCode", "err.system.unavailable"),
+                Map.entry("collection", "dispSrc"),
+                Map.entry("rowIndex", 1),
+                Map.entry("field", field == Field.DISP_SRC ? "disp-src" : "sub-disp-src"),
+                Map.entry("reason", reason.name()),
+                Map.entry("exceptionType", "AccountBalanceRetrievalException")));
   }
 
   @Test

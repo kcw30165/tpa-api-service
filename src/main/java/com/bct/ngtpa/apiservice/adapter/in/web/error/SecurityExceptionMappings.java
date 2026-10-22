@@ -10,6 +10,10 @@ import org.springframework.security.core.AuthenticationException;
 /**
  * Sub-task 1.4: verbatim move of {@code ApiExceptionHandler.handleAuthenticationException} and
  * {@code handleAccessDeniedException}'s mappings.
+ *
+ * <p>Sub-task 1.7 (M1 closure, Option A): both mappings now built via {@link
+ * ErrorDescriptor#single} instead of the record constructor directly (one {@link
+ * MessagePolicy#RESOLVE} entry each); no behaviour change.
  */
 public final class SecurityExceptionMappings {
 
@@ -24,7 +28,7 @@ public final class SecurityExceptionMappings {
 
       @Override
       public ErrorDescriptor describe(AuthenticationException exception, ErrorContext context) {
-        return new ErrorDescriptor(
+        return ErrorDescriptor.single(
             HttpStatus.UNAUTHORIZED,
             ApiStatus.BUSINESS_REJECTED,
             "BUSINESS",
@@ -46,7 +50,7 @@ public final class SecurityExceptionMappings {
 
       @Override
       public ErrorDescriptor describe(AccessDeniedException exception, ErrorContext context) {
-        return new ErrorDescriptor(
+        return ErrorDescriptor.single(
             HttpStatus.FORBIDDEN,
             ApiStatus.BUSINESS_REJECTED,
             "BUSINESS",

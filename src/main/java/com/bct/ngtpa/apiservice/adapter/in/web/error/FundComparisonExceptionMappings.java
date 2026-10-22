@@ -11,6 +11,9 @@ import org.springframework.http.HttpStatus;
  * ApiExceptionHandler.handleFundComparisonRetrievalException}'s mapping. {@code
  * FundComparisonRequestInvalidException} is mapped in {@link ApplicationExceptionMappings} since
  * its original handler used the shared {@code handleApplicationException} helper.
+ *
+ * <p>Sub-task 1.7 (M1 closure, Option A): built via {@link ErrorDescriptor#single} instead of the
+ * record constructor directly (one {@link MessagePolicy#RESOLVE} entry); no behaviour change.
  */
 public final class FundComparisonExceptionMappings {
 
@@ -26,7 +29,7 @@ public final class FundComparisonExceptionMappings {
       @Override
       public ErrorDescriptor describe(
           FundComparisonRetrievalException exception, ErrorContext context) {
-        return new ErrorDescriptor(
+        return ErrorDescriptor.single(
             HttpStatus.SERVICE_UNAVAILABLE,
             ApiStatus.SYSTEM_ERROR,
             "FORM",

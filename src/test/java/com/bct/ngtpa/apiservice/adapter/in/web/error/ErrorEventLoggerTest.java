@@ -14,6 +14,8 @@ import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,10 +26,15 @@ import org.springframework.mock.web.server.MockServerWebExchange;
 
 /**
  * SonarQube fix (post-M1 quality gate): all calls to {@link ErrorEventLogger#log} updated to the
- * new 6-parameter signature introduced to resolve java:S107 (status/errorCode/logAtError/
+ * 6-parameter signature introduced to resolve java:S107 (status/errorCode/logAtError/
  * includeStackTrace are now carried by a single {@link ErrorLogDirective}). Also fixes java:S5785
  * in {@code omitsSanitizedMessageFieldWhenBothDiagnosticAndExceptionMessageAreBlank} (use
  * assertNull instead of a manual null-check assertion). No assertions or test intent changed.
+ *
+ * <p>Sub-task 1.7 (M1 closure, A2) adds {@link #mergesExtraFieldsIntoTheSameEventInInsertionOrder}
+ * and {@link #defaultFourArgConstructorStillProducesNoExtraFields}, covering {@link
+ * ErrorLogDirective}'s new 5th component and the backward-compatible 4-argument constructor every
+ * pre-existing call site (production and the 7 tests above) keeps using unchanged.
  */
 class ErrorEventLoggerTest {
 
@@ -196,5 +203,51 @@ class ErrorEventLoggerTest {
 
     JsonNode payload = parse(listAppender.list.getFirst());
     assertNull(payload.get("sanitizedMessage"));
+  }
+
+  // ───────────────────────── Sub-task 1.7 (A2): extraFields merge ─────────────────────────
+
+  @Test
+  void mergesExtraFieldsIntoTheSameEventInInsertionOrder() {
+    Map<String, Object> extraFields = new LinkedHashMap<>();
+    extraFields.put("collection", "fundDtl");
+    extraFields.put("rowIndex", 3);
+    extraFields.put("field", "fund-code");
+    extraFields.put("reason", "EMPTY");
+
+    ErrorEventLogger.log(
+        logger,
+        loggingSanitizer,
+        new ErrorLogDirective(
+            HttpStatus.SERVICE_UNAVAILABLE, "err.system.unavailable", true, false, extraFields),
+        exchangeWithRequestId("req-7"),
+        new IllegalStateException("Account balance retrieval failed: SYSTEM_FAILURE"),
+        "Account balance retrieval failed: SYSTEM_FAILURE");
+
+    assertEquals(1, listAppender.list.size());
+    JsonNode payload = parse(listAppender.list.getFirst());
+    assertEquals("http.api.error", payload.get("event").asText());
+    assertEquals("err.system.unavailable", payload.get("errorCode").asText());
+    assertEquals("fundDtl", payload.get("collection").asText());
+    assertEquals(3, payload.get("rowIndex").asInt());
+    assertEquals("fund-code", payload.get("field").asText());
+    assertEquals("EMPTY", payload.get("reason").asText());
+  }
+
+  @Test
+  void defaultFourArgConstructorStillProducesNoExtraFields() {
+    ErrorEventLogger.log(
+        logger,
+        loggingSanitizer,
+        new ErrorLogDirective(HttpStatus.BAD_REQUEST, "err.code", false, false),
+        exchangeWithRequestId("req-8"),
+        new IllegalStateException("boom"),
+        "diagnostic");
+
+    JsonNode payload = parse(listAppender.list.getFirst());
+    assertFalse(payload.has("collection"));
+    assertFalse(payload.has("rowIndex"));
+    assertFalse(payload.has("field"));
+    assertFalse(payload.has("reason"));
   }
 }

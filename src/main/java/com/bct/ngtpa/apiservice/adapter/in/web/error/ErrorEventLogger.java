@@ -25,6 +25,14 @@ import org.springframework.web.server.ServerWebExchange;
  * removed (java:S2589): on the project's current spring-web version (7.0.7), {@code
  * ServerHttpRequest.getMethod()} always returns a non-null {@code HttpMethod}, so the condition
  * could never be false. Event shape, field order, and every other behaviour are unchanged.
+ *
+ * <p>Sub-task 1.7 (M1 closure, A2): {@link ErrorLogDirective#extraFields()} entries, when present,
+ * are merged into this same event -- inserted after {@code errorCode} and before {@code
+ * exceptionType}, matching the field order the pre-1.7 separate {@code
+ * account.balance.normalization.failed} event used -- instead of {@code
+ * AccountBalanceExceptionMappings} needing to log a second event itself. An empty {@code
+ * extraFields} map (every caller before this sub-task) adds nothing, so every other mapping's log
+ * event is byte-for-byte unchanged.
  */
 public final class ErrorEventLogger {
 
@@ -48,6 +56,7 @@ public final class ErrorEventLogger {
     event.put("path", exchange.getRequest().getPath().value());
     event.put("httpStatus", directive.status().value());
     event.put("errorCode", directive.errorCode());
+    event.putAll(directive.extraFields());
     event.put("exceptionType", exception.getClass().getSimpleName());
     String sanitizedMessage =
         loggingSanitizer.sanitizeText(firstNonBlank(diagnosticMessage, exception.getMessage()));

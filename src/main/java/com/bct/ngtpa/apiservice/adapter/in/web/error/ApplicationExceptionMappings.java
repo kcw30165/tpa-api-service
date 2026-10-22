@@ -19,6 +19,10 @@ import org.springframework.http.HttpStatus;
  * apiStatus}/{@code errorType} arguments. All four always used {@code HttpStatus.BAD_REQUEST} and
  * {@code ex.getErrorCode()}, so a single private {@link #fixed} factory reproduces every one of
  * them exactly.
+ *
+ * <p>Sub-task 1.7 (M1 closure, Option A): {@link #fixed} now builds via {@link
+ * ErrorDescriptor#single} instead of the record constructor directly (one {@link
+ * MessagePolicy#RESOLVE} entry); no behaviour change for any of the four mappings.
  */
 public final class ApplicationExceptionMappings {
 
@@ -67,7 +71,7 @@ public final class ApplicationExceptionMappings {
 
       @Override
       public ErrorDescriptor describe(T exception, ErrorContext context) {
-        return new ErrorDescriptor(
+        return ErrorDescriptor.single(
             HttpStatus.BAD_REQUEST,
             apiStatus,
             errorType,

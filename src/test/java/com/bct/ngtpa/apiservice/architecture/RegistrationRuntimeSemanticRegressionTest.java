@@ -28,6 +28,12 @@ class RegistrationRuntimeSemanticRegressionTest {
     // Sub-task 1.4 rewrite: the handler's mapping logic moved out of ApiExceptionHandler.java
     // into RegistrationExceptionMappings; assert the resolved behaviour directly instead of
     // reading ApiExceptionHandler.java source text.
+    //
+    // Sub-task 1.7 (M1 closure, Option A) compile-break fix: ErrorDescriptor no longer exposes
+    // errorCode() directly -- it carries a List<ErrorEntry>. RegistrationExceptionMappings
+    // always produces exactly one entry (built via ErrorDescriptor.single(...)), so
+    // descriptor.errors().getFirst().code() reproduces the exact same value this test asserted
+    // before sub-task 1.7.
     var mapping = RegistrationExceptionMappings.lookupDownstream();
     var exception =
         new RegistrationLookupDownstreamException(
@@ -35,7 +41,7 @@ class RegistrationRuntimeSemanticRegressionTest {
     ErrorDescriptor descriptor = mapping.describe(exception, new ErrorContext("GET", "/x", null));
     assertThat(descriptor.httpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
     assertThat(descriptor.apiStatus()).isEqualTo(ApiStatus.SYSTEM_ERROR);
-    assertThat(descriptor.errorCode())
+    assertThat(descriptor.errors().getFirst().code())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
   }
 

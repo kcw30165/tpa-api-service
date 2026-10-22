@@ -9,6 +9,9 @@ import org.springframework.http.HttpStatus;
 /**
  * Sub-task 1.4: verbatim move of {@code
  * ApiExceptionHandler.handleInvalidPersonalInformationUpdate}'s mapping.
+ *
+ * <p>Sub-task 1.7 (M1 closure, Option A): built via {@link ErrorDescriptor#single} instead of the
+ * record constructor directly (one {@link MessagePolicy#RESOLVE} entry); no behaviour change.
  */
 public final class PersonalInformationExceptionMappings {
 
@@ -24,7 +27,7 @@ public final class PersonalInformationExceptionMappings {
       @Override
       public ErrorDescriptor describe(
           InvalidPersonalInformationUpdateException exception, ErrorContext context) {
-        return new ErrorDescriptor(
+        return ErrorDescriptor.single(
             HttpStatus.BAD_REQUEST,
             ApiStatus.VALIDATION_FAILED,
             "FORM",

@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.advice;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.accountbalance.AccountBalanceRetrievalResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorContext;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorDescriptor;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
@@ -8,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorLogDirective;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistry;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.LogLevel;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.MessagePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
@@ -34,21 +34,29 @@ import com.bct.ngtpa.apiservice.shared.web.PortalAccessContextKeys;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.util.StringUtils;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
 
+/**
+ * Sub-task 1.7 (M1 closure, Option A): every {@code handleXxx} method is now a one-line delegation
+ * to {@link #delegate}, including the four that previously built their status/body/log inline
+ * (AccountBalance, AccountGainLoss, FundFactSheet, WebExchangeBind) -- their mappings now live in
+ * {@code AccountBalanceExceptionMappings}, {@code AccountGainLossExceptionMappings}, {@code
+ * FundFactSheetExceptionMappings} and {@code WebExchangeBindExceptionMappings} respectively. The
+ * method names and {@code @ExceptionHandler} annotations are kept as-is in this sub-task (sub-task
+ * 1.8 collapses them to a single {@code handle(Exception, ServerWebExchange)} method, per A1).
+ */
 @RestControllerAdvice
 @Slf4j
 public class ApiExceptionHandler {
@@ -84,68 +92,13 @@ public class ApiExceptionHandler {
   @ExceptionHandler(AccountBalanceRetrievalException.class)
   public ResponseEntity<MutationResponse<Void>> handleAccountBalanceRetrievalException(
       AccountBalanceRetrievalException exception, ServerWebExchange exchange) {
-    var failure = exception.normalizationFailure();
-    if (failure != null) {
-      java.util.Map<String, Object> event = new java.util.LinkedHashMap<>();
-      event.put("event", "account.balance.normalization.failed");
-      String requestId = getRequestId(exchange);
-      if (requestId != null) event.put("requestId", requestId);
-      event.put(
-          "collection",
-          switch (failure.collection()) {
-            case DISP_SRC -> "dispSrc";
-            case FUND_DTL -> "fundDtl";
-            case ACC_BAL -> "accBal";
-          });
-      event.put("rowIndex", failure.rowIndex());
-      event.put(
-          "field",
-          switch (failure.field()) {
-            case DISP_SRC -> "disp-src";
-            case SUB_DISP_SRC -> "sub-disp-src";
-            case FUND_CODE -> "fund-code";
-          });
-      event.put("reason", failure.reason().name());
-      log.error("{}", loggingSanitizer.toSafeString(event));
-    }
-    var mapped = AccountBalanceRetrievalResponsePolicy.map(exception);
-    var body = java.util.Objects.requireNonNull(mapped.getBody());
-    return buildMutationErrorResponse(
-        mapped.getStatusCode(),
-        body.status(),
-        body.errors(),
-        exchange,
-        exception,
-        exception.getMessage(),
-        exception.reason() == AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE,
-        false);
+    return delegate(exception, exchange);
   }
 
   @ExceptionHandler(AccountGainLossRetrievalException.class)
   public ResponseEntity<MutationResponse<Void>> handleAccountGainLossRetrievalException(
       AccountGainLossRetrievalException exception, ServerWebExchange exchange) {
-    // Sub-task 1.6: status and body are reconstructed unchanged from the same policy-mapped
-    // status/errors (D5's one planned exception); the only behaviour change is that this
-    // handler now also sets X-Request-Id (via ErrorResponseRenderer, reused verbatim like every
-    // other handler) and emits the http.api.error log line (via ErrorEventLogger), WARN for
-    // FUND_SWITCHING_IN_PROGRESS and ERROR for SYSTEM_FAILURE.
-    var mapped =
-        com.bct.ngtpa.apiservice.adapter.in.web.accountgainloss
-            .AccountGainLossRetrievalResponsePolicy.map(exception);
-    var body = java.util.Objects.requireNonNull(mapped.getBody());
-    ErrorEventLogger.log(
-        log,
-        loggingSanitizer,
-        new ErrorLogDirective(
-            mapped.getStatusCode(),
-            primaryErrorCode(body.errors()),
-            exception.reason() == AccountGainLossRetrievalException.Reason.SYSTEM_FAILURE,
-            false),
-        exchange,
-        exception,
-        exception.getMessage());
-    return ErrorResponseRenderer.render(
-        mapped.getStatusCode(), body.status(), body.errors(), getRequestId(exchange));
+    return delegate(exception, exchange);
   }
 
   @ExceptionHandler(ApimException.class)
@@ -181,16 +134,7 @@ public class ApiExceptionHandler {
   @ExceptionHandler(WebExchangeBindException.class)
   public ResponseEntity<MutationResponse<Void>> handleWebExchangeBindException(
       WebExchangeBindException ex, ServerWebExchange exchange) {
-    List<ApiError> errors = validationErrors(ex, exchange);
-    return buildMutationErrorResponse(
-        HttpStatus.BAD_REQUEST,
-        ApiStatus.VALIDATION_FAILED,
-        errors,
-        exchange,
-        ex,
-        firstValidationMessage(ex),
-        false,
-        false);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(ServerWebInputException.class)
@@ -256,17 +200,7 @@ public class ApiExceptionHandler {
   @ExceptionHandler(FundFactSheetRetrievalException.class)
   public ResponseEntity<MutationResponse<Void>> handleFundFactSheetRetrievalException(
       FundFactSheetRetrievalException ex, ServerWebExchange exchange) {
-    ApiError error =
-        ApiError.system(ErrorCodes.FUND_FACT_SHEET_RETRIEVAL_UNAVAILABLE, null, SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        HttpStatus.SERVICE_UNAVAILABLE,
-        ApiStatus.SYSTEM_ERROR,
-        List.of(error),
-        exchange,
-        ex,
-        ex.getMessage(),
-        true,
-        false);
+    return delegate(ex, exchange);
   }
 
   // Helper methods
@@ -274,23 +208,30 @@ public class ApiExceptionHandler {
       T exception, ServerWebExchange exchange) {
     ErrorContext context = ErrorContext.from(exchange);
     ErrorDescriptor descriptor = registry.resolve(exception, context);
-    ApiError error =
-        new ApiError(
-            descriptor.errorType(),
-            descriptor.errorCode(),
-            resolvePublicMessage(descriptor.errorCode(), exchange, exception),
-            descriptor.targets(),
-            "ERROR",
-            SOURCE_SERVER);
+    List<ApiError> errors =
+        descriptor.errors().stream()
+            .map(
+                entry ->
+                    new ApiError(
+                        entry.type(),
+                        entry.code(),
+                        entry.policy() == MessagePolicy.RESOLVE
+                            ? resolvePublicMessage(entry.code(), exchange, exception)
+                            : null,
+                        entry.targets(),
+                        "ERROR",
+                        SOURCE_SERVER))
+            .toList();
     return buildMutationErrorResponse(
         descriptor.httpStatus(),
         descriptor.apiStatus(),
-        List.of(error),
+        errors,
         exchange,
         exception,
         registry.diagnosticMessage(exception),
         descriptor.logLevel() == LogLevel.ERROR,
-        descriptor.includeStackTrace());
+        descriptor.includeStackTrace(),
+        descriptor.extraLogFields());
   }
 
   private ResponseEntity<MutationResponse<Void>> buildMutationErrorResponse(
@@ -301,7 +242,8 @@ public class ApiExceptionHandler {
       Throwable exception,
       String diagnosticMessage,
       boolean logAtError,
-      boolean includeStackTrace) {
+      boolean includeStackTrace,
+      Map<String, Object> extraLogFields) {
     List<ApiError> safeErrors =
         errors == null || errors.isEmpty()
             ? List.of(
@@ -313,33 +255,14 @@ public class ApiExceptionHandler {
     ErrorEventLogger.log(
         log,
         loggingSanitizer,
-        new ErrorLogDirective(status, primaryErrorCode(safeErrors), logAtError, includeStackTrace),
+        new ErrorLogDirective(
+            status, primaryErrorCode(safeErrors), logAtError, includeStackTrace, extraLogFields),
         exchange,
         exception,
         diagnosticMessage);
 
     String requestId = getRequestId(exchange);
     return ErrorResponseRenderer.render(status, apiStatus, safeErrors, requestId);
-  }
-
-  private List<ApiError> validationErrors(WebExchangeBindException ex, ServerWebExchange exchange) {
-    String errorCode = ErrorCodes.REQUEST_VALIDATION_FAILED;
-    String publicMessage = resolvePublicMessage(errorCode, exchange, ex);
-    List<ApiError> fieldErrors =
-        ex.getFieldErrors().stream()
-            .map(
-                fieldError ->
-                    ApiError.field(
-                        errorCode, publicMessage, fieldTarget(fieldError), SOURCE_SERVER))
-            .toList();
-    if (!fieldErrors.isEmpty()) {
-      return fieldErrors;
-    }
-    return List.of(ApiError.form(errorCode, publicMessage, List.of(), SOURCE_SERVER));
-  }
-
-  private List<String> fieldTarget(FieldError fieldError) {
-    return StringUtils.hasText(fieldError.getField()) ? List.of(fieldError.getField()) : List.of();
   }
 
   private String primaryErrorCode(List<ApiError> errors) {
@@ -453,16 +376,12 @@ public class ApiExceptionHandler {
     }
   }
 
-  private String firstValidationMessage(WebExchangeBindException ex) {
-    return ex.getFieldErrors().stream()
-        .map(FieldError::getDefaultMessage)
-        .filter(StringUtils::hasText)
-        .findFirst()
-        .orElse(ex.getMessage());
-  }
-
   private String firstNonBlank(String first, String second) {
     return StringUtils.hasText(first) ? first : second;
+  }
+
+  private String firstNonBlank(String first, String second, String third) {
+    return firstNonBlank(firstNonBlank(first, second), third);
   }
 
   private String trimToNull(Object value) {

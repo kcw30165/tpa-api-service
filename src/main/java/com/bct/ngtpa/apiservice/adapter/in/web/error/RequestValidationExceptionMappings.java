@@ -10,6 +10,9 @@ import org.springframework.web.server.ServerWebInputException;
 /**
  * Sub-task 1.4: verbatim move of {@code ApiExceptionHandler.handleServerWebInputException}'s
  * mapping, including its reason-or-message diagnostic text.
+ *
+ * <p>Sub-task 1.7 (M1 closure, Option A): built via {@link ErrorDescriptor#single} instead of the
+ * record constructor directly (one {@link MessagePolicy#RESOLVE} entry); no behaviour change.
  */
 public final class RequestValidationExceptionMappings {
 
@@ -24,7 +27,7 @@ public final class RequestValidationExceptionMappings {
 
       @Override
       public ErrorDescriptor describe(ServerWebInputException exception, ErrorContext context) {
-        return new ErrorDescriptor(
+        return ErrorDescriptor.single(
             HttpStatus.BAD_REQUEST,
             ApiStatus.VALIDATION_FAILED,
             "FORM",

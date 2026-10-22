@@ -21,6 +21,12 @@ import org.springframework.http.HttpStatus;
  * fixed JSON {@code http.api.error} shape, which differs from this filter-path's pinned plain-text
  * format (confirmed by the sub-task 1.1 characterization tests, which assert the literal
  * space-separated {@code event=... status=... code=... method=... path=... requestId=...} text).
+ *
+ * <p>Sub-task 1.7 (M1 closure, Option A): built via {@link ErrorDescriptor#single} instead of the
+ * record constructor directly (one {@link MessagePolicy#RESOLVE} entry); no behaviour change --
+ * this handler reads {@code descriptor.errors().getFirst()} directly rather than going through
+ * {@code ApiExceptionHandler.delegate(...)}'s per-entry message resolution, since it never resolves
+ * a public message at all (O-10, confirmed unchanged).
  */
 public final class AuthenticatedPortalContextExceptionMappings {
 
@@ -37,7 +43,7 @@ public final class AuthenticatedPortalContextExceptionMappings {
       @Override
       public ErrorDescriptor describe(
           AuthenticatedPortalContextResolutionException exception, ErrorContext context) {
-        return new ErrorDescriptor(
+        return ErrorDescriptor.single(
             HttpStatus.UNAUTHORIZED,
             ApiStatus.BUSINESS_REJECTED,
             "AUTHENTICATION_REQUIRED",

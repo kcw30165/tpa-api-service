@@ -10,6 +10,10 @@ import org.springframework.http.HttpStatus;
 /**
  * Sub-task 1.4: verbatim move of {@code ApiExceptionHandler.handleFundPriceRetrievalException} and
  * {@code handleFundPriceInvalidDateException}'s mappings.
+ *
+ * <p>Sub-task 1.7 (M1 closure, Option A): both mappings now built via {@link
+ * ErrorDescriptor#single} instead of the record constructor directly (one {@link
+ * MessagePolicy#RESOLVE} entry each); no behaviour change.
  */
 public final class FundPriceExceptionMappings {
 
@@ -24,7 +28,7 @@ public final class FundPriceExceptionMappings {
 
       @Override
       public ErrorDescriptor describe(FundPriceRetrievalException exception, ErrorContext context) {
-        return new ErrorDescriptor(
+        return ErrorDescriptor.single(
             HttpStatus.SERVICE_UNAVAILABLE,
             ApiStatus.SYSTEM_ERROR,
             "FORM",
@@ -47,7 +51,7 @@ public final class FundPriceExceptionMappings {
       @Override
       public ErrorDescriptor describe(
           FundPriceInvalidDateException exception, ErrorContext context) {
-        return new ErrorDescriptor(
+        return ErrorDescriptor.single(
             HttpStatus.BAD_REQUEST,
             ApiStatus.VALIDATION_FAILED,
             "FORM",

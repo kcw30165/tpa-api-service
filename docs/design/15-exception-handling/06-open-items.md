@@ -198,4 +198,27 @@ Nick
 Accepted unless Nick decides otherwise.
 </td>
 </tr>
+<tr>
+<td>  
+O-12
+</td>
+<td>  
+Java resolves message text into errors[].message for most errors (via ApiExceptionHandler's
+resolvePublicMessage / PublicMessageResolver from sub-task 1.8), which conflicts with the
+project's codes-only rule (FE/downstream owns label text). Some features
+(AccountBalanceRetrievalException, AccountGainLossRetrievalException,
+FundFactSheetRetrievalException) already return errors[].message = null instead, confirmed by the
+sub-task 1.6b characterization pack and preserved unchanged by sub-task 1.7's
+MessagePolicy.NONE.
+</td>
+<td>  
+Nick + FE
+</td>
+<td>  
+Open. Not changed in M1 (D5): the pre-existing inconsistency between the two groups of errors is
+preserved exactly as it exists today, not fixed or extended to every error type. Resolving the
+inconsistency (either making every error null, or making the three null ones resolve) is a
+separate, broader decision for Nick and FE.
+</td>
+</tr>
 </table>

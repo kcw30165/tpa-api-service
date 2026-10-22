@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalExc
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.FundComparisonRequestInvalidException;
 import com.bct.ngtpa.apiservice.application.exception.FundComparisonRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.FundFactSheetRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceInvalidDateException;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
@@ -21,10 +22,17 @@ import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import java.lang.reflect.Method;
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ServerWebInputException;
 
 /**
@@ -35,12 +43,26 @@ import org.springframework.web.server.ServerWebInputException;
  * ExceptionMappingRegistryConfig#exceptionMappingRegistry()} assembles exactly these mappings plus
  * the catch-all, and that the full registry resolves correctly end to end.
  *
- * <p>Sub-task 1.5 adds {@link AuthenticatedPortalContextExceptionMappings#authenticationRequired()}
- * to the same shared registry, bringing the total to 17 registered mappings.
+ * <p>Sub-task 1.5 added {@link AuthenticatedPortalContextExceptionMappings}.
+ *
+ * <p>Sub-task 1.7 (M1 closure, Option A) rewrite: every assertion that used to read {@code
+ * descriptor.errorType()}/{@code .errorCode()}/{@code .targets()} directly now reads {@code
+ * descriptor.errors().getFirst().type()}/{@code .code()}/{@code .targets()}, since {@link
+ * ErrorDescriptor} now carries a {@code List<ErrorEntry>}. This sub-task also adds the 4 mappings
+ * that previously stayed inline in {@code ApiExceptionHandler}: {@link
+ * AccountBalanceExceptionMappings}, {@link FundFactSheetExceptionMappings} and {@link
+ * WebExchangeBindExceptionMappings} are covered here; {@link AccountGainLossExceptionMappings} has
+ * its own dedicated test class, {@code AccountGainLossExceptionMappingsTest}, per
+ * docs/design/15-exception-handling/05-milestones.md row 1.7. {@code mappingCount()} moves from 17
+ * to 21.
  */
 class ExceptionMappingsTest {
 
   private static final ErrorContext CONTEXT = new ErrorContext("GET", "/api/v1/test", "req-1");
+
+  private static ErrorEntry firstEntry(ErrorDescriptor descriptor) {
+    return descriptor.errors().getFirst();
+  }
 
   @Test
   void registrationLookupDownstreamMapping() {
@@ -50,12 +72,14 @@ class ExceptionMappingsTest {
             RegistrationLookupDownstreamException.Reason.UNEXPECTED_ERROR, "err.tpa.unexpected");
 
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
 
     assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
     assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
-    assertEquals("DOWNSTREAM_SYSTEM", descriptor.errorType());
-    assertEquals(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value(), descriptor.errorCode());
-    assertEquals(java.util.List.of("PAGE"), descriptor.targets());
+    assertEquals("DOWNSTREAM_SYSTEM", entry.type());
+    assertEquals(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value(), entry.code());
+    assertEquals(List.of("PAGE"), entry.targets());
+    assertEquals(MessagePolicy.RESOLVE, entry.policy());
     assertEquals(LogLevel.ERROR, descriptor.logLevel());
     assertEquals(false, descriptor.includeStackTrace());
     assertTrue(
@@ -68,11 +92,12 @@ class ExceptionMappingsTest {
     var exception = new ApimProfileResolutionException("profile resolution failed");
 
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
 
     assertEquals(exception.getPublicStatus(), descriptor.httpStatus());
     assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
-    assertEquals("SYSTEM", descriptor.errorType());
-    assertEquals(exception.getInternalCode(), descriptor.errorCode());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals(exception.getInternalCode(), entry.code());
     assertEquals(LogLevel.ERROR, descriptor.logLevel());
     assertEquals("APIM profile resolution failed", mapping.diagnosticMessage(exception));
   }
@@ -84,11 +109,12 @@ class ExceptionMappingsTest {
         new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "fail");
 
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
 
     assertEquals(HttpStatus.BAD_GATEWAY, descriptor.httpStatus());
     assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
-    assertEquals("DOWNSTREAM_SYSTEM", descriptor.errorType());
-    assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE, descriptor.errorCode());
+    assertEquals("DOWNSTREAM_SYSTEM", entry.type());
+    assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE, entry.code());
     assertEquals(LogLevel.ERROR, descriptor.logLevel());
   }
 
@@ -99,7 +125,7 @@ class ExceptionMappingsTest {
 
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
 
-    assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE, descriptor.errorCode());
+    assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE, firstEntry(descriptor).code());
   }
 
   @Test
@@ -110,11 +136,12 @@ class ExceptionMappingsTest {
             ErrorCodes.MEMBER_CONTEXT_INVALID, "Missing Account-Ref header");
 
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
 
     assertEquals(HttpStatus.BAD_REQUEST, descriptor.httpStatus());
     assertEquals(ApiStatus.BUSINESS_REJECTED, descriptor.apiStatus());
-    assertEquals("BUSINESS", descriptor.errorType());
-    assertEquals(ErrorCodes.MEMBER_CONTEXT_INVALID, descriptor.errorCode());
+    assertEquals("BUSINESS", entry.type());
+    assertEquals(ErrorCodes.MEMBER_CONTEXT_INVALID, entry.code());
     assertEquals(LogLevel.WARN, descriptor.logLevel());
   }
 
@@ -124,11 +151,12 @@ class ExceptionMappingsTest {
     var exception = new ApplicationException(ErrorCodes.REQUEST_INVALID, "rejected");
 
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
 
     assertEquals(HttpStatus.BAD_REQUEST, descriptor.httpStatus());
     assertEquals(ApiStatus.BUSINESS_REJECTED, descriptor.apiStatus());
-    assertEquals("BUSINESS", descriptor.errorType());
-    assertEquals(ErrorCodes.REQUEST_INVALID, descriptor.errorCode());
+    assertEquals("BUSINESS", entry.type());
+    assertEquals(ErrorCodes.REQUEST_INVALID, entry.code());
     assertEquals(LogLevel.WARN, descriptor.logLevel());
   }
 
@@ -138,10 +166,11 @@ class ExceptionMappingsTest {
     var exception = new InvalidNotificationRequestException("invalid");
 
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
 
     assertEquals(ApiStatus.VALIDATION_FAILED, descriptor.apiStatus());
-    assertEquals("FORM", descriptor.errorType());
-    assertEquals(exception.getErrorCode(), descriptor.errorCode());
+    assertEquals("FORM", entry.type());
+    assertEquals(exception.getErrorCode(), entry.code());
   }
 
   @Test
@@ -150,10 +179,11 @@ class ExceptionMappingsTest {
     var exception = new InvalidContributionRequestException("invalid");
 
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
 
     assertEquals(ApiStatus.VALIDATION_FAILED, descriptor.apiStatus());
-    assertEquals("FORM", descriptor.errorType());
-    assertEquals(exception.getErrorCode(), descriptor.errorCode());
+    assertEquals("FORM", entry.type());
+    assertEquals(exception.getErrorCode(), entry.code());
   }
 
   @Test
@@ -162,10 +192,11 @@ class ExceptionMappingsTest {
     var exception = new FundComparisonRequestInvalidException("invalid");
 
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
 
     assertEquals(ApiStatus.VALIDATION_FAILED, descriptor.apiStatus());
-    assertEquals("VALIDATION", descriptor.errorType());
-    assertEquals(exception.getErrorCode(), descriptor.errorCode());
+    assertEquals("VALIDATION", entry.type());
+    assertEquals(exception.getErrorCode(), entry.code());
   }
 
   @Test
@@ -174,10 +205,11 @@ class ExceptionMappingsTest {
     var exception = new BadCredentialsException("bad credentials");
 
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
 
     assertEquals(HttpStatus.UNAUTHORIZED, descriptor.httpStatus());
     assertEquals(ApiStatus.BUSINESS_REJECTED, descriptor.apiStatus());
-    assertEquals(ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED, descriptor.errorCode());
+    assertEquals(ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED, entry.code());
     assertEquals(LogLevel.WARN, descriptor.logLevel());
   }
 
@@ -189,7 +221,7 @@ class ExceptionMappingsTest {
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
 
     assertEquals(HttpStatus.FORBIDDEN, descriptor.httpStatus());
-    assertEquals(ErrorCodes.SECURITY_ACCESS_DENIED, descriptor.errorCode());
+    assertEquals(ErrorCodes.SECURITY_ACCESS_DENIED, firstEntry(descriptor).code());
     assertEquals(LogLevel.WARN, descriptor.logLevel());
   }
 
@@ -201,7 +233,7 @@ class ExceptionMappingsTest {
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
 
     assertEquals(HttpStatus.BAD_REQUEST, descriptor.httpStatus());
-    assertEquals(ErrorCodes.REQUEST_BODY_MALFORMED, descriptor.errorCode());
+    assertEquals(ErrorCodes.REQUEST_BODY_MALFORMED, firstEntry(descriptor).code());
     assertEquals(LogLevel.WARN, descriptor.logLevel());
     assertEquals("payload malformed", mapping.diagnosticMessage(exception));
   }
@@ -215,7 +247,8 @@ class ExceptionMappingsTest {
 
     assertEquals(HttpStatus.BAD_REQUEST, descriptor.httpStatus());
     assertEquals(ApiStatus.VALIDATION_FAILED, descriptor.apiStatus());
-    assertEquals(ErrorCodes.PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID, descriptor.errorCode());
+    assertEquals(
+        ErrorCodes.PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID, firstEntry(descriptor).code());
   }
 
   @Test
@@ -224,10 +257,11 @@ class ExceptionMappingsTest {
     var exception = new CacheException("cache failed", new RuntimeException("redis secret"));
 
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
 
     assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
-    assertEquals("FORM", descriptor.errorType());
-    assertEquals(ErrorCodes.CACHE_UNEXPECTED, descriptor.errorCode());
+    assertEquals("FORM", entry.type());
+    assertEquals(ErrorCodes.CACHE_UNEXPECTED, entry.code());
     assertEquals(LogLevel.ERROR, descriptor.logLevel());
   }
 
@@ -239,7 +273,7 @@ class ExceptionMappingsTest {
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
 
     assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
-    assertEquals(ErrorCodes.FUND_PRICE_RETRIEVAL_UNAVAILABLE, descriptor.errorCode());
+    assertEquals(ErrorCodes.FUND_PRICE_RETRIEVAL_UNAVAILABLE, firstEntry(descriptor).code());
     assertEquals(LogLevel.ERROR, descriptor.logLevel());
   }
 
@@ -251,7 +285,7 @@ class ExceptionMappingsTest {
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
 
     assertEquals(HttpStatus.BAD_REQUEST, descriptor.httpStatus());
-    assertEquals(ErrorCodes.FUND_PRICE_REQUEST_INVALID, descriptor.errorCode());
+    assertEquals(ErrorCodes.FUND_PRICE_REQUEST_INVALID, firstEntry(descriptor).code());
     assertEquals(LogLevel.WARN, descriptor.logLevel());
   }
 
@@ -263,19 +297,38 @@ class ExceptionMappingsTest {
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
 
     assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
-    assertEquals(ErrorCodes.FUND_COMPARISON_RETRIEVAL_UNAVAILABLE, descriptor.errorCode());
+    assertEquals(ErrorCodes.FUND_COMPARISON_RETRIEVAL_UNAVAILABLE, firstEntry(descriptor).code());
     assertEquals(LogLevel.ERROR, descriptor.logLevel());
+  }
+
+  @Test
+  void authenticatedPortalContextResolutionMapping() {
+    var mapping = AuthenticatedPortalContextExceptionMappings.authenticationRequired();
+    var exception = new AuthenticatedPortalContextResolutionException();
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.UNAUTHORIZED, descriptor.httpStatus());
+    assertEquals(ApiStatus.BUSINESS_REJECTED, descriptor.apiStatus());
+    assertEquals("AUTHENTICATION_REQUIRED", entry.type());
+    assertEquals(ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED, entry.code());
+    assertEquals(List.of("PAGE"), entry.targets());
+    assertEquals("authenticated.context.failure.mapped", descriptor.logEventName());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
   }
 
   @Test
   void catchAllMapping() {
     ErrorDescriptor descriptor =
         CatchAllExceptionMapping.INSTANCE.describe(new IllegalStateException("boom"), CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
 
     assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, descriptor.httpStatus());
     assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
-    assertEquals("SYSTEM", descriptor.errorType());
-    assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, descriptor.errorCode());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, entry.code());
     assertEquals(LogLevel.ERROR, descriptor.logLevel());
     assertEquals(true, descriptor.includeStackTrace());
   }
@@ -288,70 +341,186 @@ class ExceptionMappingsTest {
     assertEquals("denied reason", mapping.diagnosticMessage(exception));
   }
 
-  // ───────────────────────── Sub-task 1.5: filter-path mapping ─────────────────────────
+  // ───────────────────────── Sub-task 1.7: AccountBalance, FundFactSheet, WebExchangeBind
+  // ─────────────────────────
 
   @Test
-  void authenticatedPortalContextResolutionMapping() {
-    var mapping = AuthenticatedPortalContextExceptionMappings.authenticationRequired();
-    var exception = new AuthenticatedPortalContextResolutionException();
+  void accountBalanceAccountNotFoundMappingHasNullMessagePolicy() {
+    var mapping = AccountBalanceExceptionMappings.retrievalFailure();
+    var exception = AccountBalanceRetrievalException.accountNotFound();
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, descriptor.httpStatus());
+    assertEquals(ApiStatus.BUSINESS_REJECTED, descriptor.apiStatus());
+    assertEquals("BUSINESS", entry.type());
+    assertEquals("err.ab.account.not.exist", entry.code());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertTrue(descriptor.extraLogFields().isEmpty());
+  }
+
+  @Test
+  void accountBalanceSystemFailureMappingLogsAtError() {
+    var mapping = AccountBalanceExceptionMappings.retrievalFailure();
+    var exception = AccountBalanceRetrievalException.systemFailure();
 
     ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
 
-    assertEquals(HttpStatus.UNAUTHORIZED, descriptor.httpStatus());
-    assertEquals(ApiStatus.BUSINESS_REJECTED, descriptor.apiStatus());
-    assertEquals("AUTHENTICATION_REQUIRED", descriptor.errorType());
-    assertEquals(ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED, descriptor.errorCode());
-    assertEquals(java.util.List.of("PAGE"), descriptor.targets());
-    assertEquals("authenticated.context.failure.mapped", descriptor.logEventName());
-    assertEquals(LogLevel.WARN, descriptor.logLevel());
-    assertEquals(false, descriptor.includeStackTrace());
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals(LogLevel.ERROR, descriptor.logLevel());
+    assertEquals(MessagePolicy.NONE, firstEntry(descriptor).policy());
+  }
+
+  @Test
+  void accountBalanceNormalizationFailureMappingCarriesExtraLogFields() {
+    var mapping = AccountBalanceExceptionMappings.retrievalFailure();
+    var failure =
+        new AccountBalanceRetrievalException.NormalizationFailure(
+            AccountBalanceRetrievalException.Collection.FUND_DTL,
+            3,
+            AccountBalanceRetrievalException.Field.FUND_CODE,
+            AccountBalanceRetrievalException.ValidationReason.EMPTY);
+    var exception = AccountBalanceRetrievalException.normalizationFailure(failure);
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+
+    assertEquals("fundDtl", descriptor.extraLogFields().get("collection"));
+    assertEquals(3, descriptor.extraLogFields().get("rowIndex"));
+    assertEquals("fund-code", descriptor.extraLogFields().get("field"));
+    assertEquals("EMPTY", descriptor.extraLogFields().get("reason"));
+  }
+
+  @Test
+  void fundFactSheetRetrievalMapping() {
+    var mapping = FundFactSheetExceptionMappings.retrievalUnavailable();
+    var exception = FundFactSheetRetrievalException.systemFailure();
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals(ErrorCodes.FUND_FACT_SHEET_RETRIEVAL_UNAVAILABLE, entry.code());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(LogLevel.ERROR, descriptor.logLevel());
+  }
+
+  @Test
+  void webExchangeBindMappingProducesOneEntryPerFieldErrorInOrder() throws Exception {
+    var mapping = WebExchangeBindExceptionMappings.validationFailed();
+    var exception = bindExceptionWithTwoFieldErrors("notificationId", "status");
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+
+    assertEquals(HttpStatus.BAD_REQUEST, descriptor.httpStatus());
+    assertEquals(ApiStatus.VALIDATION_FAILED, descriptor.apiStatus());
+    assertEquals(2, descriptor.errors().size());
+    assertEquals(List.of("notificationId"), descriptor.errors().get(0).targets());
+    assertEquals(List.of("status"), descriptor.errors().get(1).targets());
+    assertEquals("FIELD", descriptor.errors().get(0).type());
+    assertEquals(ErrorCodes.REQUEST_VALIDATION_FAILED, descriptor.errors().get(0).code());
+    assertEquals(MessagePolicy.RESOLVE, descriptor.errors().get(0).policy());
+    assertEquals(MessagePolicy.RESOLVE, descriptor.errors().get(1).policy());
+  }
+
+  @Test
+  void webExchangeBindMappingProducesOneFormEntryWhenNoFieldErrors() throws Exception {
+    var mapping = WebExchangeBindExceptionMappings.validationFailed();
+    var exception = bindExceptionWithoutFieldErrors();
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(1, descriptor.errors().size());
+    assertEquals("FORM", entry.type());
+    assertTrue(entry.targets().isEmpty());
+    assertEquals(MessagePolicy.RESOLVE, entry.policy());
+  }
+
+  @Test
+  void webExchangeBindDiagnosticMessageUsesFirstFieldDefaultMessage() throws Exception {
+    var mapping = WebExchangeBindExceptionMappings.validationFailed();
+    var exception =
+        bindExceptionWithFieldError("notificationId", "notificationId must not be empty");
+
+    assertEquals("notificationId must not be empty", mapping.diagnosticMessage(exception));
   }
 
   // ───────────────────────── registry assembly ─────────────────────────
 
   @Test
-  void configAssemblesExactlySeventeenMappingsPlusCatchAll() {
+  void configAssemblesExactlyTwentyOneMappingsPlusCatchAll() {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(17, registry.mappingCount());
+    assertEquals(21, registry.mappingCount());
 
-    // Spot-check resolution end to end for a representative subset.
     ErrorDescriptor fundComparison =
         registry.resolve(
             FundComparisonRetrievalException.systemFailure(),
             new ErrorContext("GET", "/api/v1/fund-comparison", "req-x"));
-    assertEquals(ErrorCodes.FUND_COMPARISON_RETRIEVAL_UNAVAILABLE, fundComparison.errorCode());
-
-    ErrorDescriptor authenticatedPortalContext =
-        registry.resolve(
-            new AuthenticatedPortalContextResolutionException(),
-            new ErrorContext("GET", "/api/v1/fund-price", "req-w"));
     assertEquals(
-        ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED, authenticatedPortalContext.errorCode());
-    assertEquals(HttpStatus.UNAUTHORIZED, authenticatedPortalContext.httpStatus());
+        ErrorCodes.FUND_COMPARISON_RETRIEVAL_UNAVAILABLE,
+        fundComparison.errors().getFirst().code());
+
+    ErrorDescriptor accountBalance =
+        registry.resolve(
+            AccountBalanceRetrievalException.accountNotFound(),
+            new ErrorContext("GET", "/api/v1/account-balance", "req-z"));
+    assertEquals("err.ab.account.not.exist", accountBalance.errors().getFirst().code());
+    assertEquals(MessagePolicy.NONE, accountBalance.errors().getFirst().policy());
 
     ErrorDescriptor unmapped =
         registry.resolve(
             new IllegalStateException("not individually mapped"),
             new ErrorContext("GET", "/api/v1/unknown", "req-y"));
-    assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, unmapped.errorCode());
+    assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, unmapped.errors().getFirst().code());
   }
 
-  @Test
-  void
-      accountBalanceAndAccountGainLossAndWebExchangeBindAndFundFactSheetAreIntentionallyNotRegistered() {
-    ExceptionMappingRegistry registry =
-        new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
+  // ───────────────────────── bind-exception test fixtures ─────────────────────────
 
-    // These four keep their existing handler bodies (dynamic multi-error responses, or a
-    // response message that is always null) per ExceptionMappingRegistryConfig's documented
-    // scope decision; an AccountBalanceRetrievalException falls through to the catch-all here
-    // because it is not individually registered.
-    ErrorDescriptor fallback =
-        registry.resolve(
-            AccountBalanceRetrievalException.accountNotFound(),
-            new ErrorContext("GET", "/api/v1/account-balance", "req-z"));
-    assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, fallback.errorCode());
+  private static WebExchangeBindException bindExceptionWithFieldError(
+      String fieldName, String defaultMessage) throws Exception {
+    Method method =
+        ExceptionMappingsTest.class.getDeclaredMethod("notificationPatch", TestRequest.class);
+    MethodParameter parameter = new MethodParameter(method, 0);
+    TestRequest target = new TestRequest();
+    BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(target, "request");
+    bindingResult.addError(new FieldError("request", fieldName, defaultMessage));
+    return new WebExchangeBindException(parameter, bindingResult);
   }
+
+  private static WebExchangeBindException bindExceptionWithTwoFieldErrors(
+      String firstField, String secondField) throws Exception {
+    Method method =
+        ExceptionMappingsTest.class.getDeclaredMethod("notificationPatch", TestRequest.class);
+    MethodParameter parameter = new MethodParameter(method, 0);
+    TestRequest target = new TestRequest();
+    BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(target, "request");
+    bindingResult.addError(
+        new FieldError("request", firstField, firstField + " must not be empty"));
+    bindingResult.addError(
+        new FieldError("request", secondField, secondField + " must not be empty"));
+    return new WebExchangeBindException(parameter, bindingResult);
+  }
+
+  private static WebExchangeBindException bindExceptionWithoutFieldErrors() throws Exception {
+    Method method =
+        ExceptionMappingsTest.class.getDeclaredMethod("notificationPatch", TestRequest.class);
+    MethodParameter parameter = new MethodParameter(method, 0);
+    TestRequest target = new TestRequest();
+    BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(target, "request");
+    return new WebExchangeBindException(parameter, bindingResult);
+  }
+
+  @SuppressWarnings("unused")
+  private void notificationPatch(@RequestBody TestRequest request) {
+    // Method signature used only to construct MethodParameter for WebExchangeBindException.
+  }
+
+  private static final class TestRequest {}
 }

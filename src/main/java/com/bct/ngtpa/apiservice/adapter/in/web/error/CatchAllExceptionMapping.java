@@ -16,6 +16,11 @@ import org.springframework.http.HttpStatus;
  * passes the same object to every {@link ExceptionMappingRegistry} it builds, and tests compare it
  * by reference. SonarQube's generic singleton-pattern advisory (java:S6548) is suppressed here
  * because that is exactly the required contract, not an accidental singleton.
+ *
+ * <p>Sub-task 1.7 (M1 closure, Option A): the mapping is now built via {@link
+ * ErrorDescriptor#single} instead of the record constructor directly (one {@link
+ * MessagePolicy#RESOLVE} entry); this preserves identical behaviour since the catch-all handler
+ * always resolved its public message before this sub-task too.
  */
 @SuppressWarnings("java:S6548")
 public final class CatchAllExceptionMapping implements ExceptionMapping<Throwable> {
@@ -31,7 +36,7 @@ public final class CatchAllExceptionMapping implements ExceptionMapping<Throwabl
 
   @Override
   public ErrorDescriptor describe(Throwable exception, ErrorContext context) {
-    return new ErrorDescriptor(
+    return ErrorDescriptor.single(
         HttpStatus.INTERNAL_SERVER_ERROR,
         ApiStatus.SYSTEM_ERROR,
         "SYSTEM",

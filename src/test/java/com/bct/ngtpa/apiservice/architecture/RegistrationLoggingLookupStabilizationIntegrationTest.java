@@ -48,6 +48,12 @@ class RegistrationLoggingLookupStabilizationIntegrationTest {
    * this sub-task. Asserts the same contract against the resolved {@link ErrorDescriptor} instead.
    * Duplicated from {@code RegistrationStructuredFailureLoggingContractTest} because this
    * integration test carries its own {@code TC-0xx} traceability annotations.
+   *
+   * <p>Sub-task 1.7 (M1 closure, Option A) compile-break fix: {@link ErrorDescriptor} no longer
+   * exposes {@code errorCode()} directly -- it carries a {@code List<ErrorEntry>}. {@code
+   * RegistrationExceptionMappings} always produces exactly one entry (built via {@code
+   * ErrorDescriptor.single(...)}), so {@code descriptor.errors().getFirst().code()} reproduces the
+   * exact same value this test asserted before sub-task 1.7.
    */
   @Test
   void lookupExceptionReturnsSanitizedServiceUnavailable() {
@@ -60,7 +66,7 @@ class RegistrationLoggingLookupStabilizationIntegrationTest {
 
     assertThat(descriptor.httpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
     assertThat(descriptor.apiStatus()).isEqualTo(ApiStatus.SYSTEM_ERROR);
-    assertThat(descriptor.errorCode())
+    assertThat(descriptor.errors().getFirst().code())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
   }
 

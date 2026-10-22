@@ -11,6 +11,11 @@ import org.springframework.util.StringUtils;
  * Sub-task 1.4: verbatim move of {@code ApiExceptionHandler.handleApimProfileResolutionException}
  * and {@code handleApimException}'s mappings, including {@code resolveApimErrorCode}, which moves
  * here since it is specific to {@link ApimException}.
+ *
+ * <p>Sub-task 1.7 (M1 closure, Option A): both mappings now built via {@link
+ * ErrorDescriptor#single} instead of the record constructor directly (one {@link
+ * MessagePolicy#RESOLVE} entry each); no behaviour change, since both already resolved their public
+ * message before this sub-task.
  */
 public final class ApimExceptionMappings {
 
@@ -30,7 +35,7 @@ public final class ApimExceptionMappings {
             exception.getInternalCode() != null
                 ? exception.getInternalCode()
                 : "err.apim.profile.resolution.failed";
-        return new ErrorDescriptor(
+        return ErrorDescriptor.single(
             exception.getPublicStatus(),
             ApiStatus.SYSTEM_ERROR,
             "SYSTEM",
@@ -57,7 +62,7 @@ public final class ApimExceptionMappings {
 
       @Override
       public ErrorDescriptor describe(ApimException exception, ErrorContext context) {
-        return new ErrorDescriptor(
+        return ErrorDescriptor.single(
             exception.getStatusCode(),
             ApiStatus.SYSTEM_ERROR,
             "DOWNSTREAM_SYSTEM",

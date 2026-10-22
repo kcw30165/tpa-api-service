@@ -4,18 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
 
 /**
- * SonarQube fix (post-M1 quality gate, java:S5778): every {@code assertThrows} lambda that
- * previously contained two or more method invocations that could each throw (for example a {@code
- * catchAll()} or {@code List.of(...)} argument expression evaluated alongside the
- * constructor/method call under test) now has every "safe" invocation extracted into a local
- * variable before the {@code assertThrows} call, leaving only the single invocation actually
- * expected to throw inside the lambda. No assertions or test intent changed.
+ * Sub-task 1.7 (M1 closure, Option A) update: the {@code mappingFor} test helper now builds its
+ * {@link ErrorDescriptor} via {@link ErrorDescriptor#single}, and assertions read {@code
+ * descriptor.errors().getFirst().code()} instead of the removed {@code descriptor.errorCode()}. No
+ * change to resolution-order, catch-all-fallback or duplicate-mapping behaviour.
  */
 class ExceptionMappingRegistryTest {
 
@@ -44,9 +40,9 @@ class ExceptionMappingRegistryTest {
 
       @Override
       public ErrorDescriptor describe(T exception, ErrorContext context) {
-        return new ErrorDescriptor(
-            HttpStatus.BAD_REQUEST,
-            ApiStatus.BUSINESS_REJECTED,
+        return ErrorDescriptor.single(
+            org.springframework.http.HttpStatus.BAD_REQUEST,
+            com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus.BUSINESS_REJECTED,
             "BUSINESS",
             errorCode,
             List.of(),
@@ -59,6 +55,10 @@ class ExceptionMappingRegistryTest {
 
   private static ExceptionMapping<Throwable> catchAll() {
     return mappingFor(Throwable.class, "SYSTEM_UNEXPECTED");
+  }
+
+  private static String code(ErrorDescriptor descriptor) {
+    return descriptor.errors().getFirst().code();
   }
 
   // ───────────────────────── nearest-superclass resolution ─────────────────────────
@@ -75,7 +75,7 @@ class ExceptionMappingRegistryTest {
 
     ErrorDescriptor descriptor = registry.resolve(new ChildException(), CONTEXT);
 
-    assertEquals("child", descriptor.errorCode());
+    assertEquals("child", code(descriptor));
   }
 
   @Test
@@ -90,7 +90,7 @@ class ExceptionMappingRegistryTest {
     // ChildException itself is not registered; ParentException is nearer than GrandparentException.
     ErrorDescriptor descriptor = registry.resolve(new ChildException(), CONTEXT);
 
-    assertEquals("parent", descriptor.errorCode());
+    assertEquals("parent", code(descriptor));
   }
 
   @Test
@@ -101,7 +101,7 @@ class ExceptionMappingRegistryTest {
 
     ErrorDescriptor descriptor = registry.resolve(new ChildException(), CONTEXT);
 
-    assertEquals("grandparent", descriptor.errorCode());
+    assertEquals("grandparent", code(descriptor));
   }
 
   // ───────────────────────── catch-all fallback ─────────────────────────
@@ -114,7 +114,7 @@ class ExceptionMappingRegistryTest {
 
     ErrorDescriptor descriptor = registry.resolve(new UnrelatedException(), CONTEXT);
 
-    assertEquals("SYSTEM_UNEXPECTED", descriptor.errorCode());
+    assertEquals("SYSTEM_UNEXPECTED", code(descriptor));
   }
 
   @Test
@@ -123,7 +123,7 @@ class ExceptionMappingRegistryTest {
 
     ErrorDescriptor descriptor = registry.resolve(new IllegalStateException("boom"), CONTEXT);
 
-    assertEquals("SYSTEM_UNEXPECTED", descriptor.errorCode());
+    assertEquals("SYSTEM_UNEXPECTED", code(descriptor));
     assertEquals(0, registry.mappingCount());
   }
 
