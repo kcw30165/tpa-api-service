@@ -81,6 +81,21 @@ import org.springframework.web.server.ServerWebInputException;
  * header" to assert the new header and log behaviour, matching every other handler row in this
  * pack. Status and body remain unchanged.
  *
+ * <p>Sub-task 1.6b (M1 closure, pin-only, no behaviour change expected): extends {@link
+ * #assertMutationFailure} with an {@code expectedMessage} parameter and asserts {@code
+ * error.message()} on every existing row, to make visible -- ahead of the sub-task 1.7 move into
+ * {@code ExceptionMapping}s -- which exceptions currently bypass message resolution entirely
+ * (always {@code null}: {@code AccountBalanceRetrievalException}'s 3 reasons, {@code
+ * AccountGainLossRetrievalException}'s 2 reasons, and {@code FundFactSheetRetrievalException}) and
+ * which resolve a message via {@code resolvePublicMessage} (every row that goes through {@code
+ * delegate(...)}, plus {@code WebExchangeBindException}, which calls {@code resolvePublicMessage}
+ * directly in {@code validationErrors(...)}). Also adds two new rows: one proving a pre-login path
+ * (for example {@code /api/v1/auth/login}) suppresses the resolved message for a {@code
+ * delegate(...)}-routed exception back to {@code null}, and one proving that a {@code
+ * WebExchangeBindException} with two field errors produces two {@link ApiError} entries, both
+ * carrying the same resolved message, in field order. This sub-task must pass on unchanged
+ * production code; it only adds assertions to the existing characterization pack.
+ *
  * <p>SonarQube fix (post-M1 quality gate, java:S1874): three tests below assert against {@code
  * HttpStatus.UNPROCESSABLE_ENTITY}, which spring-web 7.0.7 flags as deprecated in favour of {@code
  * HttpStatus.UNPROCESSABLE_CONTENT}. Production (the Account Balance / Account Gain-Loss response
@@ -137,7 +152,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "DOWNSTREAM_SYSTEM",
         SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value(),
         List.of("PAGE"),
-        "req-1");
+        "req-1",
+        "message for " + SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
     assertLoggedOnce(
         Level.ERROR,
         "RegistrationLookupDownstreamException",
@@ -160,7 +176,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "SYSTEM",
         ex.getInternalCode(),
         List.of(),
-        "req-2");
+        "req-2",
+        "message for " + ex.getInternalCode());
     assertLoggedOnce(Level.ERROR, "ApimProfileResolutionException", ex.getInternalCode(), false);
   }
 
@@ -180,7 +197,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "BUSINESS",
         "err.ab.account.not.exist",
         List.of(),
-        "req-3");
+        "req-3",
+        null);
     assertLoggedOnce(
         Level.WARN, "AccountBalanceRetrievalException", "err.ab.account.not.exist", false);
   }
@@ -199,7 +217,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "BUSINESS",
         "err.ab.account.mismatch",
         List.of(),
-        "req-4");
+        "req-4",
+        null);
     assertLoggedOnce(
         Level.WARN, "AccountBalanceRetrievalException", "err.ab.account.mismatch", false);
   }
@@ -217,7 +236,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "SYSTEM",
         "err.system.unavailable",
         List.of(),
-        "req-5");
+        "req-5",
+        null);
     assertLoggedOnce(
         Level.ERROR, "AccountBalanceRetrievalException", "err.system.unavailable", false);
   }
@@ -269,7 +289,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "BUSINESS",
         "err.fund.switching.in.progress",
         List.of(),
-        "req-25");
+        "req-25",
+        null);
     assertLoggedOnce(
         Level.WARN, "AccountGainLossRetrievalException", "err.fund.switching.in.progress", false);
   }
@@ -288,7 +309,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "SYSTEM",
         "err.system.unavailable",
         List.of(),
-        "req-26");
+        "req-26",
+        null);
     assertLoggedOnce(
         Level.ERROR, "AccountGainLossRetrievalException", "err.system.unavailable", false);
   }
@@ -319,7 +341,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "DOWNSTREAM_SYSTEM",
         ErrorCodes.APIM_UPSTREAM_FAILURE,
         List.of(),
-        "req-7");
+        "req-7",
+        "message for " + ErrorCodes.APIM_UPSTREAM_FAILURE);
     assertLoggedOnce(Level.ERROR, "ApimException", ErrorCodes.APIM_UPSTREAM_FAILURE, false);
   }
 
@@ -339,7 +362,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "FORM",
         ErrorCodes.NOTIFICATION_REQUEST_INVALID,
         List.of(),
-        "req-8");
+        "req-8",
+        "message for " + ErrorCodes.NOTIFICATION_REQUEST_INVALID);
     assertLoggedOnce(
         Level.WARN,
         "InvalidNotificationRequestException",
@@ -363,7 +387,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "FORM",
         ErrorCodes.CONTRIBUTION_REQUEST_INVALID,
         List.of(),
-        "req-9");
+        "req-9",
+        "message for " + ErrorCodes.CONTRIBUTION_REQUEST_INVALID);
     assertLoggedOnce(
         Level.WARN,
         "InvalidContributionRequestException",
@@ -388,7 +413,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "BUSINESS",
         ErrorCodes.MEMBER_CONTEXT_INVALID,
         List.of(),
-        "req-10");
+        "req-10",
+        "message for " + ErrorCodes.MEMBER_CONTEXT_INVALID);
     assertLoggedOnce(
         Level.WARN,
         "PortalAccessContextResolutionException",
@@ -412,8 +438,29 @@ class ApiExceptionHandlerCharacterizationTest {
         "BUSINESS",
         ErrorCodes.REQUEST_INVALID,
         List.of(),
-        "req-11");
+        "req-11",
+        "message for " + ErrorCodes.REQUEST_INVALID);
     assertLoggedOnce(Level.WARN, "ApplicationException", ErrorCodes.REQUEST_INVALID, false);
+  }
+
+  // ───────────────────────── Pre-login path suppresses resolved message ─────────────────────────
+
+  @Test
+  void preLoginAuthRequest_suppressesResolvedMessageForDelegateRoutedException() {
+    var response =
+        handler.handleApplicationException(
+            new ApplicationException(ErrorCodes.REQUEST_INVALID, "application rejected request"),
+            preLoginExchangeWithRequestId("req-27"));
+
+    assertMutationFailure(
+        response,
+        HttpStatus.BAD_REQUEST,
+        ApiStatus.BUSINESS_REJECTED,
+        "BUSINESS",
+        ErrorCodes.REQUEST_INVALID,
+        List.of(),
+        "req-27",
+        null);
   }
 
   // ───────────────────────── WebExchangeBindException ─────────────────────────
@@ -433,7 +480,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "FIELD",
         ErrorCodes.REQUEST_VALIDATION_FAILED,
         List.of("notificationId"),
-        "req-12");
+        "req-12",
+        "message for " + ErrorCodes.REQUEST_VALIDATION_FAILED);
     assertLoggedOnce(
         Level.WARN, "WebExchangeBindException", ErrorCodes.REQUEST_VALIDATION_FAILED, false);
   }
@@ -452,9 +500,43 @@ class ApiExceptionHandlerCharacterizationTest {
         "FORM",
         ErrorCodes.REQUEST_VALIDATION_FAILED,
         List.of(),
-        "req-13");
+        "req-13",
+        "message for " + ErrorCodes.REQUEST_VALIDATION_FAILED);
     assertLoggedOnce(
         Level.WARN, "WebExchangeBindException", ErrorCodes.REQUEST_VALIDATION_FAILED, false);
+  }
+
+  @Test
+  void
+      webExchangeBindException_withTwoFieldErrors_bothEntriesCarryTheSameResolvedMessageInFieldOrder()
+          throws Exception {
+    var response =
+        handler.handleWebExchangeBindException(
+            bindExceptionWithTwoFieldErrors(
+                "notificationId",
+                "notificationId must not be empty",
+                "status",
+                "status must not be empty"),
+            exchangeWithRequestId("req-28"));
+
+    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    MutationResponse<Void> mutation = response.getBody();
+    assertNotNull(mutation);
+    assertFalse(mutation.success());
+    assertEquals(ApiStatus.VALIDATION_FAILED, mutation.status());
+    assertEquals(2, mutation.errors().size());
+
+    String expectedMessage = "message for " + ErrorCodes.REQUEST_VALIDATION_FAILED;
+    ApiError first = mutation.errors().get(0);
+    ApiError second = mutation.errors().get(1);
+    assertEquals(List.of("notificationId"), first.targets());
+    assertEquals(List.of("status"), second.targets());
+    assertEquals(expectedMessage, first.message());
+    assertEquals(expectedMessage, second.message());
+    assertEquals("FIELD", first.type());
+    assertEquals("FIELD", second.type());
+    assertEquals(ErrorCodes.REQUEST_VALIDATION_FAILED, first.code());
+    assertEquals(ErrorCodes.REQUEST_VALIDATION_FAILED, second.code());
   }
 
   // ───────────────────────── ServerWebInputException ─────────────────────────
@@ -472,7 +554,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "FORM",
         ErrorCodes.REQUEST_BODY_MALFORMED,
         List.of(),
-        "req-14");
+        "req-14",
+        "message for " + ErrorCodes.REQUEST_BODY_MALFORMED);
     assertLoggedOnce(
         Level.WARN, "ServerWebInputException", ErrorCodes.REQUEST_BODY_MALFORMED, false);
   }
@@ -492,7 +575,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "BUSINESS",
         ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED,
         List.of(),
-        "req-15");
+        "req-15",
+        "message for " + ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED);
     assertLoggedOnce(
         Level.WARN, "BadCredentialsException", ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED, false);
   }
@@ -512,7 +596,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "BUSINESS",
         ErrorCodes.SECURITY_ACCESS_DENIED,
         List.of(),
-        "req-16");
+        "req-16",
+        "message for " + ErrorCodes.SECURITY_ACCESS_DENIED);
     assertLoggedOnce(Level.WARN, "AccessDeniedException", ErrorCodes.SECURITY_ACCESS_DENIED, false);
   }
 
@@ -531,7 +616,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "SYSTEM",
         ErrorCodes.SYSTEM_UNEXPECTED,
         List.of(),
-        "req-17");
+        "req-17",
+        "message for " + ErrorCodes.SYSTEM_UNEXPECTED);
     assertLoggedOnce(Level.ERROR, "IllegalStateException", ErrorCodes.SYSTEM_UNEXPECTED, true);
   }
 
@@ -552,7 +638,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "FORM",
         ErrorCodes.PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID,
         List.of(),
-        "req-18");
+        "req-18",
+        "message for " + ErrorCodes.PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID);
     assertLoggedOnce(
         Level.WARN,
         "InvalidPersonalInformationUpdateException",
@@ -578,7 +665,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "FORM",
         ErrorCodes.CACHE_UNEXPECTED,
         List.of(),
-        "req-19");
+        "req-19",
+        "message for " + ErrorCodes.CACHE_UNEXPECTED);
     assertLoggedOnce(Level.ERROR, "CacheException", ErrorCodes.CACHE_UNEXPECTED, false);
   }
 
@@ -597,7 +685,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "FORM",
         ErrorCodes.FUND_PRICE_RETRIEVAL_UNAVAILABLE,
         List.of(),
-        "req-20");
+        "req-20",
+        "message for " + ErrorCodes.FUND_PRICE_RETRIEVAL_UNAVAILABLE);
     assertLoggedOnce(
         Level.ERROR,
         "FundPriceRetrievalException",
@@ -620,7 +709,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "FORM",
         ErrorCodes.FUND_PRICE_REQUEST_INVALID,
         List.of(),
-        "req-21");
+        "req-21",
+        "message for " + ErrorCodes.FUND_PRICE_REQUEST_INVALID);
     assertLoggedOnce(
         Level.WARN, "FundPriceInvalidDateException", ErrorCodes.FUND_PRICE_REQUEST_INVALID, false);
   }
@@ -642,7 +732,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "VALIDATION",
         ErrorCodes.FUND_COMPARISON_REQUEST_INVALID,
         List.of(),
-        "req-22");
+        "req-22",
+        "message for " + ErrorCodes.FUND_COMPARISON_REQUEST_INVALID);
     assertLoggedOnce(
         Level.WARN,
         "FundComparisonRequestInvalidException",
@@ -665,7 +756,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "FORM",
         ErrorCodes.FUND_COMPARISON_RETRIEVAL_UNAVAILABLE,
         List.of(),
-        "req-23");
+        "req-23",
+        "message for " + ErrorCodes.FUND_COMPARISON_RETRIEVAL_UNAVAILABLE);
     assertLoggedOnce(
         Level.ERROR,
         "FundComparisonRetrievalException",
@@ -688,7 +780,8 @@ class ApiExceptionHandlerCharacterizationTest {
         "SYSTEM",
         ErrorCodes.FUND_FACT_SHEET_RETRIEVAL_UNAVAILABLE,
         List.of(),
-        "req-24");
+        "req-24",
+        null);
     assertLoggedOnce(
         Level.ERROR,
         "FundFactSheetRetrievalException",
@@ -718,7 +811,8 @@ class ApiExceptionHandlerCharacterizationTest {
       String expectedErrorType,
       String expectedErrorCode,
       List<String> expectedTargets,
-      String expectedRequestId) {
+      String expectedRequestId,
+      String expectedMessage) {
     assertEquals(expectedHttpStatus, response.getStatusCode());
     assertEquals(
         expectedRequestId, response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
@@ -738,6 +832,7 @@ class ApiExceptionHandlerCharacterizationTest {
     assertEquals(expectedTargets, error.targets());
     assertEquals("ERROR", error.severity());
     assertEquals(SOURCE_SERVER, error.source());
+    assertEquals(expectedMessage, error.message());
   }
 
   private void assertLoggedOnce(
@@ -779,6 +874,13 @@ class ApiExceptionHandlerCharacterizationTest {
     return exchange;
   }
 
+  private static MockServerWebExchange preLoginExchangeWithRequestId(String requestId) {
+    MockServerWebExchange exchange =
+        MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/auth/login"));
+    exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, requestId);
+    return exchange;
+  }
+
   private static WebExchangeBindException bindExceptionWithFieldError(
       String fieldName, String defaultMessage) throws Exception {
     Method method =
@@ -789,6 +891,24 @@ class ApiExceptionHandlerCharacterizationTest {
         new UpdateNotificationsReadStatusRequest(List.of());
     BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(target, "request");
     bindingResult.addError(new FieldError("request", fieldName, defaultMessage));
+    return new WebExchangeBindException(parameter, bindingResult);
+  }
+
+  private static WebExchangeBindException bindExceptionWithTwoFieldErrors(
+      String firstFieldName,
+      String firstDefaultMessage,
+      String secondFieldName,
+      String secondDefaultMessage)
+      throws Exception {
+    Method method =
+        ApiExceptionHandlerCharacterizationTest.class.getDeclaredMethod(
+            "notificationPatch", UpdateNotificationsReadStatusRequest.class);
+    MethodParameter parameter = new MethodParameter(method, 0);
+    UpdateNotificationsReadStatusRequest target =
+        new UpdateNotificationsReadStatusRequest(List.of());
+    BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(target, "request");
+    bindingResult.addError(new FieldError("request", firstFieldName, firstDefaultMessage));
+    bindingResult.addError(new FieldError("request", secondFieldName, secondDefaultMessage));
     return new WebExchangeBindException(parameter, bindingResult);
   }
 
