@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.pageconfig;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +16,6 @@ public class PageSchemaProperties {
   private PageMetadataProperties metadata;
   private FormMetadataProperties form;
   private List<ValidationRuleProperties> validations;
-  private List<FieldGroupProperties> fieldGroups = new ArrayList<>();
   private ConfirmationProperties confirmation;
   private DownstreamErrorClassificationProperties downstreamErrorClassification;
 
@@ -27,9 +25,5 @@ public class PageSchemaProperties {
 
   public void setVariants(Map<String, PageVariantProperties> variants) {
     this.variants = variants == null ? new LinkedHashMap<>() : variants;
-  }
-
-  public void setFieldGroups(List<FieldGroupProperties> fieldGroups) {
-    this.fieldGroups = fieldGroups == null ? new ArrayList<>() : fieldGroups;
   }
 }
