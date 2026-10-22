@@ -171,6 +171,8 @@ After normalization a group is either fully editable or fully non-editable, so D
 
 Resolved (3.1b, D-24): a HIDDEN field remains HIDDEN regardless of its group's normalized READONLY/REQUIRED state. A group containing a HIDDEN field alongside differing non-HIDDEN access values among its other fields is logged as an inconsistency at ERROR level (group name and item ids only, no member data), mirroring D-19's handling of READONLY/REQUIRED disagreement.
 
+Implementation note (script 040): FieldGroupAccessNormalizer integrates at the fieldStates level in PersonalInformationWebMapper, which is after HIDDEN fields have already been filtered out by applyApimConfigItems / applyLegacyApimConfig. As a result, the HIDDEN-field-vs-non-HIDDEN-disagreement detection described above is NOT implemented -- the normalizer never observes a HIDDEN field's existence within a group. READONLY/REQUIRED disagreement among visible (non-HIDDEN) fields is fully implemented and logged at ERROR per D-19. This is tracked as a known, flagged limitation, not a silent gap; closing it would require restructuring the two config-resolution paths to normalize before filtering HIDDEN fields, which was judged out of proportion to this sub-task's scope.
+
 ## 5. Session cache (D-11 to D-13)
 
 - Mechanism: `AuthenticatedSession.featureState` (generic slot added by Fund Comparison M5.1) through
