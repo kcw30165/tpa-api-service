@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.error;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -35,6 +36,11 @@ import org.springframework.mock.web.server.MockServerWebExchange;
  * and {@link #defaultFourArgConstructorStillProducesNoExtraFields}, covering {@link
  * ErrorLogDirective}'s new 5th component and the backward-compatible 4-argument constructor every
  * pre-existing call site (production and the 7 tests above) keeps using unchanged.
+ *
+ * <p>Sub-task 1.8.2 (M1 closure, step 2 of 3) adds a second nested test block covering the new
+ * 5-parameter instance method (no {@code loggingSanitizer} argument -- it is now a constructor
+ * field on the bean). Every static-call test above is left completely unchanged, proving both call
+ * styles coexist and produce byte-for-byte identical events.
  */
 class ErrorEventLoggerTest {
 
@@ -205,7 +211,8 @@ class ErrorEventLoggerTest {
     assertNull(payload.get("sanitizedMessage"));
   }
 
-  // ───────────────────────── Sub-task 1.7 (A2): extraFields merge ─────────────────────────
+  // ───────────────────────── Sub-task 1.7 (A2): extraFields merge (static call style)
+  // ─────────────────────────
 
   @Test
   void mergesExtraFieldsIntoTheSameEventInInsertionOrder() {
@@ -249,5 +256,101 @@ class ErrorEventLoggerTest {
     assertFalse(payload.has("rowIndex"));
     assertFalse(payload.has("field"));
     assertFalse(payload.has("reason"));
+  }
+
+  // ───────────────────────── Sub-task 1.8.2: instance method (bean) call style
+  // ─────────────────────────
+
+  @Test
+  void constructorRejectsNullLoggingSanitizer() {
+    assertThrows(NullPointerException.class, () -> new ErrorEventLogger(null));
+  }
+
+  @Test
+  void instanceLogProducesTheIdenticalEventAsTheStaticCallStyle() {
+    var bean = new ErrorEventLogger(loggingSanitizer);
+
+    bean.log(
+        logger,
+        new ErrorLogDirective(
+            HttpStatus.SERVICE_UNAVAILABLE, "err.system.unavailable", true, false),
+        exchangeWithRequestId("req-9"),
+        new IllegalStateException("boom"),
+        "diagnostic message");
+
+    assertEquals(1, listAppender.list.size());
+    ILoggingEvent event = listAppender.list.getFirst();
+    assertEquals(Level.ERROR, event.getLevel());
+    assertNull(event.getThrowableProxy());
+
+    JsonNode payload = parse(event);
+    assertEquals("http.api.error", payload.get("event").asText());
+    assertEquals("req-9", payload.get("requestId").asText());
+    assertEquals("GET", payload.get("httpMethod").asText());
+    assertEquals("/api/v1/fund-price", payload.get("path").asText());
+    assertEquals(503, payload.get("httpStatus").asInt());
+    assertEquals("err.system.unavailable", payload.get("errorCode").asText());
+    assertEquals("IllegalStateException", payload.get("exceptionType").asText());
+    assertEquals("diagnostic message", payload.get("sanitizedMessage").asText());
+  }
+
+  @Test
+  void instanceLogAtWarnWithStackTraceMatchesTheStaticCallStyle() {
+    var bean = new ErrorEventLogger(loggingSanitizer);
+    var exception = new IllegalArgumentException("invalid, with trace");
+
+    bean.log(
+        logger,
+        new ErrorLogDirective(HttpStatus.BAD_REQUEST, "err.request.validation.failed", false, true),
+        exchangeWithRequestId("req-10"),
+        exception,
+        exception.getMessage());
+
+    assertEquals(1, listAppender.list.size());
+    ILoggingEvent event = listAppender.list.getFirst();
+    assertEquals(Level.WARN, event.getLevel());
+    assertEquals(
+        IllegalArgumentException.class.getName(), event.getThrowableProxy().getClassName());
+  }
+
+  @Test
+  void instanceLogMergesExtraFieldsIntoTheSameEventInInsertionOrder() {
+    var bean = new ErrorEventLogger(loggingSanitizer);
+    Map<String, Object> extraFields = new LinkedHashMap<>();
+    extraFields.put("collection", "fundDtl");
+    extraFields.put("rowIndex", 3);
+    extraFields.put("field", "fund-code");
+    extraFields.put("reason", "EMPTY");
+
+    bean.log(
+        logger,
+        new ErrorLogDirective(
+            HttpStatus.SERVICE_UNAVAILABLE, "err.system.unavailable", true, false, extraFields),
+        exchangeWithRequestId("req-11"),
+        new IllegalStateException("Account balance retrieval failed: SYSTEM_FAILURE"),
+        "Account balance retrieval failed: SYSTEM_FAILURE");
+
+    JsonNode payload = parse(listAppender.list.getFirst());
+    assertEquals("fundDtl", payload.get("collection").asText());
+    assertEquals(3, payload.get("rowIndex").asInt());
+    assertEquals("fund-code", payload.get("field").asText());
+    assertEquals("EMPTY", payload.get("reason").asText());
+  }
+
+  @Test
+  void instanceLogOmitsRequestIdFieldWhenAttributeAbsent() {
+    var bean = new ErrorEventLogger(loggingSanitizer);
+    MockServerWebExchange exchange =
+        MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/fund-price"));
+
+    bean.log(
+        logger,
+        new ErrorLogDirective(HttpStatus.BAD_REQUEST, "err.code", false, false),
+        exchange,
+        new IllegalStateException("boom"),
+        "diagnostic");
+
+    JsonNode payload = parse(listAppender.list.getFirst());
+    assertFalse(payload.has("requestId"));
   }
 }
