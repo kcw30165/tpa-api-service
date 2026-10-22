@@ -1,6 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.advice;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.accountbalance.AccountBalanceRetrievalResponsePolicy;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
@@ -34,7 +36,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
@@ -443,7 +444,9 @@ public class ApiExceptionHandler {
                     resolvePublicMessage(ErrorCodes.SYSTEM_UNEXPECTED, exchange, exception),
                     SOURCE_SERVER))
             : List.copyOf(errors);
-    logException(
+    ErrorEventLogger.log(
+        log,
+        loggingSanitizer,
         status,
         primaryErrorCode(safeErrors),
         exchange,
@@ -453,12 +456,7 @@ public class ApiExceptionHandler {
         includeStackTrace);
 
     String requestId = getRequestId(exchange);
-    ResponseEntity.BodyBuilder builder =
-        ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON);
-    if (requestId != null) {
-      builder.header(RequestCorrelation.REQUEST_ID_HEADER, requestId);
-    }
-    return builder.body(MutationResponse.<Void>failure(apiStatus, safeErrors));
+    return ErrorResponseRenderer.render(status, apiStatus, safeErrors, requestId);
   }
 
   private List<ApiError> validationErrors(WebExchangeBindException ex, ServerWebExchange exchange) {
@@ -489,48 +487,6 @@ public class ApiExceptionHandler {
 
   private String getRequestId(ServerWebExchange exchange) {
     return (String) exchange.getAttributes().get(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY);
-  }
-
-  private void logException(
-      HttpStatusCode status,
-      String errorCode,
-      ServerWebExchange exchange,
-      Throwable exception,
-      String diagnosticMessage,
-      boolean logAtError,
-      boolean includeStackTrace) {
-    Map<String, Object> event = new LinkedHashMap<>();
-    event.put("event", "http.api.error");
-    String requestId = getRequestId(exchange);
-    if (requestId != null) {
-      event.put("requestId", requestId);
-    }
-    if (exchange.getRequest().getMethod() != null) {
-      event.put("httpMethod", exchange.getRequest().getMethod().name());
-    }
-    event.put("path", exchange.getRequest().getPath().value());
-    event.put("httpStatus", status.value());
-    event.put("errorCode", errorCode);
-    event.put("exceptionType", exception.getClass().getSimpleName());
-    String sanitizedMessage =
-        loggingSanitizer.sanitizeText(firstNonBlank(diagnosticMessage, exception.getMessage()));
-    if (StringUtils.hasText(sanitizedMessage)) {
-      event.put("sanitizedMessage", sanitizedMessage);
-    }
-    String payload = loggingSanitizer.toSafeString(event);
-    if (logAtError) {
-      if (includeStackTrace) {
-        log.error("{}", payload, exception);
-      } else {
-        log.error("{}", payload);
-      }
-      return;
-    }
-    if (includeStackTrace) {
-      log.warn("{}", payload, exception);
-      return;
-    }
-    log.warn("{}", payload);
   }
 
   private String resolvePublicMessage(
