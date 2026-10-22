@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequest
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException;
 import com.bct.ngtpa.apiservice.exception.CacheException;
@@ -27,12 +28,15 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.server.ServerWebInputException;
 
 /**
- * Sub-task 1.4: table-driven unit tests for every new {@code *ExceptionMappings} group and the
- * mandatory {@link CatchAllExceptionMapping}, verifying each produces the same {@link
+ * Sub-task 1.4: table-driven unit tests for every per-capability {@code *ExceptionMappings} group
+ * and the mandatory {@link CatchAllExceptionMapping}, verifying each produces the same {@link
  * ErrorDescriptor} fields and diagnostic message as the pre-1.4 handler row it replaces (see
  * docs/design/15-exception-handling/01-current-state.md). Also verifies {@link
- * ExceptionMappingRegistryConfig#exceptionMappingRegistry()} assembles exactly these 16 mappings
- * plus the catch-all, and that the full registry resolves correctly end to end.
+ * ExceptionMappingRegistryConfig#exceptionMappingRegistry()} assembles exactly these mappings plus
+ * the catch-all, and that the full registry resolves correctly end to end.
+ *
+ * <p>Sub-task 1.5 adds {@link AuthenticatedPortalContextExceptionMappings#authenticationRequired()}
+ * to the same shared registry, bringing the total to 17 registered mappings.
  */
 class ExceptionMappingsTest {
 
@@ -284,14 +288,33 @@ class ExceptionMappingsTest {
     assertEquals("denied reason", mapping.diagnosticMessage(exception));
   }
 
+  // ───────────────────────── Sub-task 1.5: filter-path mapping ─────────────────────────
+
+  @Test
+  void authenticatedPortalContextResolutionMapping() {
+    var mapping = AuthenticatedPortalContextExceptionMappings.authenticationRequired();
+    var exception = new AuthenticatedPortalContextResolutionException();
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+
+    assertEquals(HttpStatus.UNAUTHORIZED, descriptor.httpStatus());
+    assertEquals(ApiStatus.BUSINESS_REJECTED, descriptor.apiStatus());
+    assertEquals("AUTHENTICATION_REQUIRED", descriptor.errorType());
+    assertEquals(ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED, descriptor.errorCode());
+    assertEquals(java.util.List.of("PAGE"), descriptor.targets());
+    assertEquals("authenticated.context.failure.mapped", descriptor.logEventName());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+  }
+
   // ───────────────────────── registry assembly ─────────────────────────
 
   @Test
-  void configAssemblesExactlySixteenMappingsPlusCatchAll() {
+  void configAssemblesExactlySeventeenMappingsPlusCatchAll() {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(16, registry.mappingCount());
+    assertEquals(17, registry.mappingCount());
 
     // Spot-check resolution end to end for a representative subset.
     ErrorDescriptor fundComparison =
@@ -299,6 +322,14 @@ class ExceptionMappingsTest {
             FundComparisonRetrievalException.systemFailure(),
             new ErrorContext("GET", "/api/v1/fund-comparison", "req-x"));
     assertEquals(ErrorCodes.FUND_COMPARISON_RETRIEVAL_UNAVAILABLE, fundComparison.errorCode());
+
+    ErrorDescriptor authenticatedPortalContext =
+        registry.resolve(
+            new AuthenticatedPortalContextResolutionException(),
+            new ErrorContext("GET", "/api/v1/fund-price", "req-w"));
+    assertEquals(
+        ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED, authenticatedPortalContext.errorCode());
+    assertEquals(HttpStatus.UNAUTHORIZED, authenticatedPortalContext.httpStatus());
 
     ErrorDescriptor unmapped =
         registry.resolve(

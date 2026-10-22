@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,9 @@ class AuthenticatedPortalContextWebExceptionHandlerTest {
         MockServerWebExchange.from(
             MockServerHttpRequest.get("/api/v1/personal-information")
                 .header("X-Request-Id", "req-1"));
-    var handler = new AuthenticatedPortalContextWebExceptionHandler(new ObjectMapper());
+    var handler =
+        new AuthenticatedPortalContextWebExceptionHandler(
+            new ObjectMapper(), new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
     StepVerifier.create(
             handler.handle(exchange, new AuthenticatedPortalContextResolutionException()))
         .verifyComplete();

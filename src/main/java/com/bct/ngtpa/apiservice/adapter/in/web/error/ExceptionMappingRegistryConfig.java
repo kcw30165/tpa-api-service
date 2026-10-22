@@ -15,6 +15,11 @@ import org.springframework.context.annotation.Configuration;
  * message that is always {@code null}) that does not fit the single-error {@link ErrorDescriptor}
  * shape without changing observable behaviour; those four keep their existing handler bodies in
  * {@code ApiExceptionHandler} unchanged.
+ *
+ * <p>Sub-task 1.5 adds {@link AuthenticatedPortalContextExceptionMappings#authenticationRequired()}
+ * to this same shared registry, so the filter-path {@code
+ * AuthenticatedPortalContextWebExceptionHandler} resolves its {@link ErrorDescriptor} from the same
+ * bean as {@code ApiExceptionHandler}, bringing the total to 17 registered mappings.
  */
 @Configuration
 public class ExceptionMappingRegistryConfig {
@@ -38,7 +43,8 @@ public class ExceptionMappingRegistryConfig {
             FundPriceExceptionMappings.retrievalUnavailable(),
             FundPriceExceptionMappings.invalidDate(),
             ApplicationExceptionMappings.invalidFundComparisonRequest(),
-            FundComparisonExceptionMappings.retrievalUnavailable());
+            FundComparisonExceptionMappings.retrievalUnavailable(),
+            AuthenticatedPortalContextExceptionMappings.authenticationRequired());
     return new ExceptionMappingRegistry(mappings, CatchAllExceptionMapping.INSTANCE);
   }
 }

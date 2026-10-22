@@ -7,6 +7,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
@@ -108,7 +109,9 @@ class AuthenticatedContextFailureDiagnosticsLoggingTest {
     var request = MockServerHttpRequest.get("/api/v1/fund-price");
     var exchange = MockServerWebExchange.from(request);
     exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, REQUEST_ID);
-    var handler = new AuthenticatedPortalContextWebExceptionHandler(new ObjectMapper());
+    var handler =
+        new AuthenticatedPortalContextWebExceptionHandler(
+            new ObjectMapper(), new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
 
     StepVerifier.create(
             handler.handle(exchange, new AuthenticatedPortalContextResolutionException()))

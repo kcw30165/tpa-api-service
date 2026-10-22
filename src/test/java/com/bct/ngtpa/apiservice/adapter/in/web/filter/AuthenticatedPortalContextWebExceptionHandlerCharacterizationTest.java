@@ -6,6 +6,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
@@ -27,7 +28,13 @@ import reactor.test.StepVerifier;
  * (absent) {@code X-Request-Id} response header, the log event name, the log level, and the absence
  * of a stack trace. Also pins that every other throwable is passed through unchanged via {@code
  * Mono.error(failure)}, per docs/design/15-exception-handling/01-current-state.md and the O-6
- * investigation (script 005 / 007 evidence). No production behaviour changes in this sub-task.
+ * investigation (script 005 / 007 evidence).
+ *
+ * <p>Sub-task 1.5 update: {@code AuthenticatedPortalContextWebExceptionHandler} gained a second
+ * constructor parameter, {@code ExceptionMappingRegistry}, when it started resolving its status,
+ * error type/code and targets from the shared registry; this pack now passes the real production
+ * registry ({@code ExceptionMappingRegistryConfig}) so every pinned assertion below still exercises
+ * genuine, unchanged behaviour.
  */
 class AuthenticatedPortalContextWebExceptionHandlerCharacterizationTest {
 
@@ -41,7 +48,9 @@ class AuthenticatedPortalContextWebExceptionHandlerCharacterizationTest {
     listAppender = new ListAppender<>();
     listAppender.start();
     logger.addAppender(listAppender);
-    handler = new AuthenticatedPortalContextWebExceptionHandler(new ObjectMapper());
+    handler =
+        new AuthenticatedPortalContextWebExceptionHandler(
+            new ObjectMapper(), new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
   }
 
   @AfterEach
@@ -147,7 +156,9 @@ class AuthenticatedPortalContextWebExceptionHandlerCharacterizationTest {
             throw new RuntimeException("serialization boom");
           }
         };
-    var throwingHandler = new AuthenticatedPortalContextWebExceptionHandler(throwingMapper);
+    var throwingHandler =
+        new AuthenticatedPortalContextWebExceptionHandler(
+            throwingMapper, new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
     var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/fund-price"));
 
     StepVerifier.create(
