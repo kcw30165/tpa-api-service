@@ -527,6 +527,7 @@ public class PersonalInformationWebMapper {
         logMissingYamlBinding(configKey, configValue);
         continue;
       }
+      logIfUnusableAccessValue(configKey, configValue);
       if (FieldAccessResolver.isHidden(configValue)) {
         continue;
       }
@@ -555,6 +556,7 @@ public class PersonalInformationWebMapper {
         logMissingYamlBinding(configKey, configValue);
         continue;
       }
+      logIfUnusableAccessValue(configKey, configValue);
       if (FieldAccessResolver.isHidden(configValue)) {
         continue;
       }
@@ -684,7 +686,7 @@ public class PersonalInformationWebMapper {
         state.value(),
         state.value(),
         FieldAccessResolver.isReadonly(state.configValue()),
-        FieldAccessResolver.isRequired(state.configValue()),
+        FieldAccessResolver.isRequired(state.configValue(), fieldSchema.getRequiredOverride()),
         fieldSchema.getMinLength(),
         fieldSchema.getMaxLength(),
         hasText(fieldSchema.getPattern()) ? fieldSchema.getPattern() : null,
@@ -938,6 +940,19 @@ public class PersonalInformationWebMapper {
     event.put("config-value", configValue);
     log.error(
         "Missing YAML apimBinding for APIM config item: {}", loggingSanitizer.toSafeString(event));
+  }
+
+  private void logIfUnusableAccessValue(String configKey, String configValue) {
+    if (!FieldAccessResolver.isUnrecognised(configValue)
+        && !FieldAccessResolver.isBlank(configValue)) {
+      return;
+    }
+    Map<String, Object> event = new LinkedHashMap<>();
+    event.put(KEY_ITEM_ID, configKey);
+    event.put("config-value", configValue);
+    log.error(
+        "Unrecognised or blank APIM access config value, field treated as HIDDEN: {}",
+        loggingSanitizer.toSafeString(event));
   }
 
   private void logUnknownConfigItemType(

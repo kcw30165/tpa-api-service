@@ -293,6 +293,7 @@ bff-pages:
             fields:
               - id: residentialAddressLine1
                 displayOrder: 10
+                requiredOverride: false
                 dataType: string
                 controlType: text
                 validations:
@@ -389,6 +390,7 @@ bff-pages:
                 labelCode: personalInformation.field.mailingAddressSameAsResidential.label
               - id: mailingAddressLine1
                 displayOrder: 60
+                requiredOverride: false
                 dataType: string
                 controlType: text
                 validations:

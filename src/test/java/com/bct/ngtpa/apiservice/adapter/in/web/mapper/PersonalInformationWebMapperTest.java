@@ -401,11 +401,11 @@ class PersonalInformationWebMapperTest {
   }
 
   @Test
-  void legacyConfigNullValueAndMissingApimDataRenderEmptyValueAndNoReadonlyRequiredFlags() {
+  void legacyConfigMissingApimDataRendersEmptyValueAndNoReadonlyRequiredFlags() {
     var page =
         pageWithSections(section("main", List.of(boundField("field", "data", "config", 99))));
     Map<String, String> legacyConfig = new LinkedHashMap<>();
-    legacyConfig.put("config", null);
+    legacyConfig.put("config", "EDITABLE_OPTION");
 
     Map<String, Object> response =
         mapper(properties(page)).toResponse(Map.of(), legacyConfig, "en");

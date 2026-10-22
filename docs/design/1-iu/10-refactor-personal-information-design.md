@@ -244,6 +244,7 @@ feature/step-up-pin-verification). Label removal is out of scope (separate branc
 | D-30 | Group-wide access normalization is removed: FieldGroupAccessNormalizer, the fieldGroups YAML, its binding and linter checks, and the fieldGroups/atLeastOneRequired sync guard. Access is resolved per field. | Nick (Q1) |
 | D-31 | Conditional-required rules stay in YAML (e.g. phone country required only when the phone number has a value) and are evaluated over submitted fields only: a rule fails only when its trigger is submitted non-blank AND its target is submitted blank. If the target key is absent, Java treats the stored value as unchanged and skips the rule; the downstream decides. | Nick (Q2) |
 | D-32 | A config value outside the four enum values is logged at ERROR (item id and value only) and treated as HIDDEN: the GET omits the field and a PUT containing it is rejected with personalInformation.field.notEditable. | Nick (option B) |
+| D-32a | A null or blank access config value is logged at ERROR (item id and value only) and treated as HIDDEN: the GET omits the field and a PUT containing it is rejected with personalInformation.field.notEditable. | Nick |
 
 ### A.2 Decisions superseded
 
@@ -264,7 +265,7 @@ D-11 to D-13 (session-cached config) and D-14 stay.
 ### A.3 PUT validation (replaces 4.1-4.5 where they differ)
 
 1. Resolve per-field access (session cache, else one TRPGetMemberInfo, D-13).
-2. For each submitted key: HIDDEN/READONLY (an unknown value is treated as HIDDEN, D-32) => personalInformation.field.notEditable;
+2. For each submitted key: HIDDEN/READONLY (an unknown value, D-32, or a null/blank value, D-32a, is treated as HIDDEN) => personalInformation.field.notEditable;
    EDITABLE_COM without requiredOverride and blank => personalInformation.field.required.
 3. Format rules on non-blank submitted values (D-09).
 4. Conditional-required rules per D-31; address.atLeastOneRequired per D-28.

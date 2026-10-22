@@ -37,12 +37,66 @@ class FieldAccessResolverTest {
   }
 
   @Test
-  void allThreeMethodsReturnFalseForNullBlankAndUnrelatedValues() {
-    String[] values = {null, "", "   ", "EDITABLE_OPTION", "SOMETHING_ELSE"};
+  void editableOptionIsNotHiddenReadonlyOrRequired() {
+    assertThat(FieldAccessResolver.isHidden("EDITABLE_OPTION")).isFalse();
+    assertThat(FieldAccessResolver.isReadonly("EDITABLE_OPTION")).isFalse();
+    assertThat(FieldAccessResolver.isRequired("EDITABLE_OPTION")).isFalse();
+  }
+
+  @Test
+  void nullAndBlankValuesAreBlankAndTreatedAsHiddenNotReadonlyNotRequired() {
+    String[] values = {null, "", "   "};
     for (String value : values) {
-      assertThat(FieldAccessResolver.isHidden(value)).isFalse();
+      assertThat(FieldAccessResolver.isBlank(value)).isTrue();
+      assertThat(FieldAccessResolver.isHidden(value)).isTrue();
       assertThat(FieldAccessResolver.isReadonly(value)).isFalse();
       assertThat(FieldAccessResolver.isRequired(value)).isFalse();
+      assertThat(FieldAccessResolver.isRequired(value, Boolean.TRUE)).isFalse();
     }
+  }
+
+  @Test
+  void nonBlankValuesAreNeverBlank() {
+    String[] values = {"HIDDEN", "READONLY", "EDITABLE_COM", "EDITABLE_OPTION", "SOMETHING_ELSE"};
+    for (String value : values) {
+      assertThat(FieldAccessResolver.isBlank(value)).isFalse();
+    }
+  }
+
+  @Test
+  void unrecognisedValueIsTreatedAsHiddenNotReadonlyNotRequired() {
+    assertThat(FieldAccessResolver.isUnrecognised("SOMETHING_ELSE")).isTrue();
+    assertThat(FieldAccessResolver.isHidden("SOMETHING_ELSE")).isTrue();
+    assertThat(FieldAccessResolver.isReadonly("SOMETHING_ELSE")).isFalse();
+    assertThat(FieldAccessResolver.isRequired("SOMETHING_ELSE")).isFalse();
+    assertThat(FieldAccessResolver.isHidden("EDITABLE")).isTrue();
+  }
+
+  @Test
+  void knownNullAndBlankValuesAreNotUnrecognised() {
+    String[] values = {
+      "HIDDEN", "READONLY", "EDITABLE_COM", "EDITABLE_OPTION", "editable_option", null, "", "   "
+    };
+    for (String value : values) {
+      assertThat(FieldAccessResolver.isUnrecognised(value)).isFalse();
+    }
+  }
+
+  @Test
+  void requiredOverrideFalseLowersRequirementOnly() {
+    assertThat(FieldAccessResolver.isRequired("EDITABLE_COM", Boolean.FALSE)).isFalse();
+    assertThat(FieldAccessResolver.isRequired("EDITABLE_COM", null)).isTrue();
+    assertThat(FieldAccessResolver.isRequired("EDITABLE_COM", Boolean.TRUE)).isTrue();
+    assertThat(FieldAccessResolver.isRequired("EDITABLE_OPTION", Boolean.TRUE)).isFalse();
+    assertThat(FieldAccessResolver.isRequired("READONLY", Boolean.TRUE)).isFalse();
+  }
+
+  @Test
+  void surroundingWhitespaceDoesNotChangeClassification() {
+    assertThat(FieldAccessResolver.isRequired(" EDITABLE_COM ")).isTrue();
+    assertThat(FieldAccessResolver.isHidden(" HIDDEN ")).isTrue();
+    assertThat(FieldAccessResolver.isReadonly(" READONLY ")).isTrue();
+    assertThat(FieldAccessResolver.isUnrecognised(" EDITABLE_OPTION ")).isFalse();
+    assertThat(FieldAccessResolver.isHidden(" EDITABLE_OPTION ")).isFalse();
   }
 }

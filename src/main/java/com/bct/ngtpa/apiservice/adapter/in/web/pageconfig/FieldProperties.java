@@ -25,5 +25,6 @@ public class FieldProperties {
   private String optionSource;
   private Map<String, Object> copyWhenChecked;
   private ApimBindingProperties apimBinding;
+  private Boolean requiredOverride;
   private List<ValidationRuleProperties> validations;
 }
