@@ -340,13 +340,59 @@ class PersonalInformationUpdateYamlValidatorTest {
     List<ApiError> errors =
         newValidator(propertiesOf(page))
             .validate(
-                requestOf(Map.of("f1", "value", "f3", "present")),
+                requestOf(Map.of("f1", "value", "f2", "", "f3", "present")),
                 "en",
                 "env1",
                 "trust1",
                 "SCHEME_A");
     assertThat(errors).hasSize(1);
     assertThat(errors.get(0).targets()).containsExactly("f2");
+  }
+
+  @Test
+  void conditionalRequiredRuleSkipsTargetsThatAreNotSubmitted() {
+    var condition = new RuleConditionProperties();
+    condition.setOperator("notBlank");
+    condition.setField("f1");
+    var action = new RuleActionProperties();
+    action.setTargets(List.of("f2", "f3"));
+    var pageRule = new ValidationRuleProperties();
+    pageRule.setId("pr1");
+    pageRule.setType("conditionalRequired");
+    pageRule.setWhen(condition);
+    pageRule.setThen(action);
+    PageSchemaProperties page = pageOf(section(field("f1"), field("f2"), field("f3")));
+    page.setValidations(List.of(pageRule));
+
+    List<ApiError> errors =
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of("f1", "value")), "en", "env1", "trust1", "SCHEME_A");
+
+    assertThat(errors)
+        .as("D-31: a target key that is not submitted is skipped (stored value assumed)")
+        .isEmpty();
+  }
+
+  @Test
+  void conditionalRequiredRuleDoesNotFireWhenTriggerIsNotSubmitted() {
+    var condition = new RuleConditionProperties();
+    condition.setOperator("notBlank");
+    condition.setField("f1");
+    var action = new RuleActionProperties();
+    action.setTargets(List.of("f2"));
+    var pageRule = new ValidationRuleProperties();
+    pageRule.setId("pr1");
+    pageRule.setType("conditionalRequired");
+    pageRule.setWhen(condition);
+    pageRule.setThen(action);
+    PageSchemaProperties page = pageOf(section(field("f1"), field("f2")));
+    page.setValidations(List.of(pageRule));
+
+    List<ApiError> errors =
+        newValidator(propertiesOf(page))
+            .validate(requestOf(Map.of("f2", "")), "en", "env1", "trust1", "SCHEME_A");
+
+    assertThat(errors).isEmpty();
   }
 
   @Test
@@ -575,7 +621,7 @@ class PersonalInformationUpdateYamlValidatorTest {
     page.setValidations(List.of(pageRule1, pageRule2));
     List<ApiError> errors =
         newValidator(propertiesOf(page))
-            .validate(requestOf(Map.of()), "en", "env1", "trust1", "SCHEME_A");
+            .validate(requestOf(Map.of("f1", "")), "en", "env1", "trust1", "SCHEME_A");
     assertThat(errors).hasSize(1);
   }
 }

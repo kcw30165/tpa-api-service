@@ -207,7 +207,7 @@ public class PersonalInformationUpdateYamlValidator {
     if ("conditionalRequired".equals(rule.getType())
         && conditionMatches(rule.getWhen(), submittedFields)) {
       for (String target : targets(rule.getThen())) {
-        if (isBlankValue(submittedFields.get(target))) {
+        if (isSubmittedBlank(submittedFields, target)) {
           errors.add(
               error(
                   TYPE_FIELD,
@@ -265,6 +265,11 @@ public class PersonalInformationUpdateYamlValidator {
       }
     }
     return true;
+  }
+
+  /** D-31: true only when the key was submitted AND its value is blank. */
+  private boolean isSubmittedBlank(Map<String, Object> submittedFields, String fieldId) {
+    return submittedFields.containsKey(fieldId) && isBlankValue(submittedFields.get(fieldId));
   }
 
   private ApiError error(
