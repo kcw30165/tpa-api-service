@@ -2,11 +2,13 @@ package com.bct.ngtpa.apiservice.adapter.in.web.validation;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PageDisplayTextResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FieldGroupProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FieldProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FormMetadataProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageSchemaProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleActionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleConditionProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleGroupFields;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.SectionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ValidationRuleProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
@@ -33,6 +35,8 @@ public class PersonalInformationUpdateYamlValidator {
   private static final String SEVERITY_ERROR = "ERROR";
   private static final String SOURCE_SERVER = "SERVER";
   private static final String DELIMITED_BLOCKED_TERMS = "~|~";
+  private static final Set<String> ADDRESS_GROUP_NAMES =
+      Set.of("residentialAddress", "mailingAddress");
 
   private final BffPagesProperties pagesProperties;
   private final PageDisplayTextResolver pageDisplayTextResolver;
@@ -89,6 +93,8 @@ public class PersonalInformationUpdateYamlValidator {
             errors, page, submittedFields, rule, language, accountEnv, trustCode, schemeType);
       }
     }
+
+    validateFieldGroups(errors, page, submittedFields, language, accountEnv, trustCode, schemeType);
 
     return deduplicate(errors);
   }
@@ -222,6 +228,108 @@ public class PersonalInformationUpdateYamlValidator {
     }
   }
 
+  private void validateFieldGroups(
+      List<ApiError> errors,
+      PageSchemaProperties page,
+      Map<String, Object> submittedFields,
+      String language,
+      String accountEnv,
+      String trustCode,
+      String schemeType) {
+    for (FieldGroupProperties group : page.getFieldGroups()) {
+      if (group == null || isBlank(group.getName()) || group.getFields().isEmpty()) {
+        continue;
+      }
+      List<String> fields = group.getFields();
+      List<String> missingFields = new ArrayList<>();
+      boolean anyPresent = false;
+      for (String fieldId : fields) {
+        if (submittedFields.containsKey(fieldId)) {
+          anyPresent = true;
+        } else {
+          missingFields.add(fieldId);
+        }
+      }
+      if (!anyPresent) {
+        continue;
+      }
+      if (!missingFields.isEmpty()) {
+        errors.add(
+            groupError(
+                page, group.getName(), missingFields, language, accountEnv, trustCode, schemeType));
+        continue;
+      }
+      validateAddressGroupCountryRule(
+          errors, page, group, submittedFields, language, accountEnv, trustCode, schemeType);
+    }
+  }
+
+  private void validateAddressGroupCountryRule(
+      List<ApiError> errors,
+      PageSchemaProperties page,
+      FieldGroupProperties group,
+      Map<String, Object> submittedFields,
+      String language,
+      String accountEnv,
+      String trustCode,
+      String schemeType) {
+    if (!ADDRESS_GROUP_NAMES.contains(group.getName())) {
+      return;
+    }
+    List<String> fields = group.getFields();
+    String country = fields.get(fields.size() - 1);
+    List<String> lines = fields.subList(0, fields.size() - 1);
+    boolean countryNonBlank = !isBlankValue(submittedFields.get(country));
+    boolean anyLineNonBlank =
+        lines.stream().anyMatch(line -> !isBlankValue(submittedFields.get(line)));
+    if (countryNonBlank && !anyLineNonBlank) {
+      errors.add(
+          groupError(
+              page,
+              group.getName(),
+              List.of(lines.get(0)),
+              language,
+              accountEnv,
+              trustCode,
+              schemeType));
+    }
+  }
+
+  private ApiError groupError(
+      PageSchemaProperties page,
+      String groupName,
+      List<String> targets,
+      String language,
+      String accountEnv,
+      String trustCode,
+      String schemeType) {
+    String code = "personalInformation." + groupName + ".incomplete";
+    String messageCode = code + ".message";
+    String message =
+        resolveGroupMessage(page, messageCode, code, language, accountEnv, trustCode, schemeType);
+    return new ApiError(
+        TYPE_CROSS_FIELD, code, message, List.copyOf(targets), SEVERITY_ERROR, SOURCE_SERVER);
+  }
+
+  private String resolveGroupMessage(
+      PageSchemaProperties page,
+      String messageCode,
+      String fallbackCode,
+      String language,
+      String accountEnv,
+      String trustCode,
+      String schemeType) {
+    if (pageDisplayTextResolver != null) {
+      String resolved =
+          pageDisplayTextResolver.resolve(
+              page.getDisplay(), messageCode, null, language, accountEnv, trustCode, schemeType);
+      if (!isBlank(resolved)) {
+        return resolved;
+      }
+    }
+    return fallbackCode;
+  }
+
   private boolean conditionMatches(
       RuleConditionProperties condition, Map<String, Object> submittedFields) {
     if (condition == null || isBlank(condition.getOperator())) {
@@ -249,16 +357,26 @@ public class PersonalInformationUpdateYamlValidator {
     if (configuredGroups.isEmpty()) {
       return false;
     }
+    long submittedGroupCount =
+        configuredGroups.stream().filter(group -> groupSubmitted(group, submittedFields)).count();
+    if (submittedGroupCount > 0 && submittedGroupCount < configuredGroups.size()) {
+      return false;
+    }
     return configuredGroups.stream().allMatch(group -> groupIsEmpty(group, submittedFields));
   }
 
+  private boolean groupSubmitted(Map<String, Object> group, Map<String, Object> submittedFields) {
+    List<String> fieldRefs = RuleGroupFields.of(group == null ? null : group.get("fields"));
+    return fieldRefs.stream().anyMatch(submittedFields::containsKey);
+  }
+
   private boolean groupIsEmpty(Map<String, Object> group, Map<String, Object> submittedFields) {
-    Object rawFields = group == null ? null : group.get("fields");
-    if (!(rawFields instanceof List<?> fieldRefs) || fieldRefs.isEmpty()) {
+    List<String> fieldRefs = RuleGroupFields.of(group == null ? null : group.get("fields"));
+    if (fieldRefs.isEmpty()) {
       return false;
     }
-    for (Object fieldRef : fieldRefs) {
-      if (fieldRef != null && !isBlankValue(submittedFields.get(fieldRef.toString()))) {
+    for (String fieldRef : fieldRefs) {
+      if (!isBlankValue(submittedFields.get(fieldRef))) {
         return false;
       }
     }
