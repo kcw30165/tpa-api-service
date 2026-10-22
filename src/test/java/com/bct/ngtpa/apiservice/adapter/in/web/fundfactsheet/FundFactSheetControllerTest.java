@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundfactsheet.mapper.FundFactSheetWebMapper;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
@@ -95,7 +96,8 @@ class FundFactSheetControllerTest {
     ErrorMessageResolver resolver = (code, locale, accountEnv, trustCode, schemeType) -> code;
     return new ApiExceptionHandler(
         resolver,
-        new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())));
+        new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())),
+        new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
   }
 
   private static org.springframework.test.web.reactive.server.WebTestClient client(

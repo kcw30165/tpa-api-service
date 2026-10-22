@@ -2,9 +2,16 @@ package com.bct.ngtpa.apiservice.architecture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorContext;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorDescriptor;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.RegistrationExceptionMappings;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 
 class RegistrationStructuredFailureLoggingContractTest {
   @Test
@@ -29,14 +36,25 @@ class RegistrationStructuredFailureLoggingContractTest {
         .doesNotContain("MessageDigest", "SHA-256");
   }
 
+  /**
+   * Sub-task 1.4 rewrite: previously read {@code ApiExceptionHandler.java} source text for the
+   * handler's status/error-code mapping, which moved into {@code RegistrationExceptionMappings} in
+   * this sub-task. Asserts the same contract (service-unavailable, system error, the shared
+   * downstream-unavailable workflow code) against the resolved {@link ErrorDescriptor} instead.
+   */
   @Test
-  void lookupExceptionReturnsSanitizedServiceUnavailable() throws Exception {
-    String handler = read("ApiExceptionHandler.java");
-    assertThat(handler)
-        .contains("RegistrationLookupDownstreamException.class")
-        .contains("HttpStatus.SERVICE_UNAVAILABLE")
-        .contains("SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE")
-        .contains("ApiStatus.SYSTEM_ERROR");
+  void lookupExceptionReturnsSanitizedServiceUnavailable() {
+    var mapping = RegistrationExceptionMappings.lookupDownstream();
+    var exception =
+        new RegistrationLookupDownstreamException(
+            RegistrationLookupDownstreamException.Reason.UNEXPECTED_ERROR, "err.tpa.unexpected");
+
+    ErrorDescriptor descriptor = mapping.describe(exception, new ErrorContext("GET", "/x", null));
+
+    assertThat(descriptor.httpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    assertThat(descriptor.apiStatus()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+    assertThat(descriptor.errorCode())
+        .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
   }
 
   @Test

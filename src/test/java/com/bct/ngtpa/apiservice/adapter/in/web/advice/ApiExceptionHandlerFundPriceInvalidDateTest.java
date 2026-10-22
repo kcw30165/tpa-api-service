@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.advice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceInvalidDateException;
@@ -36,7 +37,8 @@ class ApiExceptionHandlerFundPriceInvalidDateTest {
   private final ApiExceptionHandler handler =
       new ApiExceptionHandler(
           resolver,
-          new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())));
+          new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())),
+          new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
 
   private ResponseEntity<MutationResponse<Void>> handle() {
     var exchange =

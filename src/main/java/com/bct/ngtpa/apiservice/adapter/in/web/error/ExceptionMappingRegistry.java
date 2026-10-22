@@ -6,15 +6,20 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Holds every {@link ExceptionMapping} and resolves the {@link ErrorDescriptor} for a thrown
- * exception by nearest-superclass resolution: the exception's own class is checked first (an exact
- * match), then each superclass in turn, until a registered mapping is found or the walk reaches the
- * top of the hierarchy, at which point the mandatory catch-all mapping is used.
+ * Holds every {@link ExceptionMapping} and resolves the {@link ErrorDescriptor} (or the diagnostic
+ * log message) for a thrown exception by nearest-superclass resolution: the exception's own class
+ * is checked first (an exact match), then each superclass in turn, until a registered mapping is
+ * found or the walk reaches the top of the hierarchy, at which point the mandatory catch-all
+ * mapping is used.
  *
  * <p>Registering two mappings for the same {@link ExceptionMapping#exceptionType()} fails fast at
- * construction time (startup), since the registry is built once as a singleton bean. Not wired into
- * any handler yet (sub-task 1.2); {@code ApiExceptionHandler} keeps its own
- * {@code @ExceptionHandler} methods until sub-task 1.4.
+ * construction time (startup), since the registry is built once as a singleton bean.
+ *
+ * <p>Sub-task 1.4: wired into {@code ApiExceptionHandler} via {@code
+ * ExceptionMappingRegistryConfig}. Added {@link #diagnosticMessage(Throwable)}, sharing the same
+ * nearest-superclass walk as {@link #resolve(Throwable, ErrorContext)} through a common private
+ * {@code resolveMapping} method, so both the response descriptor and the log's diagnostic text come
+ * from the same resolved mapping.
  */
 public final class ExceptionMappingRegistry {
 
@@ -43,20 +48,28 @@ public final class ExceptionMappingRegistry {
     this.mappingsByType = Map.copyOf(byType);
   }
 
-  @SuppressWarnings("unchecked")
   public <T extends Throwable> ErrorDescriptor resolve(T exception, ErrorContext context) {
     Objects.requireNonNull(exception, "exception");
     Objects.requireNonNull(context, "context");
+    return resolveMapping(exception).describe(exception, context);
+  }
 
+  public <T extends Throwable> String diagnosticMessage(T exception) {
+    Objects.requireNonNull(exception, "exception");
+    return resolveMapping(exception).diagnosticMessage(exception);
+  }
+
+  @SuppressWarnings("unchecked")
+  private <T extends Throwable> ExceptionMapping<T> resolveMapping(T exception) {
     Class<?> candidate = exception.getClass();
     while (candidate != null && Throwable.class.isAssignableFrom(candidate)) {
       ExceptionMapping<? extends Throwable> mapping = mappingsByType.get(candidate);
       if (mapping != null) {
-        return ((ExceptionMapping<T>) mapping).describe(exception, context);
+        return (ExceptionMapping<T>) mapping;
       }
       candidate = candidate.getSuperclass();
     }
-    return catchAll.describe(exception, context);
+    return (ExceptionMapping<T>) catchAll;
   }
 
   public int mappingCount() {

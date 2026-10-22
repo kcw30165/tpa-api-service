@@ -1,14 +1,17 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.advice;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.accountbalance.AccountBalanceRetrievalResponsePolicy;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorContext;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorDescriptor;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistry;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.LogLevel;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
-import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.AccountGainLossRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
@@ -54,49 +57,29 @@ public class ApiExceptionHandler {
 
   private final ErrorMessageResolver errorMessageResolver;
   private final LoggingSanitizer loggingSanitizer;
+  private final ExceptionMappingRegistry registry;
 
   @Autowired
   public ApiExceptionHandler(
-      ErrorMessageResolver errorMessageResolver, LoggingSanitizer loggingSanitizer) {
+      ErrorMessageResolver errorMessageResolver,
+      LoggingSanitizer loggingSanitizer,
+      ExceptionMappingRegistry registry) {
     this.errorMessageResolver = errorMessageResolver;
     this.loggingSanitizer = loggingSanitizer;
+    this.registry = registry;
   }
 
   @ExceptionHandler(RegistrationLookupDownstreamException.class)
   public ResponseEntity<MutationResponse<Void>> handleRegistrationLookupDownstreamException(
       RegistrationLookupDownstreamException exception, ServerWebExchange exchange) {
-    String code = SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value();
-    ApiError error =
-        new ApiError("DOWNSTREAM_SYSTEM", code, null, List.of("PAGE"), "ERROR", SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        HttpStatus.SERVICE_UNAVAILABLE,
-        ApiStatus.SYSTEM_ERROR,
-        List.of(error),
-        exchange,
-        exception,
-        "TRPSearchMember contract failure: " + exception.reason(),
-        true,
-        false);
+    return delegate(exception, exchange);
   }
 
   @ExceptionHandler(com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException.class)
   public ResponseEntity<MutationResponse<Void>> handleApimProfileResolutionException(
       com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException ex,
       ServerWebExchange exchange) {
-    String internalCode =
-        ex.getInternalCode() != null ? ex.getInternalCode() : "err.apim.profile.resolution.failed";
-    ApiError error =
-        ApiError.system(
-            internalCode, resolvePublicMessage(internalCode, exchange, ex), SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        ex.getPublicStatus(),
-        ApiStatus.SYSTEM_ERROR,
-        List.of(error),
-        exchange,
-        ex,
-        "APIM profile resolution failed",
-        true,
-        false);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(AccountBalanceRetrievalException.class)
@@ -149,60 +132,31 @@ public class ApiExceptionHandler {
   @ExceptionHandler(ApimException.class)
   public ResponseEntity<MutationResponse<Void>> handleApimException(
       ApimException ex, ServerWebExchange exchange) {
-    String errorCode = resolveApimErrorCode(ex);
-    ApiError error =
-        ApiError.downstreamSystem(
-            errorCode, resolvePublicMessage(errorCode, exchange, ex), SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        ex.getStatusCode(),
-        ApiStatus.SYSTEM_ERROR,
-        List.of(error),
-        exchange,
-        ex,
-        ex.getMessage(),
-        true,
-        false);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(InvalidNotificationRequestException.class)
   public ResponseEntity<MutationResponse<Void>> handleInvalidNotificationRequestException(
       InvalidNotificationRequestException ex, ServerWebExchange exchange) {
-    return handleApplicationException(
-        ex, exchange, HttpStatus.BAD_REQUEST, ApiStatus.VALIDATION_FAILED, "FORM");
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(InvalidContributionRequestException.class)
   public ResponseEntity<MutationResponse<Void>> handleInvalidContributionRequestException(
       InvalidContributionRequestException ex, ServerWebExchange exchange) {
-    return handleApplicationException(
-        ex, exchange, HttpStatus.BAD_REQUEST, ApiStatus.VALIDATION_FAILED, "FORM");
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(PortalAccessContextResolutionException.class)
   public ResponseEntity<MutationResponse<Void>> handlePortalAccessContextResolutionException(
       PortalAccessContextResolutionException ex, ServerWebExchange exchange) {
-    ApiError error =
-        ApiError.business(
-            ex.getErrorCode(),
-            resolvePublicMessage(ex.getErrorCode(), exchange, ex),
-            List.of(),
-            SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        HttpStatus.BAD_REQUEST,
-        ApiStatus.BUSINESS_REJECTED,
-        List.of(error),
-        exchange,
-        ex,
-        ex.getMessage(),
-        false,
-        false);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(ApplicationException.class)
   public ResponseEntity<MutationResponse<Void>> handleApplicationException(
       ApplicationException ex, ServerWebExchange exchange) {
-    return handleApplicationException(
-        ex, exchange, HttpStatus.BAD_REQUEST, ApiStatus.BUSINESS_REJECTED, "BUSINESS");
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(WebExchangeBindException.class)
@@ -223,173 +177,61 @@ public class ApiExceptionHandler {
   @ExceptionHandler(ServerWebInputException.class)
   public ResponseEntity<MutationResponse<Void>> handleServerWebInputException(
       ServerWebInputException ex, ServerWebExchange exchange) {
-    String errorCode = ErrorCodes.REQUEST_BODY_MALFORMED;
-    ApiError error =
-        ApiError.form(
-            errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        HttpStatus.BAD_REQUEST,
-        ApiStatus.VALIDATION_FAILED,
-        List.of(error),
-        exchange,
-        ex,
-        firstNonBlank(ex.getReason(), ex.getMessage()),
-        false,
-        false);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(AuthenticationException.class)
   public ResponseEntity<MutationResponse<Void>> handleAuthenticationException(
       AuthenticationException ex, ServerWebExchange exchange) {
-    String errorCode = ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED;
-    ApiError error =
-        ApiError.business(
-            errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        HttpStatus.UNAUTHORIZED,
-        ApiStatus.BUSINESS_REJECTED,
-        List.of(error),
-        exchange,
-        ex,
-        ex.getMessage(),
-        false,
-        false);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(AccessDeniedException.class)
   public ResponseEntity<MutationResponse<Void>> handleAccessDeniedException(
       AccessDeniedException ex, ServerWebExchange exchange) {
-    String errorCode = ErrorCodes.SECURITY_ACCESS_DENIED;
-    ApiError error =
-        ApiError.business(
-            errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        HttpStatus.FORBIDDEN,
-        ApiStatus.BUSINESS_REJECTED,
-        List.of(error),
-        exchange,
-        ex,
-        ex.getMessage(),
-        false,
-        false);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<MutationResponse<Void>> handleUnexpectedException(
       Exception ex, ServerWebExchange exchange) {
-    String errorCode = ErrorCodes.SYSTEM_UNEXPECTED;
-    ApiError error =
-        ApiError.system(errorCode, resolvePublicMessage(errorCode, exchange, ex), SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        ApiStatus.SYSTEM_ERROR,
-        List.of(error),
-        exchange,
-        ex,
-        ex.getMessage(),
-        true,
-        true);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(InvalidPersonalInformationUpdateException.class)
   public ResponseEntity<MutationResponse<Void>> handleInvalidPersonalInformationUpdate(
       InvalidPersonalInformationUpdateException ex, ServerWebExchange exchange) {
-    String errorCode = ErrorCodes.PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID;
-    ApiError error =
-        ApiError.form(
-            errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        HttpStatus.BAD_REQUEST,
-        ApiStatus.VALIDATION_FAILED,
-        List.of(error),
-        exchange,
-        ex,
-        ex.getMessage(),
-        false,
-        false);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(CacheException.class)
   public ResponseEntity<MutationResponse<Void>> handleCacheException(
       CacheException ex, ServerWebExchange exchange) {
-    // Log at ERROR without stack trace: the cause contains raw Redis connection
-    // details
-    // (addresses, passwords, cert paths) that must not appear in application logs.
-
-    String errorCode = ErrorCodes.CACHE_UNEXPECTED;
-    ApiError error =
-        ApiError.form(
-            errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        HttpStatus.SERVICE_UNAVAILABLE,
-        ApiStatus.SYSTEM_ERROR,
-        List.of(error),
-        exchange,
-        ex,
-        ex.getMessage(),
-        true,
-        false);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(FundPriceRetrievalException.class)
   public ResponseEntity<MutationResponse<Void>> handleFundPriceRetrievalException(
       FundPriceRetrievalException ex, ServerWebExchange exchange) {
-    String errorCode = ErrorCodes.FUND_PRICE_RETRIEVAL_UNAVAILABLE;
-    ApiError error =
-        ApiError.form(
-            errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        HttpStatus.SERVICE_UNAVAILABLE,
-        ApiStatus.SYSTEM_ERROR,
-        List.of(error),
-        exchange,
-        ex,
-        ex.getMessage(),
-        true,
-        false);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(FundPriceInvalidDateException.class)
   public ResponseEntity<MutationResponse<Void>> handleFundPriceInvalidDateException(
       FundPriceInvalidDateException ex, ServerWebExchange exchange) {
-    String errorCode = ErrorCodes.FUND_PRICE_REQUEST_INVALID;
-    ApiError error =
-        ApiError.form(
-            errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        HttpStatus.BAD_REQUEST,
-        ApiStatus.VALIDATION_FAILED,
-        List.of(error),
-        exchange,
-        ex,
-        ex.getMessage(),
-        false,
-        false);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(FundComparisonRequestInvalidException.class)
   public ResponseEntity<MutationResponse<Void>> handleFundComparisonRequestInvalidException(
       FundComparisonRequestInvalidException ex, ServerWebExchange exchange) {
-    return handleApplicationException(
-        ex, exchange, HttpStatus.BAD_REQUEST, ApiStatus.VALIDATION_FAILED, "VALIDATION");
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(FundComparisonRetrievalException.class)
   public ResponseEntity<MutationResponse<Void>> handleFundComparisonRetrievalException(
       FundComparisonRetrievalException ex, ServerWebExchange exchange) {
-    String errorCode = ErrorCodes.FUND_COMPARISON_RETRIEVAL_UNAVAILABLE;
-    ApiError error =
-        ApiError.form(
-            errorCode, resolvePublicMessage(errorCode, exchange, ex), List.of(), SOURCE_SERVER);
-    return buildMutationErrorResponse(
-        HttpStatus.SERVICE_UNAVAILABLE,
-        ApiStatus.SYSTEM_ERROR,
-        List.of(error),
-        exchange,
-        ex,
-        ex.getMessage(),
-        true,
-        false);
+    return delegate(ex, exchange);
   }
 
   @ExceptionHandler(FundFactSheetRetrievalException.class)
@@ -409,22 +251,27 @@ public class ApiExceptionHandler {
   }
 
   // Helper methods
-  private ResponseEntity<MutationResponse<Void>> handleApplicationException(
-      ApplicationException ex,
-      ServerWebExchange exchange,
-      HttpStatus status,
-      ApiStatus apiStatus,
-      String errorType) {
+  private <T extends Throwable> ResponseEntity<MutationResponse<Void>> delegate(
+      T exception, ServerWebExchange exchange) {
+    ErrorContext context = ErrorContext.from(exchange);
+    ErrorDescriptor descriptor = registry.resolve(exception, context);
     ApiError error =
         new ApiError(
-            errorType,
-            ex.getErrorCode(),
-            resolvePublicMessage(ex.getErrorCode(), exchange, ex),
-            List.of(),
+            descriptor.errorType(),
+            descriptor.errorCode(),
+            resolvePublicMessage(descriptor.errorCode(), exchange, exception),
+            descriptor.targets(),
             "ERROR",
             SOURCE_SERVER);
     return buildMutationErrorResponse(
-        status, apiStatus, List.of(error), exchange, ex, ex.getMessage(), false, false);
+        descriptor.httpStatus(),
+        descriptor.apiStatus(),
+        List.of(error),
+        exchange,
+        exception,
+        registry.diagnosticMessage(exception),
+        descriptor.logLevel() == LogLevel.ERROR,
+        descriptor.includeStackTrace());
   }
 
   private ResponseEntity<MutationResponse<Void>> buildMutationErrorResponse(
@@ -552,12 +399,6 @@ public class ApiExceptionHandler {
     return context == null || context.account() == null
         ? null
         : trimToNull(context.account().schemeType());
-  }
-
-  private String resolveApimErrorCode(ApimException ex) {
-    return StringUtils.hasText(ex.getErrorCode())
-        ? ex.getErrorCode()
-        : ErrorCodes.APIM_UPSTREAM_FAILURE;
   }
 
   private String requestLocale(ServerWebExchange exchange) {

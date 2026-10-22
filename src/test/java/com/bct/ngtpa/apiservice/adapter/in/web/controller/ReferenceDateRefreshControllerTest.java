@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.internal.referencedate.ReferenceDateController;
 import com.bct.ngtpa.apiservice.application.dto.CleanUpAllReferenceDatesResult;
 import com.bct.ngtpa.apiservice.application.dto.GetAllReferenceDatesResult;
@@ -158,7 +159,10 @@ class ReferenceDateRefreshControllerTest {
                 () -> Mono.just(new GetAllReferenceDatesResult(java.util.List.of())),
                 () -> Mono.just(new CleanUpAllReferenceDatesResult(0L))))
         .controllerAdvice(
-            new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
+            new ApiExceptionHandler(
+                testErrorMessageResolver(),
+                testLoggingSanitizer(),
+                new ExceptionMappingRegistryConfig().exceptionMappingRegistry()))
         .build();
   }
 

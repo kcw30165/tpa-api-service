@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRequestInvalidException;
 import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalException;
@@ -28,7 +29,10 @@ class ApiExceptionHandlerFundPriceTest {
   private final LoggingSanitizer loggingSanitizer = mock(LoggingSanitizer.class);
 
   private ApiExceptionHandler newHandler() {
-    return new ApiExceptionHandler(errorMessageResolver, loggingSanitizer);
+    return new ApiExceptionHandler(
+        errorMessageResolver,
+        loggingSanitizer,
+        new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
   }
 
   private MockServerWebExchange exchange() {

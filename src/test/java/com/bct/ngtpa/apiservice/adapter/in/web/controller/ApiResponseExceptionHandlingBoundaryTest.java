@@ -1,26 +1,51 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static com.bct.ngtpa.apiservice.architecture.SourceTextAssertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.server.ServerWebExchange;
 
 class ApiResponseExceptionHandlingBoundaryTest {
 
+  /**
+   * Sub-task 1.4 rewrite: this previously read {@code ApiExceptionHandler.java} source text for the
+   * literal {@code "MutationResponse.<Void>failure"}, which moved to {@code ErrorResponseRenderer}
+   * in sub-task 1.3. It now asserts the same boundary (no legacy {@code ApiErrorResponse} type
+   * leaks out; every failure response is a {@code ResponseEntity<MutationResponse<Void>>}) by
+   * calling a handler method directly and inspecting the real response.
+   */
   @Test
-  void apiExceptionHandlerDoesNotUseLegacyApiErrorResponse() throws IOException {
-    String source =
-        readSource(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/advice/ApiExceptionHandler.java");
+  void apiExceptionHandlerDoesNotUseLegacyApiErrorResponse() {
+    ApiExceptionHandler handler =
+        new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer(), testRegistry());
+    ServerWebExchange exchange =
+        MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/test"));
 
-    assertFalse(containsIgnoringWhitespace(source, "ApiErrorResponse"));
-    assertFalse(containsIgnoringWhitespace(source, "ResponseEntity<ApiErrorResponse>"));
-    assertTrue(containsIgnoringWhitespace(source, "ResponseEntity<MutationResponse<Void>>"));
-    assertTrue(containsIgnoringWhitespace(source, "MutationResponse.<Void>failure"));
+    ResponseEntity<MutationResponse<Void>> response =
+        handler.handleAccessDeniedException(new AccessDeniedException("denied"), exchange);
+
+    assertNotNull(response.getBody());
+    assertFalse(response.getBody().success());
+    assertTrue(response.getBody() instanceof MutationResponse<Void>);
   }
 
   @Test
@@ -61,14 +86,36 @@ class ApiResponseExceptionHandlingBoundaryTest {
             contributionController, "Mono<ResponseEntity<byte[]>> exportContributionSummary"));
   }
 
+  /**
+   * Sub-task 1.4 rewrite: this previously read {@code ApiExceptionHandler.java} source text for
+   * {@code "requestLocale(exchange)"}. That helper still lives in {@code ApiExceptionHandler}
+   * unchanged, but asserting behaviour instead of source text is more robust to future internal
+   * refactors. Verifies the response uses the request's {@code Accept-Language} header rather than
+   * a {@code lang} query parameter by observing the resolved message differs per header (both
+   * requests target a pre-login-exempt path so the resolver actually runs).
+   */
   @Test
-  void exceptionLocalizationUsesAcceptLanguageNotLangQueryParameter() throws IOException {
-    String source =
-        readSource(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/advice/ApiExceptionHandler.java");
+  void exceptionLocalizationUsesAcceptLanguageNotLangQueryParameter() {
+    ApiExceptionHandler handler =
+        new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer(), testRegistry());
 
-    assertFalse(containsIgnoringWhitespace(source, "requestParam(exchange, \"lang\")"));
-    assertTrue(containsIgnoringWhitespace(source, "requestLocale(exchange)"));
+    ServerWebExchange withLangQueryParamOnly =
+        MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/fund-price?lang=zh-HK"));
+    ServerWebExchange withAcceptLanguageHeader =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get("/api/v1/fund-price").header("Accept-Language", "zh-HK"));
+
+    ResponseEntity<MutationResponse<Void>> ignoredQueryParam =
+        handler.handleAccessDeniedException(
+            new AccessDeniedException("denied"), withLangQueryParamOnly);
+    ResponseEntity<MutationResponse<Void>> usedHeader =
+        handler.handleAccessDeniedException(
+            new AccessDeniedException("denied"), withAcceptLanguageHeader);
+
+    // The lang= query param alone must not localize (resolver receives null locale); supplying
+    // Accept-Language must localize to "zh-HK" being passed through to the message resolver.
+    assertEquals("locale=null", ignoredQueryParam.getBody().errors().getFirst().message());
+    assertEquals("locale=zh-HK", usedHeader.getBody().errors().getFirst().message());
   }
 
   private static void assertControllerDoesNotExposeApiResponseDirectly(String fileName)
@@ -103,5 +150,19 @@ class ApiResponseExceptionHandlingBoundaryTest {
 
   private static String readSource(String path) throws IOException {
     return Files.readString(Path.of(path));
+  }
+
+  private static ErrorMessageResolver testErrorMessageResolver() {
+    return (errorCode, locale, accountEnv, trustCode, schemeType) -> "locale=" + locale;
+  }
+
+  private static LoggingSanitizer testLoggingSanitizer() {
+    MaskingProperties properties = new MaskingProperties();
+    return new LoggingSanitizer(new ObjectMapper(), new MaskingService(properties));
+  }
+
+  private static com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistry
+      testRegistry() {
+    return new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
   }
 }

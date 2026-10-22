@@ -12,6 +12,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.accountgainloss.AccountGainLossRetrievalResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
@@ -71,6 +72,11 @@ import org.springframework.web.server.ServerWebInputException;
  * the log level, and whether a stack trace is attached. No production behaviour changes in this
  * sub-task; this test only pins the behaviour captured in sub-task 1.0 so M1's later refactor steps
  * (1.2-1.6) can be verified against it.
+ *
+ * <p>Sub-task 1.4 update: {@code ApiExceptionHandler} gained a third constructor parameter, {@code
+ * ExceptionMappingRegistry}, when its mappings moved into per-capability {@code *ExceptionMappings}
+ * components; this pack now passes the real production registry ({@code
+ * ExceptionMappingRegistryConfig}) so every pinned row still exercises genuine behaviour.
  */
 class ApiExceptionHandlerCharacterizationTest {
 
@@ -87,7 +93,11 @@ class ApiExceptionHandlerCharacterizationTest {
     listAppender = new ListAppender<>();
     listAppender.start();
     logger.addAppender(listAppender);
-    handler = new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer());
+    handler =
+        new ApiExceptionHandler(
+            testErrorMessageResolver(),
+            testLoggingSanitizer(),
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
   }
 
   @AfterEach

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.FundComparisonOptionsController;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.FundComparisonPricesController;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.mapper.FundComparisonOptionsMapper;
@@ -108,7 +109,8 @@ class FundComparisonBrdTraceabilityTest {
     ErrorMessageResolver errorResolver = (code, locale, accountEnv, trustCode, schemeType) -> code;
     return new ApiExceptionHandler(
         errorResolver,
-        new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())));
+        new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())),
+        new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
   }
 
   private WebTestClient pricesClient(FundComparisonPriceSourcePort sourcePort) {

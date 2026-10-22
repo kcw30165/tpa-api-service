@@ -58,7 +58,8 @@ class AccountSummaryControllerTest {
     var advice =
         new com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler(
             Mockito.mock(com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver.class),
-            sanitizer);
+            sanitizer,
+            testExceptionMappingRegistry());
     GetAccountSummaryUseCase useCase = command -> Mono.error(failure);
     WebTestClient.bindToController(new AccountSummaryController(useCase, resolver(context())))
         .controllerAdvice(advice)
@@ -236,5 +237,11 @@ class AccountSummaryControllerTest {
       GetAccountSummaryUseCase useCase, CurrentPortalAccessContextResolver resolver) {
     var controller = new AccountSummaryController(useCase, resolver);
     return WebTestClient.bindToController(controller).build();
+  }
+
+  private static com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistry
+      testExceptionMappingRegistry() {
+    return new com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig()
+        .exceptionMappingRegistry();
   }
 }

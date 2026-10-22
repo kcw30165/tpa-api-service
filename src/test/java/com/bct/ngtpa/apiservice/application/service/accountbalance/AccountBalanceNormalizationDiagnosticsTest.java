@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.application.dto.accountbalance.raw.*;
 import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException.*;
@@ -49,7 +50,11 @@ class AccountBalanceNormalizationDiagnosticsTest {
     assertThat(failure.getMessage()).doesNotContain("private-name");
     var sanitizer = mock(LoggingSanitizer.class);
     when(sanitizer.toSafeString(any())).thenReturn("safe-event");
-    var handler = new ApiExceptionHandler(mock(ErrorMessageResolver.class), sanitizer);
+    var handler =
+        new ApiExceptionHandler(
+            mock(ErrorMessageResolver.class),
+            sanitizer,
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
     var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/account/summary"));
     exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "diagnostic-request");
     assertThat(

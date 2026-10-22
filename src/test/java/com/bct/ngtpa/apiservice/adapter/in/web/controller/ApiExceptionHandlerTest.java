@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
@@ -51,7 +52,10 @@ import reactor.core.publisher.Mono;
 class ApiExceptionHandlerTest {
 
   private final ApiExceptionHandler handler =
-      new ApiExceptionHandler(errorMessageResolver(), loggingSanitizer());
+      new ApiExceptionHandler(
+          errorMessageResolver(),
+          loggingSanitizer(),
+          new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
 
   @Test
   void mapsInvalidNotificationRequestExceptionToValidationMutationFailure() {
@@ -252,7 +256,8 @@ class ApiExceptionHandlerTest {
               capturedLocale.set(locale);
               return "message for " + errorCode;
             },
-            loggingSanitizer());
+            loggingSanitizer(),
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
     MockServerWebExchange exchange =
         MockServerWebExchange.from(
             MockServerHttpRequest.get("/api/v1/notifications?lang=zh-HK")
@@ -277,7 +282,8 @@ class ApiExceptionHandlerTest {
               assertEquals("CTX-SCHEME", schemeType);
               return "contextual message";
             },
-            loggingSanitizer());
+            loggingSanitizer(),
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
     MockServerWebExchange exchange =
         MockServerWebExchange.from(
             MockServerHttpRequest.get("/api/v1/test")
