@@ -25,6 +25,7 @@ import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.config.ConfigLookupContext;
 import com.bct.ngtpa.apiservice.shared.config.ConfigVariantCandidateGenerator;
+import com.bct.ngtpa.apiservice.shared.config.FieldAccessResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
@@ -526,7 +527,7 @@ public class PersonalInformationWebMapper {
         logMissingYamlBinding(configKey, configValue);
         continue;
       }
-      if ("HIDDEN".equalsIgnoreCase(configValue)) {
+      if (FieldAccessResolver.isHidden(configValue)) {
         continue;
       }
       Object value =
@@ -554,7 +555,7 @@ public class PersonalInformationWebMapper {
         logMissingYamlBinding(configKey, configValue);
         continue;
       }
-      if ("HIDDEN".equalsIgnoreCase(configValue)) {
+      if (FieldAccessResolver.isHidden(configValue)) {
         continue;
       }
       Object value = resolveValue(apimData, boundField.dataKey());
@@ -682,8 +683,8 @@ public class PersonalInformationWebMapper {
         hasText(fieldSchema.getControlType()) ? fieldSchema.getControlType() : null,
         state.value(),
         state.value(),
-        isReadonly(state.configValue()),
-        isRequired(state.configValue()),
+        FieldAccessResolver.isReadonly(state.configValue()),
+        FieldAccessResolver.isRequired(state.configValue()),
         fieldSchema.getMinLength(),
         fieldSchema.getMaxLength(),
         hasText(fieldSchema.getPattern()) ? fieldSchema.getPattern() : null,
@@ -880,14 +881,6 @@ public class PersonalInformationWebMapper {
     }
     Object value = apimData.get(dataKey);
     return value != null ? value : "";
-  }
-
-  private boolean isReadonly(String configValue) {
-    return "READONLY".equalsIgnoreCase(configValue);
-  }
-
-  private boolean isRequired(String configValue) {
-    return "EDITABLE_COM".equalsIgnoreCase(configValue);
   }
 
   private String resolvePageDisplayText(
