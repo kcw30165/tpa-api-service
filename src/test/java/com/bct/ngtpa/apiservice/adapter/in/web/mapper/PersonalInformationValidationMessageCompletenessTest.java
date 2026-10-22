@@ -56,8 +56,9 @@ class PersonalInformationValidationMessageCompletenessTest {
   void knownRuntimeValidationDefinitionsCarryMessageCodes() throws Exception {
     String yaml = Files.readString(YAML);
 
-    assertRuleBlockContains(
-        yaml, "id: email.minLength", "messageCode: personalInformation.email.tooShort.message");
+    assertThat(yaml)
+        .as("D-16/D4: the email.minLength rule must be removed")
+        .doesNotContain("id: email.minLength");
     assertRuleBlockContains(
         yaml,
         "id: mailingCountry.requiredWhenMailingAddressCaptured",

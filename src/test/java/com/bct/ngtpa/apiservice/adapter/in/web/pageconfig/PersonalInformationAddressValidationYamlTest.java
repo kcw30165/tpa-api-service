@@ -60,6 +60,15 @@ class PersonalInformationAddressValidationYamlTest {
   }
 
   @Test
+  void aeoiReminderRuleIsRemoved() {
+    List<Map<String, Object>> pageValidations = validations(personalInformationPage());
+
+    assertThat(pageValidations)
+        .as("D-16/D6: the AEOI country-change reminder rule must be removed")
+        .noneMatch(rule -> "aeoiReminder.whenResidentialCountryChanged".equals(rule.get("id")));
+  }
+
+  @Test
   void mailingOnlyAddressMustNotBeBlockedByUnconditionalResidentialAddressRequiredRule() {
     Map<String, Object> residentialAddressLine1 = field("residentialAddressLine1");
 
@@ -89,6 +98,7 @@ class PersonalInformationAddressValidationYamlTest {
   void addressLineOneMinLengthAndPoBoxRulesAreConfiguredFromYaml() {
     assertMinLengthRule(
         "residentialAddressLine1", "personalInformation.residentialAddress.invalid");
+    assertMinLengthRule("mailingAddressLine1", "personalInformation.mailingAddress.invalid");
 
     for (String fieldId :
         List.of("residentialAddressLine1", "residentialAddressLine2", "residentialAddressLine3")) {
