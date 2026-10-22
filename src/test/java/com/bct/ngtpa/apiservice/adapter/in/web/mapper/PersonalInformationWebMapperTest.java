@@ -58,6 +58,18 @@ class PersonalInformationWebMapperTest {
   }
 
   @Test
+  void legacyConfigHiddenValueOmitsFieldFromResponseJustLikeTypedConfigItems() {
+    var page =
+        pageWithSections(
+            section("main", List.of(boundField("hiddenField", "hidden", "hidden-config", null))));
+    Map<String, String> legacyConfig = new LinkedHashMap<>();
+    legacyConfig.put("hidden-config", "HIDDEN");
+    Map<String, Object> response =
+        mapper(properties(page)).toResponse(Map.of("hidden", "ignored-value"), legacyConfig, "en");
+    assertThat(sections(response)).isEmpty();
+  }
+
+  @Test
   void mapsDataConfigItemsToBffFieldsUsingApimDataItemId() {
     PersonalInformationWebMapper mapper = mapper(mock(LoggingSanitizer.class));
     var result =
