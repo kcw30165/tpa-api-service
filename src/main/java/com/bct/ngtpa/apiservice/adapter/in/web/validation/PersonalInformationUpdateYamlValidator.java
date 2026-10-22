@@ -250,26 +250,17 @@ public class PersonalInformationUpdateYamlValidator {
     if (configuredGroups.isEmpty()) {
       return false;
     }
-    long submittedGroupCount =
-        configuredGroups.stream().filter(group -> groupSubmitted(group, submittedFields)).count();
-    if (submittedGroupCount > 0 && submittedGroupCount < configuredGroups.size()) {
-      return false;
-    }
-    return configuredGroups.stream().allMatch(group -> groupIsEmpty(group, submittedFields));
+    return configuredGroups.stream().allMatch(group -> groupSubmittedBlank(group, submittedFields));
   }
 
-  private boolean groupSubmitted(Map<String, Object> group, Map<String, Object> submittedFields) {
-    List<String> fieldRefs = RuleGroupFields.of(group == null ? null : group.get("fields"));
-    return fieldRefs.stream().anyMatch(submittedFields::containsKey);
-  }
-
-  private boolean groupIsEmpty(Map<String, Object> group, Map<String, Object> submittedFields) {
+  private boolean groupSubmittedBlank(
+      Map<String, Object> group, Map<String, Object> submittedFields) {
     List<String> fieldRefs = RuleGroupFields.of(group == null ? null : group.get("fields"));
     if (fieldRefs.isEmpty()) {
       return false;
     }
     for (String fieldRef : fieldRefs) {
-      if (!isBlankValue(submittedFields.get(fieldRef))) {
+      if (!submittedFields.containsKey(fieldRef) || !isBlankValue(submittedFields.get(fieldRef))) {
         return false;
       }
     }

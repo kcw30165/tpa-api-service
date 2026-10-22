@@ -59,10 +59,13 @@ class PersonalInformationValidationMessageCompletenessTest {
     assertThat(yaml)
         .as("D-16/D4: the email.minLength rule must be removed")
         .doesNotContain("id: email.minLength");
+    assertThat(yaml)
+        .as("D-29: country-depends-on-address rules are not applied")
+        .doesNotContain("id: mailingCountry.requiredWhenMailingAddressCaptured");
     assertRuleBlockContains(
         yaml,
-        "id: mailingCountry.requiredWhenMailingAddressCaptured",
-        "messageCode: personalInformation.mailingCountry.required.message");
+        "id: overseasPhoneExtension.maxLength",
+        "messageCode: personalInformation.overseasPhoneExtension.invalid.message");
 
     assertThat(yaml)
         .as(

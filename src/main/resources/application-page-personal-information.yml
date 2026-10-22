@@ -764,15 +764,9 @@ bff-pages:
               - name: residentialAddress
                 fields:
                   - residentialAddressLine1
-                  - residentialAddressLine2
-                  - residentialAddressLine3
-                  - residentialCountry
               - name: mailingAddress
                 fields:
                   - mailingAddressLine1
-                  - mailingAddressLine2
-                  - mailingAddressLine3
-                  - mailingCountry
           then:
             operator: fail
             targets:
@@ -780,38 +774,6 @@ bff-pages:
               - mailingAddressLine1
           code: personalInformation.address.atLeastOneRequired
           messageCode: personalInformation.address.atLeastOneRequired.message
-        - id: residentialAddress.completeWhenStarted
-          type: conditionalRequired
-          severity: error
-          when:
-            operator: notBlank
-            field: residentialAddressLine1
-          then:
-            operator: allRequired
-            fields:
-              - residentialAddressLine1
-              - residentialCountry
-            targets:
-              - residentialAddressLine1
-              - residentialCountry
-          code: personalInformation.residentialAddress.incomplete
-          messageCode: personalInformation.residentialAddress.incomplete.message
-        - id: mailingAddress.completeWhenStarted
-          type: conditionalRequired
-          severity: error
-          when:
-            operator: notBlank
-            field: mailingAddressLine1
-          then:
-            operator: allRequired
-            fields:
-              - mailingAddressLine1
-              - mailingCountry
-            targets:
-              - mailingAddressLine1
-              - mailingCountry
-          code: personalInformation.mailingAddress.incomplete
-          messageCode: personalInformation.mailingAddress.incomplete.message
         - id: businessPhone.requiredWhenExtensionPresent
           type: conditionalRequired
           severity: error
@@ -825,36 +787,6 @@ bff-pages:
               - hongKongBusinessPhone
           code: personalInformation.businessPhone.requiredWhenExtensionPresent
           messageCode: personalInformation.businessPhone.requiredWhenExtensionPresent.message
-        - id: residentialCountry.requiredWhenResidentialAddressCaptured
-          type: conditionalRequired
-          when:
-            operator: any
-            fields:
-              - residentialAddressLine1
-              - residentialAddressLine2
-              - residentialAddressLine3
-          then:
-            operator: required
-            targets:
-              - residentialCountry
-          code: personalInformation.residentialCountry.required
-          messageCode: personalInformation.residentialCountry.required.message
-          severity: error
-        - id: mailingCountry.requiredWhenMailingAddressCaptured
-          type: conditionalRequired
-          when:
-            operator: any
-            fields:
-              - mailingAddressLine1
-              - mailingAddressLine2
-              - mailingAddressLine3
-          then:
-            operator: required
-            targets:
-              - mailingCountry
-          code: personalInformation.mailingCountry.required
-          messageCode: personalInformation.mailingCountry.required.message
-          severity: error
         - id: overseasPhoneNumber.requiredWhenCodePresent
           type: conditionalRequired
           when:

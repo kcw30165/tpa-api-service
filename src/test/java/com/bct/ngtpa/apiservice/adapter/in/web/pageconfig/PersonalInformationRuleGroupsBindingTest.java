@@ -30,17 +30,9 @@ class PersonalInformationRuleGroupsBindingTest {
 
               assertThat(groups).hasSize(2);
               assertThat(RuleGroupFields.of(groups.get(0).get("fields")))
-                  .containsExactly(
-                      "residentialAddressLine1",
-                      "residentialAddressLine2",
-                      "residentialAddressLine3",
-                      "residentialCountry");
+                  .containsExactly("residentialAddressLine1");
               assertThat(RuleGroupFields.of(groups.get(1).get("fields")))
-                  .containsExactly(
-                      "mailingAddressLine1",
-                      "mailingAddressLine2",
-                      "mailingAddressLine3",
-                      "mailingCountry");
+                  .containsExactly("mailingAddressLine1");
             });
   }
 }

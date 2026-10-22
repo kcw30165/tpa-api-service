@@ -14,47 +14,42 @@ class PersonalInformationAddressValidationYamlTest {
       "PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱";
 
   @Test
-  void addressDependencyRulesUseDistinctResidentialMailingAndOverseasCountryTargets() {
-    Map<String, Object> page = personalInformationPage();
-    List<Map<String, Object>> validations = validations(page);
+  void addressCountryDependencyRulesAreNotConfiguredWhileUnconfirmed() {
+    List<Map<String, Object>> validations = validations(personalInformationPage());
 
-    Map<String, Object> residentialCountryRule =
-        rule(validations, "residentialCountry.requiredWhenResidentialAddressCaptured");
-    assertThat(fields(when(residentialCountryRule)))
-        .containsExactly(
-            "residentialAddressLine1", "residentialAddressLine2", "residentialAddressLine3");
-    assertThat(targets(then(residentialCountryRule))).containsExactly("residentialCountry");
+    assertThat(validations)
+        .as("D-29: country-depends-on-address rules are unconfirmed (U-2) and must not be applied")
+        .extracting(rule -> rule.get("id"))
+        .doesNotContain(
+            "residentialCountry.requiredWhenResidentialAddressCaptured",
+            "mailingCountry.requiredWhenMailingAddressCaptured",
+            "residentialAddress.completeWhenStarted",
+            "mailingAddress.completeWhenStarted");
+  }
 
-    Map<String, Object> mailingCountryRule =
-        rule(validations, "mailingCountry.requiredWhenMailingAddressCaptured");
-    assertThat(fields(when(mailingCountryRule)))
-        .containsExactly("mailingAddressLine1", "mailingAddressLine2", "mailingAddressLine3");
-    assertThat(targets(then(mailingCountryRule))).containsExactly("mailingCountry");
-
+  @Test
+  void overseasCountryRuleStillTargetsOverseasCountryCodeOnly() {
     Map<String, Object> overseasCountryRule =
-        rule(validations, "overseasCountryCode.requiredWhenOverseasPhonePresent");
+        rule(
+            validations(personalInformationPage()),
+            "overseasCountryCode.requiredWhenOverseasPhonePresent");
     assertThat(fields(when(overseasCountryRule))).containsExactly("overseasPhoneNumber");
     assertThat(targets(then(overseasCountryRule))).containsExactly("overseasCountryCode");
   }
 
   @Test
-  void atLeastOneAddressRuleUsesResidentialAndMailingGroupsOnly() {
+  void atLeastOneAddressRuleUsesLineOneOfEachAddressOnly() {
     Map<String, Object> rule =
         rule(validations(personalInformationPage()), "address.atLeastOneRequired");
-    List<Map<String, Object>> groups = groups(when(rule));
 
+    List<Map<String, Object>> groups = groups(when(rule));
     assertThat(groups)
         .extracting(group -> group.get("name"))
         .containsExactly("residentialAddress", "mailingAddress");
     assertThat(fields(groups.get(0)))
-        .containsExactly(
-            "residentialAddressLine1",
-            "residentialAddressLine2",
-            "residentialAddressLine3",
-            "residentialCountry");
-    assertThat(fields(groups.get(1)))
-        .containsExactly(
-            "mailingAddressLine1", "mailingAddressLine2", "mailingAddressLine3", "mailingCountry");
+        .as("D-26: an address exists when line 1 is not blank")
+        .containsExactly("residentialAddressLine1");
+    assertThat(fields(groups.get(1))).containsExactly("mailingAddressLine1");
     assertThat(targets(then(rule)))
         .containsExactly("residentialAddressLine1", "mailingAddressLine1");
   }
@@ -74,23 +69,17 @@ class PersonalInformationAddressValidationYamlTest {
 
     assertThat(validations(residentialAddressLine1))
         .filteredOn(rule -> "required".equalsIgnoreCase(string(rule.get("type"))))
-        .as(
-            "AC4 requires residential address to become optional when a valid mailing address is supplied; use page-level groupRequirement/conditionalRequired instead of unconditional residential required")
+        .as("D-25a: line 1 is never unconditionally required")
         .isEmpty();
   }
 
   @Test
-  void
-      countryFieldsMustNotHaveUnconditionalRequiredRulesBecauseCountryIsRequiredOnlyWhenItsGroupIsCaptured() {
+  void countryFieldsMustNotHaveUnconditionalRequiredRules() {
     assertThat(validations(field("residentialCountry")))
         .filteredOn(rule -> "required".equalsIgnoreCase(string(rule.get("type"))))
-        .as(
-            "residentialCountry must be required by residentialCountry.requiredWhenResidentialAddressCaptured only")
         .isEmpty();
     assertThat(validations(field("mailingCountry")))
         .filteredOn(rule -> "required".equalsIgnoreCase(string(rule.get("type"))))
-        .as(
-            "mailingCountry must be required by mailingCountry.requiredWhenMailingAddressCaptured only")
         .isEmpty();
   }
 

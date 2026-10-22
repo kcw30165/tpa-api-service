@@ -390,13 +390,15 @@ class PersonalInformationUpdateYamlValidatorTest {
   }
 
   @Test
-  void allGroupsEmptyOperatorMatchesWhenEveryGroupHasNoSubmittedFields() {
+  void allGroupsEmptyOperatorMatchesOnlyWhenEveryGroupFieldIsSubmittedBlank() {
     var condition = new RuleConditionProperties();
     condition.setOperator("allGroupsEmpty");
     condition.setGroups(
         List.of(Map.of("fields", List.of("f1", "f2")), Map.of("fields", List.of("f3"))));
-    assertConditionMatches(condition, Map.of());
-    assertConditionDoesNotMatch(condition, Map.of("f1", "value"));
+    assertConditionDoesNotMatch(condition, Map.of());
+    assertConditionDoesNotMatch(condition, Map.of("f1", "", "f2", ""));
+    assertConditionDoesNotMatch(condition, Map.of("f1", "value", "f2", "", "f3", ""));
+    assertConditionMatches(condition, Map.of("f1", "", "f2", "", "f3", ""));
   }
 
   @Test
