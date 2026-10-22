@@ -1,6 +1,9 @@
 
 # Information Update — Extracted BRD and Config Matrix Rules
 
+> **Amended 2026-10-22 (requirement change).** Where this document conflicts with the section "Amendment 2026-10-22" at the end, the amendment wins.
+
+
 > **Refactor note (refactor/personal-information):** where this extract conflicts with
 > `10-refactor-personal-information-design.md`, the design document prevails. Affected areas: partial PUT
 > semantics, group presence, section 9 (any of address lines 1-3 counts as an address line; the country is
@@ -1138,3 +1141,13 @@ showMessage
 ```
 
 `type` should be descriptive only. FE should branch on `when.operator` and `then.operator`, not on custom business `type`.
+
+## Amendment 2026-10-22
+
+- BRD section 9 ("line 2 or line 3 alone does not count as an address"): followed. Line 1 defines an address; the
+  earlier deviation is withdrawn. Line 2 or 3 may be saved without line 1 (downstream accepts it).
+- "Residential or mailing address is mandatory": enforced by the downstream; Java checks it only when both line-1
+  keys are submitted blank (FE sends changed fields only).
+- Country required when an address exists: unconfirmed (U-2); not applied.
+- Required fields come from the config matrix (EDITABLE_COM), except address line 1 of both addresses (cross-address rule).
+- See design D-25 to D-32.

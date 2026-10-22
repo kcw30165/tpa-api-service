@@ -1,5 +1,8 @@
 # Personal Information Refactor — Design
 
+> **Amended 2026-10-22 (requirement change).** Where this document conflicts with the section "Amendment 2026-10-22" at the end, the amendment wins.
+
+
 Branch: `refactor/personal-information` (base `origin/dev` 92849aac). Owner: Nick (solution design approval).
 Status: design agreed in conversation on 2026-10-21; this document is the written record for review.
 
@@ -221,3 +224,54 @@ The adapter's response matching on `policy-no`, `cert-no`, `env` stays (D-02).
   `personalInformation.field.required` (config-driven). FE message mapping must follow.
 - If fields of one group have different access values, the group rule only requires the editable ones (4.2).
 - `overseasPhoneExtension` (U-1) and the BRD section 9 deviation await stakeholder confirmation.
+
+## Amendment 2026-10-22 — requirement change
+
+Trigger: new requirements received on 2026-10-22 at HEAD d8be3562 (M3.1 and M3.1b committed, M3.2-3.5 not started).
+FE sends only the changed fields. PIN (step-up) verification is out of scope (separate branch
+feature/step-up-pin-verification). Label removal is out of scope (separate branch; D-15 unchanged).
+
+### A.1 Decisions added
+
+| ID | Decision | Source |
+|---|---|---|
+| D-25 | Required comes from the downstream config. The enum is exactly EDITABLE_COM, EDITABLE_OPTION, READONLY, HIDDEN; Java compares exact values (no suffix matching). EDITABLE_COM => GET `required: true`; PUT rejects a submitted blank value (personalInformation.field.required). An absent key is never checked (partial update). | Nick |
+| D-25a | Line-1 exception: residentialAddressLine1 (addr1) and mailingAddressLine1 (corr-addr1) carry a YAML `requiredOverride: false`. The downstream config always returns both as EDITABLE_COM because its database cannot express the cross-address rule. GET returns `required: false` for them; PUT accepts a blank line 1. If the downstream config ever expresses the rule, the override is deleted (YAML only). | Nick |
+| D-26 | An address exists when line 1 is non-blank. Line 2 or line 3 alone is accepted (matches the downstream). Line 1 minLength 5 applies only when submitted non-blank (D-09). | Nick / downstream behaviour |
+| D-27 | The group presence rule and the "send whole groups" FE contract are removed. FE sends only changed fields. | Nick |
+| D-28 | "At least one address has line 1" is enforced by the downstream (it requires line 1 when the other address's line 1 is empty). Java evaluates address.atLeastOneRequired only when both line-1 keys are submitted blank; its groups are narrowed to the line-1 field of each address. A downstream rejection maps to a code as today. The rule stays in the GET response for FE. | Nick |
+| D-29 | The country-depends-on-address rule is not confirmed (U-2) and is not applied: validateAddressGroupCountryRule is deleted from Java, and the YAML rules residentialAddress.completeWhenStarted, mailingAddress.completeWhenStarted, residentialCountry.requiredWhenResidentialAddressCaptured and mailingCountry.requiredWhenMailingAddressCaptured are deleted. Re-adding them later is YAML only. Country is still required when its config is EDITABLE_COM (D-25). | Nick |
+| D-30 | Group-wide access normalization is removed: FieldGroupAccessNormalizer, the fieldGroups YAML, its binding and linter checks, and the fieldGroups/atLeastOneRequired sync guard. Access is resolved per field. | Nick (Q1) |
+| D-31 | Conditional-required rules stay in YAML (e.g. phone country required only when the phone number has a value) and are evaluated over submitted fields only: a rule fails only when its trigger is submitted non-blank AND its target is submitted blank. If the target key is absent, Java treats the stored value as unchanged and skips the rule; the downstream decides. | Nick (Q2) |
+| D-32 | A config value outside the four enum values is logged at ERROR (item id and value only) and treated as HIDDEN: the GET omits the field and a PUT containing it is rejected with personalInformation.field.notEditable. | Nick (option B) |
+
+### A.2 Decisions superseded
+
+| ID | Status |
+|---|---|
+| D-05 | Superseded by D-27 (no group presence rule). |
+| D-06, D-07 | Superseded by D-30 for fieldGroups. YAML stays the single source of rules (no hard-coded field lists in Java). |
+| D-08, section 4.3 | Superseded by D-26, D-28, D-29. |
+| D-10 | Superseded by D-25 / D-25a (address fields: only line 1 is exempt). |
+| D-19, D-24, section 4.6 | Superseded by D-30. |
+| D-20 | Superseded by D-27. |
+| D-21 | Superseded by D-30 (fieldGroups YAML removed; sync guard removed). |
+| D-23 | Its group/country parts (validateFieldGroups, validateAddressGroupCountryRule, resolveGroupMessage, groupSubmitted/groupIsEmpty) are deleted, not covered. |
+| BRD section 9 deviation | Withdrawn: line 1 defines an address, as the BRD says. |
+
+D-11 to D-13 (session-cached config) and D-14 stay.
+
+### A.3 PUT validation (replaces 4.1-4.5 where they differ)
+
+1. Resolve per-field access (session cache, else one TRPGetMemberInfo, D-13).
+2. For each submitted key: HIDDEN/READONLY (an unknown value is treated as HIDDEN, D-32) => personalInformation.field.notEditable;
+   EDITABLE_COM without requiredOverride and blank => personalInformation.field.required.
+3. Format rules on non-blank submitted values (D-09).
+4. Conditional-required rules per D-31; address.atLeastOneRequired per D-28.
+5. Normalise null to "" and send only the submitted fields to TRPUpdMemberInfo.
+
+### A.4 Open items
+
+- U-1 overseasPhoneExtension: now only affects conditional-required rules (no groups).
+- U-2 country-depends-on-address: unconfirmed; not applied (D-29).
+- Flag: the downstream config marks both addr1 and corr-addr1 as EDITABLE_COM; handled by D-25a until the downstream config can express the rule.
