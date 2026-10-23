@@ -96,8 +96,7 @@ class ApiExceptionHandlerPersonalInformationRetrievalTest {
   @Test
   void theErrorCodeConstantHasTheApprovedValue() {
     assertThat(ErrorCodes.PERSONAL_INFORMATION_RETRIEVAL_UNAVAILABLE)
-        .isEqualTo("err.personal-information.retrieval.unavailable");
-    assertThat(ErrorCodes.PERSONAL_INFORMATION_RETRIEVAL_UNAVAILABLE)
+        .isEqualTo("err.personal-information.retrieval.unavailable")
         .isNotEqualTo(ErrorCodes.PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID);
   }
 }
