@@ -114,7 +114,12 @@ public class PersonalInformationFieldAccessValidator {
       return null;
     }
     ApimBindingProperties binding = field.getApimBinding();
-    if (binding == null || binding.getConfig() == null || binding.getConfig().isBlank()) {
+    // UI-only fields (no data key) are omitted by the update mapper: nothing to protect.
+    if (binding == null
+        || binding.getData() == null
+        || binding.getData().isBlank()
+        || binding.getConfig() == null
+        || binding.getConfig().isBlank()) {
       return null;
     }
     return binding.getConfig();

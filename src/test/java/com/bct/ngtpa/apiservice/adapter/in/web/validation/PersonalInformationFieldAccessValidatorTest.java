@@ -220,6 +220,30 @@ class PersonalInformationFieldAccessValidatorTest {
   // ----- ignored input and guards --------------------------------------------------------
 
   @Test
+  void fieldWithAConfigBindingButNoDataBindingIsUiOnlyAndIgnored() {
+    var uiOnly = new FieldProperties();
+    uiOnly.setId("applyToAllMemberAccounts");
+    var binding = new ApimBindingProperties();
+    binding.setConfig("check-box-apply-all-member");
+    uiOnly.setApimBinding(binding);
+    var section = new SectionProperties();
+    section.setId("main");
+    section.setFields(List.of(uiOnly));
+    var form = new FormMetadataProperties();
+    form.setSections(List.of(section));
+    var page = new PageSchemaProperties();
+    page.setForm(form);
+    var properties = new BffPagesProperties();
+    properties.setPages(Map.of("personalInformation", page));
+
+    assertThat(
+            new PersonalInformationFieldAccessValidator(properties)
+                .validate(request("applyToAllMemberAccounts", true), config()))
+        .as("UI-only fields are omitted by the update mapper; there is no data key to protect")
+        .isEmpty();
+  }
+
+  @Test
   void fieldWithoutAConfigBindingIsIgnored() {
     assertThat(validator().validate(request("looseField", "x"), config("email", "HIDDEN")))
         .isEmpty();
