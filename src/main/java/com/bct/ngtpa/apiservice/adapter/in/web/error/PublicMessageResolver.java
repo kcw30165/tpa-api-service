@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.shared.web.PortalAccessContextKeys;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ServerWebExchange;
@@ -39,6 +40,7 @@ import org.springframework.web.server.ServerWebExchange;
  * methods). Flagged here rather than silently dropped; if this is incorrect, restoring it is a
  * one-method addition.
  */
+@Component
 public final class PublicMessageResolver {
 
   private final ErrorMessageResolver errorMessageResolver;
