@@ -82,7 +82,8 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
     Object cfgObj = payload.get(KEY_CONFIG);
     if (cfgObj instanceof Map<?, ?> cfgMap) {
       for (Map.Entry<?, ?> e : cfgMap.entrySet()) {
-        apimConfig.put(String.valueOf(e.getKey()), String.valueOf(e.getValue()));
+        apimConfig.put(
+            String.valueOf(e.getKey()), e.getValue() == null ? "" : String.valueOf(e.getValue()));
       }
     }
     return apimConfig;

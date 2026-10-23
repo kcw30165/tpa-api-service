@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.personalinformation;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
@@ -15,6 +16,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
@@ -23,6 +25,7 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.util.StringUtils;
@@ -32,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.util.context.ContextView;
 
@@ -48,28 +52,35 @@ public class PersonalInformationController {
   private final PersonalInformationUpdateWebMapper requestMapper;
   private final PersonalInformationUpdateResponseMapper responseMapper;
   private final PersonalInformationUpdateYamlValidator validator;
+  private final AuthenticatedSessionCookieReader sessionCookieReader;
 
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
   public Mono<MutationResponse<PersonalInformationResultResponse>> getPersonalInformation(
       @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false)
-          String acceptLanguage) {
+          String acceptLanguage,
+      ServerWebExchange exchange) {
     return Mono.deferContextual(
         contextView -> {
           String language = resolveLanguage(contextView, acceptLanguage);
+          String requestId = requestIdFrom(contextView);
+          Optional<AuthenticatedSessionId> sessionId = sessionCookieReader.read(exchange);
           return currentPortalAccessContextResolver
               .current()
               .flatMap(
                   portalAccessContext -> {
-                    requireAccountRef(portalAccessContext);
+                    String accountRef = requireAccountRef(portalAccessContext);
                     return getPersonalInformationUseCase
-                        .execute(
+                        .executeAndCache(
                             new GetPersonalInformationCommand(
                                 language,
                                 portalAccessContext.account().accountEnv(),
                                 portalAccessContext.account().policyNo(),
                                 portalAccessContext.account().certNo(),
                                 portalAccessContext.actor().actorUserId(),
-                                portalAccessContext.actor().actorUserRole()))
+                                portalAccessContext.actor().actorUserRole()),
+                            sessionId,
+                            accountRef,
+                            requestId)
                         .map(
                             result ->
                                 success(
@@ -153,6 +164,12 @@ public class PersonalInformationController {
 
   private String schemeType(PortalAccessContext context) {
     return context == null || context.account() == null ? null : context.account().schemeType();
+  }
+
+  private String requestIdFrom(ContextView contextView) {
+    RequestHeaderContext requestHeaderContext =
+        contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
+    return requestHeaderContext == null ? null : requestHeaderContext.requestId();
   }
 
   private String resolveLanguage(ContextView contextView, String acceptLanguage) {

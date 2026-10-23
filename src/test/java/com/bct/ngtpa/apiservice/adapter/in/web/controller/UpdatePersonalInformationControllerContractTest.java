@@ -32,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -44,6 +45,7 @@ import reactor.core.publisher.Mono;
  * assertion changed.
  */
 class UpdatePersonalInformationControllerContractTest {
+  private static final AuthenticatedSessionCookieReader NO_SESSION = exchange -> Optional.empty();
 
   private static final String REQUEST_ID = "client-request-uuid";
   private static final String ACCEPT_LANGUAGE = "en";
@@ -160,6 +162,13 @@ class UpdatePersonalInformationControllerContractTest {
     PersonalInformationWebMapper getRequestMapper = mock(PersonalInformationWebMapper.class);
 
     return new PersonalInformationController(
-        getUseCase, getRequestMapper, resolver, useCase, requestMapper, responseMapper, validator);
+        getUseCase,
+        getRequestMapper,
+        resolver,
+        useCase,
+        requestMapper,
+        responseMapper,
+        validator,
+        NO_SESSION);
   }
 }

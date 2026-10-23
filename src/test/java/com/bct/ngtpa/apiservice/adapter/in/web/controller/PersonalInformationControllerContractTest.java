@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
@@ -32,11 +33,15 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 
 class PersonalInformationControllerContractTest {
+  private static final AuthenticatedSessionCookieReader NO_SESSION = exchange -> Optional.empty();
 
   @Test
   void getPersonalInformationReturns200WithMutationResponseResultData() {
@@ -48,7 +53,7 @@ class PersonalInformationControllerContractTest {
 
     var body =
         controller(useCase, mapper, resolver(context("ACC-123")))
-            .getPersonalInformation("en")
+            .getPersonalInformation("en", exchange())
             .contextWrite(
                 ctx ->
                     ctx.put(
@@ -77,7 +82,7 @@ class PersonalInformationControllerContractTest {
         .thenReturn(response("zh_HK", "個人資料"));
 
     controller(useCase, mapper, resolver(context("ACC-123")))
-        .getPersonalInformation("en")
+        .getPersonalInformation("en", exchange())
         .contextWrite(
             ctx ->
                 ctx.put(
@@ -99,7 +104,7 @@ class PersonalInformationControllerContractTest {
             PortalAccessContextResolutionException.class,
             () ->
                 controller(useCase, mapper, resolver(context(" ")))
-                    .getPersonalInformation("en")
+                    .getPersonalInformation("en", exchange())
                     .contextWrite(
                         ctx ->
                             ctx.put(
@@ -122,7 +127,7 @@ class PersonalInformationControllerContractTest {
 
     var actual =
         controller(useCase, mapper, resolver(context("ACC-123")))
-            .getPersonalInformation("en")
+            .getPersonalInformation("en", exchange())
             .contextWrite(
                 ctx ->
                     ctx.put(
@@ -133,6 +138,11 @@ class PersonalInformationControllerContractTest {
     assertEquals(expected.page(), actual.result().data().page());
     assertEquals(expected.form(), actual.result().data().form());
     verify(mapper).toFormPageResponse(result, "en", "JP", "JPM", "OE");
+  }
+
+  private static MockServerWebExchange exchange() {
+    return MockServerWebExchange.from(
+        MockServerHttpRequest.get("/api/v1/personal-information").build());
   }
 
   private FormPageResponse<FormSchemaResponse> response(String language, String title) {
@@ -176,6 +186,13 @@ class PersonalInformationControllerContractTest {
         mock(PersonalInformationUpdateYamlValidator.class);
 
     return new PersonalInformationController(
-        useCase, mapper, resolver, updateUseCase, requestMapper, responseMapper, validator);
+        useCase,
+        mapper,
+        resolver,
+        updateUseCase,
+        requestMapper,
+        responseMapper,
+        validator,
+        NO_SESSION);
   }
 }

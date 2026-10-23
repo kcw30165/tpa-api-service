@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
@@ -29,11 +30,13 @@ import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class UpdatePersonalInformationControllerTest {
+  private static final AuthenticatedSessionCookieReader NO_SESSION = exchange -> Optional.empty();
 
   @Test
   void mapsRequestToCommandAndMapsResultListToMutationResponse() {
@@ -148,6 +151,13 @@ class UpdatePersonalInformationControllerTest {
     PersonalInformationWebMapper getRequestMapper = mock(PersonalInformationWebMapper.class);
 
     return new PersonalInformationController(
-        getUseCase, getRequestMapper, resolver, useCase, requestMapper, responseMapper, validator);
+        getUseCase,
+        getRequestMapper,
+        resolver,
+        useCase,
+        requestMapper,
+        responseMapper,
+        validator,
+        NO_SESSION);
   }
 }
