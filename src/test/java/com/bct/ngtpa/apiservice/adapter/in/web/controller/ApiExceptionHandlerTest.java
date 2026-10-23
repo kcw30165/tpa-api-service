@@ -8,9 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorContext;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorDescriptor;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMapping;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistry;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.LogLevel;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
@@ -36,6 +41,7 @@ import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
@@ -443,6 +449,80 @@ class ApiExceptionHandlerTest {
       @Override
       public Mono<PortalAccessContext> currentOrEmpty() {
         return Mono.empty();
+      }
+    };
+  }
+
+  // Sub-task 1.9 (coverage closure): covers ApiExceptionHandler's otherwise
+  // unreachable fallbackErrors() path (errors.isEmpty() == true), which only
+  // occurs if a registered ExceptionMapping's ErrorDescriptor carries zero
+  // error entries -- never true for any real production mapping, so a
+  // custom in-registry test double is required to force it.
+  @Test
+  void fallsBackToSystemUnexpectedWhenResolvedDescriptorHasNoErrorEntries() {
+    ExceptionMappingRegistry registry =
+        new ExceptionMappingRegistry(List.of(emptyEntriesMapping()), nonEmptyCatchAllMapping());
+    ApiExceptionHandler localHandler =
+        new ApiExceptionHandler(
+            registry,
+            new PublicMessageResolver(errorMessageResolver()),
+            new ErrorEventLogger(loggingSanitizer()),
+            new ErrorResponseRenderer());
+
+    ResponseEntity<MutationResponse<Void>> response =
+        localHandler.handle(new EmptyEntriesException(), exchangeWithRequestId("REQ-FALLBACK"));
+
+    assertMutationFailure(
+        response,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        ApiStatus.SYSTEM_ERROR,
+        "SYSTEM",
+        ErrorCodes.SYSTEM_UNEXPECTED,
+        List.of(),
+        "REQ-FALLBACK");
+  }
+
+  private static final class EmptyEntriesException extends RuntimeException {}
+
+  private static ExceptionMapping<EmptyEntriesException> emptyEntriesMapping() {
+    return new ExceptionMapping<>() {
+      @Override
+      public Class<EmptyEntriesException> exceptionType() {
+        return EmptyEntriesException.class;
+      }
+
+      @Override
+      public ErrorDescriptor describe(EmptyEntriesException exception, ErrorContext context) {
+        return new ErrorDescriptor(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            ApiStatus.SYSTEM_ERROR,
+            List.of(),
+            "http.api.error",
+            LogLevel.ERROR,
+            true,
+            Map.of());
+      }
+    };
+  }
+
+  private static ExceptionMapping<Throwable> nonEmptyCatchAllMapping() {
+    return new ExceptionMapping<>() {
+      @Override
+      public Class<Throwable> exceptionType() {
+        return Throwable.class;
+      }
+
+      @Override
+      public ErrorDescriptor describe(Throwable exception, ErrorContext context) {
+        return ErrorDescriptor.single(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            ApiStatus.SYSTEM_ERROR,
+            "SYSTEM",
+            ErrorCodes.SYSTEM_UNEXPECTED,
+            List.of(),
+            "http.api.error",
+            LogLevel.ERROR,
+            true);
       }
     };
   }

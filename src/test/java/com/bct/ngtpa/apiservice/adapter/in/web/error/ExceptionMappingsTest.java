@@ -400,6 +400,30 @@ class ExceptionMappingsTest {
     assertEquals("EMPTY", descriptor.extraLogFields().get("reason"));
   }
 
+  // Sub-task 1.9 (coverage closure): the existing test above only exercises
+  // Collection.FUND_DTL; Collection.ACC_BAL was never exercised, leaving
+  // one switch arm uncovered in AccountBalanceExceptionMappings. Field and
+  // ValidationReason are kept the same shape as the existing test to
+  // isolate this to only the missing collection-switch arm.
+  @Test
+  void accountBalanceNormalizationFailureMappingCoversAccBalCollection() {
+    var mapping = AccountBalanceExceptionMappings.retrievalFailure();
+    var failure =
+        new AccountBalanceRetrievalException.NormalizationFailure(
+            AccountBalanceRetrievalException.Collection.ACC_BAL,
+            7,
+            AccountBalanceRetrievalException.Field.FUND_CODE,
+            AccountBalanceRetrievalException.ValidationReason.EMPTY);
+    var exception = AccountBalanceRetrievalException.normalizationFailure(failure);
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+
+    assertEquals("accBal", descriptor.extraLogFields().get("collection"));
+    assertEquals(7, descriptor.extraLogFields().get("rowIndex"));
+    assertEquals("fund-code", descriptor.extraLogFields().get("field"));
+    assertEquals("EMPTY", descriptor.extraLogFields().get("reason"));
+  }
+
   @Test
   void fundFactSheetRetrievalMapping() {
     var mapping = FundFactSheetExceptionMappings.retrievalUnavailable();
