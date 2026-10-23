@@ -184,4 +184,12 @@ class ExceptionMappingRegistryTest {
     var exception = new IllegalStateException();
     assertThrows(NullPointerException.class, () -> registry.resolve(exception, null));
   }
+
+  // Sub-task 1.11 (item 5, coverage closure): CatchAllExceptionMapping.exceptionType()
+  // was never directly asserted (only exercised internally by the registry's
+  // superclass walk).
+  @Test
+  void catchAllExceptionMappingExceptionTypeIsThrowable() {
+    assertEquals(Throwable.class, CatchAllExceptionMapping.INSTANCE.exceptionType());
+  }
 }

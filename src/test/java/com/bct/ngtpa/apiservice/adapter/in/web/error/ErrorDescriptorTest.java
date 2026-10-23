@@ -231,4 +231,17 @@ class ErrorDescriptorTest {
 
     assertTrue(entry.targets().isEmpty());
   }
+
+  // Sub-task 1.11 (item 5, coverage closure): ErrorLogDirective's 5-argument
+  // canonical constructor's null-extraFields branch was never exercised;
+  // only the 4-argument convenience constructor (which always passes
+  // Map.of()) was used by any existing test or production caller.
+  @Test
+  void errorLogDirectiveCanonicalConstructorNormalizesNullExtraFieldsToEmptyMap() {
+    var directive =
+        new com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorLogDirective(
+            HttpStatus.BAD_REQUEST, "err.code", false, false, null);
+
+    assertEquals(Map.of(), directive.extraFields());
+  }
 }

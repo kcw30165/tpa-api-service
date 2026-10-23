@@ -481,6 +481,19 @@ class ExceptionMappingsTest {
     assertEquals("notificationId must not be empty", mapping.diagnosticMessage(exception));
   }
 
+  // Sub-task 1.11 (item 5, coverage closure): the private fieldTarget() helper's
+  // StringUtils.hasText(fieldError.getField()) branch was never exercised with a
+  // blank field name -- every existing test uses a non-blank field.
+  @Test
+  void webExchangeBindMappingProducesEmptyTargetsForBlankFieldName() throws Exception {
+    var mapping = WebExchangeBindExceptionMappings.validationFailed();
+    var exception = bindExceptionWithFieldError("", "must not be blank");
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+
+    assertTrue(descriptor.errors().getFirst().targets().isEmpty());
+  }
+
   // ───────────────────────── registry assembly ─────────────────────────
 
   @Test
