@@ -2,25 +2,47 @@ package com.bct.ngtpa.apiservice.architecture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorContext;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorDescriptor;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.RegistrationExceptionMappings;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 
 class RegistrationRuntimeSemanticRegressionTest {
   @Test
   void unexpectedLookupErrorsLeaveTheBusinessResultPath() throws Exception {
     String status = read("RegistrationLookupStatus.java");
     String mapper = read("TrpSearchMemberApimResultMapper.java");
-    String handler = read("ApiExceptionHandler.java");
     assertThat(status)
         .containsIgnoringWhitespaces("ELIGIBLE", "NOT_ELIGIBLE")
         .doesNotContain("UPSTREAM_BUSINESS_REJECTED");
     assertThat(mapper)
         .containsIgnoringWhitespaces("RegistrationLookupDownstreamException")
         .containsIgnoringWhitespaces("err.tpa.member.not.found");
-    assertThat(handler)
-        .containsIgnoringWhitespaces("HttpStatus.SERVICE_UNAVAILABLE")
-        .containsIgnoringWhitespaces("SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE");
+
+    // Sub-task 1.4 rewrite: the handler's mapping logic moved out of ApiExceptionHandler.java
+    // into RegistrationExceptionMappings; assert the resolved behaviour directly instead of
+    // reading ApiExceptionHandler.java source text.
+    //
+    // Sub-task 1.7 (M1 closure, Option A) compile-break fix: ErrorDescriptor no longer exposes
+    // errorCode() directly -- it carries a List<ErrorEntry>. RegistrationExceptionMappings
+    // always produces exactly one entry (built via ErrorDescriptor.single(...)), so
+    // descriptor.errors().getFirst().code() reproduces the exact same value this test asserted
+    // before sub-task 1.7.
+    var mapping = RegistrationExceptionMappings.lookupDownstream();
+    var exception =
+        new RegistrationLookupDownstreamException(
+            RegistrationLookupDownstreamException.Reason.UNEXPECTED_ERROR, "err.tpa.unexpected");
+    ErrorDescriptor descriptor = mapping.describe(exception, new ErrorContext("GET", "/x", null));
+    assertThat(descriptor.httpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    assertThat(descriptor.apiStatus()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+    assertThat(descriptor.errors().getFirst().code())
+        .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
   }
 
   @Test

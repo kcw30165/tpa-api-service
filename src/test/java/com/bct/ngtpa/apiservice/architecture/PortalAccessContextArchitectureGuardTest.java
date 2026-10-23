@@ -16,6 +16,8 @@ class PortalAccessContextArchitectureGuardTest {
   private static final Path MAIN_JAVA = Path.of("src/main/java");
   private static final Path API_EXCEPTION_HANDLER =
       MAIN_JAVA.resolve("com/bct/ngtpa/apiservice/adapter/in/web/advice/ApiExceptionHandler.java");
+  private static final Path PUBLIC_MESSAGE_RESOLVER =
+      MAIN_JAVA.resolve("com/bct/ngtpa/apiservice/adapter/in/web/error/PublicMessageResolver.java");
   private static final Path PERSONAL_INFORMATION_CONTROLLER =
       MAIN_JAVA.resolve(
           "com/bct/ngtpa/apiservice/adapter/in/web/personalinformation/PersonalInformationController.java");
@@ -42,17 +44,25 @@ class PortalAccessContextArchitectureGuardTest {
         containsIgnoringWhitespace(source, "resolveAccountRef(ServerWebExchange"),
         "ApiExceptionHandler must not resolve Account-Ref directly");
     assertFalse(
-        containsIgnoringWhitespace(source, "requestParam(exchange, \\\"env\\\")"),
+        containsIgnoringWhitespace(source, "requestParam(exchange, \"env\")"),
         "ApiExceptionHandler must not read env from request params");
     assertFalse(
-        containsIgnoringWhitespace(source, "requestParam(exchange, \\\"trustCode\\\")"),
+        containsIgnoringWhitespace(source, "requestParam(exchange, \"trustCode\")"),
         "ApiExceptionHandler must not read trustCode from request params");
     assertFalse(
-        containsIgnoringWhitespace(source, "requestParam(exchange, \\\"schemeType\\\")"),
+        containsIgnoringWhitespace(source, "requestParam(exchange, \"schemeType\")"),
         "ApiExceptionHandler must not read schemeType from request params");
     assertTrue(
-        containsIgnoringWhitespace(source, "PortalAccessContextKeys.ATTRIBUTE_KEY"),
-        "ApiExceptionHandler should read the PortalAccessContext populated for the current request");
+        containsIgnoringWhitespace(source, "PublicMessageResolver"),
+        "ApiExceptionHandler should delegate portal-context-aware message resolution to PublicMessageResolver");
+
+    // Sub-task 1.8.3: the direct PortalAccessContextKeys.ATTRIBUTE_KEY read moved
+    // into PublicMessageResolver (sub-task 1.8.1); ApiExceptionHandler now reaches
+    // the current request's PortalAccessContext only via that delegate.
+    String messageResolverSource = Files.readString(PUBLIC_MESSAGE_RESOLVER);
+    assertTrue(
+        containsIgnoringWhitespace(messageResolverSource, "PortalAccessContextKeys.ATTRIBUTE_KEY"),
+        "PublicMessageResolver (used by ApiExceptionHandler) should read the PortalAccessContext populated for the current request");
   }
 
   @Test

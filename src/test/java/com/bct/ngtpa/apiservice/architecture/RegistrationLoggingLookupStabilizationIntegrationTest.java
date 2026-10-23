@@ -2,7 +2,13 @@ package com.bct.ngtpa.apiservice.architecture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorContext;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorDescriptor;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.RegistrationExceptionMappings;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.integration.registration.support.RegistrationTestCase;
 import com.bct.ngtpa.apiservice.integration.registration.support.RegistrationTestResultExtension;
 import java.nio.file.Files;
@@ -10,6 +16,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.http.HttpStatus;
 
 @ExtendWith(RegistrationTestResultExtension.class)
 class RegistrationLoggingLookupStabilizationIntegrationTest {
@@ -35,14 +42,32 @@ class RegistrationLoggingLookupStabilizationIntegrationTest {
         .doesNotContain("MessageDigest", "SHA-256");
   }
 
+  /**
+   * Sub-task 1.4 rewrite: previously read {@code ApiExceptionHandler.java} source text for the
+   * handler's status/error-code mapping, which moved into {@code RegistrationExceptionMappings} in
+   * this sub-task. Asserts the same contract against the resolved {@link ErrorDescriptor} instead.
+   * Duplicated from {@code RegistrationStructuredFailureLoggingContractTest} because this
+   * integration test carries its own {@code TC-0xx} traceability annotations.
+   *
+   * <p>Sub-task 1.7 (M1 closure, Option A) compile-break fix: {@link ErrorDescriptor} no longer
+   * exposes {@code errorCode()} directly -- it carries a {@code List<ErrorEntry>}. {@code
+   * RegistrationExceptionMappings} always produces exactly one entry (built via {@code
+   * ErrorDescriptor.single(...)}), so {@code descriptor.errors().getFirst().code()} reproduces the
+   * exact same value this test asserted before sub-task 1.7.
+   */
   @Test
-  void lookupExceptionReturnsSanitizedServiceUnavailable() throws Exception {
-    String handler = read("ApiExceptionHandler.java");
-    assertThat(handler)
-        .contains("RegistrationLookupDownstreamException.class")
-        .contains("HttpStatus.SERVICE_UNAVAILABLE")
-        .contains("SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE")
-        .contains("ApiStatus.SYSTEM_ERROR");
+  void lookupExceptionReturnsSanitizedServiceUnavailable() {
+    var mapping = RegistrationExceptionMappings.lookupDownstream();
+    var exception =
+        new RegistrationLookupDownstreamException(
+            RegistrationLookupDownstreamException.Reason.UNEXPECTED_ERROR, "err.tpa.unexpected");
+
+    ErrorDescriptor descriptor = mapping.describe(exception, new ErrorContext("GET", "/x", null));
+
+    assertThat(descriptor.httpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    assertThat(descriptor.apiStatus()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+    assertThat(descriptor.errors().getFirst().code())
+        .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
   }
 
   @Test

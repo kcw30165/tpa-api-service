@@ -7,6 +7,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionSummaryProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
 import com.bct.ngtpa.apiservice.adapter.in.web.contribution.ContributionController;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestHeaderContextWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
@@ -53,6 +57,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
+/**
+ * Sub-task 1.8.3 (M1 closure, A1): the {@code ApiExceptionHandler} constructor call in {@code
+ * buildContributionClient} changed from (ErrorMessageResolver, LoggingSanitizer,
+ * ExceptionMappingRegistry) to (ExceptionMappingRegistry, PublicMessageResolver, ErrorEventLogger,
+ * ErrorResponseRenderer). No assertion changed.
+ */
 class ContributionControllerTest {
 
   private static final String VALID_ACCOUNT_REF = "ACC-123";
@@ -209,13 +219,13 @@ class ContributionControllerTest {
         .isOk()
         .expectBody()
         .jsonPath("$.items[0].currency.text")
-        .isEqualTo("港元")
+        .isEqualTo("\u6e2f\u5143")
         .jsonPath("$.items[0].breakdown.rows[0].label")
-        .isEqualTo("供款總額")
+        .isEqualTo("\u4f9b\u6b3e\u7e3d\u984d")
         .jsonPath("$.items[0].breakdown.rows[1].label")
-        .isEqualTo("公司")
+        .isEqualTo("\u516c\u53f8")
         .jsonPath("$.items[0].breakdown.rows[2].label")
-        .isEqualTo("員工");
+        .isEqualTo("\u54e1\u5de5");
   }
 
   @Test
@@ -507,25 +517,6 @@ class ContributionControllerTest {
                     result.getResponseBody() != null && result.getResponseBody().length > 0));
   }
 
-  // @Test
-  // void exportErrorsStillReturnStandardJsonEnvelopeWhenAcceptOnlyAllowsXlsx() {
-  // ExportContributionSummaryUseCase exportUseCase = command -> Mono.error(
-  // new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE,
-  // "upstream failed"));
-
-  // webClient(unusedGetUseCase(), exportUseCase)
-  // .get()
-  // .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
-  // .header("Accept", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-  // .exchange()
-  // .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
-  // .expectHeader().contentType("application/json")
-  // .expectBody()
-  // .jsonPath("$.errorCode").isEqualTo(ErrorCodes.APIM_UPSTREAM_FAILURE)
-  // .jsonPath("$.message").isEqualTo("Service is temporarily unavailable. Please
-  // try again later.");
-  // }
-
   @Test
   void prefersAcceptLanguageZhHkOverLangQueryForContributionExportWorkbook() {
     ExportContributionSummaryUseCase exportUseCase = command -> Mono.just(localizedSampleResult());
@@ -541,7 +532,12 @@ class ContributionControllerTest {
         .isOk()
         .expectBody()
         .consumeWith(
-            result -> assertWorkbookLanguage(result.getResponseBody(), "供款總額", "公司", "員工"));
+            result ->
+                assertWorkbookLanguage(
+                    result.getResponseBody(),
+                    "\u4f9b\u6b3e\u7e3d\u984d",
+                    "\u516c\u53f8",
+                    "\u54e1\u5de5"));
   }
 
   @Test
@@ -727,7 +723,11 @@ class ContributionControllerTest {
                     currentPortalAccessContextResolver()))
             .webFilter(requestHeaderContextWebFilter())
             .controllerAdvice(
-                new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
+                new ApiExceptionHandler(
+                    new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+                    new PublicMessageResolver(testErrorMessageResolver()),
+                    new ErrorEventLogger(testLoggingSanitizer()),
+                    new ErrorResponseRenderer()))
             .build();
     if (withDefaultAccountRef) {
       return client
@@ -841,7 +841,7 @@ class ContributionControllerTest {
                     "31/03/2026",
                     new BigDecimal("300"),
                     new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("300")))))),
-        new CurrencyDisplay("HKD", "港元"),
+        new CurrencyDisplay("HKD", "\u6e2f\u5143"),
         new ContributionActions(true),
         "",
         "",
@@ -866,7 +866,7 @@ class ContributionControllerTest {
                         java.util.Map.of(
                             "ER", new BigDecimal("17791.75"),
                             "EE", new BigDecimal("7116.7")))))),
-        new CurrencyDisplay("HKD", "港元"),
+        new CurrencyDisplay("HKD", "\u6e2f\u5143"),
         new ContributionActions(true),
         "",
         "",
@@ -930,7 +930,7 @@ class ContributionControllerTest {
                         java.util.Map.of(
                             "ER", new BigDecimal("17791.75"),
                             "EE", new BigDecimal("7116.7")))))),
-        new CurrencyDisplay("HKD", "港元"),
+        new CurrencyDisplay("HKD", "\u6e2f\u5143"),
         new ContributionActions(true),
         "",
         "",
@@ -942,8 +942,8 @@ class ContributionControllerTest {
         new ContributionSummaryReport(
             "HKD",
             List.of(
-                new ContributionSource("ER", new ContributionLabels("Company", "公司"), 10),
-                new ContributionSource("EE", new ContributionLabels("Member", "員工"), 20)),
+                new ContributionSource("ER", new ContributionLabels("Company", "\u516c\u53f8"), 10),
+                new ContributionSource("EE", new ContributionLabels("Member", "\u54e1\u5de5"), 20)),
             List.of(
                 new ContributionSummaryRow(
                     "01/03/2026",
@@ -954,7 +954,7 @@ class ContributionControllerTest {
                         java.util.Map.of(
                             "ER", new BigDecimal("17791.75"),
                             "EE", new BigDecimal("7116.7")))))),
-        new CurrencyDisplay("HKD", "港元"),
+        new CurrencyDisplay("HKD", "\u6e2f\u5143"),
         new ContributionActions(true),
         "",
         "",

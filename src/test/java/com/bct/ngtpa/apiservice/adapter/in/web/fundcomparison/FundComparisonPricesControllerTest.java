@@ -6,6 +6,10 @@ import static org.mockito.Mockito.mock;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.mapper.FundComparisonPricesWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.request.FundComparisonPricesRequest;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
@@ -49,6 +53,11 @@ import reactor.test.StepVerifier;
  * Route and envelope tests for {@code POST /api/v1/fund-comparison/prices}. The real {@link
  * FundComparisonPricesUseCase} is wired with stubbed ports: options that offer FAEU and FBAU with
  * the standard time ranges, no session (so the cache is never used), and a counting price port.
+ *
+ * <p>Sub-task 1.8.3 (M1 closure, A1): the {@code ApiExceptionHandler} constructor call in {@code
+ * advice()} changed from (ErrorMessageResolver, LoggingSanitizer, ExceptionMappingRegistry) to
+ * (ExceptionMappingRegistry, PublicMessageResolver, ErrorEventLogger, ErrorResponseRenderer). No
+ * assertion changed.
  */
 class FundComparisonPricesControllerTest {
 
@@ -133,8 +142,11 @@ class FundComparisonPricesControllerTest {
   private static ApiExceptionHandler advice() {
     ErrorMessageResolver resolver = (code, locale, accountEnv, trustCode, schemeType) -> code;
     return new ApiExceptionHandler(
-        resolver,
-        new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())));
+        new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+        new PublicMessageResolver(resolver),
+        new ErrorEventLogger(
+            new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties()))),
+        new ErrorResponseRenderer());
   }
 
   private static WebTestClient client(FundComparisonPricesUseCase useCase) {

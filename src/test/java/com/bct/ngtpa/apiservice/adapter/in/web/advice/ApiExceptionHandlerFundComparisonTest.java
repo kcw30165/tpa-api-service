@@ -2,6 +2,10 @@ package com.bct.ngtpa.apiservice.adapter.in.web.advice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.exception.FundComparisonRetrievalException;
@@ -32,6 +36,11 @@ import org.springframework.mock.web.server.MockServerWebExchange;
  * invoked). This version was corrected after running the real tests and observing the actual,
  * confirmed behavior (type="FORM", message present and resolver-produced, resolver called once per
  * handle() invocation) rather than assuming either sibling's shape a third time.
+ *
+ * <p>Sub-task 1.8.3 (M1 closure, A1): the constructor changed from (ErrorMessageResolver,
+ * LoggingSanitizer, ExceptionMappingRegistry) to (ExceptionMappingRegistry, PublicMessageResolver,
+ * ErrorEventLogger, ErrorResponseRenderer), and {@code handleFundComparisonRetrievalException(...)}
+ * is called as {@code handle(...)}. No assertion changed.
  */
 class ApiExceptionHandlerFundComparisonTest {
 
@@ -45,15 +54,18 @@ class ApiExceptionHandlerFundComparisonTest {
 
   private final ApiExceptionHandler handler =
       new ApiExceptionHandler(
-          resolver,
-          new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())));
+          new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+          new PublicMessageResolver(resolver),
+          new ErrorEventLogger(
+              new LoggingSanitizer(
+                  new ObjectMapper(), new MaskingService(new MaskingProperties()))),
+          new ErrorResponseRenderer());
 
   private ResponseEntity<MutationResponse<Void>> handle() {
     var exchange =
         MockServerWebExchange.from(
             MockServerHttpRequest.get("/api/v1/fund-comparison/prices").build());
-    return handler.handleFundComparisonRetrievalException(
-        FundComparisonRetrievalException.systemFailure(), exchange);
+    return handler.handle(FundComparisonRetrievalException.systemFailure(), exchange);
   }
 
   @Test
