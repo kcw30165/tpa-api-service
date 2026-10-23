@@ -7,7 +7,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionSummaryProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
 import com.bct.ngtpa.apiservice.adapter.in.web.contribution.ContributionController;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestHeaderContextWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
@@ -54,6 +57,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
+/**
+ * Sub-task 1.8.3 (M1 closure, A1): the {@code ApiExceptionHandler} constructor call in {@code
+ * buildContributionClient} changed from (ErrorMessageResolver, LoggingSanitizer,
+ * ExceptionMappingRegistry) to (ExceptionMappingRegistry, PublicMessageResolver, ErrorEventLogger,
+ * ErrorResponseRenderer). No assertion changed.
+ */
 class ContributionControllerTest {
 
   private static final String VALID_ACCOUNT_REF = "ACC-123";
@@ -715,9 +724,10 @@ class ContributionControllerTest {
             .webFilter(requestHeaderContextWebFilter())
             .controllerAdvice(
                 new ApiExceptionHandler(
-                    testErrorMessageResolver(),
-                    testLoggingSanitizer(),
-                    new ExceptionMappingRegistryConfig().exceptionMappingRegistry()))
+                    new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+                    new PublicMessageResolver(testErrorMessageResolver()),
+                    new ErrorEventLogger(testLoggingSanitizer()),
+                    new ErrorResponseRenderer()))
             .build();
     if (withDefaultAccountRef) {
       return client

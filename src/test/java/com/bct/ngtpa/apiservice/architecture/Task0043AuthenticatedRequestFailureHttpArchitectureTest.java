@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.architecture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.AuthenticatedPortalContextWebExceptionHandler;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
@@ -43,6 +44,10 @@ class Task0043AuthenticatedRequestFailureHttpArchitectureTest {
    * details"), and a real {@code handle()} invocation now proves the pre-controller failure
    * contract behaviourally: HTTP 401 and the {@code SECURITY_AUTHENTICATION_REQUIRED} error code in
    * the actual response body.
+   *
+   * <p>Sub-task 1.8.3 (M1 closure, step 3 of 3): the constructor gained a 3rd parameter, {@link
+   * ErrorResponseRenderer}, now injected as a bean instead of called as a static method. No
+   * assertion changed.
    */
   @Test
   void webExceptionHandlerOwnsPreControllerFailureContract() throws Exception {
@@ -56,7 +61,9 @@ class Task0043AuthenticatedRequestFailureHttpArchitectureTest {
 
     var handler =
         new AuthenticatedPortalContextWebExceptionHandler(
-            new ObjectMapper(), new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+            new ObjectMapper(),
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new ErrorResponseRenderer());
     assertThat(handler).isInstanceOf(WebExceptionHandler.class);
 
     var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/fund-price"));

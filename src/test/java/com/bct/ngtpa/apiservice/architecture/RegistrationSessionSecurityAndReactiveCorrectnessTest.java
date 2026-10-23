@@ -17,17 +17,28 @@ class RegistrationSessionSecurityAndReactiveCorrectnessTest {
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/advice/ApiExceptionHandler.java"));
     assertThat(source).doesNotContain(".block(");
     assertThat(source).doesNotContain("currentOrEmpty()");
-    assertThat(source)
+
+    // Sub-task 1.8.3: isPreLoginAuthRequest and the PortalAccessContext attribute
+    // read moved to PublicMessageResolver (extracted verbatim in sub-task 1.8.1).
+    // ApiExceptionHandler now delegates to it instead of carrying this logic inline.
+    String messageResolverSource =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/error/PublicMessageResolver.java"));
+    assertThat(messageResolverSource)
         .containsIgnoringWhitespaces("isPreLoginAuthRequest")
         .containsIgnoringWhitespaces("PortalAccessContextKeys.ATTRIBUTE_KEY");
   }
 
   @Test
   void registrationErrorResolutionIsPreLoginAndLanguageOnly() throws Exception {
+    // Sub-task 1.8.3: the pre-login path list (including /api/v1/auth/registration)
+    // moved to PublicMessageResolver in sub-task 1.8.1; ApiExceptionHandler no
+    // longer carries this logic inline.
     String source =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/advice/ApiExceptionHandler.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/error/PublicMessageResolver.java"));
     assertThat(source)
         .containsIgnoringWhitespaces("/api/v1/auth/registration")
         .containsIgnoringWhitespaces("return null;");

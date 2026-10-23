@@ -12,7 +12,10 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.accountgainloss.AccountGainLossRetrievalResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
@@ -82,15 +85,20 @@ import org.springframework.web.server.ServerWebInputException;
  * expectedMessage} parameter and asserts {@code error.message()} on every row, including two new
  * rows (pre-login suppression, two-field-error WebExchangeBind).
  *
- * <p>Sub-task 1.7 (M1 closure, Option A, approved A2): every {@code handleXxx} method is now a
+ * <p>Sub-task 1.7 (M1 closure, Option A, approved A2): every {@code handleXxx} method was a
  * one-line {@code delegate(...)} call, including the four previously-inline handlers
  * (AccountBalance, AccountGainLoss, FundFactSheet, WebExchangeBind). Every assertion from sub-task
  * 1.6b is unchanged -- same status, body, header, message, log level and stack-trace presence --
  * EXCEPT the one row A2 approved changing: {@code accountBalanceNormalizationFailure_...} now
  * asserts exactly ONE {@code http.api.error} log event carrying the merged {@code
  * collection}/{@code rowIndex}/{@code field}/{@code reason} fields, instead of the pre-1.7 two
- * separate events (a value-free {@code account.balance.normalization.failed} event followed by the
- * {@code http.api.error} event).
+ * separate events.
+ *
+ * <p>Sub-task 1.8.3 (M1 closure, A1): {@code ApiExceptionHandler} collapsed to a single {@code
+ * handle(Exception, ServerWebExchange)} method; the constructor changed from (ErrorMessageResolver,
+ * LoggingSanitizer, ExceptionMappingRegistry) to (ExceptionMappingRegistry, PublicMessageResolver,
+ * ErrorEventLogger, ErrorResponseRenderer). Every {@code handler.handleXxx(...)} call below is now
+ * {@code handler.handle(...)}; no assertion changed.
  *
  * <p>SonarQube fix (post-M1 quality gate, java:S1874): three tests below assert against {@code
  * HttpStatus.UNPROCESSABLE_ENTITY}, which spring-web 7.0.7 flags as deprecated in favour of {@code
@@ -118,9 +126,10 @@ class ApiExceptionHandlerCharacterizationTest {
     logger.addAppender(listAppender);
     handler =
         new ApiExceptionHandler(
-            testErrorMessageResolver(),
-            testLoggingSanitizer(),
-            new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new PublicMessageResolver(testErrorMessageResolver()),
+            new ErrorEventLogger(testLoggingSanitizer()),
+            new ErrorResponseRenderer());
   }
 
   @AfterEach
@@ -138,8 +147,7 @@ class ApiExceptionHandlerCharacterizationTest {
         new RegistrationLookupDownstreamException(
             RegistrationLookupDownstreamException.Reason.UNEXPECTED_ERROR, "err.tpa.unexpected");
 
-    var response =
-        handler.handleRegistrationLookupDownstreamException(ex, exchangeWithRequestId("req-1"));
+    var response = handler.handle(ex, exchangeWithRequestId("req-1"));
 
     assertMutationFailure(
         response,
@@ -163,7 +171,7 @@ class ApiExceptionHandlerCharacterizationTest {
   void apimProfileResolutionException_publicStatusSystemErrorLoggedAtErrorNoStackTrace() {
     var ex = new ApimProfileResolutionException("profile resolution failed");
 
-    var response = handler.handleApimProfileResolutionException(ex, exchangeWithRequestId("req-2"));
+    var response = handler.handle(ex, exchangeWithRequestId("req-2"));
 
     assertMutationFailure(
         response,
@@ -183,7 +191,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void accountBalanceAccountNotFound_unprocessableBusinessRejectedLoggedAtWarn() {
     var response =
-        handler.handleAccountBalanceRetrievalException(
+        handler.handle(
             AccountBalanceRetrievalException.accountNotFound(), exchangeWithRequestId("req-3"));
 
     assertMutationFailure(
@@ -203,7 +211,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void accountBalanceAccountMismatch_unprocessableBusinessRejectedLoggedAtWarn() {
     var response =
-        handler.handleAccountBalanceRetrievalException(
+        handler.handle(
             AccountBalanceRetrievalException.accountMismatch(), exchangeWithRequestId("req-4"));
 
     assertMutationFailure(
@@ -222,7 +230,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void accountBalanceSystemFailure_serviceUnavailableSystemErrorLoggedAtErrorNoStackTrace() {
     var response =
-        handler.handleAccountBalanceRetrievalException(
+        handler.handle(
             AccountBalanceRetrievalException.systemFailure(), exchangeWithRequestId("req-5"));
 
     assertMutationFailure(
@@ -253,7 +261,7 @@ class ApiExceptionHandlerCharacterizationTest {
             AccountBalanceRetrievalException.Field.FUND_CODE,
             AccountBalanceRetrievalException.ValidationReason.EMPTY);
 
-    handler.handleAccountBalanceRetrievalException(
+    handler.handle(
         AccountBalanceRetrievalException.normalizationFailure(failure),
         exchangeWithRequestId("req-6"));
 
@@ -281,8 +289,7 @@ class ApiExceptionHandlerCharacterizationTest {
       accountGainLossFundSwitchingInProgress_unprocessableBusinessRejectedLoggedAtWarnWithRequestId() {
     var exception = AccountGainLossRetrievalException.fundSwitchingInProgress();
 
-    var response =
-        handler.handleAccountGainLossRetrievalException(exception, exchangeWithRequestId("req-25"));
+    var response = handler.handle(exception, exchangeWithRequestId("req-25"));
 
     assertMutationFailure(
         response,
@@ -301,8 +308,7 @@ class ApiExceptionHandlerCharacterizationTest {
   void accountGainLossSystemFailure_serviceUnavailableSystemErrorLoggedAtErrorWithRequestId() {
     var exception = AccountGainLossRetrievalException.systemFailure();
 
-    var response =
-        handler.handleAccountGainLossRetrievalException(exception, exchangeWithRequestId("req-26"));
+    var response = handler.handle(exception, exchangeWithRequestId("req-26"));
 
     assertMutationFailure(
         response,
@@ -332,7 +338,7 @@ class ApiExceptionHandlerCharacterizationTest {
     var ex =
         new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed");
 
-    var response = handler.handleApimException(ex, exchangeWithRequestId("req-7"));
+    var response = handler.handle(ex, exchangeWithRequestId("req-7"));
 
     assertMutationFailure(
         response,
@@ -351,7 +357,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void invalidNotificationRequestException_badRequestValidationFailedLoggedAtWarn() {
     var response =
-        handler.handleInvalidNotificationRequestException(
+        handler.handle(
             new InvalidNotificationRequestException("invalid notification request"),
             exchangeWithRequestId("req-8"));
 
@@ -376,7 +382,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void invalidContributionRequestException_badRequestValidationFailedLoggedAtWarn() {
     var response =
-        handler.handleInvalidContributionRequestException(
+        handler.handle(
             new InvalidContributionRequestException("invalid contribution request"),
             exchangeWithRequestId("req-9"));
 
@@ -401,7 +407,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void portalAccessContextResolutionException_badRequestBusinessRejectedLoggedAtWarn() {
     var response =
-        handler.handlePortalAccessContextResolutionException(
+        handler.handle(
             new PortalAccessContextResolutionException(
                 ErrorCodes.MEMBER_CONTEXT_INVALID, "Missing Account-Ref header"),
             exchangeWithRequestId("req-10"));
@@ -427,7 +433,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void genericApplicationException_badRequestBusinessRejectedLoggedAtWarn() {
     var response =
-        handler.handleApplicationException(
+        handler.handle(
             new ApplicationException(ErrorCodes.REQUEST_INVALID, "application rejected request"),
             exchangeWithRequestId("req-11"));
 
@@ -448,7 +454,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void preLoginAuthRequest_suppressesResolvedMessageForDelegateRoutedException() {
     var response =
-        handler.handleApplicationException(
+        handler.handle(
             new ApplicationException(ErrorCodes.REQUEST_INVALID, "application rejected request"),
             preLoginExchangeWithRequestId("req-27"));
 
@@ -469,7 +475,7 @@ class ApiExceptionHandlerCharacterizationTest {
   void webExchangeBindException_withFieldErrors_fieldTypeValidationFailedLoggedAtWarn()
       throws Exception {
     var response =
-        handler.handleWebExchangeBindException(
+        handler.handle(
             bindExceptionWithFieldError("notificationId", "notificationId must not be empty"),
             exchangeWithRequestId("req-12"));
 
@@ -490,8 +496,7 @@ class ApiExceptionHandlerCharacterizationTest {
   void webExchangeBindException_withoutFieldErrors_formTypeValidationFailedLoggedAtWarn()
       throws Exception {
     var response =
-        handler.handleWebExchangeBindException(
-            bindExceptionWithoutFieldErrors(), exchangeWithRequestId("req-13"));
+        handler.handle(bindExceptionWithoutFieldErrors(), exchangeWithRequestId("req-13"));
 
     assertMutationFailure(
         response,
@@ -511,7 +516,7 @@ class ApiExceptionHandlerCharacterizationTest {
       webExchangeBindException_withTwoFieldErrors_bothEntriesCarryTheSameResolvedMessageInFieldOrder()
           throws Exception {
     var response =
-        handler.handleWebExchangeBindException(
+        handler.handle(
             bindExceptionWithTwoFieldErrors(
                 "notificationId",
                 "notificationId must not be empty",
@@ -544,7 +549,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void serverWebInputException_badRequestFormValidationFailedLoggedAtWarn() {
     var response =
-        handler.handleServerWebInputException(
+        handler.handle(
             new ServerWebInputException("payload is malformed"), exchangeWithRequestId("req-14"));
 
     assertMutationFailure(
@@ -565,7 +570,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void authenticationException_unauthorizedBusinessRejectedLoggedAtWarn() {
     var response =
-        handler.handleAuthenticationException(
+        handler.handle(
             new BadCredentialsException("bad credentials"), exchangeWithRequestId("req-15"));
 
     assertMutationFailure(
@@ -586,8 +591,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void accessDeniedException_forbiddenBusinessRejectedLoggedAtWarn() {
     var response =
-        handler.handleAccessDeniedException(
-            new AccessDeniedException("access denied"), exchangeWithRequestId("req-16"));
+        handler.handle(new AccessDeniedException("access denied"), exchangeWithRequestId("req-16"));
 
     assertMutationFailure(
         response,
@@ -606,8 +610,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void unexpectedException_internalServerErrorSystemErrorLoggedAtErrorWithStackTrace() {
     var response =
-        handler.handleUnexpectedException(
-            new IllegalStateException("unexpected"), exchangeWithRequestId("req-17"));
+        handler.handle(new IllegalStateException("unexpected"), exchangeWithRequestId("req-17"));
 
     assertMutationFailure(
         response,
@@ -626,7 +629,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void invalidPersonalInformationUpdateException_badRequestFormValidationFailedLoggedAtWarn() {
     var response =
-        handler.handleInvalidPersonalInformationUpdate(
+        handler.handle(
             new InvalidPersonalInformationUpdateException(
                 "No personal information fields were submitted."),
             exchangeWithRequestId("req-18"));
@@ -652,7 +655,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void cacheException_serviceUnavailableSystemErrorLoggedAtErrorNoStackTrace() {
     var response =
-        handler.handleCacheException(
+        handler.handle(
             new CacheException(
                 "Cache get operation failed",
                 new RuntimeException("redis://default:SECRET@redis.prod:6379 auth failure")),
@@ -675,7 +678,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void fundPriceRetrievalException_serviceUnavailableSystemErrorLoggedAtErrorNoStackTrace() {
     var response =
-        handler.handleFundPriceRetrievalException(
+        handler.handle(
             FundPriceRetrievalException.systemFailure(), exchangeWithRequestId("req-20"));
 
     assertMutationFailure(
@@ -699,7 +702,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void fundPriceInvalidDateException_badRequestValidationFailedLoggedAtWarn() {
     var response =
-        handler.handleFundPriceInvalidDateException(
+        handler.handle(
             FundPriceInvalidDateException.forInvalidDate(), exchangeWithRequestId("req-21"));
 
     assertMutationFailure(
@@ -721,7 +724,7 @@ class ApiExceptionHandlerCharacterizationTest {
   void
       fundComparisonRequestInvalidException_badRequestValidationFailedTypeValidationLoggedAtWarn() {
     var response =
-        handler.handleFundComparisonRequestInvalidException(
+        handler.handle(
             new FundComparisonRequestInvalidException("invalid fund comparison request"),
             exchangeWithRequestId("req-22"));
 
@@ -746,7 +749,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void fundComparisonRetrievalException_serviceUnavailableSystemErrorLoggedAtErrorNoStackTrace() {
     var response =
-        handler.handleFundComparisonRetrievalException(
+        handler.handle(
             FundComparisonRetrievalException.systemFailure(), exchangeWithRequestId("req-23"));
 
     assertMutationFailure(
@@ -770,7 +773,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void fundFactSheetRetrievalException_serviceUnavailableSystemErrorLoggedAtErrorNoStackTrace() {
     var response =
-        handler.handleFundFactSheetRetrievalException(
+        handler.handle(
             FundFactSheetRetrievalException.systemFailure(), exchangeWithRequestId("req-24"));
 
     assertMutationFailure(
@@ -794,7 +797,7 @@ class ApiExceptionHandlerCharacterizationTest {
   @Test
   void xRequestIdHeaderIsOmittedWhenNotPresentInExchangeAttributes() {
     var response =
-        handler.handleApimException(
+        handler.handle(
             new ApimException(
                 HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
             emptyExchange());

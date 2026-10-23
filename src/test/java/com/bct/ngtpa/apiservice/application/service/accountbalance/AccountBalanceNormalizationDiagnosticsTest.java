@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.application.dto.accountbalance.raw.*;
 import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException.*;
@@ -29,6 +32,11 @@ import org.springframework.mock.web.server.MockServerWebExchange;
  * ApiExceptionHandlerCharacterizationTest}'s equivalent assertion was updated; fixed here to match
  * the same approved behaviour. No other assertion in this file (status, reason,
  * normalizationFailure, private-name redaction) changes.
+ *
+ * <p>Sub-task 1.8.3 (M1 closure, A1): the constructor changed from (ErrorMessageResolver,
+ * LoggingSanitizer, ExceptionMappingRegistry) to (ExceptionMappingRegistry, PublicMessageResolver,
+ * ErrorEventLogger, ErrorResponseRenderer), and {@code handleAccountBalanceRetrievalException(...)}
+ * is called as {@code handle(...)}. No assertion changed.
  */
 class AccountBalanceNormalizationDiagnosticsTest {
   @Test
@@ -64,17 +72,13 @@ class AccountBalanceNormalizationDiagnosticsTest {
     when(sanitizer.toSafeString(any())).thenReturn("safe-event");
     var handler =
         new ApiExceptionHandler(
-            mock(ErrorMessageResolver.class),
-            sanitizer,
-            new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new PublicMessageResolver(mock(ErrorMessageResolver.class)),
+            new ErrorEventLogger(sanitizer),
+            new ErrorResponseRenderer());
     var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/account/summary"));
     exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "diagnostic-request");
-    assertThat(
-            handler
-                .handleAccountBalanceRetrievalException(failure, exchange)
-                .getStatusCode()
-                .value())
-        .isEqualTo(503);
+    assertThat(handler.handle(failure, exchange).getStatusCode().value()).isEqualTo(503);
     var captor = ArgumentCaptor.forClass(Object.class);
     verify(sanitizer, times(1)).toSafeString(captor.capture());
     assertThat(captor.getValue())

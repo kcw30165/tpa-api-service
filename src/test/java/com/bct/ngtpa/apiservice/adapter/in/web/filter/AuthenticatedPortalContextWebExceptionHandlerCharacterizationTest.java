@@ -6,6 +6,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -41,6 +42,10 @@ import reactor.test.StepVerifier;
  * the method body throws a checked exception) and reworded its explanatory comment so it no longer
  * contains a code-like {@code catch(...)} token that SonarQube's heuristic mistook for
  * commented-out code (java:S125). No behaviour or assertion changed.
+ *
+ * <p>Sub-task 1.8.3 (M1 closure, step 3 of 3): the constructor gained a 3rd parameter, {@link
+ * ErrorResponseRenderer}, now injected as a bean instead of called as a static method. No assertion
+ * changed.
  */
 class AuthenticatedPortalContextWebExceptionHandlerCharacterizationTest {
 
@@ -56,7 +61,9 @@ class AuthenticatedPortalContextWebExceptionHandlerCharacterizationTest {
     logger.addAppender(listAppender);
     handler =
         new AuthenticatedPortalContextWebExceptionHandler(
-            new ObjectMapper(), new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+            new ObjectMapper(),
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new ErrorResponseRenderer());
   }
 
   @AfterEach
@@ -164,7 +171,9 @@ class AuthenticatedPortalContextWebExceptionHandlerCharacterizationTest {
         };
     var throwingHandler =
         new AuthenticatedPortalContextWebExceptionHandler(
-            throwingMapper, new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+            throwingMapper,
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new ErrorResponseRenderer());
     var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/fund-price"));
 
     StepVerifier.create(

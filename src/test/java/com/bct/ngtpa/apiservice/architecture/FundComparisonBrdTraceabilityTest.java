@@ -6,7 +6,10 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.FundComparisonOptionsController;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.FundComparisonPricesController;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.mapper.FundComparisonOptionsMapper;
@@ -76,6 +79,11 @@ import reactor.core.publisher.Mono;
  * <p>This class adds NO new production behavior -- it proves, end-to-end through the real
  * controllers (and, for scenario 3, the real adapter too), that all 7 section 5.6 scenarios hold at
  * the full public HTTP contract, closing the traceability gap (not a functional gap).
+ *
+ * <p>Sub-task 1.8.3 (M1 closure, A1): the {@code ApiExceptionHandler} constructor call in {@code
+ * advice()} changed from (ErrorMessageResolver, LoggingSanitizer, ExceptionMappingRegistry) to
+ * (ExceptionMappingRegistry, PublicMessageResolver, ErrorEventLogger, ErrorResponseRenderer). No
+ * assertion changed.
  */
 class FundComparisonBrdTraceabilityTest {
 
@@ -108,9 +116,11 @@ class FundComparisonBrdTraceabilityTest {
   private static ApiExceptionHandler advice() {
     ErrorMessageResolver errorResolver = (code, locale, accountEnv, trustCode, schemeType) -> code;
     return new ApiExceptionHandler(
-        errorResolver,
-        new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())),
-        new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+        new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+        new PublicMessageResolver(errorResolver),
+        new ErrorEventLogger(
+            new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties()))),
+        new ErrorResponseRenderer());
   }
 
   private WebTestClient pricesClient(FundComparisonPriceSourcePort sourcePort) {

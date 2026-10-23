@@ -23,6 +23,11 @@ import reactor.core.publisher.Mono;
  * bindToController(...)}, which does NOT include the shared X-Request-Id enforcement filter (that
  * is registered at the application context level, not per-controller). Missing-header rejection is
  * therefore covered by the filter's own tests, not duplicated here.
+ *
+ * <p>Sub-task 1.8.3 (M1 closure, A1): the fully-qualified {@code ApiExceptionHandler} constructor
+ * call in {@code assertBalanceFailure} changed from (ErrorMessageResolver, LoggingSanitizer,
+ * ExceptionMappingRegistry) to (ExceptionMappingRegistry, PublicMessageResolver, ErrorEventLogger,
+ * ErrorResponseRenderer). No assertion changed.
  */
 class AccountSummaryControllerTest {
   @Test
@@ -57,9 +62,11 @@ class AccountSummaryControllerTest {
     when(sanitizer.toSafeString(Mockito.any())).thenReturn("safe-event");
     var advice =
         new com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler(
-            Mockito.mock(com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver.class),
-            sanitizer,
-            testExceptionMappingRegistry());
+            testExceptionMappingRegistry(),
+            new com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver(
+                Mockito.mock(com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver.class)),
+            new com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger(sanitizer),
+            new com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer());
     GetAccountSummaryUseCase useCase = command -> Mono.error(failure);
     WebTestClient.bindToController(new AccountSummaryController(useCase, resolver(context())))
         .controllerAdvice(advice)

@@ -45,6 +45,11 @@ import reactor.core.publisher.Mono;
  * ErrorDescriptor.single(...)}), so {@code descriptor.errors().getFirst()} reproduces the exact
  * same type/code/targets values this handler read before sub-task 1.7. No behaviour change: same
  * log line format, same response body, same absence of the {@code X-Request-Id} header.
+ *
+ * <p>Sub-task 1.8.3 (M1 closure, step 3 of 3): {@link ErrorResponseRenderer} is now injected as a
+ * bean (constructor's 3rd parameter) instead of called as a static method, since {@code
+ * ErrorResponseRenderer}'s static method was removed when {@code ApiExceptionHandler} was rewritten
+ * for A1 in this same sub-task. No behaviour change: identical render output.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -55,6 +60,7 @@ public final class AuthenticatedPortalContextWebExceptionHandler implements WebE
 
   private final ObjectMapper objectMapper;
   private final ExceptionMappingRegistry registry;
+  private final ErrorResponseRenderer renderer;
 
   @Override
   public Mono<Void> handle(ServerWebExchange exchange, Throwable failure) {
@@ -78,8 +84,7 @@ public final class AuthenticatedPortalContextWebExceptionHandler implements WebE
     ApiError error =
         new ApiError(entry.type(), entry.code(), null, entry.targets(), "ERROR", "SERVER");
     ResponseEntity<MutationResponse<Void>> response =
-        ErrorResponseRenderer.render(
-            descriptor.httpStatus(), descriptor.apiStatus(), List.of(error), null);
+        renderer.render(descriptor.httpStatus(), descriptor.apiStatus(), List.of(error), null);
 
     exchange.getResponse().setStatusCode(response.getStatusCode());
     exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);

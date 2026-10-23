@@ -8,7 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
@@ -49,18 +52,25 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 
+/**
+ * Sub-task 1.8.3 (M1 closure, A1): all 3 constructor call sites changed from (ErrorMessageResolver,
+ * LoggingSanitizer, ExceptionMappingRegistry) to (ExceptionMappingRegistry, PublicMessageResolver,
+ * ErrorEventLogger, ErrorResponseRenderer); every {@code handler.handleXxx(...)} call is now {@code
+ * handler.handle(...)}. No assertion changed.
+ */
 class ApiExceptionHandlerTest {
 
   private final ApiExceptionHandler handler =
       new ApiExceptionHandler(
-          errorMessageResolver(),
-          loggingSanitizer(),
-          new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+          new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+          new PublicMessageResolver(errorMessageResolver()),
+          new ErrorEventLogger(loggingSanitizer()),
+          new ErrorResponseRenderer());
 
   @Test
   void mapsInvalidNotificationRequestExceptionToValidationMutationFailure() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleInvalidNotificationRequestException(
+        handler.handle(
             new InvalidNotificationRequestException("invalid notification request"),
             exchangeWithRequestId("REQ-NOTIFICATION"));
 
@@ -77,7 +87,7 @@ class ApiExceptionHandlerTest {
   @Test
   void mapsInvalidContributionRequestExceptionToValidationMutationFailure() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleInvalidContributionRequestException(
+        handler.handle(
             new InvalidContributionRequestException("invalid contribution request"),
             exchangeWithRequestId("REQ-CONTRIBUTION"));
 
@@ -94,7 +104,7 @@ class ApiExceptionHandlerTest {
   @Test
   void mapsBindFailuresToFieldValidationMutationFailure() throws Exception {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleWebExchangeBindException(
+        handler.handle(
             bindException("notificationId", "notificationId must not be empty"),
             exchangeWithRequestId("REQ-BIND"));
 
@@ -111,7 +121,7 @@ class ApiExceptionHandlerTest {
   @Test
   void mapsServerInputExceptionToFormValidationMutationFailure() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleServerWebInputException(
+        handler.handle(
             new ServerWebInputException("payload is malformed"),
             exchangeWithRequestId("REQ-MALFORMED"));
 
@@ -128,7 +138,7 @@ class ApiExceptionHandlerTest {
   @Test
   void mapsGenericApplicationExceptionToBusinessMutationFailure() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleApplicationException(
+        handler.handle(
             new ApplicationException(ErrorCodes.REQUEST_INVALID, "application rejected request"),
             exchangeWithRequestId("REQ-APPLICATION"));
 
@@ -145,7 +155,7 @@ class ApiExceptionHandlerTest {
   @Test
   void mapsInvalidPersonalInformationUpdateToValidationMutationFailure() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleInvalidPersonalInformationUpdate(
+        handler.handle(
             new InvalidPersonalInformationUpdateException(
                 "No personal information fields were submitted."),
             exchangeWithRequestId("REQ-PI"));
@@ -163,7 +173,7 @@ class ApiExceptionHandlerTest {
   @Test
   void mapsPortalAccessContextFailureToBusinessMutationFailure() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handlePortalAccessContextResolutionException(
+        handler.handle(
             new PortalAccessContextResolutionException(
                 ErrorCodes.MEMBER_CONTEXT_INVALID,
                 "Missing Account-Ref header for selected-account API"),
@@ -182,7 +192,7 @@ class ApiExceptionHandlerTest {
   @Test
   void mapsAuthenticationExceptionToBusinessMutationFailure() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleAuthenticationException(
+        handler.handle(
             new BadCredentialsException("bad credentials"), exchangeWithRequestId("REQ-AUTHN"));
 
     assertMutationFailure(
@@ -198,7 +208,7 @@ class ApiExceptionHandlerTest {
   @Test
   void mapsAccessDeniedExceptionToBusinessMutationFailure() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleAccessDeniedException(
+        handler.handle(
             new AccessDeniedException("access denied"), exchangeWithRequestId("REQ-AUTHZ"));
 
     assertMutationFailure(
@@ -214,7 +224,7 @@ class ApiExceptionHandlerTest {
   @Test
   void mapsUnknownExceptionToSystemMutationFailure() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleUnexpectedException(
+        handler.handle(
             new IllegalStateException("policyNo=123 should not leak"),
             exchangeWithRequestId("REQ-SYSTEM"));
 
@@ -231,7 +241,7 @@ class ApiExceptionHandlerTest {
   @Test
   void mapsApimExceptionToDownstreamMutationFailure() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleApimException(
+        handler.handle(
             new ApimException(
                 HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
             exchangeWithRequestId("REQ-APIM"));
@@ -252,12 +262,14 @@ class ApiExceptionHandlerTest {
         new java.util.concurrent.atomic.AtomicReference<>();
     ApiExceptionHandler localHandler =
         new ApiExceptionHandler(
-            (errorCode, locale, accountEnv, trustCode, schemeType) -> {
-              capturedLocale.set(locale);
-              return "message for " + errorCode;
-            },
-            loggingSanitizer(),
-            new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new PublicMessageResolver(
+                (errorCode, locale, accountEnv, trustCode, schemeType) -> {
+                  capturedLocale.set(locale);
+                  return "message for " + errorCode;
+                }),
+            new ErrorEventLogger(loggingSanitizer()),
+            new ErrorResponseRenderer());
     MockServerWebExchange exchange =
         MockServerWebExchange.from(
             MockServerHttpRequest.get("/api/v1/notifications?lang=zh-HK")
@@ -265,7 +277,7 @@ class ApiExceptionHandlerTest {
     exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "REQ-LANG");
 
     ResponseEntity<MutationResponse<Void>> response =
-        localHandler.handleUnexpectedException(new IllegalStateException("unexpected"), exchange);
+        localHandler.handle(new IllegalStateException("unexpected"), exchange);
 
     assertEquals("en-US", capturedLocale.get());
     assertNotNull(response.getBody());
@@ -275,15 +287,17 @@ class ApiExceptionHandlerTest {
   void resolvesAccountDimensionsFromCurrentPortalAccessContextAndIgnoresLegacyQueryParameters() {
     ApiExceptionHandler localHandler =
         new ApiExceptionHandler(
-            (errorCode, locale, accountEnv, trustCode, schemeType) -> {
-              assertEquals("zh-HK", locale);
-              assertEquals("CTX-ENV", accountEnv);
-              assertEquals("CTX-TRUST", trustCode);
-              assertEquals("CTX-SCHEME", schemeType);
-              return "contextual message";
-            },
-            loggingSanitizer(),
-            new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new PublicMessageResolver(
+                (errorCode, locale, accountEnv, trustCode, schemeType) -> {
+                  assertEquals("zh-HK", locale);
+                  assertEquals("CTX-ENV", accountEnv);
+                  assertEquals("CTX-TRUST", trustCode);
+                  assertEquals("CTX-SCHEME", schemeType);
+                  return "contextual message";
+                }),
+            new ErrorEventLogger(loggingSanitizer()),
+            new ErrorResponseRenderer());
     MockServerWebExchange exchange =
         MockServerWebExchange.from(
             MockServerHttpRequest.get("/api/v1/test")
@@ -309,7 +323,7 @@ class ApiExceptionHandlerTest {
                     null)));
 
     ResponseEntity<MutationResponse<Void>> response =
-        localHandler.handleUnexpectedException(new IllegalStateException("unexpected"), exchange);
+        localHandler.handle(new IllegalStateException("unexpected"), exchange);
 
     assertNotNull(response.getBody());
   }
@@ -345,7 +359,7 @@ class ApiExceptionHandlerTest {
   @Test
   void mapsCacheExceptionToDownstreamMutationFailure() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleCacheException(
+        handler.handle(
             new CacheException(
                 "Cache get operation failed",
                 new RuntimeException("redis://default:SECRET@redis.prod:6379 auth failure")),
@@ -364,7 +378,7 @@ class ApiExceptionHandlerTest {
   @Test
   void omitsRequestIdHeaderWhenNotInExchangeAttributes() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleApimException(
+        handler.handle(
             new ApimException(
                 HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
             emptyExchange());
@@ -375,7 +389,7 @@ class ApiExceptionHandlerTest {
   @Test
   void responseBodyIsConcreteMutationResponse() {
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleUnexpectedException(
+        handler.handle(
             new IllegalStateException("unexpected"), exchangeWithRequestId("REQ-CONCRETE"));
 
     assertInstanceOf(MutationResponse.class, response.getBody());

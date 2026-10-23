@@ -1,10 +1,12 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.fundfactsheet;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundfactsheet.mapper.FundFactSheetWebMapper;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
@@ -38,6 +40,11 @@ import reactor.test.StepVerifier;
  * ApiExceptionHandler} is constructed exactly as {@code ApiExceptionHandlerFundFactSheetTest} does,
  * and body assertions use {@code .expectBody().jsonPath(...)}, the idiom proven by {@code
  * ReferenceDateRefreshControllerTest} and {@code UpdatePersonalInformationControllerContractTest}.
+ *
+ * <p>Sub-task 1.8.3 (M1 closure, A1): the {@code ApiExceptionHandler} constructor call in {@code
+ * advice()} changed from (ErrorMessageResolver, LoggingSanitizer, ExceptionMappingRegistry) to
+ * (ExceptionMappingRegistry, PublicMessageResolver, ErrorEventLogger, ErrorResponseRenderer). No
+ * assertion changed.
  */
 class FundFactSheetControllerTest {
 
@@ -95,9 +102,11 @@ class FundFactSheetControllerTest {
   private static ApiExceptionHandler advice() {
     ErrorMessageResolver resolver = (code, locale, accountEnv, trustCode, schemeType) -> code;
     return new ApiExceptionHandler(
-        resolver,
-        new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())),
-        new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+        new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+        new PublicMessageResolver(resolver),
+        new ErrorEventLogger(
+            new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties()))),
+        new ErrorResponseRenderer());
   }
 
   private static org.springframework.test.web.reactive.server.WebTestClient client(
@@ -366,13 +375,16 @@ class FundFactSheetControllerTest {
     var resolver = resolver(Mono.just(context()));
     var mapper = new FundFactSheetWebMapper();
 
-    assertThatThrownBy(() -> new FundFactSheetController(null, resolver, mapper))
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> new FundFactSheetController(null, resolver, mapper))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("useCase");
-    assertThatThrownBy(() -> new FundFactSheetController(useCase, null, mapper))
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> new FundFactSheetController(useCase, null, mapper))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("contextResolver");
-    assertThatThrownBy(() -> new FundFactSheetController(useCase, resolver, null))
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> new FundFactSheetController(useCase, resolver, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("webMapper");
   }

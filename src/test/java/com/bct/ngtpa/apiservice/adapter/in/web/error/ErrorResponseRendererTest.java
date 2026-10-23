@@ -15,14 +15,23 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
+/**
+ * Sub-task 1.8.3 (M1 closure, step 3 of 3): {@link ErrorResponseRenderer} converted from a
+ * static-method utility to a {@code @Component} bean (its pure 4-argument {@code render} method
+ * could not coexist with a static method of the same signature, unlike {@link ErrorEventLogger}).
+ * Every call site below changed from {@code ErrorResponseRenderer.render(...)} to {@code new
+ * ErrorResponseRenderer().render(...)}; no assertion changed.
+ */
 class ErrorResponseRendererTest {
+
+  private final ErrorResponseRenderer renderer = new ErrorResponseRenderer();
 
   @Test
   void setsStatusContentTypeAndRequestIdHeaderWhenRequestIdPresent() {
     ApiError error = ApiError.form("err.test", "message", List.of(), "SERVER");
 
     ResponseEntity<MutationResponse<Void>> response =
-        ErrorResponseRenderer.render(
+        renderer.render(
             HttpStatus.BAD_REQUEST, ApiStatus.VALIDATION_FAILED, List.of(error), "req-1");
 
     assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
@@ -35,7 +44,7 @@ class ErrorResponseRendererTest {
     ApiError error = ApiError.system("err.test", "message", "SERVER");
 
     ResponseEntity<MutationResponse<Void>> response =
-        ErrorResponseRenderer.render(
+        renderer.render(
             HttpStatus.INTERNAL_SERVER_ERROR, ApiStatus.SYSTEM_ERROR, List.of(error), null);
 
     assertNull(response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
@@ -59,7 +68,7 @@ class ErrorResponseRendererTest {
     ApiError second = ApiError.business("err.two", "second", List.of(), "SERVER");
 
     ResponseEntity<MutationResponse<Void>> response =
-        ErrorResponseRenderer.render(
+        renderer.render(
             HttpStatus.UNPROCESSABLE_ENTITY,
             ApiStatus.BUSINESS_REJECTED,
             List.of(first, second),
@@ -80,8 +89,7 @@ class ErrorResponseRendererTest {
     ApiError error = ApiError.downstreamSystem("err.downstream", "message", "SERVER");
 
     ResponseEntity<MutationResponse<Void>> response =
-        ErrorResponseRenderer.render(
-            HttpStatus.BAD_GATEWAY, ApiStatus.SYSTEM_ERROR, List.of(error), "req-3");
+        renderer.render(HttpStatus.BAD_GATEWAY, ApiStatus.SYSTEM_ERROR, List.of(error), "req-3");
 
     assertEquals(HttpStatus.BAD_GATEWAY, response.getStatusCode());
   }

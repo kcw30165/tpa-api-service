@@ -10,7 +10,10 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
@@ -34,6 +37,12 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 
+/**
+ * Sub-task 1.8.3 (M1 closure, A1): the constructor changed from (ErrorMessageResolver,
+ * LoggingSanitizer, ExceptionMappingRegistry) to (ExceptionMappingRegistry, PublicMessageResolver,
+ * ErrorEventLogger, ErrorResponseRenderer); every {@code handler.handleXxx(...)} call is now {@code
+ * handler.handle(...)}. No assertion changed.
+ */
 class ApiExceptionHandlerLoggingTest {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -50,9 +59,10 @@ class ApiExceptionHandlerLoggingTest {
     logger.addAppender(listAppender);
     handler =
         new ApiExceptionHandler(
-            testErrorMessageResolver(),
-            testLoggingSanitizer(),
-            new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new PublicMessageResolver(testErrorMessageResolver()),
+            new ErrorEventLogger(testLoggingSanitizer()),
+            new ErrorResponseRenderer());
   }
 
   @AfterEach
@@ -63,7 +73,7 @@ class ApiExceptionHandlerLoggingTest {
 
   @Test
   void logsHandledBusinessExceptionAtWarnWithErrorCodeAndRequestId() throws Exception {
-    handler.handleInvalidNotificationRequestException(
+    handler.handle(
         new InvalidNotificationRequestException("policyNo=P001 invalid request"),
         exchangeWithRequestId("business-req-id"));
 
@@ -82,7 +92,7 @@ class ApiExceptionHandlerLoggingTest {
 
   @Test
   void logsValidationErrorsAtWarn() throws Exception {
-    handler.handleServerWebInputException(
+    handler.handle(
         new ServerWebInputException("policyNo=P001 is malformed"),
         exchangeWithRequestId("validation-req-id"));
 
@@ -95,29 +105,9 @@ class ApiExceptionHandlerLoggingTest {
         event.getThrowableProxy() == null, "Expected no stack trace for validation exception");
   }
 
-  // @Test
-  // void logsApimExceptionsAsIntegrationFailuresAtErrorWithoutStackTrace() throws
-  // Exception {
-  // handler.handleApimException(
-  // new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE,
-  // "userId=member-1 upstream failure"),
-  // exchangeWithRequestId("apim-req-id"));
-
-  // ILoggingEvent event = singleEvent();
-  // assertEquals(Level.ERROR, event.getLevel());
-  // JsonNode payload = parse(event);
-  // assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE,
-  // payload.get("errorCode").asText());
-  // assertEquals("ApimException", payload.get("exceptionType").asText());
-  // assertEquals("userId=*** upstream failure",
-  // payload.get("sanitizedMessage").asText());
-  // assertTrue(event.getThrowableProxy() == null, "Expected no stack trace for
-  // APIM exception");
-  // }
-
   @Test
   void logsAuthenticationFailuresAtWarn() throws Exception {
-    handler.handleAuthenticationException(
+    handler.handle(
         new BadCredentialsException("token=secret auth failed"),
         exchangeWithRequestId("auth-req-id"));
 
@@ -130,7 +120,7 @@ class ApiExceptionHandlerLoggingTest {
 
   @Test
   void unexpectedExceptionsIncludeStackTraceOnce() throws Exception {
-    handler.handleUnexpectedException(
+    handler.handle(
         new IllegalStateException("apiKey=secret exploded"),
         exchangeWithRequestId("unexpected-req-id"));
 
@@ -143,12 +133,11 @@ class ApiExceptionHandlerLoggingTest {
     assertNotNull(event.getThrowableProxy());
   }
 
-  // ── CacheException
-  // ───────────────────────────────────────────────────────────────
+  // ── CacheException ───────────────────────────────────────────────────────────────
 
   @Test
   void logsCacheExceptionAtErrorWithoutStackTrace() throws Exception {
-    handler.handleCacheException(
+    handler.handle(
         new CacheException(
             "Cache get operation failed",
             new RuntimeException("redis://default:SECRET@redis.prod:6379 auth failure")),

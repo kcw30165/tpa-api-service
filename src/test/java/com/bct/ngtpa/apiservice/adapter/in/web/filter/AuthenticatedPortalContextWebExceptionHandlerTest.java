@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,6 +12,11 @@ import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.test.StepVerifier;
 
+/**
+ * Sub-task 1.8.3 (M1 closure, step 3 of 3): the constructor gained a 3rd parameter, {@link
+ * ErrorResponseRenderer}, now injected as a bean instead of called as a static method. No assertion
+ * changed.
+ */
 class AuthenticatedPortalContextWebExceptionHandlerTest {
   @Test
   void mapsAuthenticatedContextFailureToGenericUnauthorizedEnvelope() {
@@ -20,7 +26,9 @@ class AuthenticatedPortalContextWebExceptionHandlerTest {
                 .header("X-Request-Id", "req-1"));
     var handler =
         new AuthenticatedPortalContextWebExceptionHandler(
-            new ObjectMapper(), new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+            new ObjectMapper(),
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new ErrorResponseRenderer());
     StepVerifier.create(
             handler.handle(exchange, new AuthenticatedPortalContextResolutionException()))
         .verifyComplete();

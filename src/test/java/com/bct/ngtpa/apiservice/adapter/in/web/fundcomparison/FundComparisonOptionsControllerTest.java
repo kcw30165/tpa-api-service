@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.fundcomparison.mapper.FundComparisonOptionsMapper;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
@@ -42,6 +45,11 @@ import reactor.test.StepVerifier;
  * FundFactSheetController}'s exact confirmed parameter order (useCase, contextResolver, webMapper).
  * All test scenarios are unchanged from before the correction -- only the construction calls
  * differ.
+ *
+ * <p>Sub-task 1.8.3 (M1 closure, A1): the {@code ApiExceptionHandler} constructor call in {@code
+ * advice()} changed from (ErrorMessageResolver, LoggingSanitizer, ExceptionMappingRegistry) to
+ * (ExceptionMappingRegistry, PublicMessageResolver, ErrorEventLogger, ErrorResponseRenderer). No
+ * assertion changed.
  */
 class FundComparisonOptionsControllerTest {
 
@@ -120,9 +128,11 @@ class FundComparisonOptionsControllerTest {
   private static ApiExceptionHandler advice() {
     ErrorMessageResolver resolver = (code, locale, accountEnv, trustCode, schemeType) -> code;
     return new ApiExceptionHandler(
-        resolver,
-        new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())),
-        new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+        new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+        new PublicMessageResolver(resolver),
+        new ErrorEventLogger(
+            new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties()))),
+        new ErrorResponseRenderer());
   }
 
   private static WebTestClient client(FundComparisonOptionsUseCase useCase) {

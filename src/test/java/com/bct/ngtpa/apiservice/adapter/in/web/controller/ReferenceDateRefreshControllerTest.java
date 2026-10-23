@@ -3,7 +3,10 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.internal.referencedate.ReferenceDateController;
 import com.bct.ngtpa.apiservice.application.dto.CleanUpAllReferenceDatesResult;
 import com.bct.ngtpa.apiservice.application.dto.GetAllReferenceDatesResult;
@@ -25,6 +28,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
+/**
+ * Sub-task 1.8.3 (M1 closure, A1): the {@code ApiExceptionHandler} constructor call in {@code
+ * webClient} changed from (ErrorMessageResolver, LoggingSanitizer, ExceptionMappingRegistry) to
+ * (ExceptionMappingRegistry, PublicMessageResolver, ErrorEventLogger, ErrorResponseRenderer). No
+ * assertion changed.
+ */
 class ReferenceDateRefreshControllerTest {
 
   private static final String REFRESH_PATH = "/api/v1/internal/reference-date/refresh";
@@ -160,9 +169,10 @@ class ReferenceDateRefreshControllerTest {
                 () -> Mono.just(new CleanUpAllReferenceDatesResult(0L))))
         .controllerAdvice(
             new ApiExceptionHandler(
-                testErrorMessageResolver(),
-                testLoggingSanitizer(),
-                new ExceptionMappingRegistryConfig().exceptionMappingRegistry()))
+                new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+                new PublicMessageResolver(testErrorMessageResolver()),
+                new ErrorEventLogger(testLoggingSanitizer()),
+                new ErrorResponseRenderer()))
         .build();
   }
 

@@ -7,7 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistry;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
@@ -24,6 +28,12 @@ import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.server.ServerWebExchange;
 
+/**
+ * Sub-task 1.8.3 (M1 closure, A1): both constructor call sites changed from (ErrorMessageResolver,
+ * LoggingSanitizer, ExceptionMappingRegistry) to (ExceptionMappingRegistry, PublicMessageResolver,
+ * ErrorEventLogger, ErrorResponseRenderer); {@code handleAccessDeniedException(...)} calls are now
+ * {@code handle(...)}. No assertion changed.
+ */
 class ApiResponseExceptionHandlingBoundaryTest {
 
   /**
@@ -36,12 +46,16 @@ class ApiResponseExceptionHandlingBoundaryTest {
   @Test
   void apiExceptionHandlerDoesNotUseLegacyApiErrorResponse() {
     ApiExceptionHandler handler =
-        new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer(), testRegistry());
+        new ApiExceptionHandler(
+            testRegistry(),
+            new PublicMessageResolver(testErrorMessageResolver()),
+            new ErrorEventLogger(testLoggingSanitizer()),
+            new ErrorResponseRenderer());
     ServerWebExchange exchange =
         MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/test"));
 
     ResponseEntity<MutationResponse<Void>> response =
-        handler.handleAccessDeniedException(new AccessDeniedException("denied"), exchange);
+        handler.handle(new AccessDeniedException("denied"), exchange);
 
     assertNotNull(response.getBody());
     assertFalse(response.getBody().success());
@@ -97,7 +111,11 @@ class ApiResponseExceptionHandlingBoundaryTest {
   @Test
   void exceptionLocalizationUsesAcceptLanguageNotLangQueryParameter() {
     ApiExceptionHandler handler =
-        new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer(), testRegistry());
+        new ApiExceptionHandler(
+            testRegistry(),
+            new PublicMessageResolver(testErrorMessageResolver()),
+            new ErrorEventLogger(testLoggingSanitizer()),
+            new ErrorResponseRenderer());
 
     ServerWebExchange withLangQueryParamOnly =
         MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/fund-price?lang=zh-HK"));
@@ -106,11 +124,9 @@ class ApiResponseExceptionHandlingBoundaryTest {
             MockServerHttpRequest.get("/api/v1/fund-price").header("Accept-Language", "zh-HK"));
 
     ResponseEntity<MutationResponse<Void>> ignoredQueryParam =
-        handler.handleAccessDeniedException(
-            new AccessDeniedException("denied"), withLangQueryParamOnly);
+        handler.handle(new AccessDeniedException("denied"), withLangQueryParamOnly);
     ResponseEntity<MutationResponse<Void>> usedHeader =
-        handler.handleAccessDeniedException(
-            new AccessDeniedException("denied"), withAcceptLanguageHeader);
+        handler.handle(new AccessDeniedException("denied"), withAcceptLanguageHeader);
 
     // The lang= query param alone must not localize (resolver receives null locale); supplying
     // Accept-Language must localize to "zh-HK" being passed through to the message resolver.
@@ -161,8 +177,7 @@ class ApiResponseExceptionHandlingBoundaryTest {
     return new LoggingSanitizer(new ObjectMapper(), new MaskingService(properties));
   }
 
-  private static com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistry
-      testRegistry() {
+  private static ExceptionMappingRegistry testRegistry() {
     return new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
   }
 }

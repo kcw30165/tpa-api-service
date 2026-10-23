@@ -8,7 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
@@ -46,18 +49,25 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 
+/**
+ * Sub-task 1.8.3 (M1 closure, A1): the constructor changed from (ErrorMessageResolver,
+ * LoggingSanitizer, ExceptionMappingRegistry) to (ExceptionMappingRegistry, PublicMessageResolver,
+ * ErrorEventLogger, ErrorResponseRenderer); every {@code handler.handleXxx(...)} call is now {@code
+ * handler.handle(...)}. No assertion changed.
+ */
 class ApiExceptionHandlerMutationResponseContractTest {
 
   private final ApiExceptionHandler handler =
       new ApiExceptionHandler(
-          errorMessageResolver(),
-          loggingSanitizer(),
-          new ExceptionMappingRegistryConfig().exceptionMappingRegistry());
+          new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+          new PublicMessageResolver(errorMessageResolver()),
+          new ErrorEventLogger(loggingSanitizer()),
+          new ErrorResponseRenderer());
 
   @Test
   void invalidNotificationRequestUsesMutationFailureEnvelope() {
     ResponseEntity<?> response =
-        handler.handleInvalidNotificationRequestException(
+        handler.handle(
             new InvalidNotificationRequestException("invalid notification request"),
             exchangeWithRequestId("REQ-001"));
 
@@ -74,7 +84,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
   @Test
   void invalidContributionRequestUsesMutationFailureEnvelope() {
     ResponseEntity<?> response =
-        handler.handleInvalidContributionRequestException(
+        handler.handle(
             new InvalidContributionRequestException("invalid contribution request"),
             exchangeWithRequestId("REQ-002"));
 
@@ -91,7 +101,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
   @Test
   void bindValidationFailureUsesFieldTargetInMutationFailureEnvelope() throws Exception {
     ResponseEntity<?> response =
-        handler.handleWebExchangeBindException(
+        handler.handle(
             bindException("notificationId", "notificationId must not be empty"),
             exchangeWithRequestId("REQ-003"));
 
@@ -108,7 +118,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
   @Test
   void malformedBodyUsesFormValidationMutationFailureEnvelope() {
     ResponseEntity<?> response =
-        handler.handleServerWebInputException(
+        handler.handle(
             new ServerWebInputException("payload is malformed"), exchangeWithRequestId("REQ-004"));
 
     assertMutationFailure(
@@ -124,7 +134,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
   @Test
   void applicationExceptionUsesBusinessRejectedMutationFailureEnvelope() {
     ResponseEntity<?> response =
-        handler.handleApplicationException(
+        handler.handle(
             new ApplicationException(ErrorCodes.REQUEST_INVALID, "application rejected request"),
             exchangeWithRequestId("REQ-005"));
 
@@ -141,7 +151,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
   @Test
   void invalidPersonalInformationUpdateUsesValidationMutationFailureEnvelope() {
     ResponseEntity<?> response =
-        handler.handleInvalidPersonalInformationUpdate(
+        handler.handle(
             new InvalidPersonalInformationUpdateException(
                 "No personal information fields were submitted."),
             exchangeWithRequestId("REQ-006"));
@@ -159,7 +169,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
   @Test
   void missingPortalContextUsesBusinessMutationFailureEnvelope() {
     ResponseEntity<?> response =
-        handler.handlePortalAccessContextResolutionException(
+        handler.handle(
             new PortalAccessContextResolutionException(
                 ErrorCodes.MEMBER_CONTEXT_INVALID,
                 "Missing Account-Ref header for selected-account API"),
@@ -178,7 +188,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
   @Test
   void authenticationExceptionUsesMutationFailureEnvelope() {
     ResponseEntity<?> response =
-        handler.handleAuthenticationException(
+        handler.handle(
             new BadCredentialsException("bad credentials"), exchangeWithRequestId("REQ-008"));
 
     assertMutationFailure(
@@ -194,7 +204,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
   @Test
   void accessDeniedExceptionUsesMutationFailureEnvelope() {
     ResponseEntity<?> response =
-        handler.handleAccessDeniedException(
+        handler.handle(
             new AccessDeniedException("access denied"), exchangeWithRequestId("REQ-009"));
 
     assertMutationFailure(
@@ -210,7 +220,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
   @Test
   void unexpectedExceptionUsesSystemMutationFailureEnvelope() {
     ResponseEntity<?> response =
-        handler.handleUnexpectedException(
+        handler.handle(
             new IllegalStateException("policyNo=123 should not leak"),
             exchangeWithRequestId("REQ-010"));
 
@@ -227,7 +237,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
   @Test
   void apimExceptionUsesDownstreamMutationFailureEnvelopeWithRequestIdHeader() {
     ResponseEntity<?> response =
-        handler.handleApimException(
+        handler.handle(
             new ApimException(
                 HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
             exchangeWithRequestId("REQ-011"));
