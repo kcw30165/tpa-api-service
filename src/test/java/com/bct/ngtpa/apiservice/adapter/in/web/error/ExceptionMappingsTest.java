@@ -344,6 +344,13 @@ class ExceptionMappingsTest {
   // ───────────────────────── Sub-task 1.7: AccountBalance, FundFactSheet, WebExchangeBind
   // ─────────────────────────
 
+  // SonarQube fix (post-M1 quality gate, java:S1874): HttpStatus.UNPROCESSABLE_ENTITY is
+  // deprecated by Spring 7 in favour of HttpStatus.UNPROCESSABLE_CONTENT, but the production
+  // AccountBalanceExceptionMappings mapping (changing its public status/header behaviour, both
+  // outside this branch's scope) still returns UNPROCESSABLE_ENTITY, and it is not yet confirmed
+  // whether the production status should be renamed. Asserting UNPROCESSABLE_CONTENT instead
+  // would compare against a different enum constant than what production actually returns.
+  @SuppressWarnings("java:S1874")
   @Test
   void accountBalanceAccountNotFoundMappingHasNullMessagePolicy() {
     var mapping = AccountBalanceExceptionMappings.retrievalFailure();

@@ -23,6 +23,13 @@ class AccountGainLossExceptionMappingsTest {
   private static final ErrorContext CONTEXT =
       new ErrorContext("PATCH", "/api/v1/notifications", "req-1");
 
+  // SonarQube fix (post-M1 quality gate, java:S1874): HttpStatus.UNPROCESSABLE_ENTITY is
+  // deprecated by Spring 7 in favour of HttpStatus.UNPROCESSABLE_CONTENT, but the production
+  // AccountGainLossExceptionMappings mapping (changing its public status/header behaviour, both
+  // outside this branch's scope) still returns UNPROCESSABLE_ENTITY, and it is not yet confirmed
+  // whether the production status should be renamed. Asserting UNPROCESSABLE_CONTENT instead
+  // would compare against a different enum constant than what production actually returns.
+  @SuppressWarnings("java:S1874")
   @Test
   void
       fundSwitchingInProgressMapsToUnprocessableBusinessRejectedWithNullMessagePolicyLoggedAtWarn() {
