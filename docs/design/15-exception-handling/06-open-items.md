@@ -221,4 +221,38 @@ inconsistency (either making every error null, or making the three null ones res
 separate, broader decision for Nick and FE.
 </td>
 </tr>
+
+
+<tr>
+<td>
+O-13
+</td>
+<td>
+The JaCoCo report has no rows for anonymous classes or *Config classes, so coverage of the
+*ExceptionMappings logic is not measured. Evidence: script 072, 10-coverage-m1-classes.txt.
+</td>
+<td>
+Nick
+</td>
+<td>
+Open.
+</td>
+</tr>
+<tr>
+<td>
+O-14
+</td>
+<td>
+(a) ExceptionMappingRegistry superclass walk: confirm whether "candidate != null" can be false;
+delete the guard or test it, target 95% branch. (b) Fix the stale Javadoc in
+FundComparisonRequestInvalidException and FundPriceRequestInvalidException that still describes
+per-type @ExceptionHandler methods in ApiExceptionHandler.
+</td>
+<td>
+Implementer (first commit of M2)
+</td>
+<td>
+Open.
+</td>
+</tr>
 </table>

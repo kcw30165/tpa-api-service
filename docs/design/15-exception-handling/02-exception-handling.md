@@ -95,14 +95,14 @@ blocking)
 </td>
 </tr>
 <tr>
-<td>  
+<td>
 ExceptionMappingRegistry
 </td>
-<td>  
-component
+<td>
+plain final class, built by ExceptionMappingRegistryConfig from a hand-written list (O-11)
 </td>
-<td>  
-Collects all ExceptionMapping beans. Resolves by nearest superclass distance. Fails startup on two mappings for the same type. Falls back to the catch-all mapping.
+<td>
+Resolves by nearest superclass distance. Fails startup on two mappings for the same type. Falls back to the catch-all mapping.
 </td>
 </tr>
 <tr>
@@ -173,8 +173,9 @@ Through sub-task 1.7, ApiExceptionHandler stays the @RestControllerAdvice with i
 handleXxx methods as one-line delegations (registry -> renderer -> logger), so tests that call
 them by name keep compiling. From sub-task 1.8 (A1), ApiExceptionHandler collapses to a single
 @ExceptionHandler(Exception.class) method; all per-type routing happens inside
-ExceptionMappingRegistry. AuthenticatedPortalContextWebExceptionHandler uses the same registry,
-renderer, logger and PublicMessageResolver throughout.
+ExceptionMappingRegistry. AuthenticatedPortalContextWebExceptionHandler uses only
+ExceptionMappingRegistry and ErrorResponseRenderer; it keeps its own plain-text log and never
+calls ErrorEventLogger or PublicMessageResolver (O-10).
 
 ### 2a. ErrorEntry, MessagePolicy and extraLogFields (sub-task 1.7, M1 closure, Option A)
 
@@ -267,25 +268,72 @@ HTTP status and response body are unchanged. Implemented in sub-task 1.7 via
 status, ApiStatus, error type/code/targets/severity/source or response-header change anywhere in
 M1.
 
-### 8. Target shape (sub-task 1.8)
+### 8. Target shape (current, as of sub-task 1.11/1.12)
 ```java
 @RestControllerAdvice
-@RequiredArgsConstructor
+@Slf4j
 public class ApiExceptionHandler {
+
   private final ExceptionMappingRegistry registry;
-  private final PublicMessageResolver messages;
-  private final ErrorEventLogger logger;
+  private final PublicMessageResolver messageResolver;
+  private final ErrorEventLogger eventLogger;
   private final ErrorResponseRenderer renderer;
 
+  @Autowired
+  public ApiExceptionHandler(
+      ExceptionMappingRegistry registry,
+      PublicMessageResolver messageResolver,
+      ErrorEventLogger eventLogger,
+      ErrorResponseRenderer renderer) {
+    this.registry = registry;
+    this.messageResolver = messageResolver;
+    this.eventLogger = eventLogger;
+    this.renderer = renderer;
+  }
+
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<MutationResponse<Void>> handle(Exception ex, ServerWebExchange exchange) {
-    ErrorContext ctx = ErrorContext.from(exchange);
-    ErrorDescriptor d = registry.resolve(ex, ctx);
-    logger.log(d, ex, ctx);
-    return renderer.render(d, messages.resolve(d, ex, exchange), ctx);
+  public ResponseEntity<MutationResponse<Void>> handle(
+      Exception exception, ServerWebExchange exchange) {
+    ErrorContext context = ErrorContext.from(exchange);
+    ErrorDescriptor descriptor = registry.resolve(exception, context);
+    List<String> messages = messageResolver.resolve(descriptor, exception, exchange);
+
+    if (descriptor.errors().isEmpty()) {
+      descriptor = fallbackDescriptor(descriptor);
+      messages = messageResolver.resolve(descriptor, exception, exchange);
+    }
+
+    eventLogger.log(
+        log,
+        new ErrorLogDirective(
+            descriptor.httpStatus(),
+            descriptor.errors().getFirst().code(),
+            descriptor.logLevel() == LogLevel.ERROR,
+            descriptor.includeStackTrace(),
+            descriptor.extraLogFields()),
+        exchange,
+        exception,
+        registry.diagnosticMessage(exception));
+
+    return renderer.render(descriptor, messages, context);
+  }
+
+  private ErrorDescriptor fallbackDescriptor(ErrorDescriptor descriptor) {
+    return ErrorDescriptor.single(
+        descriptor.httpStatus(),
+        descriptor.apiStatus(),
+        "SYSTEM",
+        ErrorCodes.SYSTEM_UNEXPECTED,
+        List.of(),
+        descriptor.logEventName(),
+        descriptor.logLevel(),
+        descriptor.includeStackTrace());
   }
 }
 ```
-ErrorEventLogger and ErrorResponseRenderer become Spring beans (no static entry points left).
-AuthenticatedPortalContextWebExceptionHandler uses the same four collaborators. Keep the existing
-return type of the current handler methods; do not introduce Mono where it is not used today.
+ErrorEventLogger and ErrorResponseRenderer are Spring beans (no static entry points).
+AuthenticatedPortalContextWebExceptionHandler uses only ExceptionMappingRegistry and
+ErrorResponseRenderer; it keeps its own plain-text log and never calls ErrorEventLogger or
+PublicMessageResolver (O-10). The empty-errors fallback above is kept: two mappings
+(AccountBalance, AccountGainLoss) build their entries from external response-policy classes whose
+list is not provably always non-empty, so the fallback cannot be removed.

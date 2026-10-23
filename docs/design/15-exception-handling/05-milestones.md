@@ -216,7 +216,8 @@ static log method (9d4cbdbe); 2) move ApiError assembly into ErrorResponseRender
 context-&gt;resolve-&gt;messages-&gt;log-&gt;render pipeline in ApiExceptionHandler (80fee328); 3)
 AuthenticatedPortalContextExceptionMappings uses singleWithoutMessage instead of single, since the
 handler never resolves a public message for that entry (0ca6e56b); 4) remove stale
-sub-task/M1-closure Javadoc history notes across all ~21 files in scope (4306a03a); 5) close
+sub-task/M1-closure Javadoc history notes across all ~21 files in scope (4306a03a; this cleanup
+was incomplete -- the remaining stale references were removed in sub-task 1.12, item 1); 5) close
 coverage gaps to target or documented justification for ApimExceptionMappings,
 RequestValidationExceptionMappings, WebExchangeBindExceptionMappings, ErrorLogDirective and
 CatchAllExceptionMapping (107e3ed7); 6) add a Spring ApplicationContextRunner wiring test proving
@@ -227,6 +228,34 @@ PublicMessageResolver, ErrorEventLogger and ErrorResponseRenderer all load as re
 <td>
 ErrorEventLoggerTest, ErrorResponseRendererTest, ExceptionMappingsTest,
 ExceptionMappingRegistryTest, ExceptionHandlingWiringArchitectureTest
+</td>
+</tr>
+
+
+<tr>
+<td>
+1.12
+</td>
+<td>
+docs/test/refactor
+</td>
+<td>
+2026-10-23 review follow-up (approved by Nick 2026-10-23), 5 items reviewed, 4 produced commits
+(item 5 was a coverage report only, no commit): 1) remove the remaining stale
+sub-task/M1-closure/Option-A/1.6b/pre-sub-task-1.7 Javadoc references across the files the review
+flagged, completing item 4 of sub-task 1.11 (19dae4fe); 2) fix
+AuthenticatedPortalContextExceptionMappings' false Javadoc claim (it had described
+ErrorDescriptor#single/RESOLVE and ApiExceptionHandler.delegate(...), neither true) to describe
+its actual singleWithoutMessage/NONE behaviour (882441cc); 3) add the blank-reason
+diagnosticMessage test for RequestValidationExceptionMappings and remove its deferred-work
+Javadoc paragraph (7f105bbb); 4) delete ApimExceptionMappings' two provably-unreachable
+null/blank guards instead of testing them (c8283e49); 6) correct 05-milestones.md and
+02-exception-handling.md: document sub-task 1.11, state ErrorResponseRenderer/ErrorEventLogger
+are beans (not "static helper"), and describe *ExceptionMappings as final classes with static
+factories registered by hand, not @Component (b43fbb2b).
+</td>
+<td>
+ExceptionMappingsTest, ExceptionMappingRegistryTest
 </td>
 </tr>
 </table>
