@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -69,7 +71,7 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
 
     Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> response =
         controller
-            .update(Mono.just(request), null, null)
+            .update(Mono.just(request), null, exchange())
             .contextWrite(
                 context ->
                     context.put(
@@ -89,6 +91,11 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
 
     verify(validator).validate(eq(request), eq("en"), any(), any(), any());
     verifyNoInteractions(requestMapper, useCase, responseMapper);
+  }
+
+  private static MockServerWebExchange exchange() {
+    return MockServerWebExchange.from(
+        MockServerHttpRequest.put("/api/v1/personal-information").build());
   }
 
   private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {

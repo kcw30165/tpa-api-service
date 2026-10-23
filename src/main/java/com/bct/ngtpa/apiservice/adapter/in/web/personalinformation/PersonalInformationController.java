@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.HttpStatusClassification;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
@@ -141,8 +142,10 @@ public class PersonalInformationController {
                                             mergeErrors(yamlErrors, accessErrors);
                                         if (!errors.isEmpty()) {
                                           return Mono.just(
-                                              MutationResponse.failure(
-                                                  ApiStatus.VALIDATION_FAILED, errors));
+                                              withHttpStatus(
+                                                  exchange,
+                                                  MutationResponse.failure(
+                                                      ApiStatus.VALIDATION_FAILED, errors)));
                                         }
                                         var mapped =
                                             requestMapper.toCommand(
@@ -159,7 +162,8 @@ public class PersonalInformationController {
                                                 portalAccessContext.actor().actorUserRole());
                                         return updatePersonalInformationUseCase
                                             .execute(command)
-                                            .map(responseMapper::toResponse);
+                                            .map(responseMapper::toResponse)
+                                            .map(response -> withHttpStatus(exchange, response));
                                       });
                             })));
   }
@@ -168,6 +172,19 @@ public class PersonalInformationController {
       FormPageResponse<FormSchemaResponse> formPage) {
     return MutationResponse.success(
         ApiStatus.SUCCESS, PersonalInformationResultResponse.from(formPage), List.of());
+  }
+
+  /**
+   * The downstream always answers HTTP 200, so the HTTP status of this endpoint is decided here
+   * from the body status through the shared classification: VALIDATION_FAILED is 400,
+   * BUSINESS_REJECTED is 422 and SYSTEM_ERROR is 503. The success-like statuses, including
+   * PARTIAL_SUCCESS, stay 200. The body is returned unchanged.
+   */
+  private static MutationResponse<List<PersonalInformationUpdateResultResponse>> withHttpStatus(
+      ServerWebExchange exchange,
+      MutationResponse<List<PersonalInformationUpdateResultResponse>> body) {
+    exchange.getResponse().setStatusCode(HttpStatusClassification.classify(body.status()));
+    return body;
   }
 
   private static List<ApiError> mergeErrors(List<ApiError> first, List<ApiError> second) {

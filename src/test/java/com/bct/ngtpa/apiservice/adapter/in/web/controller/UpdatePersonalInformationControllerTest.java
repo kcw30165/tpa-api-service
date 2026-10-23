@@ -32,6 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -96,7 +98,7 @@ class UpdatePersonalInformationControllerTest {
 
     StepVerifier.create(
             controller
-                .update(Mono.just(request), null, null)
+                .update(Mono.just(request), null, exchange())
                 .contextWrite(
                     context ->
                         context.put(
@@ -110,6 +112,11 @@ class UpdatePersonalInformationControllerTest {
               assertThat(response.result().getFirst().refNo()).isEqualTo("260001373");
             })
         .verifyComplete();
+  }
+
+  private static MockServerWebExchange exchange() {
+    return MockServerWebExchange.from(
+        MockServerHttpRequest.put("/api/v1/personal-information").build());
   }
 
   private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {
