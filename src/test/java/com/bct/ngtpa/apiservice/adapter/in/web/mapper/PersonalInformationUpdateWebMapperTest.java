@@ -203,20 +203,20 @@ class PersonalInformationUpdateWebMapperTest {
 
   @Test
   void updateMapperNormalizesNullTextValueToEmptyStringForOptionalField() {
-    PersonalInformationUpdateWebMapper mapper =
+    PersonalInformationUpdateWebMapper textMapper =
         new PersonalInformationUpdateWebMapper(
             properties(
                 section(field("displayName", "display-name", null, "text", null, null, false))));
     Map<String, Object> fields = new LinkedHashMap<>();
     fields.put("displayName", null);
     var command =
-        mapper.toCommand(false, new UpdatePersonalInformationRequest("1.0", false, fields));
+        textMapper.toCommand(false, new UpdatePersonalInformationRequest("1.0", false, fields));
     assertThat(command.updateFields()).containsEntry("display-name", "");
   }
 
   @Test
   void updateMapperOmitsNullValueForNonTextLikeOptionalField() {
-    PersonalInformationUpdateWebMapper mapper =
+    PersonalInformationUpdateWebMapper checkboxMapper =
         new PersonalInformationUpdateWebMapper(
             properties(
                 section(
@@ -226,7 +226,7 @@ class PersonalInformationUpdateWebMapperTest {
     fields.put("applyToAll", null);
     fields.put("displayName", "Nick");
     var command =
-        mapper.toCommand(false, new UpdatePersonalInformationRequest("1.0", false, fields));
+        checkboxMapper.toCommand(false, new UpdatePersonalInformationRequest("1.0", false, fields));
     assertThat(command.updateFields())
         .containsEntry("display-name", "Nick")
         .doesNotContainKey("apply-all");

@@ -46,6 +46,7 @@ public class PersonalInformationWebMapper {
   private static final String KEY_LABEL = "label";
 
   private static final String KEY_ITEM_ID = "item-id";
+  private static final String KEY_CONFIG_VALUE = "config-value";
 
   private static final String MAPPER_NAME = "PersonalInformationWebMapper";
 
@@ -937,7 +938,7 @@ public class PersonalInformationWebMapper {
     event.put(KEY_ITEM_ID, configKey);
     event.put(KEY_FUNCTION, MAPPER_NAME);
     event.put(KEY_SCH_TYPE, PAGE_KEY);
-    event.put("config-value", configValue);
+    event.put(KEY_CONFIG_VALUE, configValue);
     log.error(
         "Missing YAML apimBinding for APIM config item: {}", loggingSanitizer.toSafeString(event));
   }
@@ -949,7 +950,7 @@ public class PersonalInformationWebMapper {
     }
     Map<String, Object> event = new LinkedHashMap<>();
     event.put(KEY_ITEM_ID, configKey);
-    event.put("config-value", configValue);
+    event.put(KEY_CONFIG_VALUE, configValue);
     log.error(
         "Unrecognised or blank APIM access config value, field treated as HIDDEN: {}",
         loggingSanitizer.toSafeString(event));
@@ -961,7 +962,7 @@ public class PersonalInformationWebMapper {
     event.put(KEY_ITEM_ID, configKey);
     event.put(KEY_FUNCTION, configItem != null ? configItem.function() : MAPPER_NAME);
     event.put(KEY_SCH_TYPE, configItem != null ? configItem.schType() : PAGE_KEY);
-    event.put("config-value", configValue);
+    event.put(KEY_CONFIG_VALUE, configValue);
     event.put("item-type", configItem != null ? configItem.itemType() : null);
     log.error("Unknown APIM config item type: {}", loggingSanitizer.toSafeString(event));
   }

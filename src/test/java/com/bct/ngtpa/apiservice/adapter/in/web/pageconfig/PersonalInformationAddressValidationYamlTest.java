@@ -20,6 +20,7 @@ class PersonalInformationAddressValidationYamlTest {
     assertThat(validations)
         .as("D-29: country-depends-on-address rules are unconfirmed (U-2) and must not be applied")
         .extracting(rule -> rule.get("id"))
+        .isNotEmpty()
         .doesNotContain(
             "residentialCountry.requiredWhenResidentialAddressCaptured",
             "mailingCountry.requiredWhenMailingAddressCaptured",

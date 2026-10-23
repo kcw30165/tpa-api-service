@@ -57,10 +57,8 @@ class PersonalInformationValidationMessageCompletenessTest {
     String yaml = Files.readString(YAML);
 
     assertThat(yaml)
-        .as("D-16/D4: the email.minLength rule must be removed")
-        .doesNotContain("id: email.minLength");
-    assertThat(yaml)
-        .as("D-29: country-depends-on-address rules are not applied")
+        .as("D-16/D4 and D-29: removed rules must be absent")
+        .doesNotContain("id: email.minLength")
         .doesNotContain("id: mailingCountry.requiredWhenMailingAddressCaptured");
     assertRuleBlockContains(
         yaml,

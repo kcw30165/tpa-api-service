@@ -175,16 +175,17 @@ class PersonalInformationAccessConfigServiceTest {
   void accessConfigServiceRequiresItsArguments() {
     var service = service();
     var command = command();
+    var session = Optional.of(SID);
 
     assertThatThrownBy(() -> new PersonalInformationAccessConfigService(null, cache))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(() -> new PersonalInformationAccessConfigService(retrieval, null))
         .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> service.resolve(null, Optional.of(SID), ACCOUNT_REF, REQUEST_ID))
+    assertThatThrownBy(() -> service.resolve(null, session, ACCOUNT_REF, REQUEST_ID))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(() -> service.resolve(command, null, ACCOUNT_REF, REQUEST_ID))
         .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> service.refresh(null, Optional.of(SID), ACCOUNT_REF, REQUEST_ID))
+    assertThatThrownBy(() -> service.refresh(null, session, ACCOUNT_REF, REQUEST_ID))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(() -> service.refresh(command, null, ACCOUNT_REF, REQUEST_ID))
         .isInstanceOf(NullPointerException.class);

@@ -150,12 +150,13 @@ class GetPersonalInformationCachingUseCaseTest {
   void cachingUseCaseRequiresItsArguments() {
     var useCase = useCase();
     var command = command();
+    var session = Optional.of(SID);
 
     assertThatThrownBy(() -> new GetPersonalInformationCachingUseCase(null, cache))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(() -> new GetPersonalInformationCachingUseCase(delegate, null))
         .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> useCase.executeAndCache(null, Optional.of(SID), ACCOUNT_REF, "req-1"))
+    assertThatThrownBy(() -> useCase.executeAndCache(null, session, ACCOUNT_REF, "req-1"))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(() -> useCase.executeAndCache(command, null, ACCOUNT_REF, "req-1"))
         .isInstanceOf(NullPointerException.class);

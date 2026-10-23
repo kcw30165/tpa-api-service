@@ -145,13 +145,12 @@ class PersonalInformationControllerAccessCheckTest {
 
     verify(accessChecker)
         .check(
-            eq(REQUEST),
-            eq(
-                new GetPersonalInformationCommand(
-                    "en", "JP", "policy-1", "cert-1", "user-1", ActorUserRole.ROLE_USER_MBR)),
-            eq(Optional.of(SID)),
-            eq("ACC-123"),
-            eq("req-7"));
+            REQUEST,
+            new GetPersonalInformationCommand(
+                "en", "JP", "policy-1", "cert-1", "user-1", ActorUserRole.ROLE_USER_MBR),
+            Optional.of(SID),
+            "ACC-123",
+            "req-7");
     verify(validator).validate(REQUEST, "en", "JP", "JPM", "OE");
   }
 
@@ -199,7 +198,8 @@ class PersonalInformationControllerAccessCheckTest {
   void aMissingAccountRefIsRejectedBeforeTheAccessCheck() {
     var controller = controller(" ", exchange -> Optional.of(SID));
 
-    assertThrows(PortalAccessContextResolutionException.class, () -> put(controller, " ").block());
+    var pending = put(controller, " ");
+    assertThrows(PortalAccessContextResolutionException.class, pending::block);
 
     verifyNoInteractions(accessChecker, requestMapper, useCase, responseMapper);
   }

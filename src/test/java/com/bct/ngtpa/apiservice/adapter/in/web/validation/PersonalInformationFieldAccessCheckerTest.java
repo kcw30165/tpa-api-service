@@ -180,13 +180,13 @@ class PersonalInformationFieldAccessCheckerTest {
   @Test
   void theAccessCheckerRequiresItsArguments() {
     var checker = checker();
+    var session = Optional.of(SID);
 
     assertThatThrownBy(() -> new PersonalInformationFieldAccessChecker(null, validator))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(() -> new PersonalInformationFieldAccessChecker(configService, null))
         .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(
-            () -> checker.check(REQUEST, null, Optional.of(SID), ACCOUNT_REF, REQUEST_ID))
+    assertThatThrownBy(() -> checker.check(REQUEST, null, session, ACCOUNT_REF, REQUEST_ID))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(() -> checker.check(REQUEST, COMMAND, null, ACCOUNT_REF, REQUEST_ID))
         .isInstanceOf(NullPointerException.class);

@@ -57,8 +57,7 @@ class PersonalInformationControllerCacheTest {
   private void useCaseReturnsTheResult() {
     when(useCase.execute(any())).thenReturn(Mono.just(result));
     when(useCase.executeAndCache(any(), any(), any(), any())).thenReturn(Mono.just(result));
-    when(mapper.toFormPageResponse(eq(result), eq("en"), eq("JP"), eq("JPM"), eq("OE")))
-        .thenReturn(formPage());
+    when(mapper.toFormPageResponse(result, "en", "JP", "JPM", "OE")).thenReturn(formPage());
   }
 
   private static FormPageResponse<FormSchemaResponse> formPage() {
@@ -122,18 +121,15 @@ class PersonalInformationControllerCacheTest {
   void aMissingAccountRefIsRejectedBeforeTheUseCaseIsCalled() {
     var controller = controller(" ", exchange -> Optional.of(SID));
 
-    var exception =
-        assertThrows(
-            PortalAccessContextResolutionException.class,
-            () ->
-                controller
-                    .getPersonalInformation("en", exchange())
-                    .contextWrite(
-                        ctx ->
-                            ctx.put(
-                                RequestHeaderContextKeys.CONTEXT_KEY,
-                                new RequestHeaderContext(" ", "req-1", "en")))
-                    .block());
+    var pending =
+        controller
+            .getPersonalInformation("en", exchange())
+            .contextWrite(
+                ctx ->
+                    ctx.put(
+                        RequestHeaderContextKeys.CONTEXT_KEY,
+                        new RequestHeaderContext(" ", "req-1", "en")));
+    var exception = assertThrows(PortalAccessContextResolutionException.class, pending::block);
 
     assertThat(exception).isNotNull();
     verifyNoInteractions(useCase);
