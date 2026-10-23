@@ -83,9 +83,11 @@ sub-tasks.
 | 3.4b | access-config lookup service and UI-only field fix | 72a03537 |
 | 3.4c | controller wiring, one refetch on a cached rejection, email.required removed | 9fcd0317 |
 
-Differences from the planned 3.4: no HTTP 503 handler (design B.5, O-1) and no group presence exclusion (D-27).
+Differences from the planned 3.4: no group presence exclusion (D-27). The HTTP 503 handler (O-1) and the PUT HTTP
+status (O-2) were added afterwards (design B.5).
 
 Targeted test run at 3.4c: 533 tests, 0 failures, 0 errors.
 
-Remaining: this documentation sync (3.5), then the Milestone 3 gates (full mvn test, spotless:check, coverage review,
-startup smoke test, SonarQube). Open items: design B.6 (O-1 to O-9).
+Milestone 3 gates: full mvn test 6476 tests, 0 failures, 0 errors, 10 skipped; startup smoke test passed; SonarQube
+reported 14 new-code issues, fixed in 0b1abd50 (a re-run after the next push is pending). Later: O-1 in 3f5a61f8 and
+O-2 in d1cd529e. Open items: design B.6 and B.7.

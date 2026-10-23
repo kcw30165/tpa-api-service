@@ -281,8 +281,7 @@ D-11 to D-13 (session-cached config) and D-14 stay.
 
 Status: Milestone 3 sub-tasks 3.1 to 3.4c are committed on refactor/personal-information (HEAD 9fcd0317 when this
 section was written). This section records the implemented behaviour. Where it differs from the main text or from the
-amendment of 2026-10-22, this section wins. The Milestone 3 gates (full test run, coverage review, startup smoke test,
-SonarQube) have not been run yet.
+amendment of 2026-10-22, this section wins. Gate results and the work after 3.5 are recorded in B.7.
 
 ### B.1 Sub-task record
 
@@ -299,7 +298,7 @@ SonarQube) have not been run yet.
 | 3.4a | e053f1a3 | PersonalInformationFieldAccessValidator (D-13, D-14) |
 | 3.4b | 72a03537 | PersonalInformationAccessConfigService; the validator ignores UI-only fields |
 | 3.4c | 9fcd0317 | PUT controller wiring through PersonalInformationFieldAccessChecker; the static email.required rule removed |
-| 3.5 | this commit | documentation sync |
+| 3.5 | 5b669721 | documentation sync |
 
 The plan delivered 3.4 as the three sub-tasks 3.4a, 3.4b and 3.4c.
 
@@ -339,8 +338,18 @@ The plan delivered 3.4 as the three sub-tasks 3.4a, 3.4b and 3.4c.
    - A rejection decided from a cached entry triggers one more TRPGetMemberInfo call and a revalidation (D-13), so a stale
      cache cannot block a member. A rejection decided from a freshly fetched config is final.
 4. The YAML errors and the access errors are merged (YAML first, duplicates dropped). If any error remains, the controller
-   returns MutationResponse.failure(VALIDATION_FAILED, errors) and nothing is mapped or executed.
+   returns MutationResponse.failure(VALIDATION_FAILED, errors) and nothing is mapped or executed. The HTTP status of
+   that response is 400 (step 6).
 5. Otherwise requestMapper.toCommand, the update use case and the response mapper run as before (D-02 unchanged).
+6. The HTTP status is set from the body status before the response is returned (PersonalInformationController
+   withHttpStatus, through HttpStatusClassification.classify): VALIDATION_FAILED is 400, BUSINESS_REJECTED is 422 and
+   SYSTEM_ERROR is 503; UPDATED, PARTIAL_SUCCESS and the other success-like statuses stay 200. The downstream always
+   answers HTTP 200, so the failure bodies that PersonalInformationUpdateResponseMapper builds from downstream results
+   get the same treatment. The body is unchanged, including the per-account result array (O-2).
+7. A failed TRPGetMemberInfo lookup (cache miss, no session cookie, or the refetch of step 3) is mapped by
+   PersonalInformationAccessConfigService to PersonalInformationRetrievalException. ApiExceptionHandler returns it as
+   HTTP 503 with status SYSTEM_ERROR, type SYSTEM and error code err.personal-information.retrieval.unavailable, with no
+   message and no downstream detail (O-1).
 
 ### B.4 Error codes
 
@@ -349,35 +358,32 @@ The plan delivered 3.4 as the three sub-tasks 3.4a, 3.4b and 3.4c.
 | personalInformation.field.notEditable | a submitted field is HIDDEN, READONLY, blank, unrecognised or absent in the config | code and field target only, message null |
 | personalInformation.field.required | an EDITABLE_COM field is submitted blank (not for the two line-1 fields) | code and field target only, message null |
 | personalInformation.emailAddress.required | fallback of PersonalInformationUpdateErrorMapper for a downstream REQUIRED error on emailAddress, now that no YAML required rule exists | message "This field is required." |
+| err.personal-information.retrieval.unavailable | TRPGetMemberInfo cannot be fetched on a PUT cache miss, without a session cookie, or on the refetch | HTTP 503, status SYSTEM_ERROR, type SYSTEM, code only, message null (O-1) |
 
 The static YAML rule email.required (code personalInformation.email.required) no longer exists.
 
 ### B.5 Deviations from the design text
 
-1. D-13 and the 503 row of section 3.2: when TRPGetMemberInfo cannot be fetched on a cache miss or a refetch, the failure
-   is propagated unchanged and the existing ApimException mapping applies, which is the HTTP status carried by the
-   exception (BAD_GATEWAY for an invalid or failed APIM response, as recorded in the 3.4 capture), not HTTP 503 SYSTEM_ERROR
-   with err.personal-information.retrieval.unavailable. ErrorCodes has no personal-information retrieval code. Reason: a
-   new exception and handler would conflict with the ApiExceptionHandler work on refactor/exception-handling. Pending
-   Nick's decision (O-1).
-2. D-14 and the section 3.2 table: a rejection returned by the controller (YAML errors, access errors) is
-   MutationResponse.failure(VALIDATION_FAILED, errors) inside Mono<MutationResponse<...>>. A search of src/main (3.5
-   capture) found no ResponseBodyAdvice, @ResponseStatus or filter that turns the body status into the HTTP status;
-   only controllers that return ResponseEntity use HttpStatusClassification (VALIDATION_FAILED maps to 400 there). The
-   delivered HTTP status of these rejections is therefore expected to be 200 with body status VALIDATION_FAILED, the
-   same as the validation path before this refactor, not the 400 written in D-14.
-   UpdatePersonalInformationControllerContractTest pins 400 only for a missing Account-Ref, which comes from
-   ApiExceptionHandler. Not verified with a running request. Pending Nick's decision (O-2).
+None open. Both deviations recorded in the first version of this section were resolved by decisions of 2026-10-23.
+
+1. D-13 and the 503 row of section 3.2 (decision O-1): a failed TRPGetMemberInfo lookup on the PUT returns HTTP 503
+   with status SYSTEM_ERROR and error code err.personal-information.retrieval.unavailable, as designed. Implemented in
+   commit 3f5a61f8: PersonalInformationRetrievalException, ErrorCodes.PERSONAL_INFORMATION_RETRIEVAL_UNAVAILABLE, one
+   ApiExceptionHandler method, and the mapping in PersonalInformationAccessConfigService. When this branch meets
+   refactor/exception-handling, the handler method becomes one mapping for PersonalInformationRetrievalException there.
+2. D-14 and the section 3.2 table (decision O-2, widened): the downstream always answers HTTP 200, so every failure of
+   the PUT is given a non-200 status derived from the body status through HttpStatusClassification: VALIDATION_FAILED
+   400, BUSINESS_REJECTED 422, SYSTEM_ERROR 503; PARTIAL_SUCCESS and success stay 200. D-14 named 400 for the rejections
+   the controller builds itself; as built the rule also covers the failure bodies built from downstream results. The
+   body is unchanged. Implemented in commit d1cd529e: PersonalInformationController.withHttpStatus. The return type
+   stays Mono<MutationResponse<List<...>>>, which UpdatePersonalInformationControllerResultArrayArchitectureGuardTest
+   pins.
 
 ### B.6 Open items
 
-- O-1 The 503 behaviour of D-13 (B.5).
-- O-2 HTTP status of a controller-returned VALIDATION_FAILED (B.5, item 2): expected to be 200, not 400. The same
-  applies to the failure bodies built by PersonalInformationUpdateResponseMapper (D-02, unchanged). Options: keep it
-  (the frontend already receives the body status and D-02 keeps the response shape), or have the PUT return a
-  ResponseEntity with HttpStatusClassification.classify(status), which changes the PUT contract and requires a review
-  of the controller guard tests first. The ApiExceptionHandler rewrite on refactor/exception-handling is the natural
-  place for that change. A request against a running instance settles the current status.
+- O-1 Closed 2026-10-23: a failed TRPGetMemberInfo lookup on the PUT returns HTTP 503 SYSTEM_ERROR (B.5, item 1).
+- O-2 Closed 2026-10-23: the PUT sets the HTTP status from the body status: 400, 422 or 503; PARTIAL_SUCCESS and success
+  stay 200 (B.5, item 2).
 - O-3 get-personal-information-response.json is not regenerated. Known stale content: the static email.required rule, the
   two completeWhenStarted rules and the aeoiReminder rule.
 - O-4 FE has to handle two codes for a blank email: personalInformation.field.required from the access check and
@@ -386,7 +392,23 @@ The static YAML rule email.required (code personalInformation.email.required) no
   the YAML check already rejects the request.
 - O-6 The display text of the removed country rules is still in the page YAML until the label-removal branch.
 - O-7 U-1 (overseasPhoneExtension) and U-2 (country depends on address) are unchanged: unconfirmed, not applied.
-- O-8 The Spring wiring of the new beans (cache service, access config service, checker) is proven only by the startup
-  smoke test of the Milestone 3 gates.
+- O-8 Closed: the startup smoke test passed on 2026-10-23 at 5b669721, which proves the wiring of the cache service, the
+  access config service and the checker. The later O-1 and O-2 changes add no bean.
 - O-9 README.md and docs/refactor/2-controller/controller-refactoring-endpoint-inventory.md were edited for the GET shape in
   Milestone 1 and were not re-read in 3.5.
+- O-10 Frontend impact of O-2: where the PUT used to answer 200 with a failure body it now answers 400, 422 or 503 with
+  the same body, so the frontend has to read the body of these responses. WebTestClient tests cover the HTTP stack; the
+  status was not verified against a running instance.
+
+### B.7 After 3.5 (2026-10-23)
+
+| Step | Commit | Result |
+|---|---|---|
+| Milestone 3 gate | 5b669721 | full mvn test: 6476 tests, 0 failures, 0 errors, 10 skipped; startup smoke test passed |
+| SonarQube new-code fixes | 0b1abd50 | 14 issues (1 bug, 6 in assertion lambdas, 2 matchers, 2 shadowed fields, 3 other rules) fixed; a re-run after the next push is pending |
+| O-1: HTTP 503 | 3f5a61f8 | a failed member-info lookup on the PUT returns 503 SYSTEM_ERROR |
+| O-2: HTTP status | d1cd529e | the PUT sets 400, 422 or 503 from the body status |
+
+Coverage review (Milestone 3 gate): 356 of 359 coverable changed lines (99.2%) and 187 of 208 changed-line branches
+(89.9%) covered. The new PersonalInformationFieldAccessValidator is at 93.2% instruction and 71.0% branch coverage,
+mostly defensive null guards; flagged, not blocking.
