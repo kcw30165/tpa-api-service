@@ -667,11 +667,6 @@ bff-pages:
                 dataType: string
                 controlType: email
                 validations:
-                  - id: email.required
-                    type: required
-                    code: personalInformation.email.required
-                    messageCode: personalInformation.email.required.message
-                    severity: error
                   - id: email.invalid
                     type: pattern
                     value: ^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$

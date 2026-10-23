@@ -77,7 +77,8 @@ class PersonalInformationControllerCacheTest {
         mock(PersonalInformationUpdateWebMapper.class),
         mock(PersonalInformationUpdateResponseMapper.class),
         mock(PersonalInformationUpdateYamlValidator.class),
-        reader);
+        reader,
+        PersonalInformationAccessCheckerTestSupport.passing());
   }
 
   @Test

@@ -69,7 +69,7 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
 
     Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> response =
         controller
-            .update(Mono.just(request), null)
+            .update(Mono.just(request), null, null)
             .contextWrite(
                 context ->
                     context.put(
@@ -137,6 +137,7 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
         requestMapper,
         responseMapper,
         validator,
-        NO_SESSION);
+        NO_SESSION,
+        PersonalInformationAccessCheckerTestSupport.passing());
   }
 }

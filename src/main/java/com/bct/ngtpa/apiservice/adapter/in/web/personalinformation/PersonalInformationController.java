@@ -13,6 +13,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
+import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationFieldAccessChecker;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
@@ -24,6 +25,7 @@ import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextR
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +55,7 @@ public class PersonalInformationController {
   private final PersonalInformationUpdateResponseMapper responseMapper;
   private final PersonalInformationUpdateYamlValidator validator;
   private final AuthenticatedSessionCookieReader sessionCookieReader;
+  private final PersonalInformationFieldAccessChecker accessChecker;
 
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
   public Mono<MutationResponse<PersonalInformationResultResponse>> getPersonalInformation(
@@ -98,7 +101,8 @@ public class PersonalInformationController {
   public Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> update(
       @RequestBody Mono<UpdatePersonalInformationRequest> request,
       @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false)
-          String acceptLanguage) {
+          String acceptLanguage,
+      ServerWebExchange exchange) {
     return Mono.deferContextual(
         contextView ->
             currentPortalAccessContextResolver
@@ -108,7 +112,8 @@ public class PersonalInformationController {
                         request.flatMap(
                             body -> {
                               String resolvedLocale = resolveLanguage(contextView, acceptLanguage);
-                              List<ApiError> errors =
+                              String accountRef = requireAccountRef(portalAccessContext);
+                              List<ApiError> yamlErrors =
                                   validator == null
                                       ? List.of()
                                       : validator.validate(
@@ -117,24 +122,45 @@ public class PersonalInformationController {
                                           accountEnv(portalAccessContext),
                                           trustCode(portalAccessContext),
                                           schemeType(portalAccessContext));
-                              if (!errors.isEmpty()) {
-                                return Mono.just(
-                                    MutationResponse.failure(ApiStatus.VALIDATION_FAILED, errors));
-                              }
-                              var mapped = requestMapper.toCommand(body.applyToAllAccounts(), body);
-                              var command =
-                                  new com.bct.ngtpa.apiservice.application.dto
-                                      .UpdatePersonalInformationCommand(
-                                      mapped.applyToAllAccounts(),
-                                      mapped.updateFields(),
-                                      accountEnv(portalAccessContext),
-                                      portalAccessContext.account().policyNo(),
-                                      portalAccessContext.account().certNo(),
-                                      portalAccessContext.actor().actorUserId(),
-                                      portalAccessContext.actor().actorUserRole());
-                              return updatePersonalInformationUseCase
-                                  .execute(command)
-                                  .map(responseMapper::toResponse);
+                              return accessChecker
+                                  .check(
+                                      body,
+                                      new GetPersonalInformationCommand(
+                                          resolvedLocale,
+                                          accountEnv(portalAccessContext),
+                                          portalAccessContext.account().policyNo(),
+                                          portalAccessContext.account().certNo(),
+                                          portalAccessContext.actor().actorUserId(),
+                                          portalAccessContext.actor().actorUserRole()),
+                                      sessionCookieReader.read(exchange),
+                                      accountRef,
+                                      requestIdFrom(contextView))
+                                  .flatMap(
+                                      accessErrors -> {
+                                        List<ApiError> errors =
+                                            mergeErrors(yamlErrors, accessErrors);
+                                        if (!errors.isEmpty()) {
+                                          return Mono.just(
+                                              MutationResponse.failure(
+                                                  ApiStatus.VALIDATION_FAILED, errors));
+                                        }
+                                        var mapped =
+                                            requestMapper.toCommand(
+                                                body.applyToAllAccounts(), body);
+                                        var command =
+                                            new com.bct.ngtpa.apiservice.application.dto
+                                                .UpdatePersonalInformationCommand(
+                                                mapped.applyToAllAccounts(),
+                                                mapped.updateFields(),
+                                                accountEnv(portalAccessContext),
+                                                portalAccessContext.account().policyNo(),
+                                                portalAccessContext.account().certNo(),
+                                                portalAccessContext.actor().actorUserId(),
+                                                portalAccessContext.actor().actorUserRole());
+                                        return updatePersonalInformationUseCase
+                                            .execute(command)
+                                            .map(responseMapper::toResponse);
+                                      });
                             })));
   }
 
@@ -142,6 +168,16 @@ public class PersonalInformationController {
       FormPageResponse<FormSchemaResponse> formPage) {
     return MutationResponse.success(
         ApiStatus.SUCCESS, PersonalInformationResultResponse.from(formPage), List.of());
+  }
+
+  private static List<ApiError> mergeErrors(List<ApiError> first, List<ApiError> second) {
+    List<ApiError> merged = new ArrayList<>(first);
+    for (ApiError error : second) {
+      if (!merged.contains(error)) {
+        merged.add(error);
+      }
+    }
+    return merged;
   }
 
   private String requireAccountRef(PortalAccessContext context) {

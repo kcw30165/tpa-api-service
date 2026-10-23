@@ -97,10 +97,9 @@ class PersonalInformationPhoneEmailValidationYamlTest {
   void emailRulesAreMultipleIndependentRules() {
     List<Map<String, Object>> rules = validations(field("emailAddress"));
 
-    Map<String, Object> required = rule(rules, "email.required");
-    assertThat(required.get("type")).isEqualTo("required");
-    assertThat(required.get("code")).isEqualTo("personalInformation.email.required");
-    assertThat(required.get("messageCode")).isEqualTo("personalInformation.email.required.message");
+    assertThat(rules)
+        .as("D-25: required comes from the downstream config, not from a static YAML rule")
+        .noneMatch(rule -> "email.required".equals(rule.get("id")));
 
     Map<String, Object> email = rule(rules, "email.invalid");
     assertThat(email.get("type")).isEqualTo("pattern");

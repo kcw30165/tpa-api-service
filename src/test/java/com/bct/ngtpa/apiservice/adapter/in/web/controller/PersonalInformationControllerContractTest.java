@@ -193,6 +193,7 @@ class PersonalInformationControllerContractTest {
         requestMapper,
         responseMapper,
         validator,
-        NO_SESSION);
+        NO_SESSION,
+        PersonalInformationAccessCheckerTestSupport.passing());
   }
 }

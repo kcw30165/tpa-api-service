@@ -96,7 +96,7 @@ class UpdatePersonalInformationControllerTest {
 
     StepVerifier.create(
             controller
-                .update(Mono.just(request), null)
+                .update(Mono.just(request), null, null)
                 .contextWrite(
                     context ->
                         context.put(
@@ -158,6 +158,7 @@ class UpdatePersonalInformationControllerTest {
         requestMapper,
         responseMapper,
         validator,
-        NO_SESSION);
+        NO_SESSION,
+        PersonalInformationAccessCheckerTestSupport.passing());
   }
 }
