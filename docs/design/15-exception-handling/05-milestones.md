@@ -8,6 +8,8 @@ assertions, not on compilation. Pin-only tests (no behaviour change) have no fai
 
 ### M1 - Central exception handling (no public behaviour change)
 
+**Status: merged to `dev` via merge commit `62029df45a85b31657be220a591c5adfe4eca51b`.**
+
 <table>
 <tr>
 <th>  
@@ -575,5 +577,5 @@ handlers, appender, dispatcher and adapters, each uncovered branch justified in 
 
 ### Push and MR
 
-One MR per milestone, after that milestone's gate passes (not held until M4). Jenkins/runtime
+Use one new branch and one MR per milestone. Open that milestone's MR only after its gate passes; merge it with a merge commit (no squash), then start the next milestone from the updated `origin/dev`. Jenkins/runtime
 values for PROD/DR (ERROR_ALERT_ENABLED=true, recipients) are a separate pipeline change.
