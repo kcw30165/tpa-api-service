@@ -8,12 +8,8 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 
 /**
- * Sub-task 1.4: verbatim move of {@code ApiExceptionHandler.handleFundPriceRetrievalException} and
- * {@code handleFundPriceInvalidDateException}'s mappings.
- *
- * <p>Sub-task 1.7 (M1 closure, Option A): both mappings now built via {@link
- * ErrorDescriptor#single} instead of the record constructor directly (one {@link
- * MessagePolicy#RESOLVE} entry each); no behaviour change.
+ * Mappings for {@link FundPriceRetrievalException} and {@link FundPriceInvalidDateException}. Both
+ * built via {@link ErrorDescriptor#single} (one {@link MessagePolicy#RESOLVE} entry each).
  */
 public final class FundPriceExceptionMappings {
 

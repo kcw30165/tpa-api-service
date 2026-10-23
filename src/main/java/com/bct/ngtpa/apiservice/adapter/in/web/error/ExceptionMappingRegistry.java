@@ -15,11 +15,9 @@ import java.util.Objects;
  * <p>Registering two mappings for the same {@link ExceptionMapping#exceptionType()} fails fast at
  * construction time (startup), since the registry is built once as a singleton bean.
  *
- * <p>Sub-task 1.4: wired into {@code ApiExceptionHandler} via {@code
- * ExceptionMappingRegistryConfig}. Added {@link #diagnosticMessage(Throwable)}, sharing the same
- * nearest-superclass walk as {@link #resolve(Throwable, ErrorContext)} through a common private
- * {@code resolveMapping} method, so both the response descriptor and the log's diagnostic text come
- * from the same resolved mapping.
+ * <p>{@link #diagnosticMessage(Throwable)} shares the same nearest-superclass walk as {@link
+ * #resolve(Throwable, ErrorContext)} through a common private {@code resolveMapping} method, so
+ * both the response descriptor and the log's diagnostic text come from the same resolved mapping.
  */
 public final class ExceptionMappingRegistry {
 

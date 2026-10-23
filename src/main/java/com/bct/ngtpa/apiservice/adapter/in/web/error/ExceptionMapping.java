@@ -7,14 +7,12 @@ package com.bct.ngtpa.apiservice.adapter.in.web.error;
  * construction time (startup).
  *
  * <p>{@link #describe(Throwable, ErrorContext)} receives the concrete exception instance so a
- * mapping can read instance state (for example {@code ApimException.getStatusCode()}) the same way
- * the current {@code ApiExceptionHandler.handleXxx} methods do today.
+ * mapping can read instance state (for example {@code ApimException.getStatusCode()}).
  *
- * <p>Sub-task 1.4: added {@link #diagnosticMessage(Throwable)} as a default method (not a breaking
- * change to this already-committed interface) so a mapping can supply the same non-exception
- * diagnostic text some handlers log today (for example {@code
- * RegistrationLookupDownstreamException}'s reason-qualified message), while every mapping that does
- * not override it keeps the universal default of {@code exception.getMessage()}.
+ * <p>{@link #diagnosticMessage(Throwable)} is a default method so a mapping can supply its own
+ * non-exception diagnostic text (for example {@code RegistrationLookupDownstreamException}'s
+ * reason-qualified message), while every mapping that does not override it keeps the universal
+ * default of {@code exception.getMessage()}.
  *
  * @param <T> the exception type this mapping describes
  */

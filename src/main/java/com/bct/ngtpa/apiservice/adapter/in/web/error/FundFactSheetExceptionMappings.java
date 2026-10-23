@@ -7,12 +7,9 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 
 /**
- * Sub-task 1.7 (M1 closure, Option A): moves {@code
- * ApiExceptionHandler.handleFundFactSheetRetrievalException}'s mapping out of the handler.
- *
- * <p>Built via {@link ErrorDescriptor#singleWithoutMessage} ({@link MessagePolicy#NONE}), since
- * this handler has always passed a hard-coded {@code null} message (never calling {@code
- * resolvePublicMessage}), confirmed unchanged by the sub-task 1.6b characterization pack (O-12).
+ * Mapping for {@link FundFactSheetRetrievalException}. Built via {@link
+ * ErrorDescriptor#singleWithoutMessage} ({@link MessagePolicy#NONE}), since this exception's public
+ * message is always {@code null} (O-12, docs/design/15-exception-handling/06-open-items.md).
  */
 public final class FundFactSheetExceptionMappings {
 

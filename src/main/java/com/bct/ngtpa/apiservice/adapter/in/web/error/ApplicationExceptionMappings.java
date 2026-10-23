@@ -10,19 +10,12 @@ import java.util.function.Function;
 import org.springframework.http.HttpStatus;
 
 /**
- * Sub-task 1.4: verbatim move of the mappings that originally went through {@code
- * ApiExceptionHandler}'s private {@code handleApplicationException(ApplicationException ex,
- * ServerWebExchange exchange, HttpStatus status, ApiStatus apiStatus, String errorType)} helper:
- * the generic {@link ApplicationException} handler itself, plus {@link
+ * Mappings for the generic {@link ApplicationException} handler, plus {@link
  * InvalidNotificationRequestException}, {@link InvalidContributionRequestException} and {@link
- * FundComparisonRequestInvalidException}, each of which only varied that helper's fixed {@code
- * apiStatus}/{@code errorType} arguments. All four always used {@code HttpStatus.BAD_REQUEST} and
- * {@code ex.getErrorCode()}, so a single private {@link #fixed} factory reproduces every one of
- * them exactly.
- *
- * <p>Sub-task 1.7 (M1 closure, Option A): {@link #fixed} now builds via {@link
- * ErrorDescriptor#single} instead of the record constructor directly (one {@link
- * MessagePolicy#RESOLVE} entry); no behaviour change for any of the four mappings.
+ * FundComparisonRequestInvalidException}, each of which only varies a fixed {@code apiStatus}/
+ * {@code errorType} pair. All four always use {@code HttpStatus.BAD_REQUEST} and {@code
+ * ex.getErrorCode()}, so a single private {@link #fixed} factory builds every one of them, via
+ * {@link ErrorDescriptor#single} (one {@link MessagePolicy#RESOLVE} entry).
  */
 public final class ApplicationExceptionMappings {
 

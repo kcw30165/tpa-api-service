@@ -46,11 +46,8 @@ public record ErrorDescriptor(
   }
 
   /**
-   * Reproduces the pre-sub-task-1.7 single-error constructor shape exactly: one {@link
-   * MessagePolicy#RESOLVE} entry, no extra log fields. Every mapping that was already correct
-   * (every one except AccountBalance, AccountGainLoss, FundFactSheet and WebExchangeBind) changes
-   * only by replacing {@code new ErrorDescriptor(...)} with {@code ErrorDescriptor.single(...)},
-   * same arguments, same order.
+   * Convenience factory for the common one-entry case: one {@link MessagePolicy#RESOLVE} entry, no
+   * extra log fields.
    */
   public static ErrorDescriptor single(
       HttpStatusCode httpStatus,
@@ -75,7 +72,7 @@ public record ErrorDescriptor(
    * Same as {@link #single} but with {@link MessagePolicy#NONE}: used by {@code
    * AccountBalanceRetrievalException}, {@code AccountGainLossRetrievalException} and {@code
    * FundFactSheetRetrievalException}'s mappings, whose public {@code message} field is always
-   * {@code null} today (confirmed by the sub-task 1.6b characterization pack).
+   * {@code null} (O-12, docs/design/15-exception-handling/06-open-items.md).
    */
   public static ErrorDescriptor singleWithoutMessage(
       HttpStatusCode httpStatus,

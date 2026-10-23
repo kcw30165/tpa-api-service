@@ -8,23 +8,20 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Sub-task 1.7 (M1 closure, Option A): moves {@code
- * ApiExceptionHandler.handleAccountBalanceRetrievalException}'s mapping out of the handler.
+ * Mapping for {@link AccountBalanceRetrievalException}. Status, {@code ApiStatus} and the error
+ * entries all come from the single source of truth, {@link
+ * AccountBalanceRetrievalResponsePolicy#map} -- this mapping only re-reads that policy's
+ * already-built {@code ResponseEntity} and copies its errors' type/code/targets into {@link
+ * ErrorEntry} values, each forced to {@link MessagePolicy#NONE} since the policy's own {@code
+ * ApiError} entries already carry {@code message = null} (O-12,
+ * docs/design/15-exception-handling/06-open-items.md). The policy class itself is not touched by
+ * this mapping and its own tests ({@code AccountBalanceRetrievalResponsePolicyTest}) are
+ * unaffected.
  *
- * <p>Status, {@code ApiStatus} and the error entries all come from the single source of truth,
- * {@link AccountBalanceRetrievalResponsePolicy#map}, unchanged -- this mapping only re-reads that
- * policy's already-built {@code ResponseEntity} and copies its errors' type/code/targets into
- * {@link ErrorEntry} values, each forced to {@link MessagePolicy#NONE} since the policy's own
- * {@code ApiError} entries already carry {@code message = null} (confirmed by sub-task 1.6b's
- * characterization pack, O-12). The policy class itself is not touched by this sub-task and its own
- * tests ({@code AccountBalanceRetrievalResponsePolicyTest}) are unaffected.
- *
- * <p>A2 (approved 2026-10-22): when {@link AccountBalanceRetrievalException#normalizationFailure()}
- * is present, its value-free diagnostic fields ({@code collection}, {@code rowIndex}, {@code
- * field}, {@code reason}) are returned as {@link ErrorDescriptor#extraLogFields()} instead of being
- * logged as a separate {@code account.balance.normalization.failed} event before the {@code
- * http.api.error} event, as the pre-1.7 inline handler did. {@link ErrorEventLogger} merges these
- * into the single {@code http.api.error} event it already writes.
+ * <p>When {@link AccountBalanceRetrievalException#normalizationFailure()} is present, its
+ * value-free diagnostic fields ({@code collection}, {@code rowIndex}, {@code field}, {@code
+ * reason}) are returned as {@link ErrorDescriptor#extraLogFields()}, which {@link ErrorEventLogger}
+ * merges into the single {@code http.api.error} event it writes.
  */
 public final class AccountBalanceExceptionMappings {
 
