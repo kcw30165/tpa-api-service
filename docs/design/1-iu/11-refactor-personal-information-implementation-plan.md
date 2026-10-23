@@ -1,6 +1,6 @@
 # Personal Information Refactor — Implementation Plan
 
-> **Amended 2026-10-22 (requirement change).** Where this document conflicts with the section "Amendment 2026-10-22" at the end, the amendment wins.
+> **Amended 2026-10-22 (requirement change).** Where this document conflicts with the section "Amendment 2026-10-22" at the end, the amendment wins. The section "As-built 2026-10-23 (sub-task 3.5)" at the end records the implemented behaviour and wins over both.
 
 
 Design: `10-refactor-personal-information-design.md`. Branch `refactor/personal-information`.
@@ -71,3 +71,21 @@ Then the Milestone 3 gates.
 
 Open items carried: U-1, U-2 (country rule unconfirmed). The BRD section 9 deviation is withdrawn.
 Out of scope: PIN verification (feature/step-up-pin-verification), label removal (separate branch).
+
+## As-built 2026-10-23 (sub-task 3.5)
+
+Sub-tasks 3.1 to 3.4c are committed; the commits are listed in design section B.1. The planned 3.4 was delivered as three
+sub-tasks.
+
+| Sub-task | Title | Commit |
+|---|---|---|
+| 3.4a | PUT field-access validator (new class, not wired) | e053f1a3 |
+| 3.4b | access-config lookup service and UI-only field fix | 72a03537 |
+| 3.4c | controller wiring, one refetch on a cached rejection, email.required removed | 9fcd0317 |
+
+Differences from the planned 3.4: no HTTP 503 handler (design B.5, O-1) and no group presence exclusion (D-27).
+
+Targeted test run at 3.4c: 533 tests, 0 failures, 0 errors.
+
+Remaining: this documentation sync (3.5), then the Milestone 3 gates (full mvn test, spotless:check, coverage review,
+startup smoke test, SonarQube). Open items: design B.6 (O-1 to O-9).

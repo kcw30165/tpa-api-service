@@ -1,6 +1,6 @@
 # Personal Information Refactor — Design
 
-> **Amended 2026-10-22 (requirement change).** Where this document conflicts with the section "Amendment 2026-10-22" at the end, the amendment wins.
+> **Amended 2026-10-22 (requirement change).** Where this document conflicts with the section "Amendment 2026-10-22" at the end, the amendment wins. The section "As-built 2026-10-23 (sub-task 3.5)" at the end records the implemented behaviour and wins over both.
 
 
 Branch: `refactor/personal-information` (base `origin/dev` 92849aac). Owner: Nick (solution design approval).
@@ -276,3 +276,117 @@ D-11 to D-13 (session-cached config) and D-14 stay.
 - U-1 overseasPhoneExtension: now only affects conditional-required rules (no groups).
 - U-2 country-depends-on-address: unconfirmed; not applied (D-29).
 - Flag: the downstream config marks both addr1 and corr-addr1 as EDITABLE_COM; handled by D-25a until the downstream config can express the rule.
+
+## As-built 2026-10-23 (sub-task 3.5)
+
+Status: Milestone 3 sub-tasks 3.1 to 3.4c are committed on refactor/personal-information (HEAD 9fcd0317 when this
+section was written). This section records the implemented behaviour. Where it differs from the main text or from the
+amendment of 2026-10-22, this section wins. The Milestone 3 gates (full test run, coverage review, startup smoke test,
+SonarQube) have not been run yet.
+
+### B.1 Sub-task record
+
+| Sub-task | Commit | Result |
+|---|---|---|
+| 3.1 | 4dd81951 | FieldAccessResolver extracted (characterization tests 8ccbc175 and bf7adf8b came first) |
+| 3.1b | d8be3562 | FieldGroupAccessNormalizer added (D-19); removed again by 3.1c |
+| 3.1c | 2002b16e | Group normalization, the fieldGroups YAML, the group presence check and the Java country rule removed (D-27, D-29, D-30) |
+| 3.1d | a162568b | address.atLeastOneRequired narrowed to line 1 and evaluated only when both line-1 keys are submitted blank; the four country rules removed from the YAML (D-26, D-28, D-29) |
+| 3.1e | ec75a744 | conditionalRequired rules evaluated over submitted fields only (D-31) |
+| 3.1f | 05829af4 | requiredOverride false on the two line-1 fields (D-25a); an unrecognised, null or blank access value is HIDDEN and logged at ERROR (D-32, D-32a) |
+| 3.2 | c4f72153 | session cache entry and service, featureState key personal-information.config (D-11, D-12) |
+| 3.3 | bbb6bea4 | GET writes the config to the session; a null config value becomes blank |
+| 3.4a | e053f1a3 | PersonalInformationFieldAccessValidator (D-13, D-14) |
+| 3.4b | 72a03537 | PersonalInformationAccessConfigService; the validator ignores UI-only fields |
+| 3.4c | 9fcd0317 | PUT controller wiring through PersonalInformationFieldAccessChecker; the static email.required rule removed |
+| 3.5 | this commit | documentation sync |
+
+The plan delivered 3.4 as the three sub-tasks 3.4a, 3.4b and 3.4c.
+
+### B.2 GET as built
+
+- The controller reads the session cookie and the request id, requires Account-Ref, and calls
+  GetPersonalInformationUseCase.executeAndCache(command, sessionId, accountRef, requestId). The command does not carry
+  accountRef (GetPersonalInformationCommandBoundaryGuardTest).
+- GetPersonalInformationCachingUseCase wraps GetPersonalInformationService. After a successful fetch it writes
+  PersonalInformationConfigCacheEntry (accountRef, policyNo, item id to config value) through
+  PersonalInformationConfigCacheService. A missing session, an empty config, an invalid entry or a failed write is logged
+  with a reason and skipped: the GET never fails because of the cache. Each GET replaces the entry of the session.
+- GetPersonalInformationService.extractConfig turns a null config value into an empty string (it used to become the text
+  "null").
+- Field access is resolved per field by the shared FieldAccessResolver: HIDDEN is omitted; READONLY is readonly true;
+  EDITABLE_COM is required true unless the field has requiredOverride false; EDITABLE_OPTION is neither. A non-blank
+  value outside these four, and a null or blank value, are treated as HIDDEN and logged at ERROR with item id and value.
+- requiredOverride false is set in the YAML on residentialAddressLine1 and mailingAddressLine1 only.
+
+### B.3 PUT as built
+
+1. The controller resolves the portal access context and requires Account-Ref. A blank Account-Ref is rejected with
+   PortalAccessContextResolutionException, as in the GET.
+2. The YAML validator checks the submitted fields: format rules on non-blank values (D-09), conditional-required rules
+   (D-31) and address.atLeastOneRequired (D-28).
+3. PersonalInformationFieldAccessChecker always runs, also when step 2 found errors, so one response lists every error.
+   A request without submitted fields triggers no lookup.
+   - The config comes from PersonalInformationAccessConfigService.resolve: the session cache for this account and policy.
+     On a miss, or without a session cookie, there is one TRPGetMemberInfo call through the caching GET use case, which
+     also refreshes the cache.
+   - PersonalInformationFieldAccessValidator checks each submitted field that has both an apimBinding.data and an
+     apimBinding.config in the page YAML. HIDDEN, READONLY, a blank or unrecognised config value, or an item id absent
+     from the config gives personalInformation.field.notEditable. EDITABLE_COM (unless requiredOverride is false) with a
+     blank value gives personalInformation.field.required. EDITABLE_OPTION, or EDITABLE_COM with a value, is accepted.
+     UI-only fields (a config binding but no data binding, for example applyToAllMemberAccounts), fields without a config
+     binding and keys unknown to the YAML are ignored by this check.
+   - A rejection decided from a cached entry triggers one more TRPGetMemberInfo call and a revalidation (D-13), so a stale
+     cache cannot block a member. A rejection decided from a freshly fetched config is final.
+4. The YAML errors and the access errors are merged (YAML first, duplicates dropped). If any error remains, the controller
+   returns MutationResponse.failure(VALIDATION_FAILED, errors) and nothing is mapped or executed.
+5. Otherwise requestMapper.toCommand, the update use case and the response mapper run as before (D-02 unchanged).
+
+### B.4 Error codes
+
+| Code | When | Notes |
+|---|---|---|
+| personalInformation.field.notEditable | a submitted field is HIDDEN, READONLY, blank, unrecognised or absent in the config | code and field target only, message null |
+| personalInformation.field.required | an EDITABLE_COM field is submitted blank (not for the two line-1 fields) | code and field target only, message null |
+| personalInformation.emailAddress.required | fallback of PersonalInformationUpdateErrorMapper for a downstream REQUIRED error on emailAddress, now that no YAML required rule exists | message "This field is required." |
+
+The static YAML rule email.required (code personalInformation.email.required) no longer exists.
+
+### B.5 Deviations from the design text
+
+1. D-13 and the 503 row of section 3.2: when TRPGetMemberInfo cannot be fetched on a cache miss or a refetch, the failure
+   is propagated unchanged and the existing ApimException mapping applies, which is the HTTP status carried by the
+   exception (BAD_GATEWAY for an invalid or failed APIM response, as recorded in the 3.4 capture), not HTTP 503 SYSTEM_ERROR
+   with err.personal-information.retrieval.unavailable. ErrorCodes has no personal-information retrieval code. Reason: a
+   new exception and handler would conflict with the ApiExceptionHandler work on refactor/exception-handling. Pending
+   Nick's decision (O-1).
+2. D-14 and the section 3.2 table: a rejection returned by the controller (YAML errors, access errors) is
+   MutationResponse.failure(VALIDATION_FAILED, errors) inside Mono<MutationResponse<...>>. A search of src/main (3.5
+   capture) found no ResponseBodyAdvice, @ResponseStatus or filter that turns the body status into the HTTP status;
+   only controllers that return ResponseEntity use HttpStatusClassification (VALIDATION_FAILED maps to 400 there). The
+   delivered HTTP status of these rejections is therefore expected to be 200 with body status VALIDATION_FAILED, the
+   same as the validation path before this refactor, not the 400 written in D-14.
+   UpdatePersonalInformationControllerContractTest pins 400 only for a missing Account-Ref, which comes from
+   ApiExceptionHandler. Not verified with a running request. Pending Nick's decision (O-2).
+
+### B.6 Open items
+
+- O-1 The 503 behaviour of D-13 (B.5).
+- O-2 HTTP status of a controller-returned VALIDATION_FAILED (B.5, item 2): expected to be 200, not 400. The same
+  applies to the failure bodies built by PersonalInformationUpdateResponseMapper (D-02, unchanged). Options: keep it
+  (the frontend already receives the body status and D-02 keeps the response shape), or have the PUT return a
+  ResponseEntity with HttpStatusClassification.classify(status), which changes the PUT contract and requires a review
+  of the controller guard tests first. The ApiExceptionHandler rewrite on refactor/exception-handling is the natural
+  place for that change. A request against a running instance settles the current status.
+- O-3 get-personal-information-response.json is not regenerated. Known stale content: the static email.required rule, the
+  two completeWhenStarted rules and the aeoiReminder rule.
+- O-4 FE has to handle two codes for a blank email: personalInformation.field.required from the access check and
+  personalInformation.emailAddress.required from a downstream REQUIRED error.
+- O-5 The access check and the YAML check both run on every PUT, so a cache miss causes one TRPGetMemberInfo call even when
+  the YAML check already rejects the request.
+- O-6 The display text of the removed country rules is still in the page YAML until the label-removal branch.
+- O-7 U-1 (overseasPhoneExtension) and U-2 (country depends on address) are unchanged: unconfirmed, not applied.
+- O-8 The Spring wiring of the new beans (cache service, access config service, checker) is proven only by the startup
+  smoke test of the Milestone 3 gates.
+- O-9 README.md and docs/refactor/2-controller/controller-refactoring-endpoint-inventory.md were edited for the GET shape in
+  Milestone 1 and were not re-read in 3.5.
