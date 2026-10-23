@@ -239,6 +239,14 @@ class ExceptionMappingsTest {
   }
 
   @Test
+  void malformedBodyMappingDiagnosticMessageFallsBackToExceptionMessageWhenReasonBlank() {
+    var mapping = RequestValidationExceptionMappings.malformedBody();
+    var exception = new ServerWebInputException("");
+
+    assertEquals(exception.getMessage(), mapping.diagnosticMessage(exception));
+  }
+
+  @Test
   void invalidPersonalInformationUpdateMapping() {
     var mapping = PersonalInformationExceptionMappings.invalidUpdate();
     var exception = new InvalidPersonalInformationUpdateException("No fields were submitted.");
