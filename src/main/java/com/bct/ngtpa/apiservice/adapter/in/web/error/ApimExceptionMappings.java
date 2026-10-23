@@ -3,22 +3,16 @@ package com.bct.ngtpa.apiservice.adapter.in.web.error;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
-import org.springframework.util.StringUtils;
 
 /**
- * Mappings for {@link ApimProfileResolutionException} and {@link ApimException}, including the
- * {@code resolveApimErrorCode} logic specific to {@link ApimException}. Both are built via {@link
- * ErrorDescriptor#single} (one {@link MessagePolicy#RESOLVE} entry each).
+ * Mappings for {@link ApimProfileResolutionException} and {@link ApimException}. Both are built via
+ * {@link ErrorDescriptor#single} (one {@link MessagePolicy#RESOLVE} entry each).
  *
- * <p>Sub-task 1.11 (item 5, coverage closure): the {@code internalCode != null} guard in {@link
- * #profileResolution()} and the {@code StringUtils.hasText(errorCode)} guard in {@link
- * #upstream()}'s {@code resolveErrorCode} are defensive and provably unreachable via any real
- * exception instance -- {@link ApimProfileResolutionException#getInternalCode()} is hardcoded to
- * always return a non-null value, and {@link ApimException#getErrorCode()} is always normalized by
- * its constructor to a non-blank default. No test is added against these branches since they cannot
- * be hit without fabricating a non-representative subclass.
+ * <p>{@link ApimProfileResolutionException#getInternalCode()} is hardcoded to always return a
+ * non-null value, and {@link ApimException#getErrorCode()} is always normalized by its own
+ * constructor to a non-blank default, so neither mapping needs a null/blank guard on the
+ * exception's own code.
  */
 public final class ApimExceptionMappings {
 
@@ -34,15 +28,11 @@ public final class ApimExceptionMappings {
       @Override
       public ErrorDescriptor describe(
           ApimProfileResolutionException exception, ErrorContext context) {
-        String internalCode =
-            exception.getInternalCode() != null
-                ? exception.getInternalCode()
-                : "err.apim.profile.resolution.failed";
         return ErrorDescriptor.single(
             exception.getPublicStatus(),
             ApiStatus.SYSTEM_ERROR,
             "SYSTEM",
-            internalCode,
+            exception.getInternalCode(),
             List.of(),
             "http.api.error",
             LogLevel.ERROR,
@@ -69,17 +59,11 @@ public final class ApimExceptionMappings {
             exception.getStatusCode(),
             ApiStatus.SYSTEM_ERROR,
             "DOWNSTREAM_SYSTEM",
-            resolveErrorCode(exception),
+            exception.getErrorCode(),
             List.of(),
             "http.api.error",
             LogLevel.ERROR,
             false);
-      }
-
-      private String resolveErrorCode(ApimException exception) {
-        return StringUtils.hasText(exception.getErrorCode())
-            ? exception.getErrorCode()
-            : ErrorCodes.APIM_UPSTREAM_FAILURE;
       }
     };
   }
