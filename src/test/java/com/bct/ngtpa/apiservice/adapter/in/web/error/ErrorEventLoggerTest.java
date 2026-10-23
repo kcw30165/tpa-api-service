@@ -26,21 +26,11 @@ import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 
 /**
- * SonarQube fix (post-M1 quality gate): all calls to {@link ErrorEventLogger#log} updated to the
- * 6-parameter signature introduced to resolve java:S107 (status/errorCode/logAtError/
- * includeStackTrace are now carried by a single {@link ErrorLogDirective}). Also fixes java:S5785
- * in {@code omitsSanitizedMessageFieldWhenBothDiagnosticAndExceptionMessageAreBlank} (use
- * assertNull instead of a manual null-check assertion). No assertions or test intent changed.
- *
- * <p>Sub-task 1.7 (M1 closure, A2) adds {@link #mergesExtraFieldsIntoTheSameEventInInsertionOrder}
- * and {@link #defaultFourArgConstructorStillProducesNoExtraFields}, covering {@link
- * ErrorLogDirective}'s new 5th component and the backward-compatible 4-argument constructor every
- * pre-existing call site (production and the 7 tests above) keeps using unchanged.
- *
- * <p>Sub-task 1.8.2 (M1 closure, step 2 of 3) adds a second nested test block covering the new
- * 5-parameter instance method (no {@code loggingSanitizer} argument -- it is now a constructor
- * field on the bean). Every static-call test above is left completely unchanged, proving both call
- * styles coexist and produce byte-for-byte identical events.
+ * Verifies the {@code http.api.error} log event built by {@link ErrorEventLogger#log}: field shape
+ * and order, the ERROR/WARN and with/without-stack-trace branching, blank-message handling, and
+ * {@link ErrorLogDirective}'s extra-fields merge (both its 4-argument and 5-argument constructors).
+ * {@link ErrorEventLogger}'s static {@code log} method was removed in sub-task 1.11; every test
+ * below uses the {@code eventLogger} bean created in {@link #setUp()}.
  */
 class ErrorEventLoggerTest {
 
@@ -52,6 +42,7 @@ class ErrorEventLoggerTest {
   private Logger logger;
   private ListAppender<ILoggingEvent> listAppender;
   private LoggingSanitizer loggingSanitizer;
+  private ErrorEventLogger eventLogger;
 
   @BeforeEach
   void setUp() {
@@ -61,6 +52,7 @@ class ErrorEventLoggerTest {
     logger.addAppender(listAppender);
     MaskingProperties properties = new MaskingProperties();
     loggingSanitizer = new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(properties));
+    eventLogger = new ErrorEventLogger(loggingSanitizer);
   }
 
   @AfterEach
@@ -87,9 +79,8 @@ class ErrorEventLoggerTest {
 
   @Test
   void logsAtErrorWithoutStackTraceWhenLogAtErrorTrueAndIncludeStackTraceFalse() {
-    ErrorEventLogger.log(
+    eventLogger.log(
         logger,
-        loggingSanitizer,
         new ErrorLogDirective(
             HttpStatus.SERVICE_UNAVAILABLE, "err.system.unavailable", true, false),
         exchangeWithRequestId("req-1"),
@@ -116,9 +107,8 @@ class ErrorEventLoggerTest {
   void logsAtErrorWithStackTraceWhenIncludeStackTraceTrue() {
     var exception = new IllegalStateException("unexpected");
 
-    ErrorEventLogger.log(
+    eventLogger.log(
         logger,
-        loggingSanitizer,
         new ErrorLogDirective(HttpStatus.INTERNAL_SERVER_ERROR, "SYSTEM_UNEXPECTED", true, true),
         exchangeWithRequestId("req-2"),
         exception,
@@ -132,9 +122,8 @@ class ErrorEventLoggerTest {
 
   @Test
   void logsAtWarnWithoutStackTraceWhenLogAtErrorFalseAndIncludeStackTraceFalse() {
-    ErrorEventLogger.log(
+    eventLogger.log(
         logger,
-        loggingSanitizer,
         new ErrorLogDirective(
             HttpStatus.BAD_REQUEST, "err.request.validation.failed", false, false),
         exchangeWithRequestId("req-3"),
@@ -151,9 +140,8 @@ class ErrorEventLoggerTest {
   void logsAtWarnWithStackTraceWhenLogAtErrorFalseAndIncludeStackTraceTrue() {
     var exception = new IllegalArgumentException("invalid, with trace");
 
-    ErrorEventLogger.log(
+    eventLogger.log(
         logger,
-        loggingSanitizer,
         new ErrorLogDirective(HttpStatus.BAD_REQUEST, "err.request.validation.failed", false, true),
         exchangeWithRequestId("req-4"),
         exception,
@@ -171,9 +159,8 @@ class ErrorEventLoggerTest {
     MockServerWebExchange exchange =
         MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/fund-price"));
 
-    ErrorEventLogger.log(
+    eventLogger.log(
         logger,
-        loggingSanitizer,
         new ErrorLogDirective(HttpStatus.BAD_REQUEST, "err.code", false, false),
         exchange,
         new IllegalStateException("boom"),
@@ -185,9 +172,8 @@ class ErrorEventLoggerTest {
 
   @Test
   void fallsBackToExceptionMessageWhenDiagnosticMessageIsBlank() {
-    ErrorEventLogger.log(
+    eventLogger.log(
         logger,
-        loggingSanitizer,
         new ErrorLogDirective(HttpStatus.BAD_REQUEST, "err.code", false, false),
         exchangeWithRequestId("req-5"),
         new IllegalStateException("fallback message"),
@@ -199,9 +185,8 @@ class ErrorEventLoggerTest {
 
   @Test
   void omitsSanitizedMessageFieldWhenBothDiagnosticAndExceptionMessageAreBlank() {
-    ErrorEventLogger.log(
+    eventLogger.log(
         logger,
-        loggingSanitizer,
         new ErrorLogDirective(HttpStatus.BAD_REQUEST, "err.code", false, false),
         exchangeWithRequestId("req-6"),
         new IllegalStateException((String) null),
@@ -222,9 +207,8 @@ class ErrorEventLoggerTest {
     extraFields.put("field", "fund-code");
     extraFields.put("reason", "EMPTY");
 
-    ErrorEventLogger.log(
+    eventLogger.log(
         logger,
-        loggingSanitizer,
         new ErrorLogDirective(
             HttpStatus.SERVICE_UNAVAILABLE, "err.system.unavailable", true, false, extraFields),
         exchangeWithRequestId("req-7"),
@@ -243,9 +227,8 @@ class ErrorEventLoggerTest {
 
   @Test
   void defaultFourArgConstructorStillProducesNoExtraFields() {
-    ErrorEventLogger.log(
+    eventLogger.log(
         logger,
-        loggingSanitizer,
         new ErrorLogDirective(HttpStatus.BAD_REQUEST, "err.code", false, false),
         exchangeWithRequestId("req-8"),
         new IllegalStateException("boom"),
