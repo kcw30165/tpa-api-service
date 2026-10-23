@@ -7,12 +7,9 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 
 /**
- * Sub-task 1.4: verbatim move of {@code ApiExceptionHandler.handleCacheException}'s mapping. Logs
- * at ERROR without a stack trace because the cause carries raw Redis connection details (addresses,
- * passwords, cert paths) that must never reach application logs.
- *
- * <p>Sub-task 1.7 (M1 closure, Option A): built via {@link ErrorDescriptor#single} instead of the
- * record constructor directly (one {@link MessagePolicy#RESOLVE} entry); no behaviour change.
+ * Mapping for {@link CacheException}. Logs at ERROR without a stack trace because the cause carries
+ * raw Redis connection details (addresses, passwords, cert paths) that must never reach application
+ * logs. Built via {@link ErrorDescriptor#single} (one {@link MessagePolicy#RESOLVE} entry).
  */
 public final class CacheExceptionMappings {
 

@@ -7,12 +7,9 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 
 /**
- * Sub-task 1.4: verbatim move of {@code
- * ApiExceptionHandler.handleRegistrationLookupDownstreamException}'s mapping, including its
- * reason-qualified diagnostic message.
- *
- * <p>Sub-task 1.7 (M1 closure, Option A): built via {@link ErrorDescriptor#single} instead of the
- * record constructor directly (one {@link MessagePolicy#RESOLVE} entry); no behaviour change.
+ * Mapping for {@link RegistrationLookupDownstreamException}, including its reason-qualified
+ * diagnostic message. Built via {@link ErrorDescriptor#single} (one {@link MessagePolicy#RESOLVE}
+ * entry).
  */
 public final class RegistrationExceptionMappings {
 

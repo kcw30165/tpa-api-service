@@ -7,13 +7,10 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 
 /**
- * Sub-task 1.4: verbatim move of {@code
- * ApiExceptionHandler.handleFundComparisonRetrievalException}'s mapping. {@code
+ * Mapping for {@link FundComparisonRetrievalException}. {@code
  * FundComparisonRequestInvalidException} is mapped in {@link ApplicationExceptionMappings} since
- * its original handler used the shared {@code handleApplicationException} helper.
- *
- * <p>Sub-task 1.7 (M1 closure, Option A): built via {@link ErrorDescriptor#single} instead of the
- * record constructor directly (one {@link MessagePolicy#RESOLVE} entry); no behaviour change.
+ * its original handler used the shared {@code handleApplicationException} helper. Built via {@link
+ * ErrorDescriptor#single} (one {@link MessagePolicy#RESOLVE} entry).
  */
 public final class FundComparisonExceptionMappings {
 

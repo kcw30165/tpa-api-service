@@ -8,12 +8,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 
 /**
- * Sub-task 1.4: verbatim move of {@code ApiExceptionHandler.handleAuthenticationException} and
- * {@code handleAccessDeniedException}'s mappings.
- *
- * <p>Sub-task 1.7 (M1 closure, Option A): both mappings now built via {@link
- * ErrorDescriptor#single} instead of the record constructor directly (one {@link
- * MessagePolicy#RESOLVE} entry each); no behaviour change.
+ * Mappings for {@link AuthenticationException} and {@link AccessDeniedException}. Both are built
+ * via {@link ErrorDescriptor#single} (one {@link MessagePolicy#RESOLVE} entry each).
  */
 public final class SecurityExceptionMappings {
 
