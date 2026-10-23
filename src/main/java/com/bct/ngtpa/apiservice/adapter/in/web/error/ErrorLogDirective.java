@@ -5,18 +5,12 @@ import java.util.Objects;
 import org.springframework.http.HttpStatusCode;
 
 /**
- * SonarQube fix (java:S107): groups the four primitive values {@link ErrorEventLogger#log} used to
- * accept as separate parameters -- status, errorCode, logAtError, includeStackTrace -- into a
- * single parameter object. This brings {@code log(...)} from 9 parameters down to 6. Pure data
- * carrier; no behaviour change versus the previous 9-parameter signature.
- *
- * <p>Sub-task 1.7 (M1 closure, A2): gained a 5th component, {@code extraFields}, so a mapping's
- * {@link ErrorDescriptor#extraLogFields()} can be merged into the single {@code http.api.error}
- * event {@link ErrorEventLogger} writes, instead of that mapping logging a second event itself. The
- * pre-existing 4-argument constructor is kept (delegating to the 5-argument canonical constructor
- * with an empty map), so every call site written before this sub-task -- both production ({@code
- * ApiExceptionHandler.delegate}/{@code buildMutationErrorResponse}) and test ({@code
- * ErrorEventLoggerTest}'s 7 call sites) -- compiles and behaves unchanged.
+ * Groups the values {@link ErrorEventLogger#log} needs beyond the logger/exchange/exception/
+ * diagnostic-message arguments: {@code status}, {@code errorCode}, {@code logAtError}, {@code
+ * includeStackTrace}, and {@code extraFields} (merged into the single {@code http.api.error} event
+ * {@link ErrorEventLogger} writes, letting a mapping contribute extra fields without logging a
+ * second event). The 4-argument constructor is a convenience that defaults {@code extraFields} to
+ * an empty map.
  */
 public record ErrorLogDirective(
     HttpStatusCode status,

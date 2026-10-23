@@ -7,36 +7,25 @@ import java.util.Objects;
 import org.springframework.http.HttpStatusCode;
 
 /**
- * The complete, exception-agnostic description of how one failure must be rendered and logged:
- * every column of the sub-task 1.0 mapping table (HTTP status, {@link ApiStatus}, one or more
- * {@link ErrorEntry} values, log event name, {@link LogLevel}, and whether a stack trace is
- * attached).
+ * The complete, exception-agnostic description of how one failure must be rendered and logged: HTTP
+ * status, {@link ApiStatus}, one or more {@link ErrorEntry} values, log event name, {@link
+ * LogLevel}, whether a stack trace is attached, and {@code extraLogFields}.
  *
  * <p>An {@link ExceptionMapping} produces one of these per exception instance; {@link
- * ErrorResponseRenderer} and {@link ErrorEventLogger} (sub-task 1.3) consume it, via {@code
- * ApiExceptionHandler.delegate(...)}.
+ * ErrorResponseRenderer} and {@link ErrorEventLogger} consume it.
  *
- * <p>Sub-task 1.7 (M1 closure, Option A): {@code errorType}/{@code errorCode}/{@code targets} were
- * replaced by {@code errors}, a {@code List<ErrorEntry>}, so a single descriptor can express either
- * exactly one public error (every mapping before this sub-task, and every mapping that only ever
- * has one) or several (one {@link ErrorEntry} per field error for {@code
+ * <p>{@code errors} is a {@code List<ErrorEntry>} so a single descriptor can express either exactly
+ * one public error or several (one {@link ErrorEntry} per field error for {@code
  * WebExchangeBindException}). Each {@link ErrorEntry} carries its own {@link MessagePolicy},
- * letting {@code ApiExceptionHandler.delegate(...)} skip message resolution per entry instead of
- * per exception type, which is what let {@code AccountBalanceRetrievalException}, {@code
- * AccountGainLossRetrievalException} and {@code FundFactSheetRetrievalException} move into the
- * registry without changing their confirmed null-message contract (O-12,
- * docs/design/15-exception-handling/06-open-items.md). {@link #single} is a convenience factory
- * reproducing the exact previous constructor shape (one {@link MessagePolicy#RESOLVE} entry), so
- * the pre-existing 17 single-error mappings change by one line each: the constructor call becomes a
- * call to {@code ErrorDescriptor.single(...)} with the same arguments, in the same order.
+ * letting message resolution be skipped per entry instead of per exception type -- the contract
+ * {@code AccountBalanceRetrievalException}, {@code AccountGainLossRetrievalException} and {@code
+ * FundFactSheetRetrievalException} rely on for their null-message mappings (O-12,
+ * docs/design/15-exception-handling/06-open-items.md). {@link #single} and {@link
+ * #singleWithoutMessage} are convenience factories for the common one-entry case.
  *
- * <p>{@code extraLogFields} is new in this sub-task too: a mapping may contribute extra, value-free
- * key/value pairs that {@link ErrorEventLogger} merges into the single {@code http.api.error} event
- * it already writes, instead of that mapping needing to log a second event itself. This is how A2
- * (merging {@code AccountBalanceRetrievalException}'s normalization-failure diagnostics into the
- * one {@code http.api.error} event, instead of a separate {@code
- * account.balance.normalization.failed} event logged first) is implemented without {@code
- * ErrorEventLogger} needing any exception-type-specific knowledge.
+ * <p>{@code extraLogFields} lets a mapping contribute extra, value-free key/value pairs that {@link
+ * ErrorEventLogger} merges into the single {@code http.api.error} event it writes, instead of that
+ * mapping needing to log a second event itself.
  */
 public record ErrorDescriptor(
     HttpStatusCode httpStatus,

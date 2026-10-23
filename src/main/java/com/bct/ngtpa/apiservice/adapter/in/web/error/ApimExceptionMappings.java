@@ -8,14 +8,9 @@ import java.util.List;
 import org.springframework.util.StringUtils;
 
 /**
- * Sub-task 1.4: verbatim move of {@code ApiExceptionHandler.handleApimProfileResolutionException}
- * and {@code handleApimException}'s mappings, including {@code resolveApimErrorCode}, which moves
- * here since it is specific to {@link ApimException}.
- *
- * <p>Sub-task 1.7 (M1 closure, Option A): both mappings now built via {@link
- * ErrorDescriptor#single} instead of the record constructor directly (one {@link
- * MessagePolicy#RESOLVE} entry each); no behaviour change, since both already resolved their public
- * message before this sub-task.
+ * Mappings for {@link ApimProfileResolutionException} and {@link ApimException}, including the
+ * {@code resolveApimErrorCode} logic specific to {@link ApimException}. Both are built via {@link
+ * ErrorDescriptor#single} (one {@link MessagePolicy#RESOLVE} entry each).
  */
 public final class ApimExceptionMappings {
 

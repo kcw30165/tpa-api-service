@@ -6,21 +6,13 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 
 /**
- * Sub-task 1.4: verbatim move of {@code ApiExceptionHandler.handleUnexpectedException}'s mapping
- * (the catch-all fallback for {@code Exception.class} previously registered directly on {@code
- * ApiExceptionHandler}). This is the mandatory catch-all supplied to {@link
- * ExceptionMappingRegistry}; it is returned whenever no more specific mapping is registered for an
- * exception or any of its ancestors.
+ * The mandatory catch-all fallback supplied to {@link ExceptionMappingRegistry}: returned whenever
+ * no more specific mapping is registered for an exception or any of its ancestors.
  *
  * <p>The single shared {@link #INSTANCE} is intentional: {@code ExceptionMappingRegistryConfig}
  * passes the same object to every {@link ExceptionMappingRegistry} it builds, and tests compare it
  * by reference. SonarQube's generic singleton-pattern advisory (java:S6548) is suppressed here
  * because that is exactly the required contract, not an accidental singleton.
- *
- * <p>Sub-task 1.7 (M1 closure, Option A): the mapping is now built via {@link
- * ErrorDescriptor#single} instead of the record constructor directly (one {@link
- * MessagePolicy#RESOLVE} entry); this preserves identical behaviour since the catch-all handler
- * always resolved its public message before this sub-task too.
  */
 @SuppressWarnings("java:S6548")
 public final class CatchAllExceptionMapping implements ExceptionMapping<Throwable> {

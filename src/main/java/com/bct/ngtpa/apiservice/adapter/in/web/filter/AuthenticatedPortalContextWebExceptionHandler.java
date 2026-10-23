@@ -21,35 +21,24 @@ import org.springframework.web.server.*;
 import reactor.core.publisher.Mono;
 
 /**
- * Sub-task 1.5: routes through the shared {@link ExceptionMappingRegistry} (via {@link
+ * Routes through the shared {@link ExceptionMappingRegistry} (via {@link
  * AuthenticatedPortalContextExceptionMappings} in the {@code error} package, registered by {@code
  * ExceptionMappingRegistryConfig}) to resolve status, {@code ApiStatus}, error type/code, and
- * targets, and reuses {@link ErrorResponseRenderer} to build the response body -- instead of
- * hardcoding those values inline as before sub-task 1.5.
+ * targets, and reuses {@link ErrorResponseRenderer} to build the response body.
  *
  * <p>This handler deliberately keeps emitting its own log statement rather than delegating to
  * {@code ErrorEventLogger}: that logger always emits a fixed JSON {@code http.api.error} event,
- * which would change this filter-path's pinned plain-text log format (asserted literally by the
- * sub-task 1.1 characterization tests). The resolved {@link ErrorDescriptor#logEventName()} is used
- * as the event name within the unchanged plain-text format instead.
+ * which would change this filter-path's pinned plain-text log format. The resolved {@link
+ * ErrorDescriptor#logEventName()} is used as the event name within that plain-text format.
  *
- * <p>The renderer is always called with a {@code null} request id, preserving the confirmed
- * pre-existing gap (06-open-items.md, O-6-adjacent): unlike {@code ApiExceptionHandler}, this
- * handler never sets the {@code X-Request-Id} response header, even when the inbound request
- * supplied one. Changing that remains Nick's decision and is out of scope for this sub-task.
+ * <p>The renderer is always called with a {@code null} request id: unlike {@code
+ * ApiExceptionHandler}, this handler never sets the {@code X-Request-Id} response header, even when
+ * the inbound request supplied one (06-open-items.md, O-6-adjacent).
  *
- * <p>Sub-task 1.7 (M1 closure, Option A) compile-break fix: {@link ErrorDescriptor} no longer
- * exposes {@code errorCode()}/{@code errorType()}/{@code targets()} directly -- it carries a {@code
- * List<ErrorEntry>}. This handler always resolves exactly one {@link ErrorEntry} (the {@link
- * AuthenticatedPortalContextExceptionMappings} mapping is built via {@code
- * ErrorDescriptor.single(...)}), so {@code descriptor.errors().getFirst()} reproduces the exact
- * same type/code/targets values this handler read before sub-task 1.7. No behaviour change: same
- * log line format, same response body, same absence of the {@code X-Request-Id} header.
- *
- * <p>Sub-task 1.8.3 (M1 closure, step 3 of 3): {@link ErrorResponseRenderer} is now injected as a
- * bean (constructor's 3rd parameter) instead of called as a static method, since {@code
- * ErrorResponseRenderer}'s static method was removed when {@code ApiExceptionHandler} was rewritten
- * for A1 in this same sub-task. No behaviour change: identical render output.
+ * <p>{@link ErrorDescriptor} carries a {@code List<ErrorEntry>}; this handler always resolves
+ * exactly one entry (the {@link AuthenticatedPortalContextExceptionMappings} mapping is built via
+ * {@code ErrorDescriptor.singleWithoutMessage(...)}), so {@code descriptor.errors().getFirst()}
+ * supplies the type/code/targets this handler needs.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)

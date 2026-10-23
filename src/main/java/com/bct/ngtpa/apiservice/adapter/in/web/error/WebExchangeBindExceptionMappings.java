@@ -10,19 +10,14 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.support.WebExchangeBindException;
 
 /**
- * Sub-task 1.7 (M1 closure, Option A): moves {@code
- * ApiExceptionHandler.handleWebExchangeBindException}'s mapping out of the handler. This is the one
- * exception type {@link ErrorDescriptor} could not previously express: it produces one {@link
- * ErrorEntry} per field error (or a single {@code FORM}-type entry when there are none), which is
- * exactly why {@link ErrorDescriptor} changed from a single type/code/targets triple to a {@code
- * List<ErrorEntry>} in this sub-task.
+ * Mapping for {@link WebExchangeBindException}: the one exception type {@link ErrorDescriptor}
+ * expresses as more than a single error -- one {@link ErrorEntry} per field error (or a single
+ * {@code FORM}-type entry when there are none).
  *
  * <p>Every field-error entry uses {@link MessagePolicy#RESOLVE} with the same error code ({@link
- * ErrorCodes#REQUEST_VALIDATION_FAILED}); {@code ApiExceptionHandler.delegate(...)} resolves the
- * public message once per entry, and since {@code resolvePublicMessage(...)} is a pure function of
- * the error code, the exchange and the exception, every entry ends up with the identical resolved
- * message, in field order -- matching the pre-1.7 behaviour exactly (the old {@code
- * validationErrors(...)} helper resolved the message once and reused it for every field).
+ * ErrorCodes#REQUEST_VALIDATION_FAILED}); {@link PublicMessageResolver} resolves the public message
+ * once per entry, and since message resolution is a pure function of the error code, the exchange
+ * and the exception, every entry ends up with the identical resolved message, in field order.
  */
 public final class WebExchangeBindExceptionMappings {
 

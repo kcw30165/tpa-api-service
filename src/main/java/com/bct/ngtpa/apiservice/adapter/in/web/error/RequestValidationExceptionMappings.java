@@ -8,11 +8,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebInputException;
 
 /**
- * Sub-task 1.4: verbatim move of {@code ApiExceptionHandler.handleServerWebInputException}'s
- * mapping, including its reason-or-message diagnostic text.
- *
- * <p>Sub-task 1.7 (M1 closure, Option A): built via {@link ErrorDescriptor#single} instead of the
- * record constructor directly (one {@link MessagePolicy#RESOLVE} entry); no behaviour change.
+ * Mapping for {@link ServerWebInputException}, including its reason-or-message diagnostic text.
+ * Built via {@link ErrorDescriptor#single} (one {@link MessagePolicy#RESOLVE} entry).
  */
 public final class RequestValidationExceptionMappings {
 
