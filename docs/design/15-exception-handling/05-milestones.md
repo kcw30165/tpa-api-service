@@ -201,6 +201,34 @@ startup smoke test and SonarQube
 -
 </td>
 </tr>
+
+
+<tr>
+<td>
+1.11
+</td>
+<td>
+refactor/test/docs
+</td>
+<td>
+M1 closure cleanup (6 items, approved by Nick 2026-10-22): 1) remove ErrorEventLogger's redundant
+static log method (9d4cbdbe); 2) move ApiError assembly into ErrorResponseRenderer with a
+context-&gt;resolve-&gt;messages-&gt;log-&gt;render pipeline in ApiExceptionHandler (80fee328); 3)
+AuthenticatedPortalContextExceptionMappings uses singleWithoutMessage instead of single, since the
+handler never resolves a public message for that entry (0ca6e56b); 4) remove stale
+sub-task/M1-closure Javadoc history notes across all ~21 files in scope (4306a03a); 5) close
+coverage gaps to target or documented justification for ApimExceptionMappings,
+RequestValidationExceptionMappings, WebExchangeBindExceptionMappings, ErrorLogDirective and
+CatchAllExceptionMapping (107e3ed7); 6) add a Spring ApplicationContextRunner wiring test proving
+ApiExceptionHandler, AuthenticatedPortalContextWebExceptionHandler, ExceptionMappingRegistry,
+PublicMessageResolver, ErrorEventLogger and ErrorResponseRenderer all load as real beans
+(d037ca10).
+</td>
+<td>
+ErrorEventLoggerTest, ErrorResponseRendererTest, ExceptionMappingsTest,
+ExceptionMappingRegistryTest, ExceptionHandlingWiringArchitectureTest
+</td>
+</tr>
 </table>
 
   
@@ -517,6 +545,6 @@ Project targets apply: instruction >= 95%; branch >= 95% for records, validators
 handlers, appender, dispatcher and adapters, each uncovered branch justified in one line.
 
 ### Push and MR
-  
-After M4 milestone gates pass. Jenkins/runtime values for PROD/DR (ERROR_ALERT_ENABLED=true,
-recipients) are a separate pipeline change.
+
+One MR per milestone, after that milestone's gate passes (not held until M4). Jenkins/runtime
+values for PROD/DR (ERROR_ALERT_ENABLED=true, recipients) are a separate pipeline change.

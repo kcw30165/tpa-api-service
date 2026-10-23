@@ -110,7 +110,7 @@ Collects all ExceptionMapping beans. Resolves by nearest superclass distance. Fa
 ErrorResponseRenderer
 </td>
 <td>  
-static helper (sub-task 1.3); bean from sub-task 1.8
+bean
 </td>
 <td>  
 Builds ResponseEntity<MutationResponse<Void>> (controller advice) or writes JSON to ServerHttpResponse (WebExceptionHandler) with X-Request-Id.
@@ -121,7 +121,7 @@ Builds ResponseEntity<MutationResponse<Void>> (controller advice) or writes JSON
 ErrorEventLogger
 </td>
 <td>  
-static helper (sub-task 1.3); bean from sub-task 1.8
+bean
 </td>
 <td>  
 Writes the single http.api.error event at the descriptor level, with sanitized message, exception type, error code, request id, and any ErrorLogDirective.extraFields() (see section 2a); stack trace only when includeStackTrace. Moved verbatim from ApiExceptionHandler.buildMutationErrorResponse.
@@ -160,7 +160,7 @@ location changes.
 *ExceptionMappings
 </td>
 <td>  
-@Component classes, one per capability
+final classes with static factories, one per capability; registered by hand in ExceptionMappingRegistryConfig (not @Component, not auto-collected; see O-11)
 </td>
 <td>  
 Hold the mappings now inside ApiExceptionHandler (security, request validation, APIM, cache, account balance, account gain/loss, fund price, fund comparison, fund fact sheet, registration lookup, personal information, notifications, contribution, portal context, catch-all).
