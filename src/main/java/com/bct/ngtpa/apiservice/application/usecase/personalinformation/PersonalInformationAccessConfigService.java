@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.usecase.personalinformation;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -20,7 +21,8 @@ import reactor.core.publisher.Mono;
  * miss, or when there is no session cookie, it makes one TRPGetMemberInfo call through {@link
  * GetPersonalInformationUseCase#executeAndCache}, which also refreshes the cache. {@link #refresh}
  * always fetches: the PUT uses it once when a rejection was decided from a cached entry, so a stale
- * cache cannot block a member. A fetch failure is propagated unchanged to the caller.
+ * cache cannot block a member. A fetch failure becomes a PersonalInformationRetrievalException
+ * (HTTP 503 through ApiExceptionHandler, decision O-1).
  *
  * <p>Returns the item-id to access-value map only (no member data). An empty map is returned as is:
  * the access validator then treats every submitted bound field as hidden. Logs carry the request id
@@ -91,6 +93,19 @@ public final class PersonalInformationAccessConfigService {
         "event=personal-information.access-config.fetch reason={} requestId={}", reason, requestId);
     return retrieval
         .executeAndCache(command, sessionId, accountRef, requestId)
-        .map(PersonalInformationResult::config);
+        .map(PersonalInformationResult::config)
+        .onErrorMap(
+            ex -> !(ex instanceof PersonalInformationRetrievalException),
+            ex -> retrievalUnavailable(ex, requestId, reason));
+  }
+
+  private static PersonalInformationRetrievalException retrievalUnavailable(
+      Throwable cause, String requestId, String reason) {
+    LOG.warn(
+        "event=personal-information.access-config.fetch.failed reason={} exceptionType={} requestId={}",
+        reason,
+        cause.getClass().getSimpleName(),
+        requestId);
+    return PersonalInformationRetrievalException.systemFailure();
   }
 }

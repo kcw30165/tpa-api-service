@@ -14,6 +14,7 @@ import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationConfigCacheEntry;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -137,22 +138,58 @@ class PersonalInformationAccessConfigServiceTest {
   }
 
   @Test
-  void aFetchFailureOnACacheMissIsPropagated() {
+  void aFetchFailureOnACacheMissBecomesRetrievalUnavailable() {
     cacheIsEmpty();
-    var failure = new IllegalStateException("downstream unavailable");
-    when(retrieval.executeAndCache(any(), any(), any(), any())).thenReturn(Mono.error(failure));
+    when(retrieval.executeAndCache(any(), any(), any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("downstream unavailable")));
 
     StepVerifier.create(service().resolve(command(), Optional.of(SID), ACCOUNT_REF, REQUEST_ID))
-        .expectErrorSatisfies(error -> assertThat(error).isSameAs(failure))
+        .expectError(PersonalInformationRetrievalException.class)
         .verify();
   }
 
   @Test
-  void aFetchFailureOnRefreshIsPropagated() {
-    var failure = new IllegalStateException("downstream unavailable");
-    when(retrieval.executeAndCache(any(), any(), any(), any())).thenReturn(Mono.error(failure));
+  void aFetchFailureWithoutASessionBecomesRetrievalUnavailable() {
+    when(retrieval.executeAndCache(any(), any(), any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("downstream unavailable")));
+
+    StepVerifier.create(service().resolve(command(), Optional.empty(), ACCOUNT_REF, REQUEST_ID))
+        .expectError(PersonalInformationRetrievalException.class)
+        .verify();
+
+    verifyNoInteractions(cache);
+  }
+
+  @Test
+  void aFetchFailureOnRefreshBecomesRetrievalUnavailable() {
+    when(retrieval.executeAndCache(any(), any(), any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("downstream unavailable")));
 
     StepVerifier.create(service().refresh(command(), Optional.of(SID), ACCOUNT_REF, REQUEST_ID))
+        .expectError(PersonalInformationRetrievalException.class)
+        .verify();
+  }
+
+  @Test
+  void theMappedFailureCarriesNeitherTheDownstreamMessageNorCause() {
+    cacheIsEmpty();
+    when(retrieval.executeAndCache(any(), any(), any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("downstream unavailable")));
+
+    StepVerifier.create(service().resolve(command(), Optional.of(SID), ACCOUNT_REF, REQUEST_ID))
+        .expectErrorSatisfies(
+            error ->
+                assertThat(error).hasMessage("Personal information retrieval failed").hasNoCause())
+        .verify();
+  }
+
+  @Test
+  void anAlreadyMappedRetrievalFailureIsPassedThroughUnchanged() {
+    cacheIsEmpty();
+    var failure = PersonalInformationRetrievalException.systemFailure();
+    when(retrieval.executeAndCache(any(), any(), any(), any())).thenReturn(Mono.error(failure));
+
+    StepVerifier.create(service().resolve(command(), Optional.of(SID), ACCOUNT_REF, REQUEST_ID))
         .expectErrorSatisfies(error -> assertThat(error).isSameAs(failure))
         .verify();
   }
