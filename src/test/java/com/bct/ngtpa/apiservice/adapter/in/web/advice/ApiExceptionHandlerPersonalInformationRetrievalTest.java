@@ -62,8 +62,9 @@ class ApiExceptionHandlerPersonalInformationRetrievalTest {
     MutationResponse<Void> body = handle().getBody();
 
     var error = body.errors().get(0);
-    assertThat(error.code()).isEqualTo("err.personal-information.retrieval.unavailable");
-    assertThat(error.code()).isEqualTo(ErrorCodes.PERSONAL_INFORMATION_RETRIEVAL_UNAVAILABLE);
+    assertThat(error.code())
+        .isEqualTo("err.personal-information.retrieval.unavailable")
+        .isEqualTo(ErrorCodes.PERSONAL_INFORMATION_RETRIEVAL_UNAVAILABLE);
     assertThat(error.type()).isEqualTo("SYSTEM");
     assertThat(error.message()).isNull();
     assertThat(error.targets()).isEmpty();
