@@ -7,26 +7,23 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 
 /**
- * Sub-task 1.5: mapping for {@link AuthenticatedPortalContextResolutionException}, the single
- * exception type handled by {@code AuthenticatedPortalContextWebExceptionHandler} (the filter-path
- * {@code WebExceptionHandler}, distinct from the {@code ApiExceptionHandler} controller advice).
+ * Mapping for {@link AuthenticatedPortalContextResolutionException}, the single exception type
+ * handled by {@code AuthenticatedPortalContextWebExceptionHandler} (the filter-path {@code
+ * WebExceptionHandler}, distinct from the {@code ApiExceptionHandler} controller advice).
  *
- * <p>Reproduces that handler's pre-1.5 hardcoded values exactly: HTTP 401, {@link
- * ApiStatus#BUSINESS_REJECTED}, error type {@code AUTHENTICATION_REQUIRED}, {@link
- * ErrorCodes#SECURITY_AUTHENTICATION_REQUIRED}, and the single {@code PAGE} target.
+ * <p>Status HTTP 401, {@link ApiStatus#BUSINESS_REJECTED}, error type {@code
+ * AUTHENTICATION_REQUIRED}, {@link ErrorCodes#SECURITY_AUTHENTICATION_REQUIRED}, and the single
+ * {@code PAGE} target.
  *
- * <p>{@code logEventName} carries the handler's existing plain-text log event name ({@code
+ * <p>{@code logEventName} carries the handler's plain-text log event name ({@code
  * authenticated.context.failure.mapped}). The handler consumes this field directly in its own log
  * statement rather than delegating to {@link ErrorEventLogger}, because that logger always emits a
  * fixed JSON {@code http.api.error} shape, which differs from this filter-path's pinned plain-text
- * format (confirmed by the sub-task 1.1 characterization tests, which assert the literal
- * space-separated {@code event=... status=... code=... method=... path=... requestId=...} text).
+ * format.
  *
- * <p>Sub-task 1.7 (M1 closure, Option A): built via {@link ErrorDescriptor#single} instead of the
- * record constructor directly (one {@link MessagePolicy#RESOLVE} entry); no behaviour change --
- * this handler reads {@code descriptor.errors().getFirst()} directly rather than going through
- * {@code ApiExceptionHandler.delegate(...)}'s per-entry message resolution, since it never resolves
- * a public message at all (O-10, confirmed unchanged).
+ * <p>Built via {@link ErrorDescriptor#singleWithoutMessage} (one {@link MessagePolicy#NONE} entry):
+ * this handler reads {@code descriptor.errors().getFirst()} directly and never resolves a public
+ * message for this entry (O-10, docs/design/15-exception-handling/06-open-items.md).
  */
 public final class AuthenticatedPortalContextExceptionMappings {
 
