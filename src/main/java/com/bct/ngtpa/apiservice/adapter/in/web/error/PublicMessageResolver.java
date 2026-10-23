@@ -99,16 +99,15 @@ public final class PublicMessageResolver {
   }
 
   private boolean isPreLoginAuthRequest(ServerWebExchange exchange) {
-    if (exchange == null || exchange.getRequest() == null) {
+    if (exchange == null) {
       return false;
     }
     String path = exchange.getRequest().getPath().value();
-    return path != null
-        && (path.startsWith("/api/v1/auth/registration")
-            || path.startsWith("/api/v1/auth/captcha")
-            || path.startsWith("/api/v1/auth/login")
-            || path.startsWith("/api/v1/auth/forgot-password")
-            || path.startsWith("/api/v1/auth/username-recovery"));
+    return path.startsWith("/api/v1/auth/registration")
+        || path.startsWith("/api/v1/auth/captcha")
+        || path.startsWith("/api/v1/auth/login")
+        || path.startsWith("/api/v1/auth/forgot-password")
+        || path.startsWith("/api/v1/auth/username-recovery");
   }
 
   private String accountEnv(PortalAccessContext context) {

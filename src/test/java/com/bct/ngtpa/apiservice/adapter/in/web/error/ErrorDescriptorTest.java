@@ -82,9 +82,9 @@ class ErrorDescriptorTest {
             false,
             extraFields);
 
-    assertEquals(extraFields, descriptor.extraLogFields());
-    assertThrows(
-        UnsupportedOperationException.class, () -> descriptor.extraLogFields().put("x", "y"));
+    Map<String, Object> actualExtraLogFields = descriptor.extraLogFields();
+    assertEquals(extraFields, actualExtraLogFields);
+    assertThrows(UnsupportedOperationException.class, () -> actualExtraLogFields.put("x", "y"));
   }
 
   @Test
@@ -137,81 +137,92 @@ class ErrorDescriptorTest {
 
   @Test
   void rejectsNullHttpStatus() {
+    List<ErrorEntry> errors = List.of();
+    Map<String, Object> extraLogFields = Map.of();
     assertThrows(
         NullPointerException.class,
         () ->
             new ErrorDescriptor(
                 null,
                 ApiStatus.SYSTEM_ERROR,
-                List.of(),
+                errors,
                 "http.api.error",
                 LogLevel.ERROR,
                 true,
-                Map.of()));
+                extraLogFields));
   }
 
   @Test
   void rejectsNullApiStatus() {
+    List<ErrorEntry> errors = List.of();
+    Map<String, Object> extraLogFields = Map.of();
     assertThrows(
         NullPointerException.class,
         () ->
             new ErrorDescriptor(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 null,
-                List.of(),
+                errors,
                 "http.api.error",
                 LogLevel.ERROR,
                 true,
-                Map.of()));
+                extraLogFields));
   }
 
   @Test
   void rejectsNullLogEventName() {
+    List<ErrorEntry> errors = List.of();
+    Map<String, Object> extraLogFields = Map.of();
     assertThrows(
         NullPointerException.class,
         () ->
             new ErrorDescriptor(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 ApiStatus.SYSTEM_ERROR,
-                List.of(),
+                errors,
                 null,
                 LogLevel.ERROR,
                 true,
-                Map.of()));
+                extraLogFields));
   }
 
   @Test
   void rejectsNullLogLevel() {
+    List<ErrorEntry> errors = List.of();
+    Map<String, Object> extraLogFields = Map.of();
     assertThrows(
         NullPointerException.class,
         () ->
             new ErrorDescriptor(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 ApiStatus.SYSTEM_ERROR,
-                List.of(),
+                errors,
                 "http.api.error",
                 null,
                 true,
-                Map.of()));
+                extraLogFields));
   }
 
   @Test
   void errorEntryRejectsNullType() {
+    List<String> targets = List.of();
     assertThrows(
         NullPointerException.class,
-        () -> new ErrorEntry(null, "code", List.of(), MessagePolicy.RESOLVE));
+        () -> new ErrorEntry(null, "code", targets, MessagePolicy.RESOLVE));
   }
 
   @Test
   void errorEntryRejectsNullCode() {
+    List<String> targets = List.of();
     assertThrows(
         NullPointerException.class,
-        () -> new ErrorEntry("FORM", null, List.of(), MessagePolicy.RESOLVE));
+        () -> new ErrorEntry("FORM", null, targets, MessagePolicy.RESOLVE));
   }
 
   @Test
   void errorEntryRejectsNullPolicy() {
-    assertThrows(NullPointerException.class, () -> new ErrorEntry("FORM", "code", List.of(), null));
+    List<String> targets = List.of();
+    assertThrows(NullPointerException.class, () -> new ErrorEntry("FORM", "code", targets, null));
   }
 
   @Test
