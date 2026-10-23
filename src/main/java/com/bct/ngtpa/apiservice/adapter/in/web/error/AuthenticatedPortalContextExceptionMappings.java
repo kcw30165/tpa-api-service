@@ -43,7 +43,7 @@ public final class AuthenticatedPortalContextExceptionMappings {
       @Override
       public ErrorDescriptor describe(
           AuthenticatedPortalContextResolutionException exception, ErrorContext context) {
-        return ErrorDescriptor.single(
+        return ErrorDescriptor.singleWithoutMessage(
             HttpStatus.UNAUTHORIZED,
             ApiStatus.BUSINESS_REJECTED,
             "AUTHENTICATION_REQUIRED",
