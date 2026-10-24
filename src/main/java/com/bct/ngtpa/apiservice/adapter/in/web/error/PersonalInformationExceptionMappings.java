@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.error;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
+import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,34 @@ public final class PersonalInformationExceptionMappings {
             List.of(),
             "http.api.error",
             LogLevel.WARN,
+            false);
+      }
+    };
+  }
+
+  /**
+   * Decision O-1: a failed member-info lookup for the personal-information PUT is exposed as one
+   * value-free system error. Message resolution is deliberately skipped so downstream detail cannot
+   * leak into the public response.
+   */
+  public static ExceptionMapping<PersonalInformationRetrievalException> retrievalUnavailable() {
+    return new ExceptionMapping<>() {
+      @Override
+      public Class<PersonalInformationRetrievalException> exceptionType() {
+        return PersonalInformationRetrievalException.class;
+      }
+
+      @Override
+      public ErrorDescriptor describe(
+          PersonalInformationRetrievalException exception, ErrorContext context) {
+        return ErrorDescriptor.singleWithoutMessage(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            ApiStatus.SYSTEM_ERROR,
+            "SYSTEM",
+            ErrorCodes.PERSONAL_INFORMATION_RETRIEVAL_UNAVAILABLE,
+            List.of(),
+            "http.api.error",
+            LogLevel.ERROR,
             false);
       }
     };

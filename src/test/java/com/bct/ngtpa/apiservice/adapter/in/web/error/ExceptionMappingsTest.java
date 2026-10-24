@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalExceptio
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
+import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
@@ -257,6 +258,26 @@ class ExceptionMappingsTest {
     assertEquals(ApiStatus.VALIDATION_FAILED, descriptor.apiStatus());
     assertEquals(
         ErrorCodes.PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID, firstEntry(descriptor).code());
+  }
+
+  @Test
+  void personalInformationRetrievalUnavailableMapping() {
+    var mapping = PersonalInformationExceptionMappings.retrievalUnavailable();
+    var exception = PersonalInformationRetrievalException.systemFailure();
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(PersonalInformationRetrievalException.class, mapping.exceptionType());
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals(ErrorCodes.PERSONAL_INFORMATION_RETRIEVAL_UNAVAILABLE, entry.code());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(LogLevel.ERROR, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+    assertEquals("Personal information retrieval failed", mapping.diagnosticMessage(exception));
   }
 
   @Test
@@ -505,11 +526,11 @@ class ExceptionMappingsTest {
   // ───────────────────────── registry assembly ─────────────────────────
 
   @Test
-  void configAssemblesExactlyTwentyOneMappingsPlusCatchAll() {
+  void configAssemblesExactlyTwentyTwoMappingsPlusCatchAll() {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(21, registry.mappingCount());
+    assertEquals(22, registry.mappingCount());
 
     ErrorDescriptor fundComparison =
         registry.resolve(

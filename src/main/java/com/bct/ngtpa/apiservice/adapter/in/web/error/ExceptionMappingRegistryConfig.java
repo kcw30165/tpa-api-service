@@ -37,6 +37,7 @@ public class ExceptionMappingRegistryConfig {
             SecurityExceptionMappings.authenticationRequired(),
             SecurityExceptionMappings.accessDenied(),
             PersonalInformationExceptionMappings.invalidUpdate(),
+            PersonalInformationExceptionMappings.retrievalUnavailable(),
             CacheExceptionMappings.unexpected(),
             FundPriceExceptionMappings.retrievalUnavailable(),
             FundPriceExceptionMappings.invalidDate(),

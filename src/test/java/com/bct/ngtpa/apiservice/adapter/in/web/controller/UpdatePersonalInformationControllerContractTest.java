@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import static org.mockito.Mockito.mock;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;

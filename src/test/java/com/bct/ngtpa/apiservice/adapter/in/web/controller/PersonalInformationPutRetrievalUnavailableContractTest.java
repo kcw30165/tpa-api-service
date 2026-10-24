@@ -5,6 +5,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
@@ -112,10 +116,17 @@ class PersonalInformationPutRetrievalUnavailableContractTest {
             mock(PersonalInformationUpdateYamlValidator.class),
             exchange -> Optional.of(SID),
             checker);
+    var resolver =
+        (com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver)
+            (code, locale, accountEnv, trustCode, schemeType) -> "resolved-" + code;
     var handler =
         new ApiExceptionHandler(
-            (code, locale, accountEnv, trustCode, schemeType) -> "resolved-" + code,
-            new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())));
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new PublicMessageResolver(resolver),
+            new ErrorEventLogger(
+                new LoggingSanitizer(
+                    new ObjectMapper(), new MaskingService(new MaskingProperties()))),
+            new ErrorResponseRenderer());
     WebFilter requestHeaderContext =
         (serverExchange, chain) ->
             chain
