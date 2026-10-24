@@ -710,3 +710,14 @@ notice-templates:
             （本計劃的信託人及行政管理人)
 
             ［此乃經自動系統發出之電子郵件，請勿回覆。多謝合作。］
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "!local"
+
+logging:
+  structured:
+    format:
+      console: ecs
