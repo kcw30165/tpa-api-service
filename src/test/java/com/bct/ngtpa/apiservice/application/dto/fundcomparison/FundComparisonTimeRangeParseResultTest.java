@@ -23,13 +23,15 @@ class FundComparisonTimeRangeParseResultTest {
 
   @Test
   void rejectsEmptyTimeRanges() {
-    assertThatThrownBy(() -> new FundComparisonTimeRangeParseResult(List.of(), "10D"))
+    List<String> emptyTimeRanges = List.of();
+    assertThatThrownBy(() -> new FundComparisonTimeRangeParseResult(emptyTimeRanges, "10D"))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void rejectsNullDefaultTimeRange() {
-    assertThatThrownBy(() -> new FundComparisonTimeRangeParseResult(List.of("10D"), null))
+    List<String> timeRanges = List.of("10D");
+    assertThatThrownBy(() -> new FundComparisonTimeRangeParseResult(timeRanges, null))
         .isInstanceOf(NullPointerException.class);
   }
 
@@ -47,7 +49,8 @@ class FundComparisonTimeRangeParseResultTest {
     assertThat(result.timeRanges()).containsExactly("10D", "1M");
 
     // The stored list itself must be immutable.
-    assertThatThrownBy(() -> result.timeRanges().add("YTD"))
+    var storedTimeRanges = result.timeRanges();
+    assertThatThrownBy(() -> storedTimeRanges.add("YTD"))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
