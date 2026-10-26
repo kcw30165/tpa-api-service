@@ -28,10 +28,10 @@ class AesGcmUsernameRecoveryAuthFlowContextProtectorAdapterTest {
   void rejectsTamperWrongKeyAndSessionRebinding() {
     var p = new AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter("v1", SECRET);
     var encrypted = p.protect(id, context());
-    assertThatThrownBy(
-            () ->
-                p.unprotect(
-                    id, encrypted.withCiphertext("A" + encrypted.ciphertext().substring(1))))
+    String originalCiphertext = encrypted.ciphertext();
+    char tamperedFirstChar = originalCiphertext.charAt(0) == 'A' ? 'B' : 'A';
+    String tamperedCiphertext = tamperedFirstChar + originalCiphertext.substring(1);
+    assertThatThrownBy(() -> p.unprotect(id, encrypted.withCiphertext(tamperedCiphertext)))
         .isInstanceOf(UsernameRecoveryAuthFlowContextProtectionException.class);
     assertThatThrownBy(
             () ->
