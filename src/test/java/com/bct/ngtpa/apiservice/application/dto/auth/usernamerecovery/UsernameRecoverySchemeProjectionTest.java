@@ -44,20 +44,25 @@ class UsernameRecoverySchemeProjectionTest {
 
   @Test
   void rejectsMissingOrBlankAccountEnvAndTrustCode() {
+    var schemeRefForMissingAccountEnv = new UsernameRecoverySchemeRef("sch_1");
     assertThatThrownBy(
             () ->
                 new UsernameRecoverySchemeProjection(
-                    new UsernameRecoverySchemeRef("sch_1"), null, "DBA", true))
+                    schemeRefForMissingAccountEnv, null, "DBA", true))
         .isInstanceOf(NullPointerException.class);
+
+    var schemeRefForBlankAccountEnv = new UsernameRecoverySchemeRef("sch_1");
     assertThatThrownBy(
             () ->
                 new UsernameRecoverySchemeProjection(
-                    new UsernameRecoverySchemeRef("sch_1"), "  ", "DBA", true))
+                    schemeRefForBlankAccountEnv, "  ", "DBA", true))
         .isInstanceOf(IllegalArgumentException.class);
+
+    var schemeRefForBlankTrustCode = new UsernameRecoverySchemeRef("sch_1");
     assertThatThrownBy(
             () ->
                 new UsernameRecoverySchemeProjection(
-                    new UsernameRecoverySchemeRef("sch_1"), "DB", " ", true))
+                    schemeRefForBlankTrustCode, "DB", " ", true))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
