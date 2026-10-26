@@ -38,7 +38,7 @@ Spring Boot version supports built-in structured logging (3.4+)? Otherwise logst
 Implementer (fact) -> Nick (dependency)
 </td>
 <td>  
-Open. Sub-task 2.1 records the version and dependency tree; a new dependency waits for Nick's approval.
+Resolved: Spring Boot built-in structured logging, ECS format, non-local profiles only (9198bc68).
 </td>
 </tr>
 <tr>
@@ -52,7 +52,7 @@ io.micrometer:context-propagation as a direct dependency for MDC propagation.
 Implementer (fact) -> Nick (dependency)
 </td>
 <td>  
-Open. Sub-task 2.1 checks whether it is already on the classpath; declaring it directly waits for Nick's approval.
+Resolved: io.micrometer:context-propagation declared directly, Boot-managed version (1dff744e). Hooks.enableAutomaticContextPropagation() is called explicitly in ReactorMdcPropagationConfig rather than via a Spring Boot auto-configuration property, because the three MDC bridges (requestId, trustCode, userRole) are each a custom ThreadLocalAccessor registered by code via ContextRegistry; no property can express that per-field mapping, so the same @PostConstruct method that must already exist to register the accessors also enables the hook.
 </td>
 </tr>
 <tr>
@@ -235,7 +235,11 @@ The JaCoCo report has no rows for anonymous classes or *Config classes, so cover
 Nick
 </td>
 <td>
-Open.
+Open. Confirmed: pom.xml's JaCoCo exclude block (<exclude>**/*Config.class</exclude>,
+<exclude>**/*Config$*.class</exclude>, <exclude>**/*Properties.class</exclude>,
+<exclude>**/*Properties$*.class</exclude>) also excludes ReactorMdcPropagationConfig and
+ExceptionMappingRegistryConfig from the coverage report, for the same reason -- neither
+class's instructions or branches are measured.
 </td>
 </tr>
 <tr>
@@ -250,6 +254,30 @@ per-type @ExceptionHandler methods in ApiExceptionHandler.
 </td>
 <td>
 Implementer (first commit of M2)
+</td>
+<td>
+Open.
+</td>
+</tr>
+
+
+<tr>
+<td>
+O-15
+</td>
+<td>
+StructuredFailureEventLogger uses Set.of(...).contains(origin); a null origin throws
+NullPointerException from the logger (Set.of(...).contains(null) always throws, per the JDK
+contract for the immutable collections returned by Set.of). Logging must never throw, so a null
+origin should be treated as ERROR instead. Separately, LoggingSanitizer.toSafeString's masking
+of the sanitizedMessage field is unverified against the real sanitizer: the existing
+StructuredFailureEventLoggerTest mocks LoggingSanitizer entirely, so no test exercises whether a
+sensitive token embedded in cause.getMessage() (the raw, unsanitized value placed under the
+sanitizedMessage key) is actually masked once the whole event map is passed through the real
+toSafeString. Both need a test against the real LoggingSanitizer, not a mock.
+</td>
+<td>
+Implementer (first production commit of M2b)
 </td>
 <td>
 Open.

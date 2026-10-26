@@ -307,7 +307,7 @@ Read-only: Spring Boot version, mvn dependency:tree for logging and context-prop
 feat
 </td>
 <td>  
-Structured JSON console output for non-local profiles
+Structured JSON console output for non-local profiles (9198bc68)
 </td>
 <td>  
 config test + smoke log check
@@ -321,7 +321,7 @@ config test + smoke log check
 feat
 </td>
 <td>  
-Request id (and trust code, user role) in MDC across Reactor threads
+Request id (and trust code, user role) in MDC across Reactor threads (1dff744e)
 </td>
 <td>  
 RequestContextMdcPropagationTest
@@ -335,7 +335,7 @@ RequestContextMdcPropagationTest
 feat
 </td>
 <td>  
-StructuredFailureEventLogger level by FailureOrigin; record(event, cause)
+StructuredFailureEventLogger level by FailureOrigin; record(event, cause) (75c8c37c)
 </td>
 <td>  
 fail-first StructuredFailureEventLoggerTest
@@ -349,10 +349,29 @@ fail-first StructuredFailureEventLoggerTest
 test
 </td>
 <td>  
-ErrorLogCallSiteRatchetArchitectureTest with current KNOWN_REMAINING
+ErrorLogCallSiteRatchetArchitectureTest with current KNOWN_REMAINING (original scalar form, 3f845e29)
 </td>
 <td>  
 itself
+</td>
+</tr>
+
+
+<tr>
+<td>
+2.6
+</td>
+<td>
+test
+</td>
+<td>
+Make the error log ratchet match 03-logging-policy.md section 5: per-file KNOWN_REMAINING map
+(path -> exact ERROR-call count), excluding ErrorEventLogger and StructuredFailureEventLogger
+entirely, RequestLoggingWebFilter allowed exactly one ERROR call. Fails on an unlisted file, a
+risen count, or a fallen count left uncorrected (beaaf227).
+</td>
+<td>
+ErrorLogCallSiteRatchetArchitectureTest
 </td>
 </tr>
 </table>
