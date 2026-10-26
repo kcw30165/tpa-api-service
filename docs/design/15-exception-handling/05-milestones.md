@@ -8,6 +8,8 @@ assertions, not on compilation. Pin-only tests (no behaviour change) have no fai
 
 ### M1 - Central exception handling (no public behaviour change)
 
+**Status: merged to `dev` via merge commit `62029df45a85b31657be220a591c5adfe4eca51b`.**
+
 <table>
 <tr>
 <th>  
@@ -305,7 +307,7 @@ Read-only: Spring Boot version, mvn dependency:tree for logging and context-prop
 feat
 </td>
 <td>  
-Structured JSON console output for non-local profiles
+Structured JSON console output for non-local profiles (9198bc68)
 </td>
 <td>  
 config test + smoke log check
@@ -319,7 +321,7 @@ config test + smoke log check
 feat
 </td>
 <td>  
-Request id (and trust code, user role) in MDC across Reactor threads
+Request id (and trust code, user role) in MDC across Reactor threads (1dff744e)
 </td>
 <td>  
 RequestContextMdcPropagationTest
@@ -333,7 +335,7 @@ RequestContextMdcPropagationTest
 feat
 </td>
 <td>  
-StructuredFailureEventLogger level by FailureOrigin; record(event, cause)
+StructuredFailureEventLogger level by FailureOrigin; record(event, cause) (75c8c37c)
 </td>
 <td>  
 fail-first StructuredFailureEventLoggerTest
@@ -347,16 +349,65 @@ fail-first StructuredFailureEventLoggerTest
 test
 </td>
 <td>  
-ErrorLogCallSiteRatchetArchitectureTest with current KNOWN_REMAINING
+ErrorLogCallSiteRatchetArchitectureTest with current KNOWN_REMAINING (original scalar form, 3f845e29)
 </td>
 <td>  
 itself
 </td>
 </tr>
+
+
+<tr>
+<td>
+2.6
+</td>
+<td>
+test
+</td>
+<td>
+Make the error log ratchet match 03-logging-policy.md section 5: per-file KNOWN_REMAINING map
+(path -> exact ERROR-call count), excluding ErrorEventLogger and StructuredFailureEventLogger
+entirely, RequestLoggingWebFilter allowed exactly one ERROR call. Fails on an unlisted file, a
+risen count, or a fallen count left uncorrected (beaaf227).
+</td>
+<td>
+ErrorLogCallSiteRatchetArchitectureTest
+</td>
+</tr>
 </table>
 
 
+### M2b - Downstream (APIM) error classification (no public behaviour change)
+
+Added 2026-10-26, approved by Nick. M2b runs on its own branch from `origin/dev` after the M2 MR is
+merged, and is merged before M3 starts. M3 chooses WARN or ERROR from `FailureOrigin`; M2b first makes
+every APIM failure carry one consistent classification, so M3 does not decide feature by feature and a
+downstream business rejection can never raise an ERROR alert.
+
+Rules:
+
+- No public HTTP status, `ApiStatus`, error type/code/targets, message policy or response header change.
+- `ApiStatus.DOWNSTREAM_REJECTED` and `ApiStatus.DOWNSTREAM_ERROR` never appear in a public response.
+- Java returns codes only; downstream message text is never copied into a public response.
+- Feature code tables (which downstream `err-message` code becomes which public code) stay owned by the
+  feature. Only the classification and its shape are shared.
+- Result-based workflows (Login, Registration, Forgot Password, Username Recovery) keep their results
+  and idempotency replay snapshots (D6).
+- Log levels do not change in M2b. It only attaches the classification; level changes happen in M3.
+
+| # | Commit type | Work | Main tests |
+|---|---|---|---|
+| 2b.0 | - | Read-only inventory: generic APIM handling (`ApimException`, `ApimExceptionMappings`, the APIM facade and execution layer, the exchange outcome logger, the crypto failure classifier) and every place a feature turns an APIM `err-message` or response into a domain exception or result. For each: downstream condition, domain exception or result, public status, `ApiStatus`, code, message policy, log event and level, and `FailureOrigin` if any | - |
+| 2b.1 | docs | `07-apim-error-classification.md`: categories and their `FailureOrigin` (business rejection -> `DOWNSTREAM_BUSINESS`; envelope or contract violation -> `DOWNSTREAM_CONTRACT`; unparsable or undecryptable response -> `DOWNSTREAM_INVALID_RESPONSE`; timeout, connection failure or HTTP 5xx -> `DOWNSTREAM_TRANSPORT`), the 2b.0 inventory, the shared versus feature-owned split, and open questions. Nick approves before 2b.2 | - |
+| 2b.2 | test | Characterization pack for every APIM outcome found in 2b.0 (public status, body, message, log event, level) on unchanged production code | APIM outcome characterization tests |
+| 2b.3 | feat | Shared, pure classification type and classifier (names fixed in 2b.1), not yet used | classifier unit tests, branch >= 95% |
+| 2b.4..2b.n | refactor | One commit per feature: attach the shared classification to its APIM failures; feature code tables unchanged | characterization unchanged |
+| 2b.gate | - | Milestone gate: `mvn spotless:check`, full `mvn test`, per-class instruction and branch coverage including anonymous classes; then Nick runs the startup smoke test and SonarQube | - |
+
 ### M3 - Call-site migration (one ERROR per incident)
+
+**Depends on M2b:** M3 starts only after M2b is merged; its INCIDENT/DIAGNOSTIC classification of APIM
+call sites uses the M2b `FailureOrigin` classification.
   
 Each sub-task: read-only classification table first (INCIDENT / DIAGNOSTIC), Nick approves, then
 implementation, and KNOWN_REMAINING shrinks.
@@ -575,5 +626,5 @@ handlers, appender, dispatcher and adapters, each uncovered branch justified in 
 
 ### Push and MR
 
-One MR per milestone, after that milestone's gate passes (not held until M4). Jenkins/runtime
+Use one new branch and one MR per milestone. Open that milestone's MR only after its gate passes; merge it with a merge commit (no squash), then start the next milestone from the updated `origin/dev`. Jenkins/runtime
 values for PROD/DR (ERROR_ALERT_ENABLED=true, recipients) are a separate pipeline change.
