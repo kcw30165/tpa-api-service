@@ -103,10 +103,32 @@ class AesGcmLoginPreAuthContextProtectorTest {
             "Example Scheme",
             "示例計劃");
 
+    // Each protect() call uses a fresh, independently-random IV, so the
+    // resulting Base64 ciphertext is effectively random-looking. A short
+    // plaintext substring (e.g. the 3-character trust code "DBA") has a
+    // real, nonzero probability of appearing by pure coincidence in any
+    // single encryption, independent of whether plaintext actually leaks.
+    // Retrying with a fresh, independent encryption on a coincidental
+    // match distinguishes that benign coincidence from a genuine,
+    // deterministic leak: a real leak would reproduce on every attempt,
+    // while a coincidence is overwhelmingly unlikely to repeat across
+    // several independent, freshly-randomized encryptions.
     var encrypted = protector.protect(context);
+    int attempts = 1;
+    while (containsAnyPlaintextTarget(encrypted.ciphertext()) && attempts < 25) {
+      encrypted = protector.protect(context);
+      attempts++;
+    }
 
     assertThat(encrypted.ciphertext()).doesNotContain("DBA", "Example Scheme", "示例計劃", "member01");
     assertThat(protector.unprotect(encrypted)).isEqualTo(context);
+  }
+
+  private static boolean containsAnyPlaintextTarget(String ciphertext) {
+    return ciphertext.contains("DBA")
+        || ciphertext.contains("Example Scheme")
+        || ciphertext.contains("示例計劃")
+        || ciphertext.contains("member01");
   }
 
   private String secret() {
