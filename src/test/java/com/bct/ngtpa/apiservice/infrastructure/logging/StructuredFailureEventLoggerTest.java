@@ -46,8 +46,8 @@ class StructuredFailureEventLoggerTest {
 
   @Test
   void ignoresNullFailureForBothPortMethods() {
-    events.record(null);
-    events.record(null, new IllegalStateException("unused"));
+    events.publish(null);
+    events.publish(null, new IllegalStateException("unused"));
 
     assertThat(appender.list).isEmpty();
   }
@@ -55,7 +55,7 @@ class StructuredFailureEventLoggerTest {
   @ParameterizedTest
   @MethodSource("originsAndLevels")
   void selectsLevelByFailureOrigin(FailureOrigin origin, Level expectedLevel) {
-    events.record(failure(origin));
+    events.publish(failure(origin));
 
     ILoggingEvent logged = singleEvent();
     assertThat(logged.getLevel()).isEqualTo(expectedLevel);
@@ -70,7 +70,7 @@ class StructuredFailureEventLoggerTest {
     var root = new IllegalArgumentException("token=root-secret");
     var cause = new IllegalStateException("policyNo=P001 outer", root);
 
-    events.record(failure(origin), cause);
+    events.publish(failure(origin), cause);
 
     ILoggingEvent logged = singleEvent();
     assertThat(logged.getLevel()).isEqualTo(expectedLevel);
@@ -98,14 +98,14 @@ class StructuredFailureEventLoggerTest {
     FailureEventPort port = recorded::set;
     FailureEvent failure = failure(FailureOrigin.LOCAL_SYSTEM);
 
-    port.record(failure, new IllegalStateException("ignored by legacy implementation"));
+    port.publish(failure, new IllegalStateException("ignored by legacy implementation"));
 
     assertThat(recorded.get()).isSameAs(failure);
   }
 
   @Test
   void causeOverloadOmitsCauseMetadataWhenCauseIsNull() {
-    events.record(failure(FailureOrigin.LOCAL_SYSTEM), null);
+    events.publish(failure(FailureOrigin.LOCAL_SYSTEM), null);
 
     singleEvent();
     verify(sanitizer)
@@ -125,7 +125,7 @@ class StructuredFailureEventLoggerTest {
     first.next = second;
     second.next = first;
 
-    events.record(failure(FailureOrigin.LOCAL_SYSTEM), first);
+    events.publish(failure(FailureOrigin.LOCAL_SYSTEM), first);
 
     singleEvent();
     verify(sanitizer)

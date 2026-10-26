@@ -77,7 +77,7 @@ class RegistrationLookupProductionPathIntegrationTest {
     var captor =
         org.mockito.ArgumentCaptor.forClass(
             com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent.class);
-    verify(failureEventPort, timeout(2000)).record(captor.capture());
+    verify(failureEventPort, timeout(2000)).publish(captor.capture());
     String captured = String.valueOf(captor.getValue());
     assertThat(captured)
         .contains("event.registration.lookup.downstream_rejection", "err.tpa.member.not.found");
@@ -126,7 +126,7 @@ class RegistrationLookupProductionPathIntegrationTest {
                 command(MemberIdentityType.GPFS, RegistrationContactType.MOBILE, "91234567"))
             .block();
     assertThat(result.status()).isEqualTo(RegistrationLookupStatus.NOT_ELIGIBLE);
-    verify(failureEventPort, timeout(2000)).record(any());
+    verify(failureEventPort, timeout(2000)).publish(any());
   }
 
   private static ApimExchangeExecutor erroring(Throwable error) {
