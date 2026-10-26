@@ -112,7 +112,7 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
               signal.getContextView().getOrDefault(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, null);
           var dimensions = safeDimensions(command);
           dimensions.put("reason", exception.reason().name());
-          failureEventPort.record(
+          failureEventPort.publish(
               new FailureEvent(
                   "registration.lookup.downstream_contract_failure",
                   requestId,
@@ -144,7 +144,7 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
   private void recordDownstreamRejection(RegistrationLookupCommand command, String requestId) {
     var dimensions = safeDimensions(command);
     dimensions.put("outcome", RegistrationLookupStatus.NOT_ELIGIBLE.name());
-    failureEventPort.record(
+    failureEventPort.publish(
         new FailureEvent(
             "event.registration.lookup.downstream_rejection",
             requestId,

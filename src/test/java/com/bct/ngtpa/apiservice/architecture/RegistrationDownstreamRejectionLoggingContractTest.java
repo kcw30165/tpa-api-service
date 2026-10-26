@@ -20,7 +20,7 @@ class RegistrationDownstreamRejectionLoggingContractTest {
         .contains("event.registration.lookup.downstream_rejection")
         .contains("err.tpa.member.not.found")
         .contains("START_VERIFICATION_FAILED")
-        .contains("failureEventPort.record")
+        .contains("failureEventPort.publish")
         .contains("422")
         .contains("false");
   }

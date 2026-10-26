@@ -25,12 +25,12 @@ public class StructuredFailureEventLogger implements FailureEventPort {
   private final LoggingSanitizer loggingSanitizer;
 
   @Override
-  public void record(FailureEvent failure) {
+  public void publish(FailureEvent failure) {
     write(failure, null);
   }
 
   @Override
-  public void record(FailureEvent failure, Throwable cause) {
+  public void publish(FailureEvent failure, Throwable cause) {
     write(failure, cause);
   }
 
