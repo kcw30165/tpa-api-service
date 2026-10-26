@@ -270,6 +270,8 @@ single-error ErrorDescriptor shape.
 
 ### M2 - Logging foundation
 
+**Status: merged to `dev` via merge commit `fb765111c614edd2eb0232e5360a88ce090159b2`.**
+
 <table>
 <tr>
 <th>  
