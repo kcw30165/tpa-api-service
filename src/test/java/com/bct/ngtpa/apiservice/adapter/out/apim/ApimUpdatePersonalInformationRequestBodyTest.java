@@ -1,6 +1,11 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
@@ -16,22 +21,34 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import reactor.core.publisher.Mono;
 
 class ApimUpdatePersonalInformationRequestBodyTest {
 
   private static final ObjectMapper JSON = new ObjectMapper();
 
-  @Test
-  void sendsExactlyTheFiveTrpUpdMemberInfoBodyFieldsWithoutEnv() throws Exception {
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = {false, true})
+  void sendsExactlySixFieldsWithApplyAllDefaultingToFalseInOneRequest(Boolean applyToAllAccounts)
+      throws Exception {
     AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
+    var executor = capturing(captured);
 
-    new ApimUpdatePersonalInformationAdapter(capturing(captured))
-        .updateMemberInfo(command())
+    new ApimUpdatePersonalInformationAdapter(executor)
+        .updateMemberInfo(command(applyToAllAccounts))
         .block();
 
+    verify(executor, times(1)).postEnvelope(any());
     JsonNode node = JSON.readTree(JSON.writeValueAsString(captured.get().request()));
-    assertThat(node.size()).isEqualTo(5);
+    assertThat(node.size()).isEqualTo(6);
+    assertThat(node.has("apply-all")).isTrue();
+    assertThat(node.get("apply-all").isBoolean()).isTrue();
+    assertThat(node.get("apply-all").booleanValue())
+        .isEqualTo(Boolean.TRUE.equals(applyToAllAccounts));
     assertThat(node.get("policy-no").asText()).isEqualTo("POL");
     assertThat(node.get("cert-no").asText()).isEqualTo("CERT");
     assertThat(node.get("login-user-id").asText()).isEqualTo("USER");
@@ -46,7 +63,7 @@ class ApimUpdatePersonalInformationRequestBodyTest {
     AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
 
     new ApimUpdatePersonalInformationAdapter(capturing(captured))
-        .updateMemberInfo(command())
+        .updateMemberInfo(command(true))
         .block();
 
     assertThat(captured.get().databaseScope()).isEqualTo(ApimDatabaseScope.ACCOUNT_ENV);
@@ -55,14 +72,14 @@ class ApimUpdatePersonalInformationRequestBodyTest {
         .isEqualTo(ActorUserRole.ROLE_USER_MBR);
   }
 
-  private static UpdateMemberInfoCommand command() {
+  private static UpdateMemberInfoCommand command(Boolean applyToAllAccounts) {
     return new UpdateMemberInfoCommand(
         "DB",
         "POL",
         "CERT",
         "USER",
         ActorUserRole.ROLE_USER_MBR,
-        true,
+        applyToAllAccounts,
         Map.of("email", "a@b.test"));
   }
 
@@ -85,13 +102,13 @@ class ApimUpdatePersonalInformationRequestBodyTest {
   }
 
   private static ApimExchangeExecutor capturing(AtomicReference<ApimExchangeRequest<?, ?>> c) {
-    return new ApimExchangeExecutor() {
-      public <R, D> Mono<ApimResponseEnvelope<D>> postEnvelope(ApimExchangeRequest<R, D> r) {
-        c.set(r);
-        @SuppressWarnings("unchecked")
-        var x = (ApimResponseEnvelope<D>) (Object) success();
-        return Mono.just(x);
-      }
-    };
+    var executor = mock(ApimExchangeExecutor.class);
+    when(executor.postEnvelope(any()))
+        .thenAnswer(
+            invocation -> {
+              c.set(invocation.getArgument(0));
+              return Mono.just(success());
+            });
+    return executor;
   }
 }
