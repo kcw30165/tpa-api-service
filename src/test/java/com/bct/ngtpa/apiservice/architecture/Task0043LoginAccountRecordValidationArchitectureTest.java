@@ -23,7 +23,21 @@ class Task0043LoginAccountRecordValidationArchitectureTest {
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/account/LoginAccountRecordValidationService.java"));
     assertThat(raw).doesNotContain("must be positive", "must not be blank");
     assertThat(mapper).doesNotContain("required(", "IllegalStateException");
-    assertThat(service).contains("DateTimeFormatter", "ResolverStyle.STRICT", "leftPad");
+    String formatter =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/service/account/"
+                    + "AccountIdentifierFormatter.java"));
+    assertThat(service)
+        .contains(
+            "DateTimeFormatter",
+            "ResolverStyle.STRICT",
+            "accountIdentifierFormatter",
+            "formatPolicyNo",
+            "formatCertificateNo");
+    assertThat(service).doesNotContain("leftPad");
+    assertThat(formatter).contains("leftPad");
+    assertThat(formatter).doesNotContain("org.springframework", "adapter.out", "Redis", "WebClient");
     assertThat(service).doesNotContain("org.springframework", "adapter.out", "Redis", "WebClient");
   }
 
@@ -62,8 +76,7 @@ class Task0043LoginAccountRecordValidationArchitectureTest {
     String config =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/config/auth/login/"
-                    + "LoginAccountValidationConfig.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/config/account/AccountIdentifierConfig.java"));
 
     // Declared at column zero, so it is a root key rather than nested under
     // auth-workflows.login. Padding applies wherever identifiers are rendered.
