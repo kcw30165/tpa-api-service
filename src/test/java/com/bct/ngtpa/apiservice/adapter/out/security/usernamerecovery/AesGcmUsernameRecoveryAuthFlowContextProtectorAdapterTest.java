@@ -31,7 +31,9 @@ class AesGcmUsernameRecoveryAuthFlowContextProtectorAdapterTest {
     String originalCiphertext = encrypted.ciphertext();
     char tamperedFirstChar = originalCiphertext.charAt(0) == 'A' ? 'B' : 'A';
     String tamperedCiphertext = tamperedFirstChar + originalCiphertext.substring(1);
-    assertThatThrownBy(() -> p.unprotect(id, encrypted.withCiphertext(tamperedCiphertext)))
+    assertThat(tamperedCiphertext).isNotEqualTo(originalCiphertext);
+    var tampered = encrypted.withCiphertext(tamperedCiphertext);
+    assertThatThrownBy(() -> p.unprotect(id, tampered))
         .isInstanceOf(UsernameRecoveryAuthFlowContextProtectionException.class);
     assertThatThrownBy(
             () ->
