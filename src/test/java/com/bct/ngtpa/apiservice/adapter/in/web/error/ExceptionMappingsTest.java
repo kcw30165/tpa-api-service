@@ -17,6 +17,7 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequest
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
@@ -526,11 +527,22 @@ class ExceptionMappingsTest {
   // ───────────────────────── registry assembly ─────────────────────────
 
   @Test
-  void configAssemblesExactlyTwentyTwoMappingsPlusCatchAll() {
+  void configAssemblesExactlyTwentyThreeMappingsPlusCatchAll() {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(22, registry.mappingCount());
+    assertEquals(23, registry.mappingCount());
+
+    ErrorDescriptor updateUnavailable =
+        registry.resolve(
+            PersonalInformationUpdateException.systemFailure(),
+            new ErrorContext("PUT", "/api/v1/personal-information", "req-put"));
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, updateUnavailable.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, updateUnavailable.apiStatus());
+    assertEquals(
+        ErrorCodes.PERSONAL_INFORMATION_UPDATE_UNAVAILABLE,
+        updateUnavailable.errors().getFirst().code());
+    assertEquals(MessagePolicy.NONE, updateUnavailable.errors().getFirst().policy());
 
     ErrorDescriptor fundComparison =
         registry.resolve(

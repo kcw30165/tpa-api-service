@@ -10,6 +10,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.UpdateMemberInfoCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
+import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
+import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -18,9 +20,10 @@ import org.mockito.Mockito;
 
 class ApimUpdatePersonalInformationNumericCertificateTest {
   @Test
-  void numericCertificateSelectsZeroPaddedAccountAndPreservesReadOnlyError() throws Exception {
+  void stringCertificateSelectsZeroPaddedAccountAndPreservesReadOnlyError() throws Exception {
     var adapter =
-        new ApimUpdatePersonalInformationAdapter(Mockito.mock(ApimExchangeExecutor.class));
+        new ApimUpdatePersonalInformationAdapter(
+            Mockito.mock(ApimExchangeExecutor.class), new AccountIdentifierFormatter(11, 4, '0'));
     var item =
         UpdateMemberInfoApimDataItem.builder()
             .success(false)
@@ -71,14 +74,15 @@ class ApimUpdatePersonalInformationNumericCertificateTest {
   }
 
   @Test
-  void nonNumericIdentifiersRetainTrimmedExactComparison() throws Exception {
+  void nonNumericPolicyIsRejectedInsteadOfBeingAcceptedByExactComparison() throws Exception {
     var adapter =
-        new ApimUpdatePersonalInformationAdapter(Mockito.mock(ApimExchangeExecutor.class));
+        new ApimUpdatePersonalInformationAdapter(
+            Mockito.mock(ApimExchangeExecutor.class), new AccountIdentifierFormatter(11, 4, '0'));
     var item =
         UpdateMemberInfoApimDataItem.builder()
             .success(true)
             .policyNo("POLICY-A")
-            .certNo(" CERT-A ")
+            .certNo("3")
             .env("DB")
             .build();
     var envelope =
@@ -93,15 +97,14 @@ class ApimUpdatePersonalInformationNumericCertificateTest {
         new UpdateMemberInfoCommand(
             "DB",
             "POLICY-A",
-            "CERT-A",
+            "3",
             "user",
             ActorUserRole.ROLE_USER_MBR,
             false,
             Map.of("email", "x"));
-    assertThat(invoke(adapter, envelope, command))
-        .singleElement()
-        .extracting(UpdatePersonalInformationResult::selected)
-        .isEqualTo(true);
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> invoke(adapter, envelope, command))
+        .isInstanceOf(java.lang.reflect.InvocationTargetException.class)
+        .hasCauseInstanceOf(PersonalInformationUpdateException.class);
   }
 
   @SuppressWarnings("unchecked")

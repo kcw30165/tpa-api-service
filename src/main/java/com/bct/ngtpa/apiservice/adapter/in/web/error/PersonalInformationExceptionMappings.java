@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.error;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,29 @@ import org.springframework.http.HttpStatus;
 public final class PersonalInformationExceptionMappings {
 
   private PersonalInformationExceptionMappings() {}
+
+  public static ExceptionMapping<PersonalInformationUpdateException> updateUnavailable() {
+    return new ExceptionMapping<>() {
+      @Override
+      public Class<PersonalInformationUpdateException> exceptionType() {
+        return PersonalInformationUpdateException.class;
+      }
+
+      @Override
+      public ErrorDescriptor describe(
+          PersonalInformationUpdateException exception, ErrorContext context) {
+        return ErrorDescriptor.singleWithoutMessage(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            ApiStatus.SYSTEM_ERROR,
+            "SYSTEM",
+            ErrorCodes.PERSONAL_INFORMATION_UPDATE_UNAVAILABLE,
+            List.of(),
+            "http.api.error",
+            LogLevel.ERROR,
+            false);
+      }
+    };
+  }
 
   public static ExceptionMapping<InvalidPersonalInformationUpdateException> invalidUpdate() {
     return new ExceptionMapping<>() {

@@ -15,6 +15,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.UpdateMemberInfoCommand;
+import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -38,7 +39,7 @@ class ApimUpdatePersonalInformationRequestBodyTest {
     AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
     var executor = capturing(captured);
 
-    new ApimUpdatePersonalInformationAdapter(executor)
+    new ApimUpdatePersonalInformationAdapter(executor, new AccountIdentifierFormatter(11, 4, '0'))
         .updateMemberInfo(command(applyToAllAccounts))
         .block();
 
@@ -49,8 +50,8 @@ class ApimUpdatePersonalInformationRequestBodyTest {
     assertThat(node.get("apply-all").isBoolean()).isTrue();
     assertThat(node.get("apply-all").booleanValue())
         .isEqualTo(Boolean.TRUE.equals(applyToAllAccounts));
-    assertThat(node.get("policy-no").asText()).isEqualTo("POL");
-    assertThat(node.get("cert-no").asText()).isEqualTo("CERT");
+    assertThat(node.get("policy-no").asText()).isEqualTo("118");
+    assertThat(node.get("cert-no").asText()).isEqualTo("3");
     assertThat(node.get("login-user-id").asText()).isEqualTo("USER");
     assertThat(node.get("login-user-role").asText()).isEqualTo("role_user_mbr");
     assertThat(node.get("update-fields").get("email").asText()).isEqualTo("a@b.test");
@@ -62,7 +63,8 @@ class ApimUpdatePersonalInformationRequestBodyTest {
   void routingStillCarriesTheAccountEnvironmentThroughTheCredentialContext() {
     AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
 
-    new ApimUpdatePersonalInformationAdapter(capturing(captured))
+    new ApimUpdatePersonalInformationAdapter(
+            capturing(captured), new AccountIdentifierFormatter(11, 4, '0'))
         .updateMemberInfo(command(true))
         .block();
 
@@ -75,8 +77,8 @@ class ApimUpdatePersonalInformationRequestBodyTest {
   private static UpdateMemberInfoCommand command(Boolean applyToAllAccounts) {
     return new UpdateMemberInfoCommand(
         "DB",
-        "POL",
-        "CERT",
+        "118",
+        "3",
         "USER",
         ActorUserRole.ROLE_USER_MBR,
         applyToAllAccounts,
@@ -92,8 +94,8 @@ class ApimUpdatePersonalInformationRequestBodyTest {
                     List.of(
                         UpdateMemberInfoApimDataItem.builder()
                             .success(true)
-                            .policyNo("POL")
-                            .certNo("CERT")
+                            .policyNo("118")
+                            .certNo("3")
                             .env("DB")
                             .refNo("REF")
                             .build()))

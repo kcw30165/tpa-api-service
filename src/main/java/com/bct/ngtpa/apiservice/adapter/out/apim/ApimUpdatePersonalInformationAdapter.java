@@ -11,22 +11,28 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.UpdateMemberInfoCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
+import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformationPort;
+import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
+import com.bct.ngtpa.apiservice.application.service.personalinformation.PersonalInformationUpdateOutcomeClassifier;
 import com.bct.ngtpa.apiservice.exception.ApimException;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
+import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
+import java.util.concurrent.TimeoutException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalInformationPort {
   private static final String API_NAME = "/ws/NGTPA/v1/TRPUpdMemberInfo";
   private final ApimExchangeExecutor executor;
+  private final AccountIdentifierFormatter formatter;
 
   @Override
   @LogExecution(value = "apim.updatePersonalInformation", logArgs = true)
@@ -41,7 +47,10 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
             ApimDatabaseScope.ACCOUNT_ENV,
             new ApimCredentialResolutionContext(command.userRole(), command.accountEnv()),
             ApimRetryEligibility.IDEMPOTENT_MUTATION);
-    return executor.postEnvelope(request).map(response -> toResults(response, command));
+    return Mono.defer(() -> executor.postEnvelope(request))
+        .onErrorMap(this::isTransportFailure, error -> unavailable("TRANSPORT_FAILURE"))
+        .switchIfEmpty(Mono.defer(() -> Mono.error(unavailable("EMPTY_RESPONSE"))))
+        .map(response -> toResults(response, command));
   }
 
   private UpdateMemberInfoApimRequest toApimRequest(UpdateMemberInfoCommand command) {
@@ -58,28 +67,30 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
   private List<UpdatePersonalInformationResult> toResults(
       ApimResponseEnvelope<UpdateMemberInfoApimDataItem> response,
       UpdateMemberInfoCommand command) {
-    var dataItems = ApimResponseValidator.requireSuccessData(response);
-    if (dataItems == null || dataItems.stream().noneMatch(Objects::nonNull)) {
-      throw new ApimException(
-          HttpStatus.BAD_GATEWAY,
-          ErrorCodes.APIM_RESPONSE_INVALID,
-          "APIM personal information update response data is missing.");
+    final List<UpdateMemberInfoApimDataItem> dataItems;
+    try {
+      dataItems = ApimResponseValidator.requireSuccessData(response);
+    } catch (ApimException error) {
+      throw unavailable("INVALID_ENVELOPE");
     }
-    var results =
-        dataItems.stream().filter(Objects::nonNull).map(item -> toResult(item, command)).toList();
-    if (results.stream().noneMatch(UpdatePersonalInformationResult::selected)) {
-      throw new ApimException(
-          HttpStatus.BAD_GATEWAY,
-          ErrorCodes.APIM_RESPONSE_INVALID,
-          "APIM personal information update response does not contain the selected account.");
+    var results = dataItems.stream().map(this::toResult).toList();
+    var classification =
+        new PersonalInformationUpdateOutcomeClassifier(formatter).classify(command, results);
+    if (classification.outcome() == PersonalInformationUpdateOutcomeClassifier.Outcome.SYSTEM_ERROR) {
+      throw unavailable(classification.failure().name());
     }
-    return results;
+    if (classification.discardedOtherAccounts() > 0) {
+      log.warn(
+          "event=personal-information.update.other-accounts-dropped count={}",
+          classification.discardedOtherAccounts());
+    }
+    return classification.rows();
   }
 
-  private UpdatePersonalInformationResult toResult(
-      UpdateMemberInfoApimDataItem item, UpdateMemberInfoCommand command) {
+  private UpdatePersonalInformationResult toResult(UpdateMemberInfoApimDataItem item) {
+    if (item == null) return null;
     return new UpdatePersonalInformationResult(
-        isSelected(item, command),
+        false,
         item.isSuccess(),
         item.getPolicyNo(),
         item.getCertNo(),
@@ -90,37 +101,26 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
         toErrors(item));
   }
 
-  private boolean isSelected(UpdateMemberInfoApimDataItem item, UpdateMemberInfoCommand command) {
-    return sameAccountIdentifier(item.getPolicyNo(), command.policyNo())
-        && sameAccountIdentifier(item.getCertNo(), command.certNo())
-        && same(item.getEnv(), command.accountEnv());
+  private boolean isTransportFailure(Throwable error) {
+    if (error instanceof ApimException
+        || error instanceof WebClientRequestException
+        || error instanceof TimeoutException
+        || error instanceof IOException) return true;
+    return error.getCause() != null
+        && error.getCause() != error
+        && isTransportFailure(error.getCause());
   }
 
-  private boolean sameAccountIdentifier(String first, String second) {
-    String normalizedFirst = normalizeAccountIdentifier(first);
-    String normalizedSecond = normalizeAccountIdentifier(second);
-    return !normalizedFirst.isEmpty() && normalizedFirst.equals(normalizedSecond);
-  }
-
-  private String normalizeAccountIdentifier(String value) {
-    String normalized = trim(value);
-    if (!normalized.matches("[0-9]+")) return normalized;
-    int firstNonZero = 0;
-    while (firstNonZero < normalized.length() - 1 && normalized.charAt(firstNonZero) == '0')
-      firstNonZero++;
-    return normalized.substring(firstNonZero);
-  }
-
-  private boolean same(String first, String second) {
-    return trim(first).equals(trim(second));
-  }
-
-  private String trim(String value) {
-    return value == null ? "" : value.trim();
+  private PersonalInformationUpdateException unavailable(String reason) {
+    log.error("event=personal-information.update.unavailable reason={}", reason);
+    return PersonalInformationUpdateException.systemFailure();
   }
 
   private List<UpdatePersonalInformationError> toErrors(UpdateMemberInfoApimDataItem item) {
     if (item == null || item.getErrors() == null || item.getErrors().isEmpty()) return List.of();
+    if (item.getErrors().stream().anyMatch(java.util.Objects::isNull)) {
+      throw unavailable("INVALID_ERRORS");
+    }
     return item.getErrors().stream()
         .map(
             error ->

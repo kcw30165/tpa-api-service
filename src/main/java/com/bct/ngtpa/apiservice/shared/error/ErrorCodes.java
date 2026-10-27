@@ -49,6 +49,8 @@ public final class ErrorCodes {
       "err.personal-information.update.request.invalid";
   public static final String PERSONAL_INFORMATION_RETRIEVAL_UNAVAILABLE =
       "err.personal-information.retrieval.unavailable";
+  public static final String PERSONAL_INFORMATION_UPDATE_UNAVAILABLE =
+      "err.personal-information.update.unavailable";
 
   private ErrorCodes() {}
 }

@@ -9,7 +9,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimDataIte
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimError;
 import com.bct.ngtpa.apiservice.application.dto.UpdateMemberInfoCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
-import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
+import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,8 @@ class ApimUpdatePersonalInformationAdapterTest {
 
   @Test
   void mapsEveryApimDataItemToFlatUpdateResultAndMarksSelectedAccount() {
-    ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null);
+    ApimUpdatePersonalInformationAdapter adapter =
+        new ApimUpdatePersonalInformationAdapter(null, new AccountIdentifierFormatter(11, 4, '0'));
 
     List<UpdatePersonalInformationResult> results =
         invokeToResults(
@@ -57,7 +59,8 @@ class ApimUpdatePersonalInformationAdapterTest {
 
   @Test
   void rejectsApimResponseWhenSelectedAccountIsMissing() {
-    ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null);
+    ApimUpdatePersonalInformationAdapter adapter =
+        new ApimUpdatePersonalInformationAdapter(null, new AccountIdentifierFormatter(11, 4, '0'));
 
     assertThatThrownBy(
             () ->
@@ -65,8 +68,8 @@ class ApimUpdatePersonalInformationAdapterTest {
                     adapter,
                     envelope(List.of(item(true, "00000000118", "2", "DB", "260001373", List.of()))),
                     command("00000000118", "3", "DB")))
-        .isInstanceOf(ApimException.class)
-        .hasMessageContaining("selected account");
+        .isInstanceOf(PersonalInformationUpdateException.class)
+        .hasMessage("Personal information update unavailable");
   }
 
   @SuppressWarnings("unchecked")
