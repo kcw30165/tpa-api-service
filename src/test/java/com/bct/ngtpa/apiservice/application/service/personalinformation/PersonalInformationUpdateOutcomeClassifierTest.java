@@ -24,8 +24,7 @@ class PersonalInformationUpdateOutcomeClassifierTest {
   @MethodSource("outcomes")
   void classifiesAllAccountSuccessCombinations(
       boolean selectedSuccess, boolean otherSuccess, String expected) {
-    var rows =
-        List.of(row("118", "3", "DB", selectedSuccess), row("118", "4", "DB", otherSuccess));
+    var rows = List.of(row("118", "3", "DB", selectedSuccess), row("118", "4", "DB", otherSuccess));
 
     var result = classifier.classify(command(true), rows);
 
@@ -80,12 +79,14 @@ class PersonalInformationUpdateOutcomeClassifierTest {
             List.of(row("118", "3", "DB", true), row("00000000118", "0003", "DB", false)),
             "DUPLICATE_SELECTED_ACCOUNT"),
         Arguments.of(
-            List.of(new UpdatePersonalInformationResult(
-                false, false, "118", "3", "DB", null, null, null, List.of())),
+            List.of(
+                new UpdatePersonalInformationResult(
+                    false, false, "118", "3", "DB", null, null, null, List.of())),
             "SELECTED_ERRORS_MISSING"),
         Arguments.of(
-            List.of(new UpdatePersonalInformationResult(
-                false, false, "118", "3", "DB", null, null, null, null)),
+            List.of(
+                new UpdatePersonalInformationResult(
+                    false, false, "118", "3", "DB", null, null, null, null)),
             "SELECTED_ERRORS_MISSING"));
   }
 
@@ -94,8 +95,7 @@ class PersonalInformationUpdateOutcomeClassifierTest {
   void dropsOnlyOtherAccountsWhenApplyAllIsNotTrue(Boolean applyAll) {
     var result =
         classifier.classify(
-            command(applyAll),
-            List.of(row("118", "3", "DB", true), row("118", "4", "DB", false)));
+            command(applyAll), List.of(row("118", "3", "DB", true), row("118", "4", "DB", false)));
 
     assertThat(result.outcome().name()).isEqualTo("SS");
     assertThat(result.discardedOtherAccounts()).isEqualTo(1);
@@ -126,16 +126,21 @@ class PersonalInformationUpdateOutcomeClassifierTest {
     var other =
         new UpdatePersonalInformationResult(
             false, false, "118", "4", "DB", null, null, null, List.of());
-    assertThat(classifier.classify(command(true), List.of(row("118", "3", "DB", true), other))
-        .outcome().name()).isEqualTo("SF");
+    assertThat(
+            classifier
+                .classify(command(true), List.of(row("118", "3", "DB", true), other))
+                .outcome()
+                .name())
+        .isEqualTo("SF");
   }
 
   @Test
   void validationUsesConfiguredWidthsRatherThanHardcodedWidths() {
     var narrow =
         new PersonalInformationUpdateOutcomeClassifier(new AccountIdentifierFormatter(2, 1, '0'));
-    assertThat(narrow.classify(command(true), List.of(row("118", "3", "DB", true)))
-        .failure().name()).isEqualTo("INVALID_IDENTIFIERS");
+    assertThat(
+            narrow.classify(command(true), List.of(row("118", "3", "DB", true))).failure().name())
+        .isEqualTo("INVALID_IDENTIFIERS");
   }
 
   private static UpdateMemberInfoCommand command(Boolean applyAll) {
@@ -146,7 +151,16 @@ class PersonalInformationUpdateOutcomeClassifierTest {
   private static UpdatePersonalInformationResult row(
       String policy, String cert, String env, boolean success) {
     return new UpdatePersonalInformationResult(
-        false, success, policy, cert, env, null, null, null,
-        success ? List.of() : List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED")));
+        false,
+        success,
+        policy,
+        cert,
+        env,
+        null,
+        null,
+        null,
+        success
+            ? List.of()
+            : List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED")));
   }
 }

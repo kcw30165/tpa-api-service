@@ -76,7 +76,8 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
     var results = dataItems.stream().map(this::toResult).toList();
     var classification =
         new PersonalInformationUpdateOutcomeClassifier(formatter).classify(command, results);
-    if (classification.outcome() == PersonalInformationUpdateOutcomeClassifier.Outcome.SYSTEM_ERROR) {
+    if (classification.outcome()
+        == PersonalInformationUpdateOutcomeClassifier.Outcome.SYSTEM_ERROR) {
       throw unavailable(classification.failure().name());
     }
     if (classification.discardedOtherAccounts() > 0) {

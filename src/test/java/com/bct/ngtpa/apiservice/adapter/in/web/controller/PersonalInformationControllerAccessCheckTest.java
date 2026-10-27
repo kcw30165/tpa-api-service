@@ -17,8 +17,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.personalinformation.PersonalInfor
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationFieldAccessChecker;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
@@ -219,7 +219,8 @@ class PersonalInformationControllerAccessCheckTest {
 
   private static List<MappedError> mapped(ApiError... errors) {
     return java.util.Arrays.stream(errors)
-        .map(error -> new MappedError(error.type(), error.code(), error.targets())).toList();
+        .map(error -> new MappedError(error.type(), error.code(), error.targets()))
+        .toList();
   }
 
   private void verifyStructuralCheckOnly() {

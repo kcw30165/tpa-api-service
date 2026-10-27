@@ -12,8 +12,11 @@ import reactor.core.publisher.Mono;
 class UpdatePersonalInformationControllerResultArrayArchitectureGuardTest {
   @Test
   void updateEndpointReturnsMonoOfEndpointEnvelopeNotMutationOfAccountList() {
-    var method = Arrays.stream(PersonalInformationController.class.getDeclaredMethods())
-        .filter(candidate -> candidate.getName().equals("update")).findFirst().orElseThrow();
+    var method =
+        Arrays.stream(PersonalInformationController.class.getDeclaredMethods())
+            .filter(candidate -> candidate.getName().equals("update"))
+            .findFirst()
+            .orElseThrow();
     var mono = (ParameterizedType) method.getGenericReturnType();
     assertThat(mono.getRawType()).isEqualTo(Mono.class);
     assertThat(mono.getActualTypeArguments()[0]).isEqualTo(UpdatePersonalInformationResponse.class);

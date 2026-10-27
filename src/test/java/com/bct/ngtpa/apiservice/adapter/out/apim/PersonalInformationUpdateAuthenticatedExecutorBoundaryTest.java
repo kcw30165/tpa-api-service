@@ -64,7 +64,8 @@ class PersonalInformationUpdateAuthenticatedExecutorBoundaryTest {
     assertThatThrownBy(
             () ->
                 new ApimUpdatePersonalInformationAdapter(
-                        failing(new AtomicInteger(), ordinary), new AccountIdentifierFormatter(11, 4, '0'))
+                        failing(new AtomicInteger(), ordinary),
+                        new AccountIdentifierFormatter(11, 4, '0'))
                     .updateMemberInfo(command("DB", ActorUserRole.ROLE_USER_MBR))
                     .block())
         .isSameAs(ordinary);

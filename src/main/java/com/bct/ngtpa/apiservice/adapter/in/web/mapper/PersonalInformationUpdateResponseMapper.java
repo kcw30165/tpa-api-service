@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse.Account;
@@ -50,7 +49,11 @@ public class PersonalInformationUpdateResponseMapper {
             new Data(selected.success() ? account(selected) : null, rows, otherErrors));
     if (!selected.success()) {
       return new UpdatePersonalInformationResponse(
-          false, ApiStatus.VALIDATION_FAILED, result, List.of(), errorMapper.toMappedErrors(selected));
+          false,
+          ApiStatus.VALIDATION_FAILED,
+          result,
+          List.of(),
+          errorMapper.toMappedErrors(selected));
     }
     boolean partial = !otherErrors.isEmpty();
     return new UpdatePersonalInformationResponse(
@@ -65,8 +68,7 @@ public class PersonalInformationUpdateResponseMapper {
         List.of());
   }
 
-  public UpdatePersonalInformationResponse toResponse(
-      UpdatePersonalInformationResult result) {
+  public UpdatePersonalInformationResponse toResponse(UpdatePersonalInformationResult result) {
     return toResponse(result == null ? List.of() : List.of(result));
   }
 

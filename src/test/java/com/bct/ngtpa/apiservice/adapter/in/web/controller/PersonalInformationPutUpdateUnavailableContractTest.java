@@ -59,62 +59,114 @@ class PersonalInformationPutUpdateUnavailableContractTest {
                 executor, new AccountIdentifierFormatter(11, 4, '0')));
     var contextResolver = mock(CurrentPortalAccessContextResolver.class);
     when(contextResolver.current())
-        .thenReturn(Mono.just(new PortalAccessContext(
-            new ActorContext("actor", ActorUserRole.ROLE_USER_MBR),
-            new AccountContext("ACC", "DB", "00000000118", "0003", "DBS", "OE", TermStatus.BLANK, null))));
+        .thenReturn(
+            Mono.just(
+                new PortalAccessContext(
+                    new ActorContext("actor", ActorUserRole.ROLE_USER_MBR),
+                    new AccountContext(
+                        "ACC", "DB", "00000000118", "0003", "DBS", "OE", TermStatus.BLANK, null))));
     var checker = mock(PersonalInformationFieldAccessChecker.class);
     when(checker.check(any(), any(), any(), any(), any())).thenReturn(Mono.just(List.of()));
     var mapper = mock(PersonalInformationUpdateWebMapper.class);
-    when(mapper.toCommand(any(), any())).thenReturn(new UpdatePersonalInformationCommand(true, Map.of("email", "a@b.test")));
-    var controller = new PersonalInformationController(
-        mock(GetPersonalInformationUseCase.class),
-        mock(PersonalInformationWebMapper.class),
-        contextResolver,
-        useCase,
-        mapper,
-        mock(PersonalInformationUpdateResponseMapper.class),
-        mock(PersonalInformationUpdateYamlValidator.class),
-        exchange -> Optional.empty(),
-        checker);
-    var handler = new ApiExceptionHandler(
-        new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
-        new PublicMessageResolver((code, locale, accountEnv, trust, scheme) -> { throw new AssertionError("must not resolve a message"); }),
-        new ErrorEventLogger(new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties()))),
-        new ErrorResponseRenderer());
+    when(mapper.toCommand(any(), any()))
+        .thenReturn(new UpdatePersonalInformationCommand(true, Map.of("email", "a@b.test")));
+    var controller =
+        new PersonalInformationController(
+            mock(GetPersonalInformationUseCase.class),
+            mock(PersonalInformationWebMapper.class),
+            contextResolver,
+            useCase,
+            mapper,
+            mock(PersonalInformationUpdateResponseMapper.class),
+            mock(PersonalInformationUpdateYamlValidator.class),
+            exchange -> Optional.empty(),
+            checker);
+    var handler =
+        new ApiExceptionHandler(
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new PublicMessageResolver(
+                (code, locale, accountEnv, trust, scheme) -> {
+                  throw new AssertionError("must not resolve a message");
+                }),
+            new ErrorEventLogger(
+                new LoggingSanitizer(
+                    new ObjectMapper(), new MaskingService(new MaskingProperties()))),
+            new ErrorResponseRenderer());
 
-    WebTestClient.bindToController(controller).controllerAdvice(handler).build()
-        .put().uri("/api/v1/personal-information")
+    WebTestClient.bindToController(controller)
+        .controllerAdvice(handler)
+        .build()
+        .put()
+        .uri("/api/v1/personal-information")
         .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(new UpdatePersonalInformationRequest("1.0", true, Map.of("emailAddress", "a@b.test")))
+        .bodyValue(
+            new UpdatePersonalInformationRequest("1.0", true, Map.of("emailAddress", "a@b.test")))
         .exchange()
-        .expectStatus().isEqualTo(503)
+        .expectStatus()
+        .isEqualTo(503)
         .expectBody()
-        .jsonPath("$.success").isEqualTo(false)
-        .jsonPath("$.status").isEqualTo("SYSTEM_ERROR")
-        .jsonPath("$.result").isEmpty()
-        .jsonPath("$.messages").isEmpty()
-        .jsonPath("$.errors.length()").isEqualTo(1)
-        .jsonPath("$.errors[0].code").isEqualTo("err.personal-information.update.unavailable")
-        .jsonPath("$.errors[0].type").isEqualTo("SYSTEM")
-        .jsonPath("$.errors[0].targets").isEmpty()
-        .jsonPath("$.errors[0].message").doesNotExist();
+        .jsonPath("$.success")
+        .isEqualTo(false)
+        .jsonPath("$.status")
+        .isEqualTo("SYSTEM_ERROR")
+        .jsonPath("$.result")
+        .isEmpty()
+        .jsonPath("$.messages")
+        .isEmpty()
+        .jsonPath("$.errors.length()")
+        .isEqualTo(1)
+        .jsonPath("$.errors[0].code")
+        .isEqualTo("err.personal-information.update.unavailable")
+        .jsonPath("$.errors[0].type")
+        .isEqualTo("SYSTEM")
+        .jsonPath("$.errors[0].targets")
+        .isEmpty()
+        .jsonPath("$.errors[0].message")
+        .doesNotExist();
   }
 
   static Stream<Mono<ApimResponseEnvelope<UpdateMemberInfoApimDataItem>>> failures() {
-    var selected = UpdateMemberInfoApimDataItem.builder().success(true).policyNo("118").certNo("3").env("DB").build();
+    var selected =
+        UpdateMemberInfoApimDataItem.builder()
+            .success(true)
+            .policyNo("118")
+            .certNo("3")
+            .env("DB")
+            .build();
     return Stream.of(
         Mono.error(new TimeoutException("private timeout")),
         envelope("private downstream error", null),
         envelope("", List.of()),
         envelope("", List.of(selected, selected)),
-        envelope("", List.of(UpdateMemberInfoApimDataItem.builder().success(false).policyNo("118").certNo("3").env("DB").build())),
-        envelope("", List.of(UpdateMemberInfoApimDataItem.builder().success(true).policyNo("118").certNo("0").env("DB").build())));
+        envelope(
+            "",
+            List.of(
+                UpdateMemberInfoApimDataItem.builder()
+                    .success(false)
+                    .policyNo("118")
+                    .certNo("3")
+                    .env("DB")
+                    .build())),
+        envelope(
+            "",
+            List.of(
+                UpdateMemberInfoApimDataItem.builder()
+                    .success(true)
+                    .policyNo("118")
+                    .certNo("0")
+                    .env("DB")
+                    .build())));
   }
 
   private static Mono<ApimResponseEnvelope<UpdateMemberInfoApimDataItem>> envelope(
       String error, List<UpdateMemberInfoApimDataItem> rows) {
-    return Mono.just(ApimResponseEnvelope.<UpdateMemberInfoApimDataItem>builder()
-        .response(ApimResponseBody.<UpdateMemberInfoApimDataItem>builder().errMessage(error).data(rows).build())
-        .build());
+    return Mono.just(
+        ApimResponseEnvelope.<UpdateMemberInfoApimDataItem>builder()
+            .response(
+                ApimResponseBody.<UpdateMemberInfoApimDataItem>builder()
+                    .errMessage(error)
+                    .data(rows)
+                    .build())
+            .build());
   }
 }

@@ -147,8 +147,8 @@ public class PersonalInformationController {
                                           return Mono.<UpdatePersonalInformationResponse>just(
                                               withUpdateHttpStatus(
                                                   exchange,
-                                                  UpdatePersonalInformationResponse.validationFailed(
-                                                      errors)));
+                                                  UpdatePersonalInformationResponse
+                                                      .validationFailed(errors)));
                                         }
                                         var mapped =
                                             requestMapper.toCommand(
@@ -181,18 +181,18 @@ public class PersonalInformationController {
 
   private static UpdatePersonalInformationResponse withUpdateHttpStatus(
       ServerWebExchange exchange, UpdatePersonalInformationResponse body) {
-    exchange.getResponse().setStatusCode(
-        body.status() == ApiStatus.VALIDATION_FAILED
-            ? HttpStatus.UNPROCESSABLE_CONTENT
-            : HttpStatusClassification.classify(body.status()));
+    exchange
+        .getResponse()
+        .setStatusCode(
+            body.status() == ApiStatus.VALIDATION_FAILED
+                ? HttpStatus.UNPROCESSABLE_CONTENT
+                : HttpStatusClassification.classify(body.status()));
     return body;
   }
 
-  private static List<MappedError> mergeErrors(
-      List<ApiError> first, List<ApiError> second) {
+  private static List<MappedError> mergeErrors(List<ApiError> first, List<ApiError> second) {
     return Stream.concat(first.stream(), second.stream())
-        .map(error -> new MappedError(
-            error.type(), error.code(), error.targets()))
+        .map(error -> new MappedError(error.type(), error.code(), error.targets()))
         .distinct()
         .toList();
   }

@@ -15,7 +15,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformation
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
@@ -76,13 +75,18 @@ class UpdatePersonalInformationControllerTest {
                 "15:42:52",
                 List.of()));
     UpdatePersonalInformationResponse mappedResponse =
-        new UpdatePersonalInformationResponse(true, ApiStatus.UPDATED,
+        new UpdatePersonalInformationResponse(
+            true,
+            ApiStatus.UPDATED,
             new PersonalInformationUpdateResultResponse(
                 new PersonalInformationUpdateResultResponse.Data(
                     new PersonalInformationUpdateResultResponse.Account(
                         "00000000118-0002", "260001373", "2025-12-31", "15:42:52"),
-                    List.of(), List.of())),
-            List.of(new UpdatePersonalInformationResponse.Message("personalInformation.update.success")),
+                    List.of(),
+                    List.of())),
+            List.of(
+                new UpdatePersonalInformationResponse.Message(
+                    "personalInformation.update.success")),
             List.of());
 
     when(requestMapper.toCommand(eq(true), any(UpdatePersonalInformationRequest.class)))

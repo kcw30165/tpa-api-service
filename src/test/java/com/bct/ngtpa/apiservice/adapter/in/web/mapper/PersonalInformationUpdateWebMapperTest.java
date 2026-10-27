@@ -232,10 +232,7 @@ class PersonalInformationUpdateWebMapperTest {
             com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError::type,
             com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError::code,
             com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError::targets)
-        .containsExactly(
-            null,
-            "personalInformation.update.rejected",
-            List.of());
+        .containsExactly(null, "personalInformation.update.rejected", List.of());
     assertThat(mapper.toMappedErrors(errorRow(List.of()))).hasSize(1);
   }
 
@@ -245,9 +242,10 @@ class PersonalInformationUpdateWebMapperTest {
 
     var errors =
         mapper.toMappedErrors(
-            errorRow(List.of(
-                UpdatePersonalInformationError.fromPipeSeparatedFields(
-                    "strange", " addr1 | addr1 | unknown | ", null))));
+            errorRow(
+                List.of(
+                    UpdatePersonalInformationError.fromPipeSeparatedFields(
+                        "strange", " addr1 | addr1 | unknown | ", null))));
 
     assertThat(errors).hasSize(1);
     assertThat(errors.get(0).type()).isEqualTo("strange");
@@ -265,8 +263,10 @@ class PersonalInformationUpdateWebMapperTest {
 
     var error =
         mapper
-            .toMappedErrors(errorRow(
-                List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED"))))
+            .toMappedErrors(
+                errorRow(
+                    List.of(
+                        new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED"))))
             .get(0);
 
     assertThat(error.type()).isEqualTo("FIELD");
@@ -282,13 +282,14 @@ class PersonalInformationUpdateWebMapperTest {
                 section(field("homeTel", "home-phone", "string", "tel", null, null, false))));
 
     var errors =
-        mapper.toMappedErrors(errorRow(
-            List.of(
-                new UpdatePersonalInformationError(
-                    "CROSS_FIELD", List.of("home-phone"), "AT_LEAST_ONE_REQUIRED"),
-                new UpdatePersonalInformationError(
-                    "FIELD", List.of("home-phone"), "INVALID_FORMAT"),
-                new UpdatePersonalInformationError("FIELD", List.of(), "REQUIRED"))));
+        mapper.toMappedErrors(
+            errorRow(
+                List.of(
+                    new UpdatePersonalInformationError(
+                        "CROSS_FIELD", List.of("home-phone"), "AT_LEAST_ONE_REQUIRED"),
+                    new UpdatePersonalInformationError(
+                        "FIELD", List.of("home-phone"), "INVALID_FORMAT"),
+                    new UpdatePersonalInformationError("FIELD", List.of(), "REQUIRED"))));
 
     assertThat(errors.get(0).code()).isEqualTo("personalInformation.address.atLeastOneRequired");
     assertThat(errors.get(1).targets()).containsExactly("homeTel");

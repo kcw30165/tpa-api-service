@@ -13,10 +13,9 @@ import com.bct.ngtpa.apiservice.adapter.in.web.personalinformation.PersonalInfor
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationFieldAccessChecker;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
@@ -159,8 +158,13 @@ class PersonalInformationPutHttpStatusContractTest {
     inputsAreValid();
     downstreamReturns(
         new UpdatePersonalInformationResponse(
-            false, ApiStatus.SYSTEM_ERROR, null, List.of(),
-            List.of(new MappedError("SYSTEM", "err.personal-information.update.unavailable", List.of()))));
+            false,
+            ApiStatus.SYSTEM_ERROR,
+            null,
+            List.of(),
+            List.of(
+                new MappedError(
+                    "SYSTEM", "err.personal-information.update.unavailable", List.of()))));
 
     put()
         .expectStatus()
@@ -178,19 +182,25 @@ class PersonalInformationPutHttpStatusContractTest {
   void javaPreValidationUses422CodeOnlyContract() {
     when(validator.validate(any(), any(), any(), any(), any())).thenReturn(List.of(YAML_ERROR));
     when(accessChecker.check(any(), any(), any(), any(), any())).thenReturn(Mono.just(List.of()));
-    put().expectStatus().value(status -> assertThat(status).isEqualTo(422)).expectBody().consumeWith(response -> {
-      var json = new com.fasterxml.jackson.databind.ObjectMapper();
-      try {
-        com.fasterxml.jackson.databind.JsonNode expected =
-            json.readTree("""
+    put()
+        .expectStatus()
+        .value(status -> assertThat(status).isEqualTo(422))
+        .expectBody()
+        .consumeWith(
+            response -> {
+              var json = new com.fasterxml.jackson.databind.ObjectMapper();
+              try {
+                com.fasterxml.jackson.databind.JsonNode expected =
+                    json.readTree(
+                        """
                 {"success":false,"status":"VALIDATION_FAILED","result":null,"messages":[],
                  "errors":[{"type":"FIELD","code":"personalInformation.email.invalid","targets":["emailAddress"]}]}
                 """);
-        assertThat(json.readTree(response.getResponseBody())).isEqualTo(expected);
-      } catch (java.io.IOException error) {
-        throw new AssertionError(error);
-      }
-    });
+                assertThat(json.readTree(response.getResponseBody())).isEqualTo(expected);
+              } catch (java.io.IOException error) {
+                throw new AssertionError(error);
+              }
+            });
   }
 
   // ----- outcomes that stay HTTP 200 ----------------------------------------------------------
@@ -200,8 +210,12 @@ class PersonalInformationPutHttpStatusContractTest {
     inputsAreValid();
     downstreamReturns(
         new UpdatePersonalInformationResponse(
-            true, ApiStatus.PARTIAL_SUCCESS, okResult(),
-            List.of(new UpdatePersonalInformationResponse.Message("personalInformation.update.partialSuccess")),
+            true,
+            ApiStatus.PARTIAL_SUCCESS,
+            okResult(),
+            List.of(
+                new UpdatePersonalInformationResponse.Message(
+                    "personalInformation.update.partialSuccess")),
             List.of()));
 
     put()
@@ -215,10 +229,15 @@ class PersonalInformationPutHttpStatusContractTest {
   @Test
   void successfulUpdateReturnsHttp200() {
     inputsAreValid();
-    downstreamReturns(new UpdatePersonalInformationResponse(
-        true, ApiStatus.UPDATED, okResult(),
-        List.of(new UpdatePersonalInformationResponse.Message("personalInformation.update.success")),
-        List.of()));
+    downstreamReturns(
+        new UpdatePersonalInformationResponse(
+            true,
+            ApiStatus.UPDATED,
+            okResult(),
+            List.of(
+                new UpdatePersonalInformationResponse.Message(
+                    "personalInformation.update.success")),
+            List.of()));
 
     put()
         .expectStatus()
@@ -237,8 +256,7 @@ class PersonalInformationPutHttpStatusContractTest {
     when(accessChecker.check(any(), any(), any(), any(), any())).thenReturn(Mono.just(List.of()));
   }
 
-  private void downstreamReturns(
-      UpdatePersonalInformationResponse mapped) {
+  private void downstreamReturns(UpdatePersonalInformationResponse mapped) {
     List<UpdatePersonalInformationResult> results = List.of();
     when(requestMapper.toCommand(eq(true), any(UpdatePersonalInformationRequest.class)))
         .thenReturn(new UpdatePersonalInformationCommand(true, Map.of("email", "a@b.test")));
@@ -256,7 +274,9 @@ class PersonalInformationPutHttpStatusContractTest {
     return new PersonalInformationUpdateResultResponse(
         new PersonalInformationUpdateResultResponse.Data(
             new PersonalInformationUpdateResultResponse.Account(
-                "00000000118-0002", "REF-1", "2026-10-23", "13:00:00"), List.of(), List.of()));
+                "00000000118-0002", "REF-1", "2026-10-23", "13:00:00"),
+            List.of(),
+            List.of()));
   }
 
   private WebTestClient.ResponseSpec put() {

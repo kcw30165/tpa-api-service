@@ -1,8 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapperTest.mapper;
 import static com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapperTest.row;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,11 +12,17 @@ import org.junit.jupiter.api.Test;
 class PersonalInformationUpdateResultListMapperContractTest {
   @Test
   void listInputBecomesDataObjectNotListOutput() {
-    var json = new ObjectMapper().valueToTree(mapper().toResponse(List.of(
-        row(true, true, "2"), row(false, true, "3"))));
+    var json =
+        new ObjectMapper()
+            .valueToTree(mapper().toResponse(List.of(row(true, true, "2"), row(false, true, "3"))));
     assertThat(json.path("result").isObject()).isTrue();
     assertThat(json.path("result").path("data").path("rows")).hasSize(1);
-    assertThat(json.path("result").path("data").path("selectedAccount").path("accountIdentifier").asText())
+    assertThat(
+            json.path("result")
+                .path("data")
+                .path("selectedAccount")
+                .path("accountIdentifier")
+                .asText())
         .isEqualTo("00000000118-0002");
   }
 
@@ -38,6 +44,7 @@ class PersonalInformationUpdateResultListMapperContractTest {
     assertThat(response.errors()).isEmpty();
     assertThat(response.result().data().rows()).isEmpty();
     assertThat(response.result().data().errors()).hasSize(1);
-    assertThat(response.messages().getFirst().code()).isEqualTo("personalInformation.update.partialSuccess");
+    assertThat(response.messages().getFirst().code())
+        .isEqualTo("personalInformation.update.partialSuccess");
   }
 }

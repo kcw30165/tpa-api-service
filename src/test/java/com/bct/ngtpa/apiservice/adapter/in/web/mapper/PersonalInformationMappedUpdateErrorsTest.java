@@ -43,24 +43,42 @@ class PersonalInformationMappedUpdateErrorsTest {
   }
 
   static Stream<Arguments> codes() {
-    return Stream.of(true, false).flatMap(selected -> Stream.of(
-        Arguments.of(selected, "REQUIRED", "personalInformation.field.required"),
-        Arguments.of(selected, "INVALID_FORMAT", "personalInformation.field.invalidFormat"),
-        Arguments.of(selected, "AT_LEAST_ONE_REQUIRED", "personalInformation.address.atLeastOneRequired"),
-        Arguments.of(selected, "READ_ONLY", "personalInformation.update.rejected"),
-        Arguments.of(selected, "personalInformation.unapproved", "personalInformation.update.rejected"),
-        Arguments.of(selected, "", "personalInformation.update.rejected"),
-        Arguments.of(selected, null, "personalInformation.update.rejected")));
+    return Stream.of(true, false)
+        .flatMap(
+            selected ->
+                Stream.of(
+                    Arguments.of(selected, "REQUIRED", "personalInformation.field.required"),
+                    Arguments.of(
+                        selected, "INVALID_FORMAT", "personalInformation.field.invalidFormat"),
+                    Arguments.of(
+                        selected,
+                        "AT_LEAST_ONE_REQUIRED",
+                        "personalInformation.address.atLeastOneRequired"),
+                    Arguments.of(selected, "READ_ONLY", "personalInformation.update.rejected"),
+                    Arguments.of(
+                        selected,
+                        "personalInformation.unapproved",
+                        "personalInformation.update.rejected"),
+                    Arguments.of(selected, "", "personalInformation.update.rejected"),
+                    Arguments.of(selected, null, "personalInformation.update.rejected")));
   }
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   void crossFieldIsOneErrorWithOnlyKnownDistinctFrontendTargets(boolean selected) throws Exception {
-    var mapped = map(mapper(), account(selected, false, "CROSS_FIELD", "AT_LEAST_ONE_REQUIRED",
-        List.of("addr1 | missing | addr2 |addr1", "", "  ")));
+    var mapped =
+        map(
+            mapper(),
+            account(
+                selected,
+                false,
+                "CROSS_FIELD",
+                "AT_LEAST_ONE_REQUIRED",
+                List.of("addr1 | missing | addr2 |addr1", "", "  ")));
     assertThat(mapped.size()).isEqualTo(1);
     assertThat(mapped.get(0).path("type").asText()).isEqualTo("CROSS_FIELD");
-    assertThat(mapped.get(0).path("targets")).isEqualTo(JSON.valueToTree(List.of("firstLine", "secondLine")));
+    assertThat(mapped.get(0).path("targets"))
+        .isEqualTo(JSON.valueToTree(List.of("firstLine", "secondLine")));
   }
 
   @ParameterizedTest
@@ -79,17 +97,25 @@ class PersonalInformationMappedUpdateErrorsTest {
   }
 
   static Stream<Arguments> types() {
-    return Stream.of(Arguments.of("FIELD"), Arguments.of("CROSS_FIELD"),
-        Arguments.of((String) null), Arguments.of(""), Arguments.of("custom"));
+    return Stream.of(
+        Arguments.of("FIELD"),
+        Arguments.of("CROSS_FIELD"),
+        Arguments.of((String) null),
+        Arguments.of(""),
+        Arguments.of("custom"));
   }
 
   @Test
   void failedOtherAccountWithNoErrorsGetsOneNullTypedCodeOnlyFallback() throws Exception {
-    var mapped = map(mapper(), new UpdatePersonalInformationResult(
-        false, false, "118", "3", "DB", null, null, null, List.of()));
+    var mapped =
+        map(
+            mapper(),
+            new UpdatePersonalInformationResult(
+                false, false, "118", "3", "DB", null, null, null, List.of()));
     assertThat(mapped.size()).isEqualTo(1);
     assertThat(mapped.get(0).get("type").isNull()).isTrue();
-    assertThat(mapped.get(0).path("code").asText()).isEqualTo("personalInformation.update.rejected");
+    assertThat(mapped.get(0).path("code").asText())
+        .isEqualTo("personalInformation.update.rejected");
     assertThat(mapped.get(0).path("targets").isEmpty()).isTrue();
     assertThat(mapped.get(0).size()).isEqualTo(3);
   }
@@ -97,84 +123,159 @@ class PersonalInformationMappedUpdateErrorsTest {
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   void successfulAccountsProduceNoMappedFailures(boolean selected) throws Exception {
-    assertThat(map(mapper(), account(selected, true, "FIELD", "REQUIRED", List.of("email"))).isEmpty()).isTrue();
+    assertThat(
+            map(mapper(), account(selected, true, "FIELD", "REQUIRED", List.of("email"))).isEmpty())
+        .isTrue();
   }
 
   @Test
   void missingSelectedErrorsRemainAnInvariantViolationNotAnOtherAccountFallback() {
-    assertThatThrownBy(() -> map(mapper(), new UpdatePersonalInformationResult(
-        true, false, "118", "3", "DB", null, null, null, List.of())))
+    assertThatThrownBy(
+            () ->
+                map(
+                    mapper(),
+                    new UpdatePersonalInformationResult(
+                        true, false, "118", "3", "DB", null, null, null, List.of())))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage("Selected account update errors are missing.");
   }
 
   @Test
   void realYamlProvidesTheReverseErrorBindings() {
-    PersonalInformationYamlContextRunner.create().run(context -> {
-      assertThat(context).hasNotFailed();
-      var mapper = new PersonalInformationUpdateErrorMapper(context.getBean(BffPagesProperties.class));
-      var mapped = map(mapper, account(false, false, "CROSS_FIELD", "REQUIRED",
-          List.of("email|addr1|corr-addr1")));
-      assertThat(mapped.get(0).path("targets")).isEqualTo(JSON.valueToTree(
-          List.of("emailAddress", "residentialAddressLine1", "mailingAddressLine1")));
-    });
+    PersonalInformationYamlContextRunner.create()
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed();
+              var mapper =
+                  new PersonalInformationUpdateErrorMapper(
+                      context.getBean(BffPagesProperties.class));
+              var mapped =
+                  map(
+                      mapper,
+                      account(
+                          false,
+                          false,
+                          "CROSS_FIELD",
+                          "REQUIRED",
+                          List.of("email|addr1|corr-addr1")));
+              assertThat(mapped.get(0).path("targets"))
+                  .isEqualTo(
+                      JSON.valueToTree(
+                          List.of(
+                              "emailAddress", "residentialAddressLine1", "mailingAddressLine1")));
+            });
   }
 
   @Test
   void realYamlResolvesInvalidFormatForSelectedAndOtherAccounts() {
-    PersonalInformationYamlContextRunner.create().run(context -> {
-      assertThat(context).hasNotFailed();
-      var mapper = new PersonalInformationUpdateErrorMapper(context.getBean(BffPagesProperties.class));
-      for (boolean selected : List.of(true, false)) {
-        assertInvalidFormat(mapper, selected, List.of("email"), "personalInformation.email.invalid",
-            List.of("emailAddress"));
-        assertInvalidFormat(mapper, selected, List.of("addr1"), "personalInformation.residentialAddress.invalid",
-            List.of("residentialAddressLine1"));
-        assertInvalidFormat(mapper, selected, List.of("addr1|addr2|addr3"),
-            "personalInformation.residentialAddress.invalid",
-            List.of("residentialAddressLine1", "residentialAddressLine2", "residentialAddressLine3"));
-        assertInvalidFormat(mapper, selected, List.of("unknown"), "personalInformation.field.invalidFormat",
-            List.of());
-        assertInvalidFormat(mapper, selected, List.of(), "personalInformation.field.invalidFormat",
-            List.of());
-        assertInvalidFormat(mapper, selected, List.of("country"), "personalInformation.field.invalidFormat",
-            List.of("residentialCountry"));
-        assertInvalidFormat(mapper, selected, List.of("email|addr1"), "personalInformation.field.invalidFormat",
-            List.of("emailAddress", "residentialAddressLine1"));
-        assertInvalidFormat(mapper, selected, List.of("email|country"), "personalInformation.field.invalidFormat",
-            List.of("emailAddress", "residentialCountry"));
-        assertInvalidFormat(mapper, selected, List.of("unknown|email|email"),
-            "personalInformation.email.invalid", List.of("emailAddress"));
-      }
-    });
+    PersonalInformationYamlContextRunner.create()
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed();
+              var mapper =
+                  new PersonalInformationUpdateErrorMapper(
+                      context.getBean(BffPagesProperties.class));
+              for (boolean selected : List.of(true, false)) {
+                assertInvalidFormat(
+                    mapper,
+                    selected,
+                    List.of("email"),
+                    "personalInformation.email.invalid",
+                    List.of("emailAddress"));
+                assertInvalidFormat(
+                    mapper,
+                    selected,
+                    List.of("addr1"),
+                    "personalInformation.residentialAddress.invalid",
+                    List.of("residentialAddressLine1"));
+                assertInvalidFormat(
+                    mapper,
+                    selected,
+                    List.of("addr1|addr2|addr3"),
+                    "personalInformation.residentialAddress.invalid",
+                    List.of(
+                        "residentialAddressLine1",
+                        "residentialAddressLine2",
+                        "residentialAddressLine3"));
+                assertInvalidFormat(
+                    mapper,
+                    selected,
+                    List.of("unknown"),
+                    "personalInformation.field.invalidFormat",
+                    List.of());
+                assertInvalidFormat(
+                    mapper,
+                    selected,
+                    List.of(),
+                    "personalInformation.field.invalidFormat",
+                    List.of());
+                assertInvalidFormat(
+                    mapper,
+                    selected,
+                    List.of("country"),
+                    "personalInformation.field.invalidFormat",
+                    List.of("residentialCountry"));
+                assertInvalidFormat(
+                    mapper,
+                    selected,
+                    List.of("email|addr1"),
+                    "personalInformation.field.invalidFormat",
+                    List.of("emailAddress", "residentialAddressLine1"));
+                assertInvalidFormat(
+                    mapper,
+                    selected,
+                    List.of("email|country"),
+                    "personalInformation.field.invalidFormat",
+                    List.of("emailAddress", "residentialCountry"));
+                assertInvalidFormat(
+                    mapper,
+                    selected,
+                    List.of("unknown|email|email"),
+                    "personalInformation.email.invalid",
+                    List.of("emailAddress"));
+              }
+            });
   }
 
   @Test
   void multipleDistinctInvalidCodesOnOneTargetFallBackAndNonInvalidRulesAreIgnored() {
-    PersonalInformationYamlContextRunner.create().run(context -> {
-      assertThat(context).hasNotFailed();
-      var properties = context.getBean(BffPagesProperties.class);
-      var email = properties.getPages().get("personalInformation").getForm().getSections().stream()
-          .flatMap(section -> section.getFields().stream())
-          .filter(field -> "emailAddress".equals(field.getId())).findFirst().orElseThrow();
-      var mapper = new PersonalInformationUpdateErrorMapper(properties);
-      var rules = new ArrayList<>(email.getValidations());
-      rules.add(rule("personalInformation.address.poBoxBlocked"));
-      rules.add(rule("personalInformation.email.requiredWhenPresent"));
-      rules.add(rule(null));
-      rules.add(rule(""));
-      email.setValidations(rules);
-      for (boolean selected : List.of(true, false)) {
-        assertInvalidFormat(mapper, selected, List.of("email"), "personalInformation.email.invalid",
-            List.of("emailAddress"));
-      }
-      rules.add(rule("personalInformation.alternate.invalid"));
-      email.setValidations(rules);
-      for (boolean selected : List.of(true, false)) {
-        assertInvalidFormat(mapper, selected, List.of("email"), "personalInformation.field.invalidFormat",
-            List.of("emailAddress"));
-      }
-    });
+    PersonalInformationYamlContextRunner.create()
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed();
+              var properties = context.getBean(BffPagesProperties.class);
+              var email =
+                  properties.getPages().get("personalInformation").getForm().getSections().stream()
+                      .flatMap(section -> section.getFields().stream())
+                      .filter(field -> "emailAddress".equals(field.getId()))
+                      .findFirst()
+                      .orElseThrow();
+              var mapper = new PersonalInformationUpdateErrorMapper(properties);
+              var rules = new ArrayList<>(email.getValidations());
+              rules.add(rule("personalInformation.address.poBoxBlocked"));
+              rules.add(rule("personalInformation.email.requiredWhenPresent"));
+              rules.add(rule(null));
+              rules.add(rule(""));
+              email.setValidations(rules);
+              for (boolean selected : List.of(true, false)) {
+                assertInvalidFormat(
+                    mapper,
+                    selected,
+                    List.of("email"),
+                    "personalInformation.email.invalid",
+                    List.of("emailAddress"));
+              }
+              rules.add(rule("personalInformation.alternate.invalid"));
+              email.setValidations(rules);
+              for (boolean selected : List.of(true, false)) {
+                assertInvalidFormat(
+                    mapper,
+                    selected,
+                    List.of("email"),
+                    "personalInformation.field.invalidFormat",
+                    List.of("emailAddress"));
+              }
+            });
   }
 
   private static ValidationRuleProperties rule(String code) {
@@ -184,28 +285,51 @@ class PersonalInformationMappedUpdateErrorsTest {
   }
 
   private static void assertInvalidFormat(
-      PersonalInformationUpdateErrorMapper mapper, boolean selected, List<String> fields,
-      String expectedCode, List<String> expectedTargets) {
-    var errors = mapper.toMappedErrors(account(selected, false, "CROSS_FIELD", "INVALID_FORMAT", fields));
-    assertThat(errors).containsExactly(new com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError(
-        "CROSS_FIELD", expectedCode, expectedTargets));
+      PersonalInformationUpdateErrorMapper mapper,
+      boolean selected,
+      List<String> fields,
+      String expectedCode,
+      List<String> expectedTargets) {
+    var errors =
+        mapper.toMappedErrors(account(selected, false, "CROSS_FIELD", "INVALID_FORMAT", fields));
+    assertThat(errors)
+        .containsExactly(
+            new com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError(
+                "CROSS_FIELD", expectedCode, expectedTargets));
   }
 
   @Test
   void unknownAndFallbackDiagnosticsDoNotContainAccountIdentifiersOrValues() throws Exception {
-    var logger = (ch.qos.logback.classic.Logger)
-        org.slf4j.LoggerFactory.getLogger(PersonalInformationUpdateErrorMapper.class);
-    var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+    var logger =
+        (ch.qos.logback.classic.Logger)
+            org.slf4j.LoggerFactory.getLogger(PersonalInformationUpdateErrorMapper.class);
+    var appender =
+        new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
     appender.start();
     logger.addAppender(appender);
     try {
       map(mapper(), account(false, false, "FIELD", "REQUIRED", List.of("unknown")));
-      map(mapper(), new UpdatePersonalInformationResult(
-          false, false, "secret-policy", "secret-cert", "DB", "secret-ref", null, null, List.of()));
-      var messages = appender.list.stream().map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage).toList();
-      assertThat(messages).anyMatch(message -> message.contains("unknown-field") && message.contains("unknown"));
+      map(
+          mapper(),
+          new UpdatePersonalInformationResult(
+              false,
+              false,
+              "secret-policy",
+              "secret-cert",
+              "DB",
+              "secret-ref",
+              null,
+              null,
+              List.of()));
+      var messages =
+          appender.list.stream()
+              .map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+              .toList();
+      assertThat(messages)
+          .anyMatch(message -> message.contains("unknown-field") && message.contains("unknown"));
       assertThat(messages).anyMatch(message -> message.contains("other-account-errors-missing"));
-      assertThat(String.join("\n", messages)).doesNotContain("secret-policy", "secret-cert", "secret-ref");
+      assertThat(String.join("\n", messages))
+          .doesNotContain("secret-policy", "secret-cert", "secret-ref");
     } finally {
       logger.detachAppender(appender);
       appender.stop();
@@ -215,21 +339,33 @@ class PersonalInformationMappedUpdateErrorsTest {
   @Test
   void mappedErrorsAndTheirTargetsAreImmutable() {
     var targets = new ArrayList<>(List.of("emailAddress"));
-    var error = new com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError("FIELD", "code", targets);
+    var error =
+        new com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError("FIELD", "code", targets);
     targets.clear();
     assertThat(error.targets()).containsExactly("emailAddress");
-    assertThatThrownBy(() -> error.targets().clear()).isInstanceOf(UnsupportedOperationException.class);
-    var errors = mapper().toMappedErrors(account(true, false, "FIELD", "REQUIRED", List.of("email")));
+    assertThatThrownBy(() -> error.targets().clear())
+        .isInstanceOf(UnsupportedOperationException.class);
+    var errors =
+        mapper().toMappedErrors(account(true, false, "FIELD", "REQUIRED", List.of("email")));
     assertThatThrownBy(() -> errors.clear()).isInstanceOf(UnsupportedOperationException.class);
   }
 
-  private static JsonNode map(PersonalInformationUpdateErrorMapper mapper, UpdatePersonalInformationResult account) {
+  private static JsonNode map(
+      PersonalInformationUpdateErrorMapper mapper, UpdatePersonalInformationResult account) {
     return JSON.valueToTree(mapper.toMappedErrors(account));
   }
 
   private static UpdatePersonalInformationResult account(
       boolean selected, boolean success, String type, String code, List<String> fields) {
-    return new UpdatePersonalInformationResult(selected, success, "118", "3", "DB", null, null, null,
+    return new UpdatePersonalInformationResult(
+        selected,
+        success,
+        "118",
+        "3",
+        "DB",
+        null,
+        null,
+        null,
         List.of(new UpdatePersonalInformationError(type, fields, code)));
   }
 

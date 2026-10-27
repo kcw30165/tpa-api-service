@@ -17,13 +17,15 @@ class PersonalInformationUpdateResponseMapperTest {
     var response = mapper().toResponse(row(true, true, "2"));
     assertThat(response.success()).isTrue();
     assertThat(response.status()).isEqualTo(ApiStatus.UPDATED);
-    assertThat(response.result().data().selectedAccount().accountIdentifier()).isEqualTo("00000000118-0002");
+    assertThat(response.result().data().selectedAccount().accountIdentifier())
+        .isEqualTo("00000000118-0002");
     assertThat(response.result().data().selectedAccount().refNo()).isNull();
     assertThat(response.result().data().selectedAccount().submitDate()).isEmpty();
     assertThat(response.result().data().selectedAccount().submitTime()).isEqualTo(" ");
     assertThat(response.result().data().rows()).isEmpty();
     assertThat(response.result().data().errors()).isEmpty();
-    assertThat(response.messages()).extracting(message -> message.code())
+    assertThat(response.messages())
+        .extracting(message -> message.code())
         .containsExactly("personalInformation.update.success");
     assertThat(response.errors()).isEmpty();
   }
@@ -36,25 +38,35 @@ class PersonalInformationUpdateResponseMapperTest {
     assertThat(response.result().data().selectedAccount()).isNull();
     assertThat(response.result().data().rows()).isEmpty();
     assertThat(response.result().data().errors()).isEmpty();
-    assertThat(response.errors()).extracting(error -> error.code())
+    assertThat(response.errors())
+        .extracting(error -> error.code())
         .containsExactly("personalInformation.field.required");
     assertThat(response.messages()).isEmpty();
   }
 
   @Test
   void mixedOtherAccountsArePartitionedWithoutDuplicatingSelectedAccount() {
-    var response = mapper().toResponse(List.of(
-        row(false, true, "3"), row(true, true, "2"), row(false, false, "4"),
-        row(false, true, "5")));
+    var response =
+        mapper()
+            .toResponse(
+                List.of(
+                    row(false, true, "3"),
+                    row(true, true, "2"),
+                    row(false, false, "4"),
+                    row(false, true, "5")));
     assertThat(response.status()).isEqualTo(ApiStatus.PARTIAL_SUCCESS);
-    assertThat(response.result().data().rows()).extracting(account -> account.accountIdentifier())
+    assertThat(response.result().data().rows())
+        .extracting(account -> account.accountIdentifier())
         .containsExactly("00000000118-0003", "00000000118-0005");
-    assertThat(response.result().data().errors()).extracting(account -> account.accountIdentifier())
+    assertThat(response.result().data().errors())
+        .extracting(account -> account.accountIdentifier())
         .containsExactly("00000000118-0004");
-    assertThat(response.result().data().errors().getFirst().errors()).extracting(error -> error.code())
+    assertThat(response.result().data().errors().getFirst().errors())
+        .extracting(error -> error.code())
         .containsExactly("personalInformation.field.required");
     assertThat(response.errors()).isEmpty();
-    assertThat(response.messages()).extracting(message -> message.code())
+    assertThat(response.messages())
+        .extracting(message -> message.code())
         .containsExactly("personalInformation.update.partialSuccess");
   }
 
@@ -70,8 +82,9 @@ class PersonalInformationUpdateResponseMapperTest {
 
   @Test
   void emptyOtherErrorsUseTheSt3NullTypeFallback() {
-    var other = new UpdatePersonalInformationResult(
-        false, false, "118", "3", "DB", null, null, null, List.of());
+    var other =
+        new UpdatePersonalInformationResult(
+            false, false, "118", "3", "DB", null, null, null, List.of());
     var response = mapper().toResponse(List.of(row(true, true, "2"), other));
     var error = response.result().data().errors().getFirst().errors().getFirst();
     assertThat(error.type()).isNull();
@@ -81,11 +94,15 @@ class PersonalInformationUpdateResponseMapperTest {
 
   @Test
   void formattingUsesInjectedWidthsAndPaddingRatherThanHardcodedValues() {
-    var mapper = new PersonalInformationUpdateResponseMapper(
-        new PersonalInformationUpdateErrorMapper(null), new AccountIdentifierFormatter(6, 3, '9'));
+    var mapper =
+        new PersonalInformationUpdateResponseMapper(
+            new PersonalInformationUpdateErrorMapper(null),
+            new AccountIdentifierFormatter(6, 3, '9'));
     var response = mapper.toResponse(List.of(row(true, true, "2"), row(false, false, "3")));
-    assertThat(response.result().data().selectedAccount().accountIdentifier()).isEqualTo("999118-992");
-    assertThat(response.result().data().errors().getFirst().accountIdentifier()).isEqualTo("999118-993");
+    assertThat(response.result().data().selectedAccount().accountIdentifier())
+        .isEqualTo("999118-992");
+    assertThat(response.result().data().errors().getFirst().accountIdentifier())
+        .isEqualTo("999118-993");
   }
 
   @Test
@@ -106,8 +123,17 @@ class PersonalInformationUpdateResponseMapperTest {
   }
 
   static UpdatePersonalInformationResult row(boolean selected, boolean success, String cert) {
-    return new UpdatePersonalInformationResult(selected, success, "118", cert, "DB",
-        null, "", " ", success ? List.of() : List.of(
-            new UpdatePersonalInformationError("FIELD", List.of(), "REQUIRED")));
+    return new UpdatePersonalInformationResult(
+        selected,
+        success,
+        "118",
+        cert,
+        "DB",
+        null,
+        "",
+        " ",
+        success
+            ? List.of()
+            : List.of(new UpdatePersonalInformationError("FIELD", List.of(), "REQUIRED")));
   }
 }

@@ -14,7 +14,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
@@ -27,7 +26,6 @@ import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
@@ -75,7 +73,8 @@ class PersonalInformationUpdateOutcomeAdapterTest {
         response("[{\"success\":true,\"policy-no\":\" \",\"cert-no\":\"3\",\"env\":\"DB\"}]"),
         response("[{\"success\":true,\"policy-no\":\"abc\",\"cert-no\":\"3\",\"env\":\"DB\"}]"),
         response("[{\"success\":true,\"policy-no\":\"0\",\"cert-no\":\"3\",\"env\":\"DB\"}]"),
-        response("[{\"success\":true,\"policy-no\":\"123456789012\",\"cert-no\":\"3\",\"env\":\"DB\"}]"),
+        response(
+            "[{\"success\":true,\"policy-no\":\"123456789012\",\"cert-no\":\"3\",\"env\":\"DB\"}]"),
         response("[{\"success\":true,\"policy-no\":\"118\",\"cert-no\":null,\"env\":\"DB\"}]"),
         response("[" + row("0", true, "[]") + "]"),
         response("[" + row("-1", true, "[]") + "]"),
@@ -84,21 +83,26 @@ class PersonalInformationUpdateOutcomeAdapterTest {
   }
 
   @ParameterizedTest
-  @org.junit.jupiter.params.provider.ValueSource(strings = {"abc", "", " ", "0000", "3.5", "2147483648"})
+  @org.junit.jupiter.params.provider.ValueSource(
+      strings = {"abc", "", " ", "0000", "3.5", "2147483648"})
   void invalidDecryptedCertificateStringIsUnavailable(String certificate) {
     var executor = mock(ApimExchangeExecutor.class);
     when(executor.postEnvelope(any()))
         .thenAnswer(
-            ignored -> Mono.just(envelope(response(
-                "[" + row(certificate, true, "[]") + "]"))));
+            ignored -> Mono.just(envelope(response("[" + row(certificate, true, "[]") + "]"))));
 
     assertUnavailable(adapter(executor).updateMemberInfo(command(true)));
   }
 
   @Test
   void responseCertificateRemainsAPaddedString() throws Exception {
-    assertThat(envelope(response("[" + row("0003", true, "[]") + "]"))
-        .getResponse().getData().getFirst().getCertNo()).isEqualTo("0003");
+    assertThat(
+            envelope(response("[" + row("0003", true, "[]") + "]"))
+                .getResponse()
+                .getData()
+                .getFirst()
+                .getCertNo())
+        .isEqualTo("0003");
   }
 
   @ParameterizedTest
@@ -106,8 +110,8 @@ class PersonalInformationUpdateOutcomeAdapterTest {
   void validatesTrimmedDecryptedStringsWithoutLosingOriginalCertificate(String certificate) {
     var executor = mock(ApimExchangeExecutor.class);
     when(executor.postEnvelope(any()))
-        .thenAnswer(ignored -> Mono.just(envelope(response(
-            "[" + row(certificate, true, "[]") + "]"))));
+        .thenAnswer(
+            ignored -> Mono.just(envelope(response("[" + row(certificate, true, "[]") + "]"))));
 
     StepVerifier.create(adapter(executor).updateMemberInfo(command(true)))
         .assertNext(
@@ -124,22 +128,35 @@ class PersonalInformationUpdateOutcomeAdapterTest {
     var logger =
         (ch.qos.logback.classic.Logger)
             org.slf4j.LoggerFactory.getLogger(ApimUpdatePersonalInformationAdapter.class);
-    var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+    var appender =
+        new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
     appender.start();
     logger.addAppender(appender);
     try {
       var executor = mock(ApimExchangeExecutor.class);
       when(executor.postEnvelope(any()))
-          .thenAnswer(ignored -> Mono.just(envelope(response("[" + row("3", true, "[]") + "," + row("4", true, "[]") + "]"))));
+          .thenAnswer(
+              ignored ->
+                  Mono.just(
+                      envelope(
+                          response(
+                              "[" + row("3", true, "[]") + "," + row("4", true, "[]") + "]"))));
       adapter(executor).updateMemberInfo(command(false)).block();
       when(executor.postEnvelope(any()))
-          .thenAnswer(ignored -> Mono.just(envelope("{\"response\":{\"err-message\":\"private detail\"}}")));
+          .thenAnswer(
+              ignored ->
+                  Mono.just(envelope("{\"response\":{\"err-message\":\"private detail\"}}")));
       assertUnavailable(adapter(executor).updateMemberInfo(command(true)));
 
-      var messages = appender.list.stream().map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage).toList();
+      var messages =
+          appender.list.stream()
+              .map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+              .toList();
       assertThat(messages).anyMatch(message -> message.contains("other-accounts-dropped count=1"));
-      assertThat(messages).anyMatch(message -> message.contains("unavailable reason=INVALID_ENVELOPE"));
-      assertThat(String.join("\n", messages)).doesNotContain("00000000118", "0003", "private detail", "a@b.test");
+      assertThat(messages)
+          .anyMatch(message -> message.contains("unavailable reason=INVALID_ENVELOPE"));
+      assertThat(String.join("\n", messages))
+          .doesNotContain("00000000118", "0003", "private detail", "a@b.test");
     } finally {
       logger.detachAppender(appender);
       appender.stop();
@@ -175,7 +192,11 @@ class PersonalInformationUpdateOutcomeAdapterTest {
       throws Exception {
     var executor = mock(ApimExchangeExecutor.class);
     when(executor.postEnvelope(any()))
-        .thenAnswer(ignored -> Mono.just(envelope(response("[" + row("3", true, "[]") + "," + row("4", false, "[]") + "]"))));
+        .thenAnswer(
+            ignored ->
+                Mono.just(
+                    envelope(
+                        response("[" + row("3", true, "[]") + "," + row("4", false, "[]") + "]"))));
 
     StepVerifier.create(adapter(executor).updateMemberInfo(command(false)))
         .assertNext(
@@ -218,7 +239,9 @@ class PersonalInformationUpdateOutcomeAdapterTest {
   @Test
   void genericApimEnvelopeRejectionStillUsesItsExistingStatus() {
     assertThatThrownBy(
-            () -> ApimResponseValidator.requireSuccessData(envelope("{\"response\":{\"err-message\":\"rejected\"}}")))
+            () ->
+                ApimResponseValidator.requireSuccessData(
+                    envelope("{\"response\":{\"err-message\":\"rejected\"}}")))
         .isInstanceOfSatisfying(
             com.bct.ngtpa.apiservice.exception.ApimException.class,
             error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY));
@@ -231,7 +254,8 @@ class PersonalInformationUpdateOutcomeAdapterTest {
               var handler =
                   new ApiExceptionHandler(
                       new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
-                      new PublicMessageResolver((code, locale, accountEnv, trust, scheme) -> "resolved"),
+                      new PublicMessageResolver(
+                          (code, locale, accountEnv, trust, scheme) -> "resolved"),
                       new ErrorEventLogger(
                           new LoggingSanitizer(JSON, new MaskingService(new MaskingProperties()))),
                       new ErrorResponseRenderer());
@@ -239,35 +263,52 @@ class PersonalInformationUpdateOutcomeAdapterTest {
                   MockServerWebExchange.from(
                       MockServerHttpRequest.put("/api/v1/personal-information").build());
               var response =
-                  handler.handle(org.junit.jupiter.api.Assertions.assertInstanceOf(Exception.class, error), exchange);
+                  handler.handle(
+                      org.junit.jupiter.api.Assertions.assertInstanceOf(Exception.class, error),
+                      exchange);
               assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
               var body = response.getBody();
               assertThat(body.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
               assertThat(body.success()).isFalse();
               assertThat(body.result()).isNull();
               assertThat(body.messages()).isEmpty();
-              assertThat(body.errors()).singleElement().satisfies(
-                  entry -> {
-                    assertThat(entry.code()).isEqualTo("err.personal-information.update.unavailable");
-                    assertThat(entry.message()).isNull();
-                    assertThat(entry.targets()).isEmpty();
-                  });
+              assertThat(body.errors())
+                  .singleElement()
+                  .satisfies(
+                      entry -> {
+                        assertThat(entry.code())
+                            .isEqualTo("err.personal-information.update.unavailable");
+                        assertThat(entry.message()).isNull();
+                        assertThat(entry.targets()).isEmpty();
+                      });
             })
         .verify();
   }
 
   private static UpdateMemberInfoCommand command(boolean applyAll) {
     return new UpdateMemberInfoCommand(
-        "DB", "00000000118", "0003", "user", ActorUserRole.ROLE_USER_MBR, applyAll, Map.of("email", "a@b.test"));
+        "DB",
+        "00000000118",
+        "0003",
+        "user",
+        ActorUserRole.ROLE_USER_MBR,
+        applyAll,
+        Map.of("email", "a@b.test"));
   }
 
   private static ApimUpdatePersonalInformationAdapter adapter(ApimExchangeExecutor executor) {
-    return new ApimUpdatePersonalInformationAdapter(executor, new AccountIdentifierFormatter(11, 4, '0'));
+    return new ApimUpdatePersonalInformationAdapter(
+        executor, new AccountIdentifierFormatter(11, 4, '0'));
   }
 
   private static String row(String cert, boolean success, String errors) {
-    return "{\"success\":" + success + ",\"policy-no\":\"118\",\"cert-no\":\"" + cert
-        + "\",\"env\":\"DB\",\"errors\":" + errors + "}";
+    return "{\"success\":"
+        + success
+        + ",\"policy-no\":\"118\",\"cert-no\":\""
+        + cert
+        + "\",\"env\":\"DB\",\"errors\":"
+        + errors
+        + "}";
   }
 
   private static String response(String rows) {
@@ -278,6 +319,8 @@ class PersonalInformationUpdateOutcomeAdapterTest {
       throws Exception {
     return JSON.readValue(
         json,
-        JSON.getTypeFactory().constructParametricType(ApimResponseEnvelope.class, UpdateMemberInfoApimDataItem.class));
+        JSON.getTypeFactory()
+            .constructParametricType(
+                ApimResponseEnvelope.class, UpdateMemberInfoApimDataItem.class));
   }
 }

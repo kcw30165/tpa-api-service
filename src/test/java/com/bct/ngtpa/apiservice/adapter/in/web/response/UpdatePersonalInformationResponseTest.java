@@ -10,8 +10,7 @@ import org.junit.jupiter.api.Test;
 class UpdatePersonalInformationResponseTest {
   @Test
   void nullMessagesAndErrorsCoerceToEmptyLists() {
-    var response = new UpdatePersonalInformationResponse(
-        true, ApiStatus.UPDATED, null, null, null);
+    var response = new UpdatePersonalInformationResponse(true, ApiStatus.UPDATED, null, null, null);
     assertThat(response.messages()).isEmpty();
     assertThat(response.errors()).isEmpty();
   }
@@ -20,14 +19,17 @@ class UpdatePersonalInformationResponseTest {
   void messagesAndErrorsAreDefensivelyCopied() {
     var messages = new ArrayList<>(List.of(new UpdatePersonalInformationResponse.Message("code")));
     var errors = new ArrayList<>(List.of(new MappedError("FIELD", "code", List.of())));
-    var response = new UpdatePersonalInformationResponse(false, ApiStatus.VALIDATION_FAILED,
-        null, messages, errors);
+    var response =
+        new UpdatePersonalInformationResponse(
+            false, ApiStatus.VALIDATION_FAILED, null, messages, errors);
     messages.clear();
     errors.clear();
     assertThat(response.messages()).hasSize(1);
     assertThat(response.errors()).hasSize(1);
-    assertThatThrownBy(() -> response.messages().clear()).isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> response.errors().clear()).isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> response.messages().clear())
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> response.errors().clear())
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Test

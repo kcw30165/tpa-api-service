@@ -6,8 +6,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FieldProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageSchemaProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.SectionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ValidationRuleProperties;
-import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
+import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,7 +47,8 @@ public class PersonalInformationUpdateErrorMapper {
         .map(
             error -> {
               List<String> targets = mappedTargets(error.fields(), bindings);
-              return new MappedError(error.type(), mappedCode(error.code(), targets, fields), targets);
+              return new MappedError(
+                  error.type(), mappedCode(error.code(), targets, fields), targets);
             })
         .toList();
   }

@@ -37,7 +37,8 @@ class Task0043LoginAccountRecordValidationArchitectureTest {
             "formatCertificateNo");
     assertThat(service).doesNotContain("leftPad");
     assertThat(formatter).contains("leftPad");
-    assertThat(formatter).doesNotContain("org.springframework", "adapter.out", "Redis", "WebClient");
+    assertThat(formatter)
+        .doesNotContain("org.springframework", "adapter.out", "Redis", "WebClient");
     assertThat(service).doesNotContain("org.springframework", "adapter.out", "Redis", "WebClient");
   }
 

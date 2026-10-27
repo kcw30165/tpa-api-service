@@ -14,8 +14,7 @@ class AccountIdentifierConfigTest {
 
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner()
-          .withConfiguration(
-              AutoConfigurations.of(ConfigurationPropertiesAutoConfiguration.class))
+          .withConfiguration(AutoConfigurations.of(ConfigurationPropertiesAutoConfiguration.class))
           .withUserConfiguration(AccountIdentifierConfig.class, LoginAccountValidationConfig.class)
           .withPropertyValues(
               "account-identifiers.policy-no.width=6",

@@ -84,9 +84,10 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
               assertThat(body.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
               assertThat(body.result()).isNull();
               assertThat(body.messages()).isEmpty();
-              assertThat(body.errors()).containsExactly(
-                  new com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError(
-                      error.type(), error.code(), error.targets()));
+              assertThat(body.errors())
+                  .containsExactly(
+                      new com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError(
+                          error.type(), error.code(), error.targets()));
             })
         .verifyComplete();
 

@@ -56,8 +56,10 @@ class PersonalInformationUpdateIdentifierCryptoTest {
 
     var decryptedRequest =
         crypto.decryptResponse(
-            path, json.writeValueAsString(encryptedRequest),
-            UpdateMemberInfoApimRequest.class, keys.getPublic());
+            path,
+            json.writeValueAsString(encryptedRequest),
+            UpdateMemberInfoApimRequest.class,
+            keys.getPublic());
     assertThat(decryptedRequest.getPolicyNo()).isEqualTo("00000000118");
     assertThat(decryptedRequest.getCertNo()).isEqualTo("0003");
 
@@ -67,12 +69,15 @@ class PersonalInformationUpdateIdentifierCryptoTest {
             Map.of(
                 "response",
                 Map.of(
-                    "err-message", "",
-                    "data", List.of(Map.of(
-                        "success", true,
-                        "policy-no", "00000000118",
-                        "cert-no", "0003",
-                        "env", "DB")))),
+                    "err-message",
+                    "",
+                    "data",
+                    List.of(
+                        Map.of(
+                            "success", true,
+                            "policy-no", "00000000118",
+                            "cert-no", "0003",
+                            "env", "DB")))),
             Map.class,
             keys.getPublic());
     var wireRow = json.valueToTree(encryptedResponse).path("response").path("data").path(0);
@@ -83,8 +88,10 @@ class PersonalInformationUpdateIdentifierCryptoTest {
 
     var decryptedResponse =
         crypto.decryptResponseEnvelope(
-            path, json.writeValueAsString(encryptedResponse),
-            UpdateMemberInfoApimDataItem.class, keys.getPublic());
+            path,
+            json.writeValueAsString(encryptedResponse),
+            UpdateMemberInfoApimDataItem.class,
+            keys.getPublic());
     var row = decryptedResponse.getResponse().getData().getFirst();
     assertThat((Object) row.getPolicyNo()).isInstanceOf(String.class).isEqualTo("00000000118");
     assertThat((Object) row.getCertNo()).isInstanceOf(String.class).isEqualTo("0003");
