@@ -1,27 +1,27 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.account;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.*;
+import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public final class LoginAccountRecordValidationService {
   private static final DateTimeFormatter TERM_DATE =
       DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
-  private final int policyWidth;
-  private final int certWidth;
-  private final char padCharacter;
+  private final AccountIdentifierFormatter accountIdentifierFormatter;
 
   public LoginAccountRecordValidationService(int policyWidth, int certWidth, char padCharacter) {
-    if (policyWidth <= 0 || certWidth <= 0)
-      throw new IllegalArgumentException("identifier widths must be positive");
-    if (!Character.isDigit(padCharacter))
-      throw new IllegalArgumentException("padCharacter must be numeric");
-    this.policyWidth = policyWidth;
-    this.certWidth = certWidth;
-    this.padCharacter = padCharacter;
+    this(new AccountIdentifierFormatter(policyWidth, certWidth, padCharacter));
+  }
+
+  public LoginAccountRecordValidationService(
+      AccountIdentifierFormatter accountIdentifierFormatter) {
+    this.accountIdentifierFormatter =
+        Objects.requireNonNull(accountIdentifierFormatter, "accountIdentifierFormatter");
   }
 
   public LoginAccountValidationResult validate(List<LoginAccountRecord> source) {
@@ -50,12 +50,12 @@ public final class LoginAccountRecordValidationService {
     String rawPolicy = trim(record.rawPolicyNo());
     if (rawPolicy == null
         || !rawPolicy.matches("[0-9]+")
-        || rawPolicy.length() > policyWidth
+        || rawPolicy.length() > accountIdentifierFormatter.policyWidth()
         || allZero(rawPolicy)) throw invalid(LoginAccountRecordRejectionCategory.POLICY_NUMBER);
     if (record.rawCertNo() <= 0)
       throw invalid(LoginAccountRecordRejectionCategory.CERTIFICATE_NUMBER);
     String rawCert = Integer.toString(record.rawCertNo());
-    if (rawCert.length() > certWidth)
+    if (rawCert.length() > accountIdentifierFormatter.certificateWidth())
       throw invalid(LoginAccountRecordRejectionCategory.CERTIFICATE_NUMBER);
     String status = trim(record.termStatus());
     String date = trim(record.termCompletionDate());
@@ -72,10 +72,10 @@ public final class LoginAccountRecordValidationService {
         env,
         trust,
         rawPolicy,
-        leftPad(rawPolicy, policyWidth),
+        accountIdentifierFormatter.formatPolicyNo(rawPolicy),
         trim(record.schemeType()),
         record.rawCertNo(),
-        leftPad(rawCert, certWidth),
+        accountIdentifierFormatter.formatCertificateNo(rawCert),
         status,
         parsed);
   }
@@ -92,10 +92,6 @@ public final class LoginAccountRecordValidationService {
 
   private boolean allZero(String value) {
     return value.chars().allMatch(ch -> ch == '0');
-  }
-
-  private String leftPad(String value, int width) {
-    return String.valueOf(padCharacter).repeat(width - value.length()) + value;
   }
 
   private RecordInvalid invalid(LoginAccountRecordRejectionCategory category) {

@@ -1,24 +1,26 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 
-public record PersonalInformationUpdateResultResponse(
-    boolean selected,
-    boolean success,
-    String policyNo,
-    String certNo,
-    String env,
-    String refNo,
-    String submitDate,
-    String submitTime,
-    List<ApiError> errors) {
-
-  public PersonalInformationUpdateResultResponse {
-    errors = errors == null ? List.of() : List.copyOf(errors);
+public record PersonalInformationUpdateResultResponse(Data data) {
+  public record Data(
+      @JsonInclude(JsonInclude.Include.ALWAYS) Account selectedAccount,
+      List<Account> rows,
+      List<AccountErrors> errors) {
+    public Data {
+      rows = List.copyOf(rows);
+      errors = List.copyOf(errors);
+    }
   }
 
-  public PersonalInformationUpdateResultResponse(
-      String refNo, String submitDate, String submitTime) {
-    this(true, true, null, null, null, refNo, submitDate, submitTime, List.of());
+  @JsonInclude(JsonInclude.Include.ALWAYS)
+  public record Account(
+      String accountIdentifier, String refNo, String submitDate, String submitTime) {}
+
+  public record AccountErrors(String accountIdentifier, List<MappedError> errors) {
+    public AccountErrors {
+      errors = List.copyOf(errors);
+    }
   }
 }

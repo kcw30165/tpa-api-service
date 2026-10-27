@@ -47,6 +47,10 @@ public final class ErrorCodes {
   public static final String SYSTEM_UNEXPECTED = "err.system.unexpected";
   public static final String PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID =
       "err.personal-information.update.request.invalid";
+  public static final String PERSONAL_INFORMATION_RETRIEVAL_UNAVAILABLE =
+      "err.personal-information.retrieval.unavailable";
+  public static final String PERSONAL_INFORMATION_UPDATE_UNAVAILABLE =
+      "err.personal-information.update.unavailable";
 
   private ErrorCodes() {}
 }

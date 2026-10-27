@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.response;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -9,112 +10,98 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class PersonalInformationResponseSerializationContractTest {
-
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Test
-  void updateMutationSerializesResultAsAccountArrayNotWrapperObject() throws Exception {
-    ApiError emailRequired =
-        ApiError.field(
-            "personalInformation.email.required",
-            "Email is required.",
-            List.of("emailAddress"),
-            "SERVER");
-    MutationResponse<List<PersonalInformationUpdateResultResponse>> response =
-        MutationResponse.success(
+  void partialSuccessSerializesOnlyApprovedFieldsInDataMessagesAndErrors() throws Exception {
+    var error =
+        new MappedError("FIELD", "personalInformation.field.required", List.of("emailAddress"));
+    var response =
+        new UpdatePersonalInformationResponse(
+            true,
             ApiStatus.PARTIAL_SUCCESS,
+            new PersonalInformationUpdateResultResponse(
+                new PersonalInformationUpdateResultResponse.Data(
+                    new PersonalInformationUpdateResultResponse.Account(
+                        "00000000118-0002", "260001373", "2025-12-31", "15:42:52"),
+                    List.of(),
+                    List.of(
+                        new PersonalInformationUpdateResultResponse.AccountErrors(
+                            "00000000118-0003", List.of(error))))),
             List.of(
-                new PersonalInformationUpdateResultResponse(
-                    true,
-                    true,
-                    "00000000118",
-                    "2",
-                    "DB",
-                    "260001373",
-                    "2025-12-31",
-                    "15:42:52",
-                    List.of()),
-                new PersonalInformationUpdateResultResponse(
-                    false,
-                    false,
-                    "00000000118",
-                    "3",
-                    "DB",
-                    "260001374",
-                    "2025-12-31",
-                    "15:42:52",
-                    List.of(emailRequired))),
-            List.of(
-                ApiMessage.warning(
-                    "personalInformation.update.partialSuccess",
-                    "The update was successful for the selected account, but failed for policy 00000000118 certificate 3.",
-                    "PAGE")));
-
-    JsonNode json = objectMapper.readTree(objectMapper.writeValueAsString(response));
-
-    assertThat(json.path("success").booleanValue()).isTrue();
-    assertThat(json.path("status").asText()).isEqualTo("PARTIAL_SUCCESS");
-    assertThat(json.path("result").isArray()).isTrue();
-    assertThat(json.path("result")).hasSize(2);
-    assertThat(json.path("result").get(0).path("selected").booleanValue()).isTrue();
-    assertThat(json.path("result").get(0).path("success").booleanValue()).isTrue();
-    assertThat(json.path("result").get(0).path("policyNo").asText()).isEqualTo("00000000118");
-    assertThat(json.path("result").get(0).path("certNo").asText()).isEqualTo("2");
-    assertThat(json.path("result").get(0).path("errors").isArray()).isTrue();
-    assertThat(json.path("result").get(0).path("errors")).isEmpty();
-    assertThat(json.path("result").get(1).path("errors")).hasSize(1);
-    assertThat(json.path("result").has("accounts")).isFalse();
-    assertThat(json.path("result").has("refNo")).isFalse();
-    assertThat(json.path("errors")).isEmpty();
+                new UpdatePersonalInformationResponse.Message(
+                    "personalInformation.update.partialSuccess")),
+            List.of());
+    JsonNode json = objectMapper.valueToTree(response);
+    assertThat(json)
+        .isEqualTo(
+            objectMapper.readTree(
+                """
+        {"success":true,"status":"PARTIAL_SUCCESS",
+         "result":{"data":{"selectedAccount":{"accountIdentifier":"00000000118-0002",
+         "refNo":"260001373","submitDate":"2025-12-31","submitTime":"15:42:52"},"rows":[],
+         "errors":[{"accountIdentifier":"00000000118-0003","errors":[
+         {"type":"FIELD","code":"personalInformation.field.required","targets":["emailAddress"]}]}]}},
+         "messages":[{"code":"personalInformation.update.partialSuccess"}],"errors":[]}
+        """));
   }
 
   @Test
-  void selectedFailureMutationSerializesAccountArrayAndSelectedTopLevelErrors() throws Exception {
-    ApiError selectedError =
-        ApiError.field(
-            "personalInformation.email.required",
-            "Email is required.",
-            List.of("emailAddress"),
-            "SERVER");
-    MutationResponse<List<PersonalInformationUpdateResultResponse>> response =
-        MutationResponse.failure(
-            ApiStatus.PARTIAL_SUCCESS,
-            List.of(
-                new PersonalInformationUpdateResultResponse(
-                    false,
-                    true,
-                    "00000000118",
-                    "2",
-                    "DB",
-                    "260001373",
-                    "2025-12-31",
-                    "15:42:52",
-                    List.of()),
-                new PersonalInformationUpdateResultResponse(
-                    true,
-                    false,
-                    "00000000118",
-                    "3",
-                    "DB",
-                    "260001374",
-                    "2025-12-31",
-                    "15:42:52",
-                    List.of(selectedError))),
-            List.of(selectedError));
+  void selectedFailureSerializesNullSelectedAndRootErrorsWithoutDuplication() throws Exception {
+    var error =
+        new MappedError("FIELD", "personalInformation.field.required", List.of("emailAddress"));
+    var response =
+        new UpdatePersonalInformationResponse(
+            false,
+            ApiStatus.VALIDATION_FAILED,
+            new PersonalInformationUpdateResultResponse(
+                new PersonalInformationUpdateResultResponse.Data(
+                    null,
+                    List.of(
+                        new PersonalInformationUpdateResultResponse.Account(
+                            "00000000118-0003", null, "", " ")),
+                    List.of())),
+            List.of(),
+            List.of(error));
+    JsonNode json = objectMapper.valueToTree(response);
+    assertThat(json)
+        .isEqualTo(
+            objectMapper.readTree(
+                """
+        {"success":false,"status":"VALIDATION_FAILED",
+         "result":{"data":{"selectedAccount":null,"rows":[{"accountIdentifier":"00000000118-0003",
+         "refNo":null,"submitDate":"","submitTime":" "}],"errors":[]}},
+         "messages":[],"errors":[{"type":"FIELD","code":"personalInformation.field.required","targets":["emailAddress"]}]}
+        """));
+  }
 
-    JsonNode json = objectMapper.readTree(objectMapper.writeValueAsString(response));
-
-    assertThat(json.path("success").booleanValue()).isFalse();
-    assertThat(json.path("status").asText()).isEqualTo("PARTIAL_SUCCESS");
-    assertThat(json.path("result").isArray()).isTrue();
-    assertThat(json.path("result")).hasSize(2);
-    assertThat(json.path("result").get(1).path("selected").booleanValue()).isTrue();
-    assertThat(json.path("result").get(1).path("success").booleanValue()).isFalse();
-    assertThat(json.path("result").get(1).path("errors")).hasSize(1);
-    assertThat(json.path("errors")).hasSize(1);
-    assertThat(json.path("errors").get(0).path("targets").get(0).asText())
-        .isEqualTo("emailAddress");
-    assertThat(json.path("messages")).isEmpty();
+  @Test
+  void nullMetadataAndNullErrorTypeSurviveGlobalNonNullInclusion() {
+    var json =
+        new ObjectMapper()
+            .setDefaultPropertyInclusion(
+                JsonInclude.Value.construct(
+                    JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+            .valueToTree(
+                new PersonalInformationUpdateResultResponse(
+                    new PersonalInformationUpdateResultResponse.Data(
+                        null,
+                        List.of(
+                            new PersonalInformationUpdateResultResponse.Account(
+                                "identifier", null, "", null)),
+                        List.of(
+                            new PersonalInformationUpdateResultResponse.AccountErrors(
+                                "other",
+                                List.of(
+                                    new MappedError(
+                                        null,
+                                        "personalInformation.update.rejected",
+                                        List.of())))))));
+    assertThat(json.path("data").get("selectedAccount").isNull()).isTrue();
+    assertThat(json.path("data").path("rows").get(0).get("refNo").isNull()).isTrue();
+    assertThat(json.path("data").path("rows").get(0).get("submitTime").isNull()).isTrue();
+    assertThat(json.path("data").path("errors").get(0).path("errors").get(0).get("type").isNull())
+        .isTrue();
   }
 
   @Test
@@ -133,9 +120,7 @@ class PersonalInformationResponseSerializationContractTest {
             List.of(),
             Map.of(),
             Map.of());
-
     JsonNode json = objectMapper.readTree(objectMapper.writeValueAsString(form));
-
     assertThat(json.path("optionSets").has("smsLanguages")).isTrue();
     assertThat(json.path("optionSets").path("smsLanguages").isArray()).isTrue();
     assertThat(json.path("optionSets").path("smsLanguages")).hasSize(2);

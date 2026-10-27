@@ -58,6 +58,18 @@ class PersonalInformationWebMapperTest {
   }
 
   @Test
+  void legacyConfigHiddenValueOmitsFieldFromResponseJustLikeTypedConfigItems() {
+    var page =
+        pageWithSections(
+            section("main", List.of(boundField("hiddenField", "hidden", "hidden-config", null))));
+    Map<String, String> legacyConfig = new LinkedHashMap<>();
+    legacyConfig.put("hidden-config", "HIDDEN");
+    Map<String, Object> response =
+        mapper(properties(page)).toResponse(Map.of("hidden", "ignored-value"), legacyConfig, "en");
+    assertThat(sections(response)).isEmpty();
+  }
+
+  @Test
   void mapsDataConfigItemsToBffFieldsUsingApimDataItemId() {
     PersonalInformationWebMapper mapper = mapper(mock(LoggingSanitizer.class));
     var result =
@@ -389,11 +401,11 @@ class PersonalInformationWebMapperTest {
   }
 
   @Test
-  void legacyConfigNullValueAndMissingApimDataRenderEmptyValueAndNoReadonlyRequiredFlags() {
+  void legacyConfigMissingApimDataRendersEmptyValueAndNoReadonlyRequiredFlags() {
     var page =
         pageWithSections(section("main", List.of(boundField("field", "data", "config", 99))));
     Map<String, String> legacyConfig = new LinkedHashMap<>();
-    legacyConfig.put("config", null);
+    legacyConfig.put("config", "EDITABLE_OPTION");
 
     Map<String, Object> response =
         mapper(properties(page)).toResponse(Map.of(), legacyConfig, "en");
@@ -405,6 +417,45 @@ class PersonalInformationWebMapperTest {
         .containsEntry("readonly", false)
         .containsEntry("required", false)
         .containsEntry("displayOrder", 99);
+  }
+
+  @Test
+  void legacyConfigKeyWithoutBoundFieldIsOmittedAndLogged() {
+    LoggingSanitizer sanitizer = mock(LoggingSanitizer.class);
+    var page =
+        pageWithSections(
+            section(
+                "main", List.of(boundField("visible", "visible-data", "visible-config", null))));
+    Map<String, String> legacyConfig = new LinkedHashMap<>();
+    legacyConfig.put("visible-config", "EDITABLE_OPTION");
+    legacyConfig.put("orphan-config", "EDITABLE_OPTION");
+
+    Map<String, Object> response =
+        new PersonalInformationWebMapper(sanitizer, properties(page))
+            .toResponse(Map.of("visible-data", "ok"), legacyConfig, "en");
+
+    List<?> fields = fields(response);
+    assertThat(fields).hasSize(1);
+    assertThat(asMap(fields.get(0))).containsEntry("name", "visible");
+    verify(sanitizer, atLeastOnce()).toSafeString(any());
+  }
+
+  @Test
+  void legacyPathResolvesValueUsingFieldDataKeyNotConfigKeyUnlikeTypedPath() {
+    var page =
+        pageWithSections(
+            section("main", List.of(boundField("field", "data-key", "config-key", null))));
+    Map<String, String> legacyConfig = new LinkedHashMap<>();
+    legacyConfig.put("config-key", "EDITABLE_OPTION");
+    Map<String, Object> apimData = new LinkedHashMap<>();
+    apimData.put("data-key", "value-from-data-key");
+    apimData.put("config-key", "value-from-config-key");
+
+    Map<String, Object> response =
+        mapper(properties(page)).toResponse(apimData, legacyConfig, "en");
+
+    Map<String, Object> field = asMap(fields(response).get(0));
+    assertThat(field).containsEntry("value", "value-from-data-key");
   }
 
   @Test

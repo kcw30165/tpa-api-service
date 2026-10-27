@@ -13,6 +13,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.UpdateMemberInfoCommand;
+import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
+import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -27,7 +29,9 @@ class PersonalInformationUpdateAuthenticatedExecutorBoundaryTest {
   void exactTypedAuthenticatedMutationExchangeIsUsedOnce() {
     AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
     AtomicInteger calls = new AtomicInteger();
-    var adapter = new ApimUpdatePersonalInformationAdapter(capturing(captured, calls, success()));
+    var adapter =
+        new ApimUpdatePersonalInformationAdapter(
+            capturing(captured, calls, success()), new AccountIdentifierFormatter(11, 4, '0'));
     adapter.updateMemberInfo(command("DB", ActorUserRole.ROLE_USER_EPR)).block();
     var request = captured.get();
     assertThat(calls).hasValue(1);
@@ -46,7 +50,8 @@ class PersonalInformationUpdateAuthenticatedExecutorBoundaryTest {
     assertThatThrownBy(
             () ->
                 new ApimUpdatePersonalInformationAdapter(
-                        failing(calls, new AssertionError("must not run")))
+                        failing(calls, new AssertionError("must not run")),
+                        new AccountIdentifierFormatter(11, 4, '0'))
                     .updateMemberInfo(command(" ", ActorUserRole.ROLE_USER_MBR))
                     .block())
         .isInstanceOf(IllegalArgumentException.class);
@@ -56,18 +61,17 @@ class PersonalInformationUpdateAuthenticatedExecutorBoundaryTest {
   @Test
   void ordinaryExecutorFailureAndUncertainMissingSelectedAccountRemainFeatureOwned() {
     IllegalStateException ordinary = new IllegalStateException("transport uncertain");
-    assertThatThrownBy(
-            () ->
-                new ApimUpdatePersonalInformationAdapter(failing(new AtomicInteger(), ordinary))
-                    .updateMemberInfo(command("DB", ActorUserRole.ROLE_USER_MBR))
-                    .block())
-        .isSameAs(ordinary);
-    assertThatThrownBy(
-            () ->
-                new ApimUpdatePersonalInformationAdapter(fixed(empty()))
-                    .updateMemberInfo(command("DB", ActorUserRole.ROLE_USER_MBR))
-                    .block())
-        .hasMessageContaining("data is missing");
+    var ordinaryUpdate =
+        new ApimUpdatePersonalInformationAdapter(
+                failing(new AtomicInteger(), ordinary), new AccountIdentifierFormatter(11, 4, '0'))
+            .updateMemberInfo(command("DB", ActorUserRole.ROLE_USER_MBR));
+    var missingSelectedUpdate =
+        new ApimUpdatePersonalInformationAdapter(
+                fixed(empty()), new AccountIdentifierFormatter(11, 4, '0'))
+            .updateMemberInfo(command("DB", ActorUserRole.ROLE_USER_MBR));
+    assertThatThrownBy(ordinaryUpdate::block).isSameAs(ordinary);
+    assertThatThrownBy(missingSelectedUpdate::block)
+        .isInstanceOf(PersonalInformationUpdateException.class);
   }
 
   @Test
@@ -101,7 +105,7 @@ class PersonalInformationUpdateAuthenticatedExecutorBoundaryTest {
 
   private static UpdateMemberInfoCommand command(String env, ActorUserRole role) {
     return new UpdateMemberInfoCommand(
-        env, "POL", "CERT", "USER", role, true, Map.of("email", "a@b.test"));
+        env, "118", "3", "USER", role, true, Map.of("email", "a@b.test"));
   }
 
   private static ApimResponseEnvelope<UpdateMemberInfoApimDataItem> success() {
@@ -113,8 +117,8 @@ class PersonalInformationUpdateAuthenticatedExecutorBoundaryTest {
                     List.of(
                         UpdateMemberInfoApimDataItem.builder()
                             .success(true)
-                            .policyNo("POL")
-                            .certNo("CERT")
+                            .policyNo("118")
+                            .certNo("3")
                             .env("DB")
                             .refNo("REF")
                             .build()))

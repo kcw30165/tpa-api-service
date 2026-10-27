@@ -1,6 +1,15 @@
 
 # Information Update — Extracted BRD and Config Matrix Rules
 
+> **Amended 2026-10-22 (requirement change).** Where this document conflicts with the section "Amendment 2026-10-22" at the end, the amendment wins. The section "As-built 2026-10-23 (sub-task 3.5)" at the end records the implemented behaviour and wins over both.
+
+
+> **Refactor note (refactor/personal-information):** where this extract conflicts with
+> `10-refactor-personal-information-design.md`, the design document prevails. Affected areas: partial PUT
+> semantics, group presence, section 9 (any of address lines 1-3 counts as an address line; the country is
+> mandatory), field attribute and validation rules for fax, email and phones, and the removal of the AEOI
+> country-change rule.
+
 Date: 2026-06-02  
 Scope: Rules related only to **Information Update / Personal Information** from BRD 6.3 and Config Matrix 6.3.
 
@@ -1132,3 +1141,34 @@ showMessage
 ```
 
 `type` should be descriptive only. FE should branch on `when.operator` and `then.operator`, not on custom business `type`.
+
+## Amendment 2026-10-22
+
+- BRD section 9 ("line 2 or line 3 alone does not count as an address"): followed. Line 1 defines an address; the
+  earlier deviation is withdrawn. Line 2 or 3 may be saved without line 1 (downstream accepts it).
+- "Residential or mailing address is mandatory": enforced by the downstream; Java checks it only when both line-1
+  keys are submitted blank (FE sends changed fields only).
+- Country required when an address exists: unconfirmed (U-2); not applied.
+- Required fields come from the config matrix (EDITABLE_COM), except address line 1 of both addresses (cross-address rule).
+- See design D-25 to D-32.
+
+## As-built 2026-10-23 (sub-task 3.5)
+
+How the BFF applies this extract after sub-tasks 3.1 to 3.4c (see 10-refactor-personal-information-design.md, section
+B):
+
+- Section 2.1 mapping as implemented: HIDDEN omits the field; READONLY is readonly true, required false; EDITABLE_COM is
+  readonly false, required true; EDITABLE_OPTION is readonly false, required false. Exception: residentialAddressLine1
+  and mailingAddressLine1 are sent with required false even when EDITABLE_COM, because the downstream config cannot
+  express the cross-address rule. A null, blank or unrecognised config value is treated as HIDDEN and logged at ERROR.
+- Section 9 as implemented: an address exists when line 1 is not blank. Java rejects with
+  personalInformation.address.atLeastOneRequired only when both line-1 keys are submitted blank in the same request;
+  otherwise the downstream system enforces it. Line 2 or line 3 alone is accepted. The country is not required by Java
+  unless its config is EDITABLE_COM (U-2 unconfirmed).
+- Section 18 as implemented: the email is compulsory only when its config is EDITABLE_COM; there is no static rule. A PUT
+  that submits it blank is rejected with personalInformation.field.required. Format and length rules apply to non-blank
+  values only.
+- Section 24 as implemented: the PUT validates the submitted fields only. A field the frontend does not send is treated as
+  unchanged.
+- A submitted field that is HIDDEN, READONLY, or has no usable config value is rejected with
+  personalInformation.field.notEditable.

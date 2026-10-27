@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
@@ -14,7 +15,9 @@ import com.bct.ngtpa.apiservice.adapter.in.web.personalinformation.PersonalInfor
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PageResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
@@ -31,11 +34,15 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 
 class PersonalInformationControllerTest {
+  private static final AuthenticatedSessionCookieReader NO_SESSION = exchange -> Optional.empty();
 
   @Test
   void resolvesPortalContextAndLanguageForPersonalInformation() {
@@ -52,9 +59,9 @@ class PersonalInformationControllerTest {
     when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE")))
         .thenReturn(response("zh_HK", "個人資料"));
 
-    FormPageResponse<FormSchemaResponse> response =
+    MutationResponse<PersonalInformationResultResponse> response =
         controller(useCase, mapper, resolver(context("ACC-123")))
-            .getPersonalInformation("en")
+            .getPersonalInformation("en", exchange())
             .contextWrite(
                 ctx ->
                     ctx.put(
@@ -64,10 +71,10 @@ class PersonalInformationControllerTest {
 
     assertEquals(true, response.success());
     assertEquals(ApiStatus.SUCCESS, response.status());
-    assertEquals("personalInformationPage", response.page().id());
-    assertEquals("個人資料", response.page().title());
-    assertEquals("zh_HK", response.page().lang());
-    assertEquals("personalInformationForm", response.form().id());
+    assertEquals("personalInformationPage", response.result().data().page().id());
+    assertEquals("個人資料", response.result().data().page().title());
+    assertEquals("zh_HK", response.result().data().page().lang());
+    assertEquals("personalInformationForm", response.result().data().form().id());
     assertTrue(response.messages().isEmpty());
     assertTrue(response.errors().isEmpty());
     assertEquals("zh_HK", captured.get().language());
@@ -87,7 +94,7 @@ class PersonalInformationControllerTest {
         .thenReturn(response("en", "Personal Information"));
 
     controller(useCase, mapper, resolver(context("ACC-123")))
-        .getPersonalInformation("zh-HK")
+        .getPersonalInformation("zh-HK", exchange())
         .contextWrite(
             ctx ->
                 ctx.put(
@@ -109,7 +116,7 @@ class PersonalInformationControllerTest {
             PortalAccessContextResolutionException.class,
             () ->
                 controller(useCase, mapper, resolver(context(" ")))
-                    .getPersonalInformation("en")
+                    .getPersonalInformation("en", exchange())
                     .contextWrite(
                         ctx ->
                             ctx.put(
@@ -118,6 +125,11 @@ class PersonalInformationControllerTest {
                     .block());
 
     assertEquals(ErrorCodes.MEMBER_CONTEXT_INVALID, ex.getErrorCode());
+  }
+
+  private static MockServerWebExchange exchange() {
+    return MockServerWebExchange.from(
+        MockServerHttpRequest.get("/api/v1/personal-information").build());
   }
 
   private FormPageResponse<FormSchemaResponse> response(String language, String title) {
@@ -161,6 +173,14 @@ class PersonalInformationControllerTest {
         mock(PersonalInformationUpdateYamlValidator.class);
 
     return new PersonalInformationController(
-        useCase, mapper, resolver, updateUseCase, requestMapper, responseMapper, validator);
+        useCase,
+        mapper,
+        resolver,
+        updateUseCase,
+        requestMapper,
+        responseMapper,
+        validator,
+        NO_SESSION,
+        PersonalInformationAccessCheckerTestSupport.passing());
   }
 }

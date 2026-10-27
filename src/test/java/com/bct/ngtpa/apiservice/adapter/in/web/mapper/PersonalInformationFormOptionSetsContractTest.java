@@ -34,7 +34,7 @@ class PersonalInformationFormOptionSetsContractTest {
     FormPageResponse<FormSchemaResponse> response =
         mapper.toFormPageResponse(
             new PersonalInformationResult(
-                Map.of("sms-language", "en"), Map.of("sms-language", "EDITABLE")),
+                Map.of("sms-language", "en"), Map.of("sms-language", "EDITABLE_OPTION")),
             "en",
             "DB",
             "TRUST",
@@ -64,7 +64,7 @@ class PersonalInformationFormOptionSetsContractTest {
     FormPageResponse<FormSchemaResponse> response =
         mapper.toFormPageResponse(
             new PersonalInformationResult(
-                Map.of("sms-language", "zh_HK"), Map.of("sms-language", "EDITABLE")),
+                Map.of("sms-language", "zh_HK"), Map.of("sms-language", "EDITABLE_OPTION")),
             "zh_HK",
             "DB",
             "TRUST",
@@ -87,7 +87,7 @@ class PersonalInformationFormOptionSetsContractTest {
     FormPageResponse<FormSchemaResponse> response =
         mapper.toFormPageResponse(
             new PersonalInformationResult(
-                Map.of("sms-language", "en"), Map.of("sms-language", "EDITABLE")),
+                Map.of("sms-language", "en"), Map.of("sms-language", "EDITABLE_OPTION")),
             "en",
             "DB",
             "TRUST",

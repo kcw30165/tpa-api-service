@@ -184,16 +184,20 @@ Detailed contract: [reference-date cache administration](docs/design/2-reference
 }
 ```
 
-- Page-backed personal-information reads return `FormPageResponse<T>` with `page` and `form` fields instead of `result`:
+- Page-backed personal-information reads return `MutationResponse<T>` with `page` and `form` nested under `result.data`:
 
 ```json
 {
- "success": true,
- "status": "SUCCESS",
- "page": {},
- "form": {},
- "messages": [],
- "errors": []
+  "success": true,
+  "status": "SUCCESS",
+  "result": {
+    "data": {
+      "page": {},
+      "form": {}
+    }
+  },
+  "messages": [],
+  "errors": []
 }
 ```
 

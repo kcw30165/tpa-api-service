@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
@@ -15,8 +16,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.personalinformation.PersonalInfor
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
@@ -30,11 +30,15 @@ import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class UpdatePersonalInformationYamlValidationRuntimeTest {
+  private static final AuthenticatedSessionCookieReader NO_SESSION = exchange -> Optional.empty();
 
   @Test
   void yamlValidationFailureReturnsMutationErrorsAndSkipsMapperUseCaseAndResponseMapper() {
@@ -64,9 +68,9 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
             "SERVER");
     when(validator.validate(eq(request), eq("en"), any(), any(), any())).thenReturn(List.of(error));
 
-    Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> response =
+    Mono<UpdatePersonalInformationResponse> response =
         controller
-            .update(Mono.just(request), null)
+            .update(Mono.just(request), null, exchange())
             .contextWrite(
                 context ->
                     context.put(
@@ -80,12 +84,22 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
               assertThat(body.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
               assertThat(body.result()).isNull();
               assertThat(body.messages()).isEmpty();
-              assertThat(body.errors()).containsExactly(error);
+              assertThat(body.errors())
+                  .containsExactly(
+                      new com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError(
+                          error.type(), error.code(), error.targets()));
             })
         .verifyComplete();
 
     verify(validator).validate(eq(request), eq("en"), any(), any(), any());
-    verifyNoInteractions(requestMapper, useCase, responseMapper);
+    verify(requestMapper).validateStructure(request);
+    org.mockito.Mockito.verify(requestMapper, org.mockito.Mockito.never()).toCommand(any(), any());
+    verifyNoInteractions(useCase, responseMapper);
+  }
+
+  private static MockServerWebExchange exchange() {
+    return MockServerWebExchange.from(
+        MockServerHttpRequest.put("/api/v1/personal-information").build());
   }
 
   private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {
@@ -127,6 +141,14 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
     PersonalInformationWebMapper getRequestMapper = mock(PersonalInformationWebMapper.class);
 
     return new PersonalInformationController(
-        getUseCase, getRequestMapper, resolver, useCase, requestMapper, responseMapper, validator);
+        getUseCase,
+        getRequestMapper,
+        resolver,
+        useCase,
+        requestMapper,
+        responseMapper,
+        validator,
+        NO_SESSION,
+        PersonalInformationAccessCheckerTestSupport.passing());
   }
 }

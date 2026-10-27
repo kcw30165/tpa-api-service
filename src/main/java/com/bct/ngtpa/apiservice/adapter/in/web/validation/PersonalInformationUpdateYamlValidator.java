@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FormMetadataProperties
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageSchemaProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleActionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleConditionProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleGroupFields;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.SectionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ValidationRuleProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
@@ -134,31 +135,39 @@ public class PersonalInformationUpdateYamlValidator {
       return;
     }
     String type = rule.getType();
-    if (!"required".equals(type) && !fieldSubmitted) {
+    if (!fieldSubmitted) {
       return;
     }
+    boolean blank = isBlankValue(value);
     boolean failed =
         switch (type) {
-          case "required" -> isBlankValue(value);
+          case "required" -> blank;
           case "minLength" ->
-              stringValue(value).length()
-                  < intValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType), 0);
+              !blank
+                  && stringValue(value).length()
+                      < intValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType), 0);
           case "maxLength" ->
-              stringValue(value).length()
-                  > intValue(
-                      resolveRuleValue(rule, accountEnv, trustCode, schemeType), Integer.MAX_VALUE);
+              !blank
+                  && stringValue(value).length()
+                      > intValue(
+                          resolveRuleValue(rule, accountEnv, trustCode, schemeType),
+                          Integer.MAX_VALUE);
           case "pattern" ->
-              !Pattern.compile(
-                      stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType)))
-                  .matcher(stringValue(value))
-                  .matches();
+              !blank
+                  && !Pattern.compile(
+                          stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType)))
+                      .matcher(stringValue(value))
+                      .matches();
           case "email" ->
-              !isValidEmail(
-                  stringValue(value), resolveRuleValue(rule, accountEnv, trustCode, schemeType));
+              !blank
+                  && !isValidEmail(
+                      stringValue(value),
+                      resolveRuleValue(rule, accountEnv, trustCode, schemeType));
           case "blockedAddress" ->
-              isBlockedAddress(
-                  stringValue(value),
-                  stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType)));
+              !blank
+                  && isBlockedAddress(
+                      stringValue(value),
+                      stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType)));
           default -> false;
         };
     if (failed) {
@@ -198,7 +207,7 @@ public class PersonalInformationUpdateYamlValidator {
     if ("conditionalRequired".equals(rule.getType())
         && conditionMatches(rule.getWhen(), submittedFields)) {
       for (String target : targets(rule.getThen())) {
-        if (isBlankValue(submittedFields.get(target))) {
+        if (isSubmittedBlank(submittedFields, target)) {
           errors.add(
               error(
                   TYPE_FIELD,
@@ -241,20 +250,26 @@ public class PersonalInformationUpdateYamlValidator {
     if (configuredGroups.isEmpty()) {
       return false;
     }
-    return configuredGroups.stream().allMatch(group -> groupIsEmpty(group, submittedFields));
+    return configuredGroups.stream().allMatch(group -> groupSubmittedBlank(group, submittedFields));
   }
 
-  private boolean groupIsEmpty(Map<String, Object> group, Map<String, Object> submittedFields) {
-    Object rawFields = group == null ? null : group.get("fields");
-    if (!(rawFields instanceof List<?> fieldRefs) || fieldRefs.isEmpty()) {
+  private boolean groupSubmittedBlank(
+      Map<String, Object> group, Map<String, Object> submittedFields) {
+    List<String> fieldRefs = RuleGroupFields.of(group == null ? null : group.get("fields"));
+    if (fieldRefs.isEmpty()) {
       return false;
     }
-    for (Object fieldRef : fieldRefs) {
-      if (fieldRef != null && !isBlankValue(submittedFields.get(fieldRef.toString()))) {
+    for (String fieldRef : fieldRefs) {
+      if (!submittedFields.containsKey(fieldRef) || !isBlankValue(submittedFields.get(fieldRef))) {
         return false;
       }
     }
     return true;
+  }
+
+  /** D-31: true only when the key was submitted AND its value is blank. */
+  private boolean isSubmittedBlank(Map<String, Object> submittedFields, String fieldId) {
+    return submittedFields.containsKey(fieldId) && isBlankValue(submittedFields.get(fieldId));
   }
 
   private ApiError error(

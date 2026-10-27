@@ -88,54 +88,28 @@ class PersonalInformationPhoneEmailValidationYamlTest {
     assertPatternRule(
         "faxNo",
         "faxNo.permittedCharacters",
-        "^[0-9+()\\-\\s]*$",
+        "^[0-9 \\-]*$",
         "personalInformation.faxNo.invalid",
         "personalInformation.faxNo.invalid.message");
   }
 
   @Test
-  void emailRulesAreMultipleIndependentRulesAndSupportJpValueVariant() {
+  void emailRulesAreMultipleIndependentRules() {
     List<Map<String, Object>> rules = validations(field("emailAddress"));
 
-    Map<String, Object> required = rule(rules, "email.required");
-    assertThat(required.get("type")).isEqualTo("required");
-    assertThat(required.get("code")).isEqualTo("personalInformation.email.required");
-    assertThat(required.get("messageCode")).isEqualTo("personalInformation.email.required.message");
+    assertThat(rules)
+        .as("D-25: required comes from the downstream config, not from a static YAML rule")
+        .noneMatch(rule -> "email.required".equals(rule.get("id")));
 
     Map<String, Object> email = rule(rules, "email.invalid");
     assertThat(email.get("type")).isEqualTo("pattern");
-    assertThat(email.get("value")).isEqualTo("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    assertThat(email).containsEntry("value", "^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
     assertThat(email.get("code")).isEqualTo("personalInformation.email.invalid");
     assertThat(email.get("messageCode")).isEqualTo("personalInformation.email.invalid.message");
 
-    Map<String, Object> minLength = rule(rules, "email.minLength");
-    assertThat(minLength.get("type")).isEqualTo("minLength");
-    assertThat(minLength.get("value")).isEqualTo(5);
-    assertThat(valueByVariant(minLength)).containsEntry("JP", 11);
-    assertThat(minLength.get("code")).isEqualTo("personalInformation.email.tooShort");
-    assertThat(minLength.get("messageCode"))
-        .isEqualTo("personalInformation.email.tooShort.message");
-  }
-
-  @Test
-  void emailJpVariantMessageIsResolvedFromDisplayCodeNotRuleSpecificMessageCode() {
-    Map<String, Object> minLength = rule(validations(field("emailAddress")), "email.minLength");
-
-    assertThat(minLength.get("messageCode"))
-        .as(
-            "stable base messageCode should be used; JP variant must not be encoded in the rule messageCode")
-        .isEqualTo("personalInformation.email.tooShort.message");
-
-    assertThat(minLength.get("messageCode").toString()).doesNotEndWith(".JP");
-
-    assertThat(minLength.get("value")).isEqualTo(5);
-
-    @SuppressWarnings("unchecked")
-    Map<String, Object> valueByVariant = (Map<String, Object>) minLength.get("valueByVariant");
-
-    assertThat(valueByVariant)
-        .as("JP-specific min length belongs under valueByVariant")
-        .containsEntry("JP", 11);
+    assertThat(rules)
+        .as("D-16/D4: the email.minLength rule must be removed")
+        .noneMatch(rule -> "email.minLength".equals(rule.get("id")));
   }
 
   private void assertPatternRule(
@@ -225,12 +199,6 @@ class PersonalInformationPhoneEmailValidationYamlTest {
   private List<String> targets(Map<String, Object> node) {
     Object value = node.get("targets");
     return value instanceof List<?> list ? (List<String>) list : List.of();
-  }
-
-  @SuppressWarnings("unchecked")
-  private Map<String, Object> valueByVariant(Map<String, Object> rule) {
-    Object value = rule.get("valueByVariant");
-    return value instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
   }
 
   private String string(Object value) {

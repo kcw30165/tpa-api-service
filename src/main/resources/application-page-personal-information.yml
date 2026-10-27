@@ -293,6 +293,7 @@ bff-pages:
             fields:
               - id: residentialAddressLine1
                 displayOrder: 10
+                requiredOverride: false
                 dataType: string
                 controlType: text
                 validations:
@@ -389,15 +390,16 @@ bff-pages:
                 labelCode: personalInformation.field.mailingAddressSameAsResidential.label
               - id: mailingAddressLine1
                 displayOrder: 60
+                requiredOverride: false
                 dataType: string
                 controlType: text
                 validations:
-                  # - id: mailingAddressLine1.minLength
-                  #   type: minLength
-                  #   value: 5
-                  #   code: personalInformation.mailingAddress.invalid
-                  #   messageCode: personalInformation.mailingAddress.invalid.message
-                  #   severity: error
+                  - id: mailingAddressLine1.minLength
+                    type: minLength
+                    value: 5
+                    code: personalInformation.mailingAddress.invalid
+                    messageCode: personalInformation.mailingAddress.invalid.message
+                    severity: error
                   - id: mailingAddressLine1.maxLength
                     type: maxLength
                     value: 40
@@ -574,7 +576,7 @@ bff-pages:
                 validations:
                   - id: faxNo.permittedCharacters
                     type: pattern
-                    value: ^[0-9+()\-\s]*$
+                    value: ^[0-9 \-]*$
                     code: personalInformation.faxNo.invalid
                     messageCode: personalInformation.faxNo.invalid.message
                     severity: error
@@ -665,24 +667,11 @@ bff-pages:
                 dataType: string
                 controlType: email
                 validations:
-                  - id: email.required
-                    type: required
-                    code: personalInformation.email.required
-                    messageCode: personalInformation.email.required.message
-                    severity: error
                   - id: email.invalid
                     type: pattern
-                    value: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+                    value: ^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
                     code: personalInformation.email.invalid
                     messageCode: personalInformation.email.invalid.message
-                    severity: error
-                  - id: email.minLength
-                    type: minLength
-                    value: 5
-                    valueByVariant:
-                      JP: 11
-                    code: personalInformation.email.tooShort
-                    messageCode: personalInformation.email.tooShort.message
                     severity: error
                   - id: emailAddress.maxLength
                     type: maxLength
@@ -772,15 +761,9 @@ bff-pages:
               - name: residentialAddress
                 fields:
                   - residentialAddressLine1
-                  - residentialAddressLine2
-                  - residentialAddressLine3
-                  - residentialCountry
               - name: mailingAddress
                 fields:
                   - mailingAddressLine1
-                  - mailingAddressLine2
-                  - mailingAddressLine3
-                  - mailingCountry
           then:
             operator: fail
             targets:
@@ -788,38 +771,6 @@ bff-pages:
               - mailingAddressLine1
           code: personalInformation.address.atLeastOneRequired
           messageCode: personalInformation.address.atLeastOneRequired.message
-        - id: residentialAddress.completeWhenStarted
-          type: conditionalRequired
-          severity: error
-          when:
-            operator: notBlank
-            field: residentialAddressLine1
-          then:
-            operator: allRequired
-            fields:
-              - residentialAddressLine1
-              - residentialCountry
-            targets:
-              - residentialAddressLine1
-              - residentialCountry
-          code: personalInformation.residentialAddress.incomplete
-          messageCode: personalInformation.residentialAddress.incomplete.message
-        - id: mailingAddress.completeWhenStarted
-          type: conditionalRequired
-          severity: error
-          when:
-            operator: notBlank
-            field: mailingAddressLine1
-          then:
-            operator: allRequired
-            fields:
-              - mailingAddressLine1
-              - mailingCountry
-            targets:
-              - mailingAddressLine1
-              - mailingCountry
-          code: personalInformation.mailingAddress.incomplete
-          messageCode: personalInformation.mailingAddress.incomplete.message
         - id: businessPhone.requiredWhenExtensionPresent
           type: conditionalRequired
           severity: error
@@ -833,49 +784,6 @@ bff-pages:
               - hongKongBusinessPhone
           code: personalInformation.businessPhone.requiredWhenExtensionPresent
           messageCode: personalInformation.businessPhone.requiredWhenExtensionPresent.message
-        - id: aeoiReminder.whenResidentialCountryChanged
-          type: conditionalWarning
-          severity: warning
-          when:
-            operator: changed
-            field: residentialCountry
-            compareWith: originalValue
-          then:
-            operator: showMessage
-            targets:
-              - residentialCountry
-          code: personalInformation.aeoiReminder
-          messageCode: personalInformation.aeoiReminder.message
-        - id: residentialCountry.requiredWhenResidentialAddressCaptured
-          type: conditionalRequired
-          when:
-            operator: any
-            fields:
-              - residentialAddressLine1
-              - residentialAddressLine2
-              - residentialAddressLine3
-          then:
-            operator: required
-            targets:
-              - residentialCountry
-          code: personalInformation.residentialCountry.required
-          messageCode: personalInformation.residentialCountry.required.message
-          severity: error
-        - id: mailingCountry.requiredWhenMailingAddressCaptured
-          type: conditionalRequired
-          when:
-            operator: any
-            fields:
-              - mailingAddressLine1
-              - mailingAddressLine2
-              - mailingAddressLine3
-          then:
-            operator: required
-            targets:
-              - mailingCountry
-          code: personalInformation.mailingCountry.required
-          messageCode: personalInformation.mailingCountry.required.message
-          severity: error
         - id: overseasPhoneNumber.requiredWhenCodePresent
           type: conditionalRequired
           when:

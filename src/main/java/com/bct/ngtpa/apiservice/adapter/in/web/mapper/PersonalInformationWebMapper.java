@@ -25,6 +25,7 @@ import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.config.ConfigLookupContext;
 import com.bct.ngtpa.apiservice.shared.config.ConfigVariantCandidateGenerator;
+import com.bct.ngtpa.apiservice.shared.config.FieldAccessResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
@@ -45,6 +46,7 @@ public class PersonalInformationWebMapper {
   private static final String KEY_LABEL = "label";
 
   private static final String KEY_ITEM_ID = "item-id";
+  private static final String KEY_CONFIG_VALUE = "config-value";
 
   private static final String MAPPER_NAME = "PersonalInformationWebMapper";
 
@@ -526,7 +528,8 @@ public class PersonalInformationWebMapper {
         logMissingYamlBinding(configKey, configValue);
         continue;
       }
-      if ("HIDDEN".equalsIgnoreCase(configValue)) {
+      logIfUnusableAccessValue(configKey, configValue);
+      if (FieldAccessResolver.isHidden(configValue)) {
         continue;
       }
       Object value =
@@ -554,7 +557,8 @@ public class PersonalInformationWebMapper {
         logMissingYamlBinding(configKey, configValue);
         continue;
       }
-      if ("HIDDEN".equalsIgnoreCase(configValue)) {
+      logIfUnusableAccessValue(configKey, configValue);
+      if (FieldAccessResolver.isHidden(configValue)) {
         continue;
       }
       Object value = resolveValue(apimData, boundField.dataKey());
@@ -682,8 +686,8 @@ public class PersonalInformationWebMapper {
         hasText(fieldSchema.getControlType()) ? fieldSchema.getControlType() : null,
         state.value(),
         state.value(),
-        isReadonly(state.configValue()),
-        isRequired(state.configValue()),
+        FieldAccessResolver.isReadonly(state.configValue()),
+        FieldAccessResolver.isRequired(state.configValue(), fieldSchema.getRequiredOverride()),
         fieldSchema.getMinLength(),
         fieldSchema.getMaxLength(),
         hasText(fieldSchema.getPattern()) ? fieldSchema.getPattern() : null,
@@ -882,14 +886,6 @@ public class PersonalInformationWebMapper {
     return value != null ? value : "";
   }
 
-  private boolean isReadonly(String configValue) {
-    return "READONLY".equalsIgnoreCase(configValue);
-  }
-
-  private boolean isRequired(String configValue) {
-    return "EDITABLE_COM".equalsIgnoreCase(configValue);
-  }
-
   private String resolvePageDisplayText(
       PageSchemaProperties pageSchema,
       String code,
@@ -942,9 +938,22 @@ public class PersonalInformationWebMapper {
     event.put(KEY_ITEM_ID, configKey);
     event.put(KEY_FUNCTION, MAPPER_NAME);
     event.put(KEY_SCH_TYPE, PAGE_KEY);
-    event.put("config-value", configValue);
+    event.put(KEY_CONFIG_VALUE, configValue);
     log.error(
         "Missing YAML apimBinding for APIM config item: {}", loggingSanitizer.toSafeString(event));
+  }
+
+  private void logIfUnusableAccessValue(String configKey, String configValue) {
+    if (!FieldAccessResolver.isUnrecognised(configValue)
+        && !FieldAccessResolver.isBlank(configValue)) {
+      return;
+    }
+    Map<String, Object> event = new LinkedHashMap<>();
+    event.put(KEY_ITEM_ID, configKey);
+    event.put(KEY_CONFIG_VALUE, configValue);
+    log.warn(
+        "Unrecognised or blank APIM access config value, field treated as HIDDEN: {}",
+        loggingSanitizer.toSafeString(event));
   }
 
   private void logUnknownConfigItemType(
@@ -953,7 +962,7 @@ public class PersonalInformationWebMapper {
     event.put(KEY_ITEM_ID, configKey);
     event.put(KEY_FUNCTION, configItem != null ? configItem.function() : MAPPER_NAME);
     event.put(KEY_SCH_TYPE, configItem != null ? configItem.schType() : PAGE_KEY);
-    event.put("config-value", configValue);
+    event.put(KEY_CONFIG_VALUE, configValue);
     event.put("item-type", configItem != null ? configItem.itemType() : null);
     log.error("Unknown APIM config item type: {}", loggingSanitizer.toSafeString(event));
   }

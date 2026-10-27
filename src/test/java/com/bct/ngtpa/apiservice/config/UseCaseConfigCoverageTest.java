@@ -38,6 +38,11 @@ class UseCaseConfigCoverageTest {
         config.exportContributionSummaryUseCase(
             contributionPort, currencyDisplayPort, referenceDatePort));
     assertNotNull(config.getReferenceDataCountriesUseCase(countriesPort));
-    assertNotNull(config.getPersonalInformationUseCase(memberInfoPort));
+    assertNotNull(
+        config.getPersonalInformationUseCase(
+            memberInfoPort,
+            org.mockito.Mockito.mock(
+                com.bct.ngtpa.apiservice.application.usecase.personalinformation
+                    .PersonalInformationConfigCacheService.class)));
   }
 }

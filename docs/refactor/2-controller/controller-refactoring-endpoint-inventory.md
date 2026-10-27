@@ -584,7 +584,7 @@
 - Path variables: None declared
 - Query parameters: None declared
 - Request body type: `NONE`
-- Java response type: `Mono<FormPageResponse<FormSchemaResponse>>`
+- Java response type: `Mono<MutationResponse<PersonalInformationResultResponse>>`
 - Success/status selection: Runtime-dependent; no direct status selector statically resolved in controller method
 - Validation annotations: None declared at method boundary
 - Immediate call chain: WEB_COLLABORATOR `CurrentPortalAccessContextResolver.current`; APPLICATION_INPUT_PORT `GetPersonalInformationUseCase.execute` -> immediate implementation(s): src/main/java/com/bct/ngtpa/apiservice/application/usecase/GetPersonalInformationService.java; WEB_COLLABORATOR `PersonalInformationWebMapper.toFormPageResponse`

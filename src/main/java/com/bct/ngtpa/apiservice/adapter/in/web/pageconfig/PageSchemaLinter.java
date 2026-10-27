@@ -224,13 +224,8 @@ public class PageSchemaLinter {
       if (group == null) {
         continue;
       }
-      Object rawFields = group.get("fields");
-      if (!(rawFields instanceof List<?> fields)) {
-        continue;
-      }
-      for (Object ref : fields) {
-        validateReferencedField(
-            result, pageKey, fieldIds, ruleId, ref == null ? null : ref.toString());
+      for (String ref : RuleGroupFields.of(group.get("fields"))) {
+        validateReferencedField(result, pageKey, fieldIds, ruleId, ref);
       }
     }
   }

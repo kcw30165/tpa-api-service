@@ -2,58 +2,57 @@ package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
 import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class PersonalInformationUpdateResultArrayArchitectureGuardTest {
-
   @Test
-  void updateResponseMapperReturnsMutationResponseOfResultResponseList() throws Exception {
-    Type returnType =
-        PersonalInformationUpdateResponseMapper.class
-            .getMethod("toResponse", List.class)
-            .getGenericReturnType();
-
-    assertThat(returnType).isInstanceOf(ParameterizedType.class);
-    ParameterizedType mutationResponseType = (ParameterizedType) returnType;
-    assertThat(mutationResponseType.getRawType()).isEqualTo(MutationResponse.class);
-
-    Type resultType = mutationResponseType.getActualTypeArguments()[0];
-    assertThat(resultType).isInstanceOf(ParameterizedType.class);
-    ParameterizedType listType = (ParameterizedType) resultType;
-    assertThat(listType.getRawType()).isEqualTo(List.class);
-    assertThat(listType.getActualTypeArguments()[0])
+  void responseMapperReturnsEndpointEnvelopeOfMappedErrors() throws Exception {
+    assertThat(
+            PersonalInformationUpdateResponseMapper.class
+                .getMethod("toResponse", List.class)
+                .getReturnType())
+        .isEqualTo(UpdatePersonalInformationResponse.class);
+    var errors =
+        (ParameterizedType)
+            UpdatePersonalInformationResponse.class.getDeclaredField("errors").getGenericType();
+    assertThat(errors.getActualTypeArguments()[0])
+        .isEqualTo(com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError.class);
+    assertThat(UpdatePersonalInformationResponse.class.getDeclaredField("result").getType())
         .isEqualTo(PersonalInformationUpdateResultResponse.class);
   }
 
   @Test
+  void resultContainsDataAndDataContainsSelectedSuccessfulOthersAndFailedOthers() {
+    assertThat(PersonalInformationUpdateResultResponse.class.getRecordComponents())
+        .extracting(java.lang.reflect.RecordComponent::getName)
+        .containsExactly("data");
+    assertThat(PersonalInformationUpdateResultResponse.Data.class.getRecordComponents())
+        .extracting(java.lang.reflect.RecordComponent::getName)
+        .containsExactly("selectedAccount", "rows", "errors");
+  }
+
+  @Test
   void redundantAccountDtosAreNotReintroducedInMainSources() throws Exception {
-    Path sourceRoot = Path.of("src/main/java");
-    List<Path> offenders;
-    try (var stream = Files.walk(sourceRoot)) {
-      offenders =
+    try (var stream = java.nio.file.Files.walk(java.nio.file.Path.of("src/main/java"))) {
+      var offenders =
           stream
               .filter(path -> path.toString().endsWith(".java"))
               .filter(
-                  path ->
-                      contains(path, "PersonalInformationUpdateAccountResponse")
-                          || contains(path, "UpdatePersonalInformationAccountResult"))
+                  path -> {
+                    try {
+                      String source = java.nio.file.Files.readString(path);
+                      return source.contains("PersonalInformationUpdateAccountResponse")
+                          || source.contains("UpdatePersonalInformationAccountResult");
+                    } catch (java.io.IOException error) {
+                      throw new IllegalStateException("Failed to read " + path, error);
+                    }
+                  })
               .toList();
-    }
-    assertThat(offenders).isEmpty();
-  }
-
-  private boolean contains(Path path, String needle) {
-    try {
-      return Files.readString(path).contains(needle);
-    } catch (java.io.IOException ex) {
-      throw new IllegalStateException("Failed to read " + path, ex);
+      assertThat(offenders).isEmpty();
     }
   }
 }

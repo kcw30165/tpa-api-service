@@ -17,13 +17,23 @@ class PersonalInformationFieldPresenceValidationSemanticsGuardTest {
       Path.of("src/main/resources/application-page-personal-information.yml");
 
   @Test
-  void optionalFieldValidationRunsWhenFieldIsSubmittedEvenIfBlank() throws Exception {
+  void fieldRuleEvaluationSkipsEntirelyWhenFieldIsNotSubmitted() throws Exception {
     String source = Files.readString(VALIDATOR);
     assertThat(source)
         .contains("submittedFields.containsKey(field.getId())")
         .contains("boolean fieldSubmitted")
-        .contains("&& !fieldSubmitted")
-        .doesNotContain("!\"required\".equals(type) && isBlankValue(value)");
+        .contains("if (!fieldSubmitted) {")
+        .doesNotContain("!\"required\".equals(type) && !fieldSubmitted");
+  }
+
+  @Test
+  void formatRulesSkipBlankSubmittedValuesButRequiredDoesNot() throws Exception {
+    String source = Files.readString(VALIDATOR);
+    assertThat(source)
+        .contains("boolean blank = isBlankValue(value);")
+        .contains("case \"required\" -> blank;")
+        .contains("!blank")
+        .doesNotContain("case \"required\" -> isBlankValue(value);");
   }
 
   @Test

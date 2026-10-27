@@ -47,12 +47,16 @@ class PersonalInformationUpdateYamlValidatorPhoneEmailTest {
   }
 
   @Test
-  void extensionWithoutBusinessPhoneTargetsBusinessPhone() {
+  void extensionWithBlankBusinessPhoneTargetsBusinessPhone() {
     List<ApiError> errors =
         validate(
             Map.of(
-                "hongKongBusinessPhoneExtension", "123",
-                "emailAddress", "member@example.test"));
+                "hongKongBusinessPhone",
+                "",
+                "hongKongBusinessPhoneExtension",
+                "123",
+                "emailAddress",
+                "member@example.test"));
 
     assertThat(errors)
         .anySatisfy(
@@ -62,6 +66,43 @@ class PersonalInformationUpdateYamlValidatorPhoneEmailTest {
                     "personalInformation.businessPhone.requiredWhenExtensionPresent",
                     "Please input the Hong Kong business phone number when an extension is provided.",
                     "hongKongBusinessPhone"));
+  }
+
+  @Test
+  void extensionWithoutBusinessPhoneKeyIsSkippedBecauseStoredValueIsAssumed() {
+    assertThat(
+            validate(
+                Map.of(
+                    "hongKongBusinessPhoneExtension", "123",
+                    "emailAddress", "member@example.test")))
+        .as("D-31: the stored business phone is assumed; the downstream decides")
+        .noneMatch(
+            error ->
+                "personalInformation.businessPhone.requiredWhenExtensionPresent"
+                    .equals(error.code()));
+  }
+
+  @Test
+  void overseasPhoneDependencyRulesSkipTargetsThatAreNotSubmitted() {
+    assertThat(
+            validate(
+                Map.of(
+                    "overseasCountryCode", "852",
+                    "emailAddress", "member@example.test")))
+        .noneMatch(
+            error ->
+                "personalInformation.overseasPhoneNumber.requiredWhenCodePresent"
+                    .equals(error.code()));
+
+    assertThat(
+            validate(
+                Map.of(
+                    "overseasPhoneNumber", "12345678",
+                    "emailAddress", "member@example.test")))
+        .noneMatch(
+            error ->
+                "personalInformation.overseasCountryCode.requiredWhenPhonePresent"
+                    .equals(error.code()));
   }
 
   @Test
@@ -98,8 +139,12 @@ class PersonalInformationUpdateYamlValidatorPhoneEmailTest {
     List<ApiError> codeWithoutPhoneErrors =
         validate(
             Map.of(
-                "overseasCountryCode", "852",
-                "emailAddress", "member@example.test"));
+                "overseasPhoneNumber",
+                "",
+                "overseasCountryCode",
+                "852",
+                "emailAddress",
+                "member@example.test"));
 
     assertThat(codeWithoutPhoneErrors)
         .anySatisfy(
@@ -113,8 +158,12 @@ class PersonalInformationUpdateYamlValidatorPhoneEmailTest {
     List<ApiError> phoneWithoutCodeErrors =
         validate(
             Map.of(
-                "overseasPhoneNumber", "12345678",
-                "emailAddress", "member@example.test"));
+                "overseasCountryCode",
+                "",
+                "overseasPhoneNumber",
+                "12345678",
+                "emailAddress",
+                "member@example.test"));
 
     assertThat(phoneWithoutCodeErrors)
         .anySatisfy(
@@ -172,8 +221,13 @@ class PersonalInformationUpdateYamlValidatorPhoneEmailTest {
   }
 
   @Test
-  void blankEmailReturnsRequiredOnlyAndInvalidEmailReturnsEmailError() {
-    List<ApiError> blankErrors = validate(Map.of());
+  void absentEmailProducesNoErrors() {
+    assertThat(validate(Map.of())).isEmpty();
+  }
+
+  @Test
+  void blankSubmittedEmailReturnsRequiredOnlyAndInvalidEmailReturnsEmailError() {
+    List<ApiError> blankErrors = validate(Map.of("emailAddress", ""));
     assertThat(blankErrors)
         .anySatisfy(
             error ->

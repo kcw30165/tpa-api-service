@@ -32,6 +32,8 @@ import com.bct.ngtpa.apiservice.application.usecase.GetReferenceDataCountriesSer
 import com.bct.ngtpa.apiservice.application.usecase.RefreshReferenceDateService;
 import com.bct.ngtpa.apiservice.application.usecase.UpdateNotificationsReadStatusService;
 import com.bct.ngtpa.apiservice.application.usecase.UpdatePersonalInformationService;
+import com.bct.ngtpa.apiservice.application.usecase.personalinformation.GetPersonalInformationCachingUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.personalinformation.PersonalInformationConfigCacheService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -90,8 +92,10 @@ public class UseCaseConfig {
 
   @Bean
   public GetPersonalInformationUseCase getPersonalInformationUseCase(
-      ApimMemberInfoPort apimMemberInfoPort) {
-    return new GetPersonalInformationService(apimMemberInfoPort);
+      ApimMemberInfoPort apimMemberInfoPort,
+      PersonalInformationConfigCacheService configCacheService) {
+    return new GetPersonalInformationCachingUseCase(
+        new GetPersonalInformationService(apimMemberInfoPort), configCacheService);
   }
 
   @Bean
