@@ -240,6 +240,47 @@ class PersonalInformationControllerAccessCheckTest {
     verify(accessChecker).check(any(), any(), eq(Optional.empty()), eq("ACC-123"), eq("req-7"));
   }
 
+  @Test
+  void aMissingAccountIsRejectedBeforeValidationOrAccessLookup() {
+    var withoutAccount =
+        new PortalAccessContext(new ActorContext("user-1", ActorUserRole.ROLE_USER_MBR), null);
+    var controller =
+        new PersonalInformationController(
+            mock(GetPersonalInformationUseCase.class),
+            mock(PersonalInformationWebMapper.class),
+            resolver(withoutAccount),
+            useCase,
+            requestMapper,
+            responseMapper,
+            validator,
+            exchange -> Optional.empty(),
+            accessChecker);
+    StepVerifier.create(controller.update(Mono.just(REQUEST), "en", exchange()))
+        .expectError(PortalAccessContextResolutionException.class)
+        .verify();
+    verifyNoInteractions(validator, accessChecker, requestMapper, useCase);
+  }
+
+  @Test
+  void optionalYamlValidatorIsSkippedAndAccessErrorsStillReject() {
+    var controller =
+        new PersonalInformationController(
+            mock(GetPersonalInformationUseCase.class),
+            mock(PersonalInformationWebMapper.class),
+            resolver(context("ACC-123")),
+            useCase,
+            requestMapper,
+            responseMapper,
+            null,
+            exchange -> Optional.empty(),
+            accessChecker);
+    when(accessChecker.check(any(), any(), any(), any(), any()))
+        .thenReturn(Mono.just(List.of(NOT_EDITABLE)));
+    assertThat(controller.update(Mono.just(REQUEST), "en", exchange()).block().errors())
+        .isEqualTo(mapped(NOT_EDITABLE));
+    verifyNoInteractions(validator, useCase);
+  }
+
   private static MockServerWebExchange exchange() {
     return MockServerWebExchange.from(
         MockServerHttpRequest.put("/api/v1/personal-information").build());

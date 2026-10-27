@@ -8,6 +8,19 @@ import org.junit.jupiter.api.Test;
 class AccountIdentifierFormatterTest {
 
   @Test
+  void rejectsInvalidWidthsAndPadCharacterAndExposesConfiguredWidths() {
+    assertThatThrownBy(() -> new AccountIdentifierFormatter(0, 4, '0'))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new AccountIdentifierFormatter(11, 0, '0'))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new AccountIdentifierFormatter(11, 4, 'x'))
+        .isInstanceOf(IllegalArgumentException.class);
+    var formatter = new AccountIdentifierFormatter(11, 4, '0');
+    assertThat(formatter.policyWidth()).isEqualTo(11);
+    assertThat(formatter.certificateWidth()).isEqualTo(4);
+  }
+
+  @Test
   void formatsPolicyAndCertificateUsingConfiguredWidths() {
     var formatter = new AccountIdentifierFormatter(11, 4, '0');
 

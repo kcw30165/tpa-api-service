@@ -642,7 +642,7 @@ class ApiExceptionHandlerCharacterizationTest {
         ErrorCodes.PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID,
         List.of(),
         "req-18",
-        "message for " + ErrorCodes.PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID);
+        null);
     assertLoggedOnce(
         Level.WARN,
         "InvalidPersonalInformationUpdateException",

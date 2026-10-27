@@ -321,6 +321,58 @@ class PersonalInformationUpdateWebMapperTest {
             mapper.toCommand(false, new UpdatePersonalInformationRequest("1.0", false, Map.of())));
   }
 
+  @Test
+  void defensiveConfigurationAndOptionalValueBranches() {
+    var text = field("text", "text", " ", "text", null, ".*", false);
+    text.setValidations(Arrays.asList(null, validation("optional", "optional", "optional")));
+    var ui = field("ui", null, "boolean", "checkbox", null, null, false);
+    ui.setApimBinding(null);
+    var mapper = new PersonalInformationUpdateWebMapper(properties(section(text, ui)));
+    assertThat(
+            mapper
+                .toCommand(
+                    false,
+                    new UpdatePersonalInformationRequest(
+                        "1", false, Map.of("text", " ", "ui", true)))
+                .updateFields())
+        .containsEntry("text", " ");
+    text.setDataType("boolean");
+    text.setValidations(List.of(validation("required", "required", "required")));
+    assertThat(
+            mapper
+                .toCommand(
+                    false, new UpdatePersonalInformationRequest("1", false, Map.of("text", true)))
+                .updateFields())
+        .containsEntry("text", true);
+    text.setDataType("string");
+    text.setValidations(List.of());
+    text.setApimBinding(new ApimBindingProperties());
+    assertThrows(
+        InvalidPersonalInformationUpdateException.class,
+        () ->
+            mapper.validateStructure(
+                new UpdatePersonalInformationRequest("1", false, Map.of("text", "x"))));
+    var page = properties().getPages().get("personalInformation");
+    var props = new BffPagesProperties();
+    props.setPages(Map.of("personalInformation", page));
+    page.setForm(null);
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            new PersonalInformationUpdateWebMapper(props)
+                .validateStructure(
+                    new UpdatePersonalInformationRequest("1", false, Map.of("text", "x"))));
+    var form = new FormMetadataProperties();
+    page.setForm(form);
+    form.setSections(null);
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            new PersonalInformationUpdateWebMapper(props)
+                .validateStructure(
+                    new UpdatePersonalInformationRequest("1", false, Map.of("text", "x"))));
+  }
+
   private static BffPagesProperties properties() {
     var bindingAddr2 = new ApimBindingProperties();
     bindingAddr2.setData("addr2");

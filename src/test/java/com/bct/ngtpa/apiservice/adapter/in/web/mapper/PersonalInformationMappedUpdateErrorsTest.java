@@ -278,6 +278,43 @@ class PersonalInformationMappedUpdateErrorsTest {
             });
   }
 
+  @Test
+  void missingAndPartialConfigurationOmitsTargetsWithoutDroppingErrors() {
+    var properties = new BffPagesProperties();
+    var mapper = new PersonalInformationUpdateErrorMapper(properties);
+    assertInvalidFormat(
+        mapper, true, List.of("email"), "personalInformation.field.invalidFormat", List.of());
+    properties.setPages(null);
+    assertInvalidFormat(
+        mapper, true, List.of("email"), "personalInformation.field.invalidFormat", List.of());
+    var page = new PageSchemaProperties();
+    properties.setPages(Map.of("personalInformation", page));
+    assertInvalidFormat(
+        mapper, true, List.of("email"), "personalInformation.field.invalidFormat", List.of());
+    var form = new FormMetadataProperties();
+    page.setForm(form);
+    form.setSections(null);
+    assertInvalidFormat(
+        mapper, true, List.of("email"), "personalInformation.field.invalidFormat", List.of());
+    var section = new SectionProperties();
+    var noBinding = new FieldProperties();
+    noBinding.setId("noBinding");
+    var noId = new FieldProperties();
+    var blankId = new FieldProperties();
+    blankId.setId(" ");
+    var email = field("emailAddress", "email", " ");
+    email.setValidations(null);
+    section.setFields(java.util.Arrays.asList(null, noId, blankId, noBinding, email));
+    var empty = new SectionProperties();
+    form.setSections(java.util.Arrays.asList(null, empty, section));
+    assertInvalidFormat(
+        mapper,
+        true,
+        List.of("email"),
+        "personalInformation.field.invalidFormat",
+        List.of("emailAddress"));
+  }
+
   private static ValidationRuleProperties rule(String code) {
     var rule = new ValidationRuleProperties();
     rule.setCode(code);

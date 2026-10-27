@@ -113,7 +113,7 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
   }
 
   private PersonalInformationUpdateException unavailable(String reason) {
-    log.error("event=personal-information.update.unavailable reason={}", reason);
+    log.warn("event=personal-information.update.unavailable reason={}", reason);
     return PersonalInformationUpdateException.systemFailure();
   }
 

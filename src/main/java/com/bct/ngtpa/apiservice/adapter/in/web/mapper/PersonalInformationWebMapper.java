@@ -951,7 +951,7 @@ public class PersonalInformationWebMapper {
     Map<String, Object> event = new LinkedHashMap<>();
     event.put(KEY_ITEM_ID, configKey);
     event.put(KEY_CONFIG_VALUE, configValue);
-    log.error(
+    log.warn(
         "Unrecognised or blank APIM access config value, field treated as HIDDEN: {}",
         loggingSanitizer.toSafeString(event));
   }
