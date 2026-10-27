@@ -92,11 +92,13 @@ public class PersonalInformationUpdateErrorMapper {
   }
 
   private String unknownCode(String downstreamCode) {
-    String sanitized =
-        downstreamCode == null ? "" : downstreamCode.replaceAll("[^A-Za-z0-9_.-]", "");
-    log.warn(
-        "event=personal-information-update-unknown-downstream-code code={}",
-        sanitized.substring(0, Math.min(64, sanitized.length())));
+    if (log.isWarnEnabled()) {
+      String sanitized =
+          downstreamCode == null ? "" : downstreamCode.replaceAll("[^A-Za-z0-9_.-]", "");
+      log.warn(
+          "event=personal-information-update-unknown-downstream-code code={}",
+          sanitized.substring(0, Math.min(64, sanitized.length())));
+    }
     return UPDATE_REJECTED;
   }
 
