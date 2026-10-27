@@ -292,4 +292,28 @@ under the sanitizedMessage key -- documented as a known, pre-existing gap, not f
 commit (6b0d6962).
 </td>
 </tr>
+
+
+<tr>
+<td>
+O-16
+</td>
+<td>
+ReactorMdcPropagationConfig registers each ThreadLocalAccessor with a reset lambda that
+unconditionally calls MDC.remove(mdcKey). Existing tests proved propagation into MDC on a thread
+hop, and that an absent context key does not leak a stale value on a freshly created single-use
+scheduler, but neither proved that MDC values set during one execution do not leak into a second,
+unrelated execution that reuses the same physical Reactor worker thread.
+</td>
+<td>
+Implementer
+</td>
+<td>
+**Closed.** mdcIsClearedWhenSameReactorWorkerThreadIsReusedForADifferentContext runs two
+sequential, separate Mono executions on the same Schedulers.newSingle worker (first sets
+trustCode/userRole, second carries only requestId) and asserts the second run reads null for
+trustCode/userRole, confirming the reset lambdas correctly clear MDC between executions on a
+reused thread (9ca1e685).
+</td>
+</tr>
 </table>
