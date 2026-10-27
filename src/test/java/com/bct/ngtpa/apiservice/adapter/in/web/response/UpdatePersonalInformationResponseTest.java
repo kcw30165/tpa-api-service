@@ -1,73 +1,43 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.response;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Branch-oriented tests for {@link UpdatePersonalInformationResponse}. */
 class UpdatePersonalInformationResponseTest {
-
-  // ----- compact constructor null-coercion -------------------------------------
-
   @Test
   void nullMessagesAndErrorsCoerceToEmptyLists() {
-    UpdatePersonalInformationResponse response =
-        new UpdatePersonalInformationResponse(true, "SUCCESS", null, null, null);
+    var response = new UpdatePersonalInformationResponse<ApiError>(
+        true, ApiStatus.UPDATED, null, null, null);
     assertThat(response.messages()).isEmpty();
     assertThat(response.errors()).isEmpty();
   }
 
-  // ----- updated() factory --------------------------------------------------------
-
   @Test
-  void updatedFactorySetsSuccessTrueAndIncludesSuccessMessage() {
-    PersonalInformationUpdateResultResponse result =
-        new PersonalInformationUpdateResultResponse("ref-1", "2026-09-14", "10:00:00");
-    UpdatePersonalInformationResponse response =
-        UpdatePersonalInformationResponse.updated(List.of(result));
-    assertThat(response.success()).isTrue();
-    assertThat(response.status()).isEqualTo(ApiStatus.UPDATED.toString());
-    assertThat(response.result()).containsExactly(result);
+  void messagesAndErrorsAreDefensivelyCopied() {
+    var messages = new ArrayList<>(List.of(new UpdatePersonalInformationResponse.Message("code")));
+    var errors = new ArrayList<>(List.of(ApiError.field("code", null, List.of(), "SERVER")));
+    var response = new UpdatePersonalInformationResponse<>(false, ApiStatus.VALIDATION_FAILED,
+        null, messages, errors);
+    messages.clear();
+    errors.clear();
     assertThat(response.messages()).hasSize(1);
-    assertThat(response.messages().get(0).type()).isEqualTo("SUCCESS");
-    assertThat(response.errors()).isEmpty();
+    assertThat(response.errors()).hasSize(1);
+    assertThatThrownBy(() -> response.messages().clear()).isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> response.errors().clear()).isInstanceOf(UnsupportedOperationException.class);
   }
 
-  // ----- validationFailed() factory ------------------------------------------------
-
   @Test
-  void validationFailedFactorySetsSuccessFalseWithErrors() {
-    ApiError error = ApiError.field("code1", "message1", List.of("field1"), "SERVER");
-    UpdatePersonalInformationResponse response =
-        UpdatePersonalInformationResponse.validationFailed(List.of(error));
+  void javaPreValidationFactoryKeepsExistingApiErrorUnchanged() {
+    var error = ApiError.field("code1", "message1", List.of("field1"), "SERVER");
+    var response = UpdatePersonalInformationResponse.validationFailed(List.of(error));
     assertThat(response.success()).isFalse();
-    assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED.toString());
+    assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
     assertThat(response.result()).isNull();
-    assertThat(response.errors()).containsExactly(error);
-  }
-
-  // ----- businessRejected() factory ------------------------------------------------
-
-  @Test
-  void businessRejectedFactorySetsSuccessFalseWithErrors() {
-    ApiError error = ApiError.business("code2", "message2", List.of(), "SERVER");
-    UpdatePersonalInformationResponse response =
-        UpdatePersonalInformationResponse.businessRejected(List.of(error));
-    assertThat(response.success()).isFalse();
-    assertThat(response.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED.toString());
-    assertThat(response.errors()).containsExactly(error);
-  }
-
-  // ----- systemError() factory --------------------------------------------------
-
-  @Test
-  void systemErrorFactorySetsSuccessFalseWithErrors() {
-    ApiError error = ApiError.system("code3", "message3", "SERVER");
-    UpdatePersonalInformationResponse response =
-        UpdatePersonalInformationResponse.systemError(List.of(error));
-    assertThat(response.success()).isFalse();
-    assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR.toString());
+    assertThat(response.messages()).isEmpty();
     assertThat(response.errors()).containsExactly(error);
   }
 }

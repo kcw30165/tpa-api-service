@@ -12,7 +12,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageSchemaProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.SectionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ValidationRuleProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import java.util.Arrays;
@@ -233,55 +232,56 @@ class PersonalInformationUpdateWebMapperTest {
   }
 
   @Test
-  void errorMapperReturnsDefaultBusinessErrorWhenRawErrorsMissing() {
+  void errorMapperReturnsApprovedOtherAccountFallbackWhenRawErrorsMissing() {
     PersonalInformationUpdateErrorMapper mapper =
         new PersonalInformationUpdateErrorMapper(properties(section()));
 
-    assertThat(mapper.toApiErrors(null))
+    assertThat(mapper.toMappedErrors(errorRow(null)))
         .singleElement()
-        .extracting(ApiError::type, ApiError::code, ApiError::message, ApiError::targets)
+        .extracting(
+            PersonalInformationUpdateErrorMapper.MappedError::type,
+            PersonalInformationUpdateErrorMapper.MappedError::code,
+            PersonalInformationUpdateErrorMapper.MappedError::targets)
         .containsExactly(
-            "BUSINESS",
-            "personalInformation.update.validationFailed",
-            "The submitted information is invalid.",
+            null,
+            "personalInformation.update.rejected",
             List.of());
-    assertThat(mapper.toApiErrors(List.of())).hasSize(1);
+    assertThat(mapper.toMappedErrors(errorRow(List.of()))).hasSize(1);
   }
 
   @Test
-  void errorMapperNormalizesUnknownTypeDeduplicatesTargetsAndFallsBackWithoutConfig() {
+  void errorMapperPreservesUnknownTypeAndOmitsUnknownTargetsWithoutConfig() {
     PersonalInformationUpdateErrorMapper mapper = new PersonalInformationUpdateErrorMapper(null);
 
-    List<ApiError> errors =
-        mapper.toApiErrors(
-            Arrays.asList(
-                null,
+    var errors =
+        mapper.toMappedErrors(
+            errorRow(List.of(
                 UpdatePersonalInformationError.fromPipeSeparatedFields(
-                    "strange", " addr1 | addr1 | unknown | ", null)));
+                    "strange", " addr1 | addr1 | unknown | ", null))));
 
     assertThat(errors).hasSize(1);
-    assertThat(errors.get(0).type()).isEqualTo("FORM");
-    assertThat(errors.get(0).code()).isEqualTo("personalInformation.update.validationFailed");
-    assertThat(errors.get(0).targets()).containsExactly("addr1", "unknown");
+    assertThat(errors.get(0).type()).isEqualTo("strange");
+    assertThat(errors.get(0).code()).isEqualTo("personalInformation.update.rejected");
+    assertThat(errors.get(0).targets()).isEmpty();
   }
 
   @Test
-  void errorMapperUsesApimConfigBindingAndYamlRequiredValidation() {
+  void errorMapperUsesApimBindingButNotFieldSpecificYamlValidationCode() {
     FieldProperties email = field("emailAddress", "email", "string", "email", null, null, false);
     email.setValidations(
         List.of(validation("required", "personalInformation.email.required", "Email is required")));
     PersonalInformationUpdateErrorMapper mapper =
         new PersonalInformationUpdateErrorMapper(properties(section(email)));
 
-    ApiError error =
+    var error =
         mapper
-            .toApiErrors(
-                List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED")))
+            .toMappedErrors(errorRow(
+                List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED"))))
             .get(0);
 
     assertThat(error.type()).isEqualTo("FIELD");
     assertThat(error.targets()).containsExactly("emailAddress");
-    assertThat(error.code()).isEqualTo("personalInformation.email.required");
+    assertThat(error.code()).isEqualTo("personalInformation.field.required");
   }
 
   @Test
@@ -291,19 +291,25 @@ class PersonalInformationUpdateWebMapperTest {
             properties(
                 section(field("homeTel", "home-phone", "string", "tel", null, null, false))));
 
-    List<ApiError> errors =
-        mapper.toApiErrors(
+    var errors =
+        mapper.toMappedErrors(errorRow(
             List.of(
                 new UpdatePersonalInformationError(
                     "CROSS_FIELD", List.of("home-phone"), "AT_LEAST_ONE_REQUIRED"),
                 new UpdatePersonalInformationError(
                     "FIELD", List.of("home-phone"), "INVALID_FORMAT"),
-                new UpdatePersonalInformationError("FIELD", List.of(), "REQUIRED")));
+                new UpdatePersonalInformationError("FIELD", List.of(), "REQUIRED"))));
 
     assertThat(errors.get(0).code()).isEqualTo("personalInformation.address.atLeastOneRequired");
     assertThat(errors.get(1).targets()).containsExactly("homeTel");
-    assertThat(errors.get(1).code()).isEqualTo("personalInformation.homeTel.invalid");
+    assertThat(errors.get(1).code()).isEqualTo("personalInformation.field.invalidFormat");
     assertThat(errors.get(2).code()).isEqualTo("personalInformation.field.required");
+  }
+
+  private static com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult errorRow(
+      List<UpdatePersonalInformationError> errors) {
+    return new com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult(
+        false, false, "118", "3", "DB", null, null, null, errors);
   }
 
   @Test

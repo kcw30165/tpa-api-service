@@ -17,8 +17,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.personalinformation.PersonalInfor
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateErrorMapper.MappedError;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationFieldAccessChecker;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
@@ -88,7 +88,7 @@ class PersonalInformationControllerAccessCheckTest {
         accessChecker);
   }
 
-  private static Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> put(
+  private static Mono<UpdatePersonalInformationResponse<?>> put(
       PersonalInformationController controller, String accountRefInHeader) {
     return controller
         .update(Mono.just(REQUEST), "en", exchange())
@@ -111,7 +111,7 @@ class PersonalInformationControllerAccessCheckTest {
               assertThat(body.success()).isFalse();
               assertThat(body.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
               assertThat(body.result()).isNull();
-              assertThat(body.errors()).containsExactly(NOT_EDITABLE);
+              assertThat(body.errors()).isEqualTo(List.of(NOT_EDITABLE));
             })
         .verifyComplete();
 
@@ -128,7 +128,7 @@ class PersonalInformationControllerAccessCheckTest {
         .assertNext(
             body -> {
               assertThat(body.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
-              assertThat(body.errors()).containsExactly(YAML_ERROR, NOT_EDITABLE);
+              assertThat(body.errors()).isEqualTo(List.of(YAML_ERROR, NOT_EDITABLE));
             })
         .verifyComplete();
 
@@ -157,8 +157,8 @@ class PersonalInformationControllerAccessCheckTest {
   @Test
   void noErrorsLetsTheUpdateProceed() {
     List<UpdatePersonalInformationResult> results = List.of();
-    MutationResponse<List<PersonalInformationUpdateResultResponse>> mapped =
-        MutationResponse.success(ApiStatus.UPDATED, List.of(), List.of());
+    UpdatePersonalInformationResponse<MappedError> mapped =
+        new UpdatePersonalInformationResponse<>(true, ApiStatus.UPDATED, null, List.of(), List.of());
     when(validator.validate(any(), any(), any(), any(), any())).thenReturn(List.of());
     when(accessChecker.check(any(), any(), any(), any(), any())).thenReturn(Mono.just(List.of()));
     when(requestMapper.toCommand(eq(true), any(UpdatePersonalInformationRequest.class)))
@@ -187,7 +187,7 @@ class PersonalInformationControllerAccessCheckTest {
         .assertNext(
             body -> {
               assertThat(body.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
-              assertThat(body.errors()).containsExactly(YAML_ERROR);
+              assertThat(body.errors()).isEqualTo(List.of(YAML_ERROR));
             })
         .verifyComplete();
 

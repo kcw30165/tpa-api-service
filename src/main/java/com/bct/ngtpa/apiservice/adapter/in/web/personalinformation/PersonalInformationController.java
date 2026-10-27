@@ -12,7 +12,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.HttpStatusClassification;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationResultResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationFieldAccessChecker;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -99,7 +100,7 @@ public class PersonalInformationController {
   }
 
   @PutMapping
-  public Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> update(
+  public Mono<UpdatePersonalInformationResponse<?>> update(
       @RequestBody Mono<UpdatePersonalInformationRequest> request,
       @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false)
           String acceptLanguage,
@@ -141,11 +142,11 @@ public class PersonalInformationController {
                                         List<ApiError> errors =
                                             mergeErrors(yamlErrors, accessErrors);
                                         if (!errors.isEmpty()) {
-                                          return Mono.just(
+                                          return Mono.<UpdatePersonalInformationResponse<?>>just(
                                               withHttpStatus(
                                                   exchange,
-                                                  MutationResponse.failure(
-                                                      ApiStatus.VALIDATION_FAILED, errors)));
+                                                  UpdatePersonalInformationResponse.validationFailed(
+                                                      errors)));
                                         }
                                         var mapped =
                                             requestMapper.toCommand(
@@ -163,7 +164,9 @@ public class PersonalInformationController {
                                         return updatePersonalInformationUseCase
                                             .execute(command)
                                             .map(responseMapper::toResponse)
-                                            .map(response -> withHttpStatus(exchange, response));
+                                            .<UpdatePersonalInformationResponse<?>>map(
+                                                response ->
+                                                    withDownstreamHttpStatus(exchange, response));
                                       });
                             })));
   }
@@ -174,16 +177,20 @@ public class PersonalInformationController {
         ApiStatus.SUCCESS, PersonalInformationResultResponse.from(formPage), List.of());
   }
 
-  /**
-   * The downstream always answers HTTP 200, so the HTTP status of this endpoint is decided here
-   * from the body status through the shared classification: VALIDATION_FAILED is 400,
-   * BUSINESS_REJECTED is 422 and SYSTEM_ERROR is 503. The success-like statuses, including
-   * PARTIAL_SUCCESS, stay 200. The body is returned unchanged.
-   */
-  private static MutationResponse<List<PersonalInformationUpdateResultResponse>> withHttpStatus(
+  // Only downstream selected-account rejection overrides the shared validation status.
+  private static <E> UpdatePersonalInformationResponse<E> withHttpStatus(
       ServerWebExchange exchange,
-      MutationResponse<List<PersonalInformationUpdateResultResponse>> body) {
+      UpdatePersonalInformationResponse<E> body) {
     exchange.getResponse().setStatusCode(HttpStatusClassification.classify(body.status()));
+    return body;
+  }
+
+  private static <E> UpdatePersonalInformationResponse<E> withDownstreamHttpStatus(
+      ServerWebExchange exchange, UpdatePersonalInformationResponse<E> body) {
+    exchange.getResponse().setStatusCode(
+        body.status() == ApiStatus.VALIDATION_FAILED
+            ? HttpStatus.UNPROCESSABLE_CONTENT
+            : HttpStatusClassification.classify(body.status()));
     return body;
   }
 

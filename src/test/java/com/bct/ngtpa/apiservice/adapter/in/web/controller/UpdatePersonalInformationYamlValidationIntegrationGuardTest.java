@@ -31,7 +31,7 @@ class UpdatePersonalInformationYamlValidationIntegrationGuardTest {
     assertThat(source)
         .as("Blocking BFF YAML validation errors must return the mutation error contract")
         .containsIgnoringWhitespaces("ApiStatus.VALIDATION_FAILED")
-        .containsIgnoringWhitespaces("MutationResponse.failure")
+        .containsIgnoringWhitespaces("UpdatePersonalInformationResponse.validationFailed")
         .containsIgnoringWhitespaces("errors")
         .containsIgnoringWhitespaces("!errors.isEmpty()");
 
@@ -41,7 +41,7 @@ class UpdatePersonalInformationYamlValidationIntegrationGuardTest {
     assertThat(indexOf(source, "validator.validate"))
         .as("validator must run before APIM/use-case execution")
         .isLessThan(indexOf(source, "updatePersonalInformationUseCase.execute"));
-    assertThat(indexOf(source, "MutationResponse.failure"))
+    assertThat(indexOf(source, "UpdatePersonalInformationResponse.validationFailed"))
         .as("validation failure branch must be before APIM/use-case execution")
         .isLessThan(indexOf(source, "updatePersonalInformationUseCase.execute"));
   }

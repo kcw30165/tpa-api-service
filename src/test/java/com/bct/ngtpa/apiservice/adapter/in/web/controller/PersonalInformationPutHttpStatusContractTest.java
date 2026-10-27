@@ -15,6 +15,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateErrorMapper.MappedError;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationFieldAccessChecker;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
@@ -39,10 +41,8 @@ import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
 
 /**
- * Decision O-2: the downstream always answers HTTP 200, so every failure of the
- * personal-information PUT must reach the client as a non-200 status derived from the body status
- * (400, 422, 503), with the same MutationResponse body. Success-like statuses, including
- * PARTIAL_SUCCESS, stay 200.
+ * ST-4: downstream selected-account rejection is 422 VALIDATION_FAILED.
+ * Java pre-validation remains 400 until ST-5; success outcomes stay 200.
  *
  * <p>Statuses are compared as integers: isEqualTo(422) would resolve to UNPROCESSABLE_CONTENT while
  * the classification returns UNPROCESSABLE_ENTITY, two enum constants for the same code.
@@ -57,9 +57,8 @@ class PersonalInformationPutHttpStatusContractTest {
   private static final ApiError NOT_EDITABLE =
       ApiError.field(
           "personalInformation.field.notEditable", null, List.of("emailAddress"), "SERVER");
-  private static final ApiError REJECTED =
-      ApiError.field(
-          "personalInformation.update.rejected", null, List.of("emailAddress"), "SERVER");
+  private static final MappedError REJECTED =
+      new MappedError("FIELD", "personalInformation.update.rejected", List.of("emailAddress"));
 
   private final UpdatePersonalInformationUseCase useCase =
       mock(UpdatePersonalInformationUseCase.class);
@@ -118,15 +117,15 @@ class PersonalInformationPutHttpStatusContractTest {
   // ----- failures reported by the downstream (always HTTP 200 there) -------------------------
 
   @Test
-  void downstreamValidationRejectionReturnsHttp400() {
+  void downstreamValidationRejectionReturnsHttp422() {
     inputsAreValid();
     downstreamReturns(
-        MutationResponse.failure(
-            ApiStatus.VALIDATION_FAILED, List.of(failedResult()), List.of(REJECTED)));
+        new UpdatePersonalInformationResponse<>(
+            false, ApiStatus.VALIDATION_FAILED, failedResult(), List.of(), List.of(REJECTED)));
 
     put()
         .expectStatus()
-        .value(status -> assertThat(status).isEqualTo(400))
+        .value(status -> assertThat(status).isEqualTo(422))
         .expectBody()
         .jsonPath("$.success")
         .isEqualTo(false)
@@ -137,11 +136,11 @@ class PersonalInformationPutHttpStatusContractTest {
   }
 
   @Test
-  void downstreamBusinessRejectionReturnsHttp422AndKeepsTheResultArray() {
+  void selectedFailureKeepsTheDataObjectAndNeverUsesBusinessRejected() {
     inputsAreValid();
     downstreamReturns(
-        MutationResponse.failure(
-            ApiStatus.BUSINESS_REJECTED, List.of(failedResult()), List.of(REJECTED)));
+        new UpdatePersonalInformationResponse<>(
+            false, ApiStatus.VALIDATION_FAILED, failedResult(), List.of(), List.of(REJECTED)));
 
     put()
         .expectStatus()
@@ -150,11 +149,9 @@ class PersonalInformationPutHttpStatusContractTest {
         .jsonPath("$.success")
         .isEqualTo(false)
         .jsonPath("$.status")
-        .isEqualTo("BUSINESS_REJECTED")
-        .jsonPath("$.result")
+        .isEqualTo("VALIDATION_FAILED")
+        .jsonPath("$.result.data.rows")
         .isArray()
-        .jsonPath("$.result")
-        .isNotEmpty()
         .jsonPath("$.errors[0].code")
         .isEqualTo("personalInformation.update.rejected");
   }
@@ -163,8 +160,9 @@ class PersonalInformationPutHttpStatusContractTest {
   void downstreamTechnicalFailureReturnsHttp503() {
     inputsAreValid();
     downstreamReturns(
-        MutationResponse.failure(
-            ApiStatus.SYSTEM_ERROR, List.of(failedResult()), List.of(REJECTED)));
+        new UpdatePersonalInformationResponse<>(
+            false, ApiStatus.SYSTEM_ERROR, null, List.of(),
+            List.of(new MappedError("SYSTEM", "err.personal-information.update.unavailable", List.of()))));
 
     put()
         .expectStatus()
@@ -175,7 +173,23 @@ class PersonalInformationPutHttpStatusContractTest {
         .jsonPath("$.status")
         .isEqualTo("SYSTEM_ERROR")
         .jsonPath("$.errors[0].code")
-        .isEqualTo("personalInformation.update.rejected");
+        .isEqualTo("err.personal-information.update.unavailable");
+  }
+
+  @Test
+  void javaPreValidationBodyRemainsIdenticalToTheExistingMutationContract() {
+    when(validator.validate(any(), any(), any(), any(), any())).thenReturn(List.of(YAML_ERROR));
+    when(accessChecker.check(any(), any(), any(), any(), any())).thenReturn(Mono.just(List.of()));
+    put().expectStatus().isBadRequest().expectBody().consumeWith(response -> {
+      var json = new com.fasterxml.jackson.databind.ObjectMapper();
+      try {
+        com.fasterxml.jackson.databind.JsonNode expected =
+            json.valueToTree(MutationResponse.failure(ApiStatus.VALIDATION_FAILED, List.of(YAML_ERROR)));
+        assertThat(json.readTree(response.getResponseBody())).isEqualTo(expected);
+      } catch (java.io.IOException error) {
+        throw new AssertionError(error);
+      }
+    });
   }
 
   // ----- outcomes that stay HTTP 200 ----------------------------------------------------------
@@ -184,8 +198,10 @@ class PersonalInformationPutHttpStatusContractTest {
   void partialSuccessStaysHttp200() {
     inputsAreValid();
     downstreamReturns(
-        MutationResponse.failure(
-            ApiStatus.PARTIAL_SUCCESS, List.of(failedResult()), List.of(REJECTED)));
+        new UpdatePersonalInformationResponse<>(
+            true, ApiStatus.PARTIAL_SUCCESS, okResult(),
+            List.of(new UpdatePersonalInformationResponse.Message("personalInformation.update.partialSuccess")),
+            List.of()));
 
     put()
         .expectStatus()
@@ -198,7 +214,10 @@ class PersonalInformationPutHttpStatusContractTest {
   @Test
   void successfulUpdateReturnsHttp200() {
     inputsAreValid();
-    downstreamReturns(MutationResponse.success(ApiStatus.UPDATED, List.of(okResult()), List.of()));
+    downstreamReturns(new UpdatePersonalInformationResponse<>(
+        true, ApiStatus.UPDATED, okResult(),
+        List.of(new UpdatePersonalInformationResponse.Message("personalInformation.update.success")),
+        List.of()));
 
     put()
         .expectStatus()
@@ -218,7 +237,7 @@ class PersonalInformationPutHttpStatusContractTest {
   }
 
   private void downstreamReturns(
-      MutationResponse<List<PersonalInformationUpdateResultResponse>> mapped) {
+      UpdatePersonalInformationResponse<MappedError> mapped) {
     List<UpdatePersonalInformationResult> results = List.of();
     when(requestMapper.toCommand(eq(true), any(UpdatePersonalInformationRequest.class)))
         .thenReturn(new UpdatePersonalInformationCommand(true, Map.of("email", "a@b.test")));
@@ -229,12 +248,14 @@ class PersonalInformationPutHttpStatusContractTest {
 
   private static PersonalInformationUpdateResultResponse failedResult() {
     return new PersonalInformationUpdateResultResponse(
-        true, false, "policy-1", "1", "OE", "REF-1", "2026-10-23", "13:00:00", List.of(REJECTED));
+        new PersonalInformationUpdateResultResponse.Data(null, List.of(), List.of()));
   }
 
   private static PersonalInformationUpdateResultResponse okResult() {
     return new PersonalInformationUpdateResultResponse(
-        true, true, "policy-1", "1", "OE", "REF-1", "2026-10-23", "13:00:00", List.of());
+        new PersonalInformationUpdateResultResponse.Data(
+            new PersonalInformationUpdateResultResponse.Account(
+                "00000000118-0002", "REF-1", "2026-10-23", "13:00:00"), List.of(), List.of()));
   }
 
   private WebTestClient.ResponseSpec put() {

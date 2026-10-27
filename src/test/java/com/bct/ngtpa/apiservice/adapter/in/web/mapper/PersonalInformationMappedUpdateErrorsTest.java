@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FormMetadataProperties
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageSchemaProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PersonalInformationYamlContextRunner;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.SectionProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ValidationRuleProperties;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -117,6 +118,77 @@ class PersonalInformationMappedUpdateErrorsTest {
       assertThat(mapped.get(0).path("targets")).isEqualTo(JSON.valueToTree(
           List.of("emailAddress", "residentialAddressLine1", "mailingAddressLine1")));
     });
+  }
+
+  @Test
+  void realYamlResolvesInvalidFormatForSelectedAndOtherAccounts() {
+    PersonalInformationYamlContextRunner.create().run(context -> {
+      assertThat(context).hasNotFailed();
+      var mapper = new PersonalInformationUpdateErrorMapper(context.getBean(BffPagesProperties.class));
+      for (boolean selected : List.of(true, false)) {
+        assertInvalidFormat(mapper, selected, List.of("email"), "personalInformation.email.invalid",
+            List.of("emailAddress"));
+        assertInvalidFormat(mapper, selected, List.of("addr1"), "personalInformation.residentialAddress.invalid",
+            List.of("residentialAddressLine1"));
+        assertInvalidFormat(mapper, selected, List.of("addr1|addr2|addr3"),
+            "personalInformation.residentialAddress.invalid",
+            List.of("residentialAddressLine1", "residentialAddressLine2", "residentialAddressLine3"));
+        assertInvalidFormat(mapper, selected, List.of("unknown"), "personalInformation.field.invalidFormat",
+            List.of());
+        assertInvalidFormat(mapper, selected, List.of(), "personalInformation.field.invalidFormat",
+            List.of());
+        assertInvalidFormat(mapper, selected, List.of("country"), "personalInformation.field.invalidFormat",
+            List.of("residentialCountry"));
+        assertInvalidFormat(mapper, selected, List.of("email|addr1"), "personalInformation.field.invalidFormat",
+            List.of("emailAddress", "residentialAddressLine1"));
+        assertInvalidFormat(mapper, selected, List.of("email|country"), "personalInformation.field.invalidFormat",
+            List.of("emailAddress", "residentialCountry"));
+        assertInvalidFormat(mapper, selected, List.of("unknown|email|email"),
+            "personalInformation.email.invalid", List.of("emailAddress"));
+      }
+    });
+  }
+
+  @Test
+  void multipleDistinctInvalidCodesOnOneTargetFallBackAndNonInvalidRulesAreIgnored() {
+    PersonalInformationYamlContextRunner.create().run(context -> {
+      assertThat(context).hasNotFailed();
+      var properties = context.getBean(BffPagesProperties.class);
+      var email = properties.getPages().get("personalInformation").getForm().getSections().stream()
+          .flatMap(section -> section.getFields().stream())
+          .filter(field -> "emailAddress".equals(field.getId())).findFirst().orElseThrow();
+      var mapper = new PersonalInformationUpdateErrorMapper(properties);
+      var rules = new ArrayList<>(email.getValidations());
+      rules.add(rule("personalInformation.address.poBoxBlocked"));
+      rules.add(rule("personalInformation.email.requiredWhenPresent"));
+      rules.add(rule(null));
+      rules.add(rule(""));
+      email.setValidations(rules);
+      for (boolean selected : List.of(true, false)) {
+        assertInvalidFormat(mapper, selected, List.of("email"), "personalInformation.email.invalid",
+            List.of("emailAddress"));
+      }
+      rules.add(rule("personalInformation.alternate.invalid"));
+      email.setValidations(rules);
+      for (boolean selected : List.of(true, false)) {
+        assertInvalidFormat(mapper, selected, List.of("email"), "personalInformation.field.invalidFormat",
+            List.of("emailAddress"));
+      }
+    });
+  }
+
+  private static ValidationRuleProperties rule(String code) {
+    var rule = new ValidationRuleProperties();
+    rule.setCode(code);
+    return rule;
+  }
+
+  private static void assertInvalidFormat(
+      PersonalInformationUpdateErrorMapper mapper, boolean selected, List<String> fields,
+      String expectedCode, List<String> expectedTargets) {
+    var errors = mapper.toMappedErrors(account(selected, false, "CROSS_FIELD", "INVALID_FORMAT", fields));
+    assertThat(errors).containsExactly(new PersonalInformationUpdateErrorMapper.MappedError(
+        "CROSS_FIELD", expectedCode, expectedTargets));
   }
 
   @Test

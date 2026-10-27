@@ -1,192 +1,113 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
+import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
+import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class PersonalInformationUpdateResponseMapperTest {
-
   @Test
-  void mapsSingleSelectedSuccessToUpdatedResultArray() {
-    PersonalInformationUpdateErrorMapper errorMapper =
-        mock(PersonalInformationUpdateErrorMapper.class);
-    PersonalInformationUpdateResponseMapper mapper =
-        new PersonalInformationUpdateResponseMapper(errorMapper);
-
-    MutationResponse<List<PersonalInformationUpdateResultResponse>> response =
-        mapper.toResponse(
-            List.of(
-                new UpdatePersonalInformationResult(
-                    true,
-                    true,
-                    "00000000118",
-                    "2",
-                    "DB",
-                    "990000001",
-                    "2026-06-07",
-                    "08:36:51",
-                    List.of())));
-
+  void singleSelectedSuccessIsUpdatedWithFormattedIdentifierAndVerbatimMetadata() {
+    var response = mapper().toResponse(row(true, true, "2"));
     assertThat(response.success()).isTrue();
     assertThat(response.status()).isEqualTo(ApiStatus.UPDATED);
-    assertThat(response.result()).hasSize(1);
-    assertThat(response.result().getFirst().selected()).isTrue();
-    assertThat(response.result().getFirst().success()).isTrue();
-    assertThat(response.result().getFirst().refNo()).isEqualTo("990000001");
-    assertThat(response.messages()).hasSize(1);
-    assertThat(response.messages().getFirst().type()).isEqualTo("SUCCESS");
+    assertThat(response.result().data().selectedAccount().accountIdentifier()).isEqualTo("00000000118-0002");
+    assertThat(response.result().data().selectedAccount().refNo()).isNull();
+    assertThat(response.result().data().selectedAccount().submitDate()).isEmpty();
+    assertThat(response.result().data().selectedAccount().submitTime()).isEqualTo(" ");
+    assertThat(response.result().data().rows()).isEmpty();
+    assertThat(response.result().data().errors()).isEmpty();
+    assertThat(response.messages()).extracting(message -> message.code())
+        .containsExactly("personalInformation.update.success");
     assertThat(response.errors()).isEmpty();
   }
 
   @Test
-  void mapsSingleSelectedValidationFailureToBlockingErrorsAndResultArray() {
-    PersonalInformationUpdateErrorMapper errorMapper =
-        mock(PersonalInformationUpdateErrorMapper.class);
-    var selectedError = new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED");
-    ApiError apiError =
-        ApiError.field(
-            "personalInformation.email.required",
-            "email is required",
-            List.of("emailAddress"),
-            "SERVER");
-    when(errorMapper.toApiErrors(List.of(selectedError))).thenReturn(List.of(apiError));
-    PersonalInformationUpdateResponseMapper mapper =
-        new PersonalInformationUpdateResponseMapper(errorMapper);
-
-    MutationResponse<List<PersonalInformationUpdateResultResponse>> response =
-        mapper.toResponse(
-            List.of(
-                new UpdatePersonalInformationResult(
-                    true,
-                    false,
-                    "00000000118",
-                    "3",
-                    "DB",
-                    null,
-                    null,
-                    null,
-                    List.of(selectedError))));
-
+  void selectedFailureIsValidationFailedAndNeverDuplicatedInData() {
+    var response = mapper().toResponse(row(true, false, "2"));
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
-    assertThat(response.result()).hasSize(1);
-    assertThat(response.result().getFirst().selected()).isTrue();
-    assertThat(response.result().getFirst().success()).isFalse();
-    assertThat(response.result().getFirst().errors()).containsExactly(apiError);
+    assertThat(response.result().data().selectedAccount()).isNull();
+    assertThat(response.result().data().rows()).isEmpty();
+    assertThat(response.result().data().errors()).isEmpty();
+    assertThat(response.errors()).extracting(error -> error.code())
+        .containsExactly("personalInformation.field.required");
     assertThat(response.messages()).isEmpty();
-    assertThat(response.errors()).containsExactly(apiError);
   }
 
   @Test
-  void mapsSelectedSuccessAndOtherAccountFailureToPartialSuccessAccountArray() {
-    PersonalInformationUpdateErrorMapper errorMapper =
-        mock(PersonalInformationUpdateErrorMapper.class);
-    var failedError = new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED");
-    ApiError mappedFailedError =
-        ApiError.field(
-            "personalInformation.email.required",
-            "email is required",
-            List.of("emailAddress"),
-            "SERVER");
-    when(errorMapper.toApiErrors(List.of(failedError))).thenReturn(List.of(mappedFailedError));
-    PersonalInformationUpdateResponseMapper mapper =
-        new PersonalInformationUpdateResponseMapper(errorMapper);
-
-    MutationResponse<List<PersonalInformationUpdateResultResponse>> response =
-        mapper.toResponse(
-            List.of(
-                new UpdatePersonalInformationResult(
-                    true,
-                    true,
-                    "00000000118",
-                    "2",
-                    "DB",
-                    "260001373",
-                    "2025-12-31",
-                    "15:42:52",
-                    List.of()),
-                new UpdatePersonalInformationResult(
-                    false,
-                    false,
-                    "00000000118",
-                    "3",
-                    "DB",
-                    "260001374",
-                    "2025-12-31",
-                    "15:42:52",
-                    List.of(failedError))));
-
-    assertThat(response.success()).isTrue();
+  void mixedOtherAccountsArePartitionedWithoutDuplicatingSelectedAccount() {
+    var response = mapper().toResponse(List.of(
+        row(false, true, "3"), row(true, true, "2"), row(false, false, "4"),
+        row(false, true, "5")));
     assertThat(response.status()).isEqualTo(ApiStatus.PARTIAL_SUCCESS);
-    assertThat(response.result()).hasSize(2);
-    assertThat(response.result().get(0).selected()).isTrue();
-    assertThat(response.result().get(0).success()).isTrue();
-    assertThat(response.result().get(1).selected()).isFalse();
-    assertThat(response.result().get(1).success()).isFalse();
-    assertThat(response.result().get(1).errors()).containsExactly(mappedFailedError);
+    assertThat(response.result().data().rows()).extracting(account -> account.accountIdentifier())
+        .containsExactly("00000000118-0003", "00000000118-0005");
+    assertThat(response.result().data().errors()).extracting(account -> account.accountIdentifier())
+        .containsExactly("00000000118-0004");
+    assertThat(response.result().data().errors().getFirst().errors()).extracting(error -> error.code())
+        .containsExactly("personalInformation.field.required");
     assertThat(response.errors()).isEmpty();
-    assertThat(response.messages()).hasSize(1);
-    assertThat(response.messages().getFirst().type()).isEqualTo("WARNING");
+    assertThat(response.messages()).extracting(message -> message.code())
+        .containsExactly("personalInformation.update.partialSuccess");
   }
 
   @Test
-  void
-      mapsSelectedAccountFailureWithOtherSuccessToPartialSuccessResultArrayAndTopLevelSelectedErrors() {
-    PersonalInformationUpdateErrorMapper errorMapper =
-        mock(PersonalInformationUpdateErrorMapper.class);
-    var selectedError = new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED");
-    ApiError mappedSelectedError =
-        ApiError.field(
-            "personalInformation.email.required",
-            "email is required",
-            List.of("emailAddress"),
-            "SERVER");
-    when(errorMapper.toApiErrors(List.of(selectedError))).thenReturn(List.of(mappedSelectedError));
-    PersonalInformationUpdateResponseMapper mapper =
-        new PersonalInformationUpdateResponseMapper(errorMapper);
-
-    MutationResponse<List<PersonalInformationUpdateResultResponse>> response =
-        mapper.toResponse(
-            List.of(
-                new UpdatePersonalInformationResult(
-                    false,
-                    true,
-                    "00000000118",
-                    "2",
-                    "DB",
-                    "260001373",
-                    "2025-12-31",
-                    "15:42:52",
-                    List.of()),
-                new UpdatePersonalInformationResult(
-                    true,
-                    false,
-                    "00000000118",
-                    "3",
-                    "DB",
-                    "260001374",
-                    "2025-12-31",
-                    "15:42:52",
-                    List.of(selectedError))));
-
+  void selectedFailureWithSuccessfulOtherAccountIsNotPartialSuccess() {
+    var response = mapper().toResponse(List.of(row(false, true, "3"), row(true, false, "2")));
     assertThat(response.success()).isFalse();
-    assertThat(response.status()).isEqualTo(ApiStatus.PARTIAL_SUCCESS);
-    assertThat(response.result()).hasSize(2);
-    assertThat(response.result().get(0).selected()).isFalse();
-    assertThat(response.result().get(0).success()).isTrue();
-    assertThat(response.result().get(1).selected()).isTrue();
-    assertThat(response.result().get(1).success()).isFalse();
-    assertThat(response.result().get(1).errors()).containsExactly(mappedSelectedError);
+    assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
+    assertThat(response.result().data().rows()).hasSize(1);
+    assertThat(response.result().data().selectedAccount()).isNull();
     assertThat(response.messages()).isEmpty();
-    assertThat(response.errors()).containsExactly(mappedSelectedError);
+  }
+
+  @Test
+  void emptyOtherErrorsUseTheSt3NullTypeFallback() {
+    var other = new UpdatePersonalInformationResult(
+        false, false, "118", "3", "DB", null, null, null, List.of());
+    var response = mapper().toResponse(List.of(row(true, true, "2"), other));
+    var error = response.result().data().errors().getFirst().errors().getFirst();
+    assertThat(error.type()).isNull();
+    assertThat(error.code()).isEqualTo("personalInformation.update.rejected");
+    assertThat(error.targets()).isEmpty();
+  }
+
+  @Test
+  void formattingUsesInjectedWidthsAndPaddingRatherThanHardcodedValues() {
+    var mapper = new PersonalInformationUpdateResponseMapper(
+        new PersonalInformationUpdateErrorMapper(null), new AccountIdentifierFormatter(6, 3, '9'));
+    var response = mapper.toResponse(List.of(row(true, true, "2"), row(false, false, "3")));
+    assertThat(response.result().data().selectedAccount().accountIdentifier()).isEqualTo("999118-992");
+    assertThat(response.result().data().errors().getFirst().accountIdentifier()).isEqualTo("999118-993");
+  }
+
+  @Test
+  void absentResultsOrSelectedAccountFailThroughTheExistingPutUnavailableException() {
+    assertThatThrownBy(() -> mapper().toResponse((List<UpdatePersonalInformationResult>) null))
+        .isInstanceOf(PersonalInformationUpdateException.class);
+    assertThatThrownBy(() -> mapper().toResponse(List.of()))
+        .isInstanceOf(PersonalInformationUpdateException.class);
+    assertThatThrownBy(() -> mapper().toResponse((UpdatePersonalInformationResult) null))
+        .isInstanceOf(PersonalInformationUpdateException.class);
+    assertThatThrownBy(() -> mapper().toResponse(List.of(row(false, true, "3"))))
+        .isInstanceOf(PersonalInformationUpdateException.class);
+  }
+
+  static PersonalInformationUpdateResponseMapper mapper() {
+    return new PersonalInformationUpdateResponseMapper(
+        new PersonalInformationUpdateErrorMapper(null), new AccountIdentifierFormatter(11, 4, '0'));
+  }
+
+  static UpdatePersonalInformationResult row(boolean selected, boolean success, String cert) {
+    return new UpdatePersonalInformationResult(selected, success, "118", cert, "DB",
+        null, "", " ", success ? List.of() : List.of(
+            new UpdatePersonalInformationError("FIELD", List.of(), "REQUIRED")));
   }
 }

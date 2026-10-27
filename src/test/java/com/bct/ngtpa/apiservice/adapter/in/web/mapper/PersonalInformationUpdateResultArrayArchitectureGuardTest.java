@@ -2,58 +2,47 @@ package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
 import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class PersonalInformationUpdateResultArrayArchitectureGuardTest {
-
   @Test
-  void updateResponseMapperReturnsMutationResponseOfResultResponseList() throws Exception {
-    Type returnType =
-        PersonalInformationUpdateResponseMapper.class
-            .getMethod("toResponse", List.class)
-            .getGenericReturnType();
-
-    assertThat(returnType).isInstanceOf(ParameterizedType.class);
-    ParameterizedType mutationResponseType = (ParameterizedType) returnType;
-    assertThat(mutationResponseType.getRawType()).isEqualTo(MutationResponse.class);
-
-    Type resultType = mutationResponseType.getActualTypeArguments()[0];
-    assertThat(resultType).isInstanceOf(ParameterizedType.class);
-    ParameterizedType listType = (ParameterizedType) resultType;
-    assertThat(listType.getRawType()).isEqualTo(List.class);
-    assertThat(listType.getActualTypeArguments()[0])
+  void responseMapperReturnsEndpointEnvelopeOfMappedErrors() throws Exception {
+    var type = (ParameterizedType) PersonalInformationUpdateResponseMapper.class
+        .getMethod("toResponse", List.class).getGenericReturnType();
+    assertThat(type.getRawType()).isEqualTo(UpdatePersonalInformationResponse.class);
+    assertThat(type.getActualTypeArguments()[0])
+        .isEqualTo(PersonalInformationUpdateErrorMapper.MappedError.class);
+    assertThat(UpdatePersonalInformationResponse.class.getDeclaredField("result").getType())
         .isEqualTo(PersonalInformationUpdateResultResponse.class);
   }
 
   @Test
-  void redundantAccountDtosAreNotReintroducedInMainSources() throws Exception {
-    Path sourceRoot = Path.of("src/main/java");
-    List<Path> offenders;
-    try (var stream = Files.walk(sourceRoot)) {
-      offenders =
-          stream
-              .filter(path -> path.toString().endsWith(".java"))
-              .filter(
-                  path ->
-                      contains(path, "PersonalInformationUpdateAccountResponse")
-                          || contains(path, "UpdatePersonalInformationAccountResult"))
-              .toList();
-    }
-    assertThat(offenders).isEmpty();
+  void resultContainsDataAndDataContainsSelectedSuccessfulOthersAndFailedOthers() {
+    assertThat(PersonalInformationUpdateResultResponse.class.getRecordComponents())
+        .extracting(java.lang.reflect.RecordComponent::getName).containsExactly("data");
+    assertThat(PersonalInformationUpdateResultResponse.Data.class.getRecordComponents())
+        .extracting(java.lang.reflect.RecordComponent::getName)
+        .containsExactly("selectedAccount", "rows", "errors");
   }
 
-  private boolean contains(Path path, String needle) {
-    try {
-      return Files.readString(path).contains(needle);
-    } catch (java.io.IOException ex) {
-      throw new IllegalStateException("Failed to read " + path, ex);
+  @Test
+  void redundantAccountDtosAreNotReintroducedInMainSources() throws Exception {
+    try (var stream = java.nio.file.Files.walk(java.nio.file.Path.of("src/main/java"))) {
+      var offenders = stream.filter(path -> path.toString().endsWith(".java"))
+          .filter(path -> {
+            try {
+              String source = java.nio.file.Files.readString(path);
+              return source.contains("PersonalInformationUpdateAccountResponse")
+                  || source.contains("UpdatePersonalInformationAccountResult");
+            } catch (java.io.IOException error) {
+              throw new IllegalStateException("Failed to read " + path, error);
+            }
+          }).toList();
+      assertThat(offenders).isEmpty();
     }
   }
 }

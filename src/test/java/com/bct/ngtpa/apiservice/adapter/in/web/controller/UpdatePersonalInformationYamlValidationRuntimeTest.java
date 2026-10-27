@@ -16,8 +16,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.personalinformation.PersonalInfor
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
@@ -69,7 +68,7 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
             "SERVER");
     when(validator.validate(eq(request), eq("en"), any(), any(), any())).thenReturn(List.of(error));
 
-    Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> response =
+    Mono<UpdatePersonalInformationResponse<?>> response =
         controller
             .update(Mono.just(request), null, exchange())
             .contextWrite(
@@ -85,7 +84,7 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
               assertThat(body.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
               assertThat(body.result()).isNull();
               assertThat(body.messages()).isEmpty();
-              assertThat(body.errors()).containsExactly(error);
+              assertThat(body.errors()).isEqualTo(List.of(error));
             })
         .verifyComplete();
 

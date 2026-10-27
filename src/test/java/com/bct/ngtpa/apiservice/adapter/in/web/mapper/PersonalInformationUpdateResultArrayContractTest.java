@@ -1,116 +1,37 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapperTest.mapper;
+import static com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapperTest.row;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
-import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
-import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class PersonalInformationUpdateResultArrayContractTest {
-
   @Test
-  void selectedSuccessWithOtherAccountFailureReturnsAccountArrayResultAndNoTopLevelErrors() {
-    PersonalInformationUpdateErrorMapper errorMapper =
-        mock(PersonalInformationUpdateErrorMapper.class);
-    var failedError = new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED");
-    ApiError apiError =
-        ApiError.field(
-            "personalInformation.email.required",
-            "email is required",
-            List.of("emailAddress"),
-            "SERVER");
-    when(errorMapper.toApiErrors(List.of(failedError))).thenReturn(List.of(apiError));
-    PersonalInformationUpdateResponseMapper mapper =
-        new PersonalInformationUpdateResponseMapper(errorMapper);
-
-    MutationResponse<List<PersonalInformationUpdateResultResponse>> response =
-        mapper.toResponse(
-            List.of(
-                new UpdatePersonalInformationResult(
-                    true,
-                    true,
-                    "00000000118",
-                    "2",
-                    "DB",
-                    "260001373",
-                    "2025-12-31",
-                    "15:42:52",
-                    List.of()),
-                new UpdatePersonalInformationResult(
-                    false,
-                    false,
-                    "00000000118",
-                    "3",
-                    "DB",
-                    "260001374",
-                    "2025-12-31",
-                    "15:42:52",
-                    List.of(failedError))));
-
-    assertThat(response.success()).isTrue();
-    assertThat(response.status()).isEqualTo(ApiStatus.PARTIAL_SUCCESS);
-    assertThat(response.result()).hasSize(2);
-    assertThat(response.result().get(0).selected()).isTrue();
-    assertThat(response.result().get(1).selected()).isFalse();
-    assertThat(response.result().get(1).errors()).containsExactly(apiError);
-    assertThat(response.errors()).isEmpty();
-    assertThat(response.messages()).hasSize(1);
+  void selectedSuccessOtherFailureSerializesCodesOnlyAndNoInternalIdentifiers() throws Exception {
+    var json = new ObjectMapper().valueToTree(mapper().toResponse(
+        List.of(row(true, true, "2"), row(false, false, "3"))));
+    assertThat(json).isEqualTo(new ObjectMapper().readTree("""
+        {"success":true,"status":"PARTIAL_SUCCESS",
+         "result":{"data":{"selectedAccount":{"accountIdentifier":"00000000118-0002",
+         "refNo":null,"submitDate":"","submitTime":" "},"rows":[],"errors":[
+         {"accountIdentifier":"00000000118-0003","errors":[
+         {"type":"FIELD","code":"personalInformation.field.required","targets":[]}]}]}},
+         "messages":[{"code":"personalInformation.update.partialSuccess"}],"errors":[]}
+        """));
   }
 
   @Test
-  void
-      selectedFailureWithOtherAccountSuccessReturnsAccountArrayResultAndSelectedErrorsAtTopLevel() {
-    PersonalInformationUpdateErrorMapper errorMapper =
-        mock(PersonalInformationUpdateErrorMapper.class);
-    var selectedError = new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED");
-    ApiError apiError =
-        ApiError.field(
-            "personalInformation.email.required",
-            "email is required",
-            List.of("emailAddress"),
-            "SERVER");
-    when(errorMapper.toApiErrors(List.of(selectedError))).thenReturn(List.of(apiError));
-    PersonalInformationUpdateResponseMapper mapper =
-        new PersonalInformationUpdateResponseMapper(errorMapper);
-
-    MutationResponse<List<PersonalInformationUpdateResultResponse>> response =
-        mapper.toResponse(
-            List.of(
-                new UpdatePersonalInformationResult(
-                    false,
-                    true,
-                    "00000000118",
-                    "2",
-                    "DB",
-                    "260001373",
-                    "2025-12-31",
-                    "15:42:52",
-                    List.of()),
-                new UpdatePersonalInformationResult(
-                    true,
-                    false,
-                    "00000000118",
-                    "3",
-                    "DB",
-                    "260001374",
-                    "2025-12-31",
-                    "15:42:52",
-                    List.of(selectedError))));
-
-    assertThat(response.success()).isFalse();
-    assertThat(response.status()).isEqualTo(ApiStatus.PARTIAL_SUCCESS);
-    assertThat(response.result()).hasSize(2);
-    assertThat(response.result().get(0).selected()).isFalse();
-    assertThat(response.result().get(1).selected()).isTrue();
-    assertThat(response.result().get(1).errors()).containsExactly(apiError);
-    assertThat(response.errors()).containsExactly(apiError);
-    assertThat(response.messages()).isEmpty();
+  void selectedFailureOtherSuccessSerializesSelectedErrorsOnlyAtRoot() throws Exception {
+    var json = new ObjectMapper().valueToTree(mapper().toResponse(
+        List.of(row(false, true, "3"), row(true, false, "2"))));
+    assertThat(json).isEqualTo(new ObjectMapper().readTree("""
+        {"success":false,"status":"VALIDATION_FAILED",
+         "result":{"data":{"selectedAccount":null,"rows":[{"accountIdentifier":"00000000118-0003",
+         "refNo":null,"submitDate":"","submitTime":" "}],"errors":[]}},
+         "messages":[],"errors":[{"type":"FIELD","code":"personalInformation.field.required","targets":[]}]}
+        """));
   }
 }
