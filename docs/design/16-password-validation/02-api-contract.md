@@ -31,6 +31,7 @@ HTTP 200; Cache-Control: no-store. Generic MutationResponse with a feature resul
 }
 ```
 No password, username, fail-count or reviewed changes are echoed. Session expiration may make a grant unusable before its five-minute expiry. A response lost after successful issuance is not replayed; another successful confirmation replaces the grant.
+(Confirmed, source-grounded: `MutationResponse<T>` is the actual existing generic envelope class -- `adapter.in.web.response.MutationResponse`, used unmodified by Personal Information, Fund Fact Sheet and other features -- so `result` here is `MutationResponse<PasswordValidationResult>` where `PasswordValidationResult` is a new record `{token, expiresInSeconds}`. `ApiStatus.SUCCESS`, `VALIDATION_FAILED`, `BUSINESS_REJECTED` and `SYSTEM_ERROR` are all existing enum constants on `adapter.in.web.response.ApiStatus` (which also already defines `UPDATED`, `SUBMITTED`, `NO_CHANGE`, `PENDING_APPROVAL`, `PARTIAL_SUCCESS`, `DOWNSTREAM_REJECTED`, `DOWNSTREAM_ERROR`); no new status enum is introduced by this feature.)
 
 ## Protected submission
 PUT /api/v1/personal-information
