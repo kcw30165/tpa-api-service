@@ -3,7 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.response;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateErrorMapper.MappedError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;

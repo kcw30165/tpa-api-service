@@ -16,7 +16,6 @@ class UpdatePersonalInformationControllerResultArrayArchitectureGuardTest {
         .filter(candidate -> candidate.getName().equals("update")).findFirst().orElseThrow();
     var mono = (ParameterizedType) method.getGenericReturnType();
     assertThat(mono.getRawType()).isEqualTo(Mono.class);
-    var envelope = (ParameterizedType) mono.getActualTypeArguments()[0];
-    assertThat(envelope.getRawType()).isEqualTo(UpdatePersonalInformationResponse.class);
+    assertThat(mono.getActualTypeArguments()[0]).isEqualTo(UpdatePersonalInformationResponse.class);
   }
 }

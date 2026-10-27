@@ -16,7 +16,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateErrorMapper.MappedError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationFieldAccessChecker;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
@@ -41,11 +41,9 @@ import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
 
 /**
- * ST-4: downstream selected-account rejection is 422 VALIDATION_FAILED.
- * Java pre-validation remains 400 until ST-5; success outcomes stay 200.
+ * Java content and downstream selected-account rejections are 422 VALIDATION_FAILED.
  *
- * <p>Statuses are compared as integers: isEqualTo(422) would resolve to UNPROCESSABLE_CONTENT while
- * the classification returns UNPROCESSABLE_ENTITY, two enum constants for the same code.
+ * <p>HTTP 422 uses UNPROCESSABLE_CONTENT; success outcomes stay 200.
  */
 class PersonalInformationPutHttpStatusContractTest {
 
@@ -74,13 +72,13 @@ class PersonalInformationPutHttpStatusContractTest {
   // ----- failures decided by the BFF before the downstream is called -------------------------
 
   @Test
-  void yamlValidationErrorsReturnHttp400WithTheErrorsArray() {
+  void yamlValidationErrorsReturnHttp422WithTheErrorsArray() {
     when(validator.validate(any(), any(), any(), any(), any())).thenReturn(List.of(YAML_ERROR));
     when(accessChecker.check(any(), any(), any(), any(), any())).thenReturn(Mono.just(List.of()));
 
     put()
         .expectStatus()
-        .value(status -> assertThat(status).isEqualTo(400))
+        .value(status -> assertThat(status).isEqualTo(422))
         .expectBody()
         .jsonPath("$.success")
         .isEqualTo(false)
@@ -97,14 +95,14 @@ class PersonalInformationPutHttpStatusContractTest {
   }
 
   @Test
-  void accessErrorsReturnHttp400WithTheErrorsArray() {
+  void accessErrorsReturnHttp422WithTheErrorsArray() {
     when(validator.validate(any(), any(), any(), any(), any())).thenReturn(List.of());
     when(accessChecker.check(any(), any(), any(), any(), any()))
         .thenReturn(Mono.just(List.of(NOT_EDITABLE)));
 
     put()
         .expectStatus()
-        .value(status -> assertThat(status).isEqualTo(400))
+        .value(status -> assertThat(status).isEqualTo(422))
         .expectBody()
         .jsonPath("$.success")
         .isEqualTo(false)
@@ -120,7 +118,7 @@ class PersonalInformationPutHttpStatusContractTest {
   void downstreamValidationRejectionReturnsHttp422() {
     inputsAreValid();
     downstreamReturns(
-        new UpdatePersonalInformationResponse<>(
+        new UpdatePersonalInformationResponse(
             false, ApiStatus.VALIDATION_FAILED, failedResult(), List.of(), List.of(REJECTED)));
 
     put()
@@ -139,7 +137,7 @@ class PersonalInformationPutHttpStatusContractTest {
   void selectedFailureKeepsTheDataObjectAndNeverUsesBusinessRejected() {
     inputsAreValid();
     downstreamReturns(
-        new UpdatePersonalInformationResponse<>(
+        new UpdatePersonalInformationResponse(
             false, ApiStatus.VALIDATION_FAILED, failedResult(), List.of(), List.of(REJECTED)));
 
     put()
@@ -160,7 +158,7 @@ class PersonalInformationPutHttpStatusContractTest {
   void downstreamTechnicalFailureReturnsHttp503() {
     inputsAreValid();
     downstreamReturns(
-        new UpdatePersonalInformationResponse<>(
+        new UpdatePersonalInformationResponse(
             false, ApiStatus.SYSTEM_ERROR, null, List.of(),
             List.of(new MappedError("SYSTEM", "err.personal-information.update.unavailable", List.of()))));
 
@@ -177,14 +175,17 @@ class PersonalInformationPutHttpStatusContractTest {
   }
 
   @Test
-  void javaPreValidationBodyRemainsIdenticalToTheExistingMutationContract() {
+  void javaPreValidationUses422CodeOnlyContract() {
     when(validator.validate(any(), any(), any(), any(), any())).thenReturn(List.of(YAML_ERROR));
     when(accessChecker.check(any(), any(), any(), any(), any())).thenReturn(Mono.just(List.of()));
-    put().expectStatus().isBadRequest().expectBody().consumeWith(response -> {
+    put().expectStatus().value(status -> assertThat(status).isEqualTo(422)).expectBody().consumeWith(response -> {
       var json = new com.fasterxml.jackson.databind.ObjectMapper();
       try {
         com.fasterxml.jackson.databind.JsonNode expected =
-            json.valueToTree(MutationResponse.failure(ApiStatus.VALIDATION_FAILED, List.of(YAML_ERROR)));
+            json.readTree("""
+                {"success":false,"status":"VALIDATION_FAILED","result":null,"messages":[],
+                 "errors":[{"type":"FIELD","code":"personalInformation.email.invalid","targets":["emailAddress"]}]}
+                """);
         assertThat(json.readTree(response.getResponseBody())).isEqualTo(expected);
       } catch (java.io.IOException error) {
         throw new AssertionError(error);
@@ -198,7 +199,7 @@ class PersonalInformationPutHttpStatusContractTest {
   void partialSuccessStaysHttp200() {
     inputsAreValid();
     downstreamReturns(
-        new UpdatePersonalInformationResponse<>(
+        new UpdatePersonalInformationResponse(
             true, ApiStatus.PARTIAL_SUCCESS, okResult(),
             List.of(new UpdatePersonalInformationResponse.Message("personalInformation.update.partialSuccess")),
             List.of()));
@@ -214,7 +215,7 @@ class PersonalInformationPutHttpStatusContractTest {
   @Test
   void successfulUpdateReturnsHttp200() {
     inputsAreValid();
-    downstreamReturns(new UpdatePersonalInformationResponse<>(
+    downstreamReturns(new UpdatePersonalInformationResponse(
         true, ApiStatus.UPDATED, okResult(),
         List.of(new UpdatePersonalInformationResponse.Message("personalInformation.update.success")),
         List.of()));
@@ -237,7 +238,7 @@ class PersonalInformationPutHttpStatusContractTest {
   }
 
   private void downstreamReturns(
-      UpdatePersonalInformationResponse<MappedError> mapped) {
+      UpdatePersonalInformationResponse mapped) {
     List<UpdatePersonalInformationResult> results = List.of();
     when(requestMapper.toCommand(eq(true), any(UpdatePersonalInformationRequest.class)))
         .thenReturn(new UpdatePersonalInformationCommand(true, Map.of("email", "a@b.test")));

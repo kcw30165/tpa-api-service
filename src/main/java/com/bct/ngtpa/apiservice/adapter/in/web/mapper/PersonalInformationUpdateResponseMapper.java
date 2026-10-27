@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateErrorMapper.MappedError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse.Account;
@@ -25,7 +25,7 @@ public class PersonalInformationUpdateResponseMapper {
     this.formatter = formatter;
   }
 
-  public UpdatePersonalInformationResponse<MappedError> toResponse(
+  public UpdatePersonalInformationResponse toResponse(
       List<UpdatePersonalInformationResult> results) {
     if (results == null || results.isEmpty()) {
       throw PersonalInformationUpdateException.systemFailure();
@@ -49,11 +49,11 @@ public class PersonalInformationUpdateResponseMapper {
         new PersonalInformationUpdateResultResponse(
             new Data(selected.success() ? account(selected) : null, rows, otherErrors));
     if (!selected.success()) {
-      return new UpdatePersonalInformationResponse<>(
+      return new UpdatePersonalInformationResponse(
           false, ApiStatus.VALIDATION_FAILED, result, List.of(), errorMapper.toMappedErrors(selected));
     }
     boolean partial = !otherErrors.isEmpty();
-    return new UpdatePersonalInformationResponse<>(
+    return new UpdatePersonalInformationResponse(
         true,
         partial ? ApiStatus.PARTIAL_SUCCESS : ApiStatus.UPDATED,
         result,
@@ -65,7 +65,7 @@ public class PersonalInformationUpdateResponseMapper {
         List.of());
   }
 
-  public UpdatePersonalInformationResponse<MappedError> toResponse(
+  public UpdatePersonalInformationResponse toResponse(
       UpdatePersonalInformationResult result) {
     return toResponse(result == null ? List.of() : List.of(result));
   }

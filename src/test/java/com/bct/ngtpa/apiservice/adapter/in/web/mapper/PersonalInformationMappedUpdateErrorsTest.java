@@ -187,7 +187,7 @@ class PersonalInformationMappedUpdateErrorsTest {
       PersonalInformationUpdateErrorMapper mapper, boolean selected, List<String> fields,
       String expectedCode, List<String> expectedTargets) {
     var errors = mapper.toMappedErrors(account(selected, false, "CROSS_FIELD", "INVALID_FORMAT", fields));
-    assertThat(errors).containsExactly(new PersonalInformationUpdateErrorMapper.MappedError(
+    assertThat(errors).containsExactly(new com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError(
         "CROSS_FIELD", expectedCode, expectedTargets));
   }
 
@@ -215,7 +215,7 @@ class PersonalInformationMappedUpdateErrorsTest {
   @Test
   void mappedErrorsAndTheirTargetsAreImmutable() {
     var targets = new ArrayList<>(List.of("emailAddress"));
-    var error = new PersonalInformationUpdateErrorMapper.MappedError("FIELD", "code", targets);
+    var error = new com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError("FIELD", "code", targets);
     targets.clear();
     assertThat(error.targets()).containsExactly("emailAddress");
     assertThatThrownBy(() -> error.targets().clear()).isInstanceOf(UnsupportedOperationException.class);

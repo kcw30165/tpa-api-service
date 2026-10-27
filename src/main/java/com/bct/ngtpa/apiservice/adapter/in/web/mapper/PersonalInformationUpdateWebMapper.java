@@ -26,10 +26,7 @@ public class PersonalInformationUpdateWebMapper {
 
   public UpdatePersonalInformationCommand toCommand(
       Boolean applyToAllAccounts, UpdatePersonalInformationRequest request) {
-    if (request == null || request.fields() == null || request.fields().isEmpty()) {
-      throw new InvalidPersonalInformationUpdateException(
-          "No personal information fields were submitted.");
-    }
+    validateStructure(request);
     var fieldsById = fieldsById();
     var mapped = new LinkedHashMap<String, Object>();
     request.fields().forEach((fieldId, value) -> applyField(fieldsById, mapped, fieldId, value));
@@ -40,17 +37,43 @@ public class PersonalInformationUpdateWebMapper {
     return new UpdatePersonalInformationCommand(applyToAllAccounts, mapped);
   }
 
-  private void applyField(
-      Map<String, FieldProperties> fieldsById,
-      Map<String, Object> mapped,
-      String fieldId,
-      Object value) {
+  public void validateStructure(UpdatePersonalInformationRequest request) {
+    if (request == null || request.fields() == null || request.fields().isEmpty()) {
+      throw new InvalidPersonalInformationUpdateException(
+          "No personal information fields were submitted.");
+    }
+    var fieldsById = fieldsById();
+    boolean updatable = false;
+    for (var entry : request.fields().entrySet()) {
+      var field = requireField(fieldsById, entry.getKey());
+      var binding = field.getApimBinding();
+      if (binding != null && trimToNull(binding.getData()) != null) {
+        validateValueType(field, entry.getValue());
+        updatable = true;
+      }
+    }
+    if (!updatable) {
+      throw new InvalidPersonalInformationUpdateException(
+          "No updatable personal information fields were submitted.");
+    }
+  }
+
+  private FieldProperties requireField(Map<String, FieldProperties> fieldsById, String fieldId) {
     var field = fieldsById.get(fieldId);
     if (field == null) {
       log.error("Unknown personal information update field submitted: {}", fieldId);
       throw new InvalidPersonalInformationUpdateException(
           "Unknown personal information field: " + fieldId);
     }
+    return field;
+  }
+
+  private void applyField(
+      Map<String, FieldProperties> fieldsById,
+      Map<String, Object> mapped,
+      String fieldId,
+      Object value) {
+    var field = requireField(fieldsById, fieldId);
     var binding = field.getApimBinding();
     var dataKey = binding == null ? null : trimToNull(binding.getData());
     if (dataKey == null) {
@@ -95,16 +118,22 @@ public class PersonalInformationUpdateWebMapper {
     if (value == null) {
       return;
     }
+    if (value instanceof String text) {
+      validateStringValue(field, text);
+    }
+  }
+
+  private void validateValueType(FieldProperties field, Object value) {
+    if (value == null) {
+      return;
+    }
     if ("boolean".equalsIgnoreCase(field.getDataType()) && !(value instanceof Boolean)) {
       throw new InvalidPersonalInformationUpdateException(
-          "Personal information field must be boolean: " + fieldId);
+          "Personal information field must be boolean: " + field.getId());
     }
     if (isTextLike(field) && !(value instanceof String)) {
       throw new InvalidPersonalInformationUpdateException(
-          "Personal information field must be string: " + fieldId);
-    }
-    if (value instanceof String text) {
-      validateStringValue(field, text);
+          "Personal information field must be string: " + field.getId());
     }
   }
 
@@ -118,12 +147,6 @@ public class PersonalInformationUpdateWebMapper {
     if (pattern != null && !text.isBlank() && !Pattern.compile(pattern).matcher(text).matches()) {
       throw new InvalidPersonalInformationUpdateException(
           "Personal information field pattern mismatch: " + fieldId);
-    }
-    if ("email".equalsIgnoreCase(field.getControlType())
-        && !text.isBlank()
-        && !Pattern.compile("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$").matcher(text).matches()) {
-      throw new InvalidPersonalInformationUpdateException(
-          "Personal information field must be email: " + fieldId);
     }
   }
 

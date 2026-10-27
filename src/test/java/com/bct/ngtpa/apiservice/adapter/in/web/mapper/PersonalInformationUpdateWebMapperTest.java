@@ -148,7 +148,7 @@ class PersonalInformationUpdateWebMapperTest {
   }
 
   @Test
-  void updateMapperRejectsBooleanStringPatternAndEmailViolations() {
+  void updateMapperRejectsBooleanStringAndPatternViolations() {
     PersonalInformationUpdateWebMapper mapper =
         new PersonalInformationUpdateWebMapper(
             properties(
@@ -187,16 +187,6 @@ class PersonalInformationUpdateWebMapperTest {
                         false,
                         new UpdatePersonalInformationRequest(
                             "1.0", false, Map.of("homeTel", "12AB"))))
-            .getMessage());
-    assertEquals(
-        "Personal information field must be email: emailAddress",
-        assertThrows(
-                InvalidPersonalInformationUpdateException.class,
-                () ->
-                    mapper.toCommand(
-                        false,
-                        new UpdatePersonalInformationRequest(
-                            "1.0", false, Map.of("emailAddress", "not-an-email"))))
             .getMessage());
   }
 
@@ -239,9 +229,9 @@ class PersonalInformationUpdateWebMapperTest {
     assertThat(mapper.toMappedErrors(errorRow(null)))
         .singleElement()
         .extracting(
-            PersonalInformationUpdateErrorMapper.MappedError::type,
-            PersonalInformationUpdateErrorMapper.MappedError::code,
-            PersonalInformationUpdateErrorMapper.MappedError::targets)
+            com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError::type,
+            com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError::code,
+            com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError::targets)
         .containsExactly(
             null,
             "personalInformation.update.rejected",

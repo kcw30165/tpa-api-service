@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.HttpStatusClassification;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
@@ -26,9 +27,9 @@ import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextR
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -100,7 +101,7 @@ public class PersonalInformationController {
   }
 
   @PutMapping
-  public Mono<UpdatePersonalInformationResponse<?>> update(
+  public Mono<UpdatePersonalInformationResponse> update(
       @RequestBody Mono<UpdatePersonalInformationRequest> request,
       @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false)
           String acceptLanguage,
@@ -115,6 +116,7 @@ public class PersonalInformationController {
                             body -> {
                               String resolvedLocale = resolveLanguage(contextView, acceptLanguage);
                               String accountRef = requireAccountRef(portalAccessContext);
+                              requestMapper.validateStructure(body);
                               List<ApiError> yamlErrors =
                                   validator == null
                                       ? List.of()
@@ -139,11 +141,11 @@ public class PersonalInformationController {
                                       requestIdFrom(contextView))
                                   .flatMap(
                                       accessErrors -> {
-                                        List<ApiError> errors =
+                                        List<MappedError> errors =
                                             mergeErrors(yamlErrors, accessErrors);
                                         if (!errors.isEmpty()) {
-                                          return Mono.<UpdatePersonalInformationResponse<?>>just(
-                                              withHttpStatus(
+                                          return Mono.<UpdatePersonalInformationResponse>just(
+                                              withUpdateHttpStatus(
                                                   exchange,
                                                   UpdatePersonalInformationResponse.validationFailed(
                                                       errors)));
@@ -164,9 +166,9 @@ public class PersonalInformationController {
                                         return updatePersonalInformationUseCase
                                             .execute(command)
                                             .map(responseMapper::toResponse)
-                                            .<UpdatePersonalInformationResponse<?>>map(
+                                            .<UpdatePersonalInformationResponse>map(
                                                 response ->
-                                                    withDownstreamHttpStatus(exchange, response));
+                                                    withUpdateHttpStatus(exchange, response));
                                       });
                             })));
   }
@@ -177,16 +179,8 @@ public class PersonalInformationController {
         ApiStatus.SUCCESS, PersonalInformationResultResponse.from(formPage), List.of());
   }
 
-  // Only downstream selected-account rejection overrides the shared validation status.
-  private static <E> UpdatePersonalInformationResponse<E> withHttpStatus(
-      ServerWebExchange exchange,
-      UpdatePersonalInformationResponse<E> body) {
-    exchange.getResponse().setStatusCode(HttpStatusClassification.classify(body.status()));
-    return body;
-  }
-
-  private static <E> UpdatePersonalInformationResponse<E> withDownstreamHttpStatus(
-      ServerWebExchange exchange, UpdatePersonalInformationResponse<E> body) {
+  private static UpdatePersonalInformationResponse withUpdateHttpStatus(
+      ServerWebExchange exchange, UpdatePersonalInformationResponse body) {
     exchange.getResponse().setStatusCode(
         body.status() == ApiStatus.VALIDATION_FAILED
             ? HttpStatus.UNPROCESSABLE_CONTENT
@@ -194,14 +188,13 @@ public class PersonalInformationController {
     return body;
   }
 
-  private static List<ApiError> mergeErrors(List<ApiError> first, List<ApiError> second) {
-    List<ApiError> merged = new ArrayList<>(first);
-    for (ApiError error : second) {
-      if (!merged.contains(error)) {
-        merged.add(error);
-      }
-    }
-    return merged;
+  private static List<MappedError> mergeErrors(
+      List<ApiError> first, List<ApiError> second) {
+    return Stream.concat(first.stream(), second.stream())
+        .map(error -> new MappedError(
+            error.type(), error.code(), error.targets()))
+        .distinct()
+        .toList();
   }
 
   private String requireAccountRef(PortalAccessContext context) {

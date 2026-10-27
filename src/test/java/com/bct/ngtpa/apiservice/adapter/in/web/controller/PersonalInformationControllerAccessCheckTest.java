@@ -18,7 +18,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformation
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateErrorMapper.MappedError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationFieldAccessChecker;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
@@ -88,7 +88,7 @@ class PersonalInformationControllerAccessCheckTest {
         accessChecker);
   }
 
-  private static Mono<UpdatePersonalInformationResponse<?>> put(
+  private static Mono<UpdatePersonalInformationResponse> put(
       PersonalInformationController controller, String accountRefInHeader) {
     return controller
         .update(Mono.just(REQUEST), "en", exchange())
@@ -111,11 +111,11 @@ class PersonalInformationControllerAccessCheckTest {
               assertThat(body.success()).isFalse();
               assertThat(body.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
               assertThat(body.result()).isNull();
-              assertThat(body.errors()).isEqualTo(List.of(NOT_EDITABLE));
+              assertThat(body.errors()).isEqualTo(mapped(NOT_EDITABLE));
             })
         .verifyComplete();
 
-    verifyNoInteractions(requestMapper, useCase, responseMapper);
+    verifyStructuralCheckOnly();
   }
 
   @Test
@@ -128,11 +128,11 @@ class PersonalInformationControllerAccessCheckTest {
         .assertNext(
             body -> {
               assertThat(body.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
-              assertThat(body.errors()).isEqualTo(List.of(YAML_ERROR, NOT_EDITABLE));
+              assertThat(body.errors()).isEqualTo(mapped(YAML_ERROR, NOT_EDITABLE));
             })
         .verifyComplete();
 
-    verifyNoInteractions(requestMapper, useCase, responseMapper);
+    verifyStructuralCheckOnly();
   }
 
   @Test
@@ -157,8 +157,8 @@ class PersonalInformationControllerAccessCheckTest {
   @Test
   void noErrorsLetsTheUpdateProceed() {
     List<UpdatePersonalInformationResult> results = List.of();
-    UpdatePersonalInformationResponse<MappedError> mapped =
-        new UpdatePersonalInformationResponse<>(true, ApiStatus.UPDATED, null, List.of(), List.of());
+    UpdatePersonalInformationResponse mapped =
+        new UpdatePersonalInformationResponse(true, ApiStatus.UPDATED, null, List.of(), List.of());
     when(validator.validate(any(), any(), any(), any(), any())).thenReturn(List.of());
     when(accessChecker.check(any(), any(), any(), any(), any())).thenReturn(Mono.just(List.of()));
     when(requestMapper.toCommand(eq(true), any(UpdatePersonalInformationRequest.class)))
@@ -187,11 +187,11 @@ class PersonalInformationControllerAccessCheckTest {
         .assertNext(
             body -> {
               assertThat(body.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
-              assertThat(body.errors()).isEqualTo(List.of(YAML_ERROR));
+              assertThat(body.errors()).isEqualTo(mapped(YAML_ERROR));
             })
         .verifyComplete();
 
-    verifyNoInteractions(requestMapper, useCase, responseMapper);
+    verifyStructuralCheckOnly();
   }
 
   @Test
@@ -214,7 +214,18 @@ class PersonalInformationControllerAccessCheckTest {
         .expectErrorSatisfies(error -> assertThat(error).isSameAs(failure))
         .verify();
 
-    verifyNoInteractions(requestMapper, useCase, responseMapper);
+    verifyStructuralCheckOnly();
+  }
+
+  private static List<MappedError> mapped(ApiError... errors) {
+    return java.util.Arrays.stream(errors)
+        .map(error -> new MappedError(error.type(), error.code(), error.targets())).toList();
+  }
+
+  private void verifyStructuralCheckOnly() {
+    verify(requestMapper).validateStructure(REQUEST);
+    org.mockito.Mockito.verify(requestMapper, org.mockito.Mockito.never()).toCommand(any(), any());
+    verifyNoInteractions(useCase, responseMapper);
   }
 
   @Test

@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.response;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateErrorMapper.MappedError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,7 +16,7 @@ class PersonalInformationResponseSerializationContractTest {
   @Test
   void partialSuccessSerializesOnlyApprovedFieldsInDataMessagesAndErrors() throws Exception {
     var error = new MappedError("FIELD", "personalInformation.field.required", List.of("emailAddress"));
-    var response = new UpdatePersonalInformationResponse<>(true, ApiStatus.PARTIAL_SUCCESS,
+    var response = new UpdatePersonalInformationResponse(true, ApiStatus.PARTIAL_SUCCESS,
         new PersonalInformationUpdateResultResponse(new PersonalInformationUpdateResultResponse.Data(
             new PersonalInformationUpdateResultResponse.Account(
                 "00000000118-0002", "260001373", "2025-12-31", "15:42:52"),
@@ -38,7 +38,7 @@ class PersonalInformationResponseSerializationContractTest {
   @Test
   void selectedFailureSerializesNullSelectedAndRootErrorsWithoutDuplication() throws Exception {
     var error = new MappedError("FIELD", "personalInformation.field.required", List.of("emailAddress"));
-    var response = new UpdatePersonalInformationResponse<>(false, ApiStatus.VALIDATION_FAILED,
+    var response = new UpdatePersonalInformationResponse(false, ApiStatus.VALIDATION_FAILED,
         new PersonalInformationUpdateResultResponse(new PersonalInformationUpdateResultResponse.Data(
             null, List.of(new PersonalInformationUpdateResultResponse.Account(
                 "00000000118-0003", null, "", " ")), List.of())),

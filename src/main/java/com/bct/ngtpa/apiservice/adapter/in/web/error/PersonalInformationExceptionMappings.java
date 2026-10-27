@@ -10,7 +10,7 @@ import org.springframework.http.HttpStatus;
 
 /**
  * Mapping for {@link InvalidPersonalInformationUpdateException}. Built via {@link
- * ErrorDescriptor#single} (one {@link MessagePolicy#RESOLVE} entry).
+ * ErrorDescriptor#singleWithoutMessage} for endpoint-owned code-only errors.
  */
 public final class PersonalInformationExceptionMappings {
 
@@ -49,7 +49,7 @@ public final class PersonalInformationExceptionMappings {
       @Override
       public ErrorDescriptor describe(
           InvalidPersonalInformationUpdateException exception, ErrorContext context) {
-        return ErrorDescriptor.single(
+        return ErrorDescriptor.singleWithoutMessage(
             HttpStatus.BAD_REQUEST,
             ApiStatus.VALIDATION_FAILED,
             "FORM",

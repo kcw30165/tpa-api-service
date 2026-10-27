@@ -68,7 +68,7 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
             "SERVER");
     when(validator.validate(eq(request), eq("en"), any(), any(), any())).thenReturn(List.of(error));
 
-    Mono<UpdatePersonalInformationResponse<?>> response =
+    Mono<UpdatePersonalInformationResponse> response =
         controller
             .update(Mono.just(request), null, exchange())
             .contextWrite(
@@ -84,12 +84,16 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
               assertThat(body.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
               assertThat(body.result()).isNull();
               assertThat(body.messages()).isEmpty();
-              assertThat(body.errors()).isEqualTo(List.of(error));
+              assertThat(body.errors()).containsExactly(
+                  new com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError(
+                      error.type(), error.code(), error.targets()));
             })
         .verifyComplete();
 
     verify(validator).validate(eq(request), eq("en"), any(), any(), any());
-    verifyNoInteractions(requestMapper, useCase, responseMapper);
+    verify(requestMapper).validateStructure(request);
+    org.mockito.Mockito.verify(requestMapper, org.mockito.Mockito.never()).toCommand(any(), any());
+    verifyNoInteractions(useCase, responseMapper);
   }
 
   private static MockServerWebExchange exchange() {

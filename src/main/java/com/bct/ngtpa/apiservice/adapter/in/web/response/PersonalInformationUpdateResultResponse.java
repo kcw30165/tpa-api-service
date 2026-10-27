@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.response;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateErrorMapper.MappedError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 

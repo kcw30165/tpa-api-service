@@ -11,11 +11,11 @@ import org.junit.jupiter.api.Test;
 class PersonalInformationUpdateResultArrayArchitectureGuardTest {
   @Test
   void responseMapperReturnsEndpointEnvelopeOfMappedErrors() throws Exception {
-    var type = (ParameterizedType) PersonalInformationUpdateResponseMapper.class
-        .getMethod("toResponse", List.class).getGenericReturnType();
-    assertThat(type.getRawType()).isEqualTo(UpdatePersonalInformationResponse.class);
-    assertThat(type.getActualTypeArguments()[0])
-        .isEqualTo(PersonalInformationUpdateErrorMapper.MappedError.class);
+    assertThat(PersonalInformationUpdateResponseMapper.class
+        .getMethod("toResponse", List.class).getReturnType()).isEqualTo(UpdatePersonalInformationResponse.class);
+    var errors = (ParameterizedType) UpdatePersonalInformationResponse.class.getDeclaredField("errors").getGenericType();
+    assertThat(errors.getActualTypeArguments()[0])
+        .isEqualTo(com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError.class);
     assertThat(UpdatePersonalInformationResponse.class.getDeclaredField("result").getType())
         .isEqualTo(PersonalInformationUpdateResultResponse.class);
   }

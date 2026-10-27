@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class UpdatePersonalInformationResponseTest {
   @Test
   void nullMessagesAndErrorsCoerceToEmptyLists() {
-    var response = new UpdatePersonalInformationResponse<ApiError>(
+    var response = new UpdatePersonalInformationResponse(
         true, ApiStatus.UPDATED, null, null, null);
     assertThat(response.messages()).isEmpty();
     assertThat(response.errors()).isEmpty();
@@ -19,8 +19,8 @@ class UpdatePersonalInformationResponseTest {
   @Test
   void messagesAndErrorsAreDefensivelyCopied() {
     var messages = new ArrayList<>(List.of(new UpdatePersonalInformationResponse.Message("code")));
-    var errors = new ArrayList<>(List.of(ApiError.field("code", null, List.of(), "SERVER")));
-    var response = new UpdatePersonalInformationResponse<>(false, ApiStatus.VALIDATION_FAILED,
+    var errors = new ArrayList<>(List.of(new MappedError("FIELD", "code", List.of())));
+    var response = new UpdatePersonalInformationResponse(false, ApiStatus.VALIDATION_FAILED,
         null, messages, errors);
     messages.clear();
     errors.clear();
@@ -31,8 +31,8 @@ class UpdatePersonalInformationResponseTest {
   }
 
   @Test
-  void javaPreValidationFactoryKeepsExistingApiErrorUnchanged() {
-    var error = ApiError.field("code1", "message1", List.of("field1"), "SERVER");
+  void javaPreValidationFactoryKeepsCodeOnlyErrorUnchanged() {
+    var error = new MappedError("FIELD", "code1", List.of("field1"));
     var response = UpdatePersonalInformationResponse.validationFailed(List.of(error));
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);

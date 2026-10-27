@@ -24,7 +24,7 @@ class PersonalInformationUpdateErrorMapperTest {
       var errors = mapper.toMappedErrors(row(List.of(
           new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED"),
           new UpdatePersonalInformationError("FIELD", List.of("email"), "INVALID_FORMAT"))));
-      assertThat(errors).extracting(PersonalInformationUpdateErrorMapper.MappedError::code)
+      assertThat(errors).extracting(com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError::code)
           .containsExactly("personalInformation.field.required", "personalInformation.email.invalid");
       assertThat(errors).allSatisfy(error -> assertThat(error.targets()).containsExactly("emailAddress"));
     });
@@ -36,7 +36,7 @@ class PersonalInformationUpdateErrorMapperTest {
       var mapper = new PersonalInformationUpdateErrorMapper(context.getBean(BffPagesProperties.class));
       assertThat(mapper.toMappedErrors(row(List.of(new UpdatePersonalInformationError(
           "CROSS_FIELD", List.of("addr1|addr2"), "AT_LEAST_ONE_REQUIRED")))))
-          .containsExactly(new PersonalInformationUpdateErrorMapper.MappedError(
+          .containsExactly(new com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError(
               "CROSS_FIELD", "personalInformation.address.atLeastOneRequired",
               List.of("residentialAddressLine1", "residentialAddressLine2")));
     });
