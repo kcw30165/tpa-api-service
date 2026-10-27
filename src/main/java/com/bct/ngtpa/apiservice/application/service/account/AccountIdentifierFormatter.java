@@ -27,7 +27,7 @@ public final class AccountIdentifierFormatter {
 
   public String formatCertificateNo(String certificateNo) {
     String value = required(certificateNo, "certificateNo");
-    if (!value.matches("[0-9]+") || value.chars().allMatch(character -> character == '0')) {
+    if (!value.matches("\\d+") || value.chars().allMatch(character -> character == '0')) {
       throw new IllegalArgumentException("certificateNo must be a positive number");
     }
     return leftPad(value, certificateWidth);

@@ -23,6 +23,7 @@ public class PersonalInformationUpdateErrorMapper {
       LoggerFactory.getLogger(PersonalInformationUpdateErrorMapper.class);
   private static final String PAGE_KEY = "personalInformation";
   private static final String INVALID_FORMAT_FALLBACK = "personalInformation.field.invalidFormat";
+  private static final String UPDATE_REJECTED = "personalInformation.update.rejected";
   private final BffPagesProperties properties;
 
   public PersonalInformationUpdateErrorMapper(BffPagesProperties properties) {
@@ -39,7 +40,7 @@ public class PersonalInformationUpdateErrorMapper {
         throw new IllegalStateException("Selected account update errors are missing.");
       }
       log.warn("event=personal-information-update-other-account-errors-missing");
-      return List.of(new MappedError(null, "personalInformation.update.rejected", List.of()));
+      return List.of(new MappedError(null, UPDATE_REJECTED, List.of()));
     }
     List<FieldProperties> fields = configuredFields();
     Map<String, String> bindings = frontendFieldByApimField(fields);
@@ -56,13 +57,13 @@ public class PersonalInformationUpdateErrorMapper {
   private String mappedCode(
       String downstreamCode, List<String> targets, List<FieldProperties> fields) {
     if (downstreamCode == null) {
-      return "personalInformation.update.rejected";
+      return UPDATE_REJECTED;
     }
     return switch (downstreamCode) {
       case "REQUIRED" -> "personalInformation.field.required";
       case "INVALID_FORMAT" -> invalidFormatCode(targets, fields);
       case "AT_LEAST_ONE_REQUIRED" -> "personalInformation.address.atLeastOneRequired";
-      default -> "personalInformation.update.rejected";
+      default -> UPDATE_REJECTED;
     };
   }
 

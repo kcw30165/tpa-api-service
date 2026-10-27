@@ -16,6 +16,7 @@ class PersonalInformationUpdateErrorMapperTest {
     assertThat(
             Arrays.stream(PersonalInformationUpdateErrorMapper.class.getMethods())
                 .map(java.lang.reflect.Method::getName))
+        .isNotEmpty()
         .doesNotContain("toApiErrors");
   }
 

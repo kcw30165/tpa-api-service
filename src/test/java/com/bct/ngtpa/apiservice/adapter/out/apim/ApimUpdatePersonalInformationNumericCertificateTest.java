@@ -74,7 +74,7 @@ class ApimUpdatePersonalInformationNumericCertificateTest {
   }
 
   @Test
-  void nonNumericPolicyIsRejectedInsteadOfBeingAcceptedByExactComparison() throws Exception {
+  void nonNumericPolicyIsRejectedInsteadOfBeingAcceptedByExactComparison() {
     var adapter =
         new ApimUpdatePersonalInformationAdapter(
             Mockito.mock(ApimExchangeExecutor.class), new AccountIdentifierFormatter(11, 4, '0'));

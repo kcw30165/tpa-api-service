@@ -34,12 +34,12 @@ class Task0043LoginAccountRecordValidationArchitectureTest {
             "ResolverStyle.STRICT",
             "accountIdentifierFormatter",
             "formatPolicyNo",
-            "formatCertificateNo");
-    assertThat(service).doesNotContain("leftPad");
-    assertThat(formatter).contains("leftPad");
-    assertThat(formatter)
+            "formatCertificateNo")
+        .doesNotContain("leftPad")
         .doesNotContain("org.springframework", "adapter.out", "Redis", "WebClient");
-    assertThat(service).doesNotContain("org.springframework", "adapter.out", "Redis", "WebClient");
+    assertThat(formatter)
+        .contains("leftPad")
+        .doesNotContain("org.springframework", "adapter.out", "Redis", "WebClient");
   }
 
   @Test

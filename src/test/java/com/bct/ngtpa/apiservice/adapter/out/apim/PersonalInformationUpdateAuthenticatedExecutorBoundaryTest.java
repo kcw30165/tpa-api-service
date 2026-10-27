@@ -61,20 +61,16 @@ class PersonalInformationUpdateAuthenticatedExecutorBoundaryTest {
   @Test
   void ordinaryExecutorFailureAndUncertainMissingSelectedAccountRemainFeatureOwned() {
     IllegalStateException ordinary = new IllegalStateException("transport uncertain");
-    assertThatThrownBy(
-            () ->
-                new ApimUpdatePersonalInformationAdapter(
-                        failing(new AtomicInteger(), ordinary),
-                        new AccountIdentifierFormatter(11, 4, '0'))
-                    .updateMemberInfo(command("DB", ActorUserRole.ROLE_USER_MBR))
-                    .block())
-        .isSameAs(ordinary);
-    assertThatThrownBy(
-            () ->
-                new ApimUpdatePersonalInformationAdapter(
-                        fixed(empty()), new AccountIdentifierFormatter(11, 4, '0'))
-                    .updateMemberInfo(command("DB", ActorUserRole.ROLE_USER_MBR))
-                    .block())
+    var ordinaryUpdate =
+        new ApimUpdatePersonalInformationAdapter(
+                failing(new AtomicInteger(), ordinary), new AccountIdentifierFormatter(11, 4, '0'))
+            .updateMemberInfo(command("DB", ActorUserRole.ROLE_USER_MBR));
+    var missingSelectedUpdate =
+        new ApimUpdatePersonalInformationAdapter(
+                fixed(empty()), new AccountIdentifierFormatter(11, 4, '0'))
+            .updateMemberInfo(command("DB", ActorUserRole.ROLE_USER_MBR));
+    assertThatThrownBy(ordinaryUpdate::block).isSameAs(ordinary);
+    assertThatThrownBy(missingSelectedUpdate::block)
         .isInstanceOf(PersonalInformationUpdateException.class);
   }
 

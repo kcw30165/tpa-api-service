@@ -38,8 +38,8 @@ class PersonalInformationUpdateResultResponseItemContractTest {
         new PersonalInformationUpdateResultResponse.AccountErrors("00000000118-0003", errors);
     errors.clear();
     assertThat(failed.errors()).containsExactly(error);
-    assertThatThrownBy(() -> failed.errors().clear())
-        .isInstanceOf(UnsupportedOperationException.class);
+    var copiedErrors = failed.errors();
+    assertThatThrownBy(copiedErrors::clear).isInstanceOf(UnsupportedOperationException.class);
     var row =
         new PersonalInformationUpdateResultResponse.Account("00000000118-0004", null, "", " ");
     var rows = new ArrayList<>(List.of(row));
@@ -49,8 +49,9 @@ class PersonalInformationUpdateResultResponseItemContractTest {
     failedRows.clear();
     assertThat(data.rows()).containsExactly(row);
     assertThat(data.errors()).containsExactly(failed);
-    assertThatThrownBy(() -> data.rows().clear()).isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> data.errors().clear())
-        .isInstanceOf(UnsupportedOperationException.class);
+    var copiedRows = data.rows();
+    var copiedFailedRows = data.errors();
+    assertThatThrownBy(copiedRows::clear).isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(copiedFailedRows::clear).isInstanceOf(UnsupportedOperationException.class);
   }
 }

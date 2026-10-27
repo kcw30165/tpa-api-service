@@ -327,9 +327,9 @@ class PersonalInformationUpdateWebMapperTest {
     text.setValidations(Arrays.asList(null, validation("optional", "optional", "optional")));
     var ui = field("ui", null, "boolean", "checkbox", null, null, false);
     ui.setApimBinding(null);
-    var mapper = new PersonalInformationUpdateWebMapper(properties(section(text, ui)));
+    var configuredMapper = new PersonalInformationUpdateWebMapper(properties(section(text, ui)));
     assertThat(
-            mapper
+            configuredMapper
                 .toCommand(
                     false,
                     new UpdatePersonalInformationRequest(
@@ -339,7 +339,7 @@ class PersonalInformationUpdateWebMapperTest {
     text.setDataType("boolean");
     text.setValidations(List.of(validation("required", "required", "required")));
     assertThat(
-            mapper
+            configuredMapper
                 .toCommand(
                     false, new UpdatePersonalInformationRequest("1", false, Map.of("text", true)))
                 .updateFields())
@@ -350,27 +350,21 @@ class PersonalInformationUpdateWebMapperTest {
     assertThrows(
         InvalidPersonalInformationUpdateException.class,
         () ->
-            mapper.validateStructure(
+            configuredMapper.validateStructure(
                 new UpdatePersonalInformationRequest("1", false, Map.of("text", "x"))));
     var page = properties().getPages().get("personalInformation");
     var props = new BffPagesProperties();
     props.setPages(Map.of("personalInformation", page));
     page.setForm(null);
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            new PersonalInformationUpdateWebMapper(props)
-                .validateStructure(
-                    new UpdatePersonalInformationRequest("1", false, Map.of("text", "x"))));
+    var missingFormMapper = new PersonalInformationUpdateWebMapper(props);
+    var request = new UpdatePersonalInformationRequest("1", false, Map.of("text", "x"));
+    assertThrows(IllegalStateException.class, () -> missingFormMapper.validateStructure(request));
     var form = new FormMetadataProperties();
     page.setForm(form);
     form.setSections(null);
+    var missingSectionsMapper = new PersonalInformationUpdateWebMapper(props);
     assertThrows(
-        IllegalStateException.class,
-        () ->
-            new PersonalInformationUpdateWebMapper(props)
-                .validateStructure(
-                    new UpdatePersonalInformationRequest("1", false, Map.of("text", "x"))));
+        IllegalStateException.class, () -> missingSectionsMapper.validateStructure(request));
   }
 
   private static BffPagesProperties properties() {

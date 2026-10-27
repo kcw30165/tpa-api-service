@@ -79,7 +79,9 @@ class PersonalInformationResponseSerializationContractTest {
   void nullMetadataAndNullErrorTypeSurviveGlobalNonNullInclusion() {
     var json =
         new ObjectMapper()
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+            .setDefaultPropertyInclusion(
+                JsonInclude.Value.construct(
+                    JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
             .valueToTree(
                 new PersonalInformationUpdateResultResponse(
                     new PersonalInformationUpdateResultResponse.Data(

@@ -31,7 +31,7 @@ class PersonalInformationMappedUpdateErrorsTest {
   @ParameterizedTest
   @MethodSource("codes")
   void mapsApprovedCodesForSelectedAndOtherAccounts(
-      boolean selected, String downstream, String expected) throws Exception {
+      boolean selected, String downstream, String expected) {
     var mapped = map(mapper(), account(selected, false, "FIELD", downstream, List.of("email")));
     assertThat(mapped.size()).isEqualTo(1);
     assertThat(mapped.get(0).path("code").asText()).isEqualTo(expected);
@@ -83,7 +83,7 @@ class PersonalInformationMappedUpdateErrorsTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void unknownFieldsAreOmittedWithoutDroppingTheError(boolean selected) throws Exception {
+  void unknownFieldsAreOmittedWithoutDroppingTheError(boolean selected) {
     var mapped = map(mapper(), account(selected, false, "FIELD", "REQUIRED", List.of("unknown")));
     assertThat(mapped.get(0).path("targets").isEmpty()).isTrue();
     assertThat(mapped.get(0).path("code").asText()).isEqualTo("personalInformation.field.required");
@@ -106,7 +106,7 @@ class PersonalInformationMappedUpdateErrorsTest {
   }
 
   @Test
-  void failedOtherAccountWithNoErrorsGetsOneNullTypedCodeOnlyFallback() throws Exception {
+  void failedOtherAccountWithNoErrorsGetsOneNullTypedCodeOnlyFallback() {
     var mapped =
         map(
             mapper(),
@@ -122,7 +122,7 @@ class PersonalInformationMappedUpdateErrorsTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void successfulAccountsProduceNoMappedFailures(boolean selected) throws Exception {
+  void successfulAccountsProduceNoMappedFailures(boolean selected) {
     assertThat(
             map(mapper(), account(selected, true, "FIELD", "REQUIRED", List.of("email"))).isEmpty())
         .isTrue();
@@ -130,12 +130,11 @@ class PersonalInformationMappedUpdateErrorsTest {
 
   @Test
   void missingSelectedErrorsRemainAnInvariantViolationNotAnOtherAccountFallback() {
-    assertThatThrownBy(
-            () ->
-                map(
-                    mapper(),
-                    new UpdatePersonalInformationResult(
-                        true, false, "118", "3", "DB", null, null, null, List.of())))
+    var errorMapper = mapper();
+    var result =
+        new UpdatePersonalInformationResult(
+            true, false, "118", "3", "DB", null, null, null, List.of());
+    assertThatThrownBy(() -> map(errorMapper, result))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage("Selected account update errors are missing.");
   }
@@ -336,7 +335,7 @@ class PersonalInformationMappedUpdateErrorsTest {
   }
 
   @Test
-  void unknownAndFallbackDiagnosticsDoNotContainAccountIdentifiersOrValues() throws Exception {
+  void unknownAndFallbackDiagnosticsDoNotContainAccountIdentifiersOrValues() {
     var logger =
         (ch.qos.logback.classic.Logger)
             org.slf4j.LoggerFactory.getLogger(PersonalInformationUpdateErrorMapper.class);
@@ -380,11 +379,11 @@ class PersonalInformationMappedUpdateErrorsTest {
         new com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError("FIELD", "code", targets);
     targets.clear();
     assertThat(error.targets()).containsExactly("emailAddress");
-    assertThatThrownBy(() -> error.targets().clear())
-        .isInstanceOf(UnsupportedOperationException.class);
+    var copiedTargets = error.targets();
+    assertThatThrownBy(copiedTargets::clear).isInstanceOf(UnsupportedOperationException.class);
     var errors =
         mapper().toMappedErrors(account(true, false, "FIELD", "REQUIRED", List.of("email")));
-    assertThatThrownBy(() -> errors.clear()).isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(errors::clear).isInstanceOf(UnsupportedOperationException.class);
   }
 
   private static JsonNode map(

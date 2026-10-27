@@ -26,10 +26,10 @@ class UpdatePersonalInformationResponseTest {
     errors.clear();
     assertThat(response.messages()).hasSize(1);
     assertThat(response.errors()).hasSize(1);
-    assertThatThrownBy(() -> response.messages().clear())
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> response.errors().clear())
-        .isInstanceOf(UnsupportedOperationException.class);
+    var copiedMessages = response.messages();
+    var copiedErrors = response.errors();
+    assertThatThrownBy(copiedMessages::clear).isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(copiedErrors::clear).isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Test

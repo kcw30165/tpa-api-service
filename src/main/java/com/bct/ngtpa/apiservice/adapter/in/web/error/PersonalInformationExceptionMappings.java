@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
  * ErrorDescriptor#singleWithoutMessage} for endpoint-owned code-only errors.
  */
 public final class PersonalInformationExceptionMappings {
+  private static final String HTTP_API_ERROR = "http.api.error";
 
   private PersonalInformationExceptionMappings() {}
 
@@ -32,7 +33,7 @@ public final class PersonalInformationExceptionMappings {
             "SYSTEM",
             ErrorCodes.PERSONAL_INFORMATION_UPDATE_UNAVAILABLE,
             List.of(),
-            "http.api.error",
+            HTTP_API_ERROR,
             LogLevel.ERROR,
             false);
       }
@@ -55,7 +56,7 @@ public final class PersonalInformationExceptionMappings {
             "FORM",
             ErrorCodes.PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID,
             List.of(),
-            "http.api.error",
+            HTTP_API_ERROR,
             LogLevel.WARN,
             false);
       }
@@ -83,7 +84,7 @@ public final class PersonalInformationExceptionMappings {
             "SYSTEM",
             ErrorCodes.PERSONAL_INFORMATION_RETRIEVAL_UNAVAILABLE,
             List.of(),
-            "http.api.error",
+            HTTP_API_ERROR,
             LogLevel.ERROR,
             false);
       }

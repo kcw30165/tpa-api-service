@@ -4,6 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MappedError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse.Account;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse.AccountErrors;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse.Message;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
@@ -25,7 +29,7 @@ class PersonalInformationUpdateResponseMapperTest {
     assertThat(response.result().data().rows()).isEmpty();
     assertThat(response.result().data().errors()).isEmpty();
     assertThat(response.messages())
-        .extracting(message -> message.code())
+        .extracting(Message::code)
         .containsExactly("personalInformation.update.success");
     assertThat(response.errors()).isEmpty();
   }
@@ -39,7 +43,7 @@ class PersonalInformationUpdateResponseMapperTest {
     assertThat(response.result().data().rows()).isEmpty();
     assertThat(response.result().data().errors()).isEmpty();
     assertThat(response.errors())
-        .extracting(error -> error.code())
+        .extracting(MappedError::code)
         .containsExactly("personalInformation.field.required");
     assertThat(response.messages()).isEmpty();
   }
@@ -56,17 +60,17 @@ class PersonalInformationUpdateResponseMapperTest {
                     row(false, true, "5")));
     assertThat(response.status()).isEqualTo(ApiStatus.PARTIAL_SUCCESS);
     assertThat(response.result().data().rows())
-        .extracting(account -> account.accountIdentifier())
+        .extracting(Account::accountIdentifier)
         .containsExactly("00000000118-0003", "00000000118-0005");
     assertThat(response.result().data().errors())
-        .extracting(account -> account.accountIdentifier())
+        .extracting(AccountErrors::accountIdentifier)
         .containsExactly("00000000118-0004");
     assertThat(response.result().data().errors().getFirst().errors())
-        .extracting(error -> error.code())
+        .extracting(MappedError::code)
         .containsExactly("personalInformation.field.required");
     assertThat(response.errors()).isEmpty();
     assertThat(response.messages())
-        .extracting(message -> message.code())
+        .extracting(Message::code)
         .containsExactly("personalInformation.update.partialSuccess");
   }
 
@@ -107,13 +111,17 @@ class PersonalInformationUpdateResponseMapperTest {
 
   @Test
   void absentResultsOrSelectedAccountFailThroughTheExistingPutUnavailableException() {
-    assertThatThrownBy(() -> mapper().toResponse((List<UpdatePersonalInformationResult>) null))
+    var responseMapper = mapper();
+    List<UpdatePersonalInformationResult> emptyResults = List.of();
+    var otherResults = List.of(row(false, true, "3"));
+    assertThatThrownBy(
+            () -> responseMapper.toResponse((List<UpdatePersonalInformationResult>) null))
         .isInstanceOf(PersonalInformationUpdateException.class);
-    assertThatThrownBy(() -> mapper().toResponse(List.of()))
+    assertThatThrownBy(() -> responseMapper.toResponse(emptyResults))
         .isInstanceOf(PersonalInformationUpdateException.class);
-    assertThatThrownBy(() -> mapper().toResponse((UpdatePersonalInformationResult) null))
+    assertThatThrownBy(() -> responseMapper.toResponse((UpdatePersonalInformationResult) null))
         .isInstanceOf(PersonalInformationUpdateException.class);
-    assertThatThrownBy(() -> mapper().toResponse(List.of(row(false, true, "3"))))
+    assertThatThrownBy(() -> responseMapper.toResponse(otherResults))
         .isInstanceOf(PersonalInformationUpdateException.class);
   }
 

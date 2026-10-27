@@ -47,7 +47,7 @@ class PersonalInformationUpdateOutcomeAdapterTest {
 
   @ParameterizedTest
   @MethodSource("invalidResponses")
-  void invalidResponseIsPutSpecificServiceUnavailable(String response) throws Exception {
+  void invalidResponseIsPutSpecificServiceUnavailable(String response) {
     var executor = mock(ApimExchangeExecutor.class);
     when(executor.postEnvelope(any())).thenAnswer(ignored -> Mono.just(envelope(response)));
 
@@ -124,7 +124,7 @@ class PersonalInformationUpdateOutcomeAdapterTest {
   }
 
   @Test
-  void logsProtocolFailuresAndDroppedOtherAccountsWithoutIdentifiersOrRawErrors() throws Exception {
+  void logsProtocolFailuresAndDroppedOtherAccountsWithoutIdentifiersOrRawErrors() {
     var logger =
         (ch.qos.logback.classic.Logger)
             org.slf4j.LoggerFactory.getLogger(ApimUpdatePersonalInformationAdapter.class);
@@ -188,8 +188,7 @@ class PersonalInformationUpdateOutcomeAdapterTest {
   }
 
   @Test
-  void stringCertificateMatchesLeadingZerosAndOtherRowsAreDroppedWhenApplyAllIsFalse()
-      throws Exception {
+  void stringCertificateMatchesLeadingZerosAndOtherRowsAreDroppedWhenApplyAllIsFalse() {
     var executor = mock(ApimExchangeExecutor.class);
     when(executor.postEnvelope(any()))
         .thenAnswer(

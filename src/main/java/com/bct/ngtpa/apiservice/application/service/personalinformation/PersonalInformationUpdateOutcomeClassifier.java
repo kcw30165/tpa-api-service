@@ -44,30 +44,10 @@ public final class PersonalInformationUpdateOutcomeClassifier {
     if (rows == null || rows.isEmpty()) return systemError(Failure.MISSING_SELECTED_ACCOUNT);
     var matched = new ArrayList<UpdatePersonalInformationResult>();
     for (var row : rows) {
-      if (row == null
-          || !validNumber(row.policyNo(), formatter.policyWidth())
-          || !validNumber(row.certNo(), formatter.certificateWidth())
-          || row.env() == null
-          || row.env().isBlank()) {
+      if (!hasValidIdentifiers(row)) {
         return systemError(Failure.INVALID_IDENTIFIERS);
       }
-      boolean selected =
-          normalize(row.policyNo()).equals(normalize(command.policyNo()))
-              && normalize(row.certNo()).equals(normalize(command.certNo()))
-              && row.env()
-                  .trim()
-                  .equals(command.accountEnv() == null ? "" : command.accountEnv().trim());
-      matched.add(
-          new UpdatePersonalInformationResult(
-              selected,
-              row.success(),
-              row.policyNo(),
-              row.certNo(),
-              row.env(),
-              row.refNo(),
-              row.submitDate(),
-              row.submitTime(),
-              row.errors()));
+      matched.add(withSelectedAccount(command, row));
     }
     var selectedRows = matched.stream().filter(UpdatePersonalInformationResult::selected).toList();
     if (selectedRows.isEmpty()) return systemError(Failure.MISSING_SELECTED_ACCOUNT);
@@ -82,18 +62,49 @@ public final class PersonalInformationUpdateOutcomeClassifier {
       matched.removeIf(row -> !row.selected());
     }
     boolean otherFailed = matched.stream().anyMatch(row -> !row.selected() && !row.success());
-    Outcome outcome =
-        selected.success()
-            ? (otherFailed ? Outcome.SF : Outcome.SS)
-            : (otherFailed ? Outcome.FF : Outcome.FS);
-    return new Classification(outcome, null, matched, discarded);
+    return new Classification(outcome(selected.success(), otherFailed), null, matched, discarded);
+  }
+
+  private boolean hasValidIdentifiers(UpdatePersonalInformationResult row) {
+    return row != null
+        && validNumber(row.policyNo(), formatter.policyWidth())
+        && validNumber(row.certNo(), formatter.certificateWidth())
+        && row.env() != null
+        && !row.env().isBlank();
+  }
+
+  private static UpdatePersonalInformationResult withSelectedAccount(
+      UpdateMemberInfoCommand command, UpdatePersonalInformationResult row) {
+    boolean selected =
+        normalize(row.policyNo()).equals(normalize(command.policyNo()))
+            && normalize(row.certNo()).equals(normalize(command.certNo()))
+            && row.env()
+                .trim()
+                .equals(command.accountEnv() == null ? "" : command.accountEnv().trim());
+    return new UpdatePersonalInformationResult(
+        selected,
+        row.success(),
+        row.policyNo(),
+        row.certNo(),
+        row.env(),
+        row.refNo(),
+        row.submitDate(),
+        row.submitTime(),
+        row.errors());
+  }
+
+  private static Outcome outcome(boolean selectedSucceeded, boolean otherFailed) {
+    if (selectedSucceeded) {
+      return otherFailed ? Outcome.SF : Outcome.SS;
+    }
+    return otherFailed ? Outcome.FF : Outcome.FS;
   }
 
   private static boolean validNumber(String value, int width) {
     if (value == null) return false;
     String trimmed = value.trim();
     return trimmed.length() <= width
-        && trimmed.matches("[0-9]+")
+        && trimmed.matches("\\d+")
         && trimmed.chars().anyMatch(character -> character != '0');
   }
 
