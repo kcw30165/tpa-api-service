@@ -1,9 +1,11 @@
 # Personal Information Refactor — Design
 
-> **Amended 2026-10-22 (requirement change).** Where this document conflicts with the section "Amendment 2026-10-22" at the end, the amendment wins. The section "As-built 2026-10-23 (sub-task 3.5)" at the end records the implemented behaviour and wins over both.
+> **Amended 2026-10-27 (Milestone 4).** The section "Milestone 4 as built" at the end is the latest source of truth for PUT result shape, error mapping and HTTP status. It supersedes conflicting earlier D-02/D-14 wording and the Milestone 3 as-built PUT behavior. Earlier sections remain as historical design and milestone records where not superseded.
+
+> **Amended 2026-10-22 (requirement change).** Where this document conflicts with the section "Amendment 2026-10-22", that amendment wins except where superseded by Milestone 4.
 
 
-Branch: `refactor/personal-information` (base `origin/dev` 92849aac). Owner: Nick (solution design approval).
+Branch: `refactor/personal-information` (rebased base `origin/dev` cff55083). Owner: Nick (solution design approval).
 Status: design agreed in conversation on 2026-10-21; this document is the written record for review.
 
 Related: `information-update-rules.md` (BRD extract), `get-personal-information-response.json` (GET sample),
@@ -19,15 +21,15 @@ In scope: `GET /api/v1/personal-information` and `PUT /api/v1/personal-informati
 4. Labels: no change in this branch (see 2, D-15).
 
 Out of scope: removal of labels and of the `messages[]` / `errors[]` label text (separate refactor branch later);
-central `ApiExceptionHandler` consolidation (deferred workstream); PUT response shape; runtime behaviour of
-`applyToAllAccounts`; `mailingAddressSameAsResidential` and `applyToAllMemberAccounts` handling (unchanged).
+central `ApiExceptionHandler` consolidation (deferred workstream);
+`mailingAddressSameAsResidential` and `applyToAllMemberAccounts` handling (unchanged).
 
 ## 2. Decision register
 
 | ID | Decision | Source |
 |---|---|---|
 | D-01 | GET returns `MutationResponse<PersonalInformationResultResponse>`: `{success, status: SUCCESS, result: {data: {page, form}}, messages: [], errors: []}`. Mirrors `FundFactSheetResultResponse(data)`. | Nick |
-| D-02 | PUT response is already `MutationResponse<List<PersonalInformationUpdateResultResponse>>` and is NOT changed: `result` stays an array, `env` stays in the items, `selected` matching and the 502 `APIM_RESPONSE_INVALID` on no selected item stay as they are. | Nick |
+| D-02 | Milestone 4 PUT result contract: resolve the selected account (SA) from Account-Ref; identify its downstream row by policy + certificate + internal `accountEnv`, normalizing leading zeros for the numeric identifiers. Return `result.data` with `selectedAccount` (or null when SA fails), successful other-account rows, and failed other-account errors. Root `errors[]` contains SA or Java validation errors only; never duplicate errors. See "Milestone 4 as built" below for exact fields, codes and status matrix. Identifiers remain strings end-to-end because policy-no/cert-no are field-encrypted. | Nick |
 | D-03 | `env` is removed only from the request BODY of `TRPGetMemberInfo` and `TRPUpdMemberInfo`. APIM `ACCOUNT_ENV` routing, `ApimCredentialResolutionContext(role, accountEnv)` and the `accountEnv` used for YAML variant resolution stay. | Nick |
 | D-04 | PUT is a partial update. An absent field means unchanged. `null` and `""` mean clear (the downstream accepts `""`); Java normalises `null` to `""` before building the command. Mandatory-ness is checked (D-10). | Nick |
 | D-05 | Group rule: if any field of a group is present, ALL editable fields of the group must be present. "Present" means the key exists in `fields`, whatever its value. | Nick |
@@ -39,8 +41,8 @@ central `ApiExceptionHandler` consolidation (deferred workstream); PUT response 
 | D-11 | The config cache is stored in `AuthenticatedSession.featureState` under the key `personal-information.config`, like `/api/v1/fund-comparison/options`. It stores only the item-id => config-value map plus `accountRef` and `policyNo`. No member data. | Nick |
 | D-12 | Lifecycle is controlled by the authenticated session (idle and absolute timeout, logout). Each GET overwrites the entry. PUT never evicts it. | Nick |
 | D-13 | PUT cache miss (or no session cookie): call `TRPGetMemberInfo` once, refresh the cache, validate. A rejection decided from a cached entry: refetch once and revalidate. If `TRPGetMemberInfo` cannot return the data: HTTP 503 `SYSTEM_ERROR`. | Nick |
-| D-14 | A config rejection is HTTP 400 `VALIDATION_FAILED` with codes and `targets` only: a submitted HIDDEN or READONLY field; a blank value for an EDITABLE_COM field. | Nick |
-| D-15 | Labels: existing `messages[]` and `errors[]` label text is untouched in this branch. New errors carry codes and `targets` only. | Nick |
+| D-14 | A config/access rejection is a content rejection: HTTP 422 `VALIDATION_FAILED` with code-only errors and frontend `targets`. Malformed request structure remains HTTP 400 under the Milestone 4 rules. | Nick (Milestone 4 supersedes original status) |
+| D-15 | PUT responses carry codes and `targets` only; FE owns PUT error/success text. GET labels and existing GET `messages[]` / `errors[]` label text are unchanged. | Nick (Milestone 4 clarifies PUT scope) |
 | D-16 | YAML is aligned with the BRD: D1 phones keep `minLength: 8` (non-blank only); D2 `mailingAddressLine1.minLength: 5` enabled (non-blank only); D3 email regex allows only letters, digits, `.`, `_`, `-`; D4 the email `minLength` rule (including the JP variant) is removed; D5 fax allows digits, space and `-` only, no maximum length in YAML (field attributes follow the TAS setting); D6 the `aeoiReminder.whenResidentialCountryChanged` rule is removed. | Nick |
 | D-17 | The GET change is breaking for the frontend; the frontend is aligned. | Nick |
 | D-18 | A group that is HIDDEN or READONLY is simply not sent by FE. Java never rejects a request because a group is absent. Absent group => unchanged. | Nick (Q-O) |
@@ -48,7 +50,7 @@ central `ApiExceptionHandler` consolidation (deferred workstream); PUT response 
 | D-20 | FE contract for the address groups: the FE sends the entire group (4 keys) when the group is editable; when both groups are editable, any change to either group sends both groups (8 keys); a group that is not editable is not sent. Java derives the same set from the session-cached config (D-05, D-18). | Nick |
 | D-21 | `fieldGroups` is Java-only YAML under `bff-pages.pages.personalInformation.fieldGroups` (name + fields) and is not serialized to the GET response. `address.atLeastOneRequired` keeps its inline groups because the FE reads them; a guard test keeps both definitions in sync. The linter checks: unique non-blank names, non-empty known fields, no field in two groups. | Nick (Q-S) |
 | D-23 | Milestone 2 coverage gate (gate 024, HEAD 53ceed2a) found `PersonalInformationUpdateYamlValidator` at 85.5% instruction / 76.4% branch and `PageSchemaLinter` at 97.3% instruction / 88.9% branch, both below the 95%/95% DTO-validator tier. Of the uncovered branches, 8 lines in the validator were introduced by M2.1-M2.3 (validateFieldGroups, validateAddressGroupCountryRule, resolveGroupMessage, groupSubmitted/groupIsEmpty's null-group handling) and are closed by dedicated tests in this sub-task. The remaining uncovered branches in both files - `instantiateContext`'s reflection fallback, `fallbackVariantCandidates`/`addJoined`/`addSingle`, `isValidEmail`/`isBlockedAddress` detail branches, and `PageSchemaLinter`'s pre-existing null-guard branches - predate this branch and are explicitly OUT of scope: tracked as separate technical debt, not closed here. |  Nick (option 2) |
-| D-22 | Rule groups (`when.groups[].fields`) are read through `RuleGroupFields.of(...)`, which accepts a list or an index-keyed map. Probe 011 (Spring Boot binder harness, real YAML, HEAD 081b2d9e) showed the group `fields` bound as `LinkedHashMap`, so `address.atLeastOneRequired` did not fire when all address fields were absent; the existing unit tests build the groups as lists and did not show it. The linter uses the helper in M2.1, the validator in M2.3. Consequence for the MR: after M2.3 a PUT that submits both address groups blank returns 400 `VALIDATION_FAILED` (behavior change visible to FE). | Probe 011 |
+| D-22 | Rule groups (`when.groups[].fields`) are read through `RuleGroupFields.of(...)`, which accepts a list or an index-keyed map. Probe 011 (Spring Boot binder harness, real YAML, HEAD 081b2d9e) showed the group `fields` bound as `LinkedHashMap`, so `address.atLeastOneRequired` did not fire when all address fields were absent; the existing unit tests build the groups as lists and did not show it. The linter uses the helper in M2.1, the validator in M2.3. Historical M2 consequence: after M2.3 a PUT that submits both address groups blank returns 400 `VALIDATION_FAILED` (behavior change visible to FE). Under Milestone 4, this content rejection returns HTTP 422 `VALIDATION_FAILED`. | Probe 011; Milestone 4 |
 | D-24 | Group-wide access normalization (D-19, sub-task 3.1b) and HIDDEN fields: a HIDDEN field remains HIDDEN regardless of its group's normalized READONLY/REQUIRED state (HIDDEN is not overridden by group normalization). A group containing a HIDDEN field alongside differing non-HIDDEN access values among its other fields is logged as an inconsistency at ERROR level (group name and item ids only, no member data), mirroring D-19's handling of READONLY/REQUIRED disagreement. | Nick |
 
 Flagged unknown U-1: whether `overseasPhoneExtension` belongs to the overseasPhone group or is standalone. Stakeholder
@@ -85,9 +87,11 @@ Request (unchanged envelope): `{ "formVersion": "...", "applyToAllAccounts": fal
 
 - Absent key: unchanged. `null` or `""`: clear.
 - Unknown keys are handled as today (not changed by this refactor).
-- Response shape unchanged (D-02). The downstream request no longer contains `env` (D-03).
+- Downstream request no longer contains `env` (D-03). The current response and HTTP contract is
+  "Milestone 4 as built" at the end of this document; the former result-array response described in D-02
+  and the original failure table below are superseded.
 
-Failure responses (codes and targets only, D-15):
+Historical Milestone 3 failure responses (superseded by Milestone 4):
 
 | Case | HTTP | status | errors |
 |---|---|---|---|
@@ -214,7 +218,9 @@ The adapter's response matching on `policy-no`, `cert-no`, `env` stays (D-02).
 - Env removal: `UpdateMemberInfoApimRequestTest`, `ApimPersonalInformationAdapterTest`,
   `ApimUpdatePersonalInformationAdapterTest`, `FetchMemberInfoCommandTest`.
 - Use cases: `UpdatePersonalInformationServiceTest`, `GetPersonalInformationServiceTest`.
-- PUT result guards that must keep passing unchanged: `PersonalInformationUpdateResultArrayContractTest`,
+- **Superseded by ST-4:** the legacy PUT result-array guards below are intentionally replaced by structured
+  selected-account/successful-OA/failed-OA contract guards:
+  `PersonalInformationUpdateResultArrayContractTest`,
   `PersonalInformationUpdateResultArrayArchitectureGuardTest`, `UpdatePersonalInformationControllerResultArrayArchitectureGuardTest`.
 
 ## 8. Risks
@@ -357,7 +363,7 @@ The plan delivered 3.4 as the three sub-tasks 3.4a, 3.4b and 3.4c.
 |---|---|---|
 | personalInformation.field.notEditable | a submitted field is HIDDEN, READONLY, blank, unrecognised or absent in the config | code and field target only, message null |
 | personalInformation.field.required | an EDITABLE_COM field is submitted blank (not for the two line-1 fields) | code and field target only, message null |
-| personalInformation.emailAddress.required | fallback of PersonalInformationUpdateErrorMapper for a downstream REQUIRED error on emailAddress, now that no YAML required rule exists | message "This field is required." |
+| personalInformation.emailAddress.required | **Superseded by Milestone 4:** downstream `REQUIRED` maps to `personalInformation.field.required`; message text is removed and FE owns the text. | Historical Milestone 3 mapping; do not use for current PUT |
 | err.personal-information.retrieval.unavailable | TRPGetMemberInfo cannot be fetched on a PUT cache miss, without a session cookie, or on the refetch | HTTP 503, status SYSTEM_ERROR, type SYSTEM, code only, message null (O-1) |
 
 The static YAML rule email.required (code personalInformation.email.required) no longer exists.
@@ -386,8 +392,8 @@ None open. Both deviations recorded in the first version of this section were re
   stay 200 (B.5, item 2).
 - O-3 get-personal-information-response.json is not regenerated. Known stale content: the static email.required rule, the
   two completeWhenStarted rules and the aeoiReminder rule.
-- O-4 FE has to handle two codes for a blank email: personalInformation.field.required from the access check and
-  personalInformation.emailAddress.required from a downstream REQUIRED error.
+- O-4 Closed by Milestone 4: a blank email uses `personalInformation.field.required` for both Java access validation
+  and downstream `REQUIRED`; FE no longer handles `personalInformation.emailAddress.required` for the current PUT.
 - O-5 The access check and the YAML check both run on every PUT, so a cache miss causes one TRPGetMemberInfo call even when
   the YAML check already rejects the request.
 - O-6 The display text of the removed country rules is still in the page YAML until the label-removal branch.
@@ -412,3 +418,211 @@ None open. Both deviations recorded in the first version of this section were re
 Coverage review (Milestone 3 gate): 356 of 359 coverable changed lines (99.2%) and 187 of 208 changed-line branches
 (89.9%) covered. The new PersonalInformationFieldAccessValidator is at 93.2% instruction and 71.0% branch coverage,
 mostly defensive null guards; flagged, not blocking.
+
+## Milestone 4 as built — PUT result, errors and HTTP contract (2026-10-27)
+
+This section supersedes the original D-02 and D-14 status wording, the historical
+Milestone 3 failure table in section 3.2, and the Milestone 3 as-built PUT result
+and status descriptions in B.3-B.6. It records the implemented, approved contract.
+
+### C.1 Selected account and response shape
+
+- The selected account (SA) is resolved by Java from the request's `Account-Ref`.
+  Internally, the account identity is policy number + certificate number +
+  `accountEnv`; policy/certificate comparison normalizes leading zeros. `env`
+  remains an internal/downstream matching value and is not included in the PUT
+  response.
+- Send one `TRPUpdMemberInfo` request. Do not loop by account in Java.
+- `apply-all` is copied from FE `applyToAllAccounts`, defaulting to `false` when
+  omitted. The downstream applies the update to all accounts when true. If false
+  but OA rows are returned, Java logs their count and drops those rows.
+- `result.data` is:
+  - `selectedAccount`: the SA's `{accountIdentifier, refNo, submitDate, submitTime}`
+    on SA success, otherwise `null`;
+  - `rows[]`: successful other-account (OA) rows only, with the same four fields;
+  - `errors[]`: failed OA rows only, each
+    `{accountIdentifier, errors:[{type, code, targets}]}`.
+- Root `errors[]` contains SA errors or Java content-validation errors only.
+  OA errors appear only under `result.data.errors[]`; never duplicate an error.
+- Public account rows contain no `success`, `selected`, `env`, `policyNo` or
+  `certNo` properties. Downstream `refNo`, `submitDate` and `submitTime` pass
+  through exactly, including null or blank values.
+- `accountIdentifier` uses the shared formatter and `account-identifiers`
+  configuration: policy number padded to width 11, certificate number padded to
+  width 4, pad character `0`, joined with `-` (for example
+  `00000000118-0002`).
+- `policy-no` and `cert-no` remain strings end-to-end, including APIM DTOs:
+  these fields are field-encrypted and must remain textual for encryption and
+  decryption.
+- Response message/error entries are codes only; the FE owns display text.
+
+### C.2 HTTP and ApiStatus matrix
+
+| Case | HTTP | ApiStatus | Public result/errors |
+|---|---:|---|---|
+| SA succeeds, no OA failure (SS) | 200 | `UPDATED` | Selected account and successful OA rows; root errors empty |
+| SA succeeds, at least one OA fails (SF) | 200 | `PARTIAL_SUCCESS` | Selected account and successful OA rows; failed OA rows only in `result.data.errors[]` |
+| SA fails, no OA failure (FS) | 422 | `VALIDATION_FAILED` | `selectedAccount:null`; SA mapped errors at root; no OA errors |
+| SA fails and an OA fails (FF) | 422 | `VALIDATION_FAILED` | `selectedAccount:null`; SA mapped errors at root and OA failures in `result.data.errors[]` |
+| Malformed request: missing/invalid Account-Ref | 400 | Existing Account-Ref path (`BUSINESS_REJECTED`) | Existing error mapping |
+| Malformed request: invalid JSON/type, unknown FE field, no submitted/updatable fields | 400 | `VALIDATION_FAILED` | Endpoint request-invalid code; code-only errors |
+| Java YAML/access content rejection | 422 | `VALIDATION_FAILED` | `result:null`; code-only root errors with FE targets |
+| PUT downstream `err-message`, exhausted transport failure, missing/duplicate SA, SA `success:false` with empty errors, or invalid downstream identifiers | 503 | `SYSTEM_ERROR` | `err.personal-information.update.unavailable`; no result |
+| `TRPGetMemberInfo` unavailable on cache miss/refetch (O-1) | 503 | `SYSTEM_ERROR` | `err.personal-information.retrieval.unavailable`; no result |
+
+O-2 is therefore narrowed: malformed requests retain HTTP 400, while content
+rejections return 422. PUT-specific downstream protocol/outcome classification
+does not change generic APIM handling or other endpoints.
+
+### C.3 Error mapping and validation order
+
+| Downstream code | Java public code |
+|---|---|
+| `REQUIRED` | `personalInformation.field.required` |
+| `INVALID_FORMAT` | The single shared YAML validation code ending in `.invalid` across all resolved targets; otherwise `personalInformation.field.invalidFormat` |
+| `AT_LEAST_ONE_REQUIRED` | `personalInformation.address.atLeastOneRequired` |
+| Unknown code | `personalInformation.update.rejected` |
+
+- Split downstream `fields` on `|`, resolve each name through YAML APIM bindings,
+  and return FE field IDs in `targets`. Unknown downstream field names are
+  omitted from targets (an empty targets array is valid).
+- A failed OA row with an empty downstream `errors[]` maps to
+  `[{type:null, code:"personalInformation.update.rejected", targets:[]}]`.
+- Java checks request structure (empty/missing fields, unknown FE field, wrong
+  value type, no updatable fields) before YAML validation and access checking.
+  Structural rejections do not trigger `TRPGetMemberInfo`.
+- The hard-coded mapper email regex is removed. YAML is the single source of
+  content validation rules; configured YAML email validation is applied as
+  content validation and returns HTTP 422.
+
+### C.4 Response examples
+
+#### SS — selected account and all updated accounts succeeded (HTTP 200)
+
+```json
+{
+  "success": true,
+  "status": "UPDATED",
+  "result": {
+    "data": {
+      "selectedAccount": {
+        "accountIdentifier": "00000000118-0002",
+        "refNo": "R-100",
+        "submitDate": "2026-10-27",
+        "submitTime": "13:00:00"
+      },
+      "rows": [],
+      "errors": []
+    }
+  },
+  "messages": [{"code": "personalInformation.update.success"}],
+  "errors": []
+}
+```
+
+#### SF — selected account succeeded; an OA failed (HTTP 200)
+
+```json
+{
+  "success": true,
+  "status": "PARTIAL_SUCCESS",
+  "result": {
+    "data": {
+      "selectedAccount": {
+        "accountIdentifier": "00000000118-0002",
+        "refNo": "R-100",
+        "submitDate": "2026-10-27",
+        "submitTime": "13:00:00"
+      },
+      "rows": [
+        {
+          "accountIdentifier": "00000000118-0003",
+          "refNo": "R-101",
+          "submitDate": "2026-10-27",
+          "submitTime": "13:00:01"
+        }
+      ],
+      "errors": [
+        {
+          "accountIdentifier": "00000000118-0004",
+          "errors": [
+            {
+              "type": "FIELD",
+              "code": "personalInformation.email.invalid",
+              "targets": ["emailAddress"]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "messages": [{"code": "personalInformation.update.partialSuccess"}],
+  "errors": []
+}
+```
+
+#### FS — selected account failed; OA succeeded (HTTP 422)
+
+```json
+{
+  "success": false,
+  "status": "VALIDATION_FAILED",
+  "result": {
+    "data": {
+      "selectedAccount": null,
+      "rows": [
+        {
+          "accountIdentifier": "00000000118-0003",
+          "refNo": "R-101",
+          "submitDate": "2026-10-27",
+          "submitTime": "13:00:01"
+        }
+      ],
+      "errors": []
+    }
+  },
+  "messages": [],
+  "errors": [
+    {
+      "type": "FIELD",
+      "code": "personalInformation.field.required",
+      "targets": ["emailAddress"]
+    }
+  ]
+}
+```
+
+#### FF — selected account and an OA failed (HTTP 422)
+
+```json
+{
+  "success": false,
+  "status": "VALIDATION_FAILED",
+  "result": {
+    "data": {
+      "selectedAccount": null,
+      "rows": [],
+      "errors": [
+        {
+          "accountIdentifier": "00000000118-0004",
+          "errors": [
+            {
+              "type": "FIELD",
+              "code": "personalInformation.email.invalid",
+              "targets": ["emailAddress"]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "messages": [],
+  "errors": [
+    {
+      "type": "FIELD",
+      "code": "personalInformation.field.required",
+      "targets": ["emailAddress"]
+    }
+  ]
+}
+```

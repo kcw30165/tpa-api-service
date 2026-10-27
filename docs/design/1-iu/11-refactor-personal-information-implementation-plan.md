@@ -1,6 +1,8 @@
 # Personal Information Refactor — Implementation Plan
 
-> **Amended 2026-10-22 (requirement change).** Where this document conflicts with the section "Amendment 2026-10-22" at the end, the amendment wins. The section "As-built 2026-10-23 (sub-task 3.5)" at the end records the implemented behaviour and wins over both.
+> **Amended 2026-10-27 (Milestone 4).** The section "Amendment 2026-10-27 — Milestone 4" at the end records the latest completion status and wins over earlier gate instructions or milestone notes where they conflict.
+
+> **Amended 2026-10-22 (requirement change).** Where this document conflicts with the section "Amendment 2026-10-22", that amendment wins except where superseded by Milestone 4. The "As-built 2026-10-23 (sub-task 3.5)" section below is a historical Milestone 3 record.
 
 
 Design: `10-refactor-personal-information-design.md`. Branch `refactor/personal-information`.
@@ -91,3 +93,73 @@ Targeted test run at 3.4c: 533 tests, 0 failures, 0 errors.
 Milestone 3 gates: full mvn test 6476 tests, 0 failures, 0 errors, 10 skipped; startup smoke test passed; SonarQube
 reported 14 new-code issues, fixed in 0b1abd50 (a re-run after the next push is pending). Later: O-1 in 3f5a61f8 and
 O-2 in d1cd529e. Open items: design B.6 and B.7.
+
+## Amendment 2026-10-27 — Milestone 4
+
+Design: `10-refactor-personal-information-design.md`, section "Milestone 4 as
+built". This amendment records the approved PUT result contract, completed
+implementation, and gates on the rebased branch. The Milestone 3 as-built notes
+above remain historical; their PUT result-array and HTTP-status statements are
+superseded.
+
+### Commit record
+
+| Step | Commit | Scope |
+|---|---|---|
+| ST-0 | `6157bdc9ab0d19910a6195f135b7ad88af81667d` — `refactor(account): share account identifier formatting` | Extract configured shared AccountIdentifierFormatter; Login and Personal Information reuse it. |
+| ST-1 | `4a8ab59c2b9613f749615e71071f39b90b4d7711` — `fix(personal-information): forward apply-all to APIM` | Forward FE applyToAllAccounts to APIM apply-all, default false; one downstream request. |
+| ST-2 | `3859da5e421d719d59c4ee9152311bef8515ac19` — `fix(personal-information): classify PUT account outcomes` | Pure SS/SF/FS/FF/SYSTEM_ERROR classification; PUT-specific identifier/outcome/transport failure handling; preserve encrypted identifiers as strings. |
+| ST-3 | `457fe15aaa3ab8e4b09cf5f499566ed11bf9d3bd` — `fix(personal-information): map PUT account errors` | Map downstream codes/fields to code-only MappedError values and FE field targets. |
+| ST-4 | `de21fc522cfb71ee6c0061fee71c39cba7aaf2fc` — `fix(personal-information): shape PUT account outcome response` | Selected-account/OA response shape and downstream outcome HTTP/status contract. |
+| ST-5 | `feda005c5482c48b2a71667551ba2b5e3ceee025` — `fix(personal-information): distinguish malformed PUT requests from content rejections` | Structural checks before YAML/access; malformed 400 versus content 422; code-only errors. |
+| Milestone-end formatting | `8d5922e09f1c15c84aec971710e679df706c15bc` — `style(personal-information): apply formatting after milestone 4` | Spotless formatting and three same-package import removals. |
+| Step 056 gate gaps | `6dce48236fd8bdefcad353c6882f0514d020e0bb` — `test(personal-information): close milestone 4 gate gaps` | Update stale code-only 400 characterization; lower duplicate/handled ERROR logs to WARN; add coverage tests. These fixes were committed separately, not under the formatting commit. |
+| Step 057 SonarQube | `eaca1bb960ef9cd85f833100a735c095b06f997e` — `refactor(personal-information): resolve milestone 4 sonar findings` | Resolve 42 new-code findings with behavior-preserving production/test refactors. |
+
+These are the nine Milestone 4 commits in the current branch history. The
+step-056 gate fixes have their own commit; they are not part of the formatting
+commit.
+
+### Sub-task gates and milestone gates
+
+| Work | Gate/change |
+|---|---|
+| ST-0 | Fail-first shared formatter/Login tests, compile/test-compile and targeted tests; Spotless deferred. |
+| ST-1 | Fail-first APIM apply-all request tests, compile/test-compile and targeted tests; Spotless deferred. |
+| ST-2 | Fail-first pure classifier/adapter outcome tests, compile/test-compile and targeted tests; PUT-specific 503 cases included; Spotless deferred. |
+| ST-3 | Fail-first downstream code/field mapping tests, compile/test-compile and targeted tests; Spotless deferred. |
+| ST-4 | Fail-first SS/SF/FS/FF response and HTTP contract tests, compile/test-compile and targeted tests; Spotless deferred. |
+| ST-5 | Fail-first malformed-versus-content rejection tests, compile/test-compile and targeted tests; Spotless deferred. |
+| Milestone-end formatting (054) | Ran `spotless:apply`, `spotless:check`, clean compile and test-compile. The initial full suite exposed gate gaps; these were diagnosed before the separate step-056 repair. |
+| Step 056 | Clean test-compile, targeted tests and full `mvn clean test`; accepted the controller branch-coverage exception documented below. |
+| Step 057 | Spotless, clean test-compile, all touched-class/PUT targeted tests, full clean suite and fresh JaCoCo report. |
+| Rebased HEAD `eaca1bb9` | re-run: Tests run: 6816, Failures: 0, Errors: 0, Skipped: 10 |
+
+### Superseded decisions and accepted exception
+
+- D-02's prior response-array contract is replaced by the Milestone 4
+  `selectedAccount` / successful OA `rows[]` / failed OA `errors[]` contract.
+  Public PUT response items no longer expose `env`; internal account matching
+  still includes `accountEnv`.
+- O-2 is narrowed: malformed requests remain HTTP 400; Java YAML/access content
+  rejections and downstream SA business failures are HTTP 422; success and
+  partial success are HTTP 200; specified PUT protocol/transport and classifier
+  failures are HTTP 503. O-1 remains unchanged: an unavailable
+  `TRPGetMemberInfo` lookup returns 503 `SYSTEM_ERROR` with
+  `err.personal-information.retrieval.unavailable`.
+- `PersonalInformationController` branch coverage is **73.1%** (19/26). The
+  seven uncovered branches are defensive private-helper null-context/null-
+  account branches that cannot be reached through the public reactive entry
+  points: Reactor cannot emit null, and missing accounts are rejected by
+  `requireAccountRef` before those helpers. This coverage exception is accepted;
+  no behavior change or private-reflection test was introduced to raise it.
+
+### Follow-ups
+
+| Follow-up | Scope |
+|---|---|
+| ArchUnit classifier import guard | Add a guard preventing `PersonalInformationUpdateOutcomeClassifier` from acquiring adapter/framework dependencies. |
+| Unknown downstream field diagnostics | Consider optional, privacy-safe logging of unknown downstream field names that are currently omitted from response targets. |
+| Duplicate structural validation | Consider removing the duplicate `validateStructure` call between controller pre-check and `toCommand`, while preserving the malformed-request-before-YAML/access ordering. |
+| YAML email-pattern decision | The current YAML email pattern accepts a leading-dot domain; business decision pending. |
+| FE translations | FE translations are required for `personalInformation.email.invalid`, `personalInformation.field.invalidFormat`, `personalInformation.update.rejected`, `personalInformation.update.success`, and `personalInformation.update.partialSuccess`. |
