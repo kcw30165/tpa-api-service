@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PageDisplayTextResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateErrorMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
@@ -14,6 +15,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PersonalInformationYam
 import com.bct.ngtpa.apiservice.adapter.in.web.personalinformation.PersonalInformationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
+import com.bct.ngtpa.apiservice.adapter.out.apim.ApimUpdatePersonalInformationAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
@@ -23,6 +28,10 @@ import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
+import com.bct.ngtpa.apiservice.application.usecase.UpdatePersonalInformationService;
+import com.bct.ngtpa.apiservice.shared.config.ConfigVariantCandidateGenerator;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
@@ -90,6 +99,97 @@ class PersonalInformationPutOutcomeContractTest {
   void ffReturns422ValidationFailedAndKeepsErrorAccountsSeparate() {
     assertOutcome(
         false, false, 422, "VALIDATION_FAILED", "null", "", OTHER_ERROR, SELECTED_ERROR, "");
+  }
+
+  @Test
+  void tasMissingOverseasCountryReturns422WithYamlTargetAndVerbatimOtherAccountMetadata() {
+    PersonalInformationYamlContextRunner.create()
+        .run(
+            context -> {
+              var properties = context.getBean(BffPagesProperties.class);
+              String downstreamJson =
+                  """
+              {"response":{"err-message":"","data":[
+                {"success":false,"policy-no":"118","cert-no":"2","env":"JP",
+                 "ref-no":null,"submit-date":null,"submit-time":null,
+                 "errors":[{"type":"CROSS_FIELD","fields":"other-phone-country|other-phone",
+                            "code":"MISSING_OVERSEAS_COUNTRY"}]},
+                {"success":true,"policy-no":"118","cert-no":"3","env":"JP",
+                 "ref-no":"","submit-date":null,"submit-time":""}]}}
+              """;
+              ApimResponseEnvelope<UpdateMemberInfoApimDataItem> downstream =
+                  JSON.readValue(downstreamJson, new TypeReference<>() {});
+              var executor = mock(ApimExchangeExecutor.class);
+              when(executor.postEnvelope(any())).thenAnswer(ignored -> Mono.just(downstream));
+              var formatter = new AccountIdentifierFormatter(11, 4, '0');
+              var contextResolver = mock(CurrentPortalAccessContextResolver.class);
+              when(contextResolver.current())
+                  .thenReturn(
+                      Mono.just(
+                          new PortalAccessContext(
+                              new ActorContext("test-user", ActorUserRole.ROLE_USER_MBR),
+                              new AccountContext(
+                                  "ACC-123",
+                                  "JP",
+                                  "118",
+                                  "2",
+                                  "JPM",
+                                  "OE",
+                                  TermStatus.BLANK,
+                                  null))));
+              var generator = new ConfigVariantCandidateGenerator();
+              var controller =
+                  new PersonalInformationController(
+                      mock(GetPersonalInformationUseCase.class),
+                      mock(PersonalInformationWebMapper.class),
+                      contextResolver,
+                      new UpdatePersonalInformationService(
+                          new ApimUpdatePersonalInformationAdapter(executor, formatter)),
+                      new PersonalInformationUpdateWebMapper(properties),
+                      new PersonalInformationUpdateResponseMapper(
+                          new PersonalInformationUpdateErrorMapper(properties), formatter),
+                      new PersonalInformationUpdateYamlValidator(
+                          properties, new PageDisplayTextResolver(generator), generator),
+                      exchange -> Optional.empty(),
+                      PersonalInformationAccessCheckerTestSupport.passing());
+              String expected =
+                  """
+              {"success":false,"status":"VALIDATION_FAILED",
+               "result":{"data":{"selectedAccount":null,
+                 "rows":[{"accountIdentifier":"00000000118-0003","refNo":"",
+                          "submitDate":null,"submitTime":""}],"errors":[]}},
+               "messages":[],"errors":[{"type":"CROSS_FIELD",
+                 "code":"personalInformation.overseasCountryCode.requiredWhenPhonePresent",
+                 "targets":["overseasCountryCode"]}]}
+              """;
+              WebTestClient.bindToController(controller)
+                  .build()
+                  .put()
+                  .uri("/api/v1/personal-information")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .bodyValue(
+                      new UpdatePersonalInformationRequest(
+                          "1.0",
+                          true,
+                          Map.of(
+                              "residentialAddressLine1",
+                              "1 Example Street",
+                              "overseasPhoneNumber",
+                              "12345678")))
+                  .exchange()
+                  .expectStatus()
+                  .isEqualTo(422)
+                  .expectBody()
+                  .consumeWith(
+                      response -> {
+                        try {
+                          assertThat(JSON.readTree(response.getResponseBody()))
+                              .isEqualTo(JSON.readTree(expected));
+                        } catch (java.io.IOException error) {
+                          throw new AssertionError(error);
+                        }
+                      });
+            });
   }
 
   private void assertOutcome(

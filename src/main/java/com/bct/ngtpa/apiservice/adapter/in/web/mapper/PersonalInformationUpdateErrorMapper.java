@@ -24,6 +24,14 @@ public class PersonalInformationUpdateErrorMapper {
   private static final String PAGE_KEY = "personalInformation";
   private static final String INVALID_FORMAT_FALLBACK = "personalInformation.field.invalidFormat";
   private static final String UPDATE_REJECTED = "personalInformation.update.rejected";
+  private static final Map<String, String> CONDITIONAL_REQUIRED_CODES =
+      Map.of(
+          "MISSING_OVERSEAS_COUNTRY",
+          "personalInformation.overseasCountryCode.requiredWhenPhonePresent",
+          "MISSING_OVERSEAS_PHONE",
+          "personalInformation.overseasPhoneNumber.requiredWhenCodePresent",
+          "MISSING_BUSSINESS_PHONE",
+          "personalInformation.businessPhone.requiredWhenExtensionPresent");
   private final BffPagesProperties properties;
 
   public PersonalInformationUpdateErrorMapper(BffPagesProperties properties) {
@@ -47,9 +55,18 @@ public class PersonalInformationUpdateErrorMapper {
     return account.errors().stream()
         .map(
             error -> {
-              List<String> targets = mappedTargets(error.fields(), bindings);
+              String conditionalCode =
+                  error.code() == null ? null : CONDITIONAL_REQUIRED_CODES.get(error.code());
+              List<String> targets =
+                  conditionalCode == null
+                      ? mappedTargets(error.fields(), bindings)
+                      : conditionalTargets(conditionalCode, fields);
               return new MappedError(
-                  error.type(), mappedCode(error.code(), targets, fields), targets);
+                  error.type(),
+                  conditionalCode == null
+                      ? mappedCode(error.code(), targets, fields)
+                      : conditionalCode,
+                  targets);
             })
         .toList();
   }
@@ -57,14 +74,68 @@ public class PersonalInformationUpdateErrorMapper {
   private String mappedCode(
       String downstreamCode, List<String> targets, List<FieldProperties> fields) {
     if (downstreamCode == null) {
-      return UPDATE_REJECTED;
+      return unknownCode(null);
     }
     return switch (downstreamCode) {
       case "REQUIRED" -> "personalInformation.field.required";
       case "INVALID_FORMAT" -> invalidFormatCode(targets, fields);
       case "AT_LEAST_ONE_REQUIRED" -> "personalInformation.address.atLeastOneRequired";
-      default -> UPDATE_REJECTED;
+      case "INVALID_EMAIL" -> "personalInformation.email.invalid";
+      case "INVALID_FAX" -> "personalInformation.faxNo.invalid";
+      case "INVALID_MOBILE_NUMBER" -> "personalInformation.mobilePhone.invalid";
+      case "INVALID_HOME_PHONE" -> "personalInformation.homeTel.invalid";
+      case "INVALID_ADDRESS" -> "personalInformation.residentialAddress.invalid";
+      case "INVALID_CORR_ADDRESS" -> "personalInformation.mailingAddress.invalid";
+      case "BLOCKED_PO_ADDRESS" -> "personalInformation.address.poBoxBlocked";
+      default -> unknownCode(downstreamCode);
     };
+  }
+
+  private String unknownCode(String downstreamCode) {
+    String sanitized =
+        downstreamCode == null ? "" : downstreamCode.replaceAll("[^A-Za-z0-9_.-]", "");
+    log.warn(
+        "event=personal-information-update-unknown-downstream-code code={}",
+        sanitized.substring(0, Math.min(64, sanitized.length())));
+    return UPDATE_REJECTED;
+  }
+
+  private List<String> conditionalTargets(String code, List<FieldProperties> fields) {
+    PageSchemaProperties page =
+        properties == null || properties.getPages() == null
+            ? null
+            : properties.getPages().get(PAGE_KEY);
+    if (page == null || page.getValidations() == null) {
+      throw new IllegalStateException(
+          "Personal information conditional-required configuration is missing.");
+    }
+    ValidationRuleProperties rule =
+        page.getValidations().stream()
+            .filter(Objects::nonNull)
+            .filter(
+                value ->
+                    code.equals(value.getCode()) && "conditionalRequired".equals(value.getType()))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Personal information conditional-required rule is missing."));
+    if (rule.getThen() == null
+        || rule.getThen().getTargets() == null
+        || rule.getThen().getTargets().isEmpty()) {
+      throw new IllegalStateException(
+          "Personal information conditional-required targets are missing.");
+    }
+    List<String> targets = rule.getThen().getTargets();
+    if (targets.stream()
+        .anyMatch(
+            target ->
+                target == null
+                    || fields.stream().noneMatch(field -> target.equals(field.getId())))) {
+      throw new IllegalStateException(
+          "Personal information conditional-required target is unknown.");
+    }
+    return targets.stream().distinct().toList();
   }
 
   private String invalidFormatCode(List<String> targets, List<FieldProperties> fields) {
