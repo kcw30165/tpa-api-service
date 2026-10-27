@@ -256,7 +256,11 @@ per-type @ExceptionHandler methods in ApiExceptionHandler.
 Implementer (first commit of M2)
 </td>
 <td>
-Open.
+**Closed.** (a) Unreachable null guard removed in ExceptionMappingRegistry's superclass walk
+(6fddd4e0). (b) Stale Javadoc in FundComparisonRequestInvalidException and
+FundPriceRequestInvalidException corrected to describe the real current
+ExceptionMappingRegistry/*ExceptionMappings mapping path instead of the removed per-type
+@ExceptionHandler methods (2d29948a).
 </td>
 </tr>
 
@@ -280,7 +284,12 @@ toSafeString. Both need a test against the real LoggingSanitizer, not a mock.
 Implementer (first production commit of M2b)
 </td>
 <td>
-Open.
+**Closed.** StructuredFailureEventLogger.publish now null-guards failure.origin() before
+Set.of(...).contains(...), so a null origin logs at ERROR instead of throwing. A
+characterization test confirms this. A second test against the real LoggingSanitizer (not a
+mock) confirms toSafeString does not mask a sensitive token embedded in cause.getMessage()
+under the sanitizedMessage key -- documented as a known, pre-existing gap, not fixed in this
+commit (6b0d6962).
 </td>
 </tr>
 </table>
