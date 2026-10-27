@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.SectionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ValidationRuleProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
+import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -15,10 +16,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
 public class PersonalInformationUpdateErrorMapper {
+  private static final Logger log =
+      LoggerFactory.getLogger(PersonalInformationUpdateErrorMapper.class);
+
   private static final String CODE_REQUIRED = "REQUIRED";
 
   private static final String CODE_INVALID_FORMAT = "INVALID_FORMAT";
@@ -30,6 +36,65 @@ public class PersonalInformationUpdateErrorMapper {
 
   public PersonalInformationUpdateErrorMapper(BffPagesProperties properties) {
     this.properties = properties;
+  }
+
+  public record MappedError(String type, String code, List<String> targets) {
+    public MappedError {
+      targets = List.copyOf(targets);
+    }
+  }
+
+  // Kept separate from the legacy response path until the result contract is migrated.
+  public List<MappedError> toMappedErrors(UpdatePersonalInformationResult account) {
+    Objects.requireNonNull(account, "account");
+    if (account.success()) {
+      return List.of();
+    }
+    if (account.errors().isEmpty()) {
+      if (account.selected()) {
+        throw new IllegalStateException("Selected account update errors are missing.");
+      }
+      log.warn("event=personal-information-update-other-account-errors-missing");
+      return List.of(
+          new MappedError(null, "personalInformation.update.rejected", List.of()));
+    }
+    Map<String, String> bindings = frontendFieldByApimField();
+    return account.errors().stream()
+        .map(
+            error ->
+                new MappedError(
+                    error.type(), mappedCode(error.code()), mappedTargets(error.fields(), bindings)))
+        .toList();
+  }
+
+  private String mappedCode(String downstreamCode) {
+    if (downstreamCode == null) {
+      return "personalInformation.update.rejected";
+    }
+    return switch (downstreamCode) {
+      case "REQUIRED" -> "personalInformation.field.required";
+      case "INVALID_FORMAT" -> "personalInformation.field.invalidFormat";
+      case "AT_LEAST_ONE_REQUIRED" -> "personalInformation.address.atLeastOneRequired";
+      default -> "personalInformation.update.rejected";
+    };
+  }
+
+  private List<String> mappedTargets(List<String> fields, Map<String, String> bindings) {
+    return fields.stream()
+        .flatMap(field -> Arrays.stream(field.split("\\|")))
+        .map(String::trim)
+        .filter(field -> !field.isEmpty())
+        .map(
+            field -> {
+              String target = bindings.get(field);
+              if (target == null) {
+                log.warn("event=personal-information-update-unknown-field targetOmitted=true");
+              }
+              return target;
+            })
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
   }
 
   public List<ApiError> toApiErrors(List<UpdatePersonalInformationError> rawErrors) {
