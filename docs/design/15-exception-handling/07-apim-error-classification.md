@@ -1,7 +1,5 @@
 # 07 - APIM Error Classification Design
 
-Sub-task 2b.1. Docs only, no production/test change. Every row in this revision is grounded in full source dumps (script 167's complete citation evidence, 97 unique file:line citations each confirmed with +/-2 lines of context) rather than inference. This resolves the remaining items from Nick's prior review round.
-
 ## 1. Inventory table (46 rows)
 
 ### Registration -- ApimRegistrationLookupAdapter (TRPSearchMember)
@@ -61,7 +59,7 @@ Sub-task 2b.1. Docs only, no production/test change. Every row in this revision 
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
 - **Public HTTP status:** 503. `IdempotentStartForgotPasswordService.executeAcquired` (lines 58-67) re-converts a `SYSTEM_FAILED` result BACK into a thrown `IllegalStateException`. `ForgotPasswordController.startForgotPassword` (lines 93-116) has a reactive `.onErrorResume(exception -> Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.systemUnavailable())))` (lines 109-112), which catches this re-thrown exception. `ForgotPasswordHttpResponses.status()` resolves `ApiStatus.SYSTEM_ERROR` -> `HttpStatus.SERVICE_UNAVAILABLE` (lines 46-48, `ForgotPasswordHttpResponses.java:46-47`). Confirmed: this entirely bypasses `ApimExceptionMappings`/`CatchAllExceptionMapping`.
 - **Public ApiStatus:** `SYSTEM_ERROR`
-- **Public error code/type:** whatever code `ForgotPasswordStartWebMapper.systemUnavailable()` sets (that mapper's own source not read this pass)
+- **Public error code/type:** `"FORM"` / `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()` (resolved this pass: `ForgotPasswordStartWebMapper.systemUnavailable()`, lines 119-127, routes through the shared `failure(...)` helper, lines 129-140, which calls `ApiError.form(error.code(), null, sanitizeTargets(error), "BFF")` -- source is `"BFF"`, not `"DOWNSTREAM"`)
 - **Citation:** `ApimForgotPasswordUsernameLookupAdapter.java:77-91`; `ForgotPasswordStartProtectedOperation.java:86-109`; `IdempotentStartForgotPasswordService.java:58-67`; `ForgotPasswordController.java:93-116`; `ForgotPasswordHttpResponses.java:21-50`
 
 ### Forgot Password -- ApimForgotPasswordUsernameLookupAdapter (TRPChkCustId)
@@ -76,7 +74,7 @@ Sub-task 2b.1. Docs only, no production/test change. Every row in this revision 
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
 - **Public HTTP status:** 503 via the same confirmed routing as the row above
 - **Public ApiStatus:** `SYSTEM_ERROR`
-- **Public error code/type:** whatever code `ForgotPasswordStartWebMapper.systemUnavailable()` sets
+- **Public error code/type:** `"FORM"` / `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()` (resolved this pass: `ForgotPasswordStartWebMapper.systemUnavailable()`, lines 119-127)
 - **Citation:** `ApimForgotPasswordUsernameLookupAdapter.java:86-100`; `ForgotPasswordStartProtectedOperation.java:86-109`; `ForgotPasswordController.java:93-116`
 
 ### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
@@ -143,7 +141,7 @@ Sub-task 2b.1. Docs only, no production/test change. Every row in this revision 
 
 - **Condition:** missing envelope
 - **Detection site:** `ForgotPasswordTrpSearchMemberMapper.java:46`; `ApimForgotPasswordDetailsLookupAdapter.java:51-52`
-- **Handling:** `throw new ForgotPasswordDetailsDownstreamException(Reason.UNEXPECTED_ERROR)`. the real consumer is `ForgotPasswordUnderLockDetailsVerifier.verify()` (lines 34-58), which wraps the lookup-port call. `.doOnError(cause -> logFailure(requestId, cause))` (line 55) logs `event=forgot-password.details-otp.failed requestId={} stage=lookup exceptionType={}` ERROR (exception class name only, no stack trace, lines 61-66), then `.onErrorReturn(ForgotPasswordUnderLockDetailsVerification.of(SYSTEM_FAILED))` (lines 56-58) swallows it to a result value. This result flows up through `ForgotPasswordDetailsOtpProtectedOperation.locked` (lines 136-144), which returns `BUSINESS_REJECTED` only if `status()==DETAILS_VERIFIED`; any other status (including `SYSTEM_FAILED`) falls through that same `locked` method's flow unchanged as a `ForgotPasswordUnderLockDetailsVerification` with `SYSTEM_FAILED`.
+- **Handling:** `throw new ForgotPasswordDetailsDownstreamException(Reason.UNEXPECTED_ERROR)`. The real consumer is `ForgotPasswordUnderLockDetailsVerifier.verify()` (lines 34-58), which wraps the lookup-port call. `.doOnError(cause -> logFailure(requestId, cause))` (line 55) logs `event=forgot-password.details-otp.failed requestId={} stage=lookup exceptionType={}` ERROR (exception class name only, no stack trace, lines 61-66), then `.onErrorReturn(ForgotPasswordUnderLockDetailsVerification.of(SYSTEM_FAILED))` (lines 56-58) swallows it to a result value. This result flows up through `ForgotPasswordDetailsOtpProtectedOperation.locked` (lines 136-144), which returns `BUSINESS_REJECTED` only if `status()==DETAILS_VERIFIED`; any other status (including `SYSTEM_FAILED`) falls through that same `locked` method's flow unchanged as a `ForgotPasswordUnderLockDetailsVerification` with `SYSTEM_FAILED`.
 - **Message policy:** N/A -- swallowed before any `ExceptionMapping`
 - **Ordered log lines:** `event=forgot-password.details-otp.failed stage=lookup` ERROR, exception class name only, no stack trace (`ForgotPasswordUnderLockDetailsVerifier.java:61-66`)
 - **Idempotency replay:** Yes -- Forgot Password details/OTP is idempotency-protected
@@ -730,7 +728,7 @@ Sub-task 2b.1. Docs only, no production/test change. Every row in this revision 
 
 ### Sub-task 2b.2a
 
-Fail-first characterization update, replace every `DOWNSTREAM_SYSTEM` occurrence (confirmed 2 code paths beyond the pure web mappers: `CheckRegistrationUsernameService`'s direct construction, and the 3 web-mapper call sites), extend `PublicDownstreamStatusIsolationGuardTest` with a rendered-JSON behavior check. Waits for Nick to confirm FE independence from `DOWNSTREAM_*` values.
+Fail-first characterization update, replace every `DOWNSTREAM_SYSTEM` occurrence (confirmed 2 code paths beyond the pure web mappers: `CheckRegistrationUsernameService`'s direct construction, and the 3 web-mapper call sites), extend `PublicDownstreamStatusIsolationGuardTest` with a rendered-JSON behavior check. FE confirmed by Nick: no dependence on `DOWNSTREAM_*` values; E2 approved.
 
 ### Additional public exposure sites (checked against the source lines cited)
 
@@ -749,8 +747,9 @@ Fail-first characterization update, replace every `DOWNSTREAM_SYSTEM` occurrence
 
 ## 8. Open questions
 
+**Resolved this pass (verified fact, not an open question):** every confirmed `new ApimException(` construction site (`ApimWebClientFacade.java:411`, `ApimForgotPasswordCompletionAdapter.java:65`, `ApimForgotPasswordUsernameLookupAdapter.java:87,96`, `ApimResponseValidator.java:37,57`, `ApimUpdatePersonalInformationAdapter.java:63,71`, `ApimReferenceDateRefreshAdapter.java:58,67`, `SharedApimTrpChkCustIdTransport.java:45,55,64`, `TrpRegMemberApimResultMapper.java:26`) uses `HttpStatus.BAD_GATEWAY` (502), with exactly one exception: `ApimForgotPasswordCompletionAdapter.java:76`'s `safeFailure` fallback, which constructs `HttpStatus.INTERNAL_SERVER_ERROR` (500). That specific 500 construction is confirmed (section 1, Forgot Password completion `safeFailure` rows) to never reach a public response -- `ForgotPasswordCompleteProtectedOperation.invoke`'s own `.onErrorResume` swallows it into `unknownOutcome()` before any `ExceptionMapping` dispatch occurs. Separately, `ApimWebClientFacade.handleErrorBody` (lines 391-416) always constructs `HttpStatus.BAD_GATEWAY` regardless of the actual upstream HTTP status; `mapUpstreamErrorCode` (lines 485-491) varies only the public error *code* (`APIM_SERVICE_UNAVAILABLE` for upstream 503, `APIM_TIMEOUT` for upstream 504, `APIM_UPSTREAM_FAILURE` otherwise), never the HTTP status. There is no row in this inventory where a public status other than 502 is actually returned for a generic `ApimException`, and no remaining decision: differentiating the public status by upstream 503/504 would itself be a public-behaviour change, which M2b's own rules place out of scope.
+
 - `RegistrationHttpResponses.status()`'s duplicate `SYSTEM_ERROR`/`BUSINESS_REJECTED` branches (confirmed dead code in an earlier pass); no change proposed in M2b.
-- Public status 502 vs 500 for generic `ApimException` remains a decision, not a fact.
 - 4xx vs 5xx downstream status both resolve identically via the facade today; whether a 4xx should classify differently is open.
 - `TrpGetAccountListAdapter`'s swallowed result is consumed by internal Login authorization logic, not a dedicated controller response path; whether its three sub-cause rows need a traced public shape at all (vs. being purely internal) is open.
 - Whether confirmed swallow sites should publish a `FailureEvent` (M3 3.7).
