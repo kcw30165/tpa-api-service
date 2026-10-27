@@ -406,6 +406,11 @@ Rules:
 | 2b.4..2b.n | refactor | One commit per feature: attach the shared classification to its APIM failures; feature code tables unchanged | characterization unchanged |
 | 2b.gate | - | Milestone gate: `mvn spotless:check`, full `mvn test`, per-class instruction and branch coverage including anonymous classes; then Nick runs the startup smoke test and SonarQube | - |
 
+
+**Sub-task 2b.1 addendum (docs(exception-handling): add APIM error classification design):** see docs/design/15-exception-handling/07-apim-error-classification.md for the full APIM error classification design. Two approved exceptions to the M2b "no change" rules were recorded there:
+- E1 (log level): Registration `err.tpa.member.not.found` moves from `FailureOrigin.DOWNSTREAM_CONTRACT` to `FailureOrigin.DOWNSTREAM_BUSINESS` (ERROR -> WARN), pinned fail-first in the Registration feature commit (sub-task 2b.4..2b.n). No other log level changes in M2b.
+- E2 (public contract): no `DOWNSTREAM_*` value may reach the frontend; enforced by new sub-task **2b.2a** (runs after 2b.2, before 2b.3), which waits for Nick to confirm FE does not depend on any `DOWNSTREAM_*` value.
+
 ### M3 - Call-site migration (one ERROR per incident)
 
 **Depends on M2b:** M3 starts only after M2b is merged; its INCIDENT/DIAGNOSTIC classification of APIM
