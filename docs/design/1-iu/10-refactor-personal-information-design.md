@@ -446,7 +446,8 @@ and status descriptions in B.3-B.6. It records the implemented, approved contrac
   OA errors appear only under `result.data.errors[]`; never duplicate an error.
 - Public account rows contain no `success`, `selected`, `env`, `policyNo` or
   `certNo` properties. Downstream `refNo`, `submitDate` and `submitTime` pass
-  through exactly, including null or blank values.
+  through exactly, including null or blank values. These fields are optional
+  and may be blank or null for any row; FE must not rely on them.
 - `accountIdentifier` uses the shared formatter and `account-identifiers`
   configuration: policy number padded to width 11, certificate number padded to
   width 4, pad character `0`, joined with `-` (for example
@@ -482,6 +483,31 @@ does not change generic APIM handling or other endpoints.
 | `INVALID_FORMAT` | The single shared YAML validation code ending in `.invalid` across all resolved targets; otherwise `personalInformation.field.invalidFormat` |
 | `AT_LEAST_ONE_REQUIRED` | `personalInformation.address.atLeastOneRequired` |
 | Unknown code | `personalInformation.update.rejected` |
+
+- The mapped TAS codes are:
+
+  | TAS code | Java public code |
+  |---|---|
+  | `MISSING_OVERSEAS_COUNTRY` | `personalInformation.overseasCountryCode.requiredWhenPhonePresent` |
+  | `MISSING_OVERSEAS_PHONE` | `personalInformation.overseasPhoneNumber.requiredWhenCodePresent` |
+  | `MISSING_BUSSINESS_PHONE` | `personalInformation.businessPhone.requiredWhenExtensionPresent` |
+  | `INVALID_EMAIL` | `personalInformation.email.invalid` |
+  | `INVALID_FAX` | `personalInformation.faxNo.invalid` |
+  | `INVALID_MOBILE_NUMBER` | `personalInformation.mobilePhone.invalid` |
+  | `INVALID_HOME_PHONE` | `personalInformation.homeTel.invalid` |
+  | `INVALID_ADDRESS` | `personalInformation.residentialAddress.invalid` |
+  | `INVALID_CORR_ADDRESS` | `personalInformation.mailingAddress.invalid` |
+  | `BLOCKED_PO_ADDRESS` | `personalInformation.address.poBoxBlocked` |
+
+- For the three `MISSING_*` codes, `targets` come from the matching YAML
+  `conditionalRequired` rule's `then.targets`, resolved to FE field IDs; TAS
+  `fields` are not used for those targets. For the other mapped codes,
+  downstream `fields` are resolved to FE field IDs through the existing reverse
+  APIM binding. An unknown code falls back to
+  `personalInformation.update.rejected` and emits a WARN event
+  `event=personal-information-update-unknown-downstream-code`, logging only
+  the raw code after removing characters outside `[A-Za-z0-9_.-]` and
+  truncating it to 64 characters.
 
 - Split downstream `fields` on `|`, resolve each name through YAML APIM bindings,
   and return FE field IDs in `targets`. Unknown downstream field names are

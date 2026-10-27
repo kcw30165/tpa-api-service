@@ -115,10 +115,15 @@ superseded.
 | Milestone-end formatting | `8d5922e09f1c15c84aec971710e679df706c15bc` — `style(personal-information): apply formatting after milestone 4` | Spotless formatting and three same-package import removals. |
 | Step 056 gate gaps | `6dce48236fd8bdefcad353c6882f0514d020e0bb` — `test(personal-information): close milestone 4 gate gaps` | Update stale code-only 400 characterization; lower duplicate/handled ERROR logs to WARN; add coverage tests. These fixes were committed separately, not under the formatting commit. |
 | Step 057 SonarQube | `eaca1bb960ef9cd85f833100a735c095b06f997e` — `refactor(personal-information): resolve milestone 4 sonar findings` | Resolve 42 new-code findings with behavior-preserving production/test refactors. |
+| Step 058/059 ST-6 docs | `781898846fd221d794c3b403f693aa7731424297` — `docs(personal-information): record milestone 4 PUT result contract` | Record the Milestone 4 PUT result contract, superseded decisions and implementation-plan amendment. |
+| Step 060 username-recovery Sonar | `e408383a56273be862c9b5085b87192c21fcaf01` — `test(username-recovery): isolate tamper assertion for sonar` | Hoist tamper setup from the exception assertion while retaining deterministic tampering and assertions. |
+| Step 062 username-recovery Sonar | `a6c7f7743782472e03acec9196527c505dd15d21` — `test(username-recovery): isolate remaining exception assertions for sonar` | Hoist setup from remaining multi-invocation exception assertions. |
+| Step 063 TAS error mapping | `04abf4a81b46cf0cdd36d9c075cf5e49b5894e33` — `fix(personal-information): map TAS update error codes and log unknown codes` | Add TAS-code mappings and YAML-derived conditional targets; log unknown downstream codes safely. |
+| Step 066 guarded warning | `4c56518141352fbc4bbbba3b2ffbf2a52b3f7f8d` — `refactor(personal-information): guard unknown-code log for sonar` | Run unknown-code sanitization/truncation only when WARN is enabled. |
 
-These are the nine Milestone 4 commits in the current branch history. The
-step-056 gate fixes have their own commit; they are not part of the formatting
-commit.
+The first nine rows are the original Milestone 4 implementation and gate
+commits; the later rows record the subsequent docs sync and fixes. The step-056
+gate fixes have their own commit; they are not part of the formatting commit.
 
 ### Sub-task gates and milestone gates
 
@@ -133,7 +138,7 @@ commit.
 | Milestone-end formatting (054) | Ran `spotless:apply`, `spotless:check`, clean compile and test-compile. The initial full suite exposed gate gaps; these were diagnosed before the separate step-056 repair. |
 | Step 056 | Clean test-compile, targeted tests and full `mvn clean test`; accepted the controller branch-coverage exception documented below. |
 | Step 057 | Spotless, clean test-compile, all touched-class/PUT targeted tests, full clean suite and fresh JaCoCo report. |
-| Rebased HEAD `eaca1bb9` | re-run: Tests run: 6816, Failures: 0, Errors: 0, Skipped: 10 |
+| Final gate | Full mvn clean test, startup smoke test and SonarQube quality gate passed on the final HEAD `4c56518141352fbc4bbbba3b2ffbf2a52b3f7f8d`, after the rebase onto origin/dev. |
 
 ### Superseded decisions and accepted exception
 
@@ -163,3 +168,8 @@ commit.
 | Duplicate structural validation | Consider removing the duplicate `validateStructure` call between controller pre-check and `toCommand`, while preserving the malformed-request-before-YAML/access ordering. |
 | YAML email-pattern decision | The current YAML email pattern accepts a leading-dot domain; business decision pending. |
 | FE translations | FE translations are required for `personalInformation.email.invalid`, `personalInformation.field.invalidFormat`, `personalInformation.update.rejected`, `personalInformation.update.success`, and `personalInformation.update.partialSuccess`. |
+| D-31 partial-update behavior | Retained: Java skips conditional-required rules when the companion key is absent; TAS is the only check for omitted companions. FE may optionally send the companion when editing a trigger field. |
+| TAS error-code vocabulary | Confirm the exact TAS spelling `MISSING_BUSSINESS_PHONE` and ask TAS whether other downstream error codes exist. |
+| OA update semantics | Ask TAS owners whether other accounts reported as `success:true` are actually updated when the selected account is rejected. |
+| Optional result metadata | `refNo`, `submitDate` and `submitTime` are not guaranteed by TAS; FE must not rely on them. |
+| Conditional-required test coverage | Optional: add a real-YAML test for the overseas area-code trigger and a real-YAML test where both conditional fields are submitted validly. |
