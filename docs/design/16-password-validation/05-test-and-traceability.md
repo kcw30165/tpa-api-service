@@ -34,6 +34,10 @@ T04a nested object order and escaped-string equivalence. T04b decimal 1 versus 1
 - Exercise real route matching, exception handlers and controller argument resolution, not a mocked direct controller call.
 - Exercise real Redis scripts against the supported deployment Redis version, with concurrent issuance/consume/revocation and fault paths.
 - Assert mutation dispatch count is zero for every pre-dispatch rejection and at most one for concurrent use of the same grant.
+- Exercise the generalized session-lifecycle CAS mechanism end to end: an expired ACTIVE session is transitioned to EXPIRED by loadAndTouch rather than rejected as ineligible.
+- Read back the actual Redis key TTL (not just the stored idleExpiresAt/status fields) after a successful touch, and confirm it reflects the new sliding idle-expiry window.
+- Read back the actual Redis key TTL after a terminal transition (logout, revoke, discovered expiry), and confirm it equals the configured fixed terminal-retention duration, not the sliding TTL that was in effect beforehand.
+- Exercise both stale-write races (a loadAndTouch in flight racing a concurrent terminal transition, and a loadAndTouch in flight racing a concurrent grant consumption) against the real generalized CAS mechanism and confirm neither can overwrite the newer state.
 
 ## Evidence and gates
 Per subtask: fail-first test evidence, implementation, compile, test-compile, targeted new/changed tests plus existing tests for every changed class. Stop and repair cumulative compile failures. Preserve exact command, exit code and build-report manifest; do not duplicate full successful Maven output into evidence text.

@@ -15,6 +15,13 @@ Exit: reviewed source map, contract fixtures and exact commit anchor. Documentat
 3. Add TRPPwdValidation DTOs/adapter with NON_ACCOUNT/no accountEnv/NON_RETRYABLE; recognized outcomes and defensive response parsing.
 Exit: targeted tests and transport no-retry proof; no public endpoint exposed without security.
 
+## M1.5: Session-lifecycle CAS generalization (prerequisite subtask, blocking M2, own review gate)
+- Generalize AuthenticatedSessionConcurrencyService and the CAS Redis script to accept a caller-supplied eligibility predicate, replacing the hardcoded isUsable gate, and a caller-supplied explicit TTL policy, replacing the Lua script's preserve-current-TTL default, per the corrected Section 6 of 01-solution-design.md.
+- Migrate AuthenticatedSessionLifecycleService loadAndTouch and persistTerminal onto the generalized mechanism, removing their separate blind touch-based write path for authenticated sessions; initial session creation may keep its existing store path.
+- Add the eight deterministic tests from Section 6 (expired-ACTIVE transition, actual Redis TTL extension on touch, actual Redis TTL shortening on terminal transition, terminal-state idempotency, and both stale-write races), plus a full regression pass of every existing consumer of the current CAS method (for example CSRF rotation) confirming no behavior change for that caller.
+- This subtask changes existing, already-shipped session-lifecycle code and is explicitly NOT password-validation-specific. It requires its own dedicated review handoff and an independent APPROVED verdict before M2's grant-issuance/consumption work begins, separate from and in addition to the overall password-validation design-package gate.
+Exit: generalized CAS mechanism implemented and tested in isolation from password-validation; all eight tests plus the full existing session-lifecycle regression suite pass; independent review approval obtained for this subtask specifically, with its own milestone identifier and commit recorded.
+
 ## M2: Atomic authorization lifecycle and throttling
 1. Implement approved username-wide limiter using existing rate-limit capability where compatible; do not assume its existing enum covers this feature.
 2. Implement grant issue/replace and ownership-aware compare-and-consume, expiry and session-usability checks.
