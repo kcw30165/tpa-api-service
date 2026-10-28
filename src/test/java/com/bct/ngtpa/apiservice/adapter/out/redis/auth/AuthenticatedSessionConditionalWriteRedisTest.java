@@ -10,19 +10,20 @@ import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationConfigCacheEntry;
 import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FundComparisonOptionsCacheEntry;
+import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.PasswordCheckResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.idempotency.JacksonTransientJsonCodec;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.csrf.AuthenticatedSessionCsrfRefreshService;
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService;
+import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationGrantService;
+import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationThrottleService;
 import com.bct.ngtpa.apiservice.application.usecase.personalinformation.PersonalInformationConfigCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
-import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationThrottleService;
-import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationGrantService;
-import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.PasswordCheckResult;
-import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
-import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
+import com.bct.ngtpa.apiservice.infrastructure.security.passwordvalidation.HmacPasswordValidationBucketIdDeriver;
 import com.bct.ngtpa.apiservice.infrastructure.security.session.AesGcmAuthenticatedSessionProtector;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.ServerSocket;
@@ -853,37 +854,57 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     }
   }
 
-  @Test
-  void guardedWriteRejectsDeadlineCrossedAfterLoadWithoutChangingValueOrTtl() {
-    var original = seed(copyTimes(session(), clock.instant().plusMillis(250),
-        clock.instant().plusSeconds(300)));
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void guardedWriteRejectsDeadlineCrossedAfterLoadWithoutChangingValueOrTtl(boolean absolute) {
+    Instant usableUntil = clock.instant().plusMillis(250);
+    seed(
+        copyTimes(
+            session(),
+            absolute ? clock.instant().plusSeconds(300) : usableUntil,
+            absolute ? usableUntil : clock.instant().plusSeconds(300)));
     String before = redis.opsForValue().get(key).block();
     long deadline = expiry();
-    beforeWrite.set(() -> Mono.fromRunnable(() -> awaitDeadline(original.idleExpiresAt()))
-        .subscribeOn(Schedulers.boundedElastic()));
-    var result = concurrency.updateIfUsableGuarded(ID,
-        (s, now) -> true, (s, now) -> s.withFeatureState("grant", "never-written"), "test").block();
-    assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE);
+    beforeWrite.set(
+        () ->
+            Mono.fromRunnable(() -> awaitDeadline(usableUntil))
+                .subscribeOn(Schedulers.boundedElastic()));
+    var result =
+        concurrency
+            .updateIfUsableGuarded(
+                ID,
+                (s, now) -> true,
+                (s, now) -> s.withFeatureState("grant", "never-written"),
+                "test")
+            .block();
+    assertThat(result.outcome())
+        .isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE);
     assertThat(result.session()).isNull();
     assertThat(redis.opsForValue().get(key).block()).isEqualTo(before);
     assertThat(expiry()).isEqualTo(deadline);
     assertThat(commands).hasSize(1);
-    assertThat(commands.getFirst().usableUntil()).isEqualTo(original.idleExpiresAt());
+    assertThat(commands.getFirst().usableUntil()).isEqualTo(usableUntil);
   }
 
   @Test
   void guardedRetryUsesNewDeadlineAfterConcurrentTouch() {
     var original = seed();
     beforeWrite.set(() -> touch());
-    var result = concurrency.updateIfUsableGuarded(ID, (s, now) -> true,
-        (s, now) -> s.withFeatureState("grant", "new"), "test").block();
+    var result =
+        concurrency
+            .updateIfUsableGuarded(
+                ID, (s, now) -> true, (s, now) -> s.withFeatureState("grant", "new"), "test")
+            .block();
     assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.APPLIED);
     var guarded = commands.stream().filter(c -> c.usableUntil() != null).toList();
     assertThat(guarded).hasSize(2);
     assertThat(guarded.getFirst().usableUntil()).isEqualTo(original.idleExpiresAt());
-    assertThat(guarded.getLast().usableUntil()).isEqualTo(stored().idleExpiresAt())
+    assertThat(guarded.getLast().usableUntil())
+        .isEqualTo(stored().idleExpiresAt())
         .isAfter(original.idleExpiresAt());
-    assertThat(stored().featureState()).containsEntry("grant", "new").containsEntry("unrelated", "keep");
+    assertThat(stored().featureState())
+        .containsEntry("grant", "new")
+        .containsEntry("unrelated", "keep");
     assertThat(expiry()).isEqualTo(stored().idleExpiresAt().toEpochMilli());
   }
 
@@ -891,12 +912,83 @@ class AuthenticatedSessionConditionalWriteRedisTest {
   void guardedTerminalRaceCannotRestoreGrant() {
     seed();
     beforeWrite.set(() -> terminal(AuthenticatedSessionStatus.REVOKED));
-    var result = concurrency.updateIfUsableGuarded(ID, (s, now) -> true,
-        (s, now) -> s.withFeatureState("grant", "never-written"), "test").block();
-    assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE);
+    var result =
+        concurrency
+            .updateIfUsableGuarded(
+                ID,
+                (s, now) -> true,
+                (s, now) -> s.withFeatureState("grant", "never-written"),
+                "test")
+            .block();
+    assertThat(result.outcome())
+        .isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE);
     assertThat(stored().status()).isEqualTo(AuthenticatedSessionStatus.REVOKED);
     assertThat(stored().featureState()).doesNotContainKey("grant");
     assertThat(outcomes).contains(AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH);
+  }
+
+  @Test
+  void lifecycleDeadlineInvariantIsAnObservationNotAGrantAuthorizationGuard() {
+    var account =
+        new AuthenticatedSessionAccount(
+            ACCOUNT, "TEST", "test-policy", "test-cert", "TEST", null, null, null);
+    var created =
+        lifecycle()
+            .create(
+                new CreateAuthenticatedSessionCommand(
+                    session().actorContext(), List.of(account), "synthetic-hash", "test", ID))
+            .block();
+    assertThat(created.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE);
+    // Creation uses the existing relative TTL; allow the observed store latency.
+    assertThat(expiry())
+        .isBetween(
+            stored().idleExpiresAt().toEpochMilli(),
+            stored().idleExpiresAt().toEpochMilli() + 1000);
+    touch().block();
+    assertThat(expiry()).isEqualTo(stored().idleExpiresAt().toEpochMilli());
+    terminal(AuthenticatedSessionStatus.REVOKED).block();
+    assertThat(expiry()).isEqualTo(commands.getLast().expiryDeadline().toEpochMilli());
+    assertThat(expiry()).isNotEqualTo(stored().idleExpiresAt().toEpochMilli());
+    assertThat(stored().isUsable(clock.instant())).isFalse();
+  }
+
+  @Test
+  void concurrentIssueAndConsumeDoNotLoseUnrelatedStateOrRestoreOldToken() {
+    seedGrants();
+    var old = issueGrant(ACCOUNT);
+    beforeWrite.set(() -> grants().consume(ID, ACCOUNT, PURPOSE, old.token(), "consume"));
+    var replacement = issueGrant(ACCOUNT);
+    assertThat(replacement.status()).isEqualTo(PasswordValidationGrantService.Status.ISSUED);
+    assertThat(grants().consume(ID, ACCOUNT, PURPOSE, old.token(), "test").block().status())
+        .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(grants().consume(ID, ACCOUNT, PURPOSE, replacement.token(), "test").block().status())
+        .isEqualTo(PasswordValidationGrantService.Status.CONSUMED);
+    assertThat(stored().featureState()).containsEntry("unrelated", "keep");
+  }
+
+  @Test
+  void missingAccountMalformedBindingAndFutureGrantVersionNeverAuthorizeOrMutate() {
+    seedGrants();
+    var unowned = new AuthenticatedAccountRef("acc_012345678901234567890123");
+    assertThat(issueGrant(unowned).status())
+        .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    var issued = issueGrant(ACCOUNT);
+    assertThat(grants().consume(ID, unowned, PURPOSE, issued.token(), "test").block().status())
+        .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    for (String encoded :
+        List.of("invalid", stored().featureState().get(grantKey(ACCOUNT)).replace("|1|", "|2|"))) {
+      concurrency
+          .updateIfUsable(ID, s -> s.withFeatureState(grantKey(ACCOUNT), encoded), "test")
+          .block();
+      commands.clear();
+      assertThat(grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block().status())
+          .isEqualTo(
+              encoded.equals("invalid")
+                  ? PasswordValidationGrantService.Status.UNAVAILABLE
+                  : PasswordValidationGrantService.Status.REJECTED);
+      assertThat(commands).isEmpty();
+      assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo(encoded);
+    }
   }
 
   @Test
@@ -913,7 +1005,8 @@ class AuthenticatedSessionConditionalWriteRedisTest {
         .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
     assertThat(grants().consume(ID, ACCOUNT, PURPOSE, second.token(), "test").block().status())
         .isEqualTo(PasswordValidationGrantService.Status.CONSUMED);
-    assertThat(stored().featureState()).containsEntry("unrelated", "keep")
+    assertThat(stored().featureState())
+        .containsEntry("unrelated", "keep")
         .containsEntry("password-validation:" + ACCOUNT.value() + ":FUTURE_UNSUPPORTED", "sentinel")
         .containsKey(grantKey(OTHER_ACCOUNT));
     assertThat(expiry()).isEqualTo(deadline);
@@ -943,15 +1036,25 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     commands.clear();
     assertThat(grants().consume(ID, ACCOUNT, PURPOSE, "x".repeat(43), "test").block().status())
         .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
-    assertThat(grants().consume(ID, OTHER_ACCOUNT, PURPOSE, issued.token(), "test").block().status())
+    assertThat(
+            grants().consume(ID, OTHER_ACCOUNT, PURPOSE, issued.token(), "test").block().status())
         .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
     assertThat(grants().consume(ID, ACCOUNT, null, issued.token(), "test").block().status())
         .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
     var missing = new AuthenticatedSessionId("sid_zyxwvutsrqponmlkjihgfedc");
     assertThat(grants().consume(missing, ACCOUNT, PURPOSE, issued.token(), "test").block().status())
         .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
-    assertThat(grants().issue(ID, ACCOUNT, PURPOSE, new PayloadDigest(2, "c".repeat(64)),
-        PasswordCheckResult.CORRECT, "test").block().status())
+    assertThat(
+            grants()
+                .issue(
+                    ID,
+                    ACCOUNT,
+                    PURPOSE,
+                    new PayloadDigest(2, "c".repeat(64)),
+                    PasswordCheckResult.CORRECT,
+                    "test")
+                .block()
+                .status())
         .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
     assertThat(commands).isEmpty();
     assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo(before);
@@ -962,16 +1065,28 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     seedGrants();
     var issued = issueGrant(ACCOUNT);
     AtomicInteger dispatches = new AtomicInteger();
-    var results = Flux.range(0, 12).flatMap(i -> grants()
-        .consume(ID, ACCOUNT, PURPOSE, issued.token(), "parallel").doOnNext(result -> {
-          if (result.status() == PasswordValidationGrantService.Status.CONSUMED) {
-            assertThat(result.binding()).isEqualTo(BINDING);
-            dispatches.incrementAndGet();
-          } else {
-            assertThat(result.binding()).isNull();
-          }
-        }), 12).collectList().block();
-    assertThat(results.stream().filter(r -> r.status() == PasswordValidationGrantService.Status.CONSUMED))
+    var results =
+        Flux.range(0, 12)
+            .flatMap(
+                i ->
+                    grants()
+                        .consume(ID, ACCOUNT, PURPOSE, issued.token(), "parallel")
+                        .doOnNext(
+                            result -> {
+                              if (result.status()
+                                  == PasswordValidationGrantService.Status.CONSUMED) {
+                                assertThat(result.binding()).isEqualTo(BINDING);
+                                dispatches.incrementAndGet();
+                              } else {
+                                assertThat(result.binding()).isNull();
+                              }
+                            }),
+                12)
+            .collectList()
+            .block();
+    assertThat(
+            results.stream()
+                .filter(r -> r.status() == PasswordValidationGrantService.Status.CONSUMED))
         .hasSize(1);
     assertThat(dispatches).hasValue(1);
     assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo("consumed");
@@ -987,21 +1102,28 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     seed(extended);
     clock.now = issuedAt.plusMillis(elapsedMillis);
     var result = grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block();
-    assertThat(result.status()).isEqualTo(elapsedMillis < 300000 ?
-        PasswordValidationGrantService.Status.CONSUMED : PasswordValidationGrantService.Status.REJECTED);
+    assertThat(result.status())
+        .isEqualTo(
+            elapsedMillis < 300000
+                ? PasswordValidationGrantService.Status.CONSUMED
+                : PasswordValidationGrantService.Status.REJECTED);
     assertThat(stored().featureState()).containsEntry("unrelated", "keep");
   }
 
   @ParameterizedTest
-  @EnumSource(value = AuthenticatedSessionStatus.class, names = {"LOGGED_OUT", "REVOKED", "EXPIRED"})
-  void lifecycleTerminalStatePreventsGrantIssueOrConsume(AuthenticatedSessionStatus terminalStatus) {
+  @EnumSource(
+      value = AuthenticatedSessionStatus.class,
+      names = {"LOGGED_OUT", "REVOKED", "EXPIRED"})
+  void lifecycleTerminalStatePreventsGrantIssueOrConsume(
+      AuthenticatedSessionStatus terminalStatus) {
     seedGrants();
     var issued = issueGrant(ACCOUNT);
     if (terminalStatus == AuthenticatedSessionStatus.EXPIRED) {
       clock.now = stored().idleExpiresAt();
     }
     terminal(terminalStatus).block();
-    assertThat(issueGrant(ACCOUNT).status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+    assertThat(issueGrant(ACCOUNT).status())
+        .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
     assertThat(grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block().status())
         .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
     assertThat(stored().status()).isEqualTo(terminalStatus);
@@ -1015,7 +1137,8 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     assertThat(touch().block().status()).isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE);
     assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo("consumed");
     beforeWrite.set(() -> touch());
-    assertThat(issueGrant(ACCOUNT).status()).isEqualTo(PasswordValidationGrantService.Status.ISSUED);
+    assertThat(issueGrant(ACCOUNT).status())
+        .isEqualTo(PasswordValidationGrantService.Status.ISSUED);
     assertThat(stored().featureState()).containsEntry("unrelated", "keep");
   }
 
@@ -1023,15 +1146,20 @@ class AuthenticatedSessionConditionalWriteRedisTest {
   void terminalRaceNeverRestoresGrantAndDeadlineGuardPreventsDelayedIssue() {
     seedGrants();
     beforeWrite.set(() -> terminal(AuthenticatedSessionStatus.REVOKED));
-    assertThat(issueGrant(ACCOUNT).status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+    assertThat(issueGrant(ACCOUNT).status())
+        .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
     assertThat(stored().status()).isEqualTo(AuthenticatedSessionStatus.REVOKED);
     assertThat(stored().featureState()).doesNotContainKey(grantKey(ACCOUNT));
     seedGrants();
-    var shortSession = copyTimes(stored(), clock.instant().plusMillis(200), clock.instant().plusSeconds(300));
+    var shortSession =
+        copyTimes(stored(), clock.instant().plusMillis(200), clock.instant().plusSeconds(300));
     seed(shortSession);
-    beforeWrite.set(() -> Mono.fromRunnable(() -> awaitDeadline(shortSession.idleExpiresAt()))
-        .subscribeOn(Schedulers.boundedElastic()));
-    assertThat(issueGrant(ACCOUNT).status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+    beforeWrite.set(
+        () ->
+            Mono.fromRunnable(() -> awaitDeadline(shortSession.idleExpiresAt()))
+                .subscribeOn(Schedulers.boundedElastic()));
+    assertThat(issueGrant(ACCOUNT).status())
+        .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
     assertThat(stored().featureState()).doesNotContainKey(grantKey(ACCOUNT));
   }
 
@@ -1063,26 +1191,46 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     var issued = issueGrant(ACCOUNT);
     String before = stored().featureState().get(grantKey(ACCOUNT));
     AtomicInteger conflicts = new AtomicInteger();
-    AuthenticatedSessionCasUpdatePort contend = command -> Flux.range(0, 12)
-        .flatMap(i -> touch(), 12).collectList().flatMap(touches -> {
-          assertThat(touches).allSatisfy(t -> assertThat(t.status())
-              .isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE));
-          return adapter.updateIfCurrent(command);
-        }).doOnNext(r -> {
-          assertThat(r.outcome()).isEqualTo(AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH);
-          conflicts.incrementAndGet();
-        });
-    var writer = new AuthenticatedSessionConcurrencyService(sessions, protector, contend,
-        () -> new SessionRevision(String.format("%032x", revisions.incrementAndGet())), clock);
+    AuthenticatedSessionCasUpdatePort contend =
+        command ->
+            Flux.range(0, 12)
+                .flatMap(i -> touch(), 12)
+                .collectList()
+                .flatMap(
+                    touches -> {
+                      assertThat(touches)
+                          .allSatisfy(
+                              t ->
+                                  assertThat(t.status())
+                                      .isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE));
+                      return adapter.updateIfCurrent(command);
+                    })
+                .doOnNext(
+                    r -> {
+                      assertThat(r.outcome())
+                          .isEqualTo(AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH);
+                      conflicts.incrementAndGet();
+                    });
+    var writer =
+        new AuthenticatedSessionConcurrencyService(
+            sessions,
+            protector,
+            contend,
+            () -> new SessionRevision(String.format("%032x", revisions.incrementAndGet())),
+            clock);
     var grants = new PasswordValidationGrantService(writer);
     AtomicInteger dispatches = new AtomicInteger();
     if (consume) {
       var result = grants.consume(ID, ACCOUNT, PURPOSE, issued.token(), "contention").block();
-      if (result.status() == PasswordValidationGrantService.Status.CONSUMED) dispatches.incrementAndGet();
+      if (result.status() == PasswordValidationGrantService.Status.CONSUMED)
+        dispatches.incrementAndGet();
       assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
       assertThat(result.binding()).isNull();
     } else {
-      var result = grants.issue(ID, ACCOUNT, PURPOSE, BINDING, PasswordCheckResult.CORRECT, "contention").block();
+      var result =
+          grants
+              .issue(ID, ACCOUNT, PURPOSE, BINDING, PasswordCheckResult.CORRECT, "contention")
+              .block();
       assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
       assertThat(result.token()).isNull();
     }
@@ -1092,9 +1240,12 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     assertThat(stored().featureState()).containsEntry("unrelated", "keep");
   }
 
-  private static final AuthenticatedAccountRef ACCOUNT = new AuthenticatedAccountRef("acc_abcdefghijklmnopqrstuvwx");
-  private static final AuthenticatedAccountRef OTHER_ACCOUNT = new AuthenticatedAccountRef("acc_zyxwvutsrqponmlkjihgfedc");
-  private static final PasswordValidationPurpose PURPOSE = PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE;
+  private static final AuthenticatedAccountRef ACCOUNT =
+      new AuthenticatedAccountRef("acc_abcdefghijklmnopqrstuvwx");
+  private static final AuthenticatedAccountRef OTHER_ACCOUNT =
+      new AuthenticatedAccountRef("acc_zyxwvutsrqponmlkjihgfedc");
+  private static final PasswordValidationPurpose PURPOSE =
+      PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE;
   private static final PayloadDigest BINDING = new PayloadDigest(1, "c".repeat(64));
 
   private String grantKey(AuthenticatedAccountRef account) {
@@ -1106,39 +1257,73 @@ class AuthenticatedSessionConditionalWriteRedisTest {
   }
 
   private PasswordValidationGrantService.IssueResult issueGrant(AuthenticatedAccountRef account) {
-    return grants().issue(ID, account, PURPOSE, BINDING, PasswordCheckResult.CORRECT, "test").block();
+    return grants()
+        .issue(ID, account, PURPOSE, BINDING, PasswordCheckResult.CORRECT, "test")
+        .block();
   }
 
   private void seedGrants() {
     var original = session();
-    seed(new AuthenticatedSession(ID, original.actorContext(),
-        List.of(new AuthenticatedSessionAccount(ACCOUNT, "TEST", "test-policy", "test-cert", "TEST", null, null, null),
-            new AuthenticatedSessionAccount(OTHER_ACCOUNT, "TEST", "other-policy", "other-cert", "TEST", null, null, null)),
-        original.status(), original.csrfTokenHash(), original.createdAt(), original.lastAccessedAt(),
-        original.idleExpiresAt(), original.absoluteExpiresAt(), original.revision(), null,
-        Map.of("unrelated", "keep", "password-validation:" + ACCOUNT.value() + ":FUTURE_UNSUPPORTED", "sentinel")));
+    seed(
+        new AuthenticatedSession(
+            ID,
+            original.actorContext(),
+            List.of(
+                new AuthenticatedSessionAccount(
+                    ACCOUNT, "TEST", "test-policy", "test-cert", "TEST", null, null, null),
+                new AuthenticatedSessionAccount(
+                    OTHER_ACCOUNT, "TEST", "other-policy", "other-cert", "TEST", null, null, null)),
+            original.status(),
+            original.csrfTokenHash(),
+            original.createdAt(),
+            original.lastAccessedAt(),
+            original.idleExpiresAt(),
+            original.absoluteExpiresAt(),
+            original.revision(),
+            null,
+            Map.of(
+                "unrelated",
+                "keep",
+                "password-validation:" + ACCOUNT.value() + ":FUTURE_UNSUPPORTED",
+                "sentinel")));
   }
 
   @Test
   void usernameLimiterAdmitsTenAcrossParallelInvocationsAndIsolatesOtherUsers() {
-    var limiter = new PasswordValidationThrottleService(
-        new RedisRateLimitAdapter(redis, keys, clock), new byte[32], 10, 60);
+    var limiter =
+        new PasswordValidationThrottleService(
+            new RedisRateLimitAdapter(redis, keys, clock),
+            new HmacPasswordValidationBucketIdDeriver(new byte[32]),
+            10,
+            60);
     var actor = new ActorContext("synthetic-throttle-parallel", ActorUserRole.ROLE_USER_MBR);
-    var results = Flux.range(0, 20).flatMap(i -> limiter.check(actor, "parallel"), 20)
-        .collectList().block();
-    assertThat(results.stream().filter(r -> r.status() ==
-        PasswordValidationThrottleService.Status.ADMITTED)).hasSize(10);
-    assertThat(results.stream().filter(r -> r.status() ==
-        PasswordValidationThrottleService.Status.BLOCKED)).hasSize(10).allSatisfy(
-            r -> assertThat(r.retryAfterSeconds()).isBetween(1, 60));
-    assertThat(limiter.check(new ActorContext("synthetic-other-user", actor.actorUserRole()), "test")
-        .block().status()).isEqualTo(PasswordValidationThrottleService.Status.ADMITTED);
+    var results =
+        Flux.range(0, 20).flatMap(i -> limiter.check(actor, "parallel"), 20).collectList().block();
+    assertThat(
+            results.stream()
+                .filter(r -> r.status() == PasswordValidationThrottleService.Status.ADMITTED))
+        .hasSize(10);
+    assertThat(
+            results.stream()
+                .filter(r -> r.status() == PasswordValidationThrottleService.Status.BLOCKED))
+        .hasSize(10)
+        .allSatisfy(r -> assertThat(r.retryAfterSeconds()).isBetween(1, 60));
+    assertThat(
+            limiter
+                .check(new ActorContext("synthetic-other-user", actor.actorUserRole()), "test")
+                .block()
+                .status())
+        .isEqualTo(PasswordValidationThrottleService.Status.ADMITTED);
   }
 
   @Test
   void usernameLimiterResetsAtItsConfiguredWindow() {
-    var limiter = new PasswordValidationThrottleService(
-        new RedisRateLimitAdapter(redis, keys, clock), new byte[32], 1, 1);
+    var limiter =
+        new PasswordValidationThrottleService(
+            new RedisRateLimitAdapter(redis, keys, clock),
+            new HmacPasswordValidationBucketIdDeriver(new byte[32]),
+            1,
+            1);
     var actor = new ActorContext("synthetic-throttle-reset", ActorUserRole.ROLE_USER_MBR);
     assertThat(limiter.check(actor, "first").block().status())
         .isEqualTo(PasswordValidationThrottleService.Status.ADMITTED);
@@ -1152,13 +1337,18 @@ class AuthenticatedSessionConditionalWriteRedisTest {
   void guardedScriptRejectsInvalidDeadlinesBeforeAnyWrite() {
     seed();
     var script = new DefaultRedisScript<Long>();
-    script.setLocation(new ClassPathResource("redis/authenticated-session/update-if-current-guarded.lua"));
+    script.setLocation(
+        new ClassPathResource("redis/authenticated-session/update-if-current-guarded.lua"));
     script.setResultType(Long.class);
     String before = redis.opsForValue().get(key).block();
     long deadline = expiry();
     for (String invalid : List.of("", "-1", "1.5", "bad", "9007199254740992", "0123")) {
-      assertThat(redis.execute(script, List.of(key),
-          List.of(INITIAL.value(), "never-written", invalid)).next().block()).isEqualTo(-4L);
+      assertThat(
+              redis
+                  .execute(script, List.of(key), List.of(INITIAL.value(), "never-written", invalid))
+                  .next()
+                  .block())
+          .isEqualTo(-4L);
       assertThat(redis.opsForValue().get(key).block()).isEqualTo(before);
       assertThat(expiry()).isEqualTo(deadline);
     }
@@ -1167,12 +1357,24 @@ class AuthenticatedSessionConditionalWriteRedisTest {
   @Test
   void guardedNoOpAndUnusableSessionNeverWrite() {
     seed();
-    assertThat(concurrency.updateIfUsableGuarded(ID, (s, now) -> false,
-        (s, now) -> { throw new AssertionError("ineligible mutation"); }, "test").block().outcome())
+    assertThat(
+            concurrency
+                .updateIfUsableGuarded(
+                    ID,
+                    (s, now) -> false,
+                    (s, now) -> {
+                      throw new AssertionError("ineligible mutation");
+                    },
+                    "test")
+                .block()
+                .outcome())
         .isEqualTo(AuthenticatedSessionConcurrencyOutcome.UNCHANGED);
     seed(expiredSession(false));
-    assertThat(concurrency.updateIfUsableGuarded(ID, (s, now) -> true,
-        (s, now) -> s, "test").block().outcome())
+    assertThat(
+            concurrency
+                .updateIfUsableGuarded(ID, (s, now) -> true, (s, now) -> s, "test")
+                .block()
+                .outcome())
         .isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE);
     assertThat(commands).isEmpty();
   }

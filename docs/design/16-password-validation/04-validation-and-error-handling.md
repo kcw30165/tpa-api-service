@@ -35,7 +35,9 @@ This is independent of the TAS lock count (`fail-count`) by construction, since 
 
 Source references: `RedisRateLimitAdapter.java`, `RateLimitCommand.java`, `RateLimitResult.java`, `RateLimitBucket.java`, `RedisAdapterConfig.java` (confirms `RateLimitPort` is already wired as a Spring bean: `redisRateLimitAdapter(...)`).
 
-M2 composition: `PasswordValidationThrottleService` derives HMAC-SHA256 of the
+M2 composition: `PasswordValidationThrottleService` uses
+`PasswordValidationBucketIdPort`, implemented by infrastructure
+`HmacPasswordValidationBucketIdDeriver`, to derive HMAC-SHA256 of the
 exact server-authenticated actor username with domain
 `ngtpa:password-validation:username:v1:`. Session/account/purpose/request ID do
 not enter this digest. Only the lowercase hex digest is passed as bucketId;

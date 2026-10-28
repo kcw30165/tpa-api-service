@@ -67,11 +67,18 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
             : List.of(
                 command.expectedRevision().value(),
                 serializedReplacementWithRevision(command),
-                Long.toString((command.usableUntil() == null
-                    ? command.expiryDeadline() : command.usableUntil()).toEpochMilli()));
+                Long.toString(
+                    (command.usableUntil() == null
+                            ? command.expiryDeadline()
+                            : command.usableUntil())
+                        .toEpochMilli()));
     return redis
-        .execute(command.usableUntil() != null ? UPDATE_GUARDED
-            : preserveTtl ? UPDATE_IF_CURRENT : UPDATE_UNTIL, List.of(key), arguments)
+        .execute(
+            command.usableUntil() != null
+                ? UPDATE_GUARDED
+                : preserveTtl ? UPDATE_IF_CURRENT : UPDATE_UNTIL,
+            List.of(key),
+            arguments)
         .next()
         .map(code -> AuthenticatedSessionCasUpdateResult.of(mapCode(code)))
         .defaultIfEmpty(

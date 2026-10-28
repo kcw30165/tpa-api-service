@@ -97,7 +97,7 @@ Grant consumption, TTL, and concurrency (unchanged from prior pass).** Consumpti
 
 **Correction to "never thrown" claim.** Not every failure path inside `attemptOnce` is converted to a typed result: only the revision-conflict-exhaustion path is explicitly caught via `onErrorResume`. Failures from `sessions.load(...)`, `protector.unprotect(...)`, or the mutator itself propagate as raw `Mono` errors to the caller. The password-validation use case must explicitly catch and map these to `SYSTEM_ERROR` itself, rather than assuming `AuthenticatedSessionConcurrencyService` fully contains every failure mode.
 
-### M1.5 implementation map (pending independent approval)
+### M1.5 implementation map (approved at the D16 anchor)
 
 `AuthenticatedSessionConcurrencyService.updateIfEligible` accepts an explicit
 eligibility predicate, a mutation receiving the freshly sampled attempt time,
@@ -182,9 +182,15 @@ The sibling checks existence, JSON/revision and positive PTTL, validates the epo
 millisecond deadline, then rejects Redis TIME >= usableUntil before PSETEX.
 Elapsed usability has a distinct CAS outcome mapped to SESSION_NOT_USABLE.
 Revision mismatches alone retry from a fresh snapshot/deadline. No script
-inspects encrypted feature state. The PTTL/deadline invariant after creation,
-touch and terminal transitions is tested as an invariant, not an authorization
-assumption: the guarded writer independently enforces the deadline.
+inspects encrypted feature state. The lifecycle PTTL/deadline relationship is
+tested as an observation, not an authorization assumption: initial creation
+retains its existing relative TTL (store latency can offset record idle expiry);
+touch sets the exact record idle deadline; terminal retention uses the command's
+fixed retention deadline, deliberately NOT the record's authentication deadline.
+Terminal records retain their original authentication timestamps but are unusable
+by status. Thus a universal exact PTTL/authentication-deadline invariant would
+be false under the approved M1.5 contracts. The guarded writer independently
+enforces authentication usability rather than relying on any such invariant.
 
 Grant issue and consume return UNAVAILABLE on REVISION_CONFLICT_EXHAUSTED,
 SYSTEM_FAILURE, missing/unusable session or uncertain/lost acknowledgement.
@@ -204,6 +210,23 @@ point exactly. Password success is a required explicit input to the issue
 capability; all other downstream outcomes leave existing grants unchanged.
 Only PERSONAL_INFORMATION_UPDATE is accepted. Tests may seed an unsupported
 purpose entry to prove namespace isolation, but cannot issue that purpose.
+
+M2 implementation map: `PasswordValidationGrantService` uses the guarded shared
+writer and checks selected-account ownership on every reload. Its package-private
+`PasswordValidationGrant` codec stores exactly five pipe-separated values:
+token SHA-256, canonicalizer version, payload SHA-256, issuedAt epoch ms,
+expiresAt epoch ms. No raw token, username or operation payload is persisted.
+A consumed slot contains only the `consumed` tombstone. A missing/tombstoned,
+expired, wrong-token or unsupported-version grant is REJECTED without write;
+malformed stored grant state is UNAVAILABLE without write. Session load,
+decryption/protection and CAS errors, including empty publishers, fail closed.
+Grant expiry is sampled in the application on each attempt; the atomic Redis
+guard checks session authentication deadlines independently. Concurrent issue
+commits may replace each other, but cannot lose another scope or unrelated entry.
+No endpoint, body gate, Personal Information enforcement, public HTTP mapper or
+business dispatch is implemented in M2; those remain M3/M4. The 503 mapping above
+is the required contract for the later web boundary, not a claim that an M2 HTTP
+route already exists.
 
 ## 7. Security, logging and operations
 Disable request/response body logging for issuance and protected Personal Information PUT independently of configurable opt-in body logging. Exclude the token header from header logging and sanitize DTO/command toString. Do not log password, token, raw cust-id, session cookie, CSRF, payload, or payload digest. APIM request/response logging must be tested in encrypted and plain modes. Safe events contain request ID, purpose, outcome, HTTP status and bounded reason codes only.

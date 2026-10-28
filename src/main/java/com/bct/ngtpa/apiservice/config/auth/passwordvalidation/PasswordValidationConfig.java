@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationGrantService;
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationThrottleService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyService;
+import com.bct.ngtpa.apiservice.infrastructure.security.passwordvalidation.HmacPasswordValidationBucketIdDeriver;
 import java.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -28,12 +29,14 @@ public class PasswordValidationConfig {
       try {
         key = Base64.getDecoder().decode(secret);
       } catch (IllegalArgumentException exception) {
-        throw new IllegalArgumentException("Invalid password-validation limiter secret configuration");
+        throw new IllegalArgumentException(
+            "Invalid password-validation limiter secret configuration");
       }
       if (key.length < 32) {
         throw new IllegalArgumentException("Password-validation limiter secret is too short");
       }
     }
-    return new PasswordValidationThrottleService(limiter, key, limit, windowSeconds);
+    return new PasswordValidationThrottleService(
+        limiter, new HmacPasswordValidationBucketIdDeriver(key), limit, windowSeconds);
   }
 }

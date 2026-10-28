@@ -29,8 +29,14 @@ public record AuthenticatedSessionCasUpdateCommand(
       SessionRevision replacementRevision,
       String correlationId,
       Instant expiryDeadline) {
-    this(authenticatedSessionId, expectedRevision, replacementProtectedSession,
-        replacementRevision, correlationId, expiryDeadline, null);
+    this(
+        authenticatedSessionId,
+        expectedRevision,
+        replacementProtectedSession,
+        replacementRevision,
+        correlationId,
+        expiryDeadline,
+        null);
   }
 
   /** Existing consumers preserve the current Redis TTL entirely within the CAS script. */

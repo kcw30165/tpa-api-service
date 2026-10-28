@@ -47,12 +47,20 @@ class AuthenticatedSessionCasUpdateCommandTest {
   @Test
   void guardIsExplicitAndCannotChangeExpiryPolicy() {
     Instant deadline = Instant.parse("2026-10-28T00:00:00Z");
-    assertThat(new AuthenticatedSessionCasUpdateCommand(
-        ID, EXPECTED, protectedSession(), REPLACEMENT, null).usableUntil()).isNull();
-    assertThat(new AuthenticatedSessionCasUpdateCommand(
-        ID, EXPECTED, protectedSession(), REPLACEMENT, null, deadline).usableUntil()).isNull();
-    assertThatThrownBy(() -> new AuthenticatedSessionCasUpdateCommand(
-        ID, EXPECTED, protectedSession(), REPLACEMENT, null, deadline, deadline))
+    assertThat(
+            new AuthenticatedSessionCasUpdateCommand(
+                    ID, EXPECTED, protectedSession(), REPLACEMENT, null)
+                .usableUntil())
+        .isNull();
+    assertThat(
+            new AuthenticatedSessionCasUpdateCommand(
+                    ID, EXPECTED, protectedSession(), REPLACEMENT, null, deadline)
+                .usableUntil())
+        .isNull();
+    assertThatThrownBy(
+            () ->
+                new AuthenticatedSessionCasUpdateCommand(
+                    ID, EXPECTED, protectedSession(), REPLACEMENT, null, deadline, deadline))
         .isInstanceOf(IllegalArgumentException.class);
   }
 

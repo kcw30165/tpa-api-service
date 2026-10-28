@@ -18,8 +18,15 @@ record PasswordValidationGrant(
   }
 
   String encode() {
-    return tokenDigest + "|" + binding.version() + "|" + binding.sha256() + "|"
-        + issuedAt.toEpochMilli() + "|" + expiresAt.toEpochMilli();
+    return tokenDigest
+        + "|"
+        + binding.version()
+        + "|"
+        + binding.sha256()
+        + "|"
+        + issuedAt.toEpochMilli()
+        + "|"
+        + expiresAt.toEpochMilli();
   }
 
   static PasswordValidationGrant decode(String encoded) {
@@ -27,9 +34,11 @@ record PasswordValidationGrant(
     try {
       String[] parts = encoded.split("\\|", -1);
       if (parts.length != 5) return null;
-      return new PasswordValidationGrant(parts[0],
+      return new PasswordValidationGrant(
+          parts[0],
           new PayloadDigest(Integer.parseInt(parts[1]), parts[2]),
-          Instant.ofEpochMilli(Long.parseLong(parts[3])), Instant.ofEpochMilli(Long.parseLong(parts[4])));
+          Instant.ofEpochMilli(Long.parseLong(parts[3])),
+          Instant.ofEpochMilli(Long.parseLong(parts[4])));
     } catch (IllegalArgumentException | java.time.DateTimeException exception) {
       return null;
     }
