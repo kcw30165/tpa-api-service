@@ -1,6 +1,6 @@
 # 07 - APIM Error Classification Design
 
-## 1. Inventory table (46 rows)
+## 1. Inventory table (47 rows)
 
 ### Registration -- ApimRegistrationLookupAdapter (TRPSearchMember)
 
@@ -59,7 +59,7 @@
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
 - **Public HTTP status:** 503. `IdempotentStartForgotPasswordService.executeAcquired` (lines 58-67) re-converts a `SYSTEM_FAILED` result BACK into a thrown `IllegalStateException`. `ForgotPasswordController.startForgotPassword` (lines 93-116) has a reactive `.onErrorResume(exception -> Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.systemUnavailable())))` (lines 109-112), which catches this re-thrown exception. `ForgotPasswordHttpResponses.status()` resolves `ApiStatus.SYSTEM_ERROR` -> `HttpStatus.SERVICE_UNAVAILABLE` (lines 46-48, `ForgotPasswordHttpResponses.java:46-47`). Confirmed: this entirely bypasses `ApimExceptionMappings`/`CatchAllExceptionMapping`.
 - **Public ApiStatus:** `SYSTEM_ERROR`
-- **Public error code/type:** `"FORM"` / `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()` (resolved this pass: `ForgotPasswordStartWebMapper.systemUnavailable()`, lines 119-127, routes through the shared `failure(...)` helper, lines 129-140, which calls `ApiError.form(error.code(), null, sanitizeTargets(error), "BFF")` -- source is `"BFF"`, not `"DOWNSTREAM"`)
+- **Public error code/type:** `"FORM"` / `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()` (`ForgotPasswordStartWebMapper.systemUnavailable()`, lines 119-127, routes through the shared `failure(...)` helper, lines 129-140, which calls `ApiError.form(error.code(), null, sanitizeTargets(error), "BFF")` -- source is `"BFF"`, not `"DOWNSTREAM"`)
 - **Citation:** `ApimForgotPasswordUsernameLookupAdapter.java:77-91`; `ForgotPasswordStartProtectedOperation.java:86-109`; `IdempotentStartForgotPasswordService.java:58-67`; `ForgotPasswordController.java:93-116`; `ForgotPasswordHttpResponses.java:21-50`
 
 ### Forgot Password -- ApimForgotPasswordUsernameLookupAdapter (TRPChkCustId)
@@ -74,7 +74,7 @@
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
 - **Public HTTP status:** 503 via the same confirmed routing as the row above
 - **Public ApiStatus:** `SYSTEM_ERROR`
-- **Public error code/type:** `"FORM"` / `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()` (resolved this pass: `ForgotPasswordStartWebMapper.systemUnavailable()`, lines 119-127)
+- **Public error code/type:** `"FORM"` / `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()` (`ForgotPasswordStartWebMapper.systemUnavailable()`, lines 119-127)
 - **Citation:** `ApimForgotPasswordUsernameLookupAdapter.java:86-100`; `ForgotPasswordStartProtectedOperation.java:86-109`; `ForgotPasswordController.java:93-116`
 
 ### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
@@ -83,7 +83,7 @@
 - **Detection site:** `ApimForgotPasswordCompletionAdapter.java:64-68` (`toEnvelope`)
 - **Handling:** `throw new ApimException(BAD_GATEWAY, APIM_RESPONSE_INVALID, ...)` (lines 65-68). **Routing confirmed:** this propagates past `.map(this::toEnvelope)` (line 54) to the chain's `.onErrorResume(ApimCryptoFailureClassifier::isCryptoFailure, ...)` (lines 56-58, does NOT match -- `ApimException` is not a crypto failure) then `.onErrorMap(this::safeFailure)` (line 59, re-wraps as `ApimException(INTERNAL_SERVER_ERROR, ...)` only if not already an `ApimException` -- here it IS already an `ApimException`, so `safeFailure` returns it unchanged per line 75: `if (t instanceof ApimException) return t;`). Reaches `ForgotPasswordCompleteProtectedOperation.invoke`'s own `.onErrorResume(ignored -> blockUnknown(session, now))` (line 135), which swallows ANY throwable into `unknownOutcome()` -- a result value.
 - **Message policy:** N/A -- swallowed to a result value by `ForgotPasswordCompleteProtectedOperation`
-- **Ordered log lines:** `apim.contract.invalid` ERROR from the classifier (missing response matches malformed rule); no adapter-level named log line for this specific condition (unlike the username-lookup adapter, this adapter has no `.doOnError` of its own at this throw site). `event=forgot-password.details-otp.failed` does NOT apply here (that is the Details/OTP flow, not Completion). ApimForgotPasswordCompletionAdapter is confirmed `@LogExecution`-annotated (unfiltered grep, 10-class list). A failure here also produces `method.execution.error` ERROR with full stack trace (`ExecutionLoggingAspect.java:161-170`).
+- **Ordered log lines:** `apim.contract.invalid` ERROR from the classifier (missing response matches malformed rule); no adapter-level named log line for this specific condition (unlike the username-lookup adapter, this adapter has no `.doOnError` of its own at this throw site). `event=forgot-password.details-otp.failed` does NOT apply here (that is the Details/OTP flow, not Completion). ApimForgotPasswordCompletionAdapter is confirmed `@LogExecution`-annotated (unfiltered grep, 10-class list). Both ERROR lines fire in order: (1) apim.contract.invalid ERROR from DefaultApimExchangeExecutor's own onNext classification (missing response matches the malformed rule; this fires before the adapter's own throw, since toEnvelope()'s check runs inside .map(...) downstream of the executor's postEnvelope(...)); (2) method.execution.error ERROR with full stack trace (ExecutionLoggingAspect.java:161-170) -- the @LogExecution-annotated complete(...) method's own Mono emits onError for this condition (the swallow to unknownOutcome() happens one layer up, in ForgotPasswordCompleteProtectedOperation.invoke, not inside complete() itself). Pinned by ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest.missingEnvelopeLogsStartThenErrorWithStackTrace.
 - **Idempotency replay:** Yes -- Forgot Password complete
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
@@ -92,13 +92,27 @@
 - **Public error code/type:** n/a
 - **Citation:** `ApimForgotPasswordCompletionAdapter.java:62-72`; `ForgotPasswordCompleteProtectedOperation.java:127-135,191-197`; `ForgotPasswordController.java:274-296`
 
+#### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
+- **Condition:** present response, err-message empty, data empty
+- **Detection site:** ApimForgotPasswordCompletionAdapter.java (toEnvelope passes the envelope through unchanged since its own response is non-null; resultMapper.toResult(...) maps empty data to a TECHNICAL_FAILURE result rather than throwing)
+- **Handling:** returned as ForgotPasswordCompletionResult(status=TECHNICAL_FAILURE, ...); no exception is thrown
+- **Message policy:** N/A -- returned as a normal result value
+- **Ordered log lines:** apim.contract.invalid ERROR (DefaultApimExchangeExecutor's own onNext classification of the empty-data envelope); method.execution.start then method.execution.success INFO (the @LogExecution aspect, since complete(...) completes normally with a result value rather than an error). Pinned by ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest.complete_emptyButPresentResponse_returnsTechnicalFailureResult.
+- **Idempotency replay:** Yes -- Forgot Password complete
+- **Origin tag today:** none
+- **Proposed FailureOrigin (section 3):** FailureOrigin.DOWNSTREAM_CONTRACT
+- **Public HTTP status:** n/a -- its downstream handling by ForgotPasswordCompleteProtectedOperation was not traced this pass
+- **Public ApiStatus:** n/a
+- **Public error code/type:** n/a
+- **Citation:** ApimForgotPasswordCompletionAdapter.java:52-60; ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest.complete_emptyButPresentResponse_returnsTechnicalFailureResult
+
 ### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
 
 - **Condition:** crypto failure (`ApimCryptoException`/`ApimResponseMappingException`)
 - **Detection site:** `ApimPayloadCryptoService.java:164` (`throw new ApimCryptoException("Failed to decrypt APIM response payload.", ex)`); classifier `ApimCryptoFailureClassifier.java:15-16`; confirmed sole caller `ApimForgotPasswordCompletionAdapter.java:57`
 - **Handling:** `.onErrorResume(ApimCryptoFailureClassifier::isCryptoFailure, e -> Mono.just(ForgotPasswordCompletionResult.unknownOutcome()))` (lines 56-58). This swallow happens INSIDE `complete()`'s own chain (line 52-59), one layer below `ForgotPasswordCompleteProtectedOperation.invoke`'s further `.onErrorResume(ignored -> blockUnknown(...))` (line 135) -- the adapter's own swallow fires first, so `blockUnknown`'s broader catch never sees this specific failure.
 - **Message policy:** N/A -- swallowed
-- **Ordered log lines:** `apim.exchange.failed` ERROR (genuine Mono onError signal from the executor's decryption step, fires via `doOnEach` before this adapter-level swallow -- confirmed structural guarantee). ApimForgotPasswordCompletionAdapter is confirmed `@LogExecution`-annotated (unfiltered grep, 10-class list). A failure here also produces `method.execution.error` ERROR with full stack trace (`ExecutionLoggingAspect.java:161-170`).
+- **Ordered log lines:** `apim.exchange.failed` ERROR (genuine Mono onError signal from the executor's decryption step, fires via `doOnEach` before this adapter-level swallow -- confirmed structural guarantee). ApimForgotPasswordCompletionAdapter is confirmed `@LogExecution`-annotated (unfiltered grep, 10-class list). The adapter swallows this failure into ForgotPasswordCompletionResult.unknownOutcome() (lines 56-58), so the call completes normally: the @LogExecution aspect logs method.execution.start and method.execution.success (INFO) and no method.execution.error (ExecutionLoggingAspect.java:103-104). Pinned by ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest.
 - **Idempotency replay:** Yes
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_INVALID_RESPONSE`
@@ -113,7 +127,7 @@
 - **Detection site:** `ApimForgotPasswordCompletionAdapter.java:74-81`
 - **Handling:** `.onErrorMap(this::safeFailure)` (line 59) -- but confirmed this is reached only when the upstream throwable is NOT already an `ApimException` (line 75's `if (t instanceof ApimException) return t;` guard means a facade-raised HTTP-error `ApimException` is returned UNCHANGED by `safeFailure`, not re-wrapped). Either way (unchanged facade `ApimException`, or a freshly-wrapped `ApimException(INTERNAL_SERVER_ERROR, ...)` for a non-`ApimException` cause), the result still reaches `ForgotPasswordCompleteProtectedOperation.invoke`'s `.onErrorResume(ignored -> blockUnknown(...))` (line 135) and is swallowed into `unknownOutcome()`.
 - **Message policy:** N/A -- ultimately swallowed by `ForgotPasswordCompleteProtectedOperation`
-- **Ordered log lines:** `apim.exchange.failed` ERROR (genuine Mono error via the facade's HTTP-error path). ApimForgotPasswordCompletionAdapter is confirmed `@LogExecution`-annotated (unfiltered grep, 10-class list). A failure here also produces `method.execution.error` ERROR with full stack trace (`ExecutionLoggingAspect.java:161-170`).
+- **Ordered log lines:** `apim.exchange.failed` ERROR (genuine Mono error via the facade's HTTP-error path). ApimForgotPasswordCompletionAdapter is confirmed `@LogExecution`-annotated (unfiltered grep, 10-class list). .onErrorMap(this::safeFailure) rethrows (does not swallow) an ApimException inside complete()'s own chain, so complete()'s Mono emits onError and the aspect logs method.execution.error ERROR with full stack trace (ExecutionLoggingAspect.java:161-170) -- confirmed by ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest.unexpectedFailureLogsStartThenErrorWithStackTrace (representative non-crypto, unexpected-failure scenario).
 - **Idempotency replay:** Yes
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_TRANSPORT`
@@ -128,7 +142,7 @@
 - **Detection site:** `ApimForgotPasswordCompletionAdapter.java:74-81`
 - **Handling:** Same `safeFailure` catch-all (`t instanceof ApimException ? t : new ApimException(INTERNAL_SERVER_ERROR, ...)`). Connection-level failures are re-raised unconverted by `ApimWebClientFacade.sendBusinessAttempt`'s `onErrorResume` once retries exhaust (`ApimWebClientFacade.java:219-225`), so `safeFailure` wraps them fresh as `ApimException(INTERNAL_SERVER_ERROR, SYSTEM_UNEXPECTED, ...)`. Same eventual swallow as the row above via `ForgotPasswordCompleteProtectedOperation.blockUnknown`.
 - **Message policy:** N/A -- ultimately swallowed
-- **Ordered log lines:** `apim.exchange.failed` ERROR (genuine Mono error)
+- **Ordered log lines:** `apim.exchange.failed` ERROR (genuine Mono error). Same safeFailure re-wrap as the row above (not swallowed inside complete()), so complete()'s own Mono emits onError and the aspect logs method.execution.error ERROR with full stack trace (ExecutionLoggingAspect.java:161-170) -- confirmed by ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest.unexpectedFailureLogsStartThenErrorWithStackTrace.
 - **Idempotency replay:** Yes
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_TRANSPORT`
@@ -747,7 +761,7 @@ Fail-first characterization update, replace every `DOWNSTREAM_SYSTEM` occurrence
 
 ## 8. Open questions
 
-**Resolved this pass (verified fact, not an open question):** every confirmed `new ApimException(` construction site (`ApimWebClientFacade.java:411`, `ApimForgotPasswordCompletionAdapter.java:65`, `ApimForgotPasswordUsernameLookupAdapter.java:87,96`, `ApimResponseValidator.java:37,57`, `ApimUpdatePersonalInformationAdapter.java:63,71`, `ApimReferenceDateRefreshAdapter.java:58,67`, `SharedApimTrpChkCustIdTransport.java:45,55,64`, `TrpRegMemberApimResultMapper.java:26`) uses `HttpStatus.BAD_GATEWAY` (502), with exactly one exception: `ApimForgotPasswordCompletionAdapter.java:76`'s `safeFailure` fallback, which constructs `HttpStatus.INTERNAL_SERVER_ERROR` (500). That specific 500 construction is confirmed (section 1, Forgot Password completion `safeFailure` rows) to never reach a public response -- `ForgotPasswordCompleteProtectedOperation.invoke`'s own `.onErrorResume` swallows it into `unknownOutcome()` before any `ExceptionMapping` dispatch occurs. Separately, `ApimWebClientFacade.handleErrorBody` (lines 391-416) always constructs `HttpStatus.BAD_GATEWAY` regardless of the actual upstream HTTP status; `mapUpstreamErrorCode` (lines 485-491) varies only the public error *code* (`APIM_SERVICE_UNAVAILABLE` for upstream 503, `APIM_TIMEOUT` for upstream 504, `APIM_UPSTREAM_FAILURE` otherwise), never the HTTP status. There is no row in this inventory where a public status other than 502 is actually returned for a generic `ApimException`, and no remaining decision: differentiating the public status by upstream 503/504 would itself be a public-behaviour change, which M2b's own rules place out of scope.
+Every confirmed `new ApimException(` construction site (`ApimWebClientFacade.java:411`, `ApimForgotPasswordCompletionAdapter.java:65`, `ApimForgotPasswordUsernameLookupAdapter.java:87,96`, `ApimResponseValidator.java:37,57`, `ApimUpdatePersonalInformationAdapter.java:63,71`, `ApimReferenceDateRefreshAdapter.java:58,67`, `SharedApimTrpChkCustIdTransport.java:45,55,64`, `TrpRegMemberApimResultMapper.java:26`) uses `HttpStatus.BAD_GATEWAY` (502), with exactly one exception: `ApimForgotPasswordCompletionAdapter.java:76`'s `safeFailure` fallback, which constructs `HttpStatus.INTERNAL_SERVER_ERROR` (500). That specific 500 construction is confirmed (section 1, Forgot Password completion `safeFailure` rows) to never reach a public response -- `ForgotPasswordCompleteProtectedOperation.invoke`'s own `.onErrorResume` swallows it into `unknownOutcome()` before any `ExceptionMapping` dispatch occurs. Separately, `ApimWebClientFacade.handleErrorBody` (lines 391-416) always constructs `HttpStatus.BAD_GATEWAY` regardless of the actual upstream HTTP status; `mapUpstreamErrorCode` (lines 485-491) varies only the public error *code* (`APIM_SERVICE_UNAVAILABLE` for upstream 503, `APIM_TIMEOUT` for upstream 504, `APIM_UPSTREAM_FAILURE` otherwise), never the HTTP status. There is no row in this inventory where a public status other than 502 is actually returned for a generic `ApimException`, and no remaining decision: differentiating the public status by upstream 503/504 would itself be a public-behaviour change, which M2b's own rules place out of scope.
 
 - `RegistrationHttpResponses.status()`'s duplicate `SYSTEM_ERROR`/`BUSINESS_REJECTED` branches (confirmed dead code in an earlier pass); no change proposed in M2b.
 - 4xx vs 5xx downstream status both resolve identically via the facade today; whether a 4xx should classify differently is open.
