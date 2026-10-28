@@ -27,6 +27,9 @@ class PortalAccessContextArchitectureGuardTest {
   private static final Path PORTAL_ACCESS_CONTEXT_FILTER =
       MAIN_JAVA.resolve(
           "com/bct/ngtpa/apiservice/adapter/in/web/filter/PortalAccessContextWebFilter.java");
+  private static final Path PASSWORD_VALIDATION_REQUEST_FILTER =
+      MAIN_JAVA.resolve(
+          "com/bct/ngtpa/apiservice/adapter/in/web/passwordvalidation/PasswordValidationRequestWebFilter.java");
   private static final Path REQUEST_HEADER_CONTEXT_FILTER =
       MAIN_JAVA.resolve(
           "com/bct/ngtpa/apiservice/adapter/in/web/filter/RequestHeaderContextWebFilter.java");
@@ -98,6 +101,7 @@ class PortalAccessContextArchitectureGuardTest {
   void webFilterOrderingKeepsHeaderContextBeforePortalContext() throws Exception {
     String requestLogging = Files.readString(REQUEST_LOGGING_FILTER);
     String portalContext = Files.readString(PORTAL_ACCESS_CONTEXT_FILTER);
+    String passwordValidation = Files.readString(PASSWORD_VALIDATION_REQUEST_FILTER);
     String requestHeader = Files.readString(REQUEST_HEADER_CONTEXT_FILTER);
 
     assertTrue(
@@ -107,8 +111,11 @@ class PortalAccessContextArchitectureGuardTest {
         containsIgnoringWhitespace(requestLogging, "RequestHeaderContextKeys.ATTRIBUTE_KEY"),
         "RequestLoggingWebFilter should populate RequestHeaderContext exchange attribute");
     assertTrue(
-        containsIgnoringWhitespace(portalContext, "@Order(Ordered.HIGHEST_PRECEDENCE + 1)"),
-        "PortalAccessContextWebFilter should run immediately after RequestLoggingWebFilter");
+        containsIgnoringWhitespace(passwordValidation, "@Order(Ordered.HIGHEST_PRECEDENCE + 1)"),
+        "Route-local response policy must wrap authenticated-context failures after request logging");
+    assertTrue(
+        containsIgnoringWhitespace(portalContext, "@Order(Ordered.HIGHEST_PRECEDENCE + 2)"),
+        "PortalAccessContextWebFilter must follow request logging and the route-local response policy");
     assertTrue(
         containsIgnoringWhitespace(portalContext, "RequestHeaderContextKeys.ATTRIBUTE_KEY"),
         "PortalAccessContextWebFilter should prefer RequestHeaderContext created by RequestLoggingWebFilter");

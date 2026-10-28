@@ -102,6 +102,10 @@ class PasswordValidationHttpTest {
   @BeforeEach
   void resetBackend() {
     backend.reset();
+    context
+        .getBean(
+            org.springframework.security.web.server.firewall.StrictServerWebExchangeFirewall.class)
+        .setAllowSemicolon(true);
     root = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
     logs = new ListAppender<>();
     logs.start();
@@ -442,6 +446,122 @@ class PasswordValidationHttpTest {
     assertSafeLogs();
   }
 
+  @ParameterizedTest
+  @CsvSource({
+    "POST,/api/v1/password-validation,true",
+    "POST,/api/v1/password-validation;x=1,true",
+    "POST,/api/v1/%70assword-validation,true",
+    "POST,/api/v1/password-validation/,false",
+    "POST,/api/v1/Password-validation,false",
+    "PUT,/api/v1/personal-information,true",
+    "PUT,/api/v1/personal-information;x=1,true",
+    "PUT,/api/v1/%70ersonal-information,true",
+    "PUT,/api/v1/personal-information/,false",
+    "PUT,/api/v1/Personal-information,false"
+  })
+  void actualHandlersAndConfidentialityAgreeForEveryPathVariant(
+      String method, String path, boolean reachesHandler) {
+    var response =
+        variantRequest(method, path, "csrf-fixture")
+            .bodyValue(method.equals("POST") ? body("x") : PAYLOAD)
+            .exchange();
+    response.expectStatus().isEqualTo(reachesHandler ? 200 : 404);
+    assertThat(backend.passwordCalls).hasValue(reachesHandler && method.equals("POST") ? 1 : 0);
+    assertThat(backend.personalCalls).hasValue(reachesHandler && method.equals("PUT") ? 1 : 0);
+    if (reachesHandler) {
+      response.expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store");
+      assertSafeLogs();
+    }
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .noneMatch(message -> message.contains("header-marker"));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "POST,/api/v1/password-validation",
+    "POST,/api/v1/password-validation;x=1",
+    "POST,/api/v1/%70assword-validation",
+    "PUT,/api/v1/personal-information",
+    "PUT,/api/v1/personal-information;x=1",
+    "PUT,/api/v1/%70ersonal-information"
+  })
+  void actualChainRendersCsrfForAllRoutedVariantsBeforeEitherHandler(String method, String path) {
+    failure(
+        variantRequest(method, path, "wrong").bodyValue("{}").exchange(),
+        403,
+        "BUSINESS_REJECTED",
+        "err.security.access.denied");
+    assertThat(backend.passwordCalls).hasValue(0);
+    assertThat(backend.personalCalls).hasValue(0);
+    assertSafeLogs();
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "POST,/api/v1/password-validation",
+    "POST,/api/v1/password-validation;x=1",
+    "POST,/api/v1/%70assword-validation",
+    "PUT,/api/v1/personal-information",
+    "PUT,/api/v1/personal-information;x=1",
+    "PUT,/api/v1/%70ersonal-information"
+  })
+  void realHttpEscapedFailureOmitsTextInRequestLoggerOnRoutedVariants(String method, String path) {
+    variantRequest(method, path, "csrf-fixture")
+        .header("X-Guard-Failure", "true")
+        .bodyValue("{}")
+        .exchange()
+        .expectStatus()
+        .is5xxServerError()
+        .expectHeader()
+        .valueEquals(HttpHeaders.CACHE_CONTROL, "no-store");
+    var requestEvents =
+        logs.list.stream()
+            .filter(event -> event.getLoggerName().equals(RequestLoggingWebFilter.class.getName()))
+            .map(ILoggingEvent::getFormattedMessage)
+            .toList();
+    assertThat(requestEvents).anyMatch(message -> message.contains("http.request.error"));
+    assertThat(requestEvents)
+        .noneMatch(
+            message ->
+                message.contains("guard-error-marker")
+                    || message.contains("errorMessage")
+                    || message.contains("requestBody")
+                    || message.contains("responseBody")
+                    || message.contains("header-marker"));
+  }
+
+  private WebTestClient.RequestBodySpec variantRequest(String method, String path, String csrf) {
+    return client
+        .method(HttpMethod.valueOf(method))
+        .uri(java.net.URI.create("http://127.0.0.1:" + server.port() + path))
+        .contentType(MediaType.APPLICATION_JSON)
+        .cookie("portal_sid", SID)
+        .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, REF)
+        .header(RequestHeaderContextKeys.XSRF_TOKEN_HEADER, csrf)
+        .header(RequestCorrelation.REQUEST_ID_HEADER, "m3-path-variant")
+        .header("x-password-validation-token", "header-marker");
+  }
+
+  @ParameterizedTest
+  @CsvSource({"POST,/api/v1/password-validation;x=1", "PUT,/api/v1/personal-information;x=1"})
+  void defaultFirewallRejectsSemicolonBeforeHandlerWithoutBeingTheConfidentialityBoundary(
+      String method, String path) {
+    context
+        .getBean(
+            org.springframework.security.web.server.firewall.StrictServerWebExchangeFirewall.class)
+        .setAllowSemicolon(false);
+    variantRequest(method, path, "csrf-fixture")
+        .bodyValue("{}")
+        .exchange()
+        .expectStatus()
+        .isBadRequest()
+        .expectHeader()
+        .valueEquals(HttpHeaders.CACHE_CONTROL, "no-store");
+    assertThat(backend.passwordCalls).hasValue(0);
+    assertThat(backend.personalCalls).hasValue(0);
+    assertSafeLogs();
+  }
+
   private String issueToken() {
     try {
       var response = post(body("x")).expectStatus().isOk().expectBody().returnResult();
@@ -548,6 +668,83 @@ class PasswordValidationHttpTest {
   })
   static class HttpConfiguration {
     @Bean
+    org.springframework.security.web.server.firewall.StrictServerWebExchangeFirewall firewall() {
+      // Permit matrix parameters only in this probe so routing, not firewall rejection, is
+      // exercised.
+      var firewall =
+          new org.springframework.security.web.server.firewall.StrictServerWebExchangeFirewall();
+      firewall.setAllowSemicolon(true);
+      return firewall;
+    }
+
+    @Bean
+    @org.springframework.core.annotation.Order(0)
+    org.springframework.web.server.WebFilter escapedFailure() {
+      return (exchange, chain) -> {
+        if (exchange.getRequest().getHeaders().containsHeader("X-Guard-Failure")) {
+          return Mono.error(new IllegalStateException("guard-error-marker"));
+        }
+        return chain.filter(exchange);
+      };
+    }
+
+    @Bean
+    com.bct.ngtpa.apiservice.adapter.in.web.personalinformation.PersonalInformationController
+        personalInformation(
+            Backend backend,
+            CurrentPortalAccessContextResolver resolver,
+            AuthenticatedSessionCookieReader cookies) {
+      var update =
+          mock(com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase.class);
+      when(update.execute(any()))
+          .thenAnswer(
+              invocation -> {
+                backend.personalCalls.incrementAndGet();
+                return Mono.just(List.of());
+              });
+      var requestMapper =
+          mock(
+              com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper
+                  .class);
+      when(requestMapper.toCommand(any(), any()))
+          .thenReturn(
+              new UpdatePersonalInformationCommand(false, Map.of("field", "reviewed-marker")));
+      var responseMapper =
+          mock(
+              com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper
+                  .class);
+      when(responseMapper.toResponse(anyList()))
+          .thenReturn(
+              new com.bct.ngtpa.apiservice.adapter.in.web.response
+                  .UpdatePersonalInformationResponse(
+                  true,
+                  com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus.UPDATED,
+                  null,
+                  List.of(),
+                  List.of()));
+      var validator =
+          mock(
+              com.bct.ngtpa.apiservice.adapter.in.web.validation
+                  .PersonalInformationUpdateYamlValidator.class);
+      var access =
+          mock(
+              com.bct.ngtpa.apiservice.adapter.in.web.validation
+                  .PersonalInformationFieldAccessChecker.class);
+      when(access.check(any(), any(), any(), any(), any())).thenReturn(Mono.just(List.of()));
+      return new com.bct.ngtpa.apiservice.adapter.in.web.personalinformation
+          .PersonalInformationController(
+          mock(com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase.class),
+          mock(com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper.class),
+          resolver,
+          update,
+          requestMapper,
+          responseMapper,
+          validator,
+          cookies,
+          access);
+    }
+
+    @Bean
     ObjectMapper objectMapper() {
       return JSON;
     }
@@ -588,12 +785,14 @@ class PasswordValidationHttpTest {
       properties.setLogHeaders(true);
       properties.setHeaderAllowlist(List.of("X-Password-Validation-Token", "Content-Type"));
       properties.getBodyLogging().setEnabled(true);
-      var rule = new RequestLoggingProperties.EndpointRule();
-      rule.setMethod("POST");
-      rule.setPathPattern("/api/v1/**");
-      rule.setLogRequestBody(true);
-      rule.setLogResponseBody(true);
-      properties.getBodyLogging().getEndpoints().add(rule);
+      for (String method : List.of("POST", "PUT")) {
+        var rule = new RequestLoggingProperties.EndpointRule();
+        rule.setMethod(method);
+        rule.setPathPattern("/**");
+        rule.setLogRequestBody(true);
+        rule.setLogResponseBody(true);
+        properties.getBodyLogging().getEndpoints().add(rule);
+      }
       return properties;
     }
 
@@ -743,6 +942,7 @@ class PasswordValidationHttpTest {
     final AtomicReference<ProtectedAuthenticatedSession> current = new AtomicReference<>();
     final AtomicReference<PasswordCheckCommand> lastCheck = new AtomicReference<>();
     final AtomicInteger passwordCalls = new AtomicInteger();
+    final AtomicInteger personalCalls = new AtomicInteger();
     final AtomicInteger limiterCalls = new AtomicInteger();
     final AtomicInteger grantAttempts = new AtomicInteger();
     final AtomicInteger terminalAttempts = new AtomicInteger();
@@ -796,6 +996,7 @@ class PasswordValidationHttpTest {
                   null,
                   Map.of("unrelated", "keep"))));
       passwordCalls.set(0);
+      personalCalls.set(0);
       limiterCalls.set(0);
       grantAttempts.set(0);
       terminalAttempts.set(0);

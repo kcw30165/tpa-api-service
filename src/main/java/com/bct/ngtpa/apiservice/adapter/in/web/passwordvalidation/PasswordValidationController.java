@@ -15,7 +15,7 @@ import org.springframework.web.server.*;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/api/v1/password-validation")
+@RequestMapping(PasswordValidationRouteMatcher.ISSUANCE_PATH)
 public final class PasswordValidationController {
   private final IssuePasswordValidationUseCase useCase;
   private final CurrentPortalAccessContextResolver contexts;

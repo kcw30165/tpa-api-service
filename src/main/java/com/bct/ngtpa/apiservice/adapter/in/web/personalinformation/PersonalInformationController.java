@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSession
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.PasswordValidationRouteMatcher;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
@@ -45,7 +46,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.ContextView;
 
 @RestController
-@RequestMapping("/api/v1/personal-information")
+@RequestMapping(PasswordValidationRouteMatcher.PERSONAL_INFORMATION_PATH)
 @RequiredArgsConstructor
 public class PersonalInformationController {
 

@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.PasswordValidationRouteMatcher;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
@@ -254,7 +255,7 @@ public class RequestLoggingWebFilter implements WebFilter {
     }
     event.put("elapsedMs", elapsedMillis(startNanos));
     event.put("exceptionType", throwable.getClass().getSimpleName());
-    if (!isConfidential(exchange.getRequest())) {
+    if (!PasswordValidationRouteMatcher.matches(exchange.getRequest())) {
       event.put("errorMessage", loggingSanitizer.toSafeString(throwable.getMessage()));
     }
     log.error("{}", toJson(event));
@@ -269,7 +270,7 @@ public class RequestLoggingWebFilter implements WebFilter {
   }
 
   private RequestLoggingProperties.EndpointRule findMatchingRule(ServerHttpRequest request) {
-    if (isConfidential(request)) return null;
+    if (PasswordValidationRouteMatcher.matches(request)) return null;
     String method = request.getMethod().name();
     String path = request.getPath().value();
     return properties.getBodyLogging().getEndpoints().stream()
@@ -278,13 +279,6 @@ public class RequestLoggingWebFilter implements WebFilter {
             rule -> rule.getPathPattern() != null && pathMatcher.match(rule.getPathPattern(), path))
         .findFirst()
         .orElse(null);
-  }
-
-  private static boolean isConfidential(ServerHttpRequest request) {
-    String path = request.getPath().value();
-    String method = request.getMethod().name();
-    return ("POST".equals(method) && "/api/v1/password-validation".equals(path))
-        || ("PUT".equals(method) && "/api/v1/personal-information".equals(path));
   }
 
   private boolean shouldLogRequestBody(RequestLoggingProperties.EndpointRule rule) {

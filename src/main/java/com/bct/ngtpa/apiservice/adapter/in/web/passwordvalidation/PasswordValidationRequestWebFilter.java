@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono;
 
 /** Route-local response policy, including failures from the earlier account-context filter. */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public final class PasswordValidationRequestWebFilter implements WebFilter {
   private final PasswordValidationWebMapper mapper;
   private final ObjectMapper json;
@@ -24,8 +24,7 @@ public final class PasswordValidationRequestWebFilter implements WebFilter {
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-    if (!"POST".equals(exchange.getRequest().getMethod().name())
-        || !"/api/v1/password-validation".equals(exchange.getRequest().getPath().value())) {
+    if (!PasswordValidationRouteMatcher.matches(exchange.getRequest())) {
       return chain.filter(exchange);
     }
     exchange.getResponse().getHeaders().setCacheControl("no-store");

@@ -38,12 +38,17 @@ class RequestLoggingWebFilterTest {
   @org.junit.jupiter.params.ParameterizedTest
   @org.junit.jupiter.params.provider.CsvSource({
     "POST,/api/v1/password-validation",
-    "PUT,/api/v1/personal-information"
+    "POST,/api/v1/password-validation;x=1",
+    "POST,/api/v1/%70assword-validation",
+    "PUT,/api/v1/personal-information",
+    "PUT,/api/v1/personal-information;x=1",
+    "PUT,/api/v1/%70ersonal-information"
   })
   void confidentialFailureTextIsNeverLogged(String method, String path) {
     var exchange =
         exchange(
-            MockServerHttpRequest.method(org.springframework.http.HttpMethod.valueOf(method), path)
+            MockServerHttpRequest.method(
+                    org.springframework.http.HttpMethod.valueOf(method), java.net.URI.create(path))
                 .build());
     StepVerifier.create(
             filter.filter(
@@ -59,11 +64,17 @@ class RequestLoggingWebFilterTest {
   @org.junit.jupiter.params.ParameterizedTest
   @org.junit.jupiter.params.provider.CsvSource({
     "POST,/api/v1/password-validation",
-    "PUT,/api/v1/personal-information"
+    "POST,/api/v1/password-validation;x=1",
+    "POST,/api/v1/%70assword-validation",
+    "PUT,/api/v1/personal-information",
+    "PUT,/api/v1/personal-information;x=1",
+    "PUT,/api/v1/%70ersonal-information"
   })
   void confidentialBodiesAreNeverLoggedEvenWithWildcardOptIn(String method, String path) {
     var props = enabledProperties();
     props.getBodyLogging().setEnabled(true);
+    props.setLogHeaders(true);
+    props.setHeaderAllowlist(List.of("X-Password-Validation-Token"));
     var rule = new RequestLoggingProperties.EndpointRule();
     rule.setMethod(method);
     rule.setPathPattern("/api/v1/**");
@@ -72,7 +83,9 @@ class RequestLoggingWebFilterTest {
     props.getBodyLogging().getEndpoints().add(rule);
     var exchange =
         exchange(
-            MockServerHttpRequest.method(org.springframework.http.HttpMethod.valueOf(method), path)
+            MockServerHttpRequest.method(
+                    org.springframework.http.HttpMethod.valueOf(method), java.net.URI.create(path))
+                .header("x-password-validation-token", "confidential-header-marker")
                 .body("confidential-body-marker"));
     var guarded = new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER);
     guarded
@@ -96,6 +109,7 @@ class RequestLoggingWebFilterTest {
       assertFalse(json.has("responseBody"));
       assertFalse(event.getFormattedMessage().contains("confidential-body-marker"));
       assertFalse(event.getFormattedMessage().contains("confidential-response-marker"));
+      assertFalse(event.getFormattedMessage().contains("confidential-header-marker"));
     }
   }
 
