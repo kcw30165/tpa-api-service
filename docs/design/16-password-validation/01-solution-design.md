@@ -108,6 +108,23 @@ preserve-current-TTL policy, mapping an ineligible observation back to the
 original session-free `SESSION_NOT_USABLE` result. The existing two-retry budget
 and exception propagation remain unchanged.
 
+M1.5 reviewer correction at `67534c89`: when **loadAndTouch only** exhausts
+those revision conflicts, lifecycle performs one final load/unprotect/usability
+check without mutation, protection, revision generation or CAS. A usable,
+nonterminal snapshot returns ACTIVE with that freshly loaded state, not the
+last failed attempt's snapshot. Sliding expiry is best-effort under contention;
+this fallback neither updates timestamps nor renews Redis TTL. A terminal
+snapshot returns its existing terminal status, an expired ACTIVE snapshot
+returns EXPIRED without persisting retention, and a missing key returns NOT_FOUND.
+Load/decryption failures remain FAILED. There is no additional retry loop.
+The read is a point-in-time observation, not an authorization lock against a
+terminal transition that commits after that observation.
+
+Logout/revoke still return FAILED on conflict exhaustion; they cannot claim
+invalidation after an unsuccessful write. The shared writer and every
+updateIfUsable consumer still return REVISION_CONFLICT_EXHAUSTED with no session.
+Technical/uncertain write failures do not enter the touch fallback.
+
 `AuthenticatedSessionCasUpdateCommand.expiryDeadline` is an optional `Instant`:
 null selects the original atomic PTTL-preserving script; a value selects
 `update-if-current-until.lua` with its epoch-millisecond deadline. The existing

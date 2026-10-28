@@ -24,6 +24,7 @@ import java.net.ServerSocket;
 import java.nio.file.Path;
 import java.time.*;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -39,7 +40,9 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 
@@ -63,8 +66,8 @@ class AuthenticatedSessionConditionalWriteRedisTest {
   private final String key = keys.key("auth:authenticated-session", ID.value());
   private final AtomicInteger revisions = new AtomicInteger();
   private final AtomicReference<Supplier<Mono<?>>> beforeWrite = new AtomicReference<>();
-  private final List<AuthenticatedSessionCasUpdateCommand> commands = new ArrayList<>();
-  private final List<AuthenticatedSessionCasUpdateOutcome> outcomes = new ArrayList<>();
+  private final List<AuthenticatedSessionCasUpdateCommand> commands = new CopyOnWriteArrayList<>();
+  private final List<AuthenticatedSessionCasUpdateOutcome> outcomes = new CopyOnWriteArrayList<>();
   private final AtomicBoolean loseWriteResponse = new AtomicBoolean();
   private RedisAuthenticatedSessionCasUpdateAdapter adapter;
   private AuthenticatedSessionPort sessions;
@@ -573,6 +576,288 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     assertThat(stored().status())
         .isEqualTo(
             terminal ? AuthenticatedSessionStatus.LOGGED_OUT : AuthenticatedSessionStatus.ACTIVE);
+  }
+
+  @Test
+  void twelveParallelTouchesRemainActiveAfterDeterministicConflictExhaustion() {
+    seed();
+    var contention = new ContendedTouches(Mono.empty());
+    var results = contention.run();
+    assertThat(results)
+        .hasSize(12)
+        .allSatisfy(
+            result -> {
+              assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE);
+              assertThat(result.session().isUsable(clock.instant())).isTrue();
+            });
+    assertThat(contention.conflicts.get()).isEqualTo(30);
+    assertThat(contention.applied.get()).isEqualTo(3);
+    assertThat(results.stream().filter(r -> r.session().revision().equals(stored().revision())))
+        .hasSize(10);
+    assertThat(stored().isUsable(clock.instant())).isTrue();
+    assertThat(stored().featureState()).containsEntry("unrelated", "keep");
+    assertThat(expiry()).isEqualTo(stored().idleExpiresAt().toEpochMilli());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = AuthenticatedSessionStatus.class,
+      names = {"LOGGED_OUT", "REVOKED", "EXPIRED"})
+  void parallelTouchesCannotRestoreTerminalWriterAtExhaustion(AuthenticatedSessionStatus target) {
+    seed();
+    var contention =
+        new ContendedTouches(
+            Mono.defer(
+                () -> {
+                  if (target == AuthenticatedSessionStatus.EXPIRED) {
+                    clock.now = clock.now.plusSeconds(121);
+                  }
+                  return terminal(target);
+                }));
+    var results = contention.run();
+    assertThat(results).hasSize(12);
+    assertThat(
+            results.stream().filter(r -> r.status() == AuthenticatedSessionLifecycleStatus.ACTIVE))
+        .hasSize(2);
+    assertThat(results.stream().filter(r -> r.status().name().equals(target.name()))).hasSize(10);
+    assertThat(stored().status()).isEqualTo(target);
+    assertThat(expiry()).isEqualTo(clock.instant().plusSeconds(20).toEpochMilli());
+    assertThat(contention.applied.get()).isEqualTo(2);
+    assertThat(contention.conflicts.get()).isEqualTo(31);
+    verify(sessions, never()).touch(any());
+  }
+
+  @Test
+  void parallelTouchesPreserveAppliedFeatureMutationIncludingExhaustionReloads() {
+    seed();
+    var contention =
+        new ContendedTouches(
+            concurrency
+                .updateIfUsable(
+                    ID, s -> s.withFeatureState("cache-a", "concurrent-value"), "feature")
+                .doOnNext(
+                    result ->
+                        assertThat(result.outcome())
+                            .isEqualTo(AuthenticatedSessionConcurrencyOutcome.APPLIED)));
+    var results = contention.run();
+    assertThat(results)
+        .hasSize(12)
+        .allSatisfy(
+            r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE));
+    assertThat(
+            results.stream()
+                .filter(r -> r.session().featureState().containsValue("concurrent-value")))
+        .hasSize(10);
+    assertThat(stored().featureState())
+        .containsEntry("cache-a", "concurrent-value")
+        .containsEntry("unrelated", "keep");
+    assertThat(contention.applied.get()).isEqualTo(2);
+    assertThat(contention.conflicts.get()).isEqualTo(31);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"expired", "missing", "corrupt", "load-error"})
+  void exhaustedTouchNeverAuthenticatesAnUnusableOrUnreadableReload(String state) {
+    seed();
+    Mono<?> change =
+        Mono.defer(
+            () ->
+                switch (state) {
+                  case "expired" -> Mono.fromRunnable(() -> clock.now = clock.now.plusSeconds(121));
+                  case "missing" -> redis.delete(key);
+                  case "corrupt" ->
+                      redis.opsForValue().set(key, "not-json", Duration.ofSeconds(40));
+                  default ->
+                      Mono.fromRunnable(
+                          () ->
+                              doReturn(
+                                      Mono.error(
+                                          new IllegalStateException("Synthetic reload failure")))
+                                  .when(sessions)
+                                  .load(any()));
+                });
+    var contention =
+        new ContendedTouches(
+            concurrency.updateIfUsable(ID, s -> s.withFeatureState("cache-a", "fresh"), "feature"),
+            change);
+    var results = contention.run();
+    var expected =
+        switch (state) {
+          case "expired" -> AuthenticatedSessionLifecycleStatus.EXPIRED;
+          case "missing" -> AuthenticatedSessionLifecycleStatus.NOT_FOUND;
+          default -> AuthenticatedSessionLifecycleStatus.FAILED;
+        };
+    assertThat(results.stream().filter(r -> r.status() == expected)).hasSize(10);
+    assertThat(results.stream().filter(r -> r.status() == expected))
+        .allSatisfy(r -> assertThat(r.session()).isNull());
+    assertThat(contention.applied.get()).isEqualTo(2);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"touch", "logout", "revoke", "usable"})
+  void exhaustionFallbackIsExclusiveToTouchAndDoesNotPerformAnotherWrite(String operation) {
+    seed();
+    var attempts = new AtomicInteger();
+    var writer =
+        new AuthenticatedSessionConcurrencyService(
+            sessions,
+            protector,
+            command ->
+                concurrency
+                    .updateIfUsable(
+                        ID,
+                        s -> s.withFeatureState("cache-a", "winner-" + attempts.incrementAndGet()),
+                        "winner")
+                    .then(adapter.updateIfCurrent(command)),
+            new SecureAuthenticatedSessionRevisionGenerator(),
+            clock);
+    var lifecycle =
+        new AuthenticatedSessionLifecycleService(
+            sessions,
+            protector,
+            () -> ID,
+            new SecureAuthenticatedSessionRevisionGenerator(),
+            writer,
+            Duration.ofSeconds(120),
+            Duration.ofSeconds(300),
+            Duration.ofSeconds(20),
+            clock);
+    if (operation.equals("usable")) {
+      var result =
+          writer.updateIfUsable(ID, s -> s.withFeatureState("cache-a", "loser"), "usable").block();
+      assertThat(result.outcome())
+          .isEqualTo(AuthenticatedSessionConcurrencyOutcome.REVISION_CONFLICT_EXHAUSTED);
+      assertThat(result.session()).isNull();
+    } else {
+      var result =
+          switch (operation) {
+            case "touch" ->
+                lifecycle
+                    .loadAndTouch(new LoadAndTouchAuthenticatedSessionCommand(ID, "touch"))
+                    .block();
+            case "logout" ->
+                lifecycle.logout(new LogoutActiveAuthenticatedSessionCommand(ID, "logout")).block();
+            default ->
+                lifecycle
+                    .revoke(new RevokeActiveAuthenticatedSessionCommand(ID, "test", "revoke"))
+                    .block();
+          };
+      assertThat(result.status())
+          .isEqualTo(
+              operation.equals("touch")
+                  ? AuthenticatedSessionLifecycleStatus.ACTIVE
+                  : AuthenticatedSessionLifecycleStatus.FAILED);
+      if (operation.equals("touch")) {
+        assertThat(result.session().revision()).isEqualTo(stored().revision());
+      } else {
+        assertThat(result.session()).isNull();
+      }
+    }
+    assertThat(attempts.get()).isEqualTo(3);
+    assertThat(stored().status()).isEqualTo(AuthenticatedSessionStatus.ACTIVE);
+    assertThat(stored().featureState())
+        .containsEntry("cache-a", "winner-3")
+        .containsEntry("unrelated", "keep");
+    assertThat(commands).hasSize(3).allSatisfy(c -> assertThat(c.expiryDeadline()).isNull());
+  }
+
+  private final class ContendedTouches {
+    private final List<Batch> batches = List.of(new Batch(12), new Batch(11), new Batch(10));
+    private final Mono<?> beforeLastRound;
+    private final Mono<?> afterLastRound;
+    private final AtomicInteger applied = new AtomicInteger();
+    private final AtomicInteger conflicts = new AtomicInteger();
+    private int round;
+
+    private ContendedTouches(Mono<?> beforeLastRound) {
+      this(beforeLastRound, Mono.empty());
+    }
+
+    private ContendedTouches(Mono<?> beforeLastRound, Mono<?> afterLastRound) {
+      this.beforeLastRound = beforeLastRound;
+      this.afterLastRound = afterLastRound;
+    }
+
+    private Mono<AuthenticatedSessionCasUpdateResult> write(
+        AuthenticatedSessionCasUpdateCommand command) {
+      return Mono.defer(
+          () -> {
+            Batch batch;
+            boolean lastArrival;
+            boolean lastRound;
+            synchronized (this) {
+              batch = batches.get(round);
+              lastRound = round == 2;
+              lastArrival = batch.arrivals.incrementAndGet() == batch.size;
+              if (lastArrival) {
+                round++;
+              }
+            }
+            Mono<?> ready =
+                lastArrival
+                    ? (lastRound ? beforeLastRound : Mono.empty())
+                        .doOnSuccess(ignored -> batch.ready.tryEmitEmpty())
+                    : batch.ready.asMono();
+            return ready
+                .then(adapter.updateIfCurrent(command))
+                .flatMap(
+                    result -> {
+                      if (result.outcome() == AuthenticatedSessionCasUpdateOutcome.APPLIED) {
+                        applied.incrementAndGet();
+                      } else if (result.outcome()
+                          == AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH) {
+                        conflicts.incrementAndGet();
+                      }
+                      Mono<?> finished =
+                          batch.completions.incrementAndGet() == batch.size
+                              ? (lastRound ? afterLastRound : Mono.empty())
+                                  .doOnSuccess(ignored -> batch.finished.tryEmitEmpty())
+                              : batch.finished.asMono();
+                      return finished.then(batch.finished.asMono()).thenReturn(result);
+                    });
+          });
+    }
+
+    private List<AuthenticatedSessionLifecycleResult> run() {
+      var writer =
+          new AuthenticatedSessionConcurrencyService(
+              sessions,
+              protector,
+              this::write,
+              () -> new SessionRevision(String.format("%032x", revisions.incrementAndGet())),
+              clock);
+      var lifecycle =
+          new AuthenticatedSessionLifecycleService(
+              sessions,
+              protector,
+              () -> ID,
+              new SecureAuthenticatedSessionRevisionGenerator(),
+              writer,
+              Duration.ofSeconds(120),
+              Duration.ofSeconds(300),
+              Duration.ofSeconds(20),
+              clock);
+      return Flux.range(0, 12)
+          .flatMap(
+              i ->
+                  lifecycle.loadAndTouch(
+                      new LoadAndTouchAuthenticatedSessionCommand(ID, "parallel")),
+              12)
+          .collectList()
+          .block(Duration.ofSeconds(15));
+    }
+  }
+
+  private static final class Batch {
+    private final int size;
+    private final AtomicInteger arrivals = new AtomicInteger();
+    private final AtomicInteger completions = new AtomicInteger();
+    private final Sinks.Empty<Void> ready = Sinks.empty();
+    private final Sinks.Empty<Void> finished = Sinks.empty();
+
+    private Batch(int size) {
+      this.size = size;
+    }
   }
 
   @Test

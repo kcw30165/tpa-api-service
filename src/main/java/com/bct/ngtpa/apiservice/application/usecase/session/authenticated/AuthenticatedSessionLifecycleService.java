@@ -179,23 +179,51 @@ public final class AuthenticatedSessionLifecycleService
                           ? terminalAt.get().plus(terminalRetention)
                           : session.idleExpiresAt(),
                   correlationId)
-              .map(
-                  update ->
-                      switch (update.outcome()) {
-                        case APPLIED ->
-                            new AuthenticatedSessionLifecycleResult(
-                                lifecycleStatus(update.session().status()), update.session());
-                        case UNCHANGED ->
-                            AuthenticatedSessionLifecycleResult.of(
-                                lifecycleStatus(update.session().status()));
-                        case SESSION_NOT_FOUND ->
-                            AuthenticatedSessionLifecycleResult.of(
-                                AuthenticatedSessionLifecycleStatus.NOT_FOUND);
-                        default ->
-                            AuthenticatedSessionLifecycleResult.of(
-                                AuthenticatedSessionLifecycleStatus.FAILED);
-                      });
+              .flatMap(
+                  update -> {
+                    if (target == null
+                        && update.outcome()
+                            == AuthenticatedSessionConcurrencyOutcome.REVISION_CONFLICT_EXHAUSTED) {
+                      return observeAfterTouchContention(sessionId, correlationId);
+                    }
+                    return Mono.just(
+                        switch (update.outcome()) {
+                          case APPLIED ->
+                              new AuthenticatedSessionLifecycleResult(
+                                  lifecycleStatus(update.session().status()), update.session());
+                          case UNCHANGED ->
+                              AuthenticatedSessionLifecycleResult.of(
+                                  lifecycleStatus(update.session().status()));
+                          case SESSION_NOT_FOUND ->
+                              AuthenticatedSessionLifecycleResult.of(
+                                  AuthenticatedSessionLifecycleStatus.NOT_FOUND);
+                          default ->
+                              AuthenticatedSessionLifecycleResult.of(
+                                  AuthenticatedSessionLifecycleStatus.FAILED);
+                        });
+                  });
         });
+  }
+
+  private Mono<AuthenticatedSessionLifecycleResult> observeAfterTouchContention(
+      AuthenticatedSessionId sessionId, String correlationId) {
+    // Sliding access is best-effort under contention; never retry a write or use the stale attempt.
+    return port.load(new LoadAuthenticatedSessionCommand(sessionId, correlationId))
+        .map(
+            optional -> {
+              if (optional.isEmpty()) {
+                return AuthenticatedSessionLifecycleResult.of(
+                    AuthenticatedSessionLifecycleStatus.NOT_FOUND);
+              }
+              var current = protector.unprotect(optional.get());
+              if (current.status().terminal()) {
+                return AuthenticatedSessionLifecycleResult.of(lifecycleStatus(current.status()));
+              }
+              return current.isUsable(clock.instant())
+                  ? AuthenticatedSessionLifecycleResult.active(current)
+                  : AuthenticatedSessionLifecycleResult.of(
+                      AuthenticatedSessionLifecycleStatus.EXPIRED);
+            });
   }
 
   private AuthenticatedSession copy(

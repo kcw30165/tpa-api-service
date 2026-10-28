@@ -1,7 +1,8 @@
 # Password Validation and Transaction Authorization: design package
 
-Version 1.7. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
-M1.5 shared-session prerequisite implemented pending its separate independent review.
+Version 1.8. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
+M1.5 touch-contention repair follows CHANGES REQUIRED at
+`67534c89439293cc69ba9df36be7a89140e511c7` and awaits independent re-review.
 Business requirements remain unchanged; M2 is not authorized by this package update.
 Status: final requirements/design baseline for review; no implementation or deployment approval is implied.
 

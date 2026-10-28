@@ -301,6 +301,19 @@ clocks. The repository does not pin the deployed Redis version; verify the
 supported deployment version and Sentinel/mTLS/failover separately rather than
 equating the isolated suite with deployment certification.
 
+The M1.5 contention regression batches twelve concurrent touches at the actual
+CAS boundary, then waits for every Redis result in a round before releasing
+retries. With twelve/eleven/ten competing requests over three rounds, only three
+touch writes apply, thirty conflict, and nine requests necessarily exhaust:
+all twelve must return ACTIVE by observing still-usable current state. Variants
+commit logout/revoke/discovered expiry or a feature-state mutation before the
+final CAS batch. Terminal state cannot be restored; applied feature state must
+be present in the exhausted requests' fresh observations. Additional final-load
+fixtures cover expired ACTIVE, missing/corrupt records and load errors.
+Explicit exhaustion tests retain FAILED for logout/revoke and the shared
+REVISION_CONFLICT_EXHAUSTED/no-session contract for existing usable mutations.
+No technical/uncertain-write error is treated as touch contention.
+
 ### 5.6 Redis and protection tests
 
 - PII-safe key format

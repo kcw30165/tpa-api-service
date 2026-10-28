@@ -221,6 +221,43 @@ perform no write and do not extend retention. Missing/corrupt state, elapsed
 deadlines and uncertain write outcomes fail closed; only an explicit revision
 conflict is retried (at most two additional attempts).
 
+### 4.5 Touch contention and failure propagation
+
+Sliding access is best-effort under contention. After the initial CAS attempt
+and two genuine-conflict retries exhaust, **loadAndTouch only** reloads once
+without writing. It returns ACTIVE with the newly unprotected state only if
+that state is still nonterminal and usable at the current clock time. It does
+not return a stale attempted replacement or extend timestamps/TTL. Terminal
+state returns its terminal status; expired ACTIVE returns EXPIRED without
+persisting a terminal record on this fallback; missing state returns NOT_FOUND.
+Unreadable state/load failures return FAILED. There is no further write/retry.
+Like any session read, this observes one instant; it cannot prevent revocation
+that commits after the read.
+
+Logout/revoke conflict exhaustion and all other lifecycle technical/uncertain
+failures remain FAILED. Shared updateIfUsable consumers retain their original
+REVISION_CONFLICT_EXHAUSTED/no-session result. Only touch's exhausted-conflict
+observation of usable state changes from FAILED to ACTIVE.
+
+Caller mappings are unchanged (and were not generalized to HTTP 503):
+
+| Caller | Existing handling of lifecycle FAILED and other non-ACTIVE statuses |
+|---|---|
+| AuthenticatedSessionValidationService | AuthenticatedPortalContextResolutionException; ACTIVE still checks CSRF and rejects mismatch separately |
+| AuthenticatedAccountContextResolver | Same exception; ACTIVE still requires selected account membership |
+| AuthenticatedAccountLookupAdapter | Same exception for get/list; ACTIVE still checks account membership |
+| FundPriceRequestSupport | Empty metadata Optional; query/export return SYSTEM_FAILURE, controller maps to FundPriceRetrievalException (HTTP 503) |
+
+The context exception's existing filter-path handler and AccountController's
+local mapper return HTTP 401, BUSINESS_REJECTED,
+`err.security.authentication.required`, PAGE target, no translated message.
+Thus pre-correction touch conflict exhaustion could produce spurious 401
+(or Fund Price system failure) despite a usable session. The touch-only reload
+avoids that result when usable state can be observed. Real technical failures,
+terminal/missing/expired states, cookie/CSRF checks and account authorization
+retain their prior error handling. See AuthenticatedPortalContextExceptionMappings,
+AuthenticatedPortalContextWebExceptionHandler and AccountController.
+
 ## 5. CSRF implementation
 
 ### 5.1 Components
