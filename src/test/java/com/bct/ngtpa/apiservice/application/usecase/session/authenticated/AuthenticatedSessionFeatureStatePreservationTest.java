@@ -236,8 +236,13 @@ class AuthenticatedSessionFeatureStatePreservationTest {
   private static AuthenticatedSessionConcurrencyService concurrency(
       AuthenticatedSessionPort port, AuthenticatedSessionProtectorPort protector) {
     return new AuthenticatedSessionConcurrencyService(
-        port, protector,
-        command -> Mono.just(AuthenticatedSessionCasUpdateResult.of(AuthenticatedSessionCasUpdateOutcome.APPLIED)),
-        () -> new SessionRevision("b".repeat(32)), CLOCK);
+        port,
+        protector,
+        command ->
+            Mono.just(
+                AuthenticatedSessionCasUpdateResult.of(
+                    AuthenticatedSessionCasUpdateOutcome.APPLIED)),
+        () -> new SessionRevision("b".repeat(32)),
+        CLOCK);
   }
 }

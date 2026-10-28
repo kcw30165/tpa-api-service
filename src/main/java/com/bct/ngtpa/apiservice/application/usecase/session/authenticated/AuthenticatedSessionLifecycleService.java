@@ -150,39 +150,52 @@ public final class AuthenticatedSessionLifecycleService
   }
 
   private Mono<AuthenticatedSessionLifecycleResult> updateLifecycle(
-      AuthenticatedSessionId sessionId,
-      AuthenticatedSessionStatus target,
-      String correlationId) {
-    return Mono.defer(() -> {
-      // One transition timestamp per subscription; revision retries cannot renew retention.
-      var terminalAt = new AtomicReference<Instant>();
-      return concurrency.updateIfEligible(
-          sessionId,
-          (session, now) -> !session.status().terminal(),
-          (session, now) -> {
-            if (!session.isUsable(now) || target != null) {
-              terminalAt.compareAndSet(null, now);
-              return copy(session,
-                  session.isUsable(now) ? target : AuthenticatedSessionStatus.EXPIRED,
-                  session.lastAccessedAt(), session.idleExpiresAt());
-            }
-            return copy(session, AuthenticatedSessionStatus.ACTIVE, now,
-                min(now.plus(idleTimeout), session.absoluteExpiresAt()));
-          },
-          session -> session.status().terminal()
-              ? terminalAt.get().plus(terminalRetention)
-              : session.idleExpiresAt(),
-          correlationId)
-          .map(update -> switch (update.outcome()) {
-            case APPLIED -> new AuthenticatedSessionLifecycleResult(
-                lifecycleStatus(update.session().status()), update.session());
-            case UNCHANGED -> AuthenticatedSessionLifecycleResult.of(
-                lifecycleStatus(update.session().status()));
-            case SESSION_NOT_FOUND -> AuthenticatedSessionLifecycleResult.of(
-                AuthenticatedSessionLifecycleStatus.NOT_FOUND);
-            default -> AuthenticatedSessionLifecycleResult.of(AuthenticatedSessionLifecycleStatus.FAILED);
-          });
-    });
+      AuthenticatedSessionId sessionId, AuthenticatedSessionStatus target, String correlationId) {
+    return Mono.defer(
+        () -> {
+          // One transition timestamp per subscription; revision retries cannot renew retention.
+          var terminalAt = new AtomicReference<Instant>();
+          return concurrency
+              .updateIfEligible(
+                  sessionId,
+                  (session, now) -> !session.status().terminal(),
+                  (session, now) -> {
+                    if (!session.isUsable(now) || target != null) {
+                      terminalAt.compareAndSet(null, now);
+                      return copy(
+                          session,
+                          session.isUsable(now) ? target : AuthenticatedSessionStatus.EXPIRED,
+                          session.lastAccessedAt(),
+                          session.idleExpiresAt());
+                    }
+                    return copy(
+                        session,
+                        AuthenticatedSessionStatus.ACTIVE,
+                        now,
+                        min(now.plus(idleTimeout), session.absoluteExpiresAt()));
+                  },
+                  session ->
+                      session.status().terminal()
+                          ? terminalAt.get().plus(terminalRetention)
+                          : session.idleExpiresAt(),
+                  correlationId)
+              .map(
+                  update ->
+                      switch (update.outcome()) {
+                        case APPLIED ->
+                            new AuthenticatedSessionLifecycleResult(
+                                lifecycleStatus(update.session().status()), update.session());
+                        case UNCHANGED ->
+                            AuthenticatedSessionLifecycleResult.of(
+                                lifecycleStatus(update.session().status()));
+                        case SESSION_NOT_FOUND ->
+                            AuthenticatedSessionLifecycleResult.of(
+                                AuthenticatedSessionLifecycleStatus.NOT_FOUND);
+                        default ->
+                            AuthenticatedSessionLifecycleResult.of(
+                                AuthenticatedSessionLifecycleStatus.FAILED);
+                      });
+        });
   }
 
   private AuthenticatedSession copy(

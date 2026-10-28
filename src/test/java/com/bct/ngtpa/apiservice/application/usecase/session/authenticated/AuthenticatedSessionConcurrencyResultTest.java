@@ -142,8 +142,10 @@ class AuthenticatedSessionConcurrencyResultTest {
   void everyNonAppliedEnumConstantIsCoveredByTheParameterizedTests() {
     long nonAppliedCount =
         Stream.of(AuthenticatedSessionConcurrencyOutcome.values())
-            .filter(o -> o != AuthenticatedSessionConcurrencyOutcome.APPLIED
-                && o != AuthenticatedSessionConcurrencyOutcome.UNCHANGED)
+            .filter(
+                o ->
+                    o != AuthenticatedSessionConcurrencyOutcome.APPLIED
+                        && o != AuthenticatedSessionConcurrencyOutcome.UNCHANGED)
             .count();
 
     assertThat(nonAppliedCount).isEqualTo(4);
@@ -152,11 +154,14 @@ class AuthenticatedSessionConcurrencyResultTest {
   @Test
   void unchangedObservationRequiresAndCarriesCurrentSession() {
     var session = session();
-    assertThat(AuthenticatedSessionConcurrencyResult.unchanged(session).session()).isSameAs(session);
+    assertThat(AuthenticatedSessionConcurrencyResult.unchanged(session).session())
+        .isSameAs(session);
     assertThatIllegalArgumentException()
         .isThrownBy(() -> AuthenticatedSessionConcurrencyResult.unchanged(null));
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> AuthenticatedSessionConcurrencyResult.of(
-            AuthenticatedSessionConcurrencyOutcome.UNCHANGED));
+        .isThrownBy(
+            () ->
+                AuthenticatedSessionConcurrencyResult.of(
+                    AuthenticatedSessionConcurrencyOutcome.UNCHANGED));
   }
 }

@@ -70,21 +70,23 @@ public final class AuthenticatedSessionConcurrencyService {
       String correlationId) {
     Objects.requireNonNull(mutator, "mutator must not be null");
     return updateIfEligible(
-        authenticatedSessionId,
-        AuthenticatedSession::isUsable,
-        (session, now) -> mutator.apply(session),
-        session -> null,
-        correlationId)
-        .map(result -> result.outcome() == AuthenticatedSessionConcurrencyOutcome.UNCHANGED
-            ? AuthenticatedSessionConcurrencyResult.of(
-                AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE)
-            : result);
+            authenticatedSessionId,
+            AuthenticatedSession::isUsable,
+            (session, now) -> mutator.apply(session),
+            session -> null,
+            correlationId)
+        .map(
+            result ->
+                result.outcome() == AuthenticatedSessionConcurrencyOutcome.UNCHANGED
+                    ? AuthenticatedSessionConcurrencyResult.of(
+                        AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE)
+                    : result);
   }
 
   /**
-   * Reloads and reevaluates eligibility and mutation on each genuine revision conflict.
-   * An ineligible session is observed without a write. A null expiry deadline preserves
-   * PTTL inside Redis; otherwise Redis validates and applies that absolute deadline.
+   * Reloads and reevaluates eligibility and mutation on each genuine revision conflict. An
+   * ineligible session is observed without a write. A null expiry deadline preserves PTTL inside
+   * Redis; otherwise Redis validates and applies that absolute deadline.
    */
   public Mono<AuthenticatedSessionConcurrencyResult> updateIfEligible(
       AuthenticatedSessionId authenticatedSessionId,
@@ -96,7 +98,10 @@ public final class AuthenticatedSessionConcurrencyService {
     Objects.requireNonNull(eligibility, "eligibility must not be null");
     Objects.requireNonNull(mutator, "mutator must not be null");
     Objects.requireNonNull(expiryDeadline, "expiryDeadline must not be null");
-    return Mono.defer(() -> attemptOnce(authenticatedSessionId, eligibility, mutator, expiryDeadline, correlationId))
+    return Mono.defer(
+            () ->
+                attemptOnce(
+                    authenticatedSessionId, eligibility, mutator, expiryDeadline, correlationId))
         .retryWhen(
             Retry.backoff(2, Duration.ofMillis(10))
                 .maxBackoff(Duration.ofMillis(50))

@@ -209,12 +209,18 @@ class AuthenticatedSessionLifecycleServiceTest {
           };
       var revisions = new SecureAuthenticatedSessionRevisionGenerator();
       var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-      var concurrency = new AuthenticatedSessionConcurrencyService(
-          port, protector,
-          command -> {
-            updated.set(command);
-            return Mono.just(AuthenticatedSessionCasUpdateResult.of(AuthenticatedSessionCasUpdateOutcome.APPLIED));
-          }, revisions, clock);
+      var concurrency =
+          new AuthenticatedSessionConcurrencyService(
+              port,
+              protector,
+              command -> {
+                updated.set(command);
+                return Mono.just(
+                    AuthenticatedSessionCasUpdateResult.of(
+                        AuthenticatedSessionCasUpdateOutcome.APPLIED));
+              },
+              revisions,
+              clock);
       service =
           new AuthenticatedSessionLifecycleService(
               port,
@@ -407,12 +413,18 @@ class AuthenticatedSessionLifecycleServiceTest {
           };
       var revisions = new SecureAuthenticatedSessionRevisionGenerator();
       var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-      var concurrency = new AuthenticatedSessionConcurrencyService(
-          port, protector,
-          command -> touchShouldError
-              ? Mono.error(new IllegalStateException("boom"))
-              : Mono.just(AuthenticatedSessionCasUpdateResult.of(AuthenticatedSessionCasUpdateOutcome.APPLIED)),
-          revisions, clock);
+      var concurrency =
+          new AuthenticatedSessionConcurrencyService(
+              port,
+              protector,
+              command ->
+                  touchShouldError
+                      ? Mono.error(new IllegalStateException("boom"))
+                      : Mono.just(
+                          AuthenticatedSessionCasUpdateResult.of(
+                              AuthenticatedSessionCasUpdateOutcome.APPLIED)),
+              revisions,
+              clock);
       service =
           new AuthenticatedSessionLifecycleService(
               port,

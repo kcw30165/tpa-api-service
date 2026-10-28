@@ -9,6 +9,8 @@ package com.bct.ngtpa.apiservice.application.usecase.session.authenticated;
  * surfaces here as {@link #REVISION_CONFLICT_EXHAUSTED}. Every other non-{@code APPLIED} CAS
  * outcome (not found, missing/malformed revision, corrupt stored state, or a system failure at the
  * CAS layer itself) collapses to {@link #SYSTEM_FAILURE}, since retrying cannot fix any of those.
+ * {@code UNCHANGED} is a no-write eligibility observation from updateIfEligible only;
+ * updateIfUsable continues to return SESSION_NOT_USABLE without a session in that case.
  */
 public enum AuthenticatedSessionConcurrencyOutcome {
   APPLIED,

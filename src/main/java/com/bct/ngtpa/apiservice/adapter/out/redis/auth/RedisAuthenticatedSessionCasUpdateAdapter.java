@@ -58,15 +58,16 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
     Objects.requireNonNull(command, "command must not be null");
     String key = keys.key(CAPABILITY, command.authenticatedSessionId().value());
     boolean preserveTtl = command.expiryDeadline() == null;
-    List<String> arguments = preserveTtl
-        ? List.of(command.expectedRevision().value(), serializedReplacementWithRevision(command))
-        : List.of(command.expectedRevision().value(), serializedReplacementWithRevision(command),
-            Long.toString(command.expiryDeadline().toEpochMilli()));
+    List<String> arguments =
+        preserveTtl
+            ? List.of(
+                command.expectedRevision().value(), serializedReplacementWithRevision(command))
+            : List.of(
+                command.expectedRevision().value(),
+                serializedReplacementWithRevision(command),
+                Long.toString(command.expiryDeadline().toEpochMilli()));
     return redis
-        .execute(
-            preserveTtl ? UPDATE_IF_CURRENT : UPDATE_UNTIL,
-            List.of(key),
-            arguments)
+        .execute(preserveTtl ? UPDATE_IF_CURRENT : UPDATE_UNTIL, List.of(key), arguments)
         .next()
         .map(code -> AuthenticatedSessionCasUpdateResult.of(mapCode(code)))
         .defaultIfEmpty(

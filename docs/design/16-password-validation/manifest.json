@@ -8,7 +8,7 @@
     },
     {
       "name": "01-solution-design.md",
-      "sha256": "14c6b13224630cd3df2ff6486c668f999e4ea446adf416e090046448476a73c4"
+      "sha256": "1da0625f3f3566c4254f6e98da4eb8ce5958668ba632606a1976ddd48a218239"
     },
     {
       "name": "02-api-contract.md",
@@ -32,7 +32,7 @@
     },
     {
       "name": "07-decisions-and-evidence.md",
-      "sha256": "610f65e1b57172e91ded523c04ce968908292f8a56b9e53781cb4d5e3c9eba7a"
+      "sha256": "b3c2c33f35feede34ae0ddd6fa5fa93c5162db88d24d13f1160392cbc246fadb"
     }
   ]
 }

@@ -9,6 +9,9 @@ import java.util.Objects;
  * <p>The caller is responsible for loading the current session, copying every field verbatim except
  * the field(s) under mutation, and supplying both the expected and replacement revisions here. The
  * port itself never inspects which field changed.
+ *
+ * @param expiryDeadline null to preserve the current PTTL atomically; otherwise the absolute
+ *     epoch-millisecond deadline to validate against Redis TIME and apply inside the CAS script
  */
 public record AuthenticatedSessionCasUpdateCommand(
     AuthenticatedSessionId authenticatedSessionId,
@@ -25,8 +28,13 @@ public record AuthenticatedSessionCasUpdateCommand(
       ProtectedAuthenticatedSession replacementProtectedSession,
       SessionRevision replacementRevision,
       String correlationId) {
-    this(authenticatedSessionId, expectedRevision, replacementProtectedSession,
-        replacementRevision, correlationId, null);
+    this(
+        authenticatedSessionId,
+        expectedRevision,
+        replacementProtectedSession,
+        replacementRevision,
+        correlationId,
+        null);
   }
 
   public AuthenticatedSessionCasUpdateCommand {
