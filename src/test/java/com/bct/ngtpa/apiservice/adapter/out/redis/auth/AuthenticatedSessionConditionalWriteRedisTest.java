@@ -18,6 +18,10 @@ import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundCompariso
 import com.bct.ngtpa.apiservice.application.usecase.personalinformation.PersonalInformationConfigCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationThrottleService;
+import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationGrantService;
+import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.PasswordCheckResult;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.infrastructure.security.session.AesGcmAuthenticatedSessionProtector;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -893,6 +897,226 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     assertThat(stored().status()).isEqualTo(AuthenticatedSessionStatus.REVOKED);
     assertThat(stored().featureState()).doesNotContainKey("grant");
     assertThat(outcomes).contains(AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH);
+  }
+
+  @Test
+  void grantsReplaceWithinScopePreserveOtherScopesAndNeverPersistRawToken() {
+    seedGrants();
+    long deadline = expiry();
+    var first = issueGrant(ACCOUNT);
+    String previous = stored().featureState().get(grantKey(ACCOUNT));
+    assertThat(previous).doesNotContain(first.token()).doesNotContain("{");
+    assertThat(previous.split("\\|", -1)).hasSize(5);
+    var second = issueGrant(ACCOUNT);
+    issueGrant(OTHER_ACCOUNT);
+    assertThat(grants().consume(ID, ACCOUNT, PURPOSE, first.token(), "test").block().status())
+        .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(grants().consume(ID, ACCOUNT, PURPOSE, second.token(), "test").block().status())
+        .isEqualTo(PasswordValidationGrantService.Status.CONSUMED);
+    assertThat(stored().featureState()).containsEntry("unrelated", "keep")
+        .containsEntry("password-validation:" + ACCOUNT.value() + ":FUTURE_UNSUPPORTED", "sentinel")
+        .containsKey(grantKey(OTHER_ACCOUNT));
+    assertThat(expiry()).isEqualTo(deadline);
+    assertThat(first.toString()).doesNotContain(first.token());
+  }
+
+  @Test
+  void failedPasswordChecksNeverReplaceExistingGrant() {
+    seedGrants();
+    issueGrant(ACCOUNT);
+    String before = stored().featureState().get(grantKey(ACCOUNT));
+    commands.clear();
+    for (var check : PasswordCheckResult.values()) {
+      if (check == PasswordCheckResult.CORRECT) continue;
+      assertThat(grants().issue(ID, ACCOUNT, PURPOSE, BINDING, check, "test").block().status())
+          .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    }
+    assertThat(commands).isEmpty();
+    assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo(before);
+  }
+
+  @Test
+  void wrongTokenSessionAccountPurposeOrVersionNeverDeletesValidGrant() {
+    seedGrants();
+    var issued = issueGrant(ACCOUNT);
+    String before = stored().featureState().get(grantKey(ACCOUNT));
+    commands.clear();
+    assertThat(grants().consume(ID, ACCOUNT, PURPOSE, "x".repeat(43), "test").block().status())
+        .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(grants().consume(ID, OTHER_ACCOUNT, PURPOSE, issued.token(), "test").block().status())
+        .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(grants().consume(ID, ACCOUNT, null, issued.token(), "test").block().status())
+        .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    var missing = new AuthenticatedSessionId("sid_zyxwvutsrqponmlkjihgfedc");
+    assertThat(grants().consume(missing, ACCOUNT, PURPOSE, issued.token(), "test").block().status())
+        .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+    assertThat(grants().issue(ID, ACCOUNT, PURPOSE, new PayloadDigest(2, "c".repeat(64)),
+        PasswordCheckResult.CORRECT, "test").block().status())
+        .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(commands).isEmpty();
+    assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo(before);
+  }
+
+  @Test
+  void exactlyOneParallelConsumerReceivesBindingAndCanDispatch() {
+    seedGrants();
+    var issued = issueGrant(ACCOUNT);
+    AtomicInteger dispatches = new AtomicInteger();
+    var results = Flux.range(0, 12).flatMap(i -> grants()
+        .consume(ID, ACCOUNT, PURPOSE, issued.token(), "parallel").doOnNext(result -> {
+          if (result.status() == PasswordValidationGrantService.Status.CONSUMED) {
+            assertThat(result.binding()).isEqualTo(BINDING);
+            dispatches.incrementAndGet();
+          } else {
+            assertThat(result.binding()).isNull();
+          }
+        }), 12).collectList().block();
+    assertThat(results.stream().filter(r -> r.status() == PasswordValidationGrantService.Status.CONSUMED))
+        .hasSize(1);
+    assertThat(dispatches).hasValue(1);
+    assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo("consumed");
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {299999, 300000, 300001})
+  void grantExpiryIsApplicationCheckedAtStrict300SecondBoundary(int elapsedMillis) {
+    seedGrants();
+    var issued = issueGrant(ACCOUNT);
+    Instant issuedAt = issued.expiresAt().minusSeconds(300);
+    var extended = copyTimes(stored(), issuedAt.plusSeconds(600), issuedAt.plusSeconds(900));
+    seed(extended);
+    clock.now = issuedAt.plusMillis(elapsedMillis);
+    var result = grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block();
+    assertThat(result.status()).isEqualTo(elapsedMillis < 300000 ?
+        PasswordValidationGrantService.Status.CONSUMED : PasswordValidationGrantService.Status.REJECTED);
+    assertThat(stored().featureState()).containsEntry("unrelated", "keep");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = AuthenticatedSessionStatus.class, names = {"LOGGED_OUT", "REVOKED", "EXPIRED"})
+  void lifecycleTerminalStatePreventsGrantIssueOrConsume(AuthenticatedSessionStatus terminalStatus) {
+    seedGrants();
+    var issued = issueGrant(ACCOUNT);
+    if (terminalStatus == AuthenticatedSessionStatus.EXPIRED) {
+      clock.now = stored().idleExpiresAt();
+    }
+    terminal(terminalStatus).block();
+    assertThat(issueGrant(ACCOUNT).status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+    assertThat(grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block().status())
+        .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+    assertThat(stored().status()).isEqualTo(terminalStatus);
+  }
+
+  @Test
+  void staleTouchCannotRestoreConsumedGrantAndConcurrentIssueReevaluatesFreshState() {
+    seedGrants();
+    var issued = issueGrant(ACCOUNT);
+    beforeWrite.set(() -> grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "consume"));
+    assertThat(touch().block().status()).isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE);
+    assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo("consumed");
+    beforeWrite.set(() -> touch());
+    assertThat(issueGrant(ACCOUNT).status()).isEqualTo(PasswordValidationGrantService.Status.ISSUED);
+    assertThat(stored().featureState()).containsEntry("unrelated", "keep");
+  }
+
+  @Test
+  void terminalRaceNeverRestoresGrantAndDeadlineGuardPreventsDelayedIssue() {
+    seedGrants();
+    beforeWrite.set(() -> terminal(AuthenticatedSessionStatus.REVOKED));
+    assertThat(issueGrant(ACCOUNT).status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+    assertThat(stored().status()).isEqualTo(AuthenticatedSessionStatus.REVOKED);
+    assertThat(stored().featureState()).doesNotContainKey(grantKey(ACCOUNT));
+    seedGrants();
+    var shortSession = copyTimes(stored(), clock.instant().plusMillis(200), clock.instant().plusSeconds(300));
+    seed(shortSession);
+    beforeWrite.set(() -> Mono.fromRunnable(() -> awaitDeadline(shortSession.idleExpiresAt()))
+        .subscribeOn(Schedulers.boundedElastic()));
+    assertThat(issueGrant(ACCOUNT).status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+    assertThat(stored().featureState()).doesNotContainKey(grantKey(ACCOUNT));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void lostGrantWriteAcknowledgementFailsClosedAndIsNeverRetried(boolean consume) {
+    seedGrants();
+    var issued = consume ? issueGrant(ACCOUNT) : null;
+    commands.clear();
+    loseWriteResponse.set(true);
+    if (consume) {
+      var result = grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block();
+      assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+      assertThat(result.binding()).isNull();
+      assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo("consumed");
+    } else {
+      var result = issueGrant(ACCOUNT);
+      assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+      assertThat(result.token()).isNull();
+      assertThat(stored().featureState()).containsKey(grantKey(ACCOUNT));
+    }
+    assertThat(commands).hasSize(1);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void parallelTouchesExhaustGrantConflictsWithoutWriteOrDispatch(boolean consume) {
+    seedGrants();
+    var issued = issueGrant(ACCOUNT);
+    String before = stored().featureState().get(grantKey(ACCOUNT));
+    AtomicInteger conflicts = new AtomicInteger();
+    AuthenticatedSessionCasUpdatePort contend = command -> Flux.range(0, 12)
+        .flatMap(i -> touch(), 12).collectList().flatMap(touches -> {
+          assertThat(touches).allSatisfy(t -> assertThat(t.status())
+              .isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE));
+          return adapter.updateIfCurrent(command);
+        }).doOnNext(r -> {
+          assertThat(r.outcome()).isEqualTo(AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH);
+          conflicts.incrementAndGet();
+        });
+    var writer = new AuthenticatedSessionConcurrencyService(sessions, protector, contend,
+        () -> new SessionRevision(String.format("%032x", revisions.incrementAndGet())), clock);
+    var grants = new PasswordValidationGrantService(writer);
+    AtomicInteger dispatches = new AtomicInteger();
+    if (consume) {
+      var result = grants.consume(ID, ACCOUNT, PURPOSE, issued.token(), "contention").block();
+      if (result.status() == PasswordValidationGrantService.Status.CONSUMED) dispatches.incrementAndGet();
+      assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+      assertThat(result.binding()).isNull();
+    } else {
+      var result = grants.issue(ID, ACCOUNT, PURPOSE, BINDING, PasswordCheckResult.CORRECT, "contention").block();
+      assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+      assertThat(result.token()).isNull();
+    }
+    assertThat(conflicts).hasValue(3);
+    assertThat(dispatches).hasValue(0);
+    assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo(before);
+    assertThat(stored().featureState()).containsEntry("unrelated", "keep");
+  }
+
+  private static final AuthenticatedAccountRef ACCOUNT = new AuthenticatedAccountRef("acc_abcdefghijklmnopqrstuvwx");
+  private static final AuthenticatedAccountRef OTHER_ACCOUNT = new AuthenticatedAccountRef("acc_zyxwvutsrqponmlkjihgfedc");
+  private static final PasswordValidationPurpose PURPOSE = PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE;
+  private static final PayloadDigest BINDING = new PayloadDigest(1, "c".repeat(64));
+
+  private String grantKey(AuthenticatedAccountRef account) {
+    return "password-validation:" + account.value() + ":" + PURPOSE.name();
+  }
+
+  private PasswordValidationGrantService grants() {
+    return new PasswordValidationGrantService(concurrency);
+  }
+
+  private PasswordValidationGrantService.IssueResult issueGrant(AuthenticatedAccountRef account) {
+    return grants().issue(ID, account, PURPOSE, BINDING, PasswordCheckResult.CORRECT, "test").block();
+  }
+
+  private void seedGrants() {
+    var original = session();
+    seed(new AuthenticatedSession(ID, original.actorContext(),
+        List.of(new AuthenticatedSessionAccount(ACCOUNT, "TEST", "test-policy", "test-cert", "TEST", null, null, null),
+            new AuthenticatedSessionAccount(OTHER_ACCOUNT, "TEST", "other-policy", "other-cert", "TEST", null, null, null)),
+        original.status(), original.csrfTokenHash(), original.createdAt(), original.lastAccessedAt(),
+        original.idleExpiresAt(), original.absoluteExpiresAt(), original.revision(), null,
+        Map.of("unrelated", "keep", "password-validation:" + ACCOUNT.value() + ":FUTURE_UNSUPPORTED", "sentinel")));
   }
 
   @Test
