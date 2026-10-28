@@ -316,4 +316,16 @@ trustCode/userRole, confirming the reset lambdas correctly clear MDC between exe
 reused thread (9ca1e685).
 </td>
 </tr>
+<tr>
+<td>
+ O-17 
+</td>
+ 
+ <td> ApimWebClientFacade logs "APIM outbound path=... body=..." at INFO, and the body contains the plaintext "dob" field (and ciphertext blobs). Confirmed from real DEV evidence, 2026-10-28, requestId 35eeecac-5b0b-4e08-b5da-fb51023be1ad (TRPSearchMember outbound request body). 
+</td>
+ <td> Nick / security authority 
+</td>
+ <td> Open. No code change in M2b. 
+</td>
+ </tr>
 </table>

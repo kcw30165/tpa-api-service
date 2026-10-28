@@ -181,6 +181,21 @@
 - **Public error code/type:** `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()`
 - **Citation:** `usernamerecovery/mapper/TrpSearchMemberApimResultMapper.java:39-56`; `TrpSearchMemberAdapter.java:48-56`; `UsernameRecoveryStartProtectedOperation.java:101-128`; `UsernameRecoveryController.java:100-128`; `UsernameRecoveryStartResponsePolicy.java:67-124,162-171`
 
+#### Username Recovery -- TrpSearchMemberAdapter (TRPSearchMember)
+- **Condition:** member not found (two distinct mapper entry points both return `Status.NOT_FOUND`: (1) recognized `err.tpa.member.not.found`; (2) empty data items with no err-message at all - NOT the unrecognized-error exception path of the row above)
+- **Detection site:** usernamerecovery/mapper/TrpSearchMemberApimResultMapper.java lines 43-46 (recognized `err.tpa.member.not.found` -> `Status.NOT_FOUND`) and lines 51-54 (empty items, no err-message -> `Status.NOT_FOUND`); routed by UsernameRecoveryStartProtectedOperation.java lines 121-124 (`case NOT_FOUND -> ... Outcome.MEMBER_NOT_FOUND`); rendered by UsernameRecoveryStartResponsePolicy.java lines 44-53 (`case MEMBER_NOT_FOUND -> MutationResponse.failure(ApiStatus.BUSINESS_REJECTED, ..., formError(UsernameRecoveryErrorKey.VERIFICATION_FAILED.value(), ...))`)
+- **Handling:** returned as a normal lookup result (`Status.NOT_FOUND`), never an exception; no FailureEvent is published anywhere in this chain; no `method.execution.*` line fires (none of TrpSearchMemberAdapter, UsernameRecoveryStartProtectedOperation, or UsernameRecoveryStartResponsePolicy is `@LogExecution`-annotated or matches the broad `*Service.execute(..)` pointcut). **Confirmed by real DEV evidence, 2026-10-28, requestId 35eeecac-5b0b-4e08-b5da-fb51023be1ad**, not merely traced from source.
+- **Message policy:** N/A -- normal result value, not an ExceptionMapping
+- **Ordered log lines (confirmed from real DEV evidence, exact sequence and levels):** (1) http.request.start INFO (RequestLoggingWebFilter); (2) apim.business.rejected WARN (ApimExchangeOutcomeLogger, errMessage=err.tpa.member.not.found, path=/ws/NGTPA/v1/TRPSearchMember) -- this WARN line fires only for the recognized-err-message entry point, since it originates in the executor's own envelope classifier before the mapper runs; the empty-items entry point would not produce this line, since an empty-but-successful envelope is not a business rejection at the executor's classifier level; (3) http.request.failed WARN (RequestLoggingWebFilter, status=422). No ERROR line, no FailureEvent, no method.execution.* line at any point in this chain for either entry point.
+- **Idempotency replay:** Yes -- Username Recovery start is idempotency-protected (IdempotentStartUsernameRecoveryService)
+- **Origin tag today:** none
+- **Proposed FailureOrigin (section 3):** FailureOrigin.DOWNSTREAM_BUSINESS
+- **Public HTTP status:** 422 (CONFIRMED by real DEV evidence; also consistent with the ApiStatus.BUSINESS_REJECTED -> HttpStatus.UNPROCESSABLE_ENTITY pattern confirmed elsewhere in this doc for every other *HttpResponses/*ResponsePolicy class, though UsernameRecoveryHttpResponses's own source was not independently dumped in this pass to confirm the literal mapping for this specific class)
+- **Public ApiStatus:** BUSINESS_REJECTED (CONFIRMED: UsernameRecoveryStartResponsePolicy.java line 47)
+- **Public error code/type:** UsernameRecoveryErrorKey.VERIFICATION_FAILED.value(), via UsernameRecoveryWorkflowMapping.formError(...) (UsernameRecoveryStartResponsePolicy.java lines 50-53). The exact public ApiError.type string produced by formError(...) was NOT independently confirmed in this pass (UsernameRecoveryWorkflowMapping's own source was not dumped) - likely "FORM" by the naming convention used elsewhere in this doc, but not verified.
+- **Citation:** usernamerecovery/mapper/TrpSearchMemberApimResultMapper.java:34-56; UsernameRecoveryStartProtectedOperation.java:101-128; UsernameRecoveryStartResponsePolicy.java:31-65; DEV log evidence 2026-10-28 requestId 35eeecac-5b0b-4e08-b5da-fb51023be1ad
+
+
 ### Username Recovery -- TrpSearchMemberAdapter (TRPSearchMember)
 
 - **Condition:** any `ApimException` (facade-raised HTTP-error)
