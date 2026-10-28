@@ -21,10 +21,12 @@ class PasswordValidationRequestParserTest {
         .isEqualTo(new JsonOperationPayloadCanonicalizer().digest(OPERATION));
     assertThat(parsed.toString()).doesNotContain(" AbC ", OPERATION, parsed.binding().sha256());
     assertThat(parser.parse(body("   ", OPERATION)).password()).isEqualTo("   ");
-    assertThatThrownBy(() -> parser.parse(body("ab", OPERATION)))
+    String tooShort = body("ab", OPERATION);
+    String tooLong = body("abcdef", OPERATION);
+    assertThatThrownBy(() -> parser.parse(tooShort))
         .isInstanceOf(PasswordValidationRequestInvalidException.class)
         .hasMessage("Invalid password-validation request");
-    assertThatThrownBy(() -> parser.parse(body("abcdef", OPERATION)))
+    assertThatThrownBy(() -> parser.parse(tooLong))
         .isInstanceOf(PasswordValidationRequestInvalidException.class);
   }
 
@@ -41,7 +43,8 @@ class PasswordValidationRequestParserTest {
         "{\"formVersion\":\"v1\",\"applyToAllAccounts\":false,\"fields\":{}}"
       })
   void malformedOperationShapeHasValueFreeExceptionWithoutCause(String operation) {
-    assertThatThrownBy(() -> parser.parse(body("abc", operation)))
+    String raw = body("abc", operation);
+    assertThatThrownBy(() -> parser.parse(raw))
         .isInstanceOf(PasswordValidationRequestInvalidException.class)
         .hasMessage("Invalid password-validation request")
         .hasNoCause();
@@ -49,7 +52,8 @@ class PasswordValidationRequestParserTest {
 
   @Test
   void parserDiagnosticsAndTrailingContentNeverRetainSensitiveValues() {
-    assertThatThrownBy(() -> parser.parse(body("abc", OPERATION) + " diagnostic-marker"))
+    String raw = body("abc", OPERATION) + " diagnostic-marker";
+    assertThatThrownBy(() -> parser.parse(raw))
         .isInstanceOf(PasswordValidationRequestInvalidException.class)
         .hasMessage("Invalid password-validation request")
         .hasNoCause();

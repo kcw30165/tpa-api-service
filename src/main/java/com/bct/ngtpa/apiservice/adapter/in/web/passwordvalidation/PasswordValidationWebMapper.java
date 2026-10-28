@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public final class PasswordValidationWebMapper {
+  private static final String BUSINESS = "BUSINESS";
   private final AuthenticatedSessionCookieWriter cookies;
 
   public PasswordValidationWebMapper(AuthenticatedSessionCookieWriter cookies) {
@@ -31,7 +32,7 @@ public final class PasswordValidationWebMapper {
           failure(
               HttpStatus.UNAUTHORIZED,
               ApiStatus.BUSINESS_REJECTED,
-              "BUSINESS",
+              BUSINESS,
               ErrorCodes.PASSWORD_VALIDATION_PASSWORD_INVALID,
               List.of("password"));
       case LOCKED -> {
@@ -39,7 +40,7 @@ public final class PasswordValidationWebMapper {
         yield failure(
             HttpStatus.LOCKED,
             ApiStatus.BUSINESS_REJECTED,
-            "BUSINESS",
+            BUSINESS,
             ErrorCodes.PASSWORD_VALIDATION_ACCOUNT_LOCKED,
             List.of("PAGE"));
       }
@@ -52,7 +53,7 @@ public final class PasswordValidationWebMapper {
             failure(
                 HttpStatus.TOO_MANY_REQUESTS,
                 ApiStatus.BUSINESS_REJECTED,
-                "BUSINESS",
+                BUSINESS,
                 ErrorCodes.PASSWORD_VALIDATION_RATE_LIMITED,
                 List.of("PAGE"));
         yield ResponseEntity.status(failed.getStatusCode())
@@ -86,7 +87,7 @@ public final class PasswordValidationWebMapper {
     return failure(
         HttpStatus.BAD_REQUEST,
         ApiStatus.BUSINESS_REJECTED,
-        "BUSINESS",
+        BUSINESS,
         ErrorCodes.MEMBER_CONTEXT_INVALID,
         List.of());
   }
@@ -95,7 +96,7 @@ public final class PasswordValidationWebMapper {
     return failure(
         HttpStatus.FORBIDDEN,
         ApiStatus.BUSINESS_REJECTED,
-        "BUSINESS",
+        BUSINESS,
         ErrorCodes.SECURITY_ACCESS_DENIED,
         List.of());
   }

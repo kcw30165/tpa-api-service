@@ -7,6 +7,9 @@ import com.fasterxml.jackson.core.*;
 import java.io.IOException;
 
 public final class PasswordValidationRequestParser {
+  private static final String PASSWORD = "password";
+  private static final String PURPOSE = "purpose";
+  private static final String OPERATION_PAYLOAD = "operationPayload";
   private final JsonFactory factory =
       JsonFactory.builder().enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION).build();
   private final OperationPayloadBindingPort bindings;
@@ -39,16 +42,16 @@ public final class PasswordValidationRequestParser {
         String name = parser.currentName();
         JsonToken token = parser.nextToken();
         switch (name) {
-          case "password" -> {
-            require(token == JsonToken.VALUE_STRING, "password");
+          case PASSWORD -> {
+            require(token == JsonToken.VALUE_STRING, PASSWORD);
             password = parser.getText();
           }
-          case "purpose" -> {
-            require(token == JsonToken.VALUE_STRING, "purpose");
+          case PURPOSE -> {
+            require(token == JsonToken.VALUE_STRING, PURPOSE);
             purpose = parser.getText();
           }
-          case "operationPayload" -> {
-            require(token == JsonToken.START_OBJECT, "operationPayload");
+          case OPERATION_PAYLOAD -> {
+            require(token == JsonToken.START_OBJECT, OPERATION_PAYLOAD);
             int start = (int) parser.currentTokenLocation().getCharOffset();
             parser.skipChildren();
             operation = raw.substring(start, (int) parser.currentLocation().getCharOffset());
@@ -61,10 +64,10 @@ public final class PasswordValidationRequestParser {
           password != null
               && password.length() >= passwordMinLength
               && password.length() <= passwordMaxLength,
-          "password");
+          PASSWORD);
       require(
-          PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE.name().equals(purpose), "purpose");
-      require(operation != null, "operationPayload");
+          PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE.name().equals(purpose), PURPOSE);
+      require(operation != null, OPERATION_PAYLOAD);
       validateOperation(operation);
       return new Parsed(
           password, PasswordValidationPurpose.parse(purpose), bindings.digest(operation));
@@ -86,18 +89,17 @@ public final class PasswordValidationRequestParser {
         switch (name) {
           case "formVersion" -> {
             require(
-                token == JsonToken.VALUE_STRING && !parser.getText().isBlank(), "operationPayload");
+                token == JsonToken.VALUE_STRING && !parser.getText().isBlank(), OPERATION_PAYLOAD);
             formVersion = true;
           }
           case "applyToAllAccounts" -> {
             require(
-                token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE,
-                "operationPayload");
+                token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE, OPERATION_PAYLOAD);
             applyToAll = true;
           }
           case "fields" -> {
-            require(token == JsonToken.START_OBJECT, "operationPayload");
-            require(parser.nextToken() == JsonToken.FIELD_NAME, "operationPayload");
+            require(token == JsonToken.START_OBJECT, OPERATION_PAYLOAD);
+            require(parser.nextToken() == JsonToken.FIELD_NAME, OPERATION_PAYLOAD);
             do {
               parser.nextToken();
               parser.skipChildren();
@@ -107,7 +109,7 @@ public final class PasswordValidationRequestParser {
           default -> parser.skipChildren();
         }
       }
-      require(formVersion && applyToAll && fields, "operationPayload");
+      require(formVersion && applyToAll && fields, OPERATION_PAYLOAD);
     }
   }
 
