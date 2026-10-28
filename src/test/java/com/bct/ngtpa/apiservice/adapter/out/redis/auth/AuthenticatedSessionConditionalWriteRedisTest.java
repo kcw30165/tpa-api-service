@@ -972,8 +972,10 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     Instant deadline = clock.instant().plusMillis(250);
     seed(copyTimes(stored(), deadline, stored().absoluteExpiresAt()));
     String before = redis.opsForValue().get(key).block();
-    beforeWrite.set(() -> Mono.fromRunnable(() -> awaitDeadline(deadline))
-        .subscribeOn(Schedulers.boundedElastic()));
+    beforeWrite.set(
+        () ->
+            Mono.fromRunnable(() -> awaitDeadline(deadline))
+                .subscribeOn(Schedulers.boundedElastic()));
     var result = issueGrant(ACCOUNT);
     assertThat(result.status().name()).isEqualTo("SESSION_NOT_USABLE");
     assertThat(result.token()).isNull();
@@ -1139,8 +1141,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
       clock.now = stored().idleExpiresAt();
     }
     terminal(terminalStatus).block();
-    assertThat(issueGrant(ACCOUNT).status())
-        .extracting(Enum::name).isEqualTo("SESSION_NOT_USABLE");
+    assertThat(issueGrant(ACCOUNT).status()).extracting(Enum::name).isEqualTo("SESSION_NOT_USABLE");
     assertThat(grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block().status())
         .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
     assertThat(stored().status()).isEqualTo(terminalStatus);

@@ -41,12 +41,18 @@ class RequestLoggingWebFilterTest {
     "PUT,/api/v1/personal-information"
   })
   void confidentialFailureTextIsNeverLogged(String method, String path) {
-    var exchange = exchange(
-        MockServerHttpRequest.method(org.springframework.http.HttpMethod.valueOf(method), path).build());
-    StepVerifier.create(filter.filter(exchange,
-            ex -> Mono.error(new IllegalStateException("confidential-failure-marker"))))
-        .expectError(IllegalStateException.class).verify();
-    assertFalse(listAppender.list.getLast().getFormattedMessage().contains("confidential-failure-marker"));
+    var exchange =
+        exchange(
+            MockServerHttpRequest.method(org.springframework.http.HttpMethod.valueOf(method), path)
+                .build());
+    StepVerifier.create(
+            filter.filter(
+                exchange,
+                ex -> Mono.error(new IllegalStateException("confidential-failure-marker"))))
+        .expectError(IllegalStateException.class)
+        .verify();
+    assertFalse(
+        listAppender.list.getLast().getFormattedMessage().contains("confidential-failure-marker"));
     assertFalse(parseJson(listAppender.list.getLast().getFormattedMessage()).has("errorMessage"));
   }
 
@@ -73,9 +79,15 @@ class RequestLoggingWebFilterTest {
         .filter(
             exchange,
             ex -> {
-              ex.getResponse().getHeaders().setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+              ex.getResponse()
+                  .getHeaders()
+                  .setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
               return ex.getResponse()
-                  .writeWith(Mono.just(ex.getResponse().bufferFactory().wrap("confidential-response-marker".getBytes())));
+                  .writeWith(
+                      Mono.just(
+                          ex.getResponse()
+                              .bufferFactory()
+                              .wrap("confidential-response-marker".getBytes())));
             })
         .block();
     for (var event : listAppender.list) {
@@ -88,16 +100,22 @@ class RequestLoggingWebFilterTest {
   }
 
   @org.junit.jupiter.params.ParameterizedTest
-  @org.junit.jupiter.params.provider.ValueSource(strings = {
-    "X-Password-Validation-Token", "x-password-validation-token", "X-PASSWORD-VALIDATION-TOKEN"
-  })
+  @org.junit.jupiter.params.provider.ValueSource(
+      strings = {
+        "X-Password-Validation-Token",
+        "x-password-validation-token",
+        "X-PASSWORD-VALIDATION-TOKEN"
+      })
   void confidentialHeaderIsExcludedRegardlessOfAllowlistAndCase(String header) {
     var props = enabledProperties();
     props.setLogHeaders(true);
     props.setHeaderAllowlist(List.of(header, "Accept"));
     var exchange =
-        exchange(MockServerHttpRequest.get("/api/test").header(header, "confidential-header-marker")
-            .header("Accept", "application/json").build());
+        exchange(
+            MockServerHttpRequest.get("/api/test")
+                .header(header, "confidential-header-marker")
+                .header("Accept", "application/json")
+                .build());
     run(new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER), exchange);
     var headers = parseJson(listAppender.list.getFirst().getFormattedMessage()).get("headers");
     assertEquals(1, headers.size());

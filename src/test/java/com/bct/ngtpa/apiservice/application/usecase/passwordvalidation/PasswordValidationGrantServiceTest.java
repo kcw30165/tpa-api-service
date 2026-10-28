@@ -89,12 +89,14 @@ class PasswordValidationGrantServiceTest {
 
   @Test
   void issueDistinguishesLostAuthenticationWithoutChangingConsumeFailureContract() {
-    for (var outcome : java.util.List.of(
-        AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_FOUND,
-        AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE)) {
+    for (var outcome :
+        java.util.List.of(
+            AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_FOUND,
+            AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE)) {
       when(writer.updateIfUsableGuarded(eq(ID), any(), any(), isNull()))
           .thenReturn(Mono.just(AuthenticatedSessionConcurrencyResult.of(outcome)));
-      var issued = grants.issue(ID, ACCOUNT, PURPOSE, BINDING, PasswordCheckResult.CORRECT, null).block();
+      var issued =
+          grants.issue(ID, ACCOUNT, PURPOSE, BINDING, PasswordCheckResult.CORRECT, null).block();
       assertThat(issued.status().name()).isEqualTo("SESSION_NOT_USABLE");
       assertThat(issued.token()).isNull();
       assertThat(issued.expiresAt()).isNull();

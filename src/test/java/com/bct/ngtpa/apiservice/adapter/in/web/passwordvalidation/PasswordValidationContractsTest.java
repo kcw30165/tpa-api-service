@@ -16,6 +16,24 @@ class PasswordValidationContractsTest {
   private final ObjectMapper mapper = new ObjectMapper();
 
   @Test
+  void featureErrorsAreRegisteredWithStableCodeOnlyContracts() throws Exception {
+    String[][] codes = {
+      {"PASSWORD_VALIDATION_REQUEST_INVALID", "err.password-validation.request.invalid"},
+      {"PASSWORD_VALIDATION_PASSWORD_INVALID", "err.password-validation.password.invalid"},
+      {"PASSWORD_VALIDATION_ACCOUNT_LOCKED", "err.password-validation.account.locked"},
+      {
+        "PASSWORD_VALIDATION_AUTHORIZATION_INVALID", "err.password-validation.authorization.invalid"
+      },
+      {"PASSWORD_VALIDATION_RATE_LIMITED", "err.password-validation.rate-limited"},
+      {"PASSWORD_VALIDATION_UNAVAILABLE", "err.password-validation.unavailable"}
+    };
+    for (var code : codes) {
+      assertThat(com.bct.ngtpa.apiservice.shared.error.ErrorCodes.class.getField(code[0]).get(null))
+          .isEqualTo(code[1]);
+    }
+  }
+
+  @Test
   void onlyExactInitialPurposeIsAccepted() {
     assertThat(PasswordValidationPurpose.parse("PERSONAL_INFORMATION_UPDATE"))
         .isEqualTo(PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE);
