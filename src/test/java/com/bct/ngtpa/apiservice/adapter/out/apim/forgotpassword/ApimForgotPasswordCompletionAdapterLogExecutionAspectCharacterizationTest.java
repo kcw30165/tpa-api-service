@@ -198,4 +198,47 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
     assertThat(listAppender.list)
         .noneMatch(event -> event.getFormattedMessage().contains("method.execution.error"));
   }
+
+  /**
+   * 4th scenario (Batch 2a follow-up): the downstream envelope is present with an empty
+   * {@code err-message} and empty {@code data}. Per
+   * ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest.
+   * complete_emptyButPresentResponse_returnsTechnicalFailureResult, this does not throw -
+   * {@code toEnvelope()} passes the envelope through unchanged and {@code resultMapper.toResult(...)}
+   * maps it to a normal {@link ForgotPasswordCompletionResult} with status
+   * {@code TECHNICAL_FAILURE}. Since the @LogExecution-annotated complete(...) method's own Mono
+   * completes with {@code onNext} (a result value), not {@code onError}, the aspect logs
+   * method.execution.start then method.execution.success (INFO), with no method.execution.error.
+   */
+  @Test
+  void emptyButPresentResponseLogsStartThenSuccess() {
+    ApimExchangeExecutor executor =
+        new ApimExchangeExecutor() {
+          @Override
+          public <R, D> Mono<ApimResponseEnvelope<D>> postEnvelope(
+              ApimExchangeRequest<R, D> request) {
+            ApimResponseBody<D> body = new ApimResponseBody<>("", List.of());
+            ApimResponseEnvelope<D> envelope = new ApimResponseEnvelope<>(body);
+            return Mono.just(envelope);
+          }
+        };
+    ForgotPasswordCompletionPort adapter = proxiedAdapter(executor);
+    var command =
+        new ForgotPasswordCompletionCommand(
+            "afs-aspect-empty-but-present", "member1", "Password1!", ActorUserRole.ROLE_USER_MBR);
+
+    ForgotPasswordCompletionResult result = adapter.complete(command).block();
+    assertThat(result).isNotNull();
+    assertThat(result.status()).isEqualTo(ForgotPasswordCompletionResult.Status.TECHNICAL_FAILURE);
+
+    assertThat(listAppender.list).hasSize(2);
+    assertThat(listAppender.list.get(0).getLevel()).isEqualTo(Level.INFO);
+    assertThat(listAppender.list.get(0).getFormattedMessage())
+        .contains("method.execution.start");
+    assertThat(listAppender.list.get(1).getLevel()).isEqualTo(Level.INFO);
+    assertThat(listAppender.list.get(1).getFormattedMessage())
+        .contains("method.execution.success");
+    assertThat(listAppender.list)
+        .noneMatch(event -> event.getFormattedMessage().contains("method.execution.error"));
+  }
 }

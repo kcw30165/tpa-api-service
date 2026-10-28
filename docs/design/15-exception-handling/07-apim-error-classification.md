@@ -101,7 +101,7 @@
 - **Idempotency replay:** Yes -- Forgot Password complete
 - **Origin tag today:** none
 - **Proposed FailureOrigin (section 3):** FailureOrigin.DOWNSTREAM_CONTRACT
-- **Public HTTP status:** n/a -- its downstream handling by ForgotPasswordCompleteProtectedOperation was not traced this pass
+- **Public HTTP status:** n/a -- its downstream handling by ForgotPasswordCompleteProtectedOperation was not traced 
 - **Public ApiStatus:** n/a
 - **Public error code/type:** n/a
 - **Citation:** ApimForgotPasswordCompletionAdapter.java:52-60; ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest.complete_emptyButPresentResponse_returnsTechnicalFailureResult
@@ -161,7 +161,7 @@
 - **Idempotency replay:** Yes -- Forgot Password details/OTP is idempotency-protected
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
-- **Public HTTP status:** **UNVERIFIED, narrowly scoped:** `ForgotPasswordDetailsOtpProtectedOperation.locked`'s exact handling of a `SYSTEM_FAILED` verification result (as opposed to `DETAILS_VERIFIED`/`BUSINESS_REJECTED`, both confirmed) was not traced to its final `ForgotPasswordDetailsOtpResult.Status` this pass -- the relevant method body section was not in this pass's dump range
+- **Public HTTP status:** **UNVERIFIED, narrowly scoped:** `ForgotPasswordDetailsOtpProtectedOperation.locked`'s exact handling of a `SYSTEM_FAILED` verification result (as opposed to `DETAILS_VERIFIED`/`BUSINESS_REJECTED`, both confirmed) was not traced to its final `ForgotPasswordDetailsOtpResult.Status` -- the relevant method body section was not in 's dump range
 - **Public ApiStatus:** UNVERIFIED
 - **Public error code/type:** UNVERIFIED
 - **Citation:** `ForgotPasswordUnderLockDetailsVerifier.java:1-67`; `ApimForgotPasswordDetailsLookupAdapter.java:51-52`; `ForgotPasswordDetailsOtpProtectedOperation.java:110-174` (confirmed read; `SYSTEM_FAILED` sub-branch not conclusively isolated)
@@ -176,7 +176,7 @@
 - **Idempotency replay:** Yes -- Username Recovery start is idempotency-protected (`IdempotentStartUsernameRecoveryService`)
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
-- **Public HTTP status:** UNVERIFIED. `UsernameRecoveryStartResponsePolicy.toPolicy(UsernameRecoveryStartException)` line 122, `systemFailure(WorkflowNextStep.NONE)` -> `ApiStatus.SYSTEM_ERROR`, `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()` (lines 162-171). Exact HTTP code depends on `WorkflowHttpResponses.toResponse` (not re-dumped this pass) based on this `ApiStatus`.
+- **Public HTTP status:** UNVERIFIED. `UsernameRecoveryStartResponsePolicy.toPolicy(UsernameRecoveryStartException)` line 122, `systemFailure(WorkflowNextStep.NONE)` -> `ApiStatus.SYSTEM_ERROR`, `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()` (lines 162-171). Exact HTTP code depends on `WorkflowHttpResponses.toResponse` (not re-dumped ) based on this `ApiStatus`.
 - **Public ApiStatus:** `SYSTEM_ERROR`
 - **Public error code/type:** `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()`
 - **Citation:** `usernamerecovery/mapper/TrpSearchMemberApimResultMapper.java:39-56`; `TrpSearchMemberAdapter.java:48-56`; `UsernameRecoveryStartProtectedOperation.java:101-128`; `UsernameRecoveryController.java:100-128`; `UsernameRecoveryStartResponsePolicy.java:67-124,162-171`
@@ -236,7 +236,7 @@
 - **Idempotency replay:** No -- `TrpGetAccountListAdapter` is not found under any idempotency package
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_TRANSPORT`
-- **Public HTTP status:** n/a -- swallowed to `unavailable()`, consumed by the Login OTP-verify flow's own account-list check (not individually traced to a public status this pass -- this result feeds internal authorization logic, not a dedicated controller response path)
+- **Public HTTP status:** n/a -- swallowed to `unavailable()`, consumed by the Login OTP-verify flow's own account-list check (not individually traced to a public status -- this result feeds internal authorization logic, not a dedicated controller response path)
 - **Public ApiStatus:** n/a
 - **Public error code/type:** n/a
 - **Citation:** `TrpGetAccountListAdapter.java:26-33`; `SharedApimTrpGetAccountListTransport.java:16-48`
@@ -599,7 +599,7 @@
 - **Public HTTP status:** 503 (`FundFactSheetExceptionMappings.java:29`)
 - **Public ApiStatus:** `SYSTEM_ERROR`
 - **Public error code/type:** `"SYSTEM"` / `ErrorCodes.FUND_FACT_SHEET_RETRIEVAL_UNAVAILABLE`
-- **Citation:** `ApimFundFactSheetSourceAdapter.java:95-105`; `docs/design/11-fund-fact-sheet/fund-fact-sheet-apim-contract.md` (C-4/C-5, lines 94-99: confirms empty `data` is malformed, not a valid no-funds case, resolving the earlier pass's incorrectly flagged Javadoc contradiction)
+- **Citation:** `ApimFundFactSheetSourceAdapter.java:95-105`; `docs/design/11-fund-fact-sheet/fund-fact-sheet-apim-contract.md` (C-4/C-5, lines 94-99: confirms empty `data` is malformed, not a valid no-funds case, resolving the 's incorrectly flagged Javadoc contradiction)
 
 ### Fund Fact Sheet -- ApimFundFactSheetSourceAdapter
 
@@ -663,7 +663,7 @@
 
 ### Reference Date -- ApimReferenceDateRefreshAdapter (TRPGetWebSysDate)
 
-- **Condition:** missing payload / **non-empty** err-message field / missing data (corrected: `StringUtils.hasText(getErrMessage())` is true for a NON-blank, non-empty err-message, not a blank one; the prior description of "blank err-message field" was backwards)
+- **Condition:** missing payload / **non-empty** err-message field / missing data (corrected: `StringUtils.hasText(getErrMessage())` is true for a NON-blank, non-empty err-message, not a blank one; the of "blank err-message field" was backwards)
 - **Detection site:** `ApimReferenceDateRefreshAdapter.java:47-54` (confirmed: `payload==null` line 49; `StringUtils.hasText(payload.getErrMessage())` line 50 throws on a genuinely NON-empty err-message; `CollectionUtils.isEmpty(payload.getData())` line 51 for missing/empty data)
 - **Handling:** `throw invalid(...)` -> `ApimException(BAD_GATEWAY, APIM_RESPONSE_INVALID, message)`, called via `.map(this::toReferenceDate)` on `apimExchangeExecutor.postEnvelope(request)` (line 44)
 - **Message policy:** `MessagePolicy.RESOLVE`
@@ -697,7 +697,7 @@
 - **Detection site:** `ApimResponseValidator.java:36-38`. `ApimResponseValidator.requireSuccessData` (`ApimResponseValidator.java:27-45`) treats an empty `data` array as VALID when `err-message` is empty (line 39-43 only rejects `data == null`, not empty). `ApimEnvelopeSchemaClassifier` (logging only, confirmed never influences adapter behavior) instead treats empty `data` + empty `err-message` as malformed (`apim.contract.invalid` ERROR, confirmed production incident on TRPMemberLogin, `ApimEnvelopeSchemaClassifier.java:15-21`). The two deliberately disagree on this exact edge case: the validator's job is correctness of business behavior; the classifier's job is operational alerting.
 - **Handling:** mapped via `ApimExceptionMappings.upstream()`
 - **Message policy:** `MessagePolicy.RESOLVE`
-- **Ordered log lines:** `apim.contract.invalid` ERROR classifier (per section 3's explicit rule: every `ApimResponseValidator` caller's non-empty err-message is `DOWNSTREAM_CONTRACT` regardless of recognition); `http.api.error` ERROR, no stack trace. 4 of these 6 ARE `@LogExecution`-annotated (`ApimNotificationReadStatusAdapter`, `ApimReferenceDataCountriesAdapter`, `ApimContributionSummaryAdapter`, `ApimNoticeMessageAdapter`, all confirmed in the 10-class list), so those 4 also produce `method.execution.error` ERROR with full stack trace. The remaining 2 (`ApimMemberInfoAdapter`, `ApimGeneralMetadataSourceAdapter`) are confirmed NOT annotated and their use-case entry points were not read this pass to confirm the broad pointcut.
+- **Ordered log lines:** `apim.contract.invalid` ERROR classifier (per section 3's explicit rule: every `ApimResponseValidator` caller's non-empty err-message is `DOWNSTREAM_CONTRACT` regardless of recognition); `http.api.error` ERROR, no stack trace. 4 of these 6 ARE `@LogExecution`-annotated (`ApimNotificationReadStatusAdapter`, `ApimReferenceDataCountriesAdapter`, `ApimContributionSummaryAdapter`, `ApimNoticeMessageAdapter`, all confirmed in the 10-class list), so those 4 also produce `method.execution.error` ERROR with full stack trace. The remaining 2 (`ApimMemberInfoAdapter`, `ApimGeneralMetadataSourceAdapter`) are confirmed NOT annotated and their use-case entry points were not read to confirm the broad pointcut.
 - **Idempotency replay:** No -- all 6 are read-only or non-mutating queries
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
@@ -738,7 +738,7 @@
 
 ## 6. Public DOWNSTREAM exposure
 
-(a) `ApiError.downstreamSystem()` -- zero production callers (two test-only references). (b) `WorkflowErrorType.DOWNSTREAM_SYSTEM` -- confirmed 4 call sites: `RegistrationStartWebMapper.java:207` (`MESSAGE_DELIVERY_FAILED`), `RegistrationOtpResendWebMapper.java:142` (`MESSAGE_DELIVERY_FAILED`), `RegistrationOtpVerifyWebMapper.java:144` (`TRUST_LOOKUP_FAILED`), and -- confirmed this pass by direct source read -- `CheckRegistrationUsernameService.java:306` constructs a `WorkflowErrorDescriptor` with `WorkflowErrorType.DOWNSTREAM_SYSTEM` directly for its `downstreamFailed()` result (`DOWNSTREAM_FAILED` status, `ERROR_DOWNSTREAM_UNAVAILABLE` code), which an application-layer use case (not a web mapper) constructs directly -- the only such case in this inventory where a `WorkflowErrorType.DOWNSTREAM_SYSTEM` value originates below the web layer. Rendered verbatim into public JSON via `WorkflowMutationResponseMapper.toApiError`'s `descriptor.type().name()` (confirmed, `WorkflowMutationResponseMapper.java:50-58`). (c) literal `"DOWNSTREAM_SYSTEM"` in `ApimExceptionMappings.java:61` and `RegistrationExceptionMappings.java:31` -- the main exposure path by traffic volume. Replacement: `ApiError.type = "SYSTEM"` (`ApiError.java:45-47`, confirmed verbatim: `return new ApiError("SYSTEM", code, message, List.of(), DEFAULT_SEVERITY, source);`).
+(a) `ApiError.downstreamSystem()` -- zero production callers (two test-only references). (b) `WorkflowErrorType.DOWNSTREAM_SYSTEM` -- confirmed 4 call sites: `RegistrationStartWebMapper.java:207` (`MESSAGE_DELIVERY_FAILED`), `RegistrationOtpResendWebMapper.java:142` (`MESSAGE_DELIVERY_FAILED`), `RegistrationOtpVerifyWebMapper.java:144` (`TRUST_LOOKUP_FAILED`), and -- confirmed by direct source read -- `CheckRegistrationUsernameService.java:306` constructs a `WorkflowErrorDescriptor` with `WorkflowErrorType.DOWNSTREAM_SYSTEM` directly for its `downstreamFailed()` result (`DOWNSTREAM_FAILED` status, `ERROR_DOWNSTREAM_UNAVAILABLE` code), which an application-layer use case (not a web mapper) constructs directly -- the only such case in this inventory where a `WorkflowErrorType.DOWNSTREAM_SYSTEM` value originates below the web layer. Rendered verbatim into public JSON via `WorkflowMutationResponseMapper.toApiError`'s `descriptor.type().name()` (confirmed, `WorkflowMutationResponseMapper.java:50-58`). (c) literal `"DOWNSTREAM_SYSTEM"` in `ApimExceptionMappings.java:61` and `RegistrationExceptionMappings.java:31` -- the main exposure path by traffic volume. Replacement: `ApiError.type = "SYSTEM"` (`ApiError.java:45-47`, confirmed verbatim: `return new ApiError("SYSTEM", code, message, List.of(), DEFAULT_SEVERITY, source);`).
 
 ### Sub-task 2b.2a
 
@@ -763,7 +763,7 @@ Fail-first characterization update, replace every `DOWNSTREAM_SYSTEM` occurrence
 
 Every confirmed `new ApimException(` construction site (`ApimWebClientFacade.java:411`, `ApimForgotPasswordCompletionAdapter.java:65`, `ApimForgotPasswordUsernameLookupAdapter.java:87,96`, `ApimResponseValidator.java:37,57`, `ApimUpdatePersonalInformationAdapter.java:63,71`, `ApimReferenceDateRefreshAdapter.java:58,67`, `SharedApimTrpChkCustIdTransport.java:45,55,64`, `TrpRegMemberApimResultMapper.java:26`) uses `HttpStatus.BAD_GATEWAY` (502), with exactly one exception: `ApimForgotPasswordCompletionAdapter.java:76`'s `safeFailure` fallback, which constructs `HttpStatus.INTERNAL_SERVER_ERROR` (500). That specific 500 construction is confirmed (section 1, Forgot Password completion `safeFailure` rows) to never reach a public response -- `ForgotPasswordCompleteProtectedOperation.invoke`'s own `.onErrorResume` swallows it into `unknownOutcome()` before any `ExceptionMapping` dispatch occurs. Separately, `ApimWebClientFacade.handleErrorBody` (lines 391-416) always constructs `HttpStatus.BAD_GATEWAY` regardless of the actual upstream HTTP status; `mapUpstreamErrorCode` (lines 485-491) varies only the public error *code* (`APIM_SERVICE_UNAVAILABLE` for upstream 503, `APIM_TIMEOUT` for upstream 504, `APIM_UPSTREAM_FAILURE` otherwise), never the HTTP status. There is no row in this inventory where a public status other than 502 is actually returned for a generic `ApimException`, and no remaining decision: differentiating the public status by upstream 503/504 would itself be a public-behaviour change, which M2b's own rules place out of scope.
 
-- `RegistrationHttpResponses.status()`'s duplicate `SYSTEM_ERROR`/`BUSINESS_REJECTED` branches (confirmed dead code in an earlier pass); no change proposed in M2b.
+- `RegistrationHttpResponses.status()`'s duplicate `SYSTEM_ERROR`/`BUSINESS_REJECTED` branches (confirmed dead code in an ); no change proposed in M2b.
 - 4xx vs 5xx downstream status both resolve identically via the facade today; whether a 4xx should classify differently is open.
 - `TrpGetAccountListAdapter`'s swallowed result is consumed by internal Login authorization logic, not a dedicated controller response path; whether its three sub-cause rows need a traced public shape at all (vs. being purely internal) is open.
 - Whether confirmed swallow sites should publish a `FailureEvent` (M3 3.7).
