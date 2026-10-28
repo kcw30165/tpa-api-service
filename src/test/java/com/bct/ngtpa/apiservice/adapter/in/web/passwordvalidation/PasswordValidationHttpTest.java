@@ -508,7 +508,7 @@ class PasswordValidationHttpTest {
   void realHttpEscapedFailureOmitsTextInRequestLoggerOnRoutedVariants(String method, String path) {
     variantRequest(method, path, "csrf-fixture")
         .header("X-Guard-Failure", "true")
-        .bodyValue("{}")
+        .bodyValue(method.equals("PUT") ? PAYLOAD : "{}")
         .exchange()
         .expectStatus()
         .is5xxServerError()
@@ -531,6 +531,21 @@ class PasswordValidationHttpTest {
   }
 
   private WebTestClient.RequestBodySpec variantRequest(String method, String path, String csrf) {
+    String token = "header-marker";
+    if (method.equals("PUT")) {
+      token =
+          context
+              .getBean(PasswordValidationGrantService.class)
+              .issue(
+                  new AuthenticatedSessionId(SID),
+                  new AuthenticatedAccountRef(REF),
+                  PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE,
+                  new JsonOperationPayloadCanonicalizer().digest(PAYLOAD),
+                  PasswordCheckResult.CORRECT,
+                  "m3-path-variant")
+              .block()
+              .token();
+    }
     return client
         .method(HttpMethod.valueOf(method))
         .uri(java.net.URI.create("http://127.0.0.1:" + server.port() + path))
@@ -539,7 +554,7 @@ class PasswordValidationHttpTest {
         .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, REF)
         .header(RequestHeaderContextKeys.XSRF_TOKEN_HEADER, csrf)
         .header(RequestCorrelation.REQUEST_ID_HEADER, "m3-path-variant")
-        .header("x-password-validation-token", "header-marker");
+        .header("x-password-validation-token", token);
   }
 
   @ParameterizedTest
@@ -551,7 +566,7 @@ class PasswordValidationHttpTest {
             org.springframework.security.web.server.firewall.StrictServerWebExchangeFirewall.class)
         .setAllowSemicolon(false);
     variantRequest(method, path, "csrf-fixture")
-        .bodyValue("{}")
+        .bodyValue(method.equals("PUT") ? PAYLOAD : "{}")
         .exchange()
         .expectStatus()
         .isBadRequest()

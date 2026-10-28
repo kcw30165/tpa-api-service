@@ -42,6 +42,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 import reactor.util.context.ContextView;
 
@@ -107,13 +108,17 @@ public class PersonalInformationController {
       @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false)
           String acceptLanguage,
       ServerWebExchange exchange) {
+    var decodedRequest =
+        request.onErrorMap(
+            ServerWebInputException.class,
+            ignored -> new ServerWebInputException("Invalid request body"));
     return Mono.deferContextual(
         contextView ->
             currentPortalAccessContextResolver
                 .current()
                 .flatMap(
                     portalAccessContext ->
-                        request.flatMap(
+                        decodedRequest.flatMap(
                             body -> {
                               String resolvedLocale = resolveLanguage(contextView, acceptLanguage);
                               String accountRef = requireAccountRef(portalAccessContext);
