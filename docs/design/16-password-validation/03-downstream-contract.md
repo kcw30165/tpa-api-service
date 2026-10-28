@@ -44,6 +44,17 @@ modes, including both recovery codes, HTTP/transport/timeout/crypto failures and
 successful profile/key propagation. Existing recovery/business-retry tests stay
 unchanged. No endpoint, session mutation or grant behavior is introduced in M1.
 
+Connector and confidentiality details: the facade's cloned builder for `NEVER`
+uses the standard shared Reactor connector with `HttpClient.disableRetry(true)`
+and the configured APIM response timeout, preventing connector-level automatic
+TCP resubmission as well as application retries. Existing builders/operations
+are unchanged. Routing, filters, request encryption and response-key verification
+remain in the shared path. A loopback transport test must exercise that connector,
+not just an ExchangeFunction. Strict exchanges suppress request-body and raw
+response/error-text logging (including executor outcome logs), accept only HTTP
+200, and never leak downstream text through the application outcome. These
+conservative strict-path behaviors do not change existing operations.
+
 ## Successful password
 ```json
 {"response":{"err-message":"","data":[{"success":true,"fail-count":0}]}}
