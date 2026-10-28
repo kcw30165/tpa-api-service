@@ -967,6 +967,22 @@ class AuthenticatedSessionConditionalWriteRedisTest {
   }
 
   @Test
+  void issueReportsAuthenticationLossWhenGuardDeadlinePassesBeforeWrite() {
+    seedGrants();
+    Instant deadline = clock.instant().plusMillis(250);
+    seed(copyTimes(stored(), deadline, stored().absoluteExpiresAt()));
+    String before = redis.opsForValue().get(key).block();
+    beforeWrite.set(() -> Mono.fromRunnable(() -> awaitDeadline(deadline))
+        .subscribeOn(Schedulers.boundedElastic()));
+    var result = issueGrant(ACCOUNT);
+    assertThat(result.status().name()).isEqualTo("SESSION_NOT_USABLE");
+    assertThat(result.token()).isNull();
+    assertThat(result.expiresAt()).isNull();
+    assertThat(redis.opsForValue().get(key).block()).isEqualTo(before);
+    assertThat(commands).hasSize(1);
+  }
+
+  @Test
   void missingAccountMalformedBindingAndFutureGrantVersionNeverAuthorizeOrMutate() {
     seedGrants();
     var unowned = new AuthenticatedAccountRef("acc_012345678901234567890123");
@@ -1124,7 +1140,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     }
     terminal(terminalStatus).block();
     assertThat(issueGrant(ACCOUNT).status())
-        .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+        .extracting(Enum::name).isEqualTo("SESSION_NOT_USABLE");
     assertThat(grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block().status())
         .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
     assertThat(stored().status()).isEqualTo(terminalStatus);
@@ -1148,7 +1164,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     seedGrants();
     beforeWrite.set(() -> terminal(AuthenticatedSessionStatus.REVOKED));
     assertThat(issueGrant(ACCOUNT).status())
-        .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+        .isEqualTo(PasswordValidationGrantService.Status.SESSION_NOT_USABLE);
     assertThat(stored().status()).isEqualTo(AuthenticatedSessionStatus.REVOKED);
     assertThat(stored().featureState()).doesNotContainKey(grantKey(ACCOUNT));
     seedGrants();
@@ -1160,7 +1176,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
             Mono.fromRunnable(() -> awaitDeadline(shortSession.idleExpiresAt()))
                 .subscribeOn(Schedulers.boundedElastic()));
     assertThat(issueGrant(ACCOUNT).status())
-        .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+        .isEqualTo(PasswordValidationGrantService.Status.SESSION_NOT_USABLE);
     assertThat(stored().featureState()).doesNotContainKey(grantKey(ACCOUNT));
   }
 

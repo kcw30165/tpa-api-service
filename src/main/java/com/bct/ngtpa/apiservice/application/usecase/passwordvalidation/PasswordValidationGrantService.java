@@ -20,6 +20,7 @@ public final class PasswordValidationGrantService {
     ISSUED,
     CONSUMED,
     REJECTED,
+    SESSION_NOT_USABLE,
     UNAVAILABLE
   }
 
@@ -40,6 +41,8 @@ public final class PasswordValidationGrantService {
   private static final IssueResult ISSUE_REJECTED = new IssueResult(Status.REJECTED, null, null);
   private static final IssueResult ISSUE_UNAVAILABLE =
       new IssueResult(Status.UNAVAILABLE, null, null);
+  private static final IssueResult ISSUE_SESSION_NOT_USABLE =
+      new IssueResult(Status.SESSION_NOT_USABLE, null, null);
   private static final ConsumeResult CONSUME_REJECTED = new ConsumeResult(Status.REJECTED, null);
   private static final ConsumeResult CONSUME_UNAVAILABLE =
       new ConsumeResult(Status.UNAVAILABLE, null);
@@ -98,6 +101,7 @@ public final class PasswordValidationGrantService {
                                                 result.session().featureState().get(key)))
                                         .expiresAt());
                             case UNCHANGED -> ISSUE_REJECTED;
+                            case SESSION_NOT_FOUND, SESSION_NOT_USABLE -> ISSUE_SESSION_NOT_USABLE;
                             default -> ISSUE_UNAVAILABLE;
                           });
             })

@@ -65,7 +65,9 @@ class PasswordValidationGrantServiceTest {
   void allTechnicalOutcomesAndPublisherFailuresWithholdAuthorizationWithoutRetry() {
     for (var outcome : AuthenticatedSessionConcurrencyOutcome.values()) {
       if (outcome == AuthenticatedSessionConcurrencyOutcome.APPLIED
-          || outcome == AuthenticatedSessionConcurrencyOutcome.UNCHANGED) continue;
+          || outcome == AuthenticatedSessionConcurrencyOutcome.UNCHANGED
+          || outcome == AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_FOUND
+          || outcome == AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE) continue;
       reset(writer);
       when(writer.updateIfUsableGuarded(
               eq(ID), any(BiPredicate.class), any(BiFunction.class), isNull()))
@@ -82,6 +84,22 @@ class PasswordValidationGrantServiceTest {
       when(writer.updateIfUsableGuarded(eq(ID), any(), any(), isNull())).thenReturn(failure);
       assertUnavailable();
       verify(writer, times(2)).updateIfUsableGuarded(eq(ID), any(), any(), isNull());
+    }
+  }
+
+  @Test
+  void issueDistinguishesLostAuthenticationWithoutChangingConsumeFailureContract() {
+    for (var outcome : java.util.List.of(
+        AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_FOUND,
+        AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE)) {
+      when(writer.updateIfUsableGuarded(eq(ID), any(), any(), isNull()))
+          .thenReturn(Mono.just(AuthenticatedSessionConcurrencyResult.of(outcome)));
+      var issued = grants.issue(ID, ACCOUNT, PURPOSE, BINDING, PasswordCheckResult.CORRECT, null).block();
+      assertThat(issued.status().name()).isEqualTo("SESSION_NOT_USABLE");
+      assertThat(issued.token()).isNull();
+      assertThat(issued.expiresAt()).isNull();
+      assertThat(grants.consume(ID, ACCOUNT, PURPOSE, "a".repeat(43), null).block().status())
+          .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
     }
   }
 
