@@ -74,3 +74,27 @@ At milestone closure: full test suite, formatting check, coverage review, startu
 M4-only consumption-before-body HTTP cases remain planned, not implemented or
 claimed passed by M3. Exact fail-first results, commands, exit codes, report
 totals and reviewed revision are in the timestamped M3 evidence archive.
+
+## M3 path-guard repair (D18)
+- PasswordValidationRouteMatcherTest pins both method/path pairs for literal,
+  matrix-parameter, encoded segment, trailing-slash and case variants, method
+  isolation and context-path removal.
+- RequestLoggingWebFilterTest exercises routed variants with wildcard request/
+  response body opt-in, allowlisted token header and escaped exception text.
+- PasswordValidationRequestWebFilterTest exercises routed variants' no-store/
+  CSRF contract, strict ordering and one-call/header-unchanged pass-through.
+- PasswordValidationHttpTest exercises actual production handlers over Netty
+  and the real filter/security chain, with handler-side call counters. A
+  test-only semicolon-permissive firewall probes routing; separate cases pin
+  default-firewall 400 with zero handler calls. Trailing slash/case give 404.
+  Success, invalid CSRF and escaped filter exceptions exercise both protected
+  routes' full guards. Controllers are not mocked; Personal Information
+  collaborators are test doubles, so this is routing/guard evidence rather
+  than a claim of full Personal Information integration validation.
+- PortalAccessContextArchitectureGuardTest keeps header-before-context
+  invariants and additionally pins the intervening route policy order.
+
+All M1.5/M2 session and Redis tests remain unchanged. The isolated suite stays
+in targeted and full gates. D18 fail-first results, exact commands/exits,
+report manifests, complete diff and final reviewed revision are in the
+timestamped 040 repair evidence archive; no self-approval is implied.

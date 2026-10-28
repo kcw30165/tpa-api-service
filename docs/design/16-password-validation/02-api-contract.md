@@ -62,6 +62,11 @@ CSRF/session or an unowned account is authentication-required 401; incorrect
 CSRF is the route-local existing access-denied 403 BUSINESS_REJECTED /
 err.security.access.denied rendering (D17). All are code-only and no-store.
 Only the existing contract vocabulary is reused; no global mapping is changed.
+D18 applies the same no-store/invalid-CSRF policy to the matched Personal
+Information PUT route. Encoded segments and matrix parameters match as WebFlux
+routing does; trailing slash and case differences remain 404. The default
+security firewall still rejects semicolons with 400 before a handler; no
+production firewall setting changes. No token-consumption enforcement is added.
 
 Use the existing ApiError structure, message null, severity ERROR, source SERVER. Existing authentication and Personal Information errors retain their current codes and targets. Malformed mutation JSON is 400 VALIDATION_FAILED using existing request-validation rendering; it consumes a valid grant first. Do not expose DOWNSTREAM_REJECTED or DOWNSTREAM_ERROR publicly. No fail-count in errors or result. For 429 return Retry-After in whole seconds until the limiter window resets (authored response detail).
 

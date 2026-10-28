@@ -1,18 +1,18 @@
 {
   "package": "password-validation-design-package",
-  "version": "1.10",
+  "version": "1.11",
   "files": [
     {
       "name": "README.md",
-      "sha256": "1f263099aa222b8735fc1000d9963c81d646b0630a1f2f7d6d9c4fdb17c69645"
+      "sha256": "9ca6c5907bcc326e9abab78bc31f4d0faa2dcde09f41462d23e7a2265a2abe49"
     },
     {
       "name": "01-solution-design.md",
-      "sha256": "5c4ecfb1efe5a1b2303ec062f002dbbfa28c06061a76da93c01596359d541f74"
+      "sha256": "3a844c3cd9dd6236c254823af6939d21b7907c94e22ceacb800225476feb295c"
     },
     {
       "name": "02-api-contract.md",
-      "sha256": "61135a1fb8c9a1fb4433685f4ab06ccce89869153e99109a0c28aa692ed70684"
+      "sha256": "2f7938134bec6b5e366bbcbb6cb271dfffb8924b60dda232056fee87a06328ea"
     },
     {
       "name": "03-downstream-contract.md",
@@ -20,11 +20,11 @@
     },
     {
       "name": "04-validation-and-error-handling.md",
-      "sha256": "71ef020bc79818df14c98477a0dd65313edfbe7bb8f982dde4ecfda55a03895d"
+      "sha256": "aced0b345552403fa5815134c8c2c393d6935641bac067a8d274bd0b8a003b02"
     },
     {
       "name": "05-test-and-traceability.md",
-      "sha256": "9b016e5ba706d57bc8dc43751afc1ce8d8d2bb2d367f7b52ebcd58c75b41e5e5"
+      "sha256": "c567344ae481f10ec6b2723588d004ea07e3f4562d63cda78ce377b59aa99ce6"
     },
     {
       "name": "06-implementation-plan.md",
@@ -32,7 +32,7 @@
     },
     {
       "name": "07-decisions-and-evidence.md",
-      "sha256": "bfea893de73f7e238c308b516267cf9f7f2b57c08ea35fe924f5094d875bbcf5"
+      "sha256": "08b8ac233c58f4ed82e0af49ee33b9e5f752e1b0bc0d5c3d05695778e42f3e74"
     }
   ]
 }

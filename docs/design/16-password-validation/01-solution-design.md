@@ -296,12 +296,60 @@ Disable request/response body logging for issuance and protected Personal Inform
 
 No-store responses for issuance and authorization failures. FE keeps token in memory, not a URL, and discards it on submission, replacement, expiry or logout. FE must not interpret wrong-password 401 as unconditional session loss; account-locked 423 requires login again. After a mutation timeout, do not automatically revalidate and resubmit: first resolve the existing business outcome through the existing operational process. Fresh authorization is not business idempotency.
 
-M3 logging implementation: RequestLoggingWebFilter unconditionally denies both
-body directions on exactly POST /api/v1/password-validation and PUT
-/api/v1/personal-information, ahead of any configured rule matching. It also
+M3 logging implementation (corrected by D18): RequestLoggingWebFilter unconditionally denies both
+body directions on the POST /api/v1/password-validation and PUT
+/api/v1/personal-information route patterns, ahead of any configured rule matching. It also
 omits throwable message text on those routes and excludes
 X-Password-Validation-Token case-insensitively on every route, even when
 allowlisted. Other method/path logging behavior is unchanged. Adversarial
 wildcard/allowlist tests and real issuance HTTP logging-enabled tests are required.
+
+### M3 routing-equivalent guard repair (D18)
+
+The independent reviewer found that raw `getPath().value()` equality is narrower
+than WebFlux routing: decoded segments and matrix parameters can reach the same
+handler. `PasswordValidationRouteMatcher` is the single source of the two route
+strings, reused by controller annotations and both filters. It parses each
+PathPattern once with PathPatternParser.defaultInstance and matches
+request.getPath().pathWithinApplication(), with the corresponding POST/PUT method.
+It does not decode/rebuild the URI, strip characters, lowercase paths or enable
+optional trailing slashes. The same matcher is available for the future M4 gate;
+no such gate is implemented here.
+
+Both matched routes receive the complete required policy: request/response body
+logging disabled even under wildcard opt-in, escaped error text omitted, token
+header excluded regardless of allowlist, no-store and code-only invalid-CSRF 403.
+Applying the route-local no-store/CSRF policy to Personal Information PUT is an
+explicit part of this repair; its body, validation, use cases, dispatch, success
+and business-error contracts are not changed. Its controller annotation merely
+references the identical shared path constant.
+
+Filter order is now strict: request logging/correlation at HIGHEST_PRECEDENCE,
+route policy at +1, authenticated account context at +2. The last annotation
+moves one slot solely so route policy wraps CSRF failures without a tie.
+RequiredRequestIdWebFilter stays at +1, after correlation and before account
+context; no session/CAS/lifecycle contract or global exception mapping changes.
+The order architecture guard now pins all three positions, retaining its
+header-before-context invariant. Other methods/paths pass through once with
+headers unchanged.
+
+Real HTTP uses production controllers, not mocked controller mappings. With
+valid authentication/CSRF, the following routing observations apply to both
+protected methods:
+
+| Variant | Handler reached / result |
+|---|---|
+| Literal route | Yes / 200 |
+| Percent-encoded `p` in final segment (`%70`) | Yes / 200 |
+| Final-segment matrix parameter (`;x=1`), test-only permissive firewall | Yes / 200 |
+| Trailing slash | No / 404 |
+| Different final-segment case | No / 404 |
+| Matrix parameter, default security firewall | No / 400 before handler |
+
+The HTTP fixture deliberately permits semicolons only to test routing below
+the security firewall, then separately restores the default rejection and pins
+400, zero handler calls and the complete guard. Production firewall settings are
+unchanged. This distinction is observed, not an assumption that all non-routed
+paths produce 404. Gateway/deployment overrides remain unverified.
 
 Additional M1.5 deadline acceptance proof: delay execution between Java command creation and Redis script execution; assert the stored absolute deadline is unchanged, a deadline already passed is rejected without a write, and preserve-current grant mutations do not extend TTL. Repeat with revision conflict and with discovered expiry.
