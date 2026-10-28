@@ -31,6 +31,8 @@ HTTP 200; Cache-Control: no-store. Generic MutationResponse with a feature resul
 }
 ```
 No password, username, fail-count or reviewed changes are echoed. Session expiration may make a grant unusable before its five-minute expiry. A response lost after successful issuance is not replayed; another successful confirmation replaces the grant.
+`expiresInSeconds` is the remaining whole lifetime at acknowledgement, capped at
+300; it can be 299 after storage latency. It never renews the stored expiry.
 (Corrected, source-grounded: the JSON example above nests the token fields under `result.data`, matching the project's established `result.data` wrapper convention (e.g. `PersonalInformationUpdateResultResponse`). The concrete type is therefore `MutationResponse<PasswordValidationResult>` where `PasswordValidationResult` is a new record `PasswordValidationResult(Data data)` and `Data` is a new nested record `Data(String token, Integer expiresInSeconds)` -- not `{token, expiresInSeconds}` placed directly as `T`, which would omit the `data` nesting shown in the example and contradict it. `MutationResponse<T>` itself (`adapter.in.web.response.MutationResponse`) is the actual existing generic envelope class, used unmodified; `ApiStatus.SUCCESS`, `VALIDATION_FAILED`, `BUSINESS_REJECTED` and `SYSTEM_ERROR` are existing enum constants on `adapter.in.web.response.ApiStatus`; no new status enum is introduced by this feature.)
 
 ## Protected submission
@@ -52,6 +54,14 @@ These names are newly authored API design identifiers, not claims of existing Er
 | Token rejected / payload mismatch | 403 | BUSINESS_REJECTED | err.password-validation.authorization.invalid | X-Password-Validation-Token |
 | Throttled | 429 | BUSINESS_REJECTED | err.password-validation.rate-limited | PAGE |
 | Technical failure / invalidation failed | 503 | SYSTEM_ERROR | err.password-validation.unavailable | PAGE |
+
+M3 reuses authentication-required 401 / err.security.authentication.required
+when the session disappears or becomes unusable before the grant write. Missing
+Account-Ref retains 400 BUSINESS_REJECTED / err.member.context.invalid. Missing
+CSRF/session or an unowned account is authentication-required 401; incorrect
+CSRF is the route-local existing access-denied 403 BUSINESS_REJECTED /
+err.security.access.denied rendering (D17). All are code-only and no-store.
+Only the existing contract vocabulary is reused; no global mapping is changed.
 
 Use the existing ApiError structure, message null, severity ERROR, source SERVER. Existing authentication and Personal Information errors retain their current codes and targets. Malformed mutation JSON is 400 VALIDATION_FAILED using existing request-validation rendering; it consumes a valid grant first. Do not expose DOWNSTREAM_REJECTED or DOWNSTREAM_ERROR publicly. No fail-count in errors or result. For 429 return Retry-After in whole seconds until the limiter window resets (authored response detail).
 

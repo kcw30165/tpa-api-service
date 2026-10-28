@@ -43,3 +43,34 @@ T04a nested object order and escaped-string equivalence. T04b decimal 1 versus 1
 Per subtask: fail-first test evidence, implementation, compile, test-compile, targeted new/changed tests plus existing tests for every changed class. Stop and repair cumulative compile failures. Preserve exact command, exit code and build-report manifest; do not duplicate full successful Maven output into evidence text.
 
 At milestone closure: full test suite, formatting check, coverage review, startup smoke and SonarQube quality gate. No claims of passed gates without actual reports or explicit user confirmation. Suggested feature coverage follows the project's tiered policy: pure logic/validators/records >=95% instruction and branch; orchestration >=95% instruction and 85-90% branch with justified defensive gaps. Confirm gate configuration against repository policy before enforcing it.
+
+## M3 implementation test map (D17)
+- PasswordValidationHttpTest: real loopback Netty HTTP with production Spring
+  Security chain (external-auth mode), correlation/required-ID/account filters,
+  exception handler, actual controller/parser/use case/M1 APIM adapter and M2
+  throttle/grant/session lifecycle. Only the APIM executor, rate-limit storage
+  and protected session persistence/CAS boundary are deterministic test doubles.
+  Proves the complete issuance matrix, cookie settings on both lock outcomes,
+  authentication/CSRF/account rejections, eleventh admission, fail-closed faults,
+  no resubmission metadata, no wrong-password replacement, raw exact-decimal
+  digest preservation, duplicates inside operationPayload/fields/array objects,
+  configured password bounds, memory/depth limits and logging-enabled secrecy.
+  The separate isolated Redis suite, not this HTTP double, proves Lua atomicity.
+- PasswordValidationRequestParserTest: custom login bounds, all-space password
+  preservation, nonempty operation structure, unknown nested members bound, and
+  value-free/cause-free parser failures.
+- PasswordValidationIssuanceServiceTest: ordering, conservative expiry and lock
+  cleanup exception/empty/terminal behavior; redacted application contracts.
+- PasswordValidationContractsTest: the six central feature codes, existing base
+  envelope/result.data shape and secret-safe transport records.
+- RequestLoggingWebFilterTest: wildcard request/response-body opt-in overridden
+  on both protected method/path pairs; allowlisted token header excluded in
+  three casings; confidential throwable messages omitted.
+- PasswordValidationGrantServiceTest and
+  AuthenticatedSessionConditionalWriteRedisTest: issue-only SESSION_NOT_USABLE
+  distinction, real write-point deadline expiry and unchanged consume contract.
+  Original M1.5 Redis cases and shared Lua scripts must remain unchanged.
+
+M4-only consumption-before-body HTTP cases remain planned, not implemented or
+claimed passed by M3. Exact fail-first results, commands, exit codes, report
+totals and reviewed revision are in the timestamped M3 evidence archive.

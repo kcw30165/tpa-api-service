@@ -193,7 +193,9 @@ be false under the approved M1.5 contracts. The guarded writer independently
 enforces authentication usability rather than relying on any such invariant.
 
 Grant issue and consume return UNAVAILABLE on REVISION_CONFLICT_EXHAUSTED,
-SYSTEM_FAILURE, missing/unusable session or uncertain/lost acknowledgement.
+SYSTEM_FAILURE or uncertain/lost acknowledgement. M3 (D17) additionally
+distinguishes a missing/unusable session on **issue** as SESSION_NOT_USABLE
+(authentication-required HTTP 401); consume retains its M2 failure contract.
 UNAVAILABLE carries neither an issued token nor a consumed binding; future web
 mapping is the approved 503 SYSTEM_ERROR / err.password-validation.unavailable
 path. No mutation dispatch is permitted. Conflict exhaustion means this invocation
@@ -228,9 +230,77 @@ business dispatch is implemented in M2; those remain M3/M4. The 503 mapping abov
 is the required contract for the later web boundary, not a claim that an M2 HTTP
 route already exists.
 
+### M3 issuance implementation boundary (D17)
+
+`PasswordValidationController` exposes only POST /api/v1/password-validation.
+It reuses the existing authenticated cookie reader and
+CurrentPortalAccessContextResolver; the production account-context filter and
+session/CSRF validation still establish ownership and identity. The controller
+never resolves context from body or raw Account-Ref. Missing Account-Ref keeps the
+existing missing-context 400 BUSINESS_REJECTED / err.member.context.invalid
+contract; missing/malformed/unusable session, missing CSRF and unknown account
+keep authentication-required 401. Invalid CSRF is rendered only on this new route
+as the existing security access-denied 403 BUSINESS_REJECTED /
+err.security.access.denied contract, with no public message. Live source showed
+that AuthenticatedCsrfValidationException otherwise escapes the shared account
+filter without a dedicated filter-path renderer; the new route-local
+PasswordValidationRequestWebFilter contains that error without altering global
+handlers or other endpoints. It sets no-store before account/security failures.
+X-Request-Id extraction and the existing inbound-required-header filter are reused.
+
+The bounded String HTTP decoder supplies the original JSON string to
+PasswordValidationRequestParser. Its private strict-duplicate-detection parser
+visits the complete body, including every skipped nested object/array. Only the
+three envelope keys are allowed. Password uses the configured login minimum and
+maximum lengths exactly (including spaces/case; no complexity check).
+operationPayload must contain nonblank string formVersion, explicit boolean
+applyToAllAccounts, and a nonempty object fields. No YAML/business/access
+validation runs at issuance. Additional operation members and every field value
+are retained in the binding, not silently mapped away. The exact raw substring
+delimited by the parser's character offsets goes to the M1 canonicalizer;
+no JsonNode/Map/DTO serialization or binary floating point intervenes.
+Malformed JSON, trailing content, duplicates anywhere, size/depth failures,
+unknown envelope members and wrong types return code-only 400.
+Parser diagnostics/causes are discarded, never logged or rethrown with values.
+
+`IssuePasswordValidationUseCase` / `PasswordValidationIssuanceService` orchestrate
+validated input -> username throttle -> the existing M1 PasswordCheckPort ->
+guarded M2 grant issue only on CORRECT. There is no retry or result replay.
+Server context supplies actorUserId and actorUserRole to the unchanged M1 adapter,
+which retains NON_ACCOUNT / NON_RETRYABLE / NEVER and null accountEnv.
+PasswordValidationIssuanceConfig supplies production composition and reads the
+same AuthWorkflowProperties login password bounds as login. A response reports
+the remaining whole grant seconds, capped at 300, rather than extending expiry
+through storage/acknowledgement delay; an already elapsed grant returns 503.
+
+ACCOUNT_LOCKED invokes current-session lifecycle revoke. REVOKED, LOGGED_OUT,
+EXPIRED or NOT_FOUND confirms no usable current session and returns 423; FAILED,
+unexpected ACTIVE, empty publisher or exception returns 503. Both branches clear
+the authenticated cookie using the existing writer/settings. Failure emits only
+a bounded operational event and request ID, not exception text. Other sessions
+are not revoked. Wrong password leaves the prior grant untouched. All technical
+origins and unregistered cust-id collapse to the same 503 code, except explicit
+grant-session loss -> existing authentication-required 401. Conflict exhaustion
+and ambiguous writes still withhold tokens; consume and all shared session
+contracts remain unchanged.
+
+PasswordValidationWebMapper owns the existing MutationResponse / result.data
+shape and centrally registered feature codes. Messages remain absent/null;
+DOWNSTREAM statuses, raw codes, fail-count and submitted values are never public.
+No token gate, Personal Information controller change, enforcement, CORS/proxy
+release work or M5 work is implemented in M3.
+
 ## 7. Security, logging and operations
 Disable request/response body logging for issuance and protected Personal Information PUT independently of configurable opt-in body logging. Exclude the token header from header logging and sanitize DTO/command toString. Do not log password, token, raw cust-id, session cookie, CSRF, payload, or payload digest. APIM request/response logging must be tested in encrypted and plain modes. Safe events contain request ID, purpose, outcome, HTTP status and bounded reason codes only.
 
 No-store responses for issuance and authorization failures. FE keeps token in memory, not a URL, and discards it on submission, replacement, expiry or logout. FE must not interpret wrong-password 401 as unconditional session loss; account-locked 423 requires login again. After a mutation timeout, do not automatically revalidate and resubmit: first resolve the existing business outcome through the existing operational process. Fresh authorization is not business idempotency.
+
+M3 logging implementation: RequestLoggingWebFilter unconditionally denies both
+body directions on exactly POST /api/v1/password-validation and PUT
+/api/v1/personal-information, ahead of any configured rule matching. It also
+omits throwable message text on those routes and excludes
+X-Password-Validation-Token case-insensitively on every route, even when
+allowlisted. Other method/path logging behavior is unchanged. Adversarial
+wildcard/allowlist tests and real issuance HTTP logging-enabled tests are required.
 
 Additional M1.5 deadline acceptance proof: delay execution between Java command creation and Redis script execution; assert the stored absolute deadline is unchanged, a deadline already passed is rejected without a write, and preserve-current grant mutations do not extend TTL. Repeat with revision conflict and with discovered expiry.

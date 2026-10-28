@@ -55,6 +55,13 @@ A configured malformed/short key fails startup. Positive policy settings are
 Empty results, errors and unexpected DISABLED decisions fail closed without
 retry. These services are wired in M2 but no endpoint invokes them until M3.
 
+M3 invokes these services through the issuance use case. Operators must provision
+`PASSWORD_VALIDATION_RATE_LIMIT_SECRET` as Base64 encoding of at least 32
+cryptographically random bytes, with the **same value on every replica**. Supply
+it through secret management, never checked-in YAML, example real keys, logs or
+evidence. Absence still fails this endpoint closed with 503; no local substitute
+key, per-replica fallback, bypass or disable switch is introduced.
+
 ## Binding and input safety
 Compare complete JSON operation payload, including applyToAllAccounts. Duplicate keys must be rejected before they can be discarded by mapping. Do not hash only fields that happen to survive the current DTO mapper. Do not use FE hashes, Java Object.toString, iteration-order-dependent maps, locale-dependent formatting or binary floating-point serialization as the binding contract.
 
@@ -70,6 +77,19 @@ Confirmed filter order: `RequestLoggingWebFilter` runs at `@Order(Ordered.HIGHES
 Pre-body-consumption gate: introduce PasswordValidationTokenGateWebFilter at Ordered.HIGHEST_PRECEDENCE + 2, after PortalAccessContextWebFilter, scoped to PUT /api/v1/personal-information. Require the resolved authenticated account context explicitly; missing Account-Ref must not bypass the gate. Read the token header and complete atomic ownership/expiry checking and consumption before invoking chain.filter(exchange). On success place the consumed binding in request-local exchange attributes; body decoding and comparison follow downstream. Selected error-rendering path: render gate failures directly using the existing ErrorResponseRenderer and the actual MutationResponse/ApiError contracts, with JSON content type, request correlation and no-store. Token rejection is 403 BUSINESS_REJECTED; a technical failure from this gate's consumption operation is 503 SYSTEM_ERROR. Scope technical-error conversion to that operation before chain.filter; do not globally catch CacheException or wrap downstream controller/business failures. Existing authentication/CSRF exceptions and their handlers remain unchanged; this design does not claim the context-resolution handler handles CSRF. No new global WebExceptionHandler is required. Full HTTP tests must prove the envelope/status, zero body reads on pre-body rejection, malformed-body consumption, and unchanged authentication/CSRF behavior. Do not infer correctness solely from @RequestBody Mono laziness.
 
 Open verification item: effective inbound body/depth limits must be verified from actual application/framework configuration and deployed overrides before implementation. Do not assume a framework default or invent production values. This is distinct from outbound APIM codec limits.
+
+M3 source/HTTP verification: this repository has no inbound max-in-memory codec
+override. The resolved Spring Framework 7.0.7 AbstractDataBufferDecoder initializes
+maxInMemorySize to 256 * 1024 bytes; StringDecoder aggregation uses that bound.
+The framework argument resolver translates DataBufferLimitException to
+ContentTooLargeException, which the new route converts to its 400 validation
+contract without diagnostic text. Real HTTP tests reject a 300,000-character
+field before throttling. The private Jackson parser and M1 canonicalizer retain
+their resolved default StreamReadConstraints (nesting depth 1000); HTTP rejects
+1100 nested arrays. No global ObjectMapper/codec/limit changes are made.
+Deployed codec/proxy overrides and upstream rejection behavior remain unverified
+release concerns; these tests certify the repository's local framework path only.
+This limit evidence does not implement M4's consume-before-decode gate.
 
 Logging/redaction: `RequestLoggingWebFilter` logs headers only when `request-logging.log-headers=true` and only for names present in `request-logging.header-allowlist` (default: `User-Agent`, `Accept`, `Content-Type`). **Correction (reviewer finding, major, second review).** Relying on "never add the token header to the allowlist" plus a config-scan test is insufficient for the same reason the earlier body-logging configuration reliance was insufficient: it is a configuration-absence guarantee, not a runtime one. The required design is a hard, code-level, case-insensitive exclusion inside `RequestLoggingWebFilter.buildAllowedHeaders` (or an equivalent check applied to its output) that unconditionally removes `X-Password-Validation-Token` from the headers actually logged, regardless of whether an operator has added it to `request-logging.header-allowlist` in any environment. The config-scan test asserting it is absent from the allowlist remains useful as secondary, defense-in-depth, but must not be the sole or primary protection. This requires an adversarial test that configures the header into the allowlist and asserts it is still never present in the logged headers map. Follow the existing `<redacted>`-style `toString()` convention demonstrated by `CaptchaChallengeResponse`/`CaptchaRefreshRequest`/`CaptchaRefreshResponse` for every new password-validation DTO/command (print field names but never values for `password`, `token`, `cust-id`, or the operation payload). Note: the package-private `SecurityAuditMetadataSanitizer` (`adapter.out.security.audit`) is a *different*, narrower mechanism for audit-event metadata maps (redacts by forbidden-key-name and value-pattern matching) and is not the same code path as `RequestLoggingWebFilter`'s `LoggingSanitizer`; do not assume the audit sanitizer's forbidden-key list alone covers HTTP request/response/header logging for this feature -- both paths must be independently tested.
 
