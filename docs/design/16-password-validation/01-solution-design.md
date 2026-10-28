@@ -41,6 +41,25 @@ Object member order is irrelevant recursively. Array order is significant. Strin
 
 Compute a cryptographic digest of the versioned canonical representation. Store the digest, not raw personal information. Include applyToAllAccounts so it cannot be changed after review. This binds the submitted apply-all instruction, not a snapshot of every related account downstream might resolve. A fixed target-account-set authorization is NOT claimed; if required later, it needs a separate contract change.
 
+M1 version-one encoding: `JsonOperationPayloadCanonicalizer` implements the
+framework-free `OperationPayloadBindingPort.digest(String rawJson)`, returning
+`PayloadDigest(version, sha256)`. It parses raw JSON with strict duplicate
+detection independently of the global mapper. The SHA-256 input begins with a
+big-endian 32-bit version (`1`). Each value has a one-byte ASCII type tag:
+`{` object, `[` array, `s` string, `n` number, `t` true, `f` false, `0` null.
+Objects encode a 32-bit member count followed by name/value pairs sorted by
+Java UTF-16 code-unit name order; arrays encode count then ordered values.
+Text encodes a 32-bit code-unit count and big-endian UTF-16 code units (including
+lone surrogate escapes, avoiding replacement collisions). Numbers encode
+`BigDecimal.stripTrailingZeros().toString()` as text, without binary floating
+point conversion. Only an object root is accepted; trailing tokens, malformed
+JSON and duplicate members at any depth fail with a fixed, value-free exception.
+The empty-object digest is
+`1e08b461b9803ab3c74e8791fb16c2b9b490b3a8754bbcb50a59b98d7c0f662b`.
+Digest comparison requires matching versions; unknown versions are not reinterpreted.
+This parser is not an inbound HTTP decoder or a claim that deployment body limits
+have been resolved. Both future call sites must supply raw JSON before DTO mapping.
+
 ### 6. Storage and concurrency specification (corrected decision, source-grounded -- supersedes prior pass after independent review)
 
 Chosen mechanism: store grants in the existing AuthenticatedSession.featureState map. Grant mutations retain the updateIfUsable application contract; the M1.5 prerequisite generalizes the underlying conditional-write mechanism for lifecycle operations. No separate grant Redis key is introduced. The existing preserve-current-TTL Lua script remains for grant mutations; a sibling absolute-deadline CAS script is introduced for lifecycle writes. All relevant session writers must participate in revision-checked writes before grant work begins.
