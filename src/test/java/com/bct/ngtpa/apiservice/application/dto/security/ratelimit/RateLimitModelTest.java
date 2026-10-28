@@ -21,7 +21,8 @@ class RateLimitModelTest {
         Set.of(
             RateLimitBucket.REGISTRATION_START_BY_IP,
             RateLimitBucket.OTP_SEND_BY_DESTINATION_HASH,
-            RateLimitBucket.OTP_VERIFY_BY_REGISTRATION_SESSION),
+            RateLimitBucket.OTP_VERIFY_BY_REGISTRATION_SESSION,
+            RateLimitBucket.PASSWORD_VALIDATION_BY_USERNAME),
         Set.copyOf(Arrays.asList(RateLimitBucket.values())));
   }
 

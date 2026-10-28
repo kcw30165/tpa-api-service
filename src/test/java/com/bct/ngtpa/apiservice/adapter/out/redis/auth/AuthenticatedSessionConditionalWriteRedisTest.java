@@ -17,6 +17,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.csrf.AuthenticatedSessi
 import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.personalinformation.PersonalInformationConfigCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
+import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationThrottleService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.infrastructure.security.session.AesGcmAuthenticatedSessionProtector;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -892,6 +893,35 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     assertThat(stored().status()).isEqualTo(AuthenticatedSessionStatus.REVOKED);
     assertThat(stored().featureState()).doesNotContainKey("grant");
     assertThat(outcomes).contains(AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH);
+  }
+
+  @Test
+  void usernameLimiterAdmitsTenAcrossParallelInvocationsAndIsolatesOtherUsers() {
+    var limiter = new PasswordValidationThrottleService(
+        new RedisRateLimitAdapter(redis, keys, clock), new byte[32], 10, 60);
+    var actor = new ActorContext("synthetic-throttle-parallel", ActorUserRole.ROLE_USER_MBR);
+    var results = Flux.range(0, 20).flatMap(i -> limiter.check(actor, "parallel"), 20)
+        .collectList().block();
+    assertThat(results.stream().filter(r -> r.status() ==
+        PasswordValidationThrottleService.Status.ADMITTED)).hasSize(10);
+    assertThat(results.stream().filter(r -> r.status() ==
+        PasswordValidationThrottleService.Status.BLOCKED)).hasSize(10).allSatisfy(
+            r -> assertThat(r.retryAfterSeconds()).isBetween(1, 60));
+    assertThat(limiter.check(new ActorContext("synthetic-other-user", actor.actorUserRole()), "test")
+        .block().status()).isEqualTo(PasswordValidationThrottleService.Status.ADMITTED);
+  }
+
+  @Test
+  void usernameLimiterResetsAtItsConfiguredWindow() {
+    var limiter = new PasswordValidationThrottleService(
+        new RedisRateLimitAdapter(redis, keys, clock), new byte[32], 1, 1);
+    var actor = new ActorContext("synthetic-throttle-reset", ActorUserRole.ROLE_USER_MBR);
+    assertThat(limiter.check(actor, "first").block().status())
+        .isEqualTo(PasswordValidationThrottleService.Status.ADMITTED);
+    assertThat(limiter.check(actor, "second").block().status())
+        .isEqualTo(PasswordValidationThrottleService.Status.BLOCKED);
+    var next = Mono.delay(Duration.ofMillis(1100)).then(limiter.check(actor, "reset")).block();
+    assertThat(next.status()).isEqualTo(PasswordValidationThrottleService.Status.ADMITTED);
   }
 
   @Test
