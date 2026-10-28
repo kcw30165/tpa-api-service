@@ -643,7 +643,14 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     script.setResultType(Long.class);
     String before = redis.opsForValue().get(key).block();
     long deadline = expiry();
-    for (String invalid : List.of("", "-1", "1.5", "not-a-number", "9007199254740992")) {
+    for (String invalid :
+        List.of(
+            "",
+            "-1",
+            "1.5",
+            "not-a-number",
+            "9007199254740992",
+            "0" + clock.instant().plusSeconds(90).toEpochMilli())) {
       assertThat(
               redis
                   .execute(script, List.of(key), List.of(INITIAL.value(), "never-written", invalid))

@@ -8,7 +8,7 @@ if type(currentRevision) ~= 'string' or #currentRevision ~= 32
     or not string.match(currentRevision, '^[0-9a-f]+$') then return -2 end
 if currentRevision ~= ARGV[1] then return 0 end
 if redis.call('PTTL', KEYS[1]) <= 0 then return -3 end
-if not string.match(ARGV[3], '^%d+$') then return -4 end
+if not string.match(ARGV[3], '^[1-9]%d*$') then return -4 end
 local deadline = tonumber(ARGV[3])
 if not deadline or deadline > 9007199254740991 then return -4 end
 local time = redis.call('TIME')

@@ -113,9 +113,11 @@ null selects the original atomic PTTL-preserving script; a value selects
 `update-if-current-until.lua` with its epoch-millisecond deadline. The existing
 five-argument constructor retains preserve-current behavior. Both scripts reject
 missing/malformed revisions. The lifecycle sibling checks the revision and
-positive existing TTL, validates an integer deadline, samples Redis TIME, then
+positive existing TTL, validates a canonical positive integer deadline, samples Redis TIME, then
 performs SET and PEXPIREAT atomically. Invalid/elapsed deadlines return a technical
 failure without a write; they are not revision conflicts and are not retried.
+Leading-zero deadlines are rejected before SET because Redis expiry commands
+reject that representation; script errors do not roll back earlier writes.
 
 `AuthenticatedSessionLifecycleService.updateLifecycle` replaces the former blind
 touch/persistTerminal writes. Its predicate accepts nonterminal sessions even
