@@ -254,7 +254,9 @@ public class RequestLoggingWebFilter implements WebFilter {
     }
     event.put("elapsedMs", elapsedMillis(startNanos));
     event.put("exceptionType", throwable.getClass().getSimpleName());
-    event.put("errorMessage", loggingSanitizer.toSafeString(throwable.getMessage()));
+    if (!isConfidential(exchange.getRequest())) {
+      event.put("errorMessage", loggingSanitizer.toSafeString(throwable.getMessage()));
+    }
     log.error("{}", toJson(event));
   }
 
@@ -267,6 +269,7 @@ public class RequestLoggingWebFilter implements WebFilter {
   }
 
   private RequestLoggingProperties.EndpointRule findMatchingRule(ServerHttpRequest request) {
+    if (isConfidential(request)) return null;
     String method = request.getMethod().name();
     String path = request.getPath().value();
     return properties.getBodyLogging().getEndpoints().stream()
@@ -275,6 +278,13 @@ public class RequestLoggingWebFilter implements WebFilter {
             rule -> rule.getPathPattern() != null && pathMatcher.match(rule.getPathPattern(), path))
         .findFirst()
         .orElse(null);
+  }
+
+  private static boolean isConfidential(ServerHttpRequest request) {
+    String path = request.getPath().value();
+    String method = request.getMethod().name();
+    return ("POST".equals(method) && "/api/v1/password-validation".equals(path))
+        || ("PUT".equals(method) && "/api/v1/personal-information".equals(path));
   }
 
   private boolean shouldLogRequestBody(RequestLoggingProperties.EndpointRule rule) {
@@ -304,7 +314,8 @@ public class RequestLoggingWebFilter implements WebFilter {
     req.getHeaders()
         .forEach(
             (name, values) -> {
-              if (allowlist.stream().anyMatch(name::equalsIgnoreCase)) {
+              if (!"X-Password-Validation-Token".equalsIgnoreCase(name)
+                  && allowlist.stream().anyMatch(name::equalsIgnoreCase)) {
                 headers.put(name, String.join(", ", values));
               }
             });
