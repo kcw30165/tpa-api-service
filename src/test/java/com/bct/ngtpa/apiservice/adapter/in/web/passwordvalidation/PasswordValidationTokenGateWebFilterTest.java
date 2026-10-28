@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.*;
@@ -87,6 +88,52 @@ class PasswordValidationTokenGateWebFilterTest {
     when(cookies.read(any())).thenReturn(Optional.empty());
     gate.filter(exchange, ignored -> Mono.error(new AssertionError("Dispatched"))).block();
     assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    verifyNoInteractions(grants);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"actor-missing", "actor-id-blank", "actor-role-missing", "account-missing"})
+  void incompleteAuthenticatedContextIsRejectedBeforeToken(String missingPart) {
+    var exchange = request();
+    PortalAccessContext context = mock(PortalAccessContext.class, RETURNS_DEEP_STUBS);
+    switch (missingPart) {
+      case "actor-missing" -> when(context.actor()).thenReturn(null);
+      case "actor-id-blank" -> when(context.actor().actorUserId()).thenReturn(" ");
+      case "actor-role-missing" -> when(context.actor().actorUserRole()).thenReturn(null);
+      case "account-missing" -> when(context.account()).thenReturn(null);
+      default -> throw new AssertionError(missingPart);
+    }
+    exchange.getAttributes().put(PortalAccessContextKeys.ATTRIBUTE_KEY, context);
+
+    AtomicInteger calls = new AtomicInteger();
+    gate.filter(
+            exchange,
+            ignored -> {
+              calls.incrementAndGet();
+              return Mono.empty();
+            })
+        .block();
+
+    assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    assertThat(calls).hasValue(0);
+    verifyNoInteractions(grants);
+  }
+
+  @Test
+  void missingAccountHeaderIsRejectedBeforeToken() {
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.put(PasswordValidationRouteMatcher.PERSONAL_INFORMATION_PATH)
+                .header(PasswordValidationTokenGateWebFilter.TOKEN_HEADER, TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}"));
+    exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "gate-unit");
+    authenticate(exchange);
+
+    gate.filter(exchange, ignored -> Mono.error(new AssertionError("Dispatched"))).block();
+
+    assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     verifyNoInteractions(grants);
   }
 

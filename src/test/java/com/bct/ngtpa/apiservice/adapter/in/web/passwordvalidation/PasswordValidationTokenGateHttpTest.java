@@ -253,9 +253,7 @@ class PasswordValidationTokenGateHttpTest {
     String original = fixture.load(SID).featureState().get(GRANT_KEY);
     var request = request(PATH, SID, REF, "csrf-fixture");
     switch (row) {
-      case "missing" -> {
-        // Deliberately omit the token header for the missing-token rejection case.
-      }
+      case "missing" -> request.headers(headers -> headers.remove(TOKEN));
       case "blank" -> request.header(TOKEN, "");
       case "duplicate" -> request.header(TOKEN, token, token);
       case "comma" -> request.header(TOKEN, token + "," + token);
@@ -345,6 +343,27 @@ class PasswordValidationTokenGateHttpTest {
     assertConsumed();
     assertNoDispatch();
     reject(put(PATH, PAYLOAD, token), 403, "BUSINESS_REJECTED", authorizationCode());
+  }
+
+  @Test
+  void declaredNonUtf8CharsetWithDifferentDecodedTextConsumesAndRejectsWithoutDispatch() {
+    String reviewed = PAYLOAD.replace("reviewed-marker", "café");
+    byte[] utf8Body = reviewed.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    assertThat(new String(utf8Body, java.nio.charset.StandardCharsets.ISO_8859_1))
+        .isNotEqualTo(reviewed);
+
+    String token = issue(reviewed);
+    var response =
+        request(PATH, SID, REF, "csrf-fixture")
+            .contentType(MediaType.parseMediaType("application/json;charset=ISO-8859-1"))
+            .header(TOKEN, token)
+            .bodyValue(utf8Body)
+            .exchange();
+
+    reject(response, 403, "BUSINESS_REJECTED", authorizationCode());
+    assertConsumed();
+    assertNoDispatch();
+    reject(put(PATH, reviewed, token), 403, "BUSINESS_REJECTED", authorizationCode());
   }
 
   @ParameterizedTest
