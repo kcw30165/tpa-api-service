@@ -1,9 +1,9 @@
 # Password Validation and Transaction Authorization: design package
 
-Version 1.8. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
-M1.5 touch-contention repair follows CHANGES REQUIRED at
-`67534c89439293cc69ba9df36be7a89140e511c7` and awaits independent re-review.
-Business requirements remain unchanged; M2 is not authorized by this package update.
+Version 1.9. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
+M1.5 approved at `bfbac598d47558a306caa0bbd5b829e19f83d17f`.
+Nick authorized M2 and its additive opt-in write-point guard (D16).
+This is not M2 approval and does not authorize M3/M4.
 Status: final requirements/design baseline for review; no implementation or deployment approval is implied.
 
 The member confirms a password before submitting reviewed Personal Information changes. One shared BFF endpoint validates that password through TAS/APIM and issues a five-minute, single-use authorization bound to the authenticated session, selected account, purpose, and exact submitted changes. This is password confirmation, not a PIN or OTP feature.

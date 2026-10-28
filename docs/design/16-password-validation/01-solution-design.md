@@ -169,6 +169,42 @@ This implementation/test note does not certify deployment compatibility.
 
 Source references: `AuthenticatedSession.java` (`featureState`, `withFeatureState`), `AuthenticatedSessionConcurrencyService.java` (`updateIfUsable`, `updateIfEligible`, `attemptOnce`), `AuthenticatedSessionCasUpdatePort.java`, `AuthenticatedSessionCasUpdateCommand.java`, `RedisAuthenticatedSessionCasUpdateAdapter.java`, `AuthenticatedSessionConcurrencyConfig.java`, `src/main/resources/redis/authenticated-session/update-if-current.lua`, `src/main/resources/redis/authenticated-session/update-if-current-until.lua`, `AuthenticatedSessionLifecycleService.java` (`copy`, `updateLifecycle`, `logout`, `revoke`, `transitionTerminal`, `loadAndTouch`).
 
+### M2 additive write-point guard and failure contract (D16)
+
+M1.5 is approved at `bfbac598d47558a306caa0bbd5b829e19f83d17f`.
+The earlier grant references to the original preserve-TTL script are superseded
+only for grants: `updateIfUsableGuarded` uses a new sibling
+`update-if-current-guarded.lua`. The original two scripts and `updateIfUsable`
+retain their approved behavior. Optional command `usableUntil` defaults to null
+and cannot coexist with `expiryDeadline`. Freshly loaded ACTIVE/usable state is
+required in Java; each guarded attempt passes min(idleExpiresAt, absoluteExpiresAt).
+The sibling checks existence, JSON/revision and positive PTTL, validates the epoch
+millisecond deadline, then rejects Redis TIME >= usableUntil before PSETEX.
+Elapsed usability has a distinct CAS outcome mapped to SESSION_NOT_USABLE.
+Revision mismatches alone retry from a fresh snapshot/deadline. No script
+inspects encrypted feature state. The PTTL/deadline invariant after creation,
+touch and terminal transitions is tested as an invariant, not an authorization
+assumption: the guarded writer independently enforces the deadline.
+
+Grant issue and consume return UNAVAILABLE on REVISION_CONFLICT_EXHAUSTED,
+SYSTEM_FAILURE, missing/unusable session or uncertain/lost acknowledgement.
+UNAVAILABLE carries neither an issued token nor a consumed binding; future web
+mapping is the approved 503 SYSTEM_ERROR / err.password-validation.unavailable
+path. No mutation dispatch is permitted. Conflict exhaustion means this invocation
+performed no write; uncertainty may mean a write committed, but never authorizes
+dispatch or retries. Wrong scope/token/expired grant returns REJECTED without
+writing; a valid matching grant is replaced by a tombstone within CAS.
+
+Issuance timestamps are sampled on each eligible CAS attempt, not at password
+arrival. expiresAt = issuedAt + 300 seconds; application checks strict now <
+expiresAt on consumption. Commit acknowledgement can shorten the remaining
+lifetime; it cannot extend it or renew a grant. This is a conservative bounded
+300-second lifetime, not a claim that Java can timestamp the Redis linearization
+point exactly. Password success is a required explicit input to the issue
+capability; all other downstream outcomes leave existing grants unchanged.
+Only PERSONAL_INFORMATION_UPDATE is accepted. Tests may seed an unsupported
+purpose entry to prove namespace isolation, but cannot issue that purpose.
+
 ## 7. Security, logging and operations
 Disable request/response body logging for issuance and protected Personal Information PUT independently of configurable opt-in body logging. Exclude the token header from header logging and sanitize DTO/command toString. Do not log password, token, raw cust-id, session cookie, CSRF, payload, or payload digest. APIM request/response logging must be tested in encrypted and plain modes. Safe events contain request ID, purpose, outcome, HTTP status and bounded reason codes only.
 
