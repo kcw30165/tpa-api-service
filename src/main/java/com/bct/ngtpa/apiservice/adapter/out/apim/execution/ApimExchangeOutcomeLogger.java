@@ -53,13 +53,15 @@ public class ApimExchangeOutcomeLogger {
       ApimExchangeRequest<?, ?> request, Throwable error, String requestId) {
     Map<String, Object> event = baseEvent("apim.exchange.failed", request, requestId);
     event.put("exceptionType", error.getClass().getSimpleName());
-    event.put("errorMessage", loggingSanitizer.sanitizeText(error.getMessage()));
+    if (request.resubmissionPolicy() != ApimResubmissionPolicy.NEVER) {
+      event.put("errorMessage", loggingSanitizer.sanitizeText(error.getMessage()));
+    }
     Throwable innermost = rootCause(error);
     if (innermost != error) {
       event.put("rootCauseType", innermost.getClass().getSimpleName());
     }
     String fieldPath = jsonPath(error);
-    if (fieldPath != null) {
+    if (fieldPath != null && request.resubmissionPolicy() != ApimResubmissionPolicy.NEVER) {
       event.put("jsonPath", fieldPath);
     }
     log.error("{}", toJson(event));
@@ -75,7 +77,9 @@ public class ApimExchangeOutcomeLogger {
   private <D> void logBusinessRejected(
       ApimExchangeRequest<?, D> request, ApimResponseEnvelope<D> envelope, String requestId) {
     Map<String, Object> event = baseEvent("apim.business.rejected", request, requestId);
-    event.put("errMessage", loggingSanitizer.sanitizeText(envelope.getResponse().getErrMessage()));
+    if (request.resubmissionPolicy() != ApimResubmissionPolicy.NEVER) {
+      event.put("errMessage", loggingSanitizer.sanitizeText(envelope.getResponse().getErrMessage()));
+    }
     log.warn("{}", toJson(event));
   }
 

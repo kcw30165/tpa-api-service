@@ -9,6 +9,10 @@ import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.StreamReadFeature;
+import java.io.IOException;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,6 +22,8 @@ import reactor.core.publisher.Signal;
 /** Generic profile-aware APIM envelope orchestration without feature business interpretation. */
 @Service
 public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
+  private static final JsonFactory STRICT_JSON =
+      JsonFactory.builder().enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION).build();
 
   private final ApimWebClientFacade facade;
   private final ApimPayloadCryptoService cryptoService;
@@ -87,12 +93,17 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
               R transformed =
                   cryptoService.encryptRequest(
                       request.path(), request.request(), request.requestType(), null);
-              return facade.postSuccessfulExchange(
+              return request.resubmissionPolicy() == ApimResubmissionPolicy.ALLOW_RECOVERY
+                  ? facade.postSuccessfulExchange(
                   request.path(),
                   transformed,
                   request.databaseScope(),
                   request.credentialContext(),
-                  request.retryEligibility());
+                  request.retryEligibility())
+                  : facade.postSuccessfulExchange(
+                      request.path(), transformed, request.databaseScope(),
+                      request.credentialContext(), request.retryEligibility(),
+                      request.resubmissionPolicy());
             })
         .switchIfEmpty(Mono.error(new IllegalStateException("APIM successful exchange was empty")))
         .flatMap(
@@ -100,6 +111,7 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
                 Mono.defer(
                     () -> {
                       validateCommon(exchange);
+                      validateStrictResponse(request, exchange);
                       if (exchange.responseVerificationKey() != null) {
                         return Mono.error(
                             new IllegalStateException(
@@ -117,20 +129,29 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
   private <R, D> Mono<ApimResponseEnvelope<D>> postEncrypted(ApimExchangeRequest<R, D> request) {
     return Mono.defer(
             () ->
-                facade.postEncryptedSuccessfulExchange(
+                request.resubmissionPolicy() == ApimResubmissionPolicy.ALLOW_RECOVERY
+                    ? facade.postEncryptedSuccessfulExchange(
                     request.path(),
                     (profile, attemptKey) ->
                         cryptoService.encryptRequest(
                             request.path(), request.request(), request.requestType(), attemptKey),
                     request.databaseScope(),
                     request.credentialContext(),
-                    request.retryEligibility()))
+                    request.retryEligibility())
+                    : facade.postEncryptedSuccessfulExchange(
+                        request.path(),
+                        (profile, attemptKey) ->
+                            cryptoService.encryptRequest(
+                                request.path(), request.request(), request.requestType(), attemptKey),
+                        request.databaseScope(), request.credentialContext(),
+                        request.retryEligibility(), request.resubmissionPolicy()))
         .switchIfEmpty(Mono.error(new IllegalStateException("APIM successful exchange was empty")))
         .flatMap(
             exchange ->
                 Mono.defer(
                     () -> {
                       validateCommon(exchange);
+                      validateStrictResponse(request, exchange);
                       if (exchange.responseVerificationKey() == null) {
                         return Mono.error(
                             new IllegalStateException(
@@ -151,6 +172,27 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
     }
     if (exchange.profile() == null) {
       throw new IllegalStateException("APIM successful exchange profile was missing");
+    }
+  }
+
+  private static void validateStrictResponse(
+      ApimExchangeRequest<?, ?> request, ApimSuccessfulExchange exchange) {
+    if (request.resubmissionPolicy() != ApimResubmissionPolicy.NEVER) {
+      return;
+    }
+    if (exchange.responseBody() == null) {
+      throw new IllegalStateException("Invalid APIM response JSON");
+    }
+    try (var parser = STRICT_JSON.createParser(exchange.responseBody())) {
+      if (parser.nextToken() != JsonToken.START_OBJECT) {
+        throw new IllegalStateException("Invalid APIM response JSON");
+      }
+      parser.skipChildren();
+      if (parser.nextToken() != null) {
+        throw new IllegalStateException("Invalid APIM response JSON");
+      }
+    } catch (IOException exception) {
+      throw new IllegalStateException("Invalid APIM response JSON");
     }
   }
 }
