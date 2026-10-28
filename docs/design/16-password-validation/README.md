@@ -1,6 +1,6 @@
 # Password Validation and Transaction Authorization: design package
 
-Version 1.4. Requirements baseline: decisions approved in this conversation on 2026-10-27; corrected four times the same day after independent review (CHANGES REQUIRED each time). The fourth correction replaced the third pass's instruction to reuse the existing session CAS method unchanged (which could not work, because that method's eligibility check and its Lua script's TTL handling are both hardcoded to a single policy) with a generalized mechanism supporting operation-specific eligibility and an explicit, caller-supplied TTL policy, and added a dedicated prerequisite subtask and review gate to the implementation plan.
+Version 1.5. Documentation finalization after independent source review; requirements remain unchanged.
 Status: final requirements/design baseline for review; no implementation or deployment approval is implied.
 
 The member confirms a password before submitting reviewed Personal Information changes. One shared BFF endpoint validates that password through TAS/APIM and issues a five-minute, single-use authorization bound to the authenticated session, selected account, purpose, and exact submitted changes. This is password confirmation, not a PIN or OTP feature.
