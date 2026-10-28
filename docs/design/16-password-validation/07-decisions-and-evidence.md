@@ -14,6 +14,7 @@ D10 JSON object order irrelevant; arrays/types/null presence significant; no sil
 D11 Approved HTTP matrix: wrong password 401; locked 423; invalid authorization 403; invalid request 400; technical failures 503; throttle 429.
 D12 Username-wide configurable 10 requests/60 seconds across sessions/accounts/purposes, independent of TAS lock counting.
 D13 M1 blocker resolution authorized 2026-10-28: typed per-exchange no-resubmission metadata separate from business retry; only TRPPwdValidation opts in, preserving all existing operations. See 03 for types and propagation points. This authorization is not M1 approval and does not authorize M1.5/M2.
+D14 M1 approved by Nick at `86eb775cd3b3f13330e65bde81aeb71f1e37813e` on 2026-10-28. M1.5 only is authorized: shared conditional-write eligibility, absolute deadlines, TTL/race proofs and existing-consumer preservation. M1.5 requires its own independent review; no M2/grant implementation is authorized.
 
 ## Evidence register
 E1: user-provided 001-password-validation-readonly-investigation.zip.txt; source snapshot origin/dev 49b5ffb4089b04d214444b3e3d7cd33f2d5dbc4c. Archive/source integrity was reported checked during the evidence review. No runtime validation was performed.

@@ -275,6 +275,32 @@ Events must use correlation IDs, not security tokens or session identifiers.
 - Concurrent authenticated touches and logout
 - Old-tab request after replacement
 
+The shared-session prerequisite has an opt-in real-Redis suite:
+`AuthenticatedSessionConditionalWriteRedisTest`. Supply
+`-Dm15.redis.server=/absolute/path/to/redis-server`; if needed, supply
+`-Dm15.redis.libraryPath=/absolute/path/to/shared/libraries`. It starts a dedicated
+loopback process on a free port, disables persistence, uses only synthetic
+sessions, and terminates that process after the suite. It never uses the
+application's Redis configuration. Without the binary property the suite is
+skipped; milestone evidence must explicitly enable it.
+
+The suite forces interleavings before the actual CAS script, rather than relying
+on thread scheduling: terminal-write versus usable mutation, touch versus each
+terminal state, and touch versus an independent feature tombstone. It reads
+actual PTTL and exact PEXPIRETIME for sliding extension, terminal shortening,
+absolute cap and preserve-current writes. Redis TIME barriers cover delayed and
+elapsed commands; clock changes cover retry deadlines and negative skew. Lost
+acknowledgement injection after an applied write proves fail-closed/no retry.
+Actual CSRF rotation and both cache services are exercised together to prove
+unrelated featureState and expiry preservation.
+
+This suite was introduced against isolated Redis 8.0.5. PEXPIRETIME is used by
+the test oracle only, not by production scripts. The production scripts use
+TIME/PEXPIREAT atomically and require operationally synchronized Redis/application
+clocks. The repository does not pin the deployed Redis version; verify the
+supported deployment version and Sentinel/mTLS/failover separately rather than
+equating the isolated suite with deployment certification.
+
 ### 5.6 Redis and protection tests
 
 - PII-safe key format

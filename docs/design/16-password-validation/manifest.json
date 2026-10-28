@@ -1,14 +1,14 @@
 {
   "package": "password-validation-design-package",
-  "version": "1.6",
+  "version": "1.7",
   "files": [
     {
       "name": "README.md",
-      "sha256": "3531b4dfba592f083a194551f8d6c8004ce5ba0fb9fb52fb4a9d1291c8118d0d"
+      "sha256": "b627b8e3dde7c8c61abe7dfa0c76c842e692b801f7117e663242afcb26b4fb94"
     },
     {
       "name": "01-solution-design.md",
-      "sha256": "d44214b0cb45cb18ff42c0818b95179f3fd564637b3ae549ab3d2659c04fc9d4"
+      "sha256": "14c6b13224630cd3df2ff6486c668f999e4ea446adf416e090046448476a73c4"
     },
     {
       "name": "02-api-contract.md",
@@ -32,7 +32,7 @@
     },
     {
       "name": "07-decisions-and-evidence.md",
-      "sha256": "a49dc6938dcb23ad0e9f0b4dc60d40f60e6e83af8d986b9838da8749ed1a1b9e"
+      "sha256": "610f65e1b57172e91ded523c04ce968908292f8a56b9e53781cb4d5e3c9eba7a"
     }
   ]
 }

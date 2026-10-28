@@ -1,6 +1,8 @@
 # Password Validation and Transaction Authorization: design package
 
-Version 1.6. M1 reviewer-authorized per-exchange no-resubmission adjustment; business requirements remain unchanged.
+Version 1.7. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
+M1.5 shared-session prerequisite implemented pending its separate independent review.
+Business requirements remain unchanged; M2 is not authorized by this package update.
 Status: final requirements/design baseline for review; no implementation or deployment approval is implied.
 
 The member confirms a password before submitting reviewed Personal Information changes. One shared BFF endpoint validates that password through TAS/APIM and issues a five-minute, single-use authorization bound to the authenticated session, selected account, purpose, and exact submitted changes. This is password confirmation, not a PIN or OTP feature.

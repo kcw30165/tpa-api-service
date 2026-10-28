@@ -97,7 +97,58 @@ Grant consumption, TTL, and concurrency (unchanged from prior pass).** Consumpti
 
 **Correction to "never thrown" claim.** Not every failure path inside `attemptOnce` is converted to a typed result: only the revision-conflict-exhaustion path is explicitly caught via `onErrorResume`. Failures from `sessions.load(...)`, `protector.unprotect(...)`, or the mutator itself propagate as raw `Mono` errors to the caller. The password-validation use case must explicitly catch and map these to `SYSTEM_ERROR` itself, rather than assuming `AuthenticatedSessionConcurrencyService` fully contains every failure mode.
 
-Source references: `AuthenticatedSession.java` (`featureState`, `withFeatureState`), `AuthenticatedSessionConcurrencyService.java` (`updateIfUsable`, `attemptOnce`), `AuthenticatedSessionCasUpdatePort.java`, `RedisAuthenticatedSessionCasUpdateAdapter.java`, `AuthenticatedSessionConcurrencyConfig.java`, `src/main/resources/redis/authenticated-session/update-if-current.lua`, `AuthenticatedSessionLifecycleService.java` (`copy`, `persistTerminal`, `logout`, `revoke`, `transitionTerminal`, `loadAndTouch`).
+### M1.5 implementation map (pending independent approval)
+
+`AuthenticatedSessionConcurrencyService.updateIfEligible` accepts an explicit
+eligibility predicate, a mutation receiving the freshly sampled attempt time,
+and an expiry-deadline function. All are reevaluated after each genuine revision
+conflict. Ineligible state returns `UNCHANGED` with the observed session and no
+write. Existing `updateIfUsable` delegates with the original usability gate and
+preserve-current-TTL policy, mapping an ineligible observation back to the
+original session-free `SESSION_NOT_USABLE` result. The existing two-retry budget
+and exception propagation remain unchanged.
+
+`AuthenticatedSessionCasUpdateCommand.expiryDeadline` is an optional `Instant`:
+null selects the original atomic PTTL-preserving script; a value selects
+`update-if-current-until.lua` with its epoch-millisecond deadline. The existing
+five-argument constructor retains preserve-current behavior. Both scripts reject
+missing/malformed revisions. The lifecycle sibling checks the revision and
+positive existing TTL, validates an integer deadline, samples Redis TIME, then
+performs SET and PEXPIREAT atomically. Invalid/elapsed deadlines return a technical
+failure without a write; they are not revision conflicts and are not retried.
+
+`AuthenticatedSessionLifecycleService.updateLifecycle` replaces the former blind
+touch/persistTerminal writes. Its predicate accepts nonterminal sessions even
+when authentication expiry has passed. Usable touch updates the fresh snapshot
+and uses its idle deadline capped by absolute expiry. Logout/revoke/discovered
+expiry preserve unrelated state and use a timestamp captured at the first
+terminal mutation attempt; a per-subscription holder keeps that timestamp and
+retention deadline fixed across conflicts. Terminal observations return the
+existing lifecycle status without a write or retention extension. The common
+writer protects the replacement and stamps a new revision for every applied
+mutation. Only initial creation retains the existing store path.
+
+The lifecycle constructor and Spring composition now require the shared
+concurrency service and revision generator; no fallback blind-write constructor
+was retained. The generic result adds UNCHANGED, so the existing CSRF mapper has
+an explicit defensive failure mapping for that outcome, although updateIfUsable
+never emits it. There is no public response or session JSON/encryption schema
+change and no grant lifecycle implementation in M1.5.
+
+Live source inspection also found Fund Price mode and committed-login recovery
+as existing CAS consumers, in addition to the three listed in the earlier design.
+All retain updateIfUsable and preserve-current TTL behavior. The isolated Redis
+tests run actual cache-service/CSRF writes and verify unrelated feature entries
+and exact expiry survive; existing Fund Price/replay regressions remain required.
+Race fixtures use a generic synthetic feature entry/tombstone, not M2 grant code.
+
+Isolated execution is tested with Redis 8.0.5. Production scripts use GET, PTTL,
+PSETEX or SET/PEXPIREAT, TIME and Lua cjson. Deployment Redis version, Sentinel
+failover/mTLS and clock synchronization still require environment verification;
+there is no documented deployment Redis version in the inspected repository.
+This implementation/test note does not certify deployment compatibility.
+
+Source references: `AuthenticatedSession.java` (`featureState`, `withFeatureState`), `AuthenticatedSessionConcurrencyService.java` (`updateIfUsable`, `updateIfEligible`, `attemptOnce`), `AuthenticatedSessionCasUpdatePort.java`, `AuthenticatedSessionCasUpdateCommand.java`, `RedisAuthenticatedSessionCasUpdateAdapter.java`, `AuthenticatedSessionConcurrencyConfig.java`, `src/main/resources/redis/authenticated-session/update-if-current.lua`, `src/main/resources/redis/authenticated-session/update-if-current-until.lua`, `AuthenticatedSessionLifecycleService.java` (`copy`, `updateLifecycle`, `logout`, `revoke`, `transitionTerminal`, `loadAndTouch`).
 
 ## 7. Security, logging and operations
 Disable request/response body logging for issuance and protected Personal Information PUT independently of configurable opt-in body logging. Exclude the token header from header logging and sanitize DTO/command toString. Do not log password, token, raw cust-id, session cookie, CSRF, payload, or payload digest. APIM request/response logging must be tested in encrypted and plain modes. Safe events contain request ID, purpose, outcome, HTTP status and bounded reason codes only.

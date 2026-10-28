@@ -186,6 +186,20 @@ ACTIVE session
 
 Touch can extend idle expiry but never extend past absolute expiry.
 
+Authenticated sliding and terminal writes share the revision-checked
+`AuthenticatedSessionConcurrencyService.updateIfEligible` path. Each conflict
+reloads state and reevaluates nonterminal eligibility; an expired ACTIVE session
+can therefore transition to EXPIRED, while a terminal session cannot be revived.
+The lifecycle CAS script validates an absolute epoch-millisecond deadline against
+Redis TIME and applies PEXPIREAT in the same operation. Network/queue delay cannot
+turn the deadline into a renewed relative lifetime.
+
+Feature mutations continue to use `updateIfUsable` with in-script PTTL
+preservation. They do not slide expiry and cannot overwrite a concurrent touch,
+terminal transition, CSRF rotation or other feature-state mutation without
+reloading the newer revision. All replacement snapshots preserve unrelated
+featureState entries.
+
 ### 4.4 Logout, revocation, and terminal retention
 
 ```text
@@ -200,6 +214,12 @@ Terminal record
 ```
 
 Terminal retention supports deterministic repeat handling and investigation without allowing session reuse. Logout clears `portal_sid`; already-missing or unusable session behavior follows the endpoint's idempotent logout contract.
+
+Retention uses the first terminal mutation attempt's timestamp plus configured
+retention, fixed across revision retries. Repeat calls observing terminal state
+perform no write and do not extend retention. Missing/corrupt state, elapsed
+deadlines and uncertain write outcomes fail closed; only an explicit revision
+conflict is retried (at most two additional attempts).
 
 ## 5. CSRF implementation
 
