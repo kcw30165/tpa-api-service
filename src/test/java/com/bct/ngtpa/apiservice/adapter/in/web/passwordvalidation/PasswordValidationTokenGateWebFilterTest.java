@@ -97,6 +97,9 @@ class PasswordValidationTokenGateWebFilterTest {
   void incompleteAuthenticatedContextIsRejectedBeforeToken(String missingPart) {
     var exchange = request();
     PortalAccessContext context = mock(PortalAccessContext.class, RETURNS_DEEP_STUBS);
+    when(context.actor().actorUserId()).thenReturn("test-actor");
+    when(context.actor().actorUserRole()).thenReturn(ActorUserRole.ROLE_USER_MBR);
+    when(context.account().accountRef()).thenReturn(REF);
     switch (missingPart) {
       case "actor-missing" -> when(context.actor()).thenReturn(null);
       case "actor-id-blank" -> when(context.actor().actorUserId()).thenReturn(" ");
@@ -121,6 +124,30 @@ class PasswordValidationTokenGateWebFilterTest {
   }
 
   @Test
+  void consumedGrantWithoutBindingFailsClosedBeforeBodyDispatch() {
+    var exchange = request();
+    authenticate(exchange);
+    when(grants.consume(any(), any(), any(), any(), any()))
+        .thenReturn(
+            Mono.just(
+                new PasswordValidationGrantService.ConsumeResult(
+                    PasswordValidationGrantService.Status.CONSUMED, null)));
+    AtomicInteger calls = new AtomicInteger();
+
+    gate.filter(
+            exchange,
+            ignored -> {
+              calls.incrementAndGet();
+              return Mono.empty();
+            })
+        .block();
+
+    assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    assertThat(calls).hasValue(0);
+    verify(grants).consume(any(), any(), any(), eq(TOKEN), eq("gate-unit"));
+  }
+
+  @Test
   void missingAccountHeaderIsRejectedBeforeToken() {
     var exchange =
         MockServerWebExchange.from(
@@ -135,6 +162,36 @@ class PasswordValidationTokenGateWebFilterTest {
 
     assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     verifyNoInteractions(grants);
+  }
+
+  @Test
+  void missingContentTypeUsesUtf8ForBodyBinding() {
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.put(PasswordValidationRouteMatcher.PERSONAL_INFORMATION_PATH)
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, REF)
+                .header(PasswordValidationTokenGateWebFilter.TOKEN_HEADER, TOKEN)
+                .body("{}"));
+    exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "gate-unit");
+    authenticate(exchange);
+    assertThat(exchange.getRequest().getHeaders().getContentType()).isNull();
+    AtomicInteger calls = new AtomicInteger();
+
+    gate.filter(
+            exchange,
+            actual -> {
+              calls.incrementAndGet();
+              assertThat(
+                      actual
+                          .<com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest>
+                              getAttribute(PasswordValidationTokenGateWebFilter.BINDING_ATTRIBUTE))
+                  .isEqualTo(bindings.digest("{}"));
+              return Mono.empty();
+            })
+        .block();
+
+    assertThat(calls).hasValue(1);
+    verify(grants).consume(any(), any(), any(), eq(TOKEN), eq("gate-unit"));
   }
 
   @Test
