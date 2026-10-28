@@ -12,6 +12,7 @@ package com.bct.ngtpa.apiservice.application.usecase.session.authenticated;
  */
 public enum AuthenticatedSessionConcurrencyOutcome {
   APPLIED,
+  UNCHANGED,
   SESSION_NOT_FOUND,
   SESSION_NOT_USABLE,
   REVISION_CONFLICT_EXHAUSTED,

@@ -285,8 +285,11 @@ class PersonalInformationConfigCacheServiceTest {
       mode = EnumSource.Mode.EXCLUDE)
   void writeCompletesWithoutErrorWhenTheUpdateIsNotApplied(
       AuthenticatedSessionConcurrencyOutcome outcome) {
+    var result = outcome == AuthenticatedSessionConcurrencyOutcome.UNCHANGED
+        ? AuthenticatedSessionConcurrencyResult.unchanged(usableSession(Map.of()))
+        : AuthenticatedSessionConcurrencyResult.of(outcome);
     when(concurrency.updateIfUsable(any(), any(), any()))
-        .thenReturn(Mono.just(AuthenticatedSessionConcurrencyResult.of(outcome)));
+        .thenReturn(Mono.just(result));
 
     StepVerifier.create(service().write(SID, entry(), "req-1")).verifyComplete();
   }

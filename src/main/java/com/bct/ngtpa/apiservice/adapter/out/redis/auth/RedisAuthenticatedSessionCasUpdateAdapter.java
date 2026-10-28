@@ -30,7 +30,9 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
 
   private static final String CAPABILITY = "auth:authenticated-session";
 
-  private static final DefaultRedisScript<Long> UPDATE_IF_CURRENT = script();
+  private static final DefaultRedisScript<Long> UPDATE_IF_CURRENT = script("update-if-current.lua");
+  private static final DefaultRedisScript<Long> UPDATE_UNTIL =
+      script("update-if-current-until.lua");
 
   private final ReactiveStringRedisTemplate redis;
   private final RedisCacheKeyFactory keys;
@@ -55,11 +57,16 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
       AuthenticatedSessionCasUpdateCommand command) {
     Objects.requireNonNull(command, "command must not be null");
     String key = keys.key(CAPABILITY, command.authenticatedSessionId().value());
+    boolean preserveTtl = command.expiryDeadline() == null;
+    List<String> arguments = preserveTtl
+        ? List.of(command.expectedRevision().value(), serializedReplacementWithRevision(command))
+        : List.of(command.expectedRevision().value(), serializedReplacementWithRevision(command),
+            Long.toString(command.expiryDeadline().toEpochMilli()));
     return redis
         .execute(
-            UPDATE_IF_CURRENT,
+            preserveTtl ? UPDATE_IF_CURRENT : UPDATE_UNTIL,
             List.of(key),
-            List.of(command.expectedRevision().value(), serializedReplacementWithRevision(command)))
+            arguments)
         .next()
         .map(code -> AuthenticatedSessionCasUpdateResult.of(mapCode(code)))
         .defaultIfEmpty(
@@ -110,9 +117,9 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
     };
   }
 
-  private static DefaultRedisScript<Long> script() {
+  private static DefaultRedisScript<Long> script(String filename) {
     var s = new DefaultRedisScript<Long>();
-    s.setLocation(new ClassPathResource("redis/authenticated-session/update-if-current.lua"));
+    s.setLocation(new ClassPathResource("redis/authenticated-session/" + filename));
     s.setResultType(Long.class);
     return s;
   }

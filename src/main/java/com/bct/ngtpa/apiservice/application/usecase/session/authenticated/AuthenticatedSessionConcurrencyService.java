@@ -14,6 +14,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
@@ -65,10 +68,35 @@ public final class AuthenticatedSessionConcurrencyService {
       AuthenticatedSessionId authenticatedSessionId,
       UnaryOperator<AuthenticatedSession> mutator,
       String correlationId) {
-    Objects.requireNonNull(authenticatedSessionId, "authenticatedSessionId must not be null");
     Objects.requireNonNull(mutator, "mutator must not be null");
+    return updateIfEligible(
+        authenticatedSessionId,
+        AuthenticatedSession::isUsable,
+        (session, now) -> mutator.apply(session),
+        session -> null,
+        correlationId)
+        .map(result -> result.outcome() == AuthenticatedSessionConcurrencyOutcome.UNCHANGED
+            ? AuthenticatedSessionConcurrencyResult.of(
+                AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE)
+            : result);
+  }
 
-    return Mono.defer(() -> attemptOnce(authenticatedSessionId, mutator, correlationId))
+  /**
+   * Reloads and reevaluates eligibility and mutation on each genuine revision conflict.
+   * An ineligible session is observed without a write. A null expiry deadline preserves
+   * PTTL inside Redis; otherwise Redis validates and applies that absolute deadline.
+   */
+  public Mono<AuthenticatedSessionConcurrencyResult> updateIfEligible(
+      AuthenticatedSessionId authenticatedSessionId,
+      BiPredicate<AuthenticatedSession, Instant> eligibility,
+      BiFunction<AuthenticatedSession, Instant, AuthenticatedSession> mutator,
+      Function<AuthenticatedSession, Instant> expiryDeadline,
+      String correlationId) {
+    Objects.requireNonNull(authenticatedSessionId, "authenticatedSessionId must not be null");
+    Objects.requireNonNull(eligibility, "eligibility must not be null");
+    Objects.requireNonNull(mutator, "mutator must not be null");
+    Objects.requireNonNull(expiryDeadline, "expiryDeadline must not be null");
+    return Mono.defer(() -> attemptOnce(authenticatedSessionId, eligibility, mutator, expiryDeadline, correlationId))
         .retryWhen(
             Retry.backoff(2, Duration.ofMillis(10))
                 .maxBackoff(Duration.ofMillis(50))
@@ -83,7 +111,9 @@ public final class AuthenticatedSessionConcurrencyService {
 
   private Mono<AuthenticatedSessionConcurrencyResult> attemptOnce(
       AuthenticatedSessionId authenticatedSessionId,
-      UnaryOperator<AuthenticatedSession> mutator,
+      BiPredicate<AuthenticatedSession, Instant> eligibility,
+      BiFunction<AuthenticatedSession, Instant, AuthenticatedSession> mutator,
+      Function<AuthenticatedSession, Instant> expiryDeadline,
       String correlationId) {
     return sessions
         .load(new LoadAuthenticatedSessionCommand(authenticatedSessionId, correlationId))
@@ -97,12 +127,10 @@ public final class AuthenticatedSessionConcurrencyService {
               ProtectedAuthenticatedSession expectedEnvelope = optional.get();
               AuthenticatedSession current = protector.unprotect(expectedEnvelope);
               Instant now = Instant.now(clock);
-              if (!current.isUsable(now)) {
-                return Mono.just(
-                    AuthenticatedSessionConcurrencyResult.of(
-                        AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE));
+              if (!eligibility.test(current, now)) {
+                return Mono.just(AuthenticatedSessionConcurrencyResult.unchanged(current));
               }
-              AuthenticatedSession mutated = mutator.apply(current);
+              AuthenticatedSession mutated = mutator.apply(current, now);
               SessionRevision freshRevision = revisions.generate();
               AuthenticatedSession replacement =
                   new AuthenticatedSession(
@@ -125,7 +153,8 @@ public final class AuthenticatedSessionConcurrencyService {
                       expectedEnvelope.sessionRevision(),
                       replacementEnvelope,
                       freshRevision,
-                      correlationId);
+                      correlationId,
+                      expiryDeadline.apply(replacement));
               return casPort
                   .updateIfCurrent(command)
                   .flatMap(

@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.dto.session.authenticated;
 
+import java.time.Instant;
 import java.util.Objects;
 
 /**
@@ -14,7 +15,19 @@ public record AuthenticatedSessionCasUpdateCommand(
     SessionRevision expectedRevision,
     ProtectedAuthenticatedSession replacementProtectedSession,
     SessionRevision replacementRevision,
-    String correlationId) {
+    String correlationId,
+    Instant expiryDeadline) {
+
+  /** Existing consumers preserve the current Redis TTL entirely within the CAS script. */
+  public AuthenticatedSessionCasUpdateCommand(
+      AuthenticatedSessionId authenticatedSessionId,
+      SessionRevision expectedRevision,
+      ProtectedAuthenticatedSession replacementProtectedSession,
+      SessionRevision replacementRevision,
+      String correlationId) {
+    this(authenticatedSessionId, expectedRevision, replacementProtectedSession,
+        replacementRevision, correlationId, null);
+  }
 
   public AuthenticatedSessionCasUpdateCommand {
     Objects.requireNonNull(authenticatedSessionId, "authenticatedSessionId must not be null");

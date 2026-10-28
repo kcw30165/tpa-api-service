@@ -144,7 +144,7 @@ public final class AuthenticatedSessionCsrfRefreshService {
       case SESSION_NOT_FOUND -> Outcome.failure(RefreshCsrfTokenStatus.SESSION_MISSING);
       case SESSION_NOT_USABLE -> Outcome.failure(RefreshCsrfTokenStatus.SESSION_NOT_USABLE);
       case REVISION_CONFLICT_EXHAUSTED -> Outcome.failure(RefreshCsrfTokenStatus.CONFLICT);
-      case SYSTEM_FAILURE -> Outcome.failure(RefreshCsrfTokenStatus.SYSTEM_FAILURE);
+      case SYSTEM_FAILURE, UNCHANGED -> Outcome.failure(RefreshCsrfTokenStatus.SYSTEM_FAILURE);
     };
   }
 }
