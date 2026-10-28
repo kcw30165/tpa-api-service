@@ -35,6 +35,24 @@ This is independent of the TAS lock count (`fail-count`) by construction, since 
 
 Source references: `RedisRateLimitAdapter.java`, `RateLimitCommand.java`, `RateLimitResult.java`, `RateLimitBucket.java`, `RedisAdapterConfig.java` (confirms `RateLimitPort` is already wired as a Spring bean: `redisRateLimitAdapter(...)`).
 
+M2 composition: `PasswordValidationThrottleService` derives HMAC-SHA256 of the
+exact server-authenticated actor username with domain
+`ngtpa:password-validation:username:v1:`. Session/account/purpose/request ID do
+not enter this digest. Only the lowercase hex digest is passed as bucketId;
+neither identity nor the HMAC secret is logged. All pods must share the same
+secret and policy. Changing the secret resets the effective bucket namespace.
+`password-validation.rate-limit.secret` / `PASSWORD_VALIDATION_RATE_LIMIT_SECRET`
+is base64 of at least 32 cryptographically random bytes; there is no default key.
+Absent configuration leaves existing application startup working but every
+password-validation admission fails closed with UNAVAILABLE (future HTTP 503).
+A configured malformed/short key fails startup. Positive policy settings are
+`password-validation.rate-limit.max-attempts` /
+`PASSWORD_VALIDATION_RATE_LIMIT_MAX_ATTEMPTS` (10) and
+`password-validation.rate-limit.window-seconds` /
+`PASSWORD_VALIDATION_RATE_LIMIT_WINDOW_SECONDS` (60). There is no disable switch.
+Empty results, errors and unexpected DISABLED decisions fail closed without
+retry. These services are wired in M2 but no endpoint invokes them until M3.
+
 ## Binding and input safety
 Compare complete JSON operation payload, including applyToAllAccounts. Duplicate keys must be rejected before they can be discarded by mapping. Do not hash only fields that happen to survive the current DTO mapper. Do not use FE hashes, Java Object.toString, iteration-order-dependent maps, locale-dependent formatting or binary floating-point serialization as the binding contract.
 

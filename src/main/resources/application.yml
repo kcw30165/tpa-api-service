@@ -1,6 +1,12 @@
 server:
   port: ${SERVER_PORT:8888}
 
+password-validation:
+  rate-limit:
+    secret: ${PASSWORD_VALIDATION_RATE_LIMIT_SECRET:}
+    max-attempts: ${PASSWORD_VALIDATION_RATE_LIMIT_MAX_ATTEMPTS:10}
+    window-seconds: ${PASSWORD_VALIDATION_RATE_LIMIT_WINDOW_SECONDS:60}
+
 spring:
   config:
     import:
