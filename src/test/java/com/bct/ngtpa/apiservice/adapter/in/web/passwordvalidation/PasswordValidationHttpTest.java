@@ -519,8 +519,8 @@ class PasswordValidationHttpTest {
             .filter(event -> event.getLoggerName().equals(RequestLoggingWebFilter.class.getName()))
             .map(ILoggingEvent::getFormattedMessage)
             .toList();
-    assertThat(requestEvents).anyMatch(message -> message.contains("http.request.error"));
     assertThat(requestEvents)
+        .anyMatch(message -> message.contains("http.request.error"))
         .noneMatch(
             message ->
                 message.contains("guard-error-marker")

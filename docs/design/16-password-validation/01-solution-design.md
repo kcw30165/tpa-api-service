@@ -316,6 +316,10 @@ It does not decode/rebuild the URI, strip characters, lowercase paths or enable
 optional trailing slashes. The same matcher is available for the future M4 gate;
 no such gate is implemented here.
 
+The two fixed public route constants narrowly suppress Sonar java:S1075 on those
+fields: they are API contracts, not configurable downstream URIs. The rule must
+not induce route configurability or obscure the single source of route strings.
+
 Both matched routes receive the complete required policy: request/response body
 logging disabled even under wildcard opt-in, escaped error text omitted, token
 header excluded regardless of allowlist, no-store and code-only invalid-CSRF 403.

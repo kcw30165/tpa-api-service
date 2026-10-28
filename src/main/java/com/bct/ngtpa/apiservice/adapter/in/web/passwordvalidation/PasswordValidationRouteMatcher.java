@@ -6,8 +6,13 @@ import org.springframework.web.util.pattern.PathPattern;
 import org.springframework.web.util.pattern.PathPatternParser;
 
 public final class PasswordValidationRouteMatcher {
+  // Fixed public route contracts, not configurable downstream addresses.
+  @SuppressWarnings("java:S1075")
   public static final String ISSUANCE_PATH = "/api/v1/password-validation";
+
+  @SuppressWarnings("java:S1075")
   public static final String PERSONAL_INFORMATION_PATH = "/api/v1/personal-information";
+
   private static final PathPattern ISSUANCE =
       PathPatternParser.defaultInstance.parse(ISSUANCE_PATH);
   private static final PathPattern PERSONAL_INFORMATION =
