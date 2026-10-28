@@ -848,6 +848,81 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     }
   }
 
+  @Test
+  void guardedWriteRejectsDeadlineCrossedAfterLoadWithoutChangingValueOrTtl() {
+    var original = seed(copyTimes(session(), clock.instant().plusMillis(250),
+        clock.instant().plusSeconds(300)));
+    String before = redis.opsForValue().get(key).block();
+    long deadline = expiry();
+    beforeWrite.set(() -> Mono.fromRunnable(() -> awaitDeadline(original.idleExpiresAt()))
+        .subscribeOn(Schedulers.boundedElastic()));
+    var result = concurrency.updateIfUsableGuarded(ID,
+        (s, now) -> true, (s, now) -> s.withFeatureState("grant", "never-written"), "test").block();
+    assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE);
+    assertThat(result.session()).isNull();
+    assertThat(redis.opsForValue().get(key).block()).isEqualTo(before);
+    assertThat(expiry()).isEqualTo(deadline);
+    assertThat(commands).hasSize(1);
+    assertThat(commands.getFirst().usableUntil()).isEqualTo(original.idleExpiresAt());
+  }
+
+  @Test
+  void guardedRetryUsesNewDeadlineAfterConcurrentTouch() {
+    var original = seed();
+    beforeWrite.set(() -> touch());
+    var result = concurrency.updateIfUsableGuarded(ID, (s, now) -> true,
+        (s, now) -> s.withFeatureState("grant", "new"), "test").block();
+    assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.APPLIED);
+    var guarded = commands.stream().filter(c -> c.usableUntil() != null).toList();
+    assertThat(guarded).hasSize(2);
+    assertThat(guarded.getFirst().usableUntil()).isEqualTo(original.idleExpiresAt());
+    assertThat(guarded.getLast().usableUntil()).isEqualTo(stored().idleExpiresAt())
+        .isAfter(original.idleExpiresAt());
+    assertThat(stored().featureState()).containsEntry("grant", "new").containsEntry("unrelated", "keep");
+    assertThat(expiry()).isEqualTo(stored().idleExpiresAt().toEpochMilli());
+  }
+
+  @Test
+  void guardedTerminalRaceCannotRestoreGrant() {
+    seed();
+    beforeWrite.set(() -> terminal(AuthenticatedSessionStatus.REVOKED));
+    var result = concurrency.updateIfUsableGuarded(ID, (s, now) -> true,
+        (s, now) -> s.withFeatureState("grant", "never-written"), "test").block();
+    assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE);
+    assertThat(stored().status()).isEqualTo(AuthenticatedSessionStatus.REVOKED);
+    assertThat(stored().featureState()).doesNotContainKey("grant");
+    assertThat(outcomes).contains(AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH);
+  }
+
+  @Test
+  void guardedScriptRejectsInvalidDeadlinesBeforeAnyWrite() {
+    seed();
+    var script = new DefaultRedisScript<Long>();
+    script.setLocation(new ClassPathResource("redis/authenticated-session/update-if-current-guarded.lua"));
+    script.setResultType(Long.class);
+    String before = redis.opsForValue().get(key).block();
+    long deadline = expiry();
+    for (String invalid : List.of("", "-1", "1.5", "bad", "9007199254740992", "0123")) {
+      assertThat(redis.execute(script, List.of(key),
+          List.of(INITIAL.value(), "never-written", invalid)).next().block()).isEqualTo(-4L);
+      assertThat(redis.opsForValue().get(key).block()).isEqualTo(before);
+      assertThat(expiry()).isEqualTo(deadline);
+    }
+  }
+
+  @Test
+  void guardedNoOpAndUnusableSessionNeverWrite() {
+    seed();
+    assertThat(concurrency.updateIfUsableGuarded(ID, (s, now) -> false,
+        (s, now) -> { throw new AssertionError("ineligible mutation"); }, "test").block().outcome())
+        .isEqualTo(AuthenticatedSessionConcurrencyOutcome.UNCHANGED);
+    seed(expiredSession(false));
+    assertThat(concurrency.updateIfUsableGuarded(ID, (s, now) -> true,
+        (s, now) -> s, "test").block().outcome())
+        .isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE);
+    assertThat(commands).isEmpty();
+  }
+
   private static final class Batch {
     private final int size;
     private final AtomicInteger arrivals = new AtomicInteger();

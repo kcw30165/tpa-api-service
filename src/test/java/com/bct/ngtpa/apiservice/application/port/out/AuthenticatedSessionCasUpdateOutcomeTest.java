@@ -23,6 +23,7 @@ class AuthenticatedSessionCasUpdateOutcomeTest {
             AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH,
             AuthenticatedSessionCasUpdateOutcome.REVISION_MISSING,
             AuthenticatedSessionCasUpdateOutcome.CORRUPT_STATE,
-            AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE);
+            AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE,
+            AuthenticatedSessionCasUpdateOutcome.USABILITY_EXPIRED);
   }
 }

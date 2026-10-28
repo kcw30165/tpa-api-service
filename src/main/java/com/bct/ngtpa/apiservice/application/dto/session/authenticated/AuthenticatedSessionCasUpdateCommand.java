@@ -19,7 +19,19 @@ public record AuthenticatedSessionCasUpdateCommand(
     ProtectedAuthenticatedSession replacementProtectedSession,
     SessionRevision replacementRevision,
     String correlationId,
-    Instant expiryDeadline) {
+    Instant expiryDeadline,
+    Instant usableUntil) {
+
+  public AuthenticatedSessionCasUpdateCommand(
+      AuthenticatedSessionId authenticatedSessionId,
+      SessionRevision expectedRevision,
+      ProtectedAuthenticatedSession replacementProtectedSession,
+      SessionRevision replacementRevision,
+      String correlationId,
+      Instant expiryDeadline) {
+    this(authenticatedSessionId, expectedRevision, replacementProtectedSession,
+        replacementRevision, correlationId, expiryDeadline, null);
+  }
 
   /** Existing consumers preserve the current Redis TTL entirely within the CAS script. */
   public AuthenticatedSessionCasUpdateCommand(
@@ -45,6 +57,9 @@ public record AuthenticatedSessionCasUpdateCommand(
     Objects.requireNonNull(replacementRevision, "replacementRevision must not be null");
     if (expectedRevision.equals(replacementRevision)) {
       throw new IllegalArgumentException("replacement revision must differ from expected");
+    }
+    if (expiryDeadline != null && usableUntil != null) {
+      throw new IllegalArgumentException("expiryDeadline and usableUntil are mutually exclusive");
     }
     correlationId = correlationId == null || correlationId.isBlank() ? null : correlationId.trim();
   }

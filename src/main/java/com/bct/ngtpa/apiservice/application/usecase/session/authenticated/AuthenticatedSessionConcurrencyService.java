@@ -94,6 +94,25 @@ public final class AuthenticatedSessionConcurrencyService {
       BiFunction<AuthenticatedSession, Instant, AuthenticatedSession> mutator,
       Function<AuthenticatedSession, Instant> expiryDeadline,
       String correlationId) {
+    return update(authenticatedSessionId, eligibility, mutator, expiryDeadline, correlationId, false);
+  }
+
+  /** Opt-in authentication deadline enforcement at the Redis write point, preserving current TTL. */
+  public Mono<AuthenticatedSessionConcurrencyResult> updateIfUsableGuarded(
+      AuthenticatedSessionId authenticatedSessionId,
+      BiPredicate<AuthenticatedSession, Instant> eligibility,
+      BiFunction<AuthenticatedSession, Instant, AuthenticatedSession> mutator,
+      String correlationId) {
+    return update(authenticatedSessionId, eligibility, mutator, s -> null, correlationId, true);
+  }
+
+  private Mono<AuthenticatedSessionConcurrencyResult> update(
+      AuthenticatedSessionId authenticatedSessionId,
+      BiPredicate<AuthenticatedSession, Instant> eligibility,
+      BiFunction<AuthenticatedSession, Instant, AuthenticatedSession> mutator,
+      Function<AuthenticatedSession, Instant> expiryDeadline,
+      String correlationId,
+      boolean guarded) {
     Objects.requireNonNull(authenticatedSessionId, "authenticatedSessionId must not be null");
     Objects.requireNonNull(eligibility, "eligibility must not be null");
     Objects.requireNonNull(mutator, "mutator must not be null");
@@ -101,7 +120,7 @@ public final class AuthenticatedSessionConcurrencyService {
     return Mono.defer(
             () ->
                 attemptOnce(
-                    authenticatedSessionId, eligibility, mutator, expiryDeadline, correlationId))
+                    authenticatedSessionId, eligibility, mutator, expiryDeadline, correlationId, guarded))
         .retryWhen(
             Retry.backoff(2, Duration.ofMillis(10))
                 .maxBackoff(Duration.ofMillis(50))
@@ -119,7 +138,8 @@ public final class AuthenticatedSessionConcurrencyService {
       BiPredicate<AuthenticatedSession, Instant> eligibility,
       BiFunction<AuthenticatedSession, Instant, AuthenticatedSession> mutator,
       Function<AuthenticatedSession, Instant> expiryDeadline,
-      String correlationId) {
+      String correlationId,
+      boolean guarded) {
     return sessions
         .load(new LoadAuthenticatedSessionCommand(authenticatedSessionId, correlationId))
         .flatMap(
@@ -132,6 +152,10 @@ public final class AuthenticatedSessionConcurrencyService {
               ProtectedAuthenticatedSession expectedEnvelope = optional.get();
               AuthenticatedSession current = protector.unprotect(expectedEnvelope);
               Instant now = Instant.now(clock);
+              if (guarded && !current.isUsable(now)) {
+                return Mono.just(AuthenticatedSessionConcurrencyResult.of(
+                    AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE));
+              }
               if (!eligibility.test(current, now)) {
                 return Mono.just(AuthenticatedSessionConcurrencyResult.unchanged(current));
               }
@@ -159,7 +183,9 @@ public final class AuthenticatedSessionConcurrencyService {
                       replacementEnvelope,
                       freshRevision,
                       correlationId,
-                      expiryDeadline.apply(replacement));
+                      expiryDeadline.apply(replacement),
+                      guarded ? (current.idleExpiresAt().isBefore(current.absoluteExpiresAt())
+                          ? current.idleExpiresAt() : current.absoluteExpiresAt()) : null);
               return casPort
                   .updateIfCurrent(command)
                   .flatMap(
@@ -170,6 +196,9 @@ public final class AuthenticatedSessionConcurrencyService {
                                 AuthenticatedSessionConcurrencyResult.applied(replacement));
                           case REVISION_MISMATCH:
                             return Mono.error(new RevisionConflictSignal());
+                          case USABILITY_EXPIRED:
+                            return Mono.just(AuthenticatedSessionConcurrencyResult.of(
+                                AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE));
                           default:
                             return Mono.just(
                                 AuthenticatedSessionConcurrencyResult.of(

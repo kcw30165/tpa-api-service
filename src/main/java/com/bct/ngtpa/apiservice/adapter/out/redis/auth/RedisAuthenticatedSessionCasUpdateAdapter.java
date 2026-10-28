@@ -33,6 +33,8 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
   private static final DefaultRedisScript<Long> UPDATE_IF_CURRENT = script("update-if-current.lua");
   private static final DefaultRedisScript<Long> UPDATE_UNTIL =
       script("update-if-current-until.lua");
+  private static final DefaultRedisScript<Long> UPDATE_GUARDED =
+      script("update-if-current-guarded.lua");
 
   private final ReactiveStringRedisTemplate redis;
   private final RedisCacheKeyFactory keys;
@@ -57,7 +59,7 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
       AuthenticatedSessionCasUpdateCommand command) {
     Objects.requireNonNull(command, "command must not be null");
     String key = keys.key(CAPABILITY, command.authenticatedSessionId().value());
-    boolean preserveTtl = command.expiryDeadline() == null;
+    boolean preserveTtl = command.expiryDeadline() == null && command.usableUntil() == null;
     List<String> arguments =
         preserveTtl
             ? List.of(
@@ -65,9 +67,11 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
             : List.of(
                 command.expectedRevision().value(),
                 serializedReplacementWithRevision(command),
-                Long.toString(command.expiryDeadline().toEpochMilli()));
+                Long.toString((command.usableUntil() == null
+                    ? command.expiryDeadline() : command.usableUntil()).toEpochMilli()));
     return redis
-        .execute(preserveTtl ? UPDATE_IF_CURRENT : UPDATE_UNTIL, List.of(key), arguments)
+        .execute(command.usableUntil() != null ? UPDATE_GUARDED
+            : preserveTtl ? UPDATE_IF_CURRENT : UPDATE_UNTIL, List.of(key), arguments)
         .next()
         .map(code -> AuthenticatedSessionCasUpdateResult.of(mapCode(code)))
         .defaultIfEmpty(
@@ -114,6 +118,7 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
       case -1 -> AuthenticatedSessionCasUpdateOutcome.NOT_FOUND;
       case -2 -> AuthenticatedSessionCasUpdateOutcome.REVISION_MISSING;
       case -3 -> AuthenticatedSessionCasUpdateOutcome.CORRUPT_STATE;
+      case -5 -> AuthenticatedSessionCasUpdateOutcome.USABILITY_EXPIRED;
       default -> AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE;
     };
   }
