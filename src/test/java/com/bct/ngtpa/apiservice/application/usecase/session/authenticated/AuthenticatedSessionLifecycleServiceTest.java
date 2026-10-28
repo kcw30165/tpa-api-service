@@ -59,7 +59,7 @@ class AuthenticatedSessionLifecycleServiceTest {
               assertThat(r.session().absoluteExpiresAt()).isEqualTo(NOW.plusSeconds(600));
             })
         .verifyComplete();
-    assertThat(f.touched.get().ttl()).isEqualTo(Duration.ofSeconds(600));
+    assertThat(f.updated.get().expiryDeadline()).isEqualTo(NOW.plusSeconds(600));
   }
 
   @Test
@@ -115,8 +115,8 @@ class AuthenticatedSessionLifecycleServiceTest {
         .verifyComplete();
 
     assertThat(fixture.loaded.get().status()).isEqualTo(AuthenticatedSessionStatus.REVOKED);
-    assertThat(fixture.touched.get()).isNotNull();
-    assertThat(fixture.touched.get().ttl()).isEqualTo(Duration.ofSeconds(300));
+    assertThat(fixture.updated.get()).isNotNull();
+    assertThat(fixture.updated.get().expiryDeadline()).isEqualTo(NOW.plusSeconds(300));
   }
 
   private static AuthenticatedSessionAccount account() {
@@ -149,7 +149,7 @@ class AuthenticatedSessionLifecycleServiceTest {
 
   static final class Fixture {
     final AtomicReference<StoreAuthenticatedSessionCommand> stored = new AtomicReference<>();
-    final AtomicReference<TouchAuthenticatedSessionCommand> touched = new AtomicReference<>();
+    final AtomicReference<AuthenticatedSessionCasUpdateCommand> updated = new AtomicReference<>();
     final AtomicReference<AuthenticatedSession> loaded = new AtomicReference<>();
     final AuthenticatedSessionLifecycleService service;
 
@@ -190,10 +190,7 @@ class AuthenticatedSessionLifecycleServiceTest {
 
             public Mono<AuthenticatedSessionPersistenceResult> touch(
                 TouchAuthenticatedSessionCommand c) {
-              touched.set(c);
-              return Mono.just(
-                  new AuthenticatedSessionPersistenceResult(
-                      AuthenticatedSessionPersistenceStatus.TOUCHED));
+              throw new AssertionError("Lifecycle must not use blind touch");
             }
 
             public Mono<AuthenticatedSessionPersistenceResult> revoke(
@@ -210,11 +207,21 @@ class AuthenticatedSessionLifecycleServiceTest {
                       AuthenticatedSessionPersistenceStatus.DELETED));
             }
           };
+      var revisions = new SecureAuthenticatedSessionRevisionGenerator();
+      var clock = Clock.fixed(NOW, ZoneOffset.UTC);
+      var concurrency = new AuthenticatedSessionConcurrencyService(
+          port, protector,
+          command -> {
+            updated.set(command);
+            return Mono.just(AuthenticatedSessionCasUpdateResult.of(AuthenticatedSessionCasUpdateOutcome.APPLIED));
+          }, revisions, clock);
       service =
           new AuthenticatedSessionLifecycleService(
               port,
               protector,
               () -> ID,
+              revisions,
+              concurrency,
               Duration.ofSeconds(1800),
               Duration.ofSeconds(28800),
               Duration.ofSeconds(300),
@@ -258,7 +265,7 @@ class AuthenticatedSessionLifecycleServiceTest {
   // ----- loadAndTouch(): error path (added round 142) --------------------------
 
   @Test
-  void loadAndTouchYieldsFailedWhenTouchThrows() {
+  void loadAndTouchYieldsFailedWhenConditionalWriteThrows() {
     var f = new ErrorFixture();
     f.touchShouldError = true;
     f.loaded.set(
@@ -310,7 +317,7 @@ class AuthenticatedSessionLifecycleServiceTest {
             result ->
                 assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.REVOKED))
         .verifyComplete();
-    assertThat(fixture.touched.get()).isNull();
+    assertThat(fixture.updated.get()).isNull();
   }
 
   @Test
@@ -381,12 +388,7 @@ class AuthenticatedSessionLifecycleServiceTest {
 
             public Mono<AuthenticatedSessionPersistenceResult> touch(
                 TouchAuthenticatedSessionCommand c) {
-              if (touchShouldError) {
-                return Mono.error(new IllegalStateException("boom"));
-              }
-              return Mono.just(
-                  new AuthenticatedSessionPersistenceResult(
-                      AuthenticatedSessionPersistenceStatus.TOUCHED));
+              throw new AssertionError("Lifecycle must not use blind touch");
             }
 
             public Mono<AuthenticatedSessionPersistenceResult> revoke(
@@ -403,11 +405,21 @@ class AuthenticatedSessionLifecycleServiceTest {
                       AuthenticatedSessionPersistenceStatus.DELETED));
             }
           };
+      var revisions = new SecureAuthenticatedSessionRevisionGenerator();
+      var clock = Clock.fixed(NOW, ZoneOffset.UTC);
+      var concurrency = new AuthenticatedSessionConcurrencyService(
+          port, protector,
+          command -> touchShouldError
+              ? Mono.error(new IllegalStateException("boom"))
+              : Mono.just(AuthenticatedSessionCasUpdateResult.of(AuthenticatedSessionCasUpdateOutcome.APPLIED)),
+          revisions, clock);
       service =
           new AuthenticatedSessionLifecycleService(
               port,
               protector,
               () -> ID,
+              revisions,
+              concurrency,
               Duration.ofSeconds(1800),
               Duration.ofSeconds(28800),
               Duration.ofSeconds(300),

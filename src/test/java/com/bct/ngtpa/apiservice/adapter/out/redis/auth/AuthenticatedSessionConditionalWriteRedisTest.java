@@ -5,10 +5,18 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
+import com.bct.ngtpa.apiservice.adapter.out.redis.RedisStringCacheAdapter;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.PersonalInformationConfigCacheEntry;
+import com.bct.ngtpa.apiservice.application.dto.fundcomparison.FundComparisonOptionsCacheEntry;
+import com.bct.ngtpa.apiservice.application.idempotency.JacksonTransientJsonCodec;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.csrf.AuthenticatedSessionCsrfRefreshService;
+import com.bct.ngtpa.apiservice.application.usecase.fundcomparison.FundComparisonOptionsCacheService;
+import com.bct.ngtpa.apiservice.application.usecase.personalinformation.PersonalInformationConfigCacheService;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import com.bct.ngtpa.apiservice.infrastructure.security.session.AesGcmAuthenticatedSessionProtector;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,18 +26,26 @@ import java.time.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.core.io.ClassPathResource;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /** Opt-in isolated Redis, never the application's configured runtime store. */
 @EnabledIfSystemProperty(named = "m15.redis.server", matches = ".+")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Timeout(30)
 class AuthenticatedSessionConditionalWriteRedisTest {
   private Process server;
   private LettuceConnectionFactory connection;
@@ -47,6 +63,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
   private final AtomicReference<Supplier<Mono<?>>> beforeWrite = new AtomicReference<>();
   private final List<AuthenticatedSessionCasUpdateCommand> commands = new ArrayList<>();
   private final List<AuthenticatedSessionCasUpdateOutcome> outcomes = new ArrayList<>();
+  private final AtomicBoolean loseWriteResponse = new AtomicBoolean();
   private RedisAuthenticatedSessionCasUpdateAdapter adapter;
   private AuthenticatedSessionPort sessions;
   private AuthenticatedSessionConcurrencyService concurrency;
@@ -112,16 +129,18 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     commands.clear();
     outcomes.clear();
     beforeWrite.set(null);
+    loseWriteResponse.set(false);
     clock = new MutableClock(Instant.ofEpochMilli(redisNow()));
     adapter = new RedisAuthenticatedSessionCasUpdateAdapter(redis, keys);
-    sessions = mock(AuthenticatedSessionPort.class);
-    when(sessions.load(any()))
-        .thenAnswer(
-            invocation ->
-                redis.opsForValue().get(key)
-                    .map(mapper::fromJson)
-                    .map(Optional::of)
-                    .defaultIfEmpty(Optional.empty()));
+    sessions = spy(new RedisAuthenticatedSessionAdapter(new RedisStringCacheAdapter(redis), keys, mapper));
+    doAnswer(invocation -> {
+      Mono<AuthenticatedSessionPersistenceResult> actual =
+          (Mono<AuthenticatedSessionPersistenceResult>) invocation.callRealMethod();
+      return Mono.defer(() -> {
+        Supplier<Mono<?>> hook = beforeWrite.getAndSet(null);
+        return (hook == null ? Mono.empty() : hook.get()).then(actual);
+      });
+    }).when(sessions).touch(any());
     AuthenticatedSessionCasUpdatePort intercepted =
         command ->
             Mono.defer(
@@ -130,7 +149,10 @@ class AuthenticatedSessionConditionalWriteRedisTest {
                   Supplier<Mono<?>> hook = beforeWrite.getAndSet(null);
                   Mono<?> prerequisite = hook == null ? Mono.empty() : hook.get();
                   return prerequisite.then(adapter.updateIfCurrent(command))
-                      .doOnNext(result -> outcomes.add(result.outcome()));
+                      .doOnNext(result -> outcomes.add(result.outcome()))
+                      .flatMap(result -> loseWriteResponse.getAndSet(false)
+                          ? Mono.error(new TimeoutException("Synthetic lost CAS acknowledgement"))
+                          : Mono.just(result));
                 });
     concurrency =
         new AuthenticatedSessionConcurrencyService(
@@ -229,6 +251,298 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     assertThat(stored().revision()).isEqualTo(INITIAL);
   }
 
+  @Test
+  void usableMutationLosesToTerminalWriterAndReloadRejectsIt() {
+    seed();
+    beforeWrite.set(() -> lifecycle().logout(new LogoutActiveAuthenticatedSessionCommand(ID, "terminal")));
+    var result = concurrency.updateIfUsable(ID, s -> s.withFeatureState("cache-a", "stale"), "cache").block();
+    assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE);
+    assertThat(stored().status()).isEqualTo(AuthenticatedSessionStatus.LOGGED_OUT);
+    assertThat(stored().featureState()).containsEntry("cache-a", "old").containsEntry("unrelated", "keep");
+    assertThat(outcomes).containsExactly(AuthenticatedSessionCasUpdateOutcome.APPLIED,
+        AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH);
+    verify(sessions, never()).touch(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = AuthenticatedSessionStatus.class, names = {"LOGGED_OUT", "REVOKED", "EXPIRED"})
+  void everyTerminalTransitionChangesRevisionAndShortensActualTtl(AuthenticatedSessionStatus target) {
+    seed(target == AuthenticatedSessionStatus.EXPIRED ? expiredSession(false) : session());
+    long oldExpiry = expiry();
+    Instant transitionAt = clock.instant();
+    assertThat(terminal(target).block().status().name()).isEqualTo(target.name());
+    assertThat(stored().revision()).isNotEqualTo(INITIAL);
+    assertThat(stored().status()).isEqualTo(target);
+    assertThat(expiry()).isEqualTo(transitionAt.plusSeconds(20).toEpochMilli()).isLessThan(oldExpiry);
+    assertThat(ttl()).isBetween(15_000L, 20_000L);
+    assertThat(stored().featureState()).containsEntry("unrelated", "keep");
+    verify(sessions, never()).touch(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = AuthenticatedSessionStatus.class, names = {"LOGGED_OUT", "REVOKED", "EXPIRED"})
+  void staleTouchCannotRestoreTerminalState(AuthenticatedSessionStatus target) {
+    seed();
+    beforeWrite.set(() -> {
+      if (target == AuthenticatedSessionStatus.EXPIRED) {
+        clock.now = clock.now.plusSeconds(41);
+      }
+      return terminal(target);
+    });
+    var result = touch().block();
+    assertThat(result.status().name()).isEqualTo(target.name());
+    assertThat(stored().status()).isEqualTo(target);
+    assertThat(outcomes).containsExactly(AuthenticatedSessionCasUpdateOutcome.APPLIED,
+        AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH);
+    assertThat(commands).hasSize(2);
+    verify(sessions, never()).touch(any());
+  }
+
+  @Test
+  void staleTouchReloadsAndCannotRestoreAnIndependentlyTombstonedFeatureEntry() {
+    seed();
+    beforeWrite.set(() -> concurrency.updateIfUsable(
+        ID, s -> s.withFeatureState("cache-a", "tombstone"), "other-writer"));
+    var result = touch().block();
+    assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE);
+    assertThat(result.session().featureState()).containsEntry("cache-a", "tombstone").containsEntry("unrelated", "keep");
+    assertThat(stored().featureState()).isEqualTo(result.session().featureState());
+    assertThat(outcomes).containsExactly(AuthenticatedSessionCasUpdateOutcome.APPLIED,
+        AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH, AuthenticatedSessionCasUpdateOutcome.APPLIED);
+    assertThat(commands).hasSize(3);
+    verify(sessions, never()).touch(any());
+  }
+
+  @Test
+  void touchExtendsActualRedisTtlUsingTheReplacementIdleDeadline() {
+    seed();
+    long oldExpiry = expiry();
+    var result = touch().block();
+    assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE);
+    assertThat(result.session().idleExpiresAt()).isEqualTo(clock.instant().plusSeconds(120));
+    assertThat(expiry()).isEqualTo(result.session().idleExpiresAt().toEpochMilli()).isGreaterThan(oldExpiry);
+    assertThat(ttl()).isBetween(115_000L, 120_000L);
+    assertThat(stored().revision()).isNotEqualTo(INITIAL);
+    verify(sessions, never()).touch(any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void discoveredIdleOrAbsoluteExpiryUsesTerminalEligibilityAndRetention(boolean absolute) {
+    seed(expiredSession(absolute));
+    var result = touch().block();
+    assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.EXPIRED);
+    assertThat(stored().status()).isEqualTo(AuthenticatedSessionStatus.EXPIRED);
+    assertThat(stored().revision()).isNotEqualTo(INITIAL);
+    assertThat(expiry()).isEqualTo(clock.instant().plusSeconds(20).toEpochMilli());
+    assertThat(ttl()).isBetween(15_000L, 20_000L);
+    verify(sessions, never()).touch(any());
+  }
+
+  @Test
+  void expiredSessionRemainsIneligibleForExistingUsableMutationContract() {
+    seed(expiredSession(false));
+    var result = concurrency.updateIfUsable(ID, s -> {
+      throw new AssertionError("Expired usable-session mutator ran");
+    }, "test").block();
+    assertThat(result.outcome()).isEqualTo(AuthenticatedSessionConcurrencyOutcome.SESSION_NOT_USABLE);
+    assertThat(result.session()).isNull();
+    assertThat(commands).isEmpty();
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = AuthenticatedSessionStatus.class, names = {"LOGGED_OUT", "REVOKED", "EXPIRED"})
+  void repeatedTerminalObservationsNeverWriteOrExtendRetention(AuthenticatedSessionStatus target) {
+    seed(target == AuthenticatedSessionStatus.EXPIRED ? expiredSession(false) : session());
+    terminal(target).block();
+    String first = redis.opsForValue().get(key).block();
+    long deadline = expiry();
+    int writes = commands.size();
+    clock.now = clock.now.plusSeconds(5);
+    assertThat(terminal(target).block().status().name()).isEqualTo(target.name());
+    assertThat(touch().block().status().name()).isEqualTo(target.name());
+    assertThat(lifecycle().revoke(new RevokeActiveAuthenticatedSessionCommand(ID, "test", "repeat")).block().status().name())
+        .isEqualTo(target.name());
+    assertThat(redis.opsForValue().get(key).block()).isEqualTo(first);
+    assertThat(expiry()).isEqualTo(deadline);
+    assertThat(commands).hasSize(writes);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void touchNeverExtendsPastAbsoluteExpiryIncludingConflictRetry(boolean conflict) {
+    var original = session();
+    Instant absolute = clock.instant().plusSeconds(60);
+    seed(copyTimes(original, original.idleExpiresAt(), absolute));
+    if (conflict) {
+      beforeWrite.set(() -> concurrency.updateIfUsable(
+          ID, s -> s.withFeatureState("cache-a", "fresh"), "conflict")
+          .doOnNext(ignored -> clock.now = clock.now.plusSeconds(10)));
+    }
+    var result = touch().block();
+    assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE);
+    assertThat(result.session().idleExpiresAt()).isEqualTo(absolute);
+    assertThat(expiry()).isEqualTo(absolute.toEpochMilli());
+    assertThat(ttl()).isBetween(55_000L, 60_000L);
+    if (conflict) {
+      assertThat(outcomes).containsExactly(AuthenticatedSessionCasUpdateOutcome.APPLIED,
+          AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH, AuthenticatedSessionCasUpdateOutcome.APPLIED);
+      assertThat(stored().featureState()).containsEntry("cache-a", "fresh");
+      assertThat(commands.stream().filter(c -> c.expiryDeadline() != null).map(AuthenticatedSessionCasUpdateCommand::expiryDeadline))
+          .containsExactly(absolute, absolute);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void terminalDeadlineIsStableAcrossConflictAndExecutionDelay(boolean discoveredExpiry) {
+    seed(discoveredExpiry ? expiredSession(false) : session());
+    Instant transition = clock.instant();
+    beforeWrite.set(() -> concurrency.updateIfEligible(
+        ID, (s, now) -> true, (s, now) -> s.withFeatureState("cache-a", "fresh"),
+        s -> null, "other")
+        .doOnNext(ignored -> clock.now = clock.now.plusSeconds(5))
+        .then(Mono.fromRunnable(() -> awaitDeadline(Instant.ofEpochMilli(redisNow() + 50)))
+            .subscribeOn(Schedulers.boundedElastic())));
+    var result = discoveredExpiry ? touch().block() : terminal(AuthenticatedSessionStatus.LOGGED_OUT).block();
+    assertThat(result.status()).isEqualTo(discoveredExpiry
+        ? AuthenticatedSessionLifecycleStatus.EXPIRED : AuthenticatedSessionLifecycleStatus.LOGGED_OUT);
+    assertThat(expiry()).isEqualTo(transition.plusSeconds(20).toEpochMilli());
+    assertThat(commands.stream().filter(c -> c.expiryDeadline() != null).map(AuthenticatedSessionCasUpdateCommand::expiryDeadline))
+        .containsExactly(transition.plusSeconds(20), transition.plusSeconds(20));
+    assertThat(outcomes).containsExactly(AuthenticatedSessionCasUpdateOutcome.APPLIED,
+        AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH, AuthenticatedSessionCasUpdateOutcome.APPLIED);
+    assertThat(stored().featureState()).containsEntry("cache-a", "fresh").containsEntry("unrelated", "keep");
+  }
+
+  @Test
+  void delayedTouchUsesOriginalDeadlineAndRejectsElapsedOrSkewedDeadline() {
+    seed();
+    Instant deadline = clock.instant().plusSeconds(120);
+    beforeWrite.set(() -> Mono.fromRunnable(() -> awaitDeadline(clock.instant().plusMillis(100)))
+        .subscribeOn(Schedulers.boundedElastic()));
+    assertThat(touch().block().status()).isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE);
+    assertThat(expiry()).isEqualTo(deadline.toEpochMilli());
+    var s = session();
+    seed(new AuthenticatedSession(ID, s.actorContext(), s.accounts(), s.status(), s.csrfTokenHash(),
+        clock.instant().minusSeconds(600), clock.instant().minusSeconds(400), s.idleExpiresAt(),
+        s.absoluteExpiresAt(), s.revision(), s.fundPriceModeMetadata(), s.featureState()));
+    String before = redis.opsForValue().get(key).block();
+    int writes = commands.size();
+    clock.now = clock.now.minusSeconds(200);
+    assertThat(touch().block().status()).isEqualTo(AuthenticatedSessionLifecycleStatus.FAILED);
+    assertThat(redis.opsForValue().get(key).block()).isEqualTo(before);
+    assertThat(commands).hasSize(writes + 1);
+    assertThat(outcomes.getLast()).isEqualTo(AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void lostWriteAcknowledgementFailsClosedAndNeverRetries(boolean terminal) {
+    seed();
+    loseWriteResponse.set(true);
+    var result = terminal ? terminal(AuthenticatedSessionStatus.LOGGED_OUT).block() : touch().block();
+    assertThat(result.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.FAILED);
+    assertThat(result.session()).isNull();
+    assertThat(commands).hasSize(1);
+    assertThat(outcomes).containsExactly(AuthenticatedSessionCasUpdateOutcome.APPLIED);
+    assertThat(stored().status()).isEqualTo(
+        terminal ? AuthenticatedSessionStatus.LOGGED_OUT : AuthenticatedSessionStatus.ACTIVE);
+  }
+
+  @Test
+  void actualExistingConsumersPreserveEachOthersFeatureEntriesAndExactRedisExpiry() {
+    var original = seed();
+    long deadline = expiry();
+    var json = new JacksonTransientJsonCodec();
+    var comparison = new FundComparisonOptionsCacheService(sessions, protector, concurrency, json, clock);
+    comparison.write(ID, new FundComparisonOptionsCacheEntry(
+        "synthetic-account", "synthetic-policy", "1M", List.of("TEST")), "comparison").block();
+    var afterComparison = stored().featureState();
+    assertThat(afterComparison).containsAllEntriesOf(original.featureState());
+    assertThat(afterComparison).containsKey("fund-comparison.options");
+    assertThat(expiry()).isEqualTo(deadline);
+    var personal = new PersonalInformationConfigCacheService(sessions, protector, concurrency, json, clock);
+    personal.write(ID, new PersonalInformationConfigCacheEntry(
+        "synthetic-account", "synthetic-policy", Map.of("field", "editable")), "personal").block();
+    var afterPersonal = stored().featureState();
+    assertThat(afterPersonal).containsAllEntriesOf(afterComparison);
+    assertThat(afterPersonal).containsKey("personal-information.config");
+    assertThat(expiry()).isEqualTo(deadline);
+    var csrf = new AuthenticatedSessionCsrfRefreshService(
+        sessions, protector, concurrency, () -> "synthetic-rotated-token", new Sha256CsrfTokenHasher(), clock);
+    assertThat(csrf.refresh(ID.value(), "csrf").block().status().name()).isEqualTo("SUCCESS");
+    assertThat(stored().featureState()).isEqualTo(afterPersonal);
+    assertThat(stored().csrfTokenHash()).isNotEqualTo(original.csrfTokenHash());
+    assertThat(stored().lastAccessedAt()).isEqualTo(original.lastAccessedAt());
+    assertThat(stored().idleExpiresAt()).isEqualTo(original.idleExpiresAt());
+    assertThat(expiry()).isEqualTo(deadline);
+    assertThat(commands).hasSize(3).allSatisfy(c -> assertThat(c.expiryDeadline()).isNull());
+  }
+
+  @Test
+  void missingLifecycleSessionNeverCreatesARecord() {
+    assertThat(touch().block().status()).isEqualTo(AuthenticatedSessionLifecycleStatus.NOT_FOUND);
+    assertThat(terminal(AuthenticatedSessionStatus.LOGGED_OUT).block().status())
+        .isEqualTo(AuthenticatedSessionLifecycleStatus.NOT_FOUND);
+    assertThat(redis.hasKey(key).block()).isFalse();
+    assertThat(commands).isEmpty();
+  }
+
+  @Test
+  void invalidDeadlineAndPersistentKeyCannotCausePartialReplacement() {
+    seed();
+    var script = new DefaultRedisScript<Long>();
+    script.setLocation(new ClassPathResource("redis/authenticated-session/update-if-current-until.lua"));
+    script.setResultType(Long.class);
+    String before = redis.opsForValue().get(key).block();
+    long deadline = expiry();
+    for (String invalid : List.of("", "-1", "1.5", "not-a-number", "9007199254740992")) {
+      assertThat(redis.execute(script, List.of(key), List.of(INITIAL.value(), "never-written", invalid))
+          .next().block()).isEqualTo(-4L);
+      assertThat(redis.opsForValue().get(key).block()).isEqualTo(before);
+      assertThat(expiry()).isEqualTo(deadline);
+    }
+    redis.persist(key).block();
+    assertThat(adapter.updateIfCurrent(command(session(), clock.instant().plusSeconds(90))).block().outcome())
+        .isEqualTo(AuthenticatedSessionCasUpdateOutcome.CORRUPT_STATE);
+    assertThat(redis.opsForValue().get(key).block()).isEqualTo(before);
+  }
+
+  private AuthenticatedSessionLifecycleService lifecycle() {
+    return new AuthenticatedSessionLifecycleService(
+        sessions, protector, () -> ID,
+        () -> new SessionRevision(String.format("%032x", revisions.incrementAndGet())),
+        concurrency, Duration.ofSeconds(120), Duration.ofSeconds(300),
+        Duration.ofSeconds(20), clock);
+  }
+
+  private Mono<AuthenticatedSessionLifecycleResult> touch() {
+    return lifecycle().loadAndTouch(new LoadAndTouchAuthenticatedSessionCommand(ID, "touch"));
+  }
+
+  private Mono<AuthenticatedSessionLifecycleResult> terminal(AuthenticatedSessionStatus target) {
+    return switch (target) {
+      case LOGGED_OUT -> lifecycle().logout(new LogoutActiveAuthenticatedSessionCommand(ID, "logout"));
+      case REVOKED -> lifecycle().revoke(new RevokeActiveAuthenticatedSessionCommand(ID, "test", "revoke"));
+      case EXPIRED -> touch();
+      default -> throw new IllegalArgumentException("Expected terminal test case");
+    };
+  }
+
+  private AuthenticatedSession expiredSession(boolean absolute) {
+    var original = session();
+    return copyTimes(original,
+        absolute ? original.idleExpiresAt() : clock.instant().minusMillis(1),
+        absolute ? clock.instant().minusMillis(1) : original.absoluteExpiresAt());
+  }
+
+  private AuthenticatedSession copyTimes(AuthenticatedSession s, Instant idle, Instant absolute) {
+    return new AuthenticatedSession(s.authenticatedSessionId(), s.actorContext(), s.accounts(), s.status(),
+        s.csrfTokenHash(), s.createdAt(), s.lastAccessedAt(), idle, absolute, s.revision(),
+        s.fundPriceModeMetadata(), s.featureState());
+  }
+
   private AuthenticatedSessionCasUpdateCommand command(AuthenticatedSession current, Instant deadline) {
     var replacement = new SessionRevision("b".repeat(32));
     return new AuthenticatedSessionCasUpdateCommand(
@@ -236,7 +550,10 @@ class AuthenticatedSessionConditionalWriteRedisTest {
   }
 
   private AuthenticatedSession seed() {
-    var session = session();
+    return seed(session());
+  }
+
+  private AuthenticatedSession seed(AuthenticatedSession session) {
     redis.opsForValue().set(key, mapper.toJson(protector.protect(session)), Duration.ofSeconds(40)).block();
     return session;
   }
@@ -280,7 +597,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
   }
 
   private static final class MutableClock extends Clock {
-    private Instant now;
+    private volatile Instant now;
     MutableClock(Instant now) { this.now = now; }
     @Override public ZoneId getZone() { return ZoneOffset.UTC; }
     @Override public Clock withZone(ZoneId zone) { return this; }

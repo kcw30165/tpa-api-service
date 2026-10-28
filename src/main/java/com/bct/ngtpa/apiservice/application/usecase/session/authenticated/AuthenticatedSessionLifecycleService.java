@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.CreateAut
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.RevokeAuthenticatedSessionUseCase;
 import java.time.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -28,6 +29,7 @@ public final class AuthenticatedSessionLifecycleService
   private final AuthenticatedSessionProtectorPort protector;
   private final AuthenticatedSessionIdGenerator ids;
   private final AuthenticatedSessionRevisionGenerator revisions;
+  private final AuthenticatedSessionConcurrencyService concurrency;
   private final Duration idleTimeout;
   private final Duration absoluteTtl;
   private final Duration terminalRetention;
@@ -37,26 +39,8 @@ public final class AuthenticatedSessionLifecycleService
       AuthenticatedSessionPort port,
       AuthenticatedSessionProtectorPort protector,
       AuthenticatedSessionIdGenerator ids,
-      Duration idleTimeout,
-      Duration absoluteTtl,
-      Duration terminalRetention,
-      Clock clock) {
-    this(
-        port,
-        protector,
-        ids,
-        new SecureAuthenticatedSessionRevisionGenerator(),
-        idleTimeout,
-        absoluteTtl,
-        terminalRetention,
-        clock);
-  }
-
-  public AuthenticatedSessionLifecycleService(
-      AuthenticatedSessionPort port,
-      AuthenticatedSessionProtectorPort protector,
-      AuthenticatedSessionIdGenerator ids,
       AuthenticatedSessionRevisionGenerator revisions,
+      AuthenticatedSessionConcurrencyService concurrency,
       Duration idleTimeout,
       Duration absoluteTtl,
       Duration terminalRetention,
@@ -65,6 +49,7 @@ public final class AuthenticatedSessionLifecycleService
     this.protector = Objects.requireNonNull(protector);
     this.ids = Objects.requireNonNull(ids);
     this.revisions = Objects.requireNonNull(revisions);
+    this.concurrency = Objects.requireNonNull(concurrency);
     this.idleTimeout = positive(idleTimeout, "idleTimeout");
     this.absoluteTtl = positive(absoluteTtl, "absoluteTtl");
     this.terminalRetention = positive(terminalRetention, "terminalRetention");
@@ -129,33 +114,7 @@ public final class AuthenticatedSessionLifecycleService
   @Override
   public Mono<AuthenticatedSessionLifecycleResult> loadAndTouch(
       LoadAndTouchAuthenticatedSessionCommand command) {
-    return load(command.authenticatedSessionId(), command.correlationId())
-        .flatMap(
-            optional -> {
-              if (optional.isEmpty()) {
-                return result(AuthenticatedSessionLifecycleStatus.NOT_FOUND);
-              }
-              AuthenticatedSession session = optional.get();
-              if (session.status().terminal()) {
-                return result(lifecycleStatus(session.status()));
-              }
-              Instant now = clock.instant();
-              if (!session.isUsable(now)) {
-                return persistTerminal(
-                    session, AuthenticatedSessionStatus.EXPIRED, now, command.correlationId());
-              }
-              Instant idle = min(now.plus(idleTimeout), session.absoluteExpiresAt());
-              AuthenticatedSession touched =
-                  copy(session, AuthenticatedSessionStatus.ACTIVE, now, idle);
-              return port.touch(
-                      new TouchAuthenticatedSessionCommand(
-                          touched.authenticatedSessionId(),
-                          protector.protect(touched),
-                          Duration.between(now, idle),
-                          now,
-                          command.correlationId()))
-                  .thenReturn(AuthenticatedSessionLifecycleResult.active(touched));
-            })
+    return updateLifecycle(command.authenticatedSessionId(), null, command.correlationId())
         .doOnError(
             error ->
                 LOG.error(
@@ -186,47 +145,44 @@ public final class AuthenticatedSessionLifecycleService
 
   private Mono<AuthenticatedSessionLifecycleResult> transitionTerminal(
       AuthenticatedSessionId sessionId, AuthenticatedSessionStatus target, String correlationId) {
-    return load(sessionId, correlationId)
-        .flatMap(
-            optional -> {
-              if (optional.isEmpty()) {
-                return result(AuthenticatedSessionLifecycleStatus.NOT_FOUND);
-              }
-              AuthenticatedSession session = optional.get();
-              if (session.status().terminal()) {
-                return result(lifecycleStatus(session.status()));
-              }
-              Instant now = clock.instant();
-              if (!session.isUsable(now)) {
-                return persistTerminal(
-                    session, AuthenticatedSessionStatus.EXPIRED, now, correlationId);
-              }
-              return persistTerminal(session, target, now, correlationId);
-            })
+    return updateLifecycle(sessionId, target, correlationId)
         .onErrorResume(error -> result(AuthenticatedSessionLifecycleStatus.FAILED));
   }
 
-  private Mono<Optional<AuthenticatedSession>> load(
-      AuthenticatedSessionId sessionId, String correlationId) {
-    return port.load(new LoadAuthenticatedSessionCommand(sessionId, correlationId))
-        .map(optional -> optional.map(protector::unprotect));
-  }
-
-  private Mono<AuthenticatedSessionLifecycleResult> persistTerminal(
-      AuthenticatedSession session,
+  private Mono<AuthenticatedSessionLifecycleResult> updateLifecycle(
+      AuthenticatedSessionId sessionId,
       AuthenticatedSessionStatus target,
-      Instant now,
       String correlationId) {
-    AuthenticatedSession terminal =
-        copy(session, target, session.lastAccessedAt(), session.idleExpiresAt());
-    return port.touch(
-            new TouchAuthenticatedSessionCommand(
-                terminal.authenticatedSessionId(),
-                protector.protect(terminal),
-                terminalRetention,
-                now,
-                correlationId))
-        .thenReturn(new AuthenticatedSessionLifecycleResult(lifecycleStatus(target), terminal));
+    return Mono.defer(() -> {
+      // One transition timestamp per subscription; revision retries cannot renew retention.
+      var terminalAt = new AtomicReference<Instant>();
+      return concurrency.updateIfEligible(
+          sessionId,
+          (session, now) -> !session.status().terminal(),
+          (session, now) -> {
+            if (!session.isUsable(now) || target != null) {
+              terminalAt.compareAndSet(null, now);
+              return copy(session,
+                  session.isUsable(now) ? target : AuthenticatedSessionStatus.EXPIRED,
+                  session.lastAccessedAt(), session.idleExpiresAt());
+            }
+            return copy(session, AuthenticatedSessionStatus.ACTIVE, now,
+                min(now.plus(idleTimeout), session.absoluteExpiresAt()));
+          },
+          session -> session.status().terminal()
+              ? terminalAt.get().plus(terminalRetention)
+              : session.idleExpiresAt(),
+          correlationId)
+          .map(update -> switch (update.outcome()) {
+            case APPLIED -> new AuthenticatedSessionLifecycleResult(
+                lifecycleStatus(update.session().status()), update.session());
+            case UNCHANGED -> AuthenticatedSessionLifecycleResult.of(
+                lifecycleStatus(update.session().status()));
+            case SESSION_NOT_FOUND -> AuthenticatedSessionLifecycleResult.of(
+                AuthenticatedSessionLifecycleStatus.NOT_FOUND);
+            default -> AuthenticatedSessionLifecycleResult.of(AuthenticatedSessionLifecycleStatus.FAILED);
+          });
+    });
   }
 
   private AuthenticatedSession copy(
@@ -234,11 +190,7 @@ public final class AuthenticatedSessionLifecycleService
       AuthenticatedSessionStatus status,
       Instant lastAccessedAt,
       Instant idleExpiresAt) {
-    // Deliberately carries the SOURCE session's existing revision forward unchanged. This
-    // touch/terminal-transition path is the existing blind-overwrite mutation (store/touch), not
-    // a CAS-protected mutation via AuthenticatedSessionCasUpdatePort. Advancing the revision here
-    // would silently invalidate a concurrent CAS caller's expected-revision even though that
-    // caller never attempted a conflicting write.
+    // The shared conditional writer stamps the fresh revision after this mutation.
     return new AuthenticatedSession(
         source.authenticatedSessionId(),
         source.actorContext(),

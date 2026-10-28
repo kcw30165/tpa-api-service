@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedLoginHandoffPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionProtectorPort;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionRevisionGenerator;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.DeleteAuthFlowSessionPort;
@@ -18,6 +19,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.logout.AuthenticatedLog
 import com.bct.ngtpa.apiservice.application.usecase.auth.logout.AuthenticatedLogoutUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedAccountContextResolver;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleService;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionValidationService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LoadAndTouchAuthenticatedSessionUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LogoutAuthenticatedSessionUseCase;
@@ -68,6 +70,8 @@ public class AuthenticatedSessionConfig {
       AuthenticatedSessionPort authenticatedSessionPort,
       AuthenticatedSessionProtectorPort authenticatedSessionProtector,
       SecureAuthenticatedSessionIdGenerator authenticatedSessionIdGenerator,
+      AuthenticatedSessionRevisionGenerator revisions,
+      AuthenticatedSessionConcurrencyService concurrency,
       Clock clock,
       AuthWorkflowProperties properties) {
     if (properties.getLogin() == null) {
@@ -94,6 +98,8 @@ public class AuthenticatedSessionConfig {
         authenticatedSessionPort,
         authenticatedSessionProtector,
         authenticatedSessionIdGenerator,
+        revisions,
+        concurrency,
         Duration.ofSeconds(session.getIdleTimeoutSeconds()),
         Duration.ofSeconds(session.getAbsoluteTimeoutSeconds()),
         Duration.ofSeconds(session.getTerminalRetentionSeconds()),

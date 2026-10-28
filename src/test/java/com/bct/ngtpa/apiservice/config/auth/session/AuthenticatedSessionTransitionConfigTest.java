@@ -11,6 +11,8 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionProtect
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.DeleteAuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.EstablishAuthenticatedLoginSessionService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleService;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyService;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SecureAuthenticatedSessionRevisionGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.SecureAuthenticatedSessionIdGenerator;
 import java.time.Clock;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,8 @@ class AuthenticatedSessionTransitionConfigTest {
             Mockito.mock(AuthenticatedSessionPort.class),
             Mockito.mock(AuthenticatedSessionProtectorPort.class),
             new SecureAuthenticatedSessionIdGenerator(),
+            new SecureAuthenticatedSessionRevisionGenerator(),
+            Mockito.mock(AuthenticatedSessionConcurrencyService.class),
             Clock.systemUTC(),
             properties);
 
@@ -54,6 +58,8 @@ class AuthenticatedSessionTransitionConfigTest {
                     Mockito.mock(AuthenticatedSessionPort.class),
                     Mockito.mock(AuthenticatedSessionProtectorPort.class),
                     new SecureAuthenticatedSessionIdGenerator(),
+                    new SecureAuthenticatedSessionRevisionGenerator(),
+                    Mockito.mock(AuthenticatedSessionConcurrencyService.class),
                     Clock.systemUTC(),
                     properties))
         .isInstanceOf(IllegalStateException.class)
