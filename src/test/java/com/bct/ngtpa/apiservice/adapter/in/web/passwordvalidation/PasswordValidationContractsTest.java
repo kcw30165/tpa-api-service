@@ -20,8 +20,15 @@ class PasswordValidationContractsTest {
     assertThat(PasswordValidationPurpose.parse("PERSONAL_INFORMATION_UPDATE"))
         .isEqualTo(PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE);
     for (String value :
-        new String[] {null, "", "personal_information_update", " PERSONAL_INFORMATION_UPDATE",
-          "INVESTMENT_CHANGE", "FUND_SWITCH", "UNKNOWN"}) {
+        new String[] {
+          null,
+          "",
+          "personal_information_update",
+          " PERSONAL_INFORMATION_UPDATE",
+          "INVESTMENT_CHANGE",
+          "FUND_SWITCH",
+          "UNKNOWN"
+        }) {
       assertThatThrownBy(() -> PasswordValidationPurpose.parse(value))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("Unsupported password-validation purpose");
@@ -37,9 +44,11 @@ class PasswordValidationContractsTest {
     assertThat(request.password()).isEqualTo(" AbC ");
     assertThat(command.password()).isEqualTo(" AbC ");
     assertThat(command.customerId()).isEqualTo("test-customer");
-    assertThat(request.toString()).contains("password=<redacted>", "operationPayload=<redacted>")
+    assertThat(request.toString())
+        .contains("password=<redacted>", "operationPayload=<redacted>")
         .doesNotContain(" AbC ", "reviewed-value");
-    assertThat(command.toString()).contains("customerId=<redacted>", "password=<redacted>")
+    assertThat(command.toString())
+        .contains("customerId=<redacted>", "password=<redacted>")
         .doesNotContain("test-customer", " AbC ");
     assertThatThrownBy(() -> new PasswordCheckCommand("test", "x", null))
         .isInstanceOf(NullPointerException.class);
@@ -62,10 +71,11 @@ class PasswordValidationContractsTest {
   @Test
   void requestRejectsIdentityOverridesRatherThanAcceptingCustId() {
     assertThatThrownBy(
-            () -> mapper.readValue(
-                "{\"password\":\"x\",\"purpose\":\"PERSONAL_INFORMATION_UPDATE\","
-                    + "\"operationPayload\":{},\"cust-id\":\"override\"}",
-                PasswordValidationRequest.class))
+            () ->
+                mapper.readValue(
+                    "{\"password\":\"x\",\"purpose\":\"PERSONAL_INFORMATION_UPDATE\","
+                        + "\"operationPayload\":{},\"cust-id\":\"override\"}",
+                    PasswordValidationRequest.class))
         .isInstanceOf(com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException.class);
   }
 }

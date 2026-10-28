@@ -25,8 +25,15 @@ public record ApimExchangeRequest<R, D>(
       ApimDatabaseScope databaseScope,
       ApimCredentialResolutionContext credentialContext,
       ApimRetryEligibility retryEligibility) {
-    this(path, request, requestType, responseDataType, databaseScope, credentialContext,
-        retryEligibility, ApimResubmissionPolicy.ALLOW_RECOVERY);
+    this(
+        path,
+        request,
+        requestType,
+        responseDataType,
+        databaseScope,
+        credentialContext,
+        retryEligibility,
+        ApimResubmissionPolicy.ALLOW_RECOVERY);
   }
 
   public ApimExchangeRequest {

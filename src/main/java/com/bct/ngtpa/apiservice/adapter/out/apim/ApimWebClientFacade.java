@@ -8,8 +8,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfil
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimErrorResponse;
-import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimSuccessfulExchange;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimSuccessfulExchange;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.exception.ApimException;
@@ -125,7 +125,12 @@ public class ApimWebClientFacade {
       ApimDatabaseScope scope,
       ApimCredentialResolutionContext resolutionContext,
       ApimRetryEligibility retryEligibility) {
-    return postSuccessfulExchange(path, requestBody, scope, resolutionContext, retryEligibility,
+    return postSuccessfulExchange(
+        path,
+        requestBody,
+        scope,
+        resolutionContext,
+        retryEligibility,
         ApimResubmissionPolicy.ALLOW_RECOVERY);
   }
 
@@ -186,8 +191,8 @@ public class ApimWebClientFacade {
     ApimRetryEligibility eligibility =
         retryEligibility == null ? ApimRetryEligibility.NON_RETRYABLE : retryEligibility;
     apimProperties.validateRetryPolicy();
-    return sendBusinessAttempt(profile, path, requestBody, eligibility,
-        ApimResubmissionPolicy.ALLOW_RECOVERY, 1);
+    return sendBusinessAttempt(
+        profile, path, requestBody, eligibility, ApimResubmissionPolicy.ALLOW_RECOVERY, 1);
   }
 
   /**
@@ -216,8 +221,13 @@ public class ApimWebClientFacade {
       ApimDatabaseScope scope,
       ApimCredentialResolutionContext resolutionContext,
       ApimRetryEligibility retryEligibility) {
-    return postEncryptedSuccessfulExchange(path, encryptFn, scope, resolutionContext,
-        retryEligibility, ApimResubmissionPolicy.ALLOW_RECOVERY);
+    return postEncryptedSuccessfulExchange(
+        path,
+        encryptFn,
+        scope,
+        resolutionContext,
+        retryEligibility,
+        ApimResubmissionPolicy.ALLOW_RECOVERY);
   }
 
   public Mono<ApimSuccessfulExchange> postEncryptedSuccessfulExchange(
@@ -235,8 +245,8 @@ public class ApimWebClientFacade {
     return resolveProfile(scope, resolutionContext)
         .flatMap(
             profile ->
-                sendBusinessAttemptEncryptedSuccessful(profile, path, encryptFn, eligibility,
-                    resubmissionPolicy, 1));
+                sendBusinessAttemptEncryptedSuccessful(
+                    profile, path, encryptFn, eligibility, resubmissionPolicy, 1));
   }
 
   private Mono<String> sendBusinessAttempt(
@@ -268,8 +278,13 @@ public class ApimWebClientFacade {
                       ? Mono.just(0L)
                       : Mono.delay(Duration.ofMillis(backoffMilliseconds));
               return delay.then(
-                  sendBusinessAttempt(profile, path, requestBody, retryEligibility,
-                      resubmissionPolicy, attempt + 1));
+                  sendBusinessAttempt(
+                      profile,
+                      path,
+                      requestBody,
+                      retryEligibility,
+                      resubmissionPolicy,
+                      attempt + 1));
             });
   }
 
@@ -368,10 +383,12 @@ public class ApimWebClientFacade {
                       .filter(requestLoggingExchangeFilter.filter())
                       .codecs(responseSizeLimit(apimProperties));
               if (retryContext.resubmissionPolicy == ApimResubmissionPolicy.NEVER) {
-                callBuilder.clientConnector(new ReactorClientHttpConnector(
-                    HttpClient.create().disableRetry(true)
-                        .responseTimeout(Duration.ofMillis(
-                            apimProperties.validatedTimeoutMilliseconds()))));
+                callBuilder.clientConnector(
+                    new ReactorClientHttpConnector(
+                        HttpClient.create()
+                            .disableRetry(true)
+                            .responseTimeout(
+                                Duration.ofMillis(apimProperties.validatedTimeoutMilliseconds()))));
               }
               WebClient client = callBuilder.build();
 
@@ -427,8 +444,8 @@ public class ApimWebClientFacade {
         .flatMap(
             body ->
                 (statusCode.isError()
-                    || (retryContext.resubmissionPolicy == ApimResubmissionPolicy.NEVER
-                        && statusCode.value() != 200))
+                        || (retryContext.resubmissionPolicy == ApimResubmissionPolicy.NEVER
+                            && statusCode.value() != 200))
                     ? handleErrorBody(statusCode, body, profile, path, requestBody, retryContext)
                     : Mono.just(body));
   }
@@ -473,7 +490,8 @@ public class ApimWebClientFacade {
       Object requestBody,
       RetryContext retryContext) {
     if (retryContext.resubmissionPolicy == ApimResubmissionPolicy.NEVER
-        || !"invalid_token".equals(errorCode) || retryContext.tokenRetry) {
+        || !"invalid_token".equals(errorCode)
+        || retryContext.tokenRetry) {
       return null;
     }
     retryContext.tokenRetry = true;
@@ -489,7 +507,8 @@ public class ApimWebClientFacade {
   private Mono<String> tryInvalidPublicKeyRetry(
       String errorCode, ApimCredentialProfile profile, String path, RetryContext retryContext) {
     if (retryContext.resubmissionPolicy == ApimResubmissionPolicy.NEVER
-        || !"invalid_public_key".equals(errorCode) || retryContext.certificateRetry) {
+        || !"invalid_public_key".equals(errorCode)
+        || retryContext.certificateRetry) {
       return null;
     }
     retryContext.certificateRetry = true;

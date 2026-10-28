@@ -34,7 +34,9 @@ class ApimPasswordValidationAdapterTest {
   @Test
   void exactRequestHasOnlyServerIdentityAndUnchangedPasswordWithStrictRouting() throws Exception {
     stub("{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":true,\"fail-count\":0}]}}");
-    StepVerifier.create(adapter.check(command)).expectNext(PasswordCheckResult.CORRECT).verifyComplete();
+    StepVerifier.create(adapter.check(command))
+        .expectNext(PasswordCheckResult.CORRECT)
+        .verifyComplete();
     var capture = ArgumentCaptor.forClass(ApimExchangeRequest.class);
     verify(executor).postEnvelope(capture.capture());
     var request = capture.getValue();
@@ -48,16 +50,19 @@ class ApimPasswordValidationAdapterTest {
     assertThat(request.resubmissionPolicy()).isEqualTo(ApimResubmissionPolicy.NEVER);
     assertThat(mapper.readTree(mapper.writeValueAsString(request.request())))
         .isEqualTo(mapper.readTree("{\"cust-id\":\"test-customer\",\"password\":\" AbC \"}"));
-    assertThat(request.request().toString()).contains("customerId=<redacted>", "password=<redacted>")
+    assertThat(request.request().toString())
+        .contains("customerId=<redacted>", "password=<redacted>")
         .doesNotContain("test-customer", " AbC ");
   }
 
   @ParameterizedTest
   @CsvSource({
-      "err.tpa.account.locked,ACCOUNT_LOCKED",
-      "err.tpa.cust.id.not.registered,CUSTOMER_NOT_REGISTERED",
-      "err.tpa.unknown,UNAVAILABLE", "' ',UNAVAILABLE",
-      "' err.tpa.account.locked',UNAVAILABLE", "ERR.TPA.ACCOUNT.LOCKED,UNAVAILABLE"
+    "err.tpa.account.locked,ACCOUNT_LOCKED",
+    "err.tpa.cust.id.not.registered,CUSTOMER_NOT_REGISTERED",
+    "err.tpa.unknown,UNAVAILABLE",
+    "' ',UNAVAILABLE",
+    "' err.tpa.account.locked',UNAVAILABLE",
+    "ERR.TPA.ACCOUNT.LOCKED,UNAVAILABLE"
   })
   void exactErrorsAreAuthoritativeWithoutRequiringData(String error, PasswordCheckResult expected)
       throws Exception {
@@ -67,58 +72,85 @@ class ApimPasswordValidationAdapterTest {
 
   @Test
   void recognizedErrorNeverBecomesSuccessEvenWithContradictoryData() throws Exception {
-    stub("{\"response\":{\"err-message\":\"err.tpa.account.locked\",\"data\":[{\"success\":true}]}}");
-    StepVerifier.create(adapter.check(command)).expectNext(PasswordCheckResult.ACCOUNT_LOCKED).verifyComplete();
+    stub(
+        "{\"response\":{\"err-message\":\"err.tpa.account.locked\",\"data\":[{\"success\":true}]}}");
+    StepVerifier.create(adapter.check(command))
+        .expectNext(PasswordCheckResult.ACCOUNT_LOCKED)
+        .verifyComplete();
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"0", "5", "99", "null", "\"unknown\"", "{}", "[]"})
   void failCountNeverChangesIncorrectPasswordIntoLock(String count) throws Exception {
-    stub("{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":false,\"fail-count\":" + count + "}]}}");
-    StepVerifier.create(adapter.check(command)).expectNext(PasswordCheckResult.INCORRECT).verifyComplete();
+    stub(
+        "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":false,\"fail-count\":"
+            + count
+            + "}]}}");
+    StepVerifier.create(adapter.check(command))
+        .expectNext(PasswordCheckResult.INCORRECT)
+        .verifyComplete();
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {
-      "{}", "{\"response\":null}", "{\"response\":{}}",
-      "{\"response\":{\"err-message\":null}}",
-      "{\"response\":{\"err-message\":\"\",\"data\":null}}",
-      "{\"response\":{\"err-message\":\"\",\"data\":[]}}",
-      "{\"response\":{\"err-message\":\"\",\"data\":[null]}}",
-      "{\"response\":{\"err-message\":\"\",\"data\":[{}]}}",
-      "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":null}]}}",
-      "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":\"true\"}]}}",
-      "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":1}]}}",
-      "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":{} }]}}",
-      "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":true},{\"success\":true}]}}",
-      "{\"response\":{\"err-message\":\"unknown\",\"data\":[{\"success\":true}]}}"
-  })
+  @ValueSource(
+      strings = {
+        "{}",
+        "{\"response\":null}",
+        "{\"response\":{}}",
+        "{\"response\":{\"err-message\":null}}",
+        "{\"response\":{\"err-message\":\"\",\"data\":null}}",
+        "{\"response\":{\"err-message\":\"\",\"data\":[]}}",
+        "{\"response\":{\"err-message\":\"\",\"data\":[null]}}",
+        "{\"response\":{\"err-message\":\"\",\"data\":[{}]}}",
+        "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":null}]}}",
+        "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":\"true\"}]}}",
+        "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":1}]}}",
+        "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":{} }]}}",
+        "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":true},{\"success\":true}]}}",
+        "{\"response\":{\"err-message\":\"unknown\",\"data\":[{\"success\":true}]}}"
+      })
   void malformedAndUnknownEnvelopesFailClosed(String json) throws Exception {
     stub(json);
-    StepVerifier.create(adapter.check(command)).expectNext(PasswordCheckResult.UNAVAILABLE).verifyComplete();
+    StepVerifier.create(adapter.check(command))
+        .expectNext(PasswordCheckResult.UNAVAILABLE)
+        .verifyComplete();
   }
 
   @Test
   void missingFailCountAndUnknownFieldsDoNotOverrideExplicitBoolean() throws Exception {
-    stub("{\"extra\":1,\"response\":{\"extra\":1,\"err-message\":\"\",\"data\":[{\"success\":true,\"extra\":{}}]}}");
-    StepVerifier.create(adapter.check(command)).expectNext(PasswordCheckResult.CORRECT).verifyComplete();
+    stub(
+        "{\"extra\":1,\"response\":{\"extra\":1,\"err-message\":\"\",\"data\":[{\"success\":true,\"extra\":{}}]}}");
+    StepVerifier.create(adapter.check(command))
+        .expectNext(PasswordCheckResult.CORRECT)
+        .verifyComplete();
   }
 
   @Test
   void emptyAsyncAndSynchronousFailuresReturnTechnicalOutcomeWithoutRetryOrRawDetails() {
     when(executor.postEnvelope(any())).thenReturn(Mono.empty());
-    StepVerifier.create(adapter.check(command)).expectNext(PasswordCheckResult.UNAVAILABLE).verifyComplete();
-    when(executor.postEnvelope(any())).thenReturn(Mono.error(new IllegalStateException("test-only-detail")));
-    StepVerifier.create(adapter.check(command)).expectNext(PasswordCheckResult.UNAVAILABLE).verifyComplete();
+    StepVerifier.create(adapter.check(command))
+        .expectNext(PasswordCheckResult.UNAVAILABLE)
+        .verifyComplete();
+    when(executor.postEnvelope(any()))
+        .thenReturn(Mono.error(new IllegalStateException("test-only-detail")));
+    StepVerifier.create(adapter.check(command))
+        .expectNext(PasswordCheckResult.UNAVAILABLE)
+        .verifyComplete();
     when(executor.postEnvelope(any())).thenThrow(new IllegalStateException("test-only-detail"));
-    StepVerifier.create(adapter.check(command)).expectNext(PasswordCheckResult.UNAVAILABLE).verifyComplete();
+    StepVerifier.create(adapter.check(command))
+        .expectNext(PasswordCheckResult.UNAVAILABLE)
+        .verifyComplete();
     verify(executor, times(3)).postEnvelope(any());
   }
 
   private void stub(String json) throws Exception {
     ApimResponseEnvelope<TrpPwdValidationDataItem> envelope =
-        mapper.readValue(json, mapper.getTypeFactory()
-            .constructParametricType(ApimResponseEnvelope.class, TrpPwdValidationDataItem.class));
+        mapper.readValue(
+            json,
+            mapper
+                .getTypeFactory()
+                .constructParametricType(
+                    ApimResponseEnvelope.class, TrpPwdValidationDataItem.class));
     when(executor.<TrpPwdValidationRequest, TrpPwdValidationDataItem>postEnvelope(any()))
         .thenReturn(Mono.just(envelope));
   }

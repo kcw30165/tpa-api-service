@@ -8,10 +8,10 @@ import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.StreamReadFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -95,14 +95,17 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
                       request.path(), request.request(), request.requestType(), null);
               return request.resubmissionPolicy() == ApimResubmissionPolicy.ALLOW_RECOVERY
                   ? facade.postSuccessfulExchange(
-                  request.path(),
-                  transformed,
-                  request.databaseScope(),
-                  request.credentialContext(),
-                  request.retryEligibility())
+                      request.path(),
+                      transformed,
+                      request.databaseScope(),
+                      request.credentialContext(),
+                      request.retryEligibility())
                   : facade.postSuccessfulExchange(
-                      request.path(), transformed, request.databaseScope(),
-                      request.credentialContext(), request.retryEligibility(),
+                      request.path(),
+                      transformed,
+                      request.databaseScope(),
+                      request.credentialContext(),
+                      request.retryEligibility(),
                       request.resubmissionPolicy());
             })
         .switchIfEmpty(Mono.error(new IllegalStateException("APIM successful exchange was empty")))
@@ -131,20 +134,28 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
             () ->
                 request.resubmissionPolicy() == ApimResubmissionPolicy.ALLOW_RECOVERY
                     ? facade.postEncryptedSuccessfulExchange(
-                    request.path(),
-                    (profile, attemptKey) ->
-                        cryptoService.encryptRequest(
-                            request.path(), request.request(), request.requestType(), attemptKey),
-                    request.databaseScope(),
-                    request.credentialContext(),
-                    request.retryEligibility())
+                        request.path(),
+                        (profile, attemptKey) ->
+                            cryptoService.encryptRequest(
+                                request.path(),
+                                request.request(),
+                                request.requestType(),
+                                attemptKey),
+                        request.databaseScope(),
+                        request.credentialContext(),
+                        request.retryEligibility())
                     : facade.postEncryptedSuccessfulExchange(
                         request.path(),
                         (profile, attemptKey) ->
                             cryptoService.encryptRequest(
-                                request.path(), request.request(), request.requestType(), attemptKey),
-                        request.databaseScope(), request.credentialContext(),
-                        request.retryEligibility(), request.resubmissionPolicy()))
+                                request.path(),
+                                request.request(),
+                                request.requestType(),
+                                attemptKey),
+                        request.databaseScope(),
+                        request.credentialContext(),
+                        request.retryEligibility(),
+                        request.resubmissionPolicy()))
         .switchIfEmpty(Mono.error(new IllegalStateException("APIM successful exchange was empty")))
         .flatMap(
             exchange ->

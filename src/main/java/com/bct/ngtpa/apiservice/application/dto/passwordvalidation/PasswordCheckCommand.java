@@ -15,6 +15,7 @@ public record PasswordCheckCommand(
   @Override
   public String toString() {
     return "PasswordCheckCommand[customerId=<redacted>, password=<redacted>, actorUserRole="
-        + actorUserRole + "]";
+        + actorUserRole
+        + "]";
   }
 }

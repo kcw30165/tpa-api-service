@@ -14,28 +14,37 @@ class JsonOperationPayloadCanonicalizerTest {
 
   @Test
   void ignoresRecursiveObjectOrderEscapesAndDecimalScaleWithoutLosingPrecision() {
-    var left = canonicalizer.digest(
-        "{\"fields\":{\"z\":[1.0,{\"b\":\"\\u0061\",\"a\":-0}],\"a\":12345678901234567890.12345678901234567890},"
-            + "\"applyToAllAccounts\":false,\"formVersion\":\"v\"}");
-    var right = canonicalizer.digest(
-        "{\"formVersion\":\"v\",\"applyToAllAccounts\":false,"
-            + "\"fields\":{\"a\":12345678901234567890.123456789012345678900,\"z\":[1,{\"a\":0.0,\"b\":\"a\"}]}}");
+    var left =
+        canonicalizer.digest(
+            "{\"fields\":{\"z\":[1.0,{\"b\":\"\\u0061\",\"a\":-0}],\"a\":12345678901234567890.12345678901234567890},"
+                + "\"applyToAllAccounts\":false,\"formVersion\":\"v\"}");
+    var right =
+        canonicalizer.digest(
+            "{\"formVersion\":\"v\",\"applyToAllAccounts\":false,"
+                + "\"fields\":{\"a\":12345678901234567890.123456789012345678900,\"z\":[1,{\"a\":0.0,\"b\":\"a\"}]}}");
     assertThat(left.matches(right)).isTrue();
     assertThat(left.version()).isEqualTo(1);
     assertThat(left.toString()).contains("<redacted>").doesNotContain(left.sha256());
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {
-      "{\"fields\":{\"x\":\"1\"}}", "{\"fields\":{\"x\":true}}",
-      "{\"fields\":{\"x\":null}}", "{\"fields\":{}}", "{\"fields\":{\"x\":[1]}}",
-      "{\"fields\":{\"x\":{\"v\":1}}}", "{\"fields\":{\"x\":1.00000000000000000001}}",
-      "{\"fields\":{\"x\":1},\"unknown\":null}", "{\"fields\":{\"x\":1},\"applyToAllAccounts\":true}",
-      "{\"fields\":{\"x\":1},\"formVersion\":\"changed\"}"
-  })
+  @ValueSource(
+      strings = {
+        "{\"fields\":{\"x\":\"1\"}}",
+        "{\"fields\":{\"x\":true}}",
+        "{\"fields\":{\"x\":null}}",
+        "{\"fields\":{}}",
+        "{\"fields\":{\"x\":[1]}}",
+        "{\"fields\":{\"x\":{\"v\":1}}}",
+        "{\"fields\":{\"x\":1.00000000000000000001}}",
+        "{\"fields\":{\"x\":1},\"unknown\":null}",
+        "{\"fields\":{\"x\":1},\"applyToAllAccounts\":true}",
+        "{\"fields\":{\"x\":1},\"formVersion\":\"changed\"}"
+      })
   void bindsEveryValueTypeAndPresence(String changed) {
-    assertThat(canonicalizer.digest("{\"fields\":{\"x\":1}}")
-        .matches(canonicalizer.digest(changed))).isFalse();
+    assertThat(
+            canonicalizer.digest("{\"fields\":{\"x\":1}}").matches(canonicalizer.digest(changed)))
+        .isFalse();
   }
 
   @Test
@@ -49,12 +58,23 @@ class JsonOperationPayloadCanonicalizerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {
-      "{\"x\":1,\"x\":2}", "{\"nested\":{\"x\":1,\"x\":2}}",
-      "{\"x\":[{\"a\":1,\"\\u0061\":2}]}", "{} {}", "{} trailing",
-      "{\"x\":NaN}", "{\"x\":Infinity}", "{\"x\":01}", "{\"x\":1,}",
-      "{\"x\":", "", "[]", "null", "true"
-  })
+  @ValueSource(
+      strings = {
+        "{\"x\":1,\"x\":2}",
+        "{\"nested\":{\"x\":1,\"x\":2}}",
+        "{\"x\":[{\"a\":1,\"\\u0061\":2}]}",
+        "{} {}",
+        "{} trailing",
+        "{\"x\":NaN}",
+        "{\"x\":Infinity}",
+        "{\"x\":01}",
+        "{\"x\":1,}",
+        "{\"x\":",
+        "",
+        "[]",
+        "null",
+        "true"
+      })
   void rejectsAmbiguousOrNonJsonInputWithoutEchoingIt(String json) {
     assertThatThrownBy(() -> canonicalizer.digest(json))
         .isInstanceOf(IllegalArgumentException.class)
@@ -67,10 +87,12 @@ class JsonOperationPayloadCanonicalizerTest {
     var digest = canonicalizer.digest("{}");
     assertThat(digest.matches(new PayloadDigest(2, digest.sha256()))).isFalse();
     assertThat(digest.matches(null)).isFalse();
-    assertThatThrownBy(() -> canonicalizer.digest(null)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> canonicalizer.digest(null))
+        .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> new PayloadDigest(0, digest.sha256()))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new PayloadDigest(1, "bad")).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new PayloadDigest(1, "bad"))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test

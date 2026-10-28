@@ -26,15 +26,18 @@ public final class ApimPasswordValidationAdapter implements PasswordCheckPort {
   @Override
   public Mono<PasswordCheckResult> check(PasswordCheckCommand command) {
     Objects.requireNonNull(command, "command must not be null");
-    return Mono.defer(() -> executor.postEnvelope(new ApimExchangeRequest<>(
-            PATH,
-            new TrpPwdValidationRequest(command.customerId(), command.password()),
-            TrpPwdValidationRequest.class,
-            TrpPwdValidationDataItem.class,
-            ApimDatabaseScope.NON_ACCOUNT,
-            new ApimCredentialResolutionContext(command.actorUserRole(), null),
-            ApimRetryEligibility.NON_RETRYABLE,
-            ApimResubmissionPolicy.NEVER)))
+    return Mono.defer(
+            () ->
+                executor.postEnvelope(
+                    new ApimExchangeRequest<>(
+                        PATH,
+                        new TrpPwdValidationRequest(command.customerId(), command.password()),
+                        TrpPwdValidationRequest.class,
+                        TrpPwdValidationDataItem.class,
+                        ApimDatabaseScope.NON_ACCOUNT,
+                        new ApimCredentialResolutionContext(command.actorUserRole(), null),
+                        ApimRetryEligibility.NON_RETRYABLE,
+                        ApimResubmissionPolicy.NEVER)))
         .map(this::interpret)
         .defaultIfEmpty(PasswordCheckResult.UNAVAILABLE)
         .onErrorReturn(PasswordCheckResult.UNAVAILABLE);

@@ -78,7 +78,8 @@ public class ApimExchangeOutcomeLogger {
       ApimExchangeRequest<?, D> request, ApimResponseEnvelope<D> envelope, String requestId) {
     Map<String, Object> event = baseEvent("apim.business.rejected", request, requestId);
     if (request.resubmissionPolicy() != ApimResubmissionPolicy.NEVER) {
-      event.put("errMessage", loggingSanitizer.sanitizeText(envelope.getResponse().getErrMessage()));
+      event.put(
+          "errMessage", loggingSanitizer.sanitizeText(envelope.getResponse().getErrMessage()));
     }
     log.warn("{}", toJson(event));
   }

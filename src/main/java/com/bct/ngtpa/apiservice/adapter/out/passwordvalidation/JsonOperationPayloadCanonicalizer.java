@@ -40,7 +40,8 @@ public final class JsonOperationPayloadCanonicalizer implements OperationPayload
       }
       return new PayloadDigest(
           VERSION,
-          HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(buffer.toByteArray())));
+          HexFormat.of()
+              .formatHex(MessageDigest.getInstance("SHA-256").digest(buffer.toByteArray())));
     } catch (IOException | IllegalArgumentException exception) {
       // Parser exceptions can contain personal values. Do not retain them as causes.
       throw invalidPayload();
