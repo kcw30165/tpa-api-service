@@ -889,7 +889,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
   @Test
   void guardedRetryUsesNewDeadlineAfterConcurrentTouch() {
     var original = seed();
-    beforeWrite.set(() -> touch());
+    beforeWrite.set(this::touch);
     var result =
         concurrency
             .updateIfUsableGuarded(
@@ -987,7 +987,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
                   ? PasswordValidationGrantService.Status.UNAVAILABLE
                   : PasswordValidationGrantService.Status.REJECTED);
       assertThat(commands).isEmpty();
-      assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo(encoded);
+      assertThat(stored().featureState()).containsEntry(grantKey(ACCOUNT), encoded);
     }
   }
 
@@ -1025,7 +1025,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
           .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
     }
     assertThat(commands).isEmpty();
-    assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo(before);
+    assertThat(stored().featureState()).containsEntry(grantKey(ACCOUNT), before);
   }
 
   @Test
@@ -1057,7 +1057,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
                 .status())
         .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
     assertThat(commands).isEmpty();
-    assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo(before);
+    assertThat(stored().featureState()).containsEntry(grantKey(ACCOUNT), before);
   }
 
   @Test
@@ -1076,6 +1076,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
                               if (result.status()
                                   == PasswordValidationGrantService.Status.CONSUMED) {
                                 assertThat(result.binding()).isEqualTo(BINDING);
+                                assertThat(result.toString()).doesNotContain(BINDING.sha256());
                                 dispatches.incrementAndGet();
                               } else {
                                 assertThat(result.binding()).isNull();
@@ -1089,7 +1090,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
                 .filter(r -> r.status() == PasswordValidationGrantService.Status.CONSUMED))
         .hasSize(1);
     assertThat(dispatches).hasValue(1);
-    assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo("consumed");
+    assertThat(stored().featureState()).containsEntry(grantKey(ACCOUNT), "consumed");
   }
 
   @ParameterizedTest
@@ -1135,8 +1136,8 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     var issued = issueGrant(ACCOUNT);
     beforeWrite.set(() -> grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "consume"));
     assertThat(touch().block().status()).isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE);
-    assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo("consumed");
-    beforeWrite.set(() -> touch());
+    assertThat(stored().featureState()).containsEntry(grantKey(ACCOUNT), "consumed");
+    beforeWrite.set(this::touch);
     assertThat(issueGrant(ACCOUNT).status())
         .isEqualTo(PasswordValidationGrantService.Status.ISSUED);
     assertThat(stored().featureState()).containsEntry("unrelated", "keep");
@@ -1174,7 +1175,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
       var result = grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block();
       assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
       assertThat(result.binding()).isNull();
-      assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo("consumed");
+      assertThat(stored().featureState()).containsEntry(grantKey(ACCOUNT), "consumed");
     } else {
       var result = issueGrant(ACCOUNT);
       assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
@@ -1199,6 +1200,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
                 .flatMap(
                     touches -> {
                       assertThat(touches)
+                          .hasSize(12)
                           .allSatisfy(
                               t ->
                                   assertThat(t.status())
@@ -1236,7 +1238,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     }
     assertThat(conflicts).hasValue(3);
     assertThat(dispatches).hasValue(0);
-    assertThat(stored().featureState().get(grantKey(ACCOUNT))).isEqualTo(before);
+    assertThat(stored().featureState()).containsEntry(grantKey(ACCOUNT), before);
     assertThat(stored().featureState()).containsEntry("unrelated", "keep");
   }
 

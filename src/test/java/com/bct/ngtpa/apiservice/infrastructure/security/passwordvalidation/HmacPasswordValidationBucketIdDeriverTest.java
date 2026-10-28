@@ -19,7 +19,8 @@ class HmacPasswordValidationBucketIdDeriverTest {
   @Test
   void weakKeysAndMissingIdentityFailClosed() {
     for (byte[] key : new byte[][] {null, new byte[0], new byte[31]}) {
-      assertThatThrownBy(() -> new HmacPasswordValidationBucketIdDeriver(key).derive("synthetic"))
+      var unconfigured = new HmacPasswordValidationBucketIdDeriver(key);
+      assertThatThrownBy(() -> unconfigured.derive("synthetic"))
           .isInstanceOf(IllegalStateException.class)
           .hasMessage("Password-validation limiter identity unavailable");
     }

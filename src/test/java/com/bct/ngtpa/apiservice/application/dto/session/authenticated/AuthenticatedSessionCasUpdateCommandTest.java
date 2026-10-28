@@ -57,10 +57,11 @@ class AuthenticatedSessionCasUpdateCommandTest {
                     ID, EXPECTED, protectedSession(), REPLACEMENT, null, deadline)
                 .usableUntil())
         .isNull();
+    var protectedValue = protectedSession();
     assertThatThrownBy(
             () ->
                 new AuthenticatedSessionCasUpdateCommand(
-                    ID, EXPECTED, protectedSession(), REPLACEMENT, null, deadline, deadline))
+                    ID, EXPECTED, protectedValue, REPLACEMENT, null, deadline, deadline))
         .isInstanceOf(IllegalArgumentException.class);
   }
 

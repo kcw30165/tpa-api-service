@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionCasUpdateResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSession;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionCasUpdatePort;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.core.io.ClassPathResource;
@@ -59,26 +60,24 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
       AuthenticatedSessionCasUpdateCommand command) {
     Objects.requireNonNull(command, "command must not be null");
     String key = keys.key(CAPABILITY, command.authenticatedSessionId().value());
-    boolean preserveTtl = command.expiryDeadline() == null && command.usableUntil() == null;
+    Instant deadline =
+        command.usableUntil() == null ? command.expiryDeadline() : command.usableUntil();
+    DefaultRedisScript<Long> selected = UPDATE_IF_CURRENT;
+    if (command.usableUntil() != null) {
+      selected = UPDATE_GUARDED;
+    } else if (command.expiryDeadline() != null) {
+      selected = UPDATE_UNTIL;
+    }
     List<String> arguments =
-        preserveTtl
+        deadline == null
             ? List.of(
                 command.expectedRevision().value(), serializedReplacementWithRevision(command))
             : List.of(
                 command.expectedRevision().value(),
                 serializedReplacementWithRevision(command),
-                Long.toString(
-                    (command.usableUntil() == null
-                            ? command.expiryDeadline()
-                            : command.usableUntil())
-                        .toEpochMilli()));
+                Long.toString(deadline.toEpochMilli()));
     return redis
-        .execute(
-            command.usableUntil() != null
-                ? UPDATE_GUARDED
-                : preserveTtl ? UPDATE_IF_CURRENT : UPDATE_UNTIL,
-            List.of(key),
-            arguments)
+        .execute(selected, List.of(key), arguments)
         .next()
         .map(code -> AuthenticatedSessionCasUpdateResult.of(mapCode(code)))
         .defaultIfEmpty(

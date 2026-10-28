@@ -185,6 +185,13 @@ public final class AuthenticatedSessionConcurrencyService {
                       mutated.fundPriceModeMetadata(),
                       mutated.featureState());
               ProtectedAuthenticatedSession replacementEnvelope = protector.protect(replacement);
+              Instant usableUntil = null;
+              if (guarded) {
+                usableUntil =
+                    current.idleExpiresAt().isBefore(current.absoluteExpiresAt())
+                        ? current.idleExpiresAt()
+                        : current.absoluteExpiresAt();
+              }
               var command =
                   new AuthenticatedSessionCasUpdateCommand(
                       authenticatedSessionId,
@@ -193,11 +200,7 @@ public final class AuthenticatedSessionConcurrencyService {
                       freshRevision,
                       correlationId,
                       expiryDeadline.apply(replacement),
-                      guarded
-                          ? (current.idleExpiresAt().isBefore(current.absoluteExpiresAt())
-                              ? current.idleExpiresAt()
-                              : current.absoluteExpiresAt())
-                          : null);
+                      usableUntil);
               return casPort
                   .updateIfCurrent(command)
                   .flatMap(

@@ -34,13 +34,9 @@ class PasswordValidationGrantTest {
     assertThat(
             PasswordValidationGrant.decode("a".repeat(64) + "|bad|" + "b".repeat(64) + "|1|300001"))
         .isNull();
-    assertThatThrownBy(
-            () ->
-                new PasswordValidationGrant(
-                    null,
-                    new PayloadDigest(1, "b".repeat(64)),
-                    Instant.EPOCH,
-                    Instant.EPOCH.plusSeconds(300)))
+    var binding = new PayloadDigest(1, "b".repeat(64));
+    Instant expiry = Instant.EPOCH.plusSeconds(300);
+    assertThatThrownBy(() -> new PasswordValidationGrant(null, binding, Instant.EPOCH, expiry))
         .isInstanceOf(IllegalArgumentException.class);
   }
 }
