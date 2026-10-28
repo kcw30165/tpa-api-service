@@ -8,11 +8,11 @@
     },
     {
       "name": "01-solution-design.md",
-      "sha256": "09cacf621550fa5294824cfa6e379da3e684755ac0b277491cbbe766bb076bee"
+      "sha256": "7bfab06de5b0e7345b1f329462026bfbe8f747b3233d43e94e77b8fbe7236331"
     },
     {
       "name": "02-api-contract.md",
-      "sha256": "2f7938134bec6b5e366bbcbb6cb271dfffb8924b60dda232056fee87a06328ea"
+      "sha256": "5a0f7e274cf99ad733825236608eed592d97bc97232208f482c1e1b08e622e9a"
     },
     {
       "name": "03-downstream-contract.md",
@@ -20,11 +20,11 @@
     },
     {
       "name": "04-validation-and-error-handling.md",
-      "sha256": "aced0b345552403fa5815134c8c2c393d6935641bac067a8d274bd0b8a003b02"
+      "sha256": "ee1cb49643109aeb83d0487b33ffa18c995c512e7b53b5131862ca50d36ecd3f"
     },
     {
       "name": "05-test-and-traceability.md",
-      "sha256": "c567344ae481f10ec6b2723588d004ea07e3f4562d63cda78ce377b59aa99ce6"
+      "sha256": "78173f27cc88571274d7163539397116f86ca93061f213ea541f0a13fa29c3ef"
     },
     {
       "name": "06-implementation-plan.md",
@@ -32,7 +32,7 @@
     },
     {
       "name": "07-decisions-and-evidence.md",
-      "sha256": "08b8ac233c58f4ed82e0af49ee33b9e5f752e1b0bc0d5c3d05695778e42f3e74"
+      "sha256": "f8683752d83f8cb9b1b21d682becbe01aefa0d686a3c61364d6231a50f411365"
     }
   ]
 }

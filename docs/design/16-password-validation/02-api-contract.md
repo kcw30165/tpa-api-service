@@ -66,9 +66,19 @@ D18 applies the same no-store/invalid-CSRF policy to the matched Personal
 Information PUT route. Encoded segments and matrix parameters match as WebFlux
 routing does; trailing slash and case differences remain 404. The default
 security firewall still rejects semicolons with 400 before a handler; no
-production firewall setting changes. No token-consumption enforcement is added.
+production firewall setting changes. That M3 repair added no consumption
+enforcement; M4 now adds it only on the matched PUT route (D19).
 
 Use the existing ApiError structure, message null, severity ERROR, source SERVER. Existing authentication and Personal Information errors retain their current codes and targets. Malformed mutation JSON is 400 VALIDATION_FAILED using existing request-validation rendering; it consumes a valid grant first. Do not expose DOWNSTREAM_REJECTED or DOWNSTREAM_ERROR publicly. No fail-count in errors or result. For 429 return Retry-After in whole seconds until the limiter window resets (authored response detail).
+
+M4 raw-body failures use existing err.request.invalid, target PAGE, with
+ErrorResponseRenderer; token/payload rejections use
+err.password-validation.authorization.invalid, target
+X-Password-Validation-Token. Gate responses are JSON, no-store and correlated
+only by the X-Request-Id header. A matching raw payload that cannot decode to the
+existing PUT DTO still follows existing request-error advice, but its original
+Jackson diagnostic/cause is discarded first. Valid matching submissions retain
+the existing PUT response bytes and downstream mapping.
 
 ## FE integration
 1. Freeze the reviewed payload and serialize one confirmation request per scope.

@@ -357,3 +357,46 @@ unchanged. This distinction is observed, not an assumption that all non-routed
 paths produce 404. Gateway/deployment overrides remain unverified.
 
 Additional M1.5 deadline acceptance proof: delay execution between Java command creation and Redis script execution; assert the stored absolute deadline is unchanged, a deadline already passed is rejected without a write, and preserve-current grant mutations do not extend TTL. Repeat with revision conflict and with discovered expiry.
+
+### M4 protected submission implementation boundary (D19)
+
+M3 was approved at `8e870d40753cd1bbfc278e18fb0ede3788f38d39`. M4
+enforces only the matched Personal Information PUT. GET, issuance and all other
+methods/routes are unchanged. `PasswordValidationTokenGateWebFilter` has explicit
+order `HIGHEST_PRECEDENCE + 3`, after the existing account-context filter at +2.
+It reuses `PasswordValidationRouteMatcher` and adds no route-string copy.
+
+The gate requires Account-Ref, a resolved authenticated actor/selected-account
+context and the authenticated cookie before checking exactly one token header.
+Missing Account-Ref retains the existing 400 missing-context contract; missing
+authenticated context cannot fall through. Session/CSRF/account resolution runs
+upstream and retains its mappings without consuming a grant. Only the M2 grant
+service consumes; REJECTED maps to the approved 403, while technical/empty/
+uncertain consume outcomes map to 503 without dispatch. This conversion is
+strictly before, not around, the remaining filter/controller/update chain.
+
+The consumed digest is held only in exchange attributes while the request runs
+and removed on completion, failure or cancellation. After consumption, the gate
+reads bounded raw bytes through the application's configured HTTP message
+readers. M1's canonicalizer parses the complete raw JSON with the same strict
+duplicate-detection policy as M3, including skipped nested objects and arrays.
+Malformed/empty/non-object JSON, trailing content, duplicates and decoder
+size/depth failures receive code-only 400 VALIDATION_FAILED /
+err.request.invalid, using the existing ErrorResponseRenderer. Digest comparison
+uses PayloadDigest.matches, never a Jackson DTO. Mismatch receives the same
+403 authorization error. Both failures leave the grant consumed.
+
+After a match the exact original bytes are replayed to the existing Jackson
+DTO decoder. Structural/YAML/access checks, cache behavior, request/response
+mapping, HTTP classification and update orchestration remain unchanged.
+PersonalInformationController only replaces body-decoder ServerWebInputException
+with a fixed, cause-free instance before existing advice can log its diagnostic
+or render it. No original Jackson message, submitted value or cause survives
+that boundary; downstream/business exceptions are not converted by this change.
+The existing GET method is unchanged.
+
+`PasswordValidationTokenGateConfig` supplies a mutation binding port backed by
+the unchanged M1 canonicalizer; M3's parser/composition and issuance endpoint
+are unchanged. No M1/M2 grant/session/CAS contract, Lua script, throttle, APIM
+adapter or downstream mapping changes. M5 is not started. Independent M4 review,
+not this implementation note, remains the approval gate.

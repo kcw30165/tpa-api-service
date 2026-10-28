@@ -71,8 +71,8 @@ At milestone closure: full test suite, formatting check, coverage review, startu
   distinction, real write-point deadline expiry and unchanged consume contract.
   Original M1.5 Redis cases and shared Lua scripts must remain unchanged.
 
-M4-only consumption-before-body HTTP cases remain planned, not implemented or
-claimed passed by M3. Exact fail-first results, commands, exit codes, report
+M4-only consumption-before-body HTTP cases were not implemented or claimed
+passed by M3; their separate implementation map is below. Exact M3 fail-first results, commands, exit codes, report
 totals and reviewed revision are in the timestamped M3 evidence archive.
 
 ## M3 path-guard repair (D18)
@@ -98,3 +98,53 @@ All M1.5/M2 session and Redis tests remain unchanged. The isolated suite stays
 in targeted and full gates. D18 fail-first results, exact commands/exits,
 report manifests, complete diff and final reviewed revision are in the
 timestamped 040 repair evidence archive; no self-approval is implied.
+
+## M4 implementation test map (D19)
+- PasswordValidationTokenGateHttpTest: loopback Netty, production security,
+  correlation, request policy, account/session/CSRF filters, actual gate and
+  PersonalInformationController, existing exception registry/advice/renderer/
+  event logger, and real encrypted session persistence/CAS in isolated Redis.
+  The existing Personal Information mapper/YAML/access/use-case collaborators
+  are deterministic doubles; these tests prove dispatch boundaries, not live
+  APIM or complete YAML integration. Existing Personal Information tests remain
+  unchanged and cover their original contracts.
+- The HTTP matrix covers missing/empty/duplicate/comma/malformed/wrong/expired/
+  consumed/no-grant/wrong-account/wrong-session tokens, consume error/empty/
+  conflict/system/corrupt/lost-ack faults, malformed/empty/non-object/duplicate/
+  trailing/deep/oversized JSON, exact raw decimal precision, changed values/
+  types/array order/null presence/apply-all/form version/unknown members, object
+  reorder and 1 versus 1.0, second use, and 12 simultaneous PUTs.
+- A server-side body publisher probe observes Redis's consumed tombstone before
+  the first body subscription. Every pre-body rejection asserts zero server
+  body subscriptions, zero update dispatches and zero downstream-double calls.
+  Correct-token invalid bodies/mismatches and post-binding structure/YAML/
+  access/update failures assert consumed state. Wrong-token/owner rejection
+  leaves the valid Redis grant byte-identical.
+- Matching-body success bytes are compared with the same production handler
+  chain without the M4 gate. Literal, encoded and matrix routes cannot reach the
+  update tokenless. Unit pass-through and the existing D18 HTTP routing cases
+  retain case/trailing-slash and method isolation. A second same-context chain
+  without the gate also compares unchanged non-routed error status/body under
+  global advice; this is distinct from D18's narrower handler fixture and its
+  404 observations. No unrelated error-registry mapping is changed.
+- Jackson DTO rejection cases use seeded grants for defensive invalid-DTO
+  payloads, with Jackson DEBUG enabled and the production advice/event logger.
+  Assertions inspect response text, formatted events and throwable-cause chains.
+  Wildcard body logging/token-header opt-in remains enabled in the HTTP fixture.
+- PasswordValidationTokenGateWebFilterTest pins explicit +3 order, required
+  authenticated context even when Account-Ref is present, cookie/account
+  consistency, request-local binding cleanup, direct correlated JSON/no-store
+  rendering and unchanged downstream exception propagation. GET, issuance and
+  other methods/routes pass through once with headers unchanged.
+- PasswordValidationHttpTest keeps all M3 issuance/path-guard assertions; only
+  its successful routed PUT fixtures now seed a valid M2 grant and send the
+  matching payload. Existing Personal Information/GET tests and all M1/M2/
+  M1.5 tests, scripts and session contracts are unchanged.
+
+Evidence archive: `target/evidence/20261028T100320Z-043-password-validation-m4/`.
+It contains exact command exits, sanitized fail-first reports, final targeted
+and full-suite report manifests, coverage, formatting/startup/Sonar results,
+the complete approval-anchor-to-M4 diff, preservation checks and a self-contained
+independent review prompt. The archive, not this implementation map, records
+the final gate results/reviewed commit. M4 independent approval remains
+required; no M5 work or deployment certification is implied.
