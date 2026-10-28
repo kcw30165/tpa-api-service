@@ -9,6 +9,41 @@ POST /ws/NGTPA/v1/TRPPwdValidation
 
 No accountEnv in request body or account-environment header. Business outcomes use HTTP 200. Reuse existing APIM profile, authentication, encryption and correlation mechanisms; use NON_ACCOUNT scope with no accountEnv and NON_RETRYABLE business-call classification. Do not add a second retry in the use case. Verify lower-level transport/profile retry behavior in tests: one password-validation business attempt must not be silently repeated.
 
+### M1 authorized transport adjustment (2026-10-28)
+
+Source verification at `558a18fd9264047e62e7e273619a199ec0daf347` found that
+`NON_RETRYABLE` only disables transient-business retries. The facade separately
+resubmits after `invalid_token` and, for encrypted exchanges, `invalid_public_key`.
+Existing tests require that recovery for existing operations.
+
+The reviewer-authorized adjustment is an explicit `ApimResubmissionPolicy`
+enum in `adapter/out/apim/execution`, separate from `ApimRetryEligibility`:
+`ALLOW_RECOVERY` preserves existing behavior; `NEVER` prohibits all resubmission.
+`ApimExchangeRequest` gains this eighth component. Its existing seven-argument
+constructor defaults to `ALLOW_RECOVERY`, preserving real existing callers.
+The canonical constructor rejects a null policy and rejects `NEVER` combined
+with business-retry eligibility other than `NON_RETRYABLE`.
+
+The executor propagates `NEVER` to new policy-bearing plain/encrypted
+`postSuccessfulExchange` / `postEncryptedSuccessfulExchange` facade overloads;
+the existing overloads and default executor path preserve existing behavior.
+Private attempt and recovery contexts carry the policy explicitly. Both
+token and certificate recovery must consult it before eviction/refresh or
+resubmission. Transient-business retry remains separately controlled, with
+`NEVER` also prohibiting retry defensively. There are no endpoint-string
+checks, global switches, thread-locals or implicit Reactor-context policy.
+
+Only the new `ApimPasswordValidationAdapter` selects `NEVER`, together with
+`NON_ACCOUNT`, null accountEnv, and `NON_RETRYABLE`. Acquisition of credentials
+or certificates before the first password POST remains permitted. Count
+password POSTs independently from those acquisition calls. A recovery rejection
+or uncertain outcome is technical failure, not evidence of password correctness.
+This is at-most-one client submission per invocation, not exactly-once execution.
+Tests must traverse the actual shared executor and facade in plain and encrypted
+modes, including both recovery codes, HTTP/transport/timeout/crypto failures and
+successful profile/key propagation. Existing recovery/business-retry tests stay
+unchanged. No endpoint, session mutation or grant behavior is introduced in M1.
+
 ## Successful password
 ```json
 {"response":{"err-message":"","data":[{"success":true,"fail-count":0}]}}
