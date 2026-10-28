@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.bct.ngtpa.apiservice.application.dto.*;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.PasswordCheckPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.RevokeAuthenticatedSessionUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
@@ -22,9 +24,10 @@ class PasswordValidationIssuanceServiceTest {
   private final PasswordValidationGrantService grants = mock(PasswordValidationGrantService.class);
   private final RevokeAuthenticatedSessionUseCase revocation =
       mock(RevokeAuthenticatedSessionUseCase.class);
+  private final FailureEventPort failures = mock(FailureEventPort.class);
   private final PasswordValidationIssuanceService service =
       new PasswordValidationIssuanceService(
-          throttle, passwords, grants, revocation, Clock.fixed(NOW, ZoneOffset.UTC));
+          throttle, passwords, grants, revocation, Clock.fixed(NOW, ZoneOffset.UTC), failures);
   private final PasswordValidationIssuanceCommand command =
       new PasswordValidationIssuanceCommand(
           new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
@@ -44,6 +47,31 @@ class PasswordValidationIssuanceServiceTest {
                 new PasswordValidationThrottleService.Decision(
                     PasswordValidationThrottleService.Status.ADMITTED, 0)));
     when(passwords.check(any())).thenReturn(Mono.just(result));
+  }
+
+  @Test
+  void invalidationFailureUsesSharedFailureOwnerWithoutSensitiveCauseOrDimensions() {
+    admit(PasswordCheckResult.ACCOUNT_LOCKED);
+    when(revocation.revoke(any()))
+        .thenReturn(Mono.error(new IllegalStateException("private-marker")));
+    assertThat(service.issue(command).block().status())
+        .isEqualTo(PasswordValidationIssuanceResult.Status.LOCK_CLEANUP_FAILED);
+    var event = org.mockito.ArgumentCaptor.forClass(FailureEvent.class);
+    verify(failures).publish(event.capture());
+    assertThat(event.getValue().event()).isEqualTo("password-validation.invalidation.failed");
+    assertThat(event.getValue().httpStatus()).isEqualTo(503);
+    assertThat(event.getValue().safeDimensions()).isEmpty();
+    assertThat(event.getValue().toString())
+        .doesNotContain("private-marker", "actor-marker", "unchanged-marker");
+  }
+
+  @Test
+  void failedTelemetryCannotHideTheCookieClearingOutcome() {
+    admit(PasswordCheckResult.ACCOUNT_LOCKED);
+    when(revocation.revoke(any())).thenReturn(Mono.empty());
+    doThrow(new IllegalStateException("private-marker")).when(failures).publish(any());
+    assertThat(service.issue(command).block().status())
+        .isEqualTo(PasswordValidationIssuanceResult.Status.LOCK_CLEANUP_FAILED);
   }
 
   @Test

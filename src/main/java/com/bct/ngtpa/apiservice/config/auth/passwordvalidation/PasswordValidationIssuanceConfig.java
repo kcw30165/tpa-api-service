@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.passwordvalidation.ApimPasswordValidationAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayloadCanonicalizer;
 import com.bct.ngtpa.apiservice.application.port.in.IssuePasswordValidationUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.PasswordCheckPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.RevokeAuthenticatedSessionUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.*;
@@ -35,7 +36,9 @@ public class PasswordValidationIssuanceConfig {
       PasswordCheckPort passwords,
       PasswordValidationGrantService grants,
       RevokeAuthenticatedSessionUseCase revocation,
-      Clock clock) {
-    return new PasswordValidationIssuanceService(throttle, passwords, grants, revocation, clock);
+      Clock clock,
+      FailureEventPort failures) {
+    return new PasswordValidationIssuanceService(
+        throttle, passwords, grants, revocation, clock, failures);
   }
 }

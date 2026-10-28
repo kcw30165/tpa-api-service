@@ -277,7 +277,8 @@ ACCOUNT_LOCKED invokes current-session lifecycle revoke. REVOKED, LOGGED_OUT,
 EXPIRED or NOT_FOUND confirms no usable current session and returns 423; FAILED,
 unexpected ACTIVE, empty publisher or exception returns 503. Both branches clear
 the authenticated cookie using the existing writer/settings. Failure emits only
-a bounded operational event and request ID, not exception text. Other sessions
+a bounded operational event and request ID through the existing FailureEventPort,
+not exception text. Telemetry failure cannot hide the cookie-clearing outcome. Other sessions
 are not revoked. Wrong password leaves the prior grant untouched. All technical
 origins and unregistered cust-id collapse to the same 503 code, except explicit
 grant-session loss -> existing authentication-required 401. Conflict exhaustion

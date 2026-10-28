@@ -543,7 +543,8 @@ class PasswordValidationHttpTest {
     ErrorResponseRenderer.class,
     ReactorCurrentPortalAccessContextResolver.class,
     DefaultAuthenticatedSessionCookieReader.class,
-    SecurityConfig.class
+    SecurityConfig.class,
+    com.bct.ngtpa.apiservice.infrastructure.logging.StructuredFailureEventLogger.class
   })
   static class HttpConfiguration {
     @Bean
