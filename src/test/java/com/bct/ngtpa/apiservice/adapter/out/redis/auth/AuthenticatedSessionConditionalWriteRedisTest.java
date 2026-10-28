@@ -41,6 +41,7 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.retry.Retry;
 
 /** Opt-in isolated Redis, never the application's configured runtime store. */
 @EnabledIfSystemProperty(named = "m15.redis.server", matches = ".+")
@@ -102,24 +103,13 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     connection.afterPropertiesSet();
     connection.start();
     redis = new ReactiveStringRedisTemplate(connection);
-    Instant limit = Instant.now().plusSeconds(10);
-    while (true) {
-      try {
-        assertThat(
-                redis
-                    .getConnectionFactory()
-                    .getReactiveConnection()
-                    .ping()
-                    .block(Duration.ofSeconds(1)))
-            .isEqualTo("PONG");
-        break;
-      } catch (RuntimeException error) {
-        if (!server.isAlive() || Instant.now().isAfter(limit)) {
-          throw new IllegalStateException("Isolated Redis did not become ready");
-        }
-        Thread.sleep(25);
-      }
-    }
+    assertThat(
+            Mono.defer(() -> redis.getConnectionFactory().getReactiveConnection().ping())
+                .timeout(Duration.ofSeconds(1))
+                .retryWhen(
+                    Retry.fixedDelay(400, Duration.ofMillis(25)).filter(error -> server.isAlive()))
+                .block(Duration.ofSeconds(10)))
+        .isEqualTo("PONG");
   }
 
   @AfterAll
@@ -600,8 +590,9 @@ class AuthenticatedSessionConditionalWriteRedisTest {
             "comparison")
         .block();
     var afterComparison = stored().featureState();
-    assertThat(afterComparison).containsAllEntriesOf(original.featureState());
-    assertThat(afterComparison).containsKey("fund-comparison.options");
+    assertThat(afterComparison)
+        .containsAllEntriesOf(original.featureState())
+        .containsKey("fund-comparison.options");
     assertThat(expiry()).isEqualTo(deadline);
     var personal =
         new PersonalInformationConfigCacheService(sessions, protector, concurrency, json, clock);
@@ -613,8 +604,9 @@ class AuthenticatedSessionConditionalWriteRedisTest {
             "personal")
         .block();
     var afterPersonal = stored().featureState();
-    assertThat(afterPersonal).containsAllEntriesOf(afterComparison);
-    assertThat(afterPersonal).containsKey("personal-information.config");
+    assertThat(afterPersonal)
+        .containsAllEntriesOf(afterComparison)
+        .containsKey("personal-information.config");
     assertThat(expiry()).isEqualTo(deadline);
     var csrf =
         new AuthenticatedSessionCsrfRefreshService(
