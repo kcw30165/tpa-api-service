@@ -253,7 +253,9 @@ class PasswordValidationTokenGateHttpTest {
     String original = fixture.load(SID).featureState().get(GRANT_KEY);
     var request = request(PATH, SID, REF, "csrf-fixture");
     switch (row) {
-      case "missing" -> {}
+      case "missing" -> {
+        // Deliberately omit the token header for the missing-token rejection case.
+      }
       case "blank" -> request.header(TOKEN, "");
       case "duplicate" -> request.header(TOKEN, token, token);
       case "comma" -> request.header(TOKEN, token + "," + token);

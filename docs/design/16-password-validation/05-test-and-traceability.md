@@ -148,3 +148,15 @@ the complete approval-anchor-to-M4 diff, preservation checks and a self-containe
 independent review prompt. The archive, not this implementation map, records
 the final gate results/reviewed commit. M4 independent approval remains
 required; no M5 work or deployment certification is implied.
+
+M4 closure results: compile/test-compile exit 0; targeted 882 tests with zero
+failures/errors/skips; full suite 7,223 tests with zero failures/errors and 10
+unchanged skips, including all 70 new M4 cases and 73 existing real-Redis cases
+unskipped. Formatting exit 0 and startup health UP. The single Sonar analysis at
+`fbd0550d708f0d25ee560834144d3426a872f6d3` returned a failed gate solely for
+java:S108 on the intentionally empty missing-token test arm (new coverage 94.0%,
+new duplication 0.0%). A comment now explains that omission; executable test
+source is otherwise identical to the tested/scanned revision. No second Sonar
+analysis, full suite or startup was run, respecting the requested one-run
+closure limit. The failed Sonar result is retained, not relabeled green;
+the comment-only follow-up is not a verified green quality gate.

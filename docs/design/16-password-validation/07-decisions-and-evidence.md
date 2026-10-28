@@ -68,3 +68,16 @@ This pass read full method bodies and Lua scripts (E4) to resolve gates at the d
 
 ## Finalization evidence and remaining review gate
 Independent source capture 019 at 19cd53a1 and dirty-document preservation capture 020 informed this finalization. Script 021 preserves the exact 020 working bytes before applying the focused corrections, records the complete HEAD-to-working patch and validates manifest hashes. The token gate directly renders feature-scoped 403/503 responses; it does not globally intercept CacheException or claim the existing context handler handles CSRF. Documentation finalization is not M0 approval. No production code, tests, Maven, formatting, startup or SonarQube are run by 021. Independent review of the resulting commit is still required.
+
+### D19 M4 closure evidence qualification
+
+The timestamped 043 evidence records green compile/test-compile, targeted/full
+tests, formatting and startup. The one authorized Sonar analysis at
+`fbd0550d708f0d25ee560834144d3426a872f6d3` failed only java:S108 on the
+missing-token fixture's empty switch arm. The follow-up adds an explanatory
+comment, without changing executable source or production code. In accordance
+with the explicit once-at-end validation limit, no second analysis/full suite/
+startup is claimed. Preserve both the scanned revision and the comment-only
+follow-up in review evidence: the server quality gate remains failed, not
+verified green on the final revision. M4 approval and any further validation
+authorization remain separate; M5 has not begun.

@@ -24,7 +24,7 @@
     },
     {
       "name": "05-test-and-traceability.md",
-      "sha256": "78173f27cc88571274d7163539397116f86ca93061f213ea541f0a13fa29c3ef"
+      "sha256": "0be9048ca39e44f0f3c8cf6431c85160f591de460d2d6c4c92bd5bb0cf57a628"
     },
     {
       "name": "06-implementation-plan.md",
@@ -32,7 +32,7 @@
     },
     {
       "name": "07-decisions-and-evidence.md",
-      "sha256": "f8683752d83f8cb9b1b21d682becbe01aefa0d686a3c61364d6231a50f411365"
+      "sha256": "0e6393e38ea9fc429ed31471d9dc8b879bac09e1c7db64fa16eb01a9c3d9cbee"
     }
   ]
 }
