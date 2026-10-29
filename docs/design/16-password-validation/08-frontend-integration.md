@@ -34,7 +34,7 @@ Success (HTTP 200):
 { "success": true, "status": "SUCCESS", "result": { "data": { "token": "<opaque>", "expiresInSeconds": 300 } }, "messages": [], "errors": [] }
 ```
 
-`expiresInSeconds` is the lifetime the server will honour. The default is 300 seconds and operations can set it between 30 and 900, so **always use the returned value and never hard-code 300**. The server counts from when it stored the token and reports the lower of the configured lifetime and the remaining session lifetime, so use it as an upper bound.
+`expiresInSeconds` is the lifetime the server will honour. The default is 300 seconds and operations can set it between 30 and 900, so **always use the returned value and never hard-code 300**. The value is the remaining whole seconds of the token when the server acknowledged it, capped at the configured lifetime, so it can be a second or so lower than the setting (299 for a 300 second setting). Use it as an upper bound.
 
 ## 3. The token
 

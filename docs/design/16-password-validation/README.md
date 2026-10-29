@@ -1,6 +1,6 @@
 # Password Validation and Transaction Authorization: design package
 
-Version 1.14. As-built documentation added (frontend integration, release and operations, traceability); requirements unchanged. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
+Version 1.15. As-built documentation added (frontend integration, release and operations, traceability); requirements unchanged. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
 M1.5 approved at `bfbac598d47558a306caa0bbd5b829e19f83d17f`.
 M2 approved at `ec7f1617868b03c0584a026150ffcd988c07bdcc`.
 Status at the end of M5 (as built): M1, M1.5, M2, M3 and M4 are independently approved; the commits are listed in
@@ -10,7 +10,7 @@ F1 (configurable token lifetime) is implemented in commits fdc230b7 and 35f70a5b
 is recorded in 07-decisions-and-evidence.md.
 Status: final requirements/design baseline for review; no implementation or deployment approval is implied.
 
-The member confirms a password before submitting reviewed Personal Information changes. One shared BFF endpoint validates that password through TAS/APIM and issues a five-minute, single-use authorization bound to the authenticated session, selected account, purpose, and exact submitted changes. This is password confirmation, not a PIN or OTP feature.
+The member confirms a password before submitting reviewed Personal Information changes. One shared BFF endpoint validates that password through TAS/APIM and issues a single-use authorization, valid for five minutes by default and configurable from 30 to 900 seconds (decision D22), bound to the authenticated session, selected account, purpose, and exact submitted changes. This is password confirmation, not a PIN or OTP feature. Where documents 01 to 06 say 300 seconds or five minutes, read the configured lifetime (default 300 seconds).
 
 ## Reading order
 1. [Solution design](01-solution-design.md)

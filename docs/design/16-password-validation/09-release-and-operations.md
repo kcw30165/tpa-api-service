@@ -25,7 +25,7 @@ The two sides are not compatible with each other in either order.
 - **BFF first:** the current frontend sends no token, so every Personal Information update is refused with 403 until the frontend ships.
 - **Frontend first:** the new frontend calls `/api/v1/password-validation`, which does not exist on the old BFF, so confirmation fails.
 
-Release both in one maintenance window, in this order: configuration (secret, CORS), then BFF, then frontend. Verify with the scenario script (section 6) before announcing.
+Release both in one maintenance window, in this order: configuration (secret, CORS), then BFF, then frontend. After the release, run a smoke check with a dedicated test member under your normal change process. The scenario script in section 6 is for local builds only and must not be run against a released environment.
 
 **Rollback warning:** rolling the BFF back to a version without this feature removes the password check. Personal Information updates then succeed without confirmation. Roll the frontend back at the same time and treat the window as unprotected.
 
@@ -44,7 +44,7 @@ Release both in one maintenance window, in this order: configuration (secret, CO
 
 Recorded inbound limits (the framework defaults; the service sets no override): decoder in-memory limit 256 KiB, JSON nesting limit 1000. A deployment may override either. That has **not** been checked.
 
-The token lifetime is configurable (F1, decision D22). It is read once at startup, so a change needs a restart. Each token keeps the lifetime it was issued with, so a change affects only tokens issued afterwards. A value outside 30 to 900, a blank value or a non-numeric value stops startup with `password-validation.grant.ttl-seconds must be between 30 and 900`. The `expiresInSeconds` returned to the client is capped by the remaining session lifetime, so it can be lower than the setting.
+The token lifetime is configurable (F1, decision D22). It is read once at startup, so a change needs a restart. Each token keeps the lifetime it was issued with, so a change affects only tokens issued afterwards. A value outside 30 to 900, a blank value or a non-numeric value stops startup with `password-validation.grant.ttl-seconds must be between 30 and 900`. The `expiresInSeconds` returned to the client is the remaining whole seconds of the issued token, capped at the setting, so it can be a second or so lower (299 for a 300 second setting).
 
 ## 4. Operations checklist
 
@@ -74,7 +74,7 @@ Signals to watch after release: sustained 429s for one user (a stuck client), a 
 
 ## 6. Manual end-to-end check
 
-Run it against a **local build** that talks to the dev downstream systems, not against DEV, UAT or production: DEV is shared with frontend developers, UAT and end users. Use a dedicated test member, because scenario 5 performs a real update in the shared dev data. Use a freshly generated local `PASSWORD_VALIDATION_RATE_LIMIT_SECRET` and never reuse a deployed one. If the local application shares its Redis with DEV, this is also the first run of the new session scripts against that Redis (open item O-3). Set `EXPECTED_TTL_SECONDS` to the configured lifetime to have scenario 2 check the value the server reports; after a fresh login it equals the setting.
+Run it against a **local build** that talks to the dev downstream systems, not against DEV, UAT or production: DEV is shared with frontend developers, UAT and end users. Use a dedicated test member, because scenario 5 performs a real update in the shared dev data. Use a freshly generated local `PASSWORD_VALIDATION_RATE_LIMIT_SECRET` and never reuse a deployed one. If the local application shares its Redis with DEV, this is also the first run of the new session scripts against that Redis (open item O-3). Set `EXPECTED_TTL_SECONDS` to the configured lifetime to have scenario 2 check the value the server reports. The server reports the remaining seconds of the new token, so the check accepts a value up to 5 seconds below the setting and never one above it.
 
 `scripts/e2e/password-validation-scenarios.sh` exercises wrong password, missing token, changed body, consumed token, replay and the throttle with `curl`. It prints only scenario names, statuses and public error codes. Read the header comment before running it. It performs a real update only with `CONFIRM_LIVE_UPDATE=yes`, and a wrong-password attempt (which counts toward the downstream lock) only with `CONFIRM_WRONG_PASSWORD_ATTEMPT=yes`. Use a test account.
 
@@ -107,7 +107,7 @@ Run it against a **local build** that talks to the dev downstream systems, not a
 
 **Description:**
 
-> Adds a shared password-confirmation step. `POST /api/v1/password-validation` checks the member's password through the downstream `TRPPwdValidation` operation and returns a single-use token, valid for up to 300 seconds, bound to the session, the selected account, the purpose and the exact reviewed payload. `PUT /api/v1/personal-information` now requires that token in `X-Password-Validation-Token`; the gate consumes it before the body is read.
+> Adds a shared password-confirmation step. `POST /api/v1/password-validation` checks the member's password through the downstream `TRPPwdValidation` operation and returns a single-use token, valid for up to its configured lifetime (300 seconds by default), bound to the session, the selected account, the purpose and the exact reviewed payload. `PUT /api/v1/personal-information` now requires that token in `X-Password-Validation-Token`; the gate consumes it before the body is read.
 >
 > **Notes for review**
 > - The downstream owns failed-attempt counting and locking. The service never exposes the count and never retries the password call.
