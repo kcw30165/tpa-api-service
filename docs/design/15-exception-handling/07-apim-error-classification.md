@@ -176,7 +176,7 @@
 - **Idempotency replay:** Yes -- Username Recovery start is idempotency-protected (`IdempotentStartUsernameRecoveryService`)
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
-- **Public HTTP status:** UNVERIFIED. `UsernameRecoveryStartResponsePolicy.toPolicy(UsernameRecoveryStartException)` line 122, `systemFailure(WorkflowNextStep.NONE)` -> `ApiStatus.SYSTEM_ERROR`, `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()` (lines 162-171). Exact HTTP code depends on `WorkflowHttpResponses.toResponse` (not re-dumped ) based on this `ApiStatus`.
+- **Public HTTP status:** 503 (CONFIRMED by real source and real passing test: `HttpStatusClassification.classify(ApiStatus.SYSTEM_ERROR)` returns `HttpStatus.SERVICE_UNAVAILABLE` directly in its switch expression; `WorkflowHttpResponses.toResponse` delegates to this classifier unchanged - it is a thin wrapper, not a competing mechanism. `AuthUsernameRecoveryControllerTest.startSystemFailureReturns503WithoutAnyCookie` asserts `HttpStatus.SERVICE_UNAVAILABLE` exactly for this condition.)
 - **Public ApiStatus:** `SYSTEM_ERROR`
 - **Public error code/type:** `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()`
 - **Citation:** `usernamerecovery/mapper/TrpSearchMemberApimResultMapper.java:39-56`; `TrpSearchMemberAdapter.java:48-56`; `UsernameRecoveryStartProtectedOperation.java:101-128`; `UsernameRecoveryController.java:100-128`; `UsernameRecoveryStartResponsePolicy.java:67-124,162-171`
@@ -772,7 +772,7 @@ Fail-first characterization update, replace every `DOWNSTREAM_SYSTEM` occurrence
 
 ## 7. Sub-task plan
 
-2b.2 characterization pack (must also resolve: `ForgotPasswordDetailsOtpProtectedOperation.locked`'s exact `SYSTEM_FAILED`-sub-branch routing; `UsernameRecoveryStartResponsePolicy`'s resulting HTTP code via `WorkflowHttpResponses`; `TrpGetAccountListAdapter`'s swallowed-result consumer trace within the Login OTP-verify flow); 2b.2a (section 6); 2b.3 shared classifier; 2b.4..2b.n per-feature commits.
+2b.2 characterization pack (must also resolve: `ForgotPasswordDetailsOtpProtectedOperation.locked`'s exact `SYSTEM_FAILED`-sub-branch routing - deferred to Batch 2b, as already agreed; `UsernameRecoveryStartResponsePolicy`'s HTTP code and `TrpGetAccountListAdapter`'s consumer trace are both now RESOLVED above); 2b.2a (section 6); 2b.3 shared classifier; 2b.4..2b.n per-feature commits.
 
 ## 8. Open questions
 
@@ -781,6 +781,6 @@ Every confirmed `new ApimException(` construction site (`ApimWebClientFacade.jav
 
 - `RegistrationHttpResponses.status()`'s duplicate `SYSTEM_ERROR`/`BUSINESS_REJECTED` branches (confirmed dead code in an ); no change proposed in M2b.
 - 4xx vs 5xx downstream status both resolve identically via the facade today; whether a 4xx should classify differently is open.
-- `TrpGetAccountListAdapter`'s swallowed result is consumed by internal Login authorization logic, not a dedicated controller response path; whether its three sub-cause rows need a traced public shape at all (vs. being purely internal) is open.
+- `TrpGetAccountListAdapter`'s swallowed result (`LoginAccountAuthorizationStatus.UNAVAILABLE`) **IS consumed by a dedicated controller response path - the earlier claim above was WRONG, now corrected with the full confirmed real chain:** `LoginOtpVerifyService.continueToAccounts` (line 325) maps it to the distinct, named `VerifyLoginOtpStatus.ACCOUNT_LIST_UNAVAILABLE`; `LoginOtpVerifyWebMapper` renders it as `ApiStatus.SYSTEM_ERROR`, type `"FORM"` (NOT `"SYSTEM"` - only `SYSTEM_FAILED` gets the special-cased `"SYSTEM"` type), code `LoginErrorKey.ACCOUNT_LIST_UNAVAILABLE.value()` = `"err.login.accountList.unavailable"`, target `["PAGE"]`, source `"BFF"`; `LoginController` consumes it; `LoginHttpResponses.status()` (Login's OWN dedicated HTTP-status class - does NOT use `HttpStatusClassification` at all) renders it as **HTTP 502** via the generic `ApiStatus.SYSTEM_ERROR -> HttpStatus.BAD_GATEWAY` fallback, since this code does not match any of `statusForCode`'s specific code-based overrides.
 - Whether confirmed swallow sites should publish a `FailureEvent` (M3 3.7).
 
