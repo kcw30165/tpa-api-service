@@ -81,3 +81,9 @@ startup is claimed. Preserve both the scanned revision and the comment-only
 follow-up in review evidence: the server quality gate remains failed, not
 verified green on the final revision. M4 approval and any further validation
 authorization remain separate; M5 has not begun.
+
+## M5 as-built addendum (v1.12)
+
+D20 M5 closes with documentation and one manual scenario script. Run A (commit 96eaacd4) added the `X-Password-Validation-Token` entry to the default CORS allowed headers, blank placeholders to `.env.sample` (with the numeric limits set to their defaults), a test that reads the shipped CORS default, and gate tests. No production behaviour changed in this addendum. Documents 08 (frontend integration), 09 (release and operations) and 10 (as-built traceability) record the delivered behaviour, the final gate register and the open items. D01 to D19 are unchanged.
+
+The "Gate resolution status" notes earlier in this file are superseded by the register in document 09, section 5. Two points are recorded as open decisions and are not resolved here: the token lifetime is a code constant of 300 seconds although the approved wording said "configurable" (open item O-4), and the token binds the submitted "apply to all accounts" flag but not the set of target accounts (G7, open item O-5).

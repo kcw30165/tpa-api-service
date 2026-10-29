@@ -1,6 +1,6 @@
 # Password Validation and Transaction Authorization: design package
 
-Version 1.11. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
+Version 1.12. As-built documentation added: frontend integration, release and operations, and traceability. Requirements unchanged.
 M1.5 approved at `bfbac598d47558a306caa0bbd5b829e19f83d17f`.
 M2 approved at `ec7f1617868b03c0584a026150ffcd988c07bdcc`.
 Nick authorized M3 only (D17): the shared issuance endpoint and confidentiality
@@ -29,3 +29,9 @@ Source baseline E1: user-supplied 001-password-validation-readonly-investigation
 This package records the reviewed design and implementation boundaries. Runtime
 gate results and exact reviewed revisions belong in each milestone's evidence
 archive; this document alone does not certify deployment readiness.
+
+## As-built documents (M5)
+
+8. [Frontend integration](08-frontend-integration.md)
+9. [Release and operations](09-release-and-operations.md)
+10. [As-built traceability](10-as-built-traceability.md)

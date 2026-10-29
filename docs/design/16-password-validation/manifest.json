@@ -1,10 +1,10 @@
 {
   "package": "password-validation-design-package",
-  "version": "1.11",
+  "version": "1.12",
   "files": [
     {
       "name": "README.md",
-      "sha256": "9ca6c5907bcc326e9abab78bc31f4d0faa2dcde09f41462d23e7a2265a2abe49"
+      "sha256": "c6c20986517a61b315561ddaa93de1be3c311c222ba55b95a7b8050c5b6dfe0a"
     },
     {
       "name": "01-solution-design.md",
@@ -32,7 +32,19 @@
     },
     {
       "name": "07-decisions-and-evidence.md",
-      "sha256": "0e6393e38ea9fc429ed31471d9dc8b879bac09e1c7db64fa16eb01a9c3d9cbee"
+      "sha256": "e74fcb5b178232c6c32cfaf464302766ef3ef22d4a8a8fbe90d8c4a969d5d889"
+    },
+    {
+      "name": "08-frontend-integration.md",
+      "sha256": "23eb3384f889b5b36a79520bf52172b868ad0d8df109b6a26fd292b8a24307ca"
+    },
+    {
+      "name": "09-release-and-operations.md",
+      "sha256": "4b956992d59e3e46eed3ff082c9ef4097351ac53d4646a1b475646e2d940cc33"
+    },
+    {
+      "name": "10-as-built-traceability.md",
+      "sha256": "709acacc075cbe78bb662e084ab8dd96972b696aec2103491604d018f9aaf104"
     }
   ]
 }
