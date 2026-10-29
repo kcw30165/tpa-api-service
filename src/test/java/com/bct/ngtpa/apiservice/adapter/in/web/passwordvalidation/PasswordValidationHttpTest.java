@@ -142,6 +142,7 @@ class PasswordValidationHttpTest {
     assertThat(backend.passwordCalls).hasValue(1);
     assertThat(backend.lastCheck.get().customerId()).isEqualTo("authenticated-actor-marker");
     assertThat(backend.lastCheck.get().password()).isEqualTo(" Mixed Case ");
+    assertThat(backend.lastCheck.get().accountEnv()).isEqualTo("DB");
     var consumed =
         context
             .getBean(PasswordValidationGrantService.class)
@@ -166,6 +167,17 @@ class PasswordValidationHttpTest {
             "requestId",
             "DOWNSTREAM");
     assertSafeLogs(token, consumed.binding().sha256());
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" ", "\t\r\n"})
+  void unusableResolvedAccountEnvironmentReturns503WithoutDownstream(String accountEnv) {
+    backend.resolvedAccountOverride =
+        new AccountContext(REF, accountEnv, "p", "c", "t", null, null, null);
+    failure(post(body("x")), 503, "SYSTEM_ERROR", "err.password-validation.unavailable");
+    assertThat(backend.passwordCalls).hasValue(0);
+    assertThat(backend.grantAttempts).hasValue(0);
   }
 
   @ParameterizedTest
@@ -838,12 +850,12 @@ class PasswordValidationHttpTest {
                         assertThat(exchange.databaseScope())
                             .isEqualTo(
                                 com.bct.ngtpa.apiservice.adapter.out.apim.credential
-                                    .ApimDatabaseScope.NON_ACCOUNT);
+                                    .ApimDatabaseScope.ACCOUNT_ENV);
                         assertThat(exchange.retryEligibility())
                             .isEqualTo(
                                 com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility
                                     .NON_RETRYABLE);
-                        assertThat(exchange.credentialContext().accountEnv()).isNull();
+                        assertThat(exchange.credentialContext().accountEnv()).isEqualTo("DB");
                         var request =
                             (com.bct.ngtpa.apiservice.adapter.out.apim.passwordvalidation.dto
                                     .TrpPwdValidationRequest)
@@ -852,7 +864,8 @@ class PasswordValidationHttpTest {
                             new PasswordCheckCommand(
                                 request.customerId(),
                                 request.password(),
-                                exchange.credentialContext().actorUserRole());
+                                exchange.credentialContext().actorUserRole(),
+                                exchange.credentialContext().accountEnv());
                         backend.passwordCalls.incrementAndGet();
                         backend.lastCheck.set(command);
                         if (backend.fault.equals("session-gone")) backend.current.set(null);
@@ -944,8 +957,27 @@ class PasswordValidationHttpTest {
     }
 
     @Bean
-    PortalAccessContextPort portal(AuthenticatedSessionLifecycleService lifecycle) {
-      return new AuthenticatedAccountContextResolver(lifecycle);
+    PortalAccessContextPort portal(
+        AuthenticatedSessionLifecycleService lifecycle, Backend backend) {
+      var resolver = new AuthenticatedAccountContextResolver(lifecycle);
+      return new PortalAccessContextPort() {
+        @Override
+        public Mono<PortalAccessContext> resolvePortalAccessContext(String ref) {
+          return resolvePortalAccessContext(ref, null);
+        }
+
+        @Override
+        public Mono<PortalAccessContext> resolvePortalAccessContext(String ref, String sid) {
+          return resolver
+              .resolvePortalAccessContext(ref, sid)
+              .map(
+                  resolved ->
+                      backend.resolvedAccountOverride == null
+                          ? resolved
+                          : new PortalAccessContext(
+                              resolved.actor(), backend.resolvedAccountOverride));
+        }
+      };
     }
   }
 
@@ -966,6 +998,7 @@ class PasswordValidationHttpTest {
     volatile boolean failLimiter;
     volatile boolean failTerminal;
     volatile String fault = "";
+    volatile AccountContext resolvedAccountOverride;
 
     Backend() {
       when(sessions.load(any()))
@@ -993,8 +1026,17 @@ class PasswordValidationHttpTest {
                   new ActorContext("authenticated-actor-marker", ActorUserRole.ROLE_USER_MBR),
                   List.of(
                       new AuthenticatedSessionAccount(
+                          new AuthenticatedAccountRef("acc_zyxwvutsrqponmlkjihgfedc"),
+                          "JP",
+                          "other-policy",
+                          "other-cert",
+                          "OTHER",
+                          null,
+                          null,
+                          null),
+                      new AuthenticatedSessionAccount(
                           new AuthenticatedAccountRef(REF),
-                          "TEST",
+                          "DB",
                           "fixture-policy",
                           "fixture-cert",
                           "TEST",
@@ -1018,6 +1060,7 @@ class PasswordValidationHttpTest {
       failLimiter = false;
       failTerminal = false;
       fault = "";
+      resolvedAccountOverride = null;
       lastCheck.set(null);
       check.set(command -> Mono.just(PasswordCheckResult.CORRECT));
     }

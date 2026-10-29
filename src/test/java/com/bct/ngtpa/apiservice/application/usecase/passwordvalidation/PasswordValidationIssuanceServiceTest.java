@@ -14,6 +14,9 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.*;
 import java.time.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import reactor.core.publisher.Mono;
 
 class PasswordValidationIssuanceServiceTest {
@@ -47,6 +50,46 @@ class PasswordValidationIssuanceServiceTest {
                 new PasswordValidationThrottleService.Decision(
                     PasswordValidationThrottleService.Status.ADMITTED, 0)));
     when(passwords.check(any())).thenReturn(Mono.just(result));
+  }
+
+  @Test
+  void downstreamUsesSelectedAccountEnvironmentAndPreservesIdentityAndPassword() {
+    admit(PasswordCheckResult.INCORRECT);
+    assertThat(service.issue(command).block().status())
+        .isEqualTo(PasswordValidationIssuanceResult.Status.INCORRECT);
+    var capture = org.mockito.ArgumentCaptor.forClass(PasswordCheckCommand.class);
+    verify(passwords).check(capture.capture());
+    assertThat(capture.getValue().customerId()).isEqualTo(command.context().actor().actorUserId());
+    assertThat(capture.getValue().password()).isEqualTo(command.password());
+    assertThat(capture.getValue().accountEnv()).isEqualTo("TEST");
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" ", "\t\r\n"})
+  void unusableSelectedAccountEnvironmentFailsClosedWithoutDownstream(String accountEnv) {
+    admit(PasswordCheckResult.CORRECT);
+    var invalid =
+        new PasswordValidationIssuanceCommand(
+            command.sessionId(),
+            new PortalAccessContext(
+                command.context().actor(),
+                new AccountContext(
+                    command.context().account().accountRef(),
+                    accountEnv,
+                    "p",
+                    "c",
+                    "t",
+                    null,
+                    null,
+                    null)),
+            command.password(),
+            command.purpose(),
+            command.binding(),
+            command.correlationId());
+    assertThat(service.issue(invalid).block().status())
+        .isEqualTo(PasswordValidationIssuanceResult.Status.UNAVAILABLE);
+    verifyNoInteractions(passwords, grants, revocation);
   }
 
   @Test

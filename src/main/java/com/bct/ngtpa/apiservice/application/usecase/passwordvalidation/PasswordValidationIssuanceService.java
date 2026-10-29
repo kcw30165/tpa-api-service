@@ -79,11 +79,18 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
   private Mono<PasswordValidationIssuanceResult> checkPassword(
       PasswordValidationIssuanceCommand command) {
     var actor = command.context().actor();
+    var account = command.context().account();
+    if (account == null || account.accountEnv() == null || account.accountEnv().isBlank()) {
+      return Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
+    }
     return Mono.defer(
             () ->
                 passwords.check(
                     new PasswordCheckCommand(
-                        actor.actorUserId(), command.password(), actor.actorUserRole())))
+                        actor.actorUserId(),
+                        command.password(),
+                        actor.actorUserRole(),
+                        account.accountEnv())))
         .flatMap(
             check ->
                 switch (check) {
@@ -91,7 +98,7 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
                       grants
                           .issue(
                               command.sessionId(),
-                              new AuthenticatedAccountRef(command.context().account().accountRef()),
+                              new AuthenticatedAccountRef(account.accountRef()),
                               command.purpose(),
                               command.binding(),
                               check,

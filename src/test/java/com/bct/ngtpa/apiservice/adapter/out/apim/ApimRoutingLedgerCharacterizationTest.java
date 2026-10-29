@@ -24,12 +24,12 @@ class ApimRoutingLedgerCharacterizationTest {
           e(
               "TRPPwdValidation",
               "passwordvalidation/ApimPasswordValidationAdapter.java",
-              "NON_ACCOUNT",
+              "ACCOUNT_ENV",
               "command.actorUserRole()",
-              "null",
+              "command.accountEnv()",
               "NON_RETRYABLE",
               "EXECUTOR",
-              "NON_ACCOUNT"),
+              "ACCOUNT_ENV"),
           e(
               "TRPGetMemberAccBal",
               "accountbalance/ApimAccountBalanceSourceAdapter.java",

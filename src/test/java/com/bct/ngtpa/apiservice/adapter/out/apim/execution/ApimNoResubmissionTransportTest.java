@@ -28,6 +28,7 @@ import java.security.PublicKey;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -46,7 +47,7 @@ class ApimNoResubmissionTransportTest {
   private static final String OK =
       "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":true}]}}";
   private static final PasswordCheckCommand COMMAND =
-      new PasswordCheckCommand("test-customer", " TestPassword ", ActorUserRole.ROLE_INPUT);
+      new PasswordCheckCommand("test-customer", " TestPassword ", ActorUserRole.ROLE_INPUT, "DB");
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
@@ -101,6 +102,12 @@ class ApimNoResubmissionTransportTest {
                           .flatMap(
                               body -> {
                                 assertThat(request.uri()).isEqualTo(PATH);
+                                assertThat(request.requestHeaders().names())
+                                    .noneMatch(
+                                        name ->
+                                            name.equalsIgnoreCase("accountEnv")
+                                                || name.equalsIgnoreCase("env"));
+                                assertThat(body).doesNotContain("accountEnv", "\"env\"");
                                 receivedPasswordPosts.incrementAndGet();
                                 if (encrypted) {
                                   assertThat(body).doesNotContain("TestPassword", "test-customer");
@@ -150,15 +157,17 @@ class ApimNoResubmissionTransportTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
-  void successUsesNonAccountProfileExactRequestEncryptionAndSuccessfulVerificationKey(
+  void successUsesAccountEnvironmentProfileExactRequestEncryptionAndSuccessfulVerificationKey(
       boolean encrypted) throws Exception {
     var h = new Harness(encrypted, "ok");
     assertThat(h.check()).isEqualTo(PasswordCheckResult.CORRECT);
     h.assertCounts(1);
-    assertThat(h.requests.getFirst().url())
-        .isEqualTo(URI.create("https://non-account.test" + PATH));
+    assertThat(h.requests.getFirst().url()).isEqualTo(URI.create("https://db.test" + PATH));
     assertThat(h.requests.getFirst().headers().getFirst("Ocp-Apim-Subscription-Key"))
         .isEqualTo("test-profile-key");
+    verify(h.tokens).getAccessToken(argThat(profile -> profile.profileId().equals("db")));
+    verify(h.certificates, times(encrypted ? 1 : 0))
+        .getPublicKey(argThat(profile -> profile.profileId().equals("db")));
     assertThat(h.requests.getFirst().headers().headerNames())
         .noneMatch(name -> name.equalsIgnoreCase("accountEnv") || name.equalsIgnoreCase("env"));
     verify(h.crypto)
@@ -204,14 +213,14 @@ class ApimNoResubmissionTransportTest {
   @Test
   void defaultsPreserveRecoveryAndStrictMetadataRejectsConflictingBusinessRetry() {
     var body = new TrpPwdValidationRequest("test", "test");
-    var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_INPUT, null);
+    var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_INPUT, "DB");
     var defaultRequest =
         new ApimExchangeRequest<>(
             PATH,
             body,
             TrpPwdValidationRequest.class,
             TrpPwdValidationDataItem.class,
-            ApimDatabaseScope.NON_ACCOUNT,
+            ApimDatabaseScope.ACCOUNT_ENV,
             context,
             ApimRetryEligibility.NON_RETRYABLE);
     assertThat(defaultRequest.resubmissionPolicy())
@@ -223,7 +232,7 @@ class ApimNoResubmissionTransportTest {
                     body,
                     TrpPwdValidationRequest.class,
                     TrpPwdValidationDataItem.class,
-                    ApimDatabaseScope.NON_ACCOUNT,
+                    ApimDatabaseScope.ACCOUNT_ENV,
                     context,
                     ApimRetryEligibility.SAFE_BUSINESS_CALL,
                     ApimResubmissionPolicy.NEVER))
@@ -235,7 +244,7 @@ class ApimNoResubmissionTransportTest {
                     body,
                     TrpPwdValidationRequest.class,
                     TrpPwdValidationDataItem.class,
-                    ApimDatabaseScope.NON_ACCOUNT,
+                    ApimDatabaseScope.ACCOUNT_ENV,
                     context,
                     ApimRetryEligibility.NON_RETRYABLE,
                     null))
@@ -269,15 +278,20 @@ class ApimNoResubmissionTransportTest {
       properties.getRetry().getBusinessCall().setMaxAttempts(3);
       properties.getRetry().getBusinessCall().setBackoffMilliseconds(0);
       properties.getRouting().setNonAccountProfileId("non-account");
+      properties.getRouting().setAccountEnvProfileMappings(Map.of("DB", "db"));
+      var nonAccount = new ApimProperties.CredentialProfiles.Profile();
+      nonAccount.setProfileId("non-account");
+      nonAccount.setBaseUrl("https://non-account.test");
+      nonAccount.setApiKey("wrong-profile-key");
       var profile = new ApimProperties.CredentialProfiles.Profile();
-      profile.setProfileId("non-account");
-      profile.setBaseUrl("https://non-account.test");
+      profile.setProfileId("db");
+      profile.setBaseUrl("https://db.test");
       if (loopbackBaseUrl != null) {
         profile.setBaseUrl(loopbackBaseUrl);
         properties.setTimeoutMilliseconds(scenario.equals("wire-timeout") ? 100 : 5000);
       }
       profile.setApiKey("test-profile-key");
-      properties.getCredentialProfiles().setProfiles(List.of(profile));
+      properties.getCredentialProfiles().setProfiles(List.of(nonAccount, profile));
       when(tokens.getAccessToken(any())).thenReturn(Mono.just("test-access-value"));
       when(certificates.getPublicKey(any())).thenReturn(Mono.just(key));
       var appCertificate = mock(ApimAppCertificateService.class);

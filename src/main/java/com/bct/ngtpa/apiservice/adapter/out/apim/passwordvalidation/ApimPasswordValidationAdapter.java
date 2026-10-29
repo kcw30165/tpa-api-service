@@ -34,8 +34,9 @@ public final class ApimPasswordValidationAdapter implements PasswordCheckPort {
                         new TrpPwdValidationRequest(command.customerId(), command.password()),
                         TrpPwdValidationRequest.class,
                         TrpPwdValidationDataItem.class,
-                        ApimDatabaseScope.NON_ACCOUNT,
-                        new ApimCredentialResolutionContext(command.actorUserRole(), null),
+                        ApimDatabaseScope.ACCOUNT_ENV,
+                        new ApimCredentialResolutionContext(
+                            command.actorUserRole(), command.accountEnv()),
                         ApimRetryEligibility.NON_RETRYABLE,
                         ApimResubmissionPolicy.NEVER)))
         .map(this::interpret)

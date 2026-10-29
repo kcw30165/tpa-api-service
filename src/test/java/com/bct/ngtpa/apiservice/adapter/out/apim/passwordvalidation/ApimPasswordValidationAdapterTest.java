@@ -29,7 +29,7 @@ class ApimPasswordValidationAdapterTest {
   private final ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);
   private final ApimPasswordValidationAdapter adapter = new ApimPasswordValidationAdapter(executor);
   private final PasswordCheckCommand command =
-      new PasswordCheckCommand("test-customer", " AbC ", ActorUserRole.ROLE_INPUT);
+      new PasswordCheckCommand("test-customer", " AbC ", ActorUserRole.ROLE_INPUT, " DB ");
 
   @Test
   void exactRequestHasOnlyServerIdentityAndUnchangedPasswordWithStrictRouting() throws Exception {
@@ -43,8 +43,8 @@ class ApimPasswordValidationAdapterTest {
     assertThat(request.path()).isEqualTo("/ws/NGTPA/v1/TRPPwdValidation");
     assertThat(request.requestType()).isEqualTo(TrpPwdValidationRequest.class);
     assertThat(request.responseDataType()).isEqualTo(TrpPwdValidationDataItem.class);
-    assertThat(request.databaseScope()).isEqualTo(ApimDatabaseScope.NON_ACCOUNT);
-    assertThat(request.credentialContext().accountEnv()).isNull();
+    assertThat(request.databaseScope()).isEqualTo(ApimDatabaseScope.ACCOUNT_ENV);
+    assertThat(request.credentialContext().accountEnv()).isEqualTo("DB");
     assertThat(request.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_INPUT);
     assertThat(request.retryEligibility()).isEqualTo(ApimRetryEligibility.NON_RETRYABLE);
     assertThat(request.resubmissionPolicy()).isEqualTo(ApimResubmissionPolicy.NEVER);
@@ -98,6 +98,7 @@ class ApimPasswordValidationAdapterTest {
         "{\"response\":null}",
         "{\"response\":{}}",
         "{\"response\":{\"err-message\":null}}",
+        "{\"response\":{\"err-message\":\"\"}}",
         "{\"response\":{\"err-message\":\"\",\"data\":null}}",
         "{\"response\":{\"err-message\":\"\",\"data\":[]}}",
         "{\"response\":{\"err-message\":\"\",\"data\":[null]}}",
@@ -107,6 +108,7 @@ class ApimPasswordValidationAdapterTest {
         "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":1}]}}",
         "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":{} }]}}",
         "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":true},{\"success\":true}]}}",
+        "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":true},{\"success\":true},{\"success\":true}]}}",
         "{\"response\":{\"err-message\":\"unknown\",\"data\":[{\"success\":true}]}}"
       })
   void malformedAndUnknownEnvelopesFailClosed(String json) throws Exception {

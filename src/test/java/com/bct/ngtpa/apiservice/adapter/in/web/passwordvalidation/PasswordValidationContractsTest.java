@@ -58,17 +58,20 @@ class PasswordValidationContractsTest {
     var payload = mapper.readTree("{\"fields\":{\"test\":\"reviewed-value\"}}");
     var request = new PasswordValidationRequest(" AbC ", "PERSONAL_INFORMATION_UPDATE", payload);
     var command =
-        new PasswordCheckCommand("test-customer", request.password(), ActorUserRole.ROLE_INPUT);
+        new PasswordCheckCommand(
+            "test-customer", request.password(), ActorUserRole.ROLE_INPUT, " DB ");
     assertThat(request.password()).isEqualTo(" AbC ");
     assertThat(command.password()).isEqualTo(" AbC ");
     assertThat(command.customerId()).isEqualTo("test-customer");
+    assertThat(command.accountEnv()).isEqualTo("DB");
+    assertThat(command.toString()).contains("accountEnv=<redacted>").doesNotContain("DB");
     assertThat(request.toString())
         .contains("password=<redacted>", "operationPayload=<redacted>")
         .doesNotContain(" AbC ", "reviewed-value");
     assertThat(command.toString())
         .contains("customerId=<redacted>", "password=<redacted>")
         .doesNotContain("test-customer", " AbC ");
-    assertThatThrownBy(() -> new PasswordCheckCommand("test", "x", null))
+    assertThatThrownBy(() -> new PasswordCheckCommand("test", "x", null, "DB"))
         .isInstanceOf(NullPointerException.class);
   }
 
@@ -84,6 +87,15 @@ class PasswordValidationContractsTest {
     assertThat(json.has("requestId")).isFalse();
     assertThat(result.toString()).doesNotContain("test-only-value");
     assertThat(data.toString()).contains("token=<redacted>").doesNotContain("test-only-value");
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.NullAndEmptySource
+  @org.junit.jupiter.params.provider.ValueSource(strings = {" ", "\t\r\n"})
+  void commandRejectsUnusableAccountEnvironment(String accountEnv) {
+    assertThatThrownBy(
+            () -> new PasswordCheckCommand("test", "x", ActorUserRole.ROLE_INPUT, accountEnv))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test

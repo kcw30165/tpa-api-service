@@ -5,17 +5,21 @@ import java.util.Objects;
 
 /** Identity must originate from the authenticated server context, never the request body. */
 public record PasswordCheckCommand(
-    String customerId, String password, ActorUserRole actorUserRole) {
+    String customerId, String password, ActorUserRole actorUserRole, String accountEnv) {
   public PasswordCheckCommand {
     Objects.requireNonNull(customerId, "customerId must not be null");
     Objects.requireNonNull(password, "password must not be null");
     Objects.requireNonNull(actorUserRole, "actorUserRole must not be null");
+    if (accountEnv == null || accountEnv.isBlank()) {
+      throw new IllegalArgumentException("accountEnv must not be blank");
+    }
+    accountEnv = accountEnv.trim();
   }
 
   @Override
   public String toString() {
     return "PasswordCheckCommand[customerId=<redacted>, password=<redacted>, actorUserRole="
         + actorUserRole
-        + "]";
+        + ", accountEnv=<redacted>]";
   }
 }
