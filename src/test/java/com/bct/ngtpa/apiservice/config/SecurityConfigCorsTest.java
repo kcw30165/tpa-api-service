@@ -12,9 +12,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.env.MutablePropertySources;
+import org.springframework.core.env.PropertySourcesPropertyResolver;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -45,6 +49,23 @@ class SecurityConfigCorsTest {
 
   @Autowired private WebTestClient webTestClient;
   @Autowired private CorsProperties corsProperties;
+
+  @Test
+  void shippedDefaultCorsHeadersIncludePasswordValidationHeaders() throws Exception {
+    var source =
+        new YamlPropertySourceLoader()
+            .load("application", new ClassPathResource("application.yml"))
+            .getFirst();
+    var propertySources = new MutablePropertySources();
+    propertySources.addFirst(source);
+    var resolver = new PropertySourcesPropertyResolver(propertySources);
+    String allowedHeaders =
+        resolver.resolveRequiredPlaceholders(source.getProperty("cors.allowed-headers").toString());
+
+    assertTrue(allowedHeaders.contains("X-Password-Validation-Token"));
+    assertTrue(allowedHeaders.contains("Content-Type"));
+    assertTrue(allowedHeaders.contains("Account-Ref"));
+  }
 
   @ParameterizedTest
   @CsvSource({
