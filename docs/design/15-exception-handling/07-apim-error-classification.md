@@ -8,7 +8,7 @@
 - **Detection site:** `registration/mapper/TrpSearchMemberApimResultMapper.toResult`, lines 22-24 (confirmed: this is the `adapter/out/apim/registration/mapper` package, a separate file from the `usernamerecovery/mapper` package's same-named class)
 - **Handling:** Returned as normal `RegistrationLookupResult(NOT_ELIGIBLE, List.of(), null)`; `ApimRegistrationLookupAdapter.withFailureLogging`'s `doOnEach` (lines 94-128) detects `status()==NOT_ELIGIBLE` on the onNext signal and calls `recordDownstreamRejection` (line 101), publishing a `FailureEvent` (lines 144-159)
 - **Message policy:** N/A -- successful application result, never an `ExceptionMapping`
-- **Ordered log lines:** (1) possible `apim.business.rejected` WARN from the envelope-content classifier (non-empty err-message), firing on the already-resolved onNext envelope before this mapper runs; (2) `FailureEvent` `event.registration.lookup.downstream_rejection` published, origin `DOWNSTREAM_CONTRACT` (line 121), logged ERROR today by `StructuredFailureEventLogger` -- E1 moves this to WARN. (3) `ApimRegistrationLookupAdapter` is `@LogExecution`-annotated, but this condition is returned as a normal result, so `method.execution.error` (`ExecutionLoggingAspect.java:161-170`) is not logged for it.
+- **Ordered log lines:** (1) `apim.business.rejected` WARN (executor classification; seen in DEV on 2026-10-28 for a TRPSearchMember member-not-found)ier (non-empty err-message), firing on the already-resolved onNext envelope before this mapper runs; (2) `FailureEvent` `event.registration.lookup.downstream_rejection` published, origin `DOWNSTREAM_CONTRACT` (line 121), logged ERROR today by `StructuredFailureEventLogger` -- E1 moves this to WARN. (3) `ApimRegistrationLookupAdapter` is `@LogExecution`-annotated, but this condition is returned as a normal result, so `method.execution.error` (`ExecutionLoggingAspect.java:161-170`) is not logged for it.
 - **Idempotency replay:** No -- `searchMember` is called directly from `RegistrationStartProtectedOperation.lookup` (confirmed, not itself idempotency-wrapped; the surrounding Registration Start flow IS idempotency-protected)
 - **Origin tag today:** `FailureOrigin.DOWNSTREAM_CONTRACT` (`ApimRegistrationLookupAdapter.java:121`)
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_BUSINESS` only, per E1 (section 4)
@@ -87,9 +87,9 @@
 - **Idempotency replay:** Yes -- Forgot Password complete
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
-- **Public HTTP status:** n/a -- swallowed to `unknownOutcome()` by `ForgotPasswordCompleteProtectedOperation.blockUnknown` (line 191-197), which also transitions the session to `UNKNOWN_OUTCOME_BLOCKED` before returning the result; `IdempotentCompleteForgotPasswordService` propagates this result through `ForgotPasswordController.complete` (lines 274-296) to `completeMapper.toResponse(result)` -> `ForgotPasswordHttpResponses`
-- **Public ApiStatus:** n/a
-- **Public error code/type:** n/a
+- **Public HTTP status:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
+- **Public ApiStatus:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
+- **Public error code/type:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
 - **Citation:** `ApimForgotPasswordCompletionAdapter.java:62-72`; `ForgotPasswordCompleteProtectedOperation.java:127-135,191-197`; `ForgotPasswordController.java:274-296`
 
 ### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
@@ -102,8 +102,8 @@
 - **Origin tag today:** none
 - **Proposed FailureOrigin (section 3):** FailureOrigin.DOWNSTREAM_CONTRACT
 - **Public HTTP status:** not characterized (deferred, pending Nick's Test B decision) 
-- **Public ApiStatus:** n/a
-- **Public error code/type:** n/a
+- **Public ApiStatus:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
+- **Public error code/type:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
 - **Citation:** ApimForgotPasswordCompletionAdapter.java:52-60; ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest.complete_emptyButPresentResponse_returnsTechnicalFailureResult
 
 ### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
@@ -116,9 +116,9 @@
 - **Idempotency replay:** Yes
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_INVALID_RESPONSE`
-- **Public HTTP status:** n/a -- swallowed to `unknownOutcome()` directly by the adapter (confirmed: this specific swallow is `ApimForgotPasswordCompletionAdapter`'s own, not `ForgotPasswordCompleteProtectedOperation`'s)
-- **Public ApiStatus:** n/a
-- **Public error code/type:** n/a
+- **Public HTTP status:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
+- **Public ApiStatus:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
+- **Public error code/type:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
 - **Citation:** `ApimPayloadCryptoService.java:158-166`; `ApimForgotPasswordCompletionAdapter.java:52-58`
 
 ### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
@@ -131,9 +131,9 @@
 - **Idempotency replay:** Yes
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_TRANSPORT`
-- **Public HTTP status:** n/a -- swallowed to `unknownOutcome()` by `ForgotPasswordCompleteProtectedOperation.blockUnknown`
-- **Public ApiStatus:** n/a
-- **Public error code/type:** n/a
+- **Public HTTP status:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
+- **Public ApiStatus:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
+- **Public error code/type:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
 - **Citation:** `ApimForgotPasswordCompletionAdapter.java:74-81`; `ForgotPasswordCompleteProtectedOperation.java:127-135,191-197`
 
 ### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
@@ -146,9 +146,9 @@
 - **Idempotency replay:** Yes
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_TRANSPORT`
-- **Public HTTP status:** n/a -- swallowed to `unknownOutcome()`
-- **Public ApiStatus:** n/a
-- **Public error code/type:** n/a
+- **Public HTTP status:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
+- **Public ApiStatus:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
+- **Public error code/type:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
 - **Citation:** `ApimForgotPasswordCompletionAdapter.java:74-81`; `ApimWebClientFacade.java:212-241`; `ForgotPasswordCompleteProtectedOperation.java:127-135,191-197`
 
 ### Forgot Password -- ApimForgotPasswordDetailsLookupAdapter (TRPSearchMember)
@@ -206,7 +206,7 @@
 - **Idempotency replay:** Yes
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_TRANSPORT`
-- **Public HTTP status:** UNVERIFIED (same reason as above -- `ApiStatus.SYSTEM_ERROR` confirmed, exact HTTP code depends on `WorkflowHttpResponses`)
+- **Public HTTP status:** 503. `UsernameRecoveryStartProtectedOperation.java:125` groups CONTRACT_INVALID, UNAVAILABLE and UNKNOWN_OUTCOME into `UsernameRecoveryStartException.systemFailure()`; `HttpStatusClassification` maps `SYSTEM_ERROR` to 503. Pinned by `AuthUsernameRecoveryControllerTest.startSystemFailureReturns503WithoutAnyCookie`.
 - **Public ApiStatus:** `SYSTEM_ERROR`
 - **Public error code/type:** `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()`
 - **Citation:** `TrpSearchMemberAdapter.java:48-56`; `UsernameRecoveryStartProtectedOperation.java:101-128`
@@ -248,12 +248,12 @@
 - **Handling:** `.onErrorReturn(LoginAccountAuthorizationResult.unavailable())` (line 32) -- no exception-type filter at all, catches every throwable indiscriminately
 - **Message policy:** N/A -- `onErrorReturn` provides no access to the throwable
 - **Ordered log lines:** `ApimWebClientFacade.handleErrorBody`'s `log.error`; `apim.exchange.failed` ERROR
-- **Idempotency replay:** No -- `TrpGetAccountListAdapter` is not found under any idempotency package
+- **Idempotency replay:** Yes. The replay codec stores the 502 (`LoginOtpVerifyReplayCodecHttpStatusTest.mapsAccountListUnavailableTo502`).
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_TRANSPORT`
-- **Public HTTP status:** n/a -- swallowed to `unavailable()`, consumed by the Login OTP-verify flow's own account-list check (not individually traced to a public status -- this result feeds internal authorization logic, not a dedicated controller response path)
-- **Public ApiStatus:** n/a
-- **Public error code/type:** n/a
+- **Public HTTP status:** 502. `LoginOtpVerifyService.java:312-325` (`continueToAccounts`) turns `LoginAccountAuthorizationStatus.UNAVAILABLE` into `VerifyLoginOtpStatus.ACCOUNT_LIST_UNAVAILABLE`; `LoginHttpResponses.java:22` maps `SYSTEM_ERROR` to `BAD_GATEWAY` (no code-specific branch). Pinned for the replay by `LoginOtpVerifyReplayCodecHttpStatusTest.mapsAccountListUnavailableTo502`.
+- **Public ApiStatus:** `ApiStatus.SYSTEM_ERROR` (`LoginOtpVerifyWebMapper.java:33`).
+- **Public error code/type:** type `FORM`, source `BFF`, code `LoginErrorKey.ACCOUNT_LIST_UNAVAILABLE.value()` (`LoginOtpVerifyWebMapper.java:46-49,69-70`). Pinned by `LoginOtpVerifyWebMapperTest.accountListUnavailableMapsToSystemErrorWithAccountListUnavailableCode`.
 - **Citation:** `TrpGetAccountListAdapter.java:26-33`; `SharedApimTrpGetAccountListTransport.java:16-48`
 
 ### Login -- TrpGetAccountListAdapter (TRPGetAccountList)
@@ -263,12 +263,12 @@
 - **Handling:** `.onErrorReturn(LoginAccountAuthorizationResult.unavailable())`
 - **Message policy:** N/A
 - **Ordered log lines:** `apim.exchange.failed` ERROR
-- **Idempotency replay:** No
+- **Idempotency replay:** Yes. The replay codec stores the 502 (`LoginOtpVerifyReplayCodecHttpStatusTest.mapsAccountListUnavailableTo502`).
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_INVALID_RESPONSE`
-- **Public HTTP status:** n/a -- swallowed to `unavailable()`
-- **Public ApiStatus:** n/a
-- **Public error code/type:** n/a
+- **Public HTTP status:** 502. `LoginOtpVerifyService.java:312-325` (`continueToAccounts`) turns `LoginAccountAuthorizationStatus.UNAVAILABLE` into `VerifyLoginOtpStatus.ACCOUNT_LIST_UNAVAILABLE`; `LoginHttpResponses.java:22` maps `SYSTEM_ERROR` to `BAD_GATEWAY` (no code-specific branch). Pinned for the replay by `LoginOtpVerifyReplayCodecHttpStatusTest.mapsAccountListUnavailableTo502`.
+- **Public ApiStatus:** `ApiStatus.SYSTEM_ERROR` (`LoginOtpVerifyWebMapper.java:33`).
+- **Public error code/type:** type `FORM`, source `BFF`, code `LoginErrorKey.ACCOUNT_LIST_UNAVAILABLE.value()` (`LoginOtpVerifyWebMapper.java:46-49,69-70`). Pinned by `LoginOtpVerifyWebMapperTest.accountListUnavailableMapsToSystemErrorWithAccountListUnavailableCode`.
 - **Citation:** `TrpGetAccountListAdapter.java:26-33`; `SharedApimTrpGetAccountListTransport.java:16-48`
 
 ### Login -- TrpGetAccountListAdapter (TRPGetAccountList)
@@ -278,11 +278,11 @@
 - **Handling:** `.onErrorReturn(LoginAccountAuthorizationResult.unavailable())`
 - **Message policy:** N/A
 - **Ordered log lines:** `apim.exchange.failed` ERROR
-- **Idempotency replay:** No
+- **Idempotency replay:** Yes. The replay codec stores the 502 (`LoginOtpVerifyReplayCodecHttpStatusTest.mapsAccountListUnavailableTo502`).
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_TRANSPORT`
-- **Public HTTP status:** n/a -- swallowed to `unavailable()`
-- **Public ApiStatus:** SYSTEM_ERROR
+- **Public HTTP status:** 502. `LoginOtpVerifyService.java:312-325` (`continueToAccounts`) turns `LoginAccountAuthorizationStatus.UNAVAILABLE` into `VerifyLoginOtpStatus.ACCOUNT_LIST_UNAVAILABLE`; `LoginHttpResponses.java:22` maps `SYSTEM_ERROR` to `BAD_GATEWAY` (no code-specific branch). Pinned for the replay by `LoginOtpVerifyReplayCodecHttpStatusTest.mapsAccountListUnavailableTo502`.
+- **Public ApiStatus:** `ApiStatus.SYSTEM_ERROR` (`LoginOtpVerifyWebMapper.java:33`).
 - **Public error code/type:** "FORM" / LoginErrorKey.ACCOUNT_LIST_UNAVAILABLE.value() = "err.login.accountList.unavailable" (source "BFF")
 - **Citation:** `TrpGetAccountListAdapter.java:26-33`; `ApimWebClientFacade.java:212-241`
 
