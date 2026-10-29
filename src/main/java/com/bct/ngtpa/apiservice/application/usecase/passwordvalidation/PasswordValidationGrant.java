@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.passwordvalidation;
 
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -12,7 +13,9 @@ record PasswordValidationGrant(
     }
     Objects.requireNonNull(binding);
     Objects.requireNonNull(issuedAt);
-    if (!issuedAt.plusSeconds(300).equals(expiresAt)) {
+    Objects.requireNonNull(expiresAt);
+    Duration lifetime = Duration.between(issuedAt, expiresAt);
+    if (lifetime.getNano() != 0 || lifetime.getSeconds() < 30 || lifetime.getSeconds() > 900) {
       throw new IllegalArgumentException("Invalid grant lifetime");
     }
   }

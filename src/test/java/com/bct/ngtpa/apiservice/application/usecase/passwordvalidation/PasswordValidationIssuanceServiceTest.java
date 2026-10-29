@@ -142,4 +142,36 @@ class PasswordValidationIssuanceServiceTest {
     order.verify(passwords).check(any());
     order.verify(grants).issue(any(), any(), any(), any(), any(), any());
   }
+
+  @Test
+  void configuredTtlBoundsReturnedLifetimeAtTheSameValue() {
+    admit(PasswordCheckResult.CORRECT);
+    var configuredService =
+        new PasswordValidationIssuanceService(
+            throttle,
+            passwords,
+            grants,
+            revocation,
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            failures,
+            150);
+    when(grants.issue(any(), any(), any(), any(), any(), any()))
+        .thenReturn(
+            Mono.just(
+                new PasswordValidationGrantService.IssueResult(
+                    PasswordValidationGrantService.Status.ISSUED,
+                    "synthetic-token",
+                    NOW.plusSeconds(300))));
+
+    assertThat(configuredService.issue(command).block().expiresInSeconds()).isEqualTo(150);
+
+    when(grants.issue(any(), any(), any(), any(), any(), any()))
+        .thenReturn(
+            Mono.just(
+                new PasswordValidationGrantService.IssueResult(
+                    PasswordValidationGrantService.Status.ISSUED,
+                    "synthetic-token",
+                    NOW.plusSeconds(150))));
+    assertThat(configuredService.issue(command).block().expiresInSeconds()).isEqualTo(150);
+  }
 }

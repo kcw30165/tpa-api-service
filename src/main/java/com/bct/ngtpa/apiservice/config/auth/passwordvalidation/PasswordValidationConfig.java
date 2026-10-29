@@ -14,8 +14,9 @@ import org.springframework.context.annotation.Configuration;
 public class PasswordValidationConfig {
   @Bean
   PasswordValidationGrantService passwordValidationGrantService(
-      AuthenticatedSessionConcurrencyService concurrency) {
-    return new PasswordValidationGrantService(concurrency);
+      AuthenticatedSessionConcurrencyService concurrency,
+      @Value("${password-validation.grant.ttl-seconds:300}") int ttlSeconds) {
+    return new PasswordValidationGrantService(concurrency, ttlSeconds);
   }
 
   @Bean

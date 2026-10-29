@@ -47,11 +47,29 @@ public final class PasswordValidationGrantService {
   private static final ConsumeResult CONSUME_UNAVAILABLE =
       new ConsumeResult(Status.UNAVAILABLE, null);
   private static final int CANONICALIZER_VERSION = 1;
+  public static final int DEFAULT_TTL_SECONDS = 300;
+  private static final int MIN_TTL_SECONDS = 30;
+  private static final int MAX_TTL_SECONDS = 900;
   private final AuthenticatedSessionConcurrencyService concurrency;
+  private final int ttlSeconds;
   private final SecureRandom random = new SecureRandom();
 
   public PasswordValidationGrantService(AuthenticatedSessionConcurrencyService concurrency) {
+    this(concurrency, DEFAULT_TTL_SECONDS);
+  }
+
+  public PasswordValidationGrantService(
+      AuthenticatedSessionConcurrencyService concurrency, int ttlSeconds) {
     this.concurrency = Objects.requireNonNull(concurrency);
+    if (ttlSeconds < MIN_TTL_SECONDS || ttlSeconds > MAX_TTL_SECONDS) {
+      throw new IllegalArgumentException(
+          "password-validation.grant.ttl-seconds must be between 30 and 900");
+    }
+    this.ttlSeconds = ttlSeconds;
+  }
+
+  public int ttlSeconds() {
+    return ttlSeconds;
   }
 
   public Mono<IssueResult> issue(
@@ -85,7 +103,7 @@ public final class PasswordValidationGrantService {
                         return session.withFeatureState(
                             key,
                             new PasswordValidationGrant(
-                                    digest, binding, issuedAt, issuedAt.plusSeconds(300))
+                                    digest, binding, issuedAt, issuedAt.plusSeconds(ttlSeconds))
                                 .encode());
                       },
                       correlationId)

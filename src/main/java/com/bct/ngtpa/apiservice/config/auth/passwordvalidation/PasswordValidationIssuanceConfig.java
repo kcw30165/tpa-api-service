@@ -39,6 +39,6 @@ public class PasswordValidationIssuanceConfig {
       Clock clock,
       FailureEventPort failures) {
     return new PasswordValidationIssuanceService(
-        throttle, passwords, grants, revocation, clock, failures);
+        throttle, passwords, grants, revocation, clock, failures, grants.ttlSeconds());
   }
 }

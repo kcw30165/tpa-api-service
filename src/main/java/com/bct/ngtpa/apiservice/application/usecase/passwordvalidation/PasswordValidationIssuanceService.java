@@ -19,12 +19,14 @@ import java.util.Objects;
 import reactor.core.publisher.Mono;
 
 public final class PasswordValidationIssuanceService implements IssuePasswordValidationUseCase {
+  private static final int DEFAULT_TTL_SECONDS = PasswordValidationGrantService.DEFAULT_TTL_SECONDS;
   private final PasswordValidationThrottleService throttle;
   private final PasswordCheckPort passwords;
   private final PasswordValidationGrantService grants;
   private final RevokeAuthenticatedSessionUseCase revocation;
   private final Clock clock;
   private final FailureEventPort failures;
+  private final int ttlSeconds;
 
   public PasswordValidationIssuanceService(
       PasswordValidationThrottleService throttle,
@@ -33,12 +35,28 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
       RevokeAuthenticatedSessionUseCase revocation,
       Clock clock,
       FailureEventPort failures) {
+    this(throttle, passwords, grants, revocation, clock, failures, DEFAULT_TTL_SECONDS);
+  }
+
+  public PasswordValidationIssuanceService(
+      PasswordValidationThrottleService throttle,
+      PasswordCheckPort passwords,
+      PasswordValidationGrantService grants,
+      RevokeAuthenticatedSessionUseCase revocation,
+      Clock clock,
+      FailureEventPort failures,
+      int ttlSeconds) {
     this.throttle = Objects.requireNonNull(throttle);
     this.passwords = Objects.requireNonNull(passwords);
     this.grants = Objects.requireNonNull(grants);
     this.revocation = Objects.requireNonNull(revocation);
     this.clock = Objects.requireNonNull(clock);
     this.failures = Objects.requireNonNull(failures);
+    if (ttlSeconds < 30 || ttlSeconds > 900) {
+      throw new IllegalArgumentException(
+          "password-validation.grant.ttl-seconds must be between 30 and 900");
+    }
+    this.ttlSeconds = ttlSeconds;
   }
 
   @Override
@@ -97,7 +115,7 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
     long remaining = Duration.between(clock.instant(), result.expiresAt()).toSeconds();
     if (remaining <= 0) return PasswordValidationIssuanceResult.of(UNAVAILABLE);
     return new PasswordValidationIssuanceResult(
-        ISSUED, result.token(), (int) Math.min(300, remaining), 0);
+        ISSUED, result.token(), (int) Math.min(ttlSeconds, remaining), 0);
   }
 
   private Mono<PasswordValidationIssuanceResult> invalidate(

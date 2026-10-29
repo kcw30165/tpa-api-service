@@ -29,6 +29,21 @@ class PasswordValidationGrantTest {
   }
 
   @Test
+  void storedGrantAcceptsConfiguredLifetimeWithoutChangingItsExpiry() {
+    Instant issuedAt = Instant.parse("2026-10-28T00:00:00Z");
+    var grant =
+        new PasswordValidationGrant(
+            "a".repeat(64),
+            new PayloadDigest(1, "b".repeat(64)),
+            issuedAt,
+            issuedAt.plusSeconds(150));
+
+    assertThat(PasswordValidationGrant.decode(grant.encode()))
+        .extracting(PasswordValidationGrant::expiresAt)
+        .isEqualTo(issuedAt.plusSeconds(150));
+  }
+
+  @Test
   void malformedAndOversizedEncodingCannotBecomeAValidGrant() {
     assertThat(PasswordValidationGrant.decode("x".repeat(257))).isNull();
     assertThat(

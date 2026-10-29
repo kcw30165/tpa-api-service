@@ -13,8 +13,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.core.env.SystemEnvironmentPropertySource;
 import reactor.core.publisher.Mono;
 
 class PasswordValidationConfigTest {
@@ -57,6 +59,8 @@ class PasswordValidationConfigTest {
         .withPropertyValues("password-validation.rate-limit.secret=" + secret)
         .run(
             c -> {
+              assertThat(c.getBean(PasswordValidationGrantService.class).ttlSeconds())
+                  .isEqualTo(300);
               c.getBean(PasswordValidationThrottleService.class)
                   .check(new ActorContext("synthetic-member", ActorUserRole.ROLE_USER_MBR), "test")
                   .block();
@@ -67,15 +71,61 @@ class PasswordValidationConfigTest {
         .withPropertyValues(
             "password-validation.rate-limit.secret=" + secret,
             "password-validation.rate-limit.max-attempts=3",
-            "password-validation.rate-limit.window-seconds=20")
+            "password-validation.rate-limit.window-seconds=20",
+            "password-validation.grant.ttl-seconds=150")
         .run(
             c -> {
+              assertThat(c.getBean(PasswordValidationGrantService.class).ttlSeconds())
+                  .isEqualTo(150);
               c.getBean(PasswordValidationThrottleService.class)
                   .check(new ActorContext("synthetic-member", ActorUserRole.ROLE_USER_MBR), "test")
                   .block();
               assertThat(calls.getLast().maxAttempts()).isEqualTo(3);
               assertThat(calls.getLast().windowSeconds()).isEqualTo(20);
             });
+  }
+
+  @Test
+  void grantTtlAcceptsOnlyTheInclusiveSupportedBounds() {
+    for (int ttl : List.of(30, 900)) {
+      context
+          .withPropertyValues("password-validation.grant.ttl-seconds=" + ttl)
+          .run(
+              c -> {
+                assertThat(c).hasNotFailed();
+                assertThat(c.getBean(PasswordValidationGrantService.class).ttlSeconds())
+                    .isEqualTo(ttl);
+              });
+    }
+    for (int ttl : List.of(29, 901)) {
+      context
+          .withPropertyValues("password-validation.grant.ttl-seconds=" + ttl)
+          .run(
+              c -> {
+                assertThat(c).hasFailed();
+                assertThat(c.getStartupFailure())
+                    .hasStackTraceContaining(
+                        "password-validation.grant.ttl-seconds must be between 30 and 900");
+              });
+    }
+  }
+
+  @Test
+  void environmentVariableOverridesTheDefaultGrantTtl() {
+    context
+        .withInitializer(
+            applicationContext ->
+                applicationContext
+                    .getEnvironment()
+                    .getPropertySources()
+                    .addFirst(
+                        new SystemEnvironmentPropertySource(
+                            "testEnvironment",
+                            Map.of("PASSWORD_VALIDATION_GRANT_TTL_SECONDS", "150"))))
+        .run(
+            c ->
+                assertThat(c.getBean(PasswordValidationGrantService.class).ttlSeconds())
+                    .isEqualTo(150));
   }
 
   @Test
