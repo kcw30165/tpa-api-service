@@ -1,6 +1,6 @@
 # 07 - APIM Error Classification Design
 
-## 1. Inventory table (47 rows)
+## 1. Inventory table (48 rows)
 
 ### Registration -- ApimRegistrationLookupAdapter (TRPSearchMember)
 
@@ -92,7 +92,7 @@
 - **Public error code/type:** n/a
 - **Citation:** `ApimForgotPasswordCompletionAdapter.java:62-72`; `ForgotPasswordCompleteProtectedOperation.java:127-135,191-197`; `ForgotPasswordController.java:274-296`
 
-#### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
+### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
 - **Condition:** present response, err-message empty, data empty
 - **Detection site:** ApimForgotPasswordCompletionAdapter.java (toEnvelope passes the envelope through unchanged since its own response is non-null; resultMapper.toResult(...) maps empty data to a TECHNICAL_FAILURE result rather than throwing)
 - **Handling:** returned as ForgotPasswordCompletionResult(status=TECHNICAL_FAILURE, ...); no exception is thrown
@@ -181,7 +181,7 @@
 - **Public error code/type:** `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()`
 - **Citation:** `usernamerecovery/mapper/TrpSearchMemberApimResultMapper.java:39-56`; `TrpSearchMemberAdapter.java:48-56`; `UsernameRecoveryStartProtectedOperation.java:101-128`; `UsernameRecoveryController.java:100-128`; `UsernameRecoveryStartResponsePolicy.java:67-124,162-171`
 
-#### Username Recovery -- TrpSearchMemberAdapter (TRPSearchMember)
+### Username Recovery -- TrpSearchMemberAdapter (TRPSearchMember)
 - **Condition:** member not found (two distinct mapper entry points both return `Status.NOT_FOUND`: (1) recognized `err.tpa.member.not.found`; (2) empty data items with no err-message at all - NOT the unrecognized-error exception path of the row above)
 - **Detection site:** usernamerecovery/mapper/TrpSearchMemberApimResultMapper.java lines 43-46 (recognized `err.tpa.member.not.found` -> `Status.NOT_FOUND`) and lines 51-54 (empty items, no err-message -> `Status.NOT_FOUND`); routed by UsernameRecoveryStartProtectedOperation.java lines 121-124 (`case NOT_FOUND -> ... Outcome.MEMBER_NOT_FOUND`); rendered by UsernameRecoveryStartResponsePolicy.java lines 44-53 (`case MEMBER_NOT_FOUND -> MutationResponse.failure(ApiStatus.BUSINESS_REJECTED, ..., formError(UsernameRecoveryErrorKey.VERIFICATION_FAILED.value(), ...))`)
 - **Handling:** returned as a normal lookup result (`Status.NOT_FOUND`), never an exception; no FailureEvent is published anywhere in this chain; no `method.execution.*` line fires (none of TrpSearchMemberAdapter, UsernameRecoveryStartProtectedOperation, or UsernameRecoveryStartResponsePolicy is `@LogExecution`-annotated or matches the broad `*Service.execute(..)` pointcut). **Confirmed by real DEV evidence, 2026-10-28, requestId 35eeecac-5b0b-4e08-b5da-fb51023be1ad**, not merely traced from source.
@@ -735,7 +735,7 @@
 - `ApimCryptoException`/`ApimResponseMappingException`/unparsable body -> `DOWNSTREAM_INVALID_RESPONSE`
 - HTTP 5xx / timeout / `WebClientRequestException` -> `DOWNSTREAM_TRANSPORT`
 - `ApimProfileResolutionException` (our own config) -> `LOCAL_SYSTEM`
-- Specific `DOWNSTREAM_BUSINESS` rows (5 total): Registration `err.tpa.member.not.found`, Account Balance `NOT_FOUND`/`MISMATCH` (2), Account Gain/Loss fund-switching, Fund Price invalid-date
+- Specific `DOWNSTREAM_BUSINESS` rows (6 total): Registration `err.tpa.member.not.found`, Username Recovery member-not-found, Account Balance `NOT_FOUND`/`MISMATCH` (2), Account Gain/Loss fund-switching, Fund Price invalid-date
 - Catch-all `systemFailure()`/`onErrorReturn`/`safeFailure`: classified by cause, split into per-cause sub-rows; public exception/status/body unchanged across sub-causes.
 
 ## 4. Approved exceptions to the M2b "no change" rules
