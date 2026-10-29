@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Password-validation end-to-end scenarios (curl based).
 #
-# Run this by hand against DEV. It is NOT run by the build or by an agent.
+# Run this by hand against a LOCAL build, not against DEV, UAT or production. It is NOT run by the build or by an agent.
 #
 # What it does
 #   Issues password-validation tokens and checks the Personal Information PUT
@@ -37,6 +37,11 @@
 #   THROTTLE_LIMIT=10                    configured max attempts
 #   THROTTLE_WAIT_SECONDS=61             wait for the window to reset first
 #   CURL_EXTRA_ARGS                      e.g. "--cacert ca.pem"
+#
+# Token lifetime check
+#   EXPECTED_TTL_SECONDS=<n>   optional. Scenario 2 then checks that the lifetime reported by the server equals <n>.
+#                              After a fresh login it equals PASSWORD_VALIDATION_GRANT_TTL_SECONDS, because the server
+#                              reports the lower of that setting and the remaining session lifetime.
 #
 # Throttle scenario notes
 #   The server counts every well-formed issuance request for the username across all
@@ -171,6 +176,25 @@ fi
 # 2. Correct password -> 200 with a token and a 300 second lifetime.
 issue CORRECT_PASSWORD "$REVIEWED_PAYLOAD_FILE"
 check "2 correct password issues a token" 200
+# 2c. The lifetime the server reports (a number, not a secret).
+TTL_SEEN=$(RESP="$WORK/resp.$SEQ" python - <<'PY'
+import json, os
+try:
+    data = json.load(open(os.environ["RESP"]))
+    print(((data.get("result") or {}).get("data") or {}).get("expiresInSeconds", ""))
+except Exception:
+    print("")
+PY
+)
+if [[ -n "${EXPECTED_TTL_SECONDS:-}" ]]; then
+  if [[ "$TTL_SEEN" == "$EXPECTED_TTL_SECONDS" ]]; then
+    printf 'PASS  %-62s expiresInSeconds=%s\n' "2c reported lifetime equals EXPECTED_TTL_SECONDS" "$TTL_SEEN"; PASSED=$((PASSED + 1))
+  else
+    printf 'FAIL  %-62s expected=%s got=%s\n' "2c reported lifetime equals EXPECTED_TTL_SECONDS" "$EXPECTED_TTL_SECONDS" "${TTL_SEEN:-none}"; FAILED=$((FAILED + 1))
+  fi
+else
+  printf 'INFO  %-62s expiresInSeconds=%s (set EXPECTED_TTL_SECONDS to check it)\n' "2c lifetime reported by the server" "${TTL_SEEN:-none}"
+fi
 TOKEN_A="$TOKEN_VALUE"
 if [[ -n "$TOKEN_A" ]]; then
   printf 'PASS  %-62s token present (not printed)\n' "2b token returned"; PASSED=$((PASSED + 1))
