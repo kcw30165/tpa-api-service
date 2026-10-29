@@ -39,9 +39,9 @@
 #   CURL_EXTRA_ARGS                      e.g. "--cacert ca.pem"
 #
 # Token lifetime check
-#   EXPECTED_TTL_SECONDS=<n>   optional. Scenario 2 then checks that the lifetime reported by the server equals <n>.
-#                              After a fresh login it equals PASSWORD_VALIDATION_GRANT_TTL_SECONDS, because the server
-#                              reports the lower of that setting and the remaining session lifetime.
+#   EXPECTED_TTL_SECONDS=<n>   optional. Scenario 2 then checks that the lifetime reported by the server is between
+#                              <n> minus 5 and <n>. The server reports the remaining whole seconds of the new token,
+#                              so it can be a second or so below PASSWORD_VALIDATION_GRANT_TTL_SECONDS, never above it.
 #
 # Throttle scenario notes
 #   The server counts every well-formed issuance request for the username across all
@@ -173,7 +173,7 @@ else
   skip "1 wrong password" "set CONFIRM_WRONG_PASSWORD_ATTEMPT=yes and WRONG_PASSWORD (counts toward account lock)"
 fi
 
-# 2. Correct password -> 200 with a token and a 300 second lifetime.
+# 2. Correct password -> 200 with a token and the configured lifetime.
 issue CORRECT_PASSWORD "$REVIEWED_PAYLOAD_FILE"
 check "2 correct password issues a token" 200
 # 2c. The lifetime the server reports (a number, not a secret).
@@ -187,10 +187,11 @@ except Exception:
 PY
 )
 if [[ -n "${EXPECTED_TTL_SECONDS:-}" ]]; then
-  if [[ "$TTL_SEEN" == "$EXPECTED_TTL_SECONDS" ]]; then
-    printf 'PASS  %-62s expiresInSeconds=%s\n' "2c reported lifetime equals EXPECTED_TTL_SECONDS" "$TTL_SEEN"; PASSED=$((PASSED + 1))
+  if [[ "$TTL_SEEN" =~ ^[0-9]+$ && "$EXPECTED_TTL_SECONDS" =~ ^[0-9]+$ ]] \
+      && (( TTL_SEEN <= EXPECTED_TTL_SECONDS && TTL_SEEN + 5 >= EXPECTED_TTL_SECONDS )); then
+    printf 'PASS  %-62s expiresInSeconds=%s\n' "2c reported lifetime is within 5 s below EXPECTED_TTL_SECONDS" "$TTL_SEEN"; PASSED=$((PASSED + 1))
   else
-    printf 'FAIL  %-62s expected=%s got=%s\n' "2c reported lifetime equals EXPECTED_TTL_SECONDS" "$EXPECTED_TTL_SECONDS" "${TTL_SEEN:-none}"; FAILED=$((FAILED + 1))
+    printf 'FAIL  %-62s expected=%s..%s got=%s\n' "2c reported lifetime is within 5 s below EXPECTED_TTL_SECONDS" "$((EXPECTED_TTL_SECONDS - 5))" "$EXPECTED_TTL_SECONDS" "${TTL_SEEN:-none}"; FAILED=$((FAILED + 1))
   fi
 else
   printf 'INFO  %-62s expiresInSeconds=%s (set EXPECTED_TTL_SECONDS to check it)\n' "2c lifetime reported by the server" "${TTL_SEEN:-none}"
