@@ -89,3 +89,9 @@ the existing PUT response bytes and downstream mapping.
 6. Do not automatically retry password validation or mutation after a network timeout. Reconfirming does not prove the previous mutation failed.
 
 CORS/proxy acceptance of the new header is a release check, not assumed existing configuration. Do not propagate the authorization token or FE password-validation purpose to APIM.
+
+## Addendum (as built at the end of M5 and F1)
+
+- The envelope is generic. `operationPayload` is exactly the JSON body of the protected request for the given purpose, and its contents are defined per purpose in [11 Purpose catalogue](11-purpose-catalogue.md). The example above is the `PERSONAL_INFORMATION_UPDATE` case, the only purpose supported in this release.
+- `expiresInSeconds` is the configured token lifetime: 300 by default (setting `PASSWORD_VALIDATION_GRANT_TTL_SECONDS`, 30 to 900), reported as the lower of that value and the remaining session lifetime. Wherever this document says 300 seconds, read "the configured lifetime".
+- The as-built statuses, error codes and result shape are in [08 Frontend integration](08-frontend-integration.md), section 4.

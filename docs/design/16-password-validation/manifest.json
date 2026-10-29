@@ -1,10 +1,10 @@
 {
   "package": "password-validation-design-package",
-  "version": "1.13",
+  "version": "1.14",
   "files": [
     {
       "name": "README.md",
-      "sha256": "7177bde1e13bdb3a6d8320beeee7219ec762f5da2e37e90c6317720d0298b11b"
+      "sha256": "dfe660bbcd9e9842dc32bfd9a7a26e36483d23985e029e0d22d088850c14cc5f"
     },
     {
       "name": "01-solution-design.md",
@@ -12,7 +12,7 @@
     },
     {
       "name": "02-api-contract.md",
-      "sha256": "5a0f7e274cf99ad733825236608eed592d97bc97232208f482c1e1b08e622e9a"
+      "sha256": "954473f1bee60e66ef9a2bc608285d0cbe9a804465241aaf2ab9d704e42fc717"
     },
     {
       "name": "03-downstream-contract.md",
@@ -32,19 +32,23 @@
     },
     {
       "name": "07-decisions-and-evidence.md",
-      "sha256": "e74fcb5b178232c6c32cfaf464302766ef3ef22d4a8a8fbe90d8c4a969d5d889"
+      "sha256": "b1744306b53a9895ea6c23e8265e0675b97d5c88ee463bcab02ef9f303e0c21a"
     },
     {
       "name": "08-frontend-integration.md",
-      "sha256": "23eb3384f889b5b36a79520bf52172b868ad0d8df109b6a26fd292b8a24307ca"
+      "sha256": "cd3380bd857937069f6773306a3c3ac2dc52f975b8d55c37e238a307a311cce5"
     },
     {
       "name": "09-release-and-operations.md",
-      "sha256": "b2d3c19ac45b33a2ab4e782d5a24fe4294c2303a347179922651a44ac6501291"
+      "sha256": "7f1718dc8f285543255e251cee028652ccb3bd7e117db0bb1cf7074d0b741b94"
     },
     {
       "name": "10-as-built-traceability.md",
-      "sha256": "ea564baf9d04721da9348bcd7ef4ea9cfc8698c8e07a9c8fe8e548fa6b65199e"
+      "sha256": "52e532f6d114ecf0cf86d4f4057a4e026389777d971e753f9cf2cd40a9965d69"
+    },
+    {
+      "name": "11-purpose-catalogue.md",
+      "sha256": "96b46f5139651e3ff3012e53fb58aa048998e6481d3774a2e2e655cd0be02f99"
     }
   ]
 }

@@ -14,7 +14,7 @@ Every call uses the existing authenticated browser cookie, the `X-XSRF-TOKEN` he
 
 ## 2. Issuance: POST /api/v1/password-validation
 
-Request body (JSON):
+Request body (JSON). The contents of `operationPayload` depend on the purpose; see [11 Purpose catalogue](11-purpose-catalogue.md):
 
 ```json
 {
@@ -34,11 +34,11 @@ Success (HTTP 200):
 { "success": true, "status": "SUCCESS", "result": { "data": { "token": "<opaque>", "expiresInSeconds": 300 } }, "messages": [], "errors": [] }
 ```
 
-`expiresInSeconds` is the lifetime the server will honour (300 in this release). The server conservatively counts from when it stored the token, so use it as an upper bound.
+`expiresInSeconds` is the lifetime the server will honour. The default is 300 seconds and operations can set it between 30 and 900, so **always use the returned value and never hard-code 300**. The server counts from when it stored the token and reports the lower of the configured lifetime and the remaining session lifetime, so use it as an upper bound.
 
 ## 3. The token
 
-- Opaque, single use, valid for at most 300 seconds.
+- Opaque, single use, valid for at most the configured lifetime (300 seconds by default).
 - Bound to this session, this `Account-Ref`, this purpose and **this exact payload**.
 - One active token per session, account and purpose. Issuing a new token replaces the previous one.
 - The first PUT that presents a valid token **consumes it**, even if the body is malformed, differs from the reviewed payload, or later fails validation. The user must then confirm their password again.

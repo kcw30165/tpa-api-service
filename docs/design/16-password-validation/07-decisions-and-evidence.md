@@ -87,3 +87,11 @@ authorization remain separate; M5 has not begun.
 D20 M5 closes with documentation and one manual scenario script. Run A (commit 96eaacd4) added the `X-Password-Validation-Token` entry to the default CORS allowed headers, blank placeholders to `.env.sample` (with the numeric limits set to their defaults), a test that reads the shipped CORS default, and gate tests. No production behaviour changed in this addendum. Documents 08 (frontend integration), 09 (release and operations) and 10 (as-built traceability) record the delivered behaviour, the final gate register and the open items. D01 to D19 are unchanged.
 
 The "Gate resolution status" notes earlier in this file are superseded by the register in document 09, section 5. Two points are recorded as open decisions and are not resolved here: the token lifetime is a code constant of 300 seconds although the approved wording said "configurable" (open item O-4), and the token binds the submitted "apply to all accounts" flag but not the set of target accounts (G7, open item O-5).
+
+## M5 close-out addendum (v1.14)
+
+D21 Nick decided that "apply to all accounts" does not need a frozen target set. TAS applies an apply-all update to every account bound to the username, including an account that appeared after login, and that is outside the responsibility of this service. The token binds the submitted flag and fields only. Gate G7 and open item O-5 are closed.
+
+D22 Nick decided that the token lifetime must be configurable. Implemented as F1 in commits fdc230b7 and 35f70a5b: setting `password-validation.grant.ttl-seconds` (environment variable `PASSWORD_VALIDATION_GRANT_TTL_SECONDS`), default 300, accepted range 30 to 900 (the range was proposed during review and used as implemented). It is read once at startup. A token keeps the lifetime it was issued with, so existing 300-second grants need no migration. A blank or non-numeric value stops startup with `password-validation.grant.ttl-seconds must be between 30 and 900`; the first F1 commit showed a generic conversion error for a blank value, which the second commit fixed. Open item O-4 is closed.
+
+These two decisions supersede the two open points at the end of the D20 addendum. D01 to D19 are unchanged. F1 was reviewed on its diff; its final gates are tracked as open item O-13 in document 09.

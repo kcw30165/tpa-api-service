@@ -1,11 +1,12 @@
 # Password Validation and Transaction Authorization: design package
 
-Version 1.13. As-built documentation added (frontend integration, release and operations, traceability); requirements unchanged. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
+Version 1.14. As-built documentation added (frontend integration, release and operations, traceability); requirements unchanged. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
 M1.5 approved at `bfbac598d47558a306caa0bbd5b829e19f83d17f`.
 M2 approved at `ec7f1617868b03c0584a026150ffcd988c07bdcc`.
 Status at the end of M5 (as built): M1, M1.5, M2, M3 and M4 are independently approved; the commits are listed in
 09-release-and-operations.md, section 1. Personal Information updates now require a password-validation token.
-Release, deployment and live-environment checks are open; see section 7 of that document. The D18 routing repair
+Release, deployment and live-environment checks are open; see section 7 of that document.
+F1 (configurable token lifetime) is implemented in commits fdc230b7 and 35f70a5b; its final gates are pending. The D18 routing repair
 is recorded in 07-decisions-and-evidence.md.
 Status: final requirements/design baseline for review; no implementation or deployment approval is implied.
 
@@ -34,3 +35,4 @@ archive; this document alone does not certify deployment readiness.
 8. [Frontend integration](08-frontend-integration.md)
 9. [Release and operations](09-release-and-operations.md)
 10. [As-built traceability](10-as-built-traceability.md)
+11. [Purpose catalogue](11-purpose-catalogue.md)
