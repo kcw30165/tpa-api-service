@@ -78,6 +78,12 @@ class RegistrationOtpResendWebMapperTest {
 
     String json = objectMapper.writeValueAsString(response);
     assertThat(json).contains("\"success\":false", "err.registration.message.deliveryFailed");
+    // Item 4 addition (2026-10-28 decision): RegistrationOtpResendWebMapper.java:142 maps
+    // MESSAGE_DELIVERY_FAILED -> WorkflowErrorType.DOWNSTREAM_SYSTEM. Rendered public JSON type
+    // through the real WorkflowMutationResponseMapper.toApiError (descriptor.type().name()).
+    // This existing test asserts via JSON string containment (not a structured lambda), so the
+    // addition matches that same style.
+    assertThat(json).contains("\"type\":\"DOWNSTREAM_SYSTEM\"");
     assertThat(json).doesNotContain("123456", "member@example.com", "SMS content", "email body");
   }
 

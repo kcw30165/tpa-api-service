@@ -227,9 +227,18 @@ class RegistrationOtpVerifyWebMapperTest {
     assertThat(response.errors())
         .singleElement()
         .satisfies(
-            error ->
-                assertThat(error.code())
-                    .isEqualTo(RegistrationOtpVerifyErrorKeys.REGISTRATION_TRUST_LOOKUP_FAILED));
+            error -> {
+              assertThat(error.code())
+                  .isEqualTo(RegistrationOtpVerifyErrorKeys.REGISTRATION_TRUST_LOOKUP_FAILED);
+              // Item 4 addition (2026-10-28 decision): RegistrationOtpVerifyWebMapper.java:144
+              // maps TRUST_LOOKUP_FAILED -> WorkflowErrorType.DOWNSTREAM_SYSTEM. Confirmed real
+              // source: the "system error override" (lines 40-44) only rewrites the top-level
+              // success/status fields - it reuses the SAME errors() list from the real
+              // WorkflowMutationResponseMapper.toMutationResponse(...) call unchanged, so
+              // error.type() still reflects the real toApiError() rendering
+              // (descriptor.type().name()), unaffected by the override.
+              assertThat(error.type()).isEqualTo("DOWNSTREAM_SYSTEM");
+            });
   }
 
   @Test
