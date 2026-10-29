@@ -4,7 +4,9 @@ Status of this document: written at the end of milestone M5. It records what was
 
 ## 1. What is delivered
 
-| Milestone | Scope | Approved commit |
+M0 to M4 were each independently approved at the commits shown. M5 is under review.
+
+| Milestone | Scope | Commit |
 |---|---|---|
 | M0 | Design package | 558a18fd |
 | M1 | Contracts, payload binding, `TRPPwdValidation` adapter, strict single-submission transport | 86eb775c |
@@ -12,7 +14,7 @@ Status of this document: written at the end of milestone M5. It records what was
 | M2 | Username throttle, session-bound grant store, write-point usability guard | ec7f1617 |
 | M3 | `POST /api/v1/password-validation`, route guards, logging protections | 8e870d40 |
 | M4 | Token gate on `PUT /api/v1/personal-information` | c6981630 |
-| M5 Run A | CORS default, `.env.sample`, gate tests | 96eaacd4 |
+| M5 Run A | CORS default, `.env.sample`, gate tests | 96eaacd4 (reviewed on the diff; the Sonar result is still to be confirmed) |
 | M5 documentation | This document set and the scenario script | the commit that adds this file |
 
 ## 2. Release order and rollback
@@ -86,7 +88,7 @@ Signals to watch after release: sustained 429s for one user (a stuck client), a 
 | O-8 | Gateway and log-pipeline check for bodies and the token header | Ops | Yes |
 | O-9 | Confirm the Sonar analysis revision and branch used for the final gate | Nick | Yes |
 | O-10 | Global handling of CSRF failures is still route-local for these two routes; align with the logout shape later | Nick | No |
-| O-11 | Surefire text reports undercount four architecture test classes against the XML reports (7,226 versus 7,234); XML is authoritative | Nick | No |
+| O-11 | Surefire text reports undercount four test classes (three architecture guards and one contract test) against the XML reports (7,226 versus 7,234 tests); XML is authoritative. The Maven console total was reported as 7,244, which the evidence does not explain | Nick | No |
 
 ## 8. Merge request text
 

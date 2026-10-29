@@ -1,13 +1,12 @@
 # Password Validation and Transaction Authorization: design package
 
-Version 1.12. As-built documentation added (frontend integration, release and operations, traceability); requirements unchanged. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
+Version 1.13. As-built documentation added (frontend integration, release and operations, traceability); requirements unchanged. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
 M1.5 approved at `bfbac598d47558a306caa0bbd5b829e19f83d17f`.
 M2 approved at `ec7f1617868b03c0584a026150ffcd988c07bdcc`.
-Nick authorized M3 only (D17): the shared issuance endpoint and confidentiality
-guards. M3 requires independent review. M4 enforcement and all M5 work remain
-unauthorized; existing Personal Information updates do not yet require a grant.
-M3 CHANGES REQUIRED at `eddba8f64aa2d5d9017c913945f2f8d83dc55c1f`:
-D18 repairs routing-equivalent confidentiality matching and explicit filter order.
+Status at the end of M5 (as built): M1, M1.5, M2, M3 and M4 are independently approved; the commits are listed in
+09-release-and-operations.md, section 1. Personal Information updates now require a password-validation token.
+Release, deployment and live-environment checks are open; see section 7 of that document. The D18 routing repair
+is recorded in 07-decisions-and-evidence.md.
 Status: final requirements/design baseline for review; no implementation or deployment approval is implied.
 
 The member confirms a password before submitting reviewed Personal Information changes. One shared BFF endpoint validates that password through TAS/APIM and issues a five-minute, single-use authorization bound to the authenticated session, selected account, purpose, and exact submitted changes. This is password confirmation, not a PIN or OTP feature.
