@@ -5,7 +5,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedAccountRef;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.OperationPayloadBindingPort;
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationGrantService;
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
@@ -18,6 +21,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -42,13 +46,14 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
       PasswordValidationTokenGateWebFilter.class.getName() + ".binding";
   private static final PasswordValidationGrantService.ConsumeResult UNAVAILABLE =
       new PasswordValidationGrantService.ConsumeResult(
-          PasswordValidationGrantService.Status.UNAVAILABLE, null);
+          PasswordValidationGrantService.Status.UNAVAILABLE, null, "SYSTEM_FAILURE");
   private final PasswordValidationGrantService grants;
   private final AuthenticatedSessionCookieReader cookies;
   private final OperationPayloadBindingPort bindings;
   private final ServerCodecConfigurer codecs;
   private final ErrorResponseRenderer renderer;
   private final ObjectMapper json;
+  private final FailureEventPort failures;
 
   public PasswordValidationTokenGateWebFilter(
       PasswordValidationGrantService grants,
@@ -56,13 +61,15 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
       OperationPayloadBindingPort bindings,
       ServerCodecConfigurer codecs,
       ErrorResponseRenderer renderer,
-      ObjectMapper json) {
+      ObjectMapper json,
+      FailureEventPort failures) {
     this.grants = grants;
     this.cookies = cookies;
     this.bindings = bindings;
     this.codecs = codecs;
     this.renderer = renderer;
     this.json = json;
+    this.failures = failures;
   }
 
   @Override
@@ -81,7 +88,8 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
           ApiStatus.BUSINESS_REJECTED,
           "BUSINESS",
           ErrorCodes.MEMBER_CONTEXT_INVALID,
-          List.of());
+          List.of(),
+          "ACCOUNT_REF_MISSING");
     }
     PortalAccessContext context = exchange.getAttribute(PortalAccessContextKeys.ATTRIBUTE_KEY);
     var sessionId = cookies.read(exchange);
@@ -98,11 +106,18 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
           ApiStatus.BUSINESS_REJECTED,
           "AUTHENTICATION_REQUIRED",
           ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED,
-          List.of("PAGE"));
+          List.of("PAGE"),
+          "CONTEXT_MISSING_OR_MISMATCHED");
     }
     var tokens = exchange.getRequest().getHeaders().get(TOKEN_HEADER);
-    if (tokens == null || tokens.size() != 1 || !StringUtils.hasText(tokens.getFirst())) {
-      return rejected(exchange);
+    if (tokens == null || tokens.isEmpty()) {
+      return rejected(exchange, "TOKEN_HEADER_MISSING");
+    }
+    if (tokens.size() != 1) {
+      return rejected(exchange, "TOKEN_HEADER_DUPLICATE");
+    }
+    if (!StringUtils.hasText(tokens.getFirst())) {
+      return rejected(exchange, "TOKEN_HEADER_BLANK");
     }
     String requestId = exchange.getAttribute(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY);
     // Keep technical conversion on consume only, never on controller/update work.
@@ -119,7 +134,8 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
         .flatMap(
             consumed -> {
               if (consumed.status() == PasswordValidationGrantService.Status.REJECTED) {
-                return rejected(exchange);
+                return rejected(
+                    exchange, consumed.reason() == null ? "TOKEN_MALFORMED" : consumed.reason());
               }
               if (consumed.status() != PasswordValidationGrantService.Status.CONSUMED
                   || consumed.binding() == null) {
@@ -129,7 +145,8 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
                     ApiStatus.SYSTEM_ERROR,
                     "SYSTEM",
                     ErrorCodes.PASSWORD_VALIDATION_UNAVAILABLE,
-                    List.of("PAGE"));
+                    List.of("PAGE"),
+                    consumed.reason() == null ? "SYSTEM_FAILURE" : consumed.reason());
               }
               exchange.getAttributes().put(BINDING_ATTRIBUTE, consumed.binding());
               return bindBody(exchange, chain, consumed.binding())
@@ -160,11 +177,12 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
                         ApiStatus.VALIDATION_FAILED,
                         "FIELD",
                         ErrorCodes.REQUEST_INVALID,
-                        List.of("PAGE"))
+                        List.of("PAGE"),
+                        "BODY_INVALID")
                     .then(Mono.empty()))
         .flatMap(
             body -> {
-              if (!expected.matches(body.binding)) return rejected(exchange);
+              if (!expected.matches(body.binding)) return rejected(exchange, "PAYLOAD_MISMATCH");
               var replay =
                   new ServerHttpRequestDecorator(exchange.getRequest()) {
                     @Override
@@ -177,14 +195,15 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
             });
   }
 
-  private Mono<Void> rejected(ServerWebExchange exchange) {
+  private Mono<Void> rejected(ServerWebExchange exchange, String reason) {
     return failure(
         exchange,
         HttpStatus.FORBIDDEN,
         ApiStatus.BUSINESS_REJECTED,
         "BUSINESS",
         ErrorCodes.PASSWORD_VALIDATION_AUTHORIZATION_INVALID,
-        List.of(TOKEN_HEADER));
+        List.of(TOKEN_HEADER),
+        reason);
   }
 
   private Mono<Void> failure(
@@ -193,8 +212,10 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
       ApiStatus status,
       String type,
       String code,
-      List<String> targets) {
+      List<String> targets,
+      String reason) {
     String requestId = exchange.getAttribute(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY);
+    publishFailure(requestId, reason, http.value(), code);
     var response =
         renderer.render(
             http,
@@ -214,6 +235,33 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
                       .wrap(json.writeValueAsBytes(response.getBody()))));
     } catch (JsonProcessingException ignored) {
       return exchange.getResponse().setComplete();
+    }
+  }
+
+  private void publishFailure(String requestId, String reason, int httpStatus, String publicCode) {
+    try {
+      failures.publish(
+          new FailureEvent(
+              "password-validation.authorization.rejected",
+              requestId,
+              "password-validation",
+              "token-gate",
+              httpStatus >= 500 ? FailureOrigin.LOCAL_SYSTEM : FailureOrigin.LOCAL_BUSINESS,
+              reason,
+              publicCode,
+              httpStatus,
+              false,
+              Map.of(
+                  "stage",
+                  "token-gate",
+                  "reason",
+                  reason,
+                  "route",
+                  PasswordValidationRouteMatcher.PERSONAL_INFORMATION_PATH,
+                  "method",
+                  HttpMethod.PUT.name())));
+    } catch (RuntimeException ignored) {
+      // Telemetry must not alter the token-gate response.
     }
   }
 

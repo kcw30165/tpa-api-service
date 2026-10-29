@@ -11,11 +11,11 @@ import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.PasswordCheckPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.RevokeAuthenticatedSessionUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.RevokeActiveAuthenticatedSessionCommand;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import reactor.core.publisher.Mono;
 
 public final class PasswordValidationIssuanceService implements IssuePasswordValidationUseCase {
@@ -61,26 +61,40 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
 
   @Override
   public Mono<PasswordValidationIssuanceResult> issue(PasswordValidationIssuanceCommand command) {
-    return Mono.defer(() -> throttle.check(command.context().actor(), command.correlationId()))
-        .flatMap(
-            decision ->
-                switch (decision.status()) {
-                  case BLOCKED ->
-                      Mono.just(
-                          new PasswordValidationIssuanceResult(
-                              THROTTLED, null, 0, decision.retryAfterSeconds()));
-                  case UNAVAILABLE -> Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
-                  case ADMITTED -> checkPassword(command);
-                })
-        .defaultIfEmpty(PasswordValidationIssuanceResult.of(UNAVAILABLE))
-        .onErrorReturn(PasswordValidationIssuanceResult.of(UNAVAILABLE));
+    return Mono.defer(
+        () -> {
+          AtomicReference<String> reason = new AtomicReference<>("DOWNSTREAM_UNAVAILABLE");
+          return throttle
+              .check(command.context().actor(), command.correlationId())
+              .flatMap(
+                  decision ->
+                      switch (decision.status()) {
+                        case BLOCKED -> {
+                          reason.set("THROTTLED");
+                          yield Mono.just(
+                              new PasswordValidationIssuanceResult(
+                                  THROTTLED, null, 0, decision.retryAfterSeconds()));
+                        }
+                        case UNAVAILABLE ->
+                            Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
+                        case ADMITTED -> checkPassword(command, reason);
+                      })
+              .defaultIfEmpty(PasswordValidationIssuanceResult.of(UNAVAILABLE))
+              .onErrorResume(
+                  failure -> {
+                    reason.set("DOWNSTREAM_UNAVAILABLE");
+                    return Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
+                  })
+              .doOnNext(result -> publishFailure(command, reason.get(), result));
+        });
   }
 
   private Mono<PasswordValidationIssuanceResult> checkPassword(
-      PasswordValidationIssuanceCommand command) {
+      PasswordValidationIssuanceCommand command, AtomicReference<String> reason) {
     var actor = command.context().actor();
     var account = command.context().account();
     if (account == null || account.accountEnv() == null || account.accountEnv().isBlank()) {
+      reason.set("ACCOUNT_ENV_MISSING");
       return Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
     }
     return Mono.defer(
@@ -103,11 +117,34 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
                               command.binding(),
                               check,
                               command.correlationId())
-                          .map(this::issued);
-                  case INCORRECT -> Mono.just(PasswordValidationIssuanceResult.of(INCORRECT));
-                  case ACCOUNT_LOCKED -> invalidate(command);
-                  case CUSTOMER_NOT_REGISTERED, UNAVAILABLE ->
-                      Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
+                          .map(
+                              result -> {
+                                if (result.status()
+                                    == PasswordValidationGrantService.Status.SESSION_NOT_USABLE) {
+                                  reason.set("SESSION_NOT_USABLE");
+                                } else if (result.status()
+                                    != PasswordValidationGrantService.Status.ISSUED) {
+                                  reason.set("GRANT_NOT_ISSUED");
+                                }
+                                var issued = issued(result);
+                                if (issued.status() == UNAVAILABLE) {
+                                  reason.set("GRANT_NOT_ISSUED");
+                                }
+                                return issued;
+                              });
+                  case INCORRECT -> {
+                    reason.set("PASSWORD_INCORRECT");
+                    yield Mono.just(PasswordValidationIssuanceResult.of(INCORRECT));
+                  }
+                  case ACCOUNT_LOCKED -> invalidate(command, reason);
+                  case CUSTOMER_NOT_REGISTERED -> {
+                    reason.set("CUSTOMER_NOT_REGISTERED");
+                    yield Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
+                  }
+                  case UNAVAILABLE -> {
+                    reason.set("DOWNSTREAM_UNAVAILABLE");
+                    yield Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
+                  }
                 });
   }
 
@@ -126,7 +163,7 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
   }
 
   private Mono<PasswordValidationIssuanceResult> invalidate(
-      PasswordValidationIssuanceCommand command) {
+      PasswordValidationIssuanceCommand command, AtomicReference<String> reason) {
     return Mono.defer(
             () ->
                 revocation.revoke(
@@ -137,36 +174,73 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
         .map(
             result ->
                 switch (result.status()) {
-                  case LOGGED_OUT, REVOKED, EXPIRED, NOT_FOUND ->
-                      PasswordValidationIssuanceResult.of(LOCKED);
-                  case ACTIVE, FAILED -> PasswordValidationIssuanceResult.of(LOCK_CLEANUP_FAILED);
+                  case LOGGED_OUT, REVOKED, EXPIRED, NOT_FOUND -> {
+                    reason.set("ACCOUNT_LOCKED");
+                    yield PasswordValidationIssuanceResult.of(LOCKED);
+                  }
+                  case ACTIVE, FAILED -> {
+                    reason.set("REVOCATION_FAILED");
+                    yield PasswordValidationIssuanceResult.of(LOCK_CLEANUP_FAILED);
+                  }
                 })
         .defaultIfEmpty(PasswordValidationIssuanceResult.of(LOCK_CLEANUP_FAILED))
-        .onErrorReturn(PasswordValidationIssuanceResult.of(LOCK_CLEANUP_FAILED))
         .doOnNext(
             result -> {
               if (result.status() == LOCK_CLEANUP_FAILED) {
-                publishInvalidationFailure(command.correlationId());
+                reason.set("REVOCATION_FAILED");
               }
+            })
+        .onErrorResume(
+            failure -> {
+              reason.set("REVOCATION_FAILED");
+              return Mono.just(PasswordValidationIssuanceResult.of(LOCK_CLEANUP_FAILED));
             });
   }
 
-  private void publishInvalidationFailure(String correlationId) {
+  private void publishFailure(
+      PasswordValidationIssuanceCommand command,
+      String reason,
+      PasswordValidationIssuanceResult result) {
+    if (result.status() == ISSUED) {
+      return;
+    }
+    FailureOrigin origin =
+        switch (reason) {
+          case "THROTTLED", "PASSWORD_INCORRECT", "ACCOUNT_LOCKED", "SESSION_NOT_USABLE" ->
+              FailureOrigin.LOCAL_BUSINESS;
+          case "CUSTOMER_NOT_REGISTERED" -> FailureOrigin.DOWNSTREAM_BUSINESS;
+          default -> FailureOrigin.LOCAL_SYSTEM;
+        };
+    String event =
+        reason.equals("REVOCATION_FAILED")
+            ? "password-validation.invalidation.failed"
+            : "password-validation.issue.rejected";
     try {
       failures.publish(
           new FailureEvent(
-              "password-validation.invalidation.failed",
-              correlationId,
+              event,
+              command.correlationId(),
               "password-validation",
               "issue",
-              FailureOrigin.LOCAL_SYSTEM,
-              "SESSION_INVALIDATION_FAILED",
-              ErrorCodes.PASSWORD_VALIDATION_UNAVAILABLE,
-              503,
+              origin,
+              reason,
+              null,
+              httpStatus(result.status()),
               false,
-              Map.of()));
+              Map.of("stage", "issuance", "reason", reason)));
     } catch (RuntimeException ignored) {
-      // Telemetry must not prevent the caller from clearing the session cookie.
+      // Telemetry must not change the issuance response.
     }
+  }
+
+  private static int httpStatus(PasswordValidationIssuanceResult.Status status) {
+    return switch (status) {
+      case INCORRECT -> 401;
+      case LOCKED -> 423;
+      case THROTTLED -> 429;
+      case AUTHENTICATION_REQUIRED -> 401;
+      case ISSUED -> 200;
+      case LOCK_CLEANUP_FAILED, UNAVAILABLE -> 503;
+    };
   }
 }

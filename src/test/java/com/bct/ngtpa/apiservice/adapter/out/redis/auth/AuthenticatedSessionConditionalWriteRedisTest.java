@@ -988,22 +988,31 @@ class AuthenticatedSessionConditionalWriteRedisTest {
   void missingAccountMalformedBindingAndFutureGrantVersionNeverAuthorizeOrMutate() {
     seedGrants();
     var unowned = new AuthenticatedAccountRef("acc_012345678901234567890123");
+    var unownedResult = grants().consume(ID, unowned, PURPOSE, "A".repeat(43), "test").block();
+    assertThat(unownedResult.status()).isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(unownedResult.reason()).isEqualTo("ACCOUNT_NOT_IN_SESSION");
+    var absentGrant = grants().consume(ID, ACCOUNT, PURPOSE, "A".repeat(43), "test").block();
+    assertThat(absentGrant.status()).isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(absentGrant.reason()).isEqualTo("NO_GRANT");
     assertThat(issueGrant(unowned).status())
         .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
     var issued = issueGrant(ACCOUNT);
-    assertThat(grants().consume(ID, unowned, PURPOSE, issued.token(), "test").block().status())
-        .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(grants().consume(ID, unowned, PURPOSE, issued.token(), "test").block().reason())
+        .isEqualTo("ACCOUNT_NOT_IN_SESSION");
     for (String encoded :
         List.of("invalid", stored().featureState().get(grantKey(ACCOUNT)).replace("|1|", "|2|"))) {
       concurrency
           .updateIfUsable(ID, s -> s.withFeatureState(grantKey(ACCOUNT), encoded), "test")
           .block();
       commands.clear();
-      assertThat(grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block().status())
+      var result = grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block();
+      assertThat(result.status())
           .isEqualTo(
               encoded.equals("invalid")
                   ? PasswordValidationGrantService.Status.UNAVAILABLE
                   : PasswordValidationGrantService.Status.REJECTED);
+      assertThat(result.reason())
+          .isEqualTo(encoded.equals("invalid") ? "STATE_UNREADABLE" : "VERSION_UNSUPPORTED");
       assertThat(commands).isEmpty();
       assertThat(stored().featureState()).containsEntry(grantKey(ACCOUNT), encoded);
     }
@@ -1019,10 +1028,14 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     assertThat(previous.split("\\|", -1)).hasSize(5);
     var second = issueGrant(ACCOUNT);
     issueGrant(OTHER_ACCOUNT);
-    assertThat(grants().consume(ID, ACCOUNT, PURPOSE, first.token(), "test").block().status())
-        .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
-    assertThat(grants().consume(ID, ACCOUNT, PURPOSE, second.token(), "test").block().status())
-        .isEqualTo(PasswordValidationGrantService.Status.CONSUMED);
+    var replaced = grants().consume(ID, ACCOUNT, PURPOSE, first.token(), "test").block();
+    assertThat(replaced.status()).isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(replaced.reason()).isEqualTo("TOKEN_MISMATCH");
+    var consumed = grants().consume(ID, ACCOUNT, PURPOSE, second.token(), "test").block();
+    assertThat(consumed.status()).isEqualTo(PasswordValidationGrantService.Status.CONSUMED);
+    assertThat(consumed.reason()).isNull();
+    assertThat(grants().consume(ID, ACCOUNT, PURPOSE, second.token(), "test").block().reason())
+        .isEqualTo("ALREADY_CONSUMED");
     assertThat(stored().featureState())
         .containsEntry("unrelated", "keep")
         .containsEntry("password-validation:" + ACCOUNT.value() + ":FUTURE_UNSUPPORTED", "sentinel")
@@ -1052,16 +1065,25 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     var issued = issueGrant(ACCOUNT);
     String before = stored().featureState().get(grantKey(ACCOUNT));
     commands.clear();
-    assertThat(grants().consume(ID, ACCOUNT, PURPOSE, "x".repeat(43), "test").block().status())
-        .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    var malformed = grants().consume(ID, ACCOUNT, PURPOSE, "x", "test").block();
+    assertThat(malformed.reason()).isEqualTo("TOKEN_MALFORMED");
+    var wrongToken = grants().consume(ID, ACCOUNT, PURPOSE, "x".repeat(43), "test").block();
+    assertThat(wrongToken.status()).isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(wrongToken.reason()).isEqualTo("TOKEN_MISMATCH");
     assertThat(
             grants().consume(ID, OTHER_ACCOUNT, PURPOSE, issued.token(), "test").block().status())
         .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(
+            grants().consume(ID, OTHER_ACCOUNT, PURPOSE, issued.token(), "test").block().reason())
+        .isEqualTo("NO_GRANT");
     assertThat(grants().consume(ID, ACCOUNT, null, issued.token(), "test").block().status())
         .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
     var missing = new AuthenticatedSessionId("sid_zyxwvutsrqponmlkjihgfedc");
-    assertThat(grants().consume(missing, ACCOUNT, PURPOSE, issued.token(), "test").block().status())
+    var missingSession =
+        grants().consume(missing, ACCOUNT, PURPOSE, issued.token(), "test").block();
+    assertThat(missingSession.status())
         .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+    assertThat(missingSession.reason()).isEqualTo("SESSION_NOT_FOUND");
     assertThat(
             grants()
                 .issue(
@@ -1076,6 +1098,20 @@ class AuthenticatedSessionConditionalWriteRedisTest {
         .isEqualTo(PasswordValidationGrantService.Status.REJECTED);
     assertThat(commands).isEmpty();
     assertThat(stored().featureState()).containsEntry(grantKey(ACCOUNT), before);
+  }
+
+  @Test
+  void retryAfterRevisionConflictUsesTheLastEligibilityReason() {
+    seedGrants();
+    var issued = issueGrant(ACCOUNT);
+    beforeWrite.set(() -> grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "inner"));
+
+    var result = grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "outer").block();
+
+    assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(result.reason()).isEqualTo("ALREADY_CONSUMED");
+    assertThat(outcomes).contains(AuthenticatedSessionCasUpdateOutcome.REVISION_MISMATCH);
+    assertThat(stored().featureState()).containsEntry(grantKey(ACCOUNT), "consumed");
   }
 
   @Test
@@ -1126,7 +1162,21 @@ class AuthenticatedSessionConditionalWriteRedisTest {
             elapsedMillis < 300000
                 ? PasswordValidationGrantService.Status.CONSUMED
                 : PasswordValidationGrantService.Status.REJECTED);
+    assertThat(result.reason()).isEqualTo(elapsedMillis < 300000 ? null : "EXPIRED");
     assertThat(stored().featureState()).containsEntry("unrelated", "keep");
+  }
+
+  @Test
+  void grantIssuedAfterCurrentTimeIsNotYetValid() {
+    seedGrants();
+    var issued = issueGrant(ACCOUNT);
+    Instant issuedAt = issued.expiresAt().minusSeconds(300);
+    clock.now = issuedAt.minusMillis(1);
+
+    var result = grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block();
+
+    assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.REJECTED);
+    assertThat(result.reason()).isEqualTo("NOT_YET_VALID");
   }
 
   @ParameterizedTest
@@ -1142,8 +1192,9 @@ class AuthenticatedSessionConditionalWriteRedisTest {
     }
     terminal(terminalStatus).block();
     assertThat(issueGrant(ACCOUNT).status()).extracting(Enum::name).isEqualTo("SESSION_NOT_USABLE");
-    assertThat(grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block().status())
-        .isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+    var consumed = grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block();
+    assertThat(consumed.status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
+    assertThat(consumed.reason()).isEqualTo("SESSION_NOT_USABLE");
     assertThat(stored().status()).isEqualTo(terminalStatus);
   }
 
@@ -1192,6 +1243,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
       var result = grants().consume(ID, ACCOUNT, PURPOSE, issued.token(), "test").block();
       assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
       assertThat(result.binding()).isNull();
+      assertThat(result.reason()).isEqualTo("TimeoutException");
       assertThat(stored().featureState()).containsEntry(grantKey(ACCOUNT), "consumed");
     } else {
       var result = issueGrant(ACCOUNT);
@@ -1245,6 +1297,7 @@ class AuthenticatedSessionConditionalWriteRedisTest {
         dispatches.incrementAndGet();
       assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.UNAVAILABLE);
       assertThat(result.binding()).isNull();
+      assertThat(result.reason()).isEqualTo("REVISION_CONFLICT_EXHAUSTED");
     } else {
       var result =
           grants

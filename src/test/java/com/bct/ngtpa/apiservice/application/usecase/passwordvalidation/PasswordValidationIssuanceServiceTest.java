@@ -103,7 +103,9 @@ class PasswordValidationIssuanceServiceTest {
     verify(failures).publish(event.capture());
     assertThat(event.getValue().event()).isEqualTo("password-validation.invalidation.failed");
     assertThat(event.getValue().httpStatus()).isEqualTo(503);
-    assertThat(event.getValue().safeDimensions()).isEmpty();
+    assertThat(event.getValue().safeDimensions())
+        .containsEntry("stage", "issuance")
+        .containsEntry("reason", "REVOCATION_FAILED");
     assertThat(event.getValue().toString())
         .doesNotContain("private-marker", "actor-marker", "unchanged-marker");
   }

@@ -66,6 +66,7 @@ class PasswordValidationHttpTest {
   private Backend backend;
   private Logger root;
   private ListAppender<ILoggingEvent> logs;
+  private int failureEventCount;
 
   @BeforeAll
   void start() {
@@ -110,6 +111,7 @@ class PasswordValidationHttpTest {
     logs = new ListAppender<>();
     logs.start();
     root.addAppender(logs);
+    failureEventCount = 0;
   }
 
   @AfterEach
@@ -176,6 +178,7 @@ class PasswordValidationHttpTest {
     backend.resolvedAccountOverride =
         new AccountContext(REF, accountEnv, "p", "c", "t", null, null, null);
     failure(post(body("x")), 503, "SYSTEM_ERROR", "err.password-validation.unavailable");
+    assertIssuanceReason("ACCOUNT_ENV_MISSING");
     assertThat(backend.passwordCalls).hasValue(0);
     assertThat(backend.grantAttempts).hasValue(0);
   }
@@ -188,16 +191,25 @@ class PasswordValidationHttpTest {
     String prior = issueToken();
     String state = backend.session().featureState().get(grantKey());
     backend.check.set(command -> Mono.just(outcome));
+    String password = outcome == PasswordCheckResult.INCORRECT ? "password-secret-marker" : "x";
     int status = outcome == PasswordCheckResult.INCORRECT ? 401 : 503;
     String code =
         outcome == PasswordCheckResult.INCORRECT
             ? "err.password-validation.password.invalid"
             : "err.password-validation.unavailable";
     failure(
-        post(body("x")),
+        post(body(password)),
         status,
         outcome == PasswordCheckResult.INCORRECT ? "BUSINESS_REJECTED" : "SYSTEM_ERROR",
         code);
+    assertIssuanceReason(
+        switch (outcome) {
+          case INCORRECT -> "PASSWORD_INCORRECT";
+          case CUSTOMER_NOT_REGISTERED -> "CUSTOMER_NOT_REGISTERED";
+          case UNAVAILABLE -> "DOWNSTREAM_UNAVAILABLE";
+          default -> throw new AssertionError(outcome);
+        });
+    if (outcome == PasswordCheckResult.INCORRECT) assertSafeLogs(password);
     assertThat(backend.passwordCalls).hasValue(2);
     assertThat(backend.session().featureState()).containsEntry(grantKey(), state);
     assertThat(
@@ -227,6 +239,7 @@ class PasswordValidationHttpTest {
             failRevocation
                 ? "err.password-validation.unavailable"
                 : "err.password-validation.account.locked");
+    assertIssuanceReason(failRevocation ? "REVOCATION_FAILED" : "ACCOUNT_LOCKED");
     var cookie = result.getResponseCookies().getFirst("portal_sid");
     assertThat(cookie).isNotNull();
     assertThat(cookie.getValue()).isEmpty();
@@ -246,18 +259,25 @@ class PasswordValidationHttpTest {
   }
 
   @Test
-  void eleventhStructurallyValidRequestIsThrottledAndMalformedRequestsDoNotCount() {
+  void eleventhStructurallyValidRequestIsThrottledAndMalformedRequestsDoNotCount()
+      throws Exception {
     backend.check.set(command -> Mono.just(PasswordCheckResult.INCORRECT));
     for (int i = 0; i < 10; i++) {
-      failure(post("{}"), 400, "VALIDATION_FAILED", "err.password-validation.request.invalid");
+      var invalid =
+          failure(post("{}"), 400, "VALIDATION_FAILED", "err.password-validation.request.invalid");
+      assertIssuanceReason(
+          "REQUEST_INVALID",
+          JSON.readTree(invalid.getResponseBody()).at("/errors/0/targets/0").asText());
       failure(
           post(body("x")), 401, "BUSINESS_REJECTED", "err.password-validation.password.invalid");
+      assertIssuanceReason("PASSWORD_INCORRECT");
     }
     failure(
         post(body("x")).expectHeader().valueEquals(HttpHeaders.RETRY_AFTER, "60"),
         429,
         "BUSINESS_REJECTED",
         "err.password-validation.rate-limited");
+    assertIssuanceReason("THROTTLED");
     assertThat(backend.passwordCalls).hasValue(10);
     assertThat(backend.limiterCalls).hasValue(11);
   }
@@ -266,6 +286,7 @@ class PasswordValidationHttpTest {
   void limiterFailureFailsClosedBeforeDownstream() {
     backend.failLimiter = true;
     failure(post(body("x")), 503, "SYSTEM_ERROR", "err.password-validation.unavailable");
+    assertIssuanceReason("DOWNSTREAM_UNAVAILABLE");
     assertThat(backend.passwordCalls).hasValue(0);
     assertThat(backend.limiterCalls).hasValue(1);
   }
@@ -289,6 +310,13 @@ class PasswordValidationHttpTest {
         fault.equals("session-gone")
             ? "err.security.authentication.required"
             : "err.password-validation.unavailable");
+    assertIssuanceReason(
+        switch (fault) {
+          case "session-gone" -> "SESSION_NOT_USABLE";
+          case "grant-error", "grant-conflict", "grant-lost-ack" -> "GRANT_NOT_ISSUED";
+          case "downstream-error", "downstream-empty" -> "DOWNSTREAM_UNAVAILABLE";
+          default -> throw new AssertionError(fault);
+        });
     assertThat(backend.passwordCalls).hasValue(1);
     int expectedAttempts =
         switch (fault) {
@@ -316,8 +344,12 @@ class PasswordValidationHttpTest {
         "{\"password\":\"x\",\"purpose\":\"PERSONAL_INFORMATION_UPDATE\",\"operationPayload\":{\"fields\":{}}}",
         "{\"password\":\"x\",\"purpose\":\"PERSONAL_INFORMATION_UPDATE\",\"operationPayload\":{\"formVersion\":\"v1\",\"applyToAllAccounts\":\"false\",\"fields\":{\"x\":1}}}"
       })
-  void invalidEnvelopeOrStructureIsRejectedBeforeThrottle(String raw) {
-    failure(post(raw), 400, "VALIDATION_FAILED", "err.password-validation.request.invalid");
+  void invalidEnvelopeOrStructureIsRejectedBeforeThrottle(String raw) throws Exception {
+    var result =
+        failure(post(raw), 400, "VALIDATION_FAILED", "err.password-validation.request.invalid");
+    assertIssuanceReason(
+        "REQUEST_INVALID",
+        JSON.readTree(result.getResponseBody()).at("/errors/0/targets/0").asText());
     assertThat(backend.limiterCalls).hasValue(0);
     assertThat(backend.passwordCalls).hasValue(0);
     assertSafeLogs();
@@ -653,11 +685,43 @@ class PasswordValidationHttpTest {
             "Mixed Case",
             "authenticated-actor-marker",
             SID,
+            REF,
+            "DB",
             "reviewed-marker",
             "header-marker",
             "requestBody",
             "responseBody");
     for (String value : additional) assertThat(text).doesNotContain(value);
+  }
+
+  private void assertIssuanceReason(String reason) {
+    assertIssuanceReason(reason, null);
+  }
+
+  private void assertIssuanceReason(String reason, String target) {
+    var lines =
+        logs.list.stream()
+            .map(ILoggingEvent::getFormattedMessage)
+            .filter(
+                line ->
+                    line.contains("\"event\":\"password-validation.issue.rejected\"")
+                        || line.contains("\"event\":\"password-validation.invalidation.failed\""))
+            .toList();
+    var newLines = lines.subList(failureEventCount, lines.size());
+    failureEventCount = lines.size();
+    assertThat(newLines)
+        .singleElement()
+        .satisfies(
+            line -> {
+              assertThat(line)
+                  .contains(
+                      "\"reason\":\"" + reason + "\"",
+                      "\"stage\":\"issuance\"",
+                      "\"requestId\":\"m3-http\"");
+              if (target != null) {
+                assertThat(line).contains("\"target\":\"" + target + "\"");
+              }
+            });
   }
 
   private static String body(String password) {
@@ -970,12 +1034,18 @@ class PasswordValidationHttpTest {
         public Mono<PortalAccessContext> resolvePortalAccessContext(String ref, String sid) {
           return resolver
               .resolvePortalAccessContext(ref, sid)
-              .map(
+              .flatMap(
                   resolved ->
-                      backend.resolvedAccountOverride == null
-                          ? resolved
-                          : new PortalAccessContext(
-                              resolved.actor(), backend.resolvedAccountOverride));
+                      backend
+                          .afterPortalContextResolved
+                          .apply(resolved)
+                          .thenReturn(
+                              backend.portalOverride != null
+                                  ? backend.portalOverride
+                                  : backend.resolvedAccountOverride == null
+                                      ? resolved
+                                      : new PortalAccessContext(
+                                          resolved.actor(), backend.resolvedAccountOverride)));
         }
       };
     }
@@ -999,6 +1069,9 @@ class PasswordValidationHttpTest {
     volatile boolean failTerminal;
     volatile String fault = "";
     volatile AccountContext resolvedAccountOverride;
+    volatile PortalAccessContext portalOverride;
+    volatile Function<PortalAccessContext, Mono<Void>> afterPortalContextResolved =
+        ignored -> Mono.empty();
 
     Backend() {
       when(sessions.load(any()))
@@ -1061,6 +1134,8 @@ class PasswordValidationHttpTest {
       failTerminal = false;
       fault = "";
       resolvedAccountOverride = null;
+      portalOverride = null;
+      afterPortalContextResolved = ignored -> Mono.empty();
       lastCheck.set(null);
       check.set(command -> Mono.just(PasswordCheckResult.CORRECT));
     }

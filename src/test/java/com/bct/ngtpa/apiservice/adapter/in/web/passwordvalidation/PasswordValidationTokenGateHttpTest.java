@@ -182,6 +182,11 @@ class PasswordValidationTokenGateHttpTest {
             "decoder-secret-marker",
             "consume-secret-marker",
             SID,
+            OTHER_SID,
+            REF,
+            OTHER_REF,
+            "DB",
+            "A".repeat(43),
             "authenticated-actor-marker",
             bindings.digest(PAYLOAD).sha256());
     if (confidentialRoute) assertThat(text).doesNotContain("requestBody", "responseBody");
@@ -224,6 +229,8 @@ class PasswordValidationTokenGateHttpTest {
         .isEqualTo(
             "{\"success\":true,\"status\":\"UPDATED\",\"result\":null,\"messages\":[],\"errors\":[]}"
                 .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    assertThat(logText())
+        .doesNotContain("\"event\":\"password-validation.authorization.rejected\"");
     assertThat(dispatches).hasValue(1);
     assertThat(downstream).hasValue(1);
     assertConsumed();
@@ -243,7 +250,10 @@ class PasswordValidationTokenGateHttpTest {
         "malformed",
         "wrong",
         "wrong-account",
+        "account-not-in-session",
         "wrong-session",
+        "unsupported",
+        "future",
         "expired",
         "consumed",
         "missing-grant"
@@ -261,12 +271,35 @@ class PasswordValidationTokenGateHttpTest {
       case "wrong" -> request.header(TOKEN, "A".repeat(43));
       case "wrong-account" ->
           request = request(PATH, SID, OTHER_REF, "csrf-fixture").header(TOKEN, token);
+      case "account-not-in-session" -> {
+        context.getBean(PasswordValidationHttpTest.Backend.class).afterPortalContextResolved =
+            ignored ->
+                Mono.<Void>fromRunnable(() -> fixture.removeAccount(SID, REF))
+                    .subscribeOn(Schedulers.boundedElastic());
+        request.header(TOKEN, token);
+      }
       case "wrong-session" ->
           request = request(PATH, OTHER_SID, REF, "csrf-fixture").header(TOKEN, token);
+      case "unsupported" -> {
+        original = original.replace("|1|", "|2|");
+        fixture.write(fixture.load(SID).withFeatureState(GRANT_KEY, original));
+        request.header(TOKEN, token);
+      }
+      case "future" -> {
+        String encoded = fixture.load(SID).featureState().get(GRANT_KEY);
+        String[] parts = encoded.split("\\|", -1);
+        long futureIssuedAt = Long.parseLong(parts[3]) + 1_000;
+        parts[3] = Long.toString(futureIssuedAt);
+        parts[4] = Long.toString(futureIssuedAt + 300_000);
+        original = String.join("|", parts);
+        fixture.write(fixture.load(SID).withFeatureState(GRANT_KEY, original));
+        request.header(TOKEN, token);
+      }
       case "expired" -> {
         fixture.clock.offset = Duration.ofSeconds(300);
         request.header(TOKEN, token);
       }
+
       case "consumed" -> {
         consume(token);
         request.header(TOKEN, token);
@@ -278,11 +311,163 @@ class PasswordValidationTokenGateHttpTest {
       default -> throw new AssertionError(row);
     }
     reject(request.bodyValue(PAYLOAD).exchange(), 403, "BUSINESS_REJECTED", authorizationCode());
+    assertReasonLine(
+        switch (row) {
+          case "missing" -> "TOKEN_HEADER_MISSING";
+          case "blank" -> "TOKEN_HEADER_BLANK";
+          case "duplicate" -> "TOKEN_HEADER_DUPLICATE";
+          case "comma", "malformed" -> "TOKEN_MALFORMED";
+          case "wrong" -> "TOKEN_MISMATCH";
+          case "wrong-account", "wrong-session" -> "NO_GRANT";
+          case "account-not-in-session" -> "ACCOUNT_NOT_IN_SESSION";
+          case "unsupported" -> "VERSION_UNSUPPORTED";
+          case "future" -> "NOT_YET_VALID";
+          case "expired" -> "EXPIRED";
+          case "consumed" -> "ALREADY_CONSUMED";
+          case "missing-grant" -> "NO_GRANT";
+          default -> throw new AssertionError(row);
+        });
+    assertThat(logText()).doesNotContain(token);
     assertNoDispatch();
     assertThat(fixture.bodySubscriptions).hasValue(0);
     if (!Set.of("consumed", "missing-grant").contains(row)) {
       assertThat(fixture.load(SID).featureState()).containsEntry(GRANT_KEY, original);
     }
+  }
+
+  @Test
+  void everyForbiddenTokenRejectionKeepsTheSameHttpContract() {
+    EntityExchangeResult<byte[]> baseline = null;
+    for (String row :
+        List.of(
+            "missing",
+            "blank",
+            "duplicate",
+            "malformed",
+            "wrong",
+            "account-not-in-session",
+            "unsupported",
+            "future",
+            "expired",
+            "consumed",
+            "missing-grant",
+            "payload-mismatch")) {
+      fixture.reset();
+      String token = issue(PAYLOAD);
+      var request = request(PATH, SID, REF, "csrf-fixture");
+      String body = PAYLOAD;
+      switch (row) {
+        case "missing" -> {}
+        case "blank" -> request.header(TOKEN, "");
+        case "duplicate" -> request.header(TOKEN, token, token);
+        case "malformed" -> request.header(TOKEN, "not-a-token");
+        case "wrong" -> request.header(TOKEN, "A".repeat(43));
+        case "account-not-in-session" -> {
+          context.getBean(PasswordValidationHttpTest.Backend.class).afterPortalContextResolved =
+              ignored ->
+                  Mono.<Void>fromRunnable(() -> fixture.removeAccount(SID, REF))
+                      .subscribeOn(Schedulers.boundedElastic());
+          request.header(TOKEN, token);
+        }
+        case "unsupported" -> {
+          String encoded = fixture.load(SID).featureState().get(GRANT_KEY).replace("|1|", "|2|");
+          fixture.write(fixture.load(SID).withFeatureState(GRANT_KEY, encoded));
+          request.header(TOKEN, token);
+        }
+        case "future" -> {
+          String encoded = fixture.load(SID).featureState().get(GRANT_KEY);
+          String[] parts = encoded.split("\\|", -1);
+          long futureIssuedAt = Long.parseLong(parts[3]) + 1_000;
+          parts[3] = Long.toString(futureIssuedAt);
+          parts[4] = Long.toString(futureIssuedAt + 300_000);
+          fixture.write(fixture.load(SID).withFeatureState(GRANT_KEY, String.join("|", parts)));
+          request.header(TOKEN, token);
+        }
+        case "expired" -> {
+          fixture.clock.offset = Duration.ofSeconds(300);
+          request.header(TOKEN, token);
+        }
+        case "consumed" -> {
+          consume(token);
+          request.header(TOKEN, token);
+        }
+        case "missing-grant" -> {
+          fixture.reset();
+          request.header(TOKEN, token);
+        }
+        case "payload-mismatch" -> {
+          request.header(TOKEN, token);
+          body = PAYLOAD.replace("reviewed-marker", "changed");
+        }
+        default -> throw new AssertionError(row);
+      }
+      var result =
+          request
+              .header(RequestCorrelation.REQUEST_ID_HEADER, "m4-http")
+              .bodyValue(body)
+              .exchange()
+              .expectStatus()
+              .isForbidden()
+              .expectBody()
+              .returnResult();
+      assertThat(logText()).doesNotContain(token);
+      if (baseline == null) {
+        baseline = result;
+      } else {
+        assertThat(result.getStatus()).isEqualTo(baseline.getStatus());
+        assertThat(result.getResponseBody()).isEqualTo(baseline.getResponseBody());
+        assertThat(headersWithoutRequestId(result.getResponseHeaders()))
+            .isEqualTo(headersWithoutRequestId(baseline.getResponseHeaders()));
+      }
+    }
+  }
+
+  @Test
+  void missingAccountRefIsLoggedBeforeAnyTokenCheck() {
+    reject(
+        request(PATH, SID, null, "csrf-fixture")
+            .header(TOKEN, "A".repeat(43))
+            .bodyValue(PAYLOAD)
+            .exchange(),
+        400,
+        "BUSINESS_REJECTED",
+        "err.member.context.invalid");
+    assertReasonLine("ACCOUNT_REF_MISSING");
+    assertNoDispatch();
+  }
+
+  @Test
+  void missingSessionContextIsLoggedBeforeAnyTokenCheck() {
+    context.getBean(PasswordValidationHttpTest.Backend.class).portalOverride =
+        new PortalAccessContext(null, null);
+    reject(
+        request(PATH, SID, REF, "csrf-fixture")
+            .header(TOKEN, "A".repeat(43))
+            .bodyValue(PAYLOAD)
+            .exchange(),
+        401,
+        "BUSINESS_REJECTED",
+        "err.security.authentication.required");
+    assertReasonLine("CONTEXT_MISSING_OR_MISMATCHED");
+    assertNoDispatch();
+  }
+
+  @Test
+  void mismatchedResolvedContextIsLoggedBeforeAnyTokenCheck() {
+    context.getBean(PasswordValidationHttpTest.Backend.class).portalOverride =
+        new PortalAccessContext(
+            new ActorContext("test-actor", ActorUserRole.ROLE_USER_MBR),
+            new AccountContext(OTHER_REF, "DB", "p", "c", "t", null, null, null));
+    reject(
+        request(PATH, SID, REF, "csrf-fixture")
+            .header(TOKEN, "A".repeat(43))
+            .bodyValue(PAYLOAD)
+            .exchange(),
+        401,
+        "BUSINESS_REJECTED",
+        "err.security.authentication.required");
+    assertReasonLine("CONTEXT_MISSING_OR_MISMATCHED");
+    assertNoDispatch();
   }
 
   @ParameterizedTest
@@ -299,6 +484,15 @@ class PasswordValidationTokenGateHttpTest {
         503,
         "SYSTEM_ERROR",
         "err.password-validation.unavailable");
+    assertReasonLine(
+        switch (fault) {
+          case "error" -> "IllegalStateException";
+          case "empty", "system" -> "SYSTEM_FAILURE";
+          case "conflict" -> "REVISION_CONFLICT_EXHAUSTED";
+          case "lost-ack" -> "TimeoutException";
+          case "corrupt" -> "STATE_UNREADABLE";
+          default -> throw new AssertionError(fault);
+        });
     assertNoDispatch();
     assertThat(fixture.bodySubscriptions).hasValue(0);
     assertThat(fixture.consumeWrites.get())
@@ -340,9 +534,12 @@ class PasswordValidationTokenGateHttpTest {
           default -> PAYLOAD.replace("reviewed-marker", "a".repeat(300_000));
         };
     reject(put(PATH, raw, token), 400, "VALIDATION_FAILED", "err.request.invalid");
+    assertReasonLine("BODY_INVALID");
     assertConsumed();
     assertNoDispatch();
+    logs.list.clear();
     reject(put(PATH, PAYLOAD, token), 403, "BUSINESS_REJECTED", authorizationCode());
+    assertReasonLine("ALREADY_CONSUMED");
   }
 
   @Test
@@ -403,6 +600,7 @@ class PasswordValidationTokenGateHttpTest {
         };
     String token = issue(reviewed);
     reject(put(PATH, submitted, token), 403, "BUSINESS_REJECTED", authorizationCode());
+    assertReasonLine("PAYLOAD_MISMATCH");
     assertConsumed();
     assertNoDispatch();
   }
@@ -732,6 +930,37 @@ class PasswordValidationTokenGateHttpTest {
         .collect(java.util.stream.Collectors.joining("\n"));
   }
 
+  private void assertReasonLine(String reason) {
+    var lines =
+        logs.list.stream()
+            .map(ILoggingEvent::getFormattedMessage)
+            .filter(
+                line -> line.contains("\"event\":\"password-validation.authorization.rejected\""))
+            .toList();
+    assertThat(lines)
+        .singleElement()
+        .satisfies(
+            line ->
+                assertThat(line)
+                    .contains(
+                        "\"reason\":\"" + reason + "\"",
+                        "\"stage\":\"token-gate\"",
+                        "\"requestId\":\"m4-http\"",
+                        "\"route\":\"" + PATH + "\"",
+                        "\"method\":\"PUT\""));
+  }
+
+  private static HttpHeaders headersWithoutRequestId(HttpHeaders source) {
+    HttpHeaders headers = new HttpHeaders();
+    source.forEach(
+        (name, values) -> {
+          if (!RequestCorrelation.REQUEST_ID_HEADER.equalsIgnoreCase(name)) {
+            headers.put(name, values);
+          }
+        });
+    return headers;
+  }
+
   @Configuration
   @Profile("m4-token-gate-test")
   @Import({
@@ -967,6 +1196,26 @@ class PasswordValidationTokenGateHttpTest {
           .opsForValue()
           .set(key(protectedSession.authenticatedSessionId()), json, Duration.ofSeconds(600))
           .block();
+    }
+
+    void removeAccount(String id, String accountRef) {
+      AuthenticatedSession session = load(id);
+      write(
+          new AuthenticatedSession(
+              session.authenticatedSessionId(),
+              session.actorContext(),
+              session.accounts().stream()
+                  .filter(account -> !account.accountRef().value().equals(accountRef))
+                  .toList(),
+              session.status(),
+              session.csrfTokenHash(),
+              session.createdAt(),
+              session.lastAccessedAt(),
+              session.idleExpiresAt(),
+              session.absoluteExpiresAt(),
+              session.revision(),
+              session.fundPriceModeMetadata(),
+              session.featureState()));
     }
 
     AuthenticatedSession load(String id) {

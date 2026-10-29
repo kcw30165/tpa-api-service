@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayloadCanonicalizer;
 import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationGrantService;
 import com.bct.ngtpa.apiservice.shared.web.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,7 +49,8 @@ class PasswordValidationTokenGateWebFilterTest {
             bindings,
             ServerCodecConfigurer.create(),
             new ErrorResponseRenderer(),
-            json);
+            json,
+            mock(FailureEventPort.class));
     when(cookies.read(any()))
         .thenReturn(Optional.of(new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx")));
     when(grants.consume(any(), any(), any(), any(), any()))

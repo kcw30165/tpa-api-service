@@ -31,10 +31,14 @@ public final class PasswordValidationGrantService {
     }
   }
 
-  public record ConsumeResult(Status status, PayloadDigest binding) {
+  public record ConsumeResult(Status status, PayloadDigest binding, String reason) {
+    public ConsumeResult(Status status, PayloadDigest binding) {
+      this(status, binding, null);
+    }
+
     @Override
     public String toString() {
-      return "ConsumeResult[status=" + status + ", binding=<redacted>]";
+      return "ConsumeResult[status=" + status + ", binding=<redacted>, reason=" + reason + "]";
     }
   }
 
@@ -43,9 +47,6 @@ public final class PasswordValidationGrantService {
       new IssueResult(Status.UNAVAILABLE, null, null);
   private static final IssueResult ISSUE_SESSION_NOT_USABLE =
       new IssueResult(Status.SESSION_NOT_USABLE, null, null);
-  private static final ConsumeResult CONSUME_REJECTED = new ConsumeResult(Status.REJECTED, null);
-  private static final ConsumeResult CONSUME_UNAVAILABLE =
-      new ConsumeResult(Status.UNAVAILABLE, null);
   private static final int CANONICALIZER_VERSION = 1;
   public static final int DEFAULT_TTL_SECONDS = 300;
   private static final int MIN_TTL_SECONDS = 30;
@@ -135,34 +136,59 @@ public final class PasswordValidationGrantService {
       String correlationId) {
     return Mono.defer(
             () -> {
-              if (sessionId == null
-                  || account == null
-                  || purpose == null
-                  || token == null
-                  || !token.matches("[A-Za-z0-9_-]{43}")) {
-                return Mono.just(CONSUME_REJECTED);
+              if (sessionId == null || account == null || purpose == null) {
+                return Mono.just(rejected("ACCOUNT_NOT_IN_SESSION"));
+              }
+              if (token == null || !token.matches("[A-Za-z0-9_-]{43}")) {
+                return Mono.just(rejected("TOKEN_MALFORMED"));
               }
               String key = scopeKey(account, purpose);
               String digest = tokenDigest(token);
               AtomicReference<PayloadDigest> consumed = new AtomicReference<>();
+              AtomicReference<String> rejectionReason = new AtomicReference<>();
               return concurrency
                   .updateIfUsableGuarded(
                       sessionId,
                       (session, now) -> {
-                        if (session.findAccount(account).isEmpty()) return false;
+                        rejectionReason.set(null);
+                        if (session.findAccount(account).isEmpty()) {
+                          rejectionReason.set("ACCOUNT_NOT_IN_SESSION");
+                          return false;
+                        }
                         String encoded = session.featureState().get(key);
+                        if (encoded == null) {
+                          rejectionReason.set("NO_GRANT");
+                          return false;
+                        }
+                        if (encoded.equals("consumed")) {
+                          rejectionReason.set("ALREADY_CONSUMED");
+                          return false;
+                        }
                         var grant = PasswordValidationGrant.decode(encoded);
-                        if (grant == null && encoded != null && !encoded.equals("consumed")) {
+                        if (grant == null) {
+                          rejectionReason.set("STATE_UNREADABLE");
                           throw new IllegalStateException(
                               "Password-validation grant state unavailable");
                         }
-                        return grant != null
-                            && grant.binding().version() == CANONICALIZER_VERSION
-                            && !now.isBefore(grant.issuedAt())
-                            && now.isBefore(grant.expiresAt())
-                            && MessageDigest.isEqual(
-                                digest.getBytes(StandardCharsets.US_ASCII),
-                                grant.tokenDigest().getBytes(StandardCharsets.US_ASCII));
+                        if (grant.binding().version() != CANONICALIZER_VERSION) {
+                          rejectionReason.set("VERSION_UNSUPPORTED");
+                          return false;
+                        }
+                        if (now.isBefore(grant.issuedAt())) {
+                          rejectionReason.set("NOT_YET_VALID");
+                          return false;
+                        }
+                        if (!now.isBefore(grant.expiresAt())) {
+                          rejectionReason.set("EXPIRED");
+                          return false;
+                        }
+                        if (!MessageDigest.isEqual(
+                            digest.getBytes(StandardCharsets.US_ASCII),
+                            grant.tokenDigest().getBytes(StandardCharsets.US_ASCII))) {
+                          rejectionReason.set("TOKEN_MISMATCH");
+                          return false;
+                        }
+                        return true;
                       },
                       (session, now) -> {
                         consumed.set(
@@ -175,13 +201,33 @@ public final class PasswordValidationGrantService {
                   .map(
                       result ->
                           switch (result.outcome()) {
-                            case APPLIED -> new ConsumeResult(Status.CONSUMED, consumed.get());
-                            case UNCHANGED -> CONSUME_REJECTED;
-                            default -> CONSUME_UNAVAILABLE;
+                            case APPLIED ->
+                                new ConsumeResult(Status.CONSUMED, consumed.get(), null);
+                            case UNCHANGED ->
+                                rejected(
+                                    Objects.requireNonNullElse(
+                                        rejectionReason.get(), "SYSTEM_FAILURE"));
+                            default -> unavailable(result.outcome().name());
                           });
             })
-        .defaultIfEmpty(CONSUME_UNAVAILABLE)
-        .onErrorReturn(CONSUME_UNAVAILABLE);
+        .defaultIfEmpty(unavailable("SYSTEM_FAILURE"))
+        .onErrorResume(
+            failure ->
+                Mono.just(
+                    unavailable(
+                        failure instanceof IllegalStateException
+                                && "Password-validation grant state unavailable"
+                                    .equals(failure.getMessage())
+                            ? "STATE_UNREADABLE"
+                            : failure.getClass().getSimpleName())));
+  }
+
+  private static ConsumeResult rejected(String reason) {
+    return new ConsumeResult(Status.REJECTED, null, reason);
+  }
+
+  private static ConsumeResult unavailable(String reason) {
+    return new ConsumeResult(Status.UNAVAILABLE, null, reason);
   }
 
   private static String scopeKey(
