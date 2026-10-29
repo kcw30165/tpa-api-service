@@ -15,8 +15,17 @@ public class PasswordValidationConfig {
   @Bean
   PasswordValidationGrantService passwordValidationGrantService(
       AuthenticatedSessionConcurrencyService concurrency,
-      @Value("${password-validation.grant.ttl-seconds:300}") int ttlSeconds) {
-    return new PasswordValidationGrantService(concurrency, ttlSeconds);
+      @Value("${password-validation.grant.ttl-seconds:300}") String ttlSeconds) {
+    return new PasswordValidationGrantService(concurrency, parseTtlSeconds(ttlSeconds));
+  }
+
+  private static int parseTtlSeconds(String value) {
+    try {
+      return Integer.parseInt(value.trim());
+    } catch (NumberFormatException exception) {
+      throw new IllegalArgumentException(
+          "password-validation.grant.ttl-seconds must be between 30 and 900");
+    }
   }
 
   @Bean

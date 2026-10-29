@@ -111,6 +111,21 @@ class PasswordValidationConfigTest {
   }
 
   @Test
+  void blankOrNonNumericGrantTtlFailsStartupWithTheSupportedRangeMessage() {
+    for (String ttl : List.of("", " ", "abc", "1.5")) {
+      context
+          .withPropertyValues("password-validation.grant.ttl-seconds=" + ttl)
+          .run(
+              c -> {
+                assertThat(c).hasFailed();
+                assertThat(c.getStartupFailure())
+                    .hasStackTraceContaining(
+                        "password-validation.grant.ttl-seconds must be between 30 and 900");
+              });
+    }
+  }
+
+  @Test
   void environmentVariableOverridesTheDefaultGrantTtl() {
     context
         .withInitializer(

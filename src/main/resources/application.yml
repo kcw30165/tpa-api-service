@@ -2,6 +2,8 @@ server:
   port: ${SERVER_PORT:8888}
 
 password-validation:
+  grant:
+    ttl-seconds: ${PASSWORD_VALIDATION_GRANT_TTL_SECONDS:300}
   rate-limit:
     secret: ${PASSWORD_VALIDATION_RATE_LIMIT_SECRET:}
     max-attempts: ${PASSWORD_VALIDATION_RATE_LIMIT_MAX_ATTEMPTS:10}
