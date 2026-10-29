@@ -101,7 +101,7 @@
 - **Idempotency replay:** Yes -- Forgot Password complete
 - **Origin tag today:** none
 - **Proposed FailureOrigin (section 3):** FailureOrigin.DOWNSTREAM_CONTRACT
-- **Public HTTP status:** n/a -- its downstream handling by ForgotPasswordCompleteProtectedOperation was not traced 
+- **Public HTTP status:** not characterized (deferred, pending Nick's Test B decision) 
 - **Public ApiStatus:** n/a
 - **Public error code/type:** n/a
 - **Citation:** ApimForgotPasswordCompletionAdapter.java:52-60; ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest.complete_emptyButPresentResponse_returnsTechnicalFailureResult
@@ -127,7 +127,7 @@
 - **Detection site:** `ApimForgotPasswordCompletionAdapter.java:74-81`
 - **Handling:** `.onErrorMap(this::safeFailure)` (line 59) -- but confirmed this is reached only when the upstream throwable is NOT already an `ApimException` (line 75's `if (t instanceof ApimException) return t;` guard means a facade-raised HTTP-error `ApimException` is returned UNCHANGED by `safeFailure`, not re-wrapped). Either way (unchanged facade `ApimException`, or a freshly-wrapped `ApimException(INTERNAL_SERVER_ERROR, ...)` for a non-`ApimException` cause), the result still reaches `ForgotPasswordCompleteProtectedOperation.invoke`'s `.onErrorResume(ignored -> blockUnknown(...))` (line 135) and is swallowed into `unknownOutcome()`.
 - **Message policy:** N/A -- ultimately swallowed by `ForgotPasswordCompleteProtectedOperation`
-- **Ordered log lines:** `apim.exchange.failed` ERROR (genuine Mono error via the facade's HTTP-error path). ApimForgotPasswordCompletionAdapter is confirmed `@LogExecution`-annotated (unfiltered grep, 10-class list). .onErrorMap(this::safeFailure) rethrows (does not swallow) an ApimException inside complete()'s own chain, so complete()'s Mono emits onError and the aspect logs method.execution.error ERROR with full stack trace (ExecutionLoggingAspect.java:161-170) -- confirmed by ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest.unexpectedFailureLogsStartThenErrorWithStackTrace (representative non-crypto, unexpected-failure scenario).
+- **Ordered log lines:** `apim.exchange.failed` ERROR (genuine Mono error via the facade's HTTP-error path). ApimForgotPasswordCompletionAdapter is confirmed `@LogExecution`-annotated (unfiltered grep, 10-class list). .onErrorMap(this::safeFailure) rethrows (does not swallow) an ApimException inside complete()'s own chain, so complete()'s Mono emits onError and the aspect logs method.execution.error ERROR with full stack trace (ExecutionLoggingAspect.java:161-170) -- confirmed by ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest.unexpectedFailureLogsStartThenErrorWithStackTrace (representative non-crypto, unexpected-failure scenario). NOTE: this specific sub-path - safeFailure returning a facade-raised ApimException UNCHANGED (line 75's guard) rather than freshly wrapping a non-ApimException cause - is NOT independently pinned by a dedicated test; the cited test is representative/non-specific to this exact sub-case.
 - **Idempotency replay:** Yes
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_TRANSPORT`
@@ -186,13 +186,13 @@
 - **Detection site:** usernamerecovery/mapper/TrpSearchMemberApimResultMapper.java lines 43-46 (recognized `err.tpa.member.not.found` -> `Status.NOT_FOUND`) and lines 51-54 (empty items, no err-message -> `Status.NOT_FOUND`); routed by UsernameRecoveryStartProtectedOperation.java lines 121-124 (`case NOT_FOUND -> ... Outcome.MEMBER_NOT_FOUND`); rendered by UsernameRecoveryStartResponsePolicy.java lines 44-53 (`case MEMBER_NOT_FOUND -> MutationResponse.failure(ApiStatus.BUSINESS_REJECTED, ..., formError(UsernameRecoveryErrorKey.VERIFICATION_FAILED.value(), ...))`)
 - **Handling:** returned as a normal lookup result (`Status.NOT_FOUND`), never an exception; no FailureEvent is published anywhere in this chain; no `method.execution.*` line fires (none of TrpSearchMemberAdapter, UsernameRecoveryStartProtectedOperation, or UsernameRecoveryStartResponsePolicy is `@LogExecution`-annotated or matches the broad `*Service.execute(..)` pointcut). **Confirmed by real DEV evidence, 2026-10-28, requestId 35eeecac-5b0b-4e08-b5da-fb51023be1ad**, not merely traced from source.
 - **Message policy:** N/A -- normal result value, not an ExceptionMapping
-- **Ordered log lines (confirmed from real DEV evidence, exact sequence and levels):** (1) http.request.start INFO (RequestLoggingWebFilter); (2) apim.business.rejected WARN (ApimExchangeOutcomeLogger, errMessage=err.tpa.member.not.found, path=/ws/NGTPA/v1/TRPSearchMember) -- this WARN line fires only for the recognized-err-message entry point, since it originates in the executor's own envelope classifier before the mapper runs; the empty-items entry point would not produce this line, since an empty-but-successful envelope is not a business rejection at the executor's classifier level; (3) http.request.failed WARN (RequestLoggingWebFilter, status=422). No ERROR line, no FailureEvent, no method.execution.* line at any point in this chain for either entry point.
+- **Ordered log lines (confirmed from real DEV evidence, exact sequence and levels):** (1) http.request.start INFO (RequestLoggingWebFilter); (2) apim.business.rejected WARN (ApimExchangeOutcomeLogger, errMessage=err.tpa.member.not.found, path=/ws/NGTPA/v1/TRPSearchMember) -- this WARN line fires only for the recognized-err-message entry point, since it originates in the executor's own envelope classifier before the mapper runs; the empty-items entry point would not produce this line, since an empty-but-successful envelope is not a business rejection at the executor's classifier level; (3) http.request.failed WARN (RequestLoggingWebFilter, status=422). No ERROR line, no FailureEvent, no method.execution.* line at any point in this chain for either entry point. These 3 log lines (INFO/WARN/WARN, no ERROR) are DEV-evidenced only (requestId 35eeecac-5b0b-4e08-b5da-fb51023be1ad) - NOT pinned by any automated test.
 - **Idempotency replay:** Yes -- Username Recovery start is idempotency-protected (IdempotentStartUsernameRecoveryService)
 - **Origin tag today:** none
 - **Proposed FailureOrigin (section 3):** FailureOrigin.DOWNSTREAM_BUSINESS
-- **Public HTTP status:** 422 (CONFIRMED by real DEV evidence; also consistent with the ApiStatus.BUSINESS_REJECTED -> HttpStatus.UNPROCESSABLE_ENTITY pattern confirmed elsewhere in this doc for every other *HttpResponses/*ResponsePolicy class, though UsernameRecoveryHttpResponses's own source was not independently dumped in this pass to confirm the literal mapping for this specific class)
+- **Public HTTP status:** 422 (CONFIRMED by real DEV evidence and by real passing tests: HttpStatusClassificationTest confirms HttpStatusClassification.classify(ApiStatus.BUSINESS_REJECTED) -> HttpStatus.UNPROCESSABLE_ENTITY; AuthUsernameRecoveryControllerTest.startMemberNotFoundReturns422WithoutAnyCookie asserts 422 exactly for this condition.)
 - **Public ApiStatus:** BUSINESS_REJECTED (CONFIRMED: UsernameRecoveryStartResponsePolicy.java line 47)
-- **Public error code/type:** UsernameRecoveryErrorKey.VERIFICATION_FAILED.value(), via UsernameRecoveryWorkflowMapping.formError(...) (UsernameRecoveryStartResponsePolicy.java lines 50-53). The exact public ApiError.type string produced by formError(...) was NOT independently confirmed in this pass (UsernameRecoveryWorkflowMapping's own source was not dumped) - likely "FORM" by the naming convention used elsewhere in this doc, but not verified.
+- **Public error code/type:** UsernameRecoveryErrorKey.VERIFICATION_FAILED.value(), via UsernameRecoveryWorkflowMapping.formError(...) (UsernameRecoveryStartResponsePolicy.java lines 50-53). The public ApiError.type string is CONFIRMED "FORM" (UsernameRecoveryWorkflowMappingTest.formErrorProducesFormTypeErrorWithDefaultSeverity).
 - **Citation:** usernamerecovery/mapper/TrpSearchMemberApimResultMapper.java:34-56; UsernameRecoveryStartProtectedOperation.java:101-128; UsernameRecoveryStartResponsePolicy.java:31-65; DEV log evidence 2026-10-28 requestId 35eeecac-5b0b-4e08-b5da-fb51023be1ad
 
 
@@ -221,7 +221,7 @@
 - **Idempotency replay:** Yes
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_INVALID_RESPONSE`
-- **Public HTTP status:** UNVERIFIED (same reason)
+- **Public HTTP status:** 503 (CONFIRMED - same routing as the unrecognized-err-message row above: this condition is grouped with CONTRACT_INVALID/UNKNOWN_OUTCOME at UsernameRecoveryStartProtectedOperation.java:125, all mapping uniformly through UsernameRecoveryStartException.systemFailure() to the SAME ApiStatus.SYSTEM_ERROR -> HttpStatusClassification.classify(...) -> HttpStatus.SERVICE_UNAVAILABLE routing. Cited: AuthUsernameRecoveryControllerTest.startSystemFailureReturns503WithoutAnyCookie; UsernameRecoveryStartProtectedOperation.java:125.)
 - **Public ApiStatus:** `SYSTEM_ERROR`
 - **Public error code/type:** `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()`
 - **Citation:** `TrpSearchMemberAdapter.java:48-56`; `UsernameRecoveryStartProtectedOperation.java:71-98`
@@ -236,7 +236,7 @@
 - **Idempotency replay:** Yes -- Login start is idempotency-protected
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
-- **Public HTTP status:** 502. `mapper.failure(UNAVAILABLE)` -> `LoginStartWebMapper.toMutationResponse` `case UNAVAILABLE ->` (lines 61-63): `failure(ApiStatus.SYSTEM_ERROR, LoginErrorKey.CREDENTIALS_UNAVAILABLE.value(), "DOWNSTREAM")`. `LoginHttpResponses.statusForCode` (lines 31-55) has no explicit branch for `CREDENTIALS_UNAVAILABLE`, so it falls through to `status()`'s generic `ApiStatus.SYSTEM_ERROR -> HttpStatus.BAD_GATEWAY` (line 22, `LoginHttpResponses.java:22`).
+- **Public HTTP status:** 502. `mapper.failure(UNAVAILABLE)` -> `LoginStartWebMapper.toMutationResponse` `case UNAVAILABLE ->` (lines 61-63): `failure(ApiStatus.SYSTEM_ERROR, LoginErrorKey.CREDENTIALS_UNAVAILABLE.value(), "DOWNSTREAM")`. LoginHttpResponses.statusForCode has an EXPLICIT branch for CREDENTIALS_UNAVAILABLE (CONFIRMED, LoginHttpResponses.java:43: `if (code.equals(LoginErrorKey.CREDENTIALS_UNAVAILABLE.value())) return HttpStatus.BAD_GATEWAY;`), checked before the generic ApiStatus.SYSTEM_ERROR -> HttpStatus.BAD_GATEWAY fallback (line 22) ever runs - the FINAL public status (502) is unchanged, but it is reached via this explicit, code-specific branch, not the generic fallback (corrected mechanism, earlier text was wrong on this point).
 - **Public ApiStatus:** `SYSTEM_ERROR`
 - **Public error code/type:** `LoginErrorKey.CREDENTIALS_UNAVAILABLE.value()` (`LoginStartWebMapper.java:61-63`)
 - **Citation:** `TrpMemberLoginAdapter.java:30-40`; `SharedApimTrpMemberLoginTransport.java:27-45`; `LoginController.java:49-80`; `LoginStartWebMapper.java:10-65`; `LoginHttpResponses.java:11-55`
@@ -282,8 +282,8 @@
 - **Origin tag today:** none
 - **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_TRANSPORT`
 - **Public HTTP status:** n/a -- swallowed to `unavailable()`
-- **Public ApiStatus:** n/a
-- **Public error code/type:** n/a
+- **Public ApiStatus:** SYSTEM_ERROR
+- **Public error code/type:** "FORM" / LoginErrorKey.ACCOUNT_LIST_UNAVAILABLE.value() = "err.login.accountList.unavailable" (source "BFF")
 - **Citation:** `TrpGetAccountListAdapter.java:26-33`; `ApimWebClientFacade.java:212-241`
 
 ### Account Balance -- ApimAccountBalanceSourceAdapter (TRPGetMemberAccBal)
