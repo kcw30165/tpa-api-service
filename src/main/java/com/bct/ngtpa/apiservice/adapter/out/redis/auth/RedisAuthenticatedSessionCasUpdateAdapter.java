@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionCasUpdateResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSession;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionCasUpdatePort;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.core.io.ClassPathResource;
@@ -30,7 +31,11 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
 
   private static final String CAPABILITY = "auth:authenticated-session";
 
-  private static final DefaultRedisScript<Long> UPDATE_IF_CURRENT = script();
+  private static final DefaultRedisScript<Long> UPDATE_IF_CURRENT = script("update-if-current.lua");
+  private static final DefaultRedisScript<Long> UPDATE_UNTIL =
+      script("update-if-current-until.lua");
+  private static final DefaultRedisScript<Long> UPDATE_GUARDED =
+      script("update-if-current-guarded.lua");
 
   private final ReactiveStringRedisTemplate redis;
   private final RedisCacheKeyFactory keys;
@@ -55,11 +60,24 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
       AuthenticatedSessionCasUpdateCommand command) {
     Objects.requireNonNull(command, "command must not be null");
     String key = keys.key(CAPABILITY, command.authenticatedSessionId().value());
+    Instant deadline =
+        command.usableUntil() == null ? command.expiryDeadline() : command.usableUntil();
+    DefaultRedisScript<Long> selected = UPDATE_IF_CURRENT;
+    if (command.usableUntil() != null) {
+      selected = UPDATE_GUARDED;
+    } else if (command.expiryDeadline() != null) {
+      selected = UPDATE_UNTIL;
+    }
+    List<String> arguments =
+        deadline == null
+            ? List.of(
+                command.expectedRevision().value(), serializedReplacementWithRevision(command))
+            : List.of(
+                command.expectedRevision().value(),
+                serializedReplacementWithRevision(command),
+                Long.toString(deadline.toEpochMilli()));
     return redis
-        .execute(
-            UPDATE_IF_CURRENT,
-            List.of(key),
-            List.of(command.expectedRevision().value(), serializedReplacementWithRevision(command)))
+        .execute(selected, List.of(key), arguments)
         .next()
         .map(code -> AuthenticatedSessionCasUpdateResult.of(mapCode(code)))
         .defaultIfEmpty(
@@ -106,13 +124,14 @@ public final class RedisAuthenticatedSessionCasUpdateAdapter
       case -1 -> AuthenticatedSessionCasUpdateOutcome.NOT_FOUND;
       case -2 -> AuthenticatedSessionCasUpdateOutcome.REVISION_MISSING;
       case -3 -> AuthenticatedSessionCasUpdateOutcome.CORRUPT_STATE;
+      case -5 -> AuthenticatedSessionCasUpdateOutcome.USABILITY_EXPIRED;
       default -> AuthenticatedSessionCasUpdateOutcome.SYSTEM_FAILURE;
     };
   }
 
-  private static DefaultRedisScript<Long> script() {
+  private static DefaultRedisScript<Long> script(String filename) {
     var s = new DefaultRedisScript<Long>();
-    s.setLocation(new ClassPathResource("redis/authenticated-session/update-if-current.lua"));
+    s.setLocation(new ClassPathResource("redis/authenticated-session/" + filename));
     s.setResultType(Long.class);
     return s;
   }

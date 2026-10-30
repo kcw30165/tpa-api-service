@@ -275,6 +275,45 @@ Events must use correlation IDs, not security tokens or session identifiers.
 - Concurrent authenticated touches and logout
 - Old-tab request after replacement
 
+The shared-session prerequisite has an opt-in real-Redis suite:
+`AuthenticatedSessionConditionalWriteRedisTest`. Supply
+`-Dm15.redis.server=/absolute/path/to/redis-server`; if needed, supply
+`-Dm15.redis.libraryPath=/absolute/path/to/shared/libraries`. It starts a dedicated
+loopback process on a free port, disables persistence, uses only synthetic
+sessions, and terminates that process after the suite. It never uses the
+application's Redis configuration. Without the binary property the suite is
+skipped; milestone evidence must explicitly enable it.
+
+The suite forces interleavings before the actual CAS script, rather than relying
+on thread scheduling: terminal-write versus usable mutation, touch versus each
+terminal state, and touch versus an independent feature tombstone. It reads
+actual PTTL and exact PEXPIRETIME for sliding extension, terminal shortening,
+absolute cap and preserve-current writes. Redis TIME barriers cover delayed and
+elapsed commands; clock changes cover retry deadlines and negative skew. Lost
+acknowledgement injection after an applied write proves fail-closed/no retry.
+Actual CSRF rotation and both cache services are exercised together to prove
+unrelated featureState and expiry preservation.
+
+This suite was introduced against isolated Redis 8.0.5. PEXPIRETIME is used by
+the test oracle only, not by production scripts. The production scripts use
+TIME/PEXPIREAT atomically and require operationally synchronized Redis/application
+clocks. The repository does not pin the deployed Redis version; verify the
+supported deployment version and Sentinel/mTLS/failover separately rather than
+equating the isolated suite with deployment certification.
+
+The M1.5 contention regression batches twelve concurrent touches at the actual
+CAS boundary, then waits for every Redis result in a round before releasing
+retries. With twelve/eleven/ten competing requests over three rounds, only three
+touch writes apply, thirty conflict, and nine requests necessarily exhaust:
+all twelve must return ACTIVE by observing still-usable current state. Variants
+commit logout/revoke/discovered expiry or a feature-state mutation before the
+final CAS batch. Terminal state cannot be restored; applied feature state must
+be present in the exhausted requests' fresh observations. Additional final-load
+fixtures cover expired ACTIVE, missing/corrupt records and load errors.
+Explicit exhaustion tests retain FAILED for logout/revoke and the shared
+REVISION_CONFLICT_EXHAUSTED/no-session contract for existing usable mutations.
+No technical/uncertain-write error is treated as touch contention.
+
 ### 5.6 Redis and protection tests
 
 - PII-safe key format

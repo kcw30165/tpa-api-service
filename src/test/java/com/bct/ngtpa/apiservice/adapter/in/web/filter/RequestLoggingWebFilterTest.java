@@ -35,6 +35,108 @@ class RequestLoggingWebFilterTest {
   private ListAppender<ILoggingEvent> listAppender;
   private RequestLoggingWebFilter filter;
 
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({
+    "POST,/api/v1/password-validation",
+    "POST,/api/v1/password-validation;x=1",
+    "POST,/api/v1/%70assword-validation",
+    "PUT,/api/v1/personal-information",
+    "PUT,/api/v1/personal-information;x=1",
+    "PUT,/api/v1/%70ersonal-information"
+  })
+  void confidentialFailureTextIsNeverLogged(String method, String path) {
+    var exchange =
+        exchange(
+            MockServerHttpRequest.method(
+                    org.springframework.http.HttpMethod.valueOf(method), java.net.URI.create(path))
+                .build());
+    StepVerifier.create(
+            filter.filter(
+                exchange,
+                ex -> Mono.error(new IllegalStateException("confidential-failure-marker"))))
+        .expectError(IllegalStateException.class)
+        .verify();
+    assertFalse(
+        listAppender.list.getLast().getFormattedMessage().contains("confidential-failure-marker"));
+    assertFalse(parseJson(listAppender.list.getLast().getFormattedMessage()).has("errorMessage"));
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({
+    "POST,/api/v1/password-validation",
+    "POST,/api/v1/password-validation;x=1",
+    "POST,/api/v1/%70assword-validation",
+    "PUT,/api/v1/personal-information",
+    "PUT,/api/v1/personal-information;x=1",
+    "PUT,/api/v1/%70ersonal-information"
+  })
+  void confidentialBodiesAreNeverLoggedEvenWithWildcardOptIn(String method, String path) {
+    var props = enabledProperties();
+    props.getBodyLogging().setEnabled(true);
+    props.setLogHeaders(true);
+    props.setHeaderAllowlist(List.of("X-Password-Validation-Token"));
+    var rule = new RequestLoggingProperties.EndpointRule();
+    rule.setMethod(method);
+    rule.setPathPattern("/api/v1/**");
+    rule.setLogRequestBody(true);
+    rule.setLogResponseBody(true);
+    props.getBodyLogging().getEndpoints().add(rule);
+    var exchange =
+        exchange(
+            MockServerHttpRequest.method(
+                    org.springframework.http.HttpMethod.valueOf(method), java.net.URI.create(path))
+                .header("x-password-validation-token", "confidential-header-marker")
+                .body("confidential-body-marker"));
+    var guarded = new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER);
+    guarded
+        .filter(
+            exchange,
+            ex -> {
+              ex.getResponse()
+                  .getHeaders()
+                  .setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+              return ex.getResponse()
+                  .writeWith(
+                      Mono.just(
+                          ex.getResponse()
+                              .bufferFactory()
+                              .wrap("confidential-response-marker".getBytes())));
+            })
+        .block();
+    for (var event : listAppender.list) {
+      var json = parseJson(event.getFormattedMessage());
+      assertFalse(json.has("requestBody"));
+      assertFalse(json.has("responseBody"));
+      assertFalse(event.getFormattedMessage().contains("confidential-body-marker"));
+      assertFalse(event.getFormattedMessage().contains("confidential-response-marker"));
+      assertFalse(event.getFormattedMessage().contains("confidential-header-marker"));
+    }
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(
+      strings = {
+        "X-Password-Validation-Token",
+        "x-password-validation-token",
+        "X-PASSWORD-VALIDATION-TOKEN"
+      })
+  void confidentialHeaderIsExcludedRegardlessOfAllowlistAndCase(String header) {
+    var props = enabledProperties();
+    props.setLogHeaders(true);
+    props.setHeaderAllowlist(List.of(header, "Accept"));
+    var exchange =
+        exchange(
+            MockServerHttpRequest.get("/api/test")
+                .header(header, "confidential-header-marker")
+                .header("Accept", "application/json")
+                .build());
+    run(new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER), exchange);
+    var headers = parseJson(listAppender.list.getFirst().getFormattedMessage()).get("headers");
+    assertEquals(1, headers.size());
+    assertEquals("application/json", headers.get("Accept").asText());
+    assertFalse(headers.has(header));
+  }
+
   @BeforeEach
   void setUp() {
     logger = (Logger) LoggerFactory.getLogger(RequestLoggingWebFilter.class);

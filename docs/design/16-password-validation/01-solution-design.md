@@ -1,0 +1,402 @@
+# 01 Solution design
+
+## 1. Approved scope
+One POST /api/v1/password-validation endpoint. Initially the only supported purpose is PERSONAL_INFORMATION_UPDATE. Change of Investment and Switch Fund are future consumers, not implemented or accepted purposes now. Protect existing PUT /api/v1/personal-information. GET remains unchanged. Preserve existing update response and downstream update semantics.
+
+Approved binding: authenticated session + selected Account-Ref + purpose + exact reviewed operation payload. A token expires after 300 seconds, is not renewable, and is consumed on the first authenticated submission, even if JSON is malformed, payload differs, or subsequent validation fails. One active token per session/account/purpose; successful replacement invalidates the previous token. Different scopes may coexist.
+
+## 2. Identity and reuse
+E1 findings: LoginOtpVerifyService constructs ActorContext from context.normalizedUsername(); ActorContext.actorUserId therefore carries that login value in the captured code. AuthenticatedSessionAccount contains account routing/details, not a separate username. Reuse CurrentPortalAccessContextResolver after session/CSRF/account authorization; do not accept cust-id from FE or add an Account-Ref-only lookup. This finding is specific to the captured commit; recheck at implementation HEAD. Do not rename or broaden ActorContext as part of this feature.
+
+Reuse existing authenticated session validation, account ownership resolution, cookie writer, APIM executor/crypto/profile routing, Redis key factory and failure rendering. Existing CAS capability is a candidate, not proof that token lifecycle is already supported. Proposed new application capabilities: password-validation use case, downstream password-validation port, authorization-grant store, payload-binding service and purpose registry. Names are design roles, not mandated existing classes.
+
+## 3. Issuance sequence
+1. Enforce required authenticated transport and account authorization; no body logging.
+2. Decode bounded JSON, validate supported purpose, password presence/login length bounds, and operation payload structure. Do not trim or change password case. No registration complexity policy.
+3. Apply username-wide throttling, shared across sessions, accounts and purposes. Default 10 admitted requests in a 60-second window. Redis failure fails closed with 503.
+4. Calculate a versioned binding over the complete operation payload; do not accept an FE hash as authoritative.
+5. Call TRPPwdValidation once with server-resolved cust-id and unchanged password. No automatic retry or token issuance on uncertain response.
+6. For success, generate an opaque random token and atomically replace the grant for this scope, only while the session remains usable. Return the token only after storage succeeds. Expiry starts at committed issuance, not password-request arrival.
+7. For wrong password, do not replace an existing grant. For account locked, clear cookie and attempt current-session invalidation; issue no token.
+
+Operation structure is checked at issuance to ensure a bindable supported request. Existing YAML/access/business validation remains authoritative at mutation time; successful issuance is not a promise that the update will be accepted.
+
+## 4. Consumption sequence
+Use a purpose-specific protected-route gate for PUT /api/v1/personal-information. Purpose comes from the route, never a mutation-body override.
+1. Require authenticated session, CSRF and selected account. Missing/invalid ownership must not consume another scope's grant.
+2. Read exactly one X-Password-Validation-Token header.
+3. Atomically check current grant, token digest, scope and expiry, and delete it. No read-then-delete race. A wrong token must not delete the valid current grant.
+4. Carry the consumed grant's binding in request-local state only. Do not log it.
+5. Decode JSON; malformed/empty/invalid body returns 400 with grant already consumed.
+6. Recalculate and compare binding. A mismatch returns 403 with grant already consumed.
+7. Run existing structural/YAML/access validation, including cache refresh behavior. Preserve existing errors and update result contract.
+8. Dispatch the existing update once through its existing orchestration. No new result-replay capability or automatic resubmission is introduced.
+
+The gate must execute before body decoding and must not depend on a controller @RequestBody having been parsed. A downstream business rejection or technical failure never restores a consumed token.
+
+## 5. Payload equality specification (authored technical design)
+Use a shared versioned canonicalizer on issuance and mutation raw JSON trees, before lossy DTO mapping. Include formVersion, applyToAllAccounts and the entire fields object, including any submitted keys. Exclude password, token, transport headers and envelope purpose from operationPayload itself; purpose and scope are separately bound.
+
+Object member order is irrelevant recursively. Array order is significant. Strings compare by decoded Unicode content without trimming, case folding or Unicode normalization. Types remain distinct: string, number, boolean, null, array, object. Absent differs from explicit null. Reject duplicate JSON object members, non-JSON numeric values and trailing content. Numeric design: compare exact decimal values, so 1 and 1.0 are equal, but neither equals "1". Avoid binary floating-point conversion. Freeze canonicalizer version and test vectors; changing it invalidates old grants rather than interpreting them differently.
+
+Compute a cryptographic digest of the versioned canonical representation. Store the digest, not raw personal information. Include applyToAllAccounts so it cannot be changed after review. This binds the submitted apply-all instruction, not a snapshot of every related account downstream might resolve. A fixed target-account-set authorization is NOT claimed; if required later, it needs a separate contract change.
+
+M1 version-one encoding: `JsonOperationPayloadCanonicalizer` implements the
+framework-free `OperationPayloadBindingPort.digest(String rawJson)`, returning
+`PayloadDigest(version, sha256)`. It parses raw JSON with strict duplicate
+detection independently of the global mapper. The SHA-256 input begins with a
+big-endian 32-bit version (`1`). Each value has a one-byte ASCII type tag:
+`{` object, `[` array, `s` string, `n` number, `t` true, `f` false, `0` null.
+Objects encode a 32-bit member count followed by name/value pairs sorted by
+Java UTF-16 code-unit name order; arrays encode count then ordered values.
+Text encodes a 32-bit code-unit count and big-endian UTF-16 code units (including
+lone surrogate escapes, avoiding replacement collisions). Numbers encode
+`BigDecimal.stripTrailingZeros().toString()` as text, without binary floating
+point conversion. Only an object root is accepted; trailing tokens, malformed
+JSON and duplicate members at any depth fail with a fixed, value-free exception.
+The empty-object digest is
+`1e08b461b9803ab3c74e8791fb16c2b9b490b3a8754bbcb50a59b98d7c0f662b`.
+Digest comparison requires matching versions; unknown versions are not reinterpreted.
+This parser is not an inbound HTTP decoder or a claim that deployment body limits
+have been resolved. Both future call sites must supply raw JSON before DTO mapping.
+
+### 6. Storage and concurrency specification (corrected decision, source-grounded -- supersedes prior pass after independent review)
+
+Chosen mechanism: store grants in the existing AuthenticatedSession.featureState map. Grant mutations retain the updateIfUsable application contract; the M1.5 prerequisite generalizes the underlying conditional-write mechanism for lifecycle operations. No separate grant Redis key is introduced. The existing preserve-current-TTL Lua script remains for grant mutations; a sibling absolute-deadline CAS script is introduced for lifecycle writes. All relevant session writers must participate in revision-checked writes before grant work begins.
+
+**Grant key includes Account-Ref (corrects reviewer finding 2, major).** The feature-state key is `"password-validation:" + accountRef.value() + ":" + purpose`, where `accountRef` is the caller's selected `AuthenticatedAccountRef` from `PortalAccessContext`. This gives one grant slot per session/account/purpose, matching the approved D02/D03 scope exactly -- not per session/purpose only, as the prior pass incorrectly specified. Because the key includes the account, two different accounts selected within the same session hold independent grants in independent map entries; replacement and coexistence across accounts require no special-casing.
+
+**Token strength (restored; omitted in error from the prior pass).** Generate at least 256 random bits using the platform cryptographic generator (`SecureRandom` or equivalent); return a base64url opaque value. This token is not a JWT and contains no client-readable claims. Only its digest, never the raw token, is stored in the feature-state entry.
+
+**Session-resurrection race (corrects reviewer finding 1, BLOCKING; the first proposed fix was itself found insufficient on a second review and is corrected again here).** The original claim that resurrection was "structurally impossible" was wrong, and the first proposed fix -- bump the session revision only inside `persistTerminal` -- is also insufficient by itself. `AuthenticatedSessionLifecycleService.loadAndTouch`, which runs on effectively every authenticated request to slide the idle-expiry window, also writes a full session snapshot through the same blind, non-CAS `port.touch` path used by `persistTerminal`, via its own `copy(...)` call, and that `copy(...)` was never revision-aware either. Bumping the revision only on terminal transitions does not close the race, because `port.touch` performs an unconditional `PSETEX`, not a compare-and-swap: a `loadAndTouch` that started before a concurrent write can replay its stale, pre-transition (or pre-grant-mutation) snapshot over newer state regardless of which revision that newer state carries. Two concrete counterexamples: (1) a `loadAndTouch` call loads an ACTIVE session at revision R; logout concurrently transitions the session to LOGGED_OUT at a fresh revision R2 (even with the revision-bump fix applied); the already-in-flight `loadAndTouch`, having loaded before the transition, still blindly writes its ACTIVE copy of the session (carrying forward revision R, per `copy(...)`'s existing contract) via `port.touch`, overwriting the terminal LOGGED_OUT record back to ACTIVE. (2) A `loadAndTouch` call loads a session at revision R whose `featureState` still contains an unconsumed password-validation grant; a concurrent grant consumption tombstones that grant via the CAS path at a fresh revision R3; the already-in-flight `loadAndTouch` again blindly overwrites the session with its stale pre-consumption snapshot, restoring the already-consumed grant and the earlier revision.
+
+**Required fix (corrected a second time, BLOCKING finding from fourth independent review): operation-specific eligibility and TTL policy, not blanket reuse of the existing CAS method as-is.** The prior pass's instruction to route loadAndTouch and persistTerminal through AuthenticatedSessionConcurrencyService.updateIfUsable unchanged is itself incorrect, because that method has a fixed contract unsuited to either call site: (1) attemptOnce checks current.isUsable(now) in Java and returns SESSION_NOT_USABLE *before* ever invoking the mutator when the session is not usable -- so it structurally cannot perform the ACTIVE-to-EXPIRED transition that loadAndTouch currently performs when it discovers an idle- or absolute-expired session; and (2) the underlying update-if-current.lua script reads the key's current Redis TTL via PTTL and writes back that exact same TTL via PSETEX -- it has no mechanism to set a different TTL, whereas loadAndTouch must slide the TTL forward to a new idle expiry and persistTerminal must shorten it to a fixed terminal-retention window.
+
+The corrected design generalizes the mechanism along two independent axes, both decided at the CAS layer rather than hardcoding a single policy:
+
+- Eligibility is operation-specific, not one blanket isUsable gate. The CAS service accepts a caller-supplied eligibility check evaluated against the freshly reloaded session, in place of the current hardcoded isUsable(now) check:
+  - Grant issuance/consumption (this feature) keeps the exact current behavior unchanged: eligible only when isUsable(now) is true; otherwise return the existing SESSION_NOT_USABLE result without writing. This is not loosened in any way by this correction.
+  - loadAndTouch is eligible whenever the session is not already in a terminal status, regardless of idle/absolute expiry -- so it can still write the ACTIVE-to-EXPIRED transition when it discovers expiry (mirroring the existing idempotency short-circuit already present in the lifecycle service, now additionally enforced atomically against a concurrent terminal writer rather than only checked at read time).
+  - persistTerminal (logout, revoke, discovered expiry) is eligible whenever the session is not already terminal; if a reload shows it already terminal, the operation is a no-op that returns the existing terminal status rather than re-writing it -- preserving the exact idempotency the current code already provides.
+  - A missing session continues to return SESSION_NOT_FOUND identically for every caller; this is unchanged by generalizing eligibility.
+- TTL policy is explicit and operation-specific. Preserve-current grant mutations read PTTL and apply it entirely inside the existing atomic Lua operation. Lifecycle mutations use a sibling revision-checked script with an absolute epoch-millisecond expiry deadline; they do not send a Java-calculated relative TTL.
+  - Grant issuance/consumption supplies "preserve the session's own current TTL" as its policy (matching today's behavior exactly -- a grant mutation must never itself change how long the session lives).
+  - Successful still-usable loadAndTouch computes idleExpiresAt = min(attemptNow + idleTimeout, absoluteExpiresAt) from freshly reloaded state and passes that absolute deadline to the lifecycle CAS script. A discovered-expiry branch instead invokes the terminal transition and terminal-retention policy.
+  - persistTerminal uses a fixed retention deadline derived from the terminal transition timestamp plus configured retention. Keep that transition timestamp/deadline stable across revision-conflict retries of the same operation; repeated calls observing terminal state do not write or extend retention. Terminal retention is independent of the expired authentication deadline and never makes the session usable.
+
+Every revision-conflict retry reloads state and reevaluates eligibility and mutation against that state. Preserve existing bounded retry behavior and existing-consumer contracts. Only genuine revision conflicts are retried; ambiguous transport/write outcomes fail closed and are not retried as if they were conflicts. Missing or malformed revision and missing session fail closed; a conditional update never creates a missing key. Terminal observations return the existing lifecycle result without a write.
+
+**TTL-mechanism clarification (selected final contract).** The grant script preserves PTTL inside Lua, with no earlier Java TTL read. The lifecycle sibling script checks key existence and expected revision, validates the supplied absolute deadline, samples Redis TIME inside the atomic operation, and rejects an already-elapsed deadline without writing. It replaces the value and applies PEXPIREAT with the supplied deadline within that same script. No relative-duration calculation outside Redis may extend the deadline through queue/network delay. The deadline is also the replacement session idleExpiresAt for successful touch. A discovered-expiry transition uses the terminal-retention deadline, not sliding expiry. Redis and application clocks must be synchronized operationally; test skew/delay handling and supported Redis command/script compatibility before M1.5 approval. The M1.5 implementation and isolated-test scope are mapped below; independent acceptance and deployment verification remain separate gates. A successful conditional write is the linearization point; no stale touch/terminal snapshot may bypass revision checks.
+
+
+This is still a prerequisite change to existing, already-shipped session-lifecycle code (the generic CAS service and its Lua script), not new password-validation-specific code, and is now called out in 06-implementation-plan.md as its own subtask with its own dedicated review gate, to be completed and independently approved before any password-validation grant-issuance/consumption code is written.
+
+Deterministic race tests required at implementation (expanded after fourth review; supplements T06/T08/T19).** (a) Load a session at revision R inside a grant-mutation mutator; before the CAS write executes, externally transition the same session to a terminal status; assert the grant's CAS write returns a revision-conflict outcome, the retry-reload returns SESSION_NOT_USABLE, and the final stored session's status remains terminal. (b) Confirm a terminal transition's revision differs from the pre-transition revision in every persistTerminal code path (logout, revoke, expiry). (c) A loadAndTouch in flight (loaded at revision R) racing a concurrent terminal transition (logout/revoke/expiry, which must land first): assert the touch's CAS write returns a revision-conflict outcome, the retry-reload evaluates touch-eligibility against the now-terminal state as ineligible, performs no write, and the final stored session remains terminal with the touch's idle-expiry change discarded. (d) A loadAndTouch in flight (loaded at revision R, with an unconsumed grant present in featureState) racing a concurrent grant consumption (which must land first): assert the touch's CAS write returns a revision-conflict outcome, the retry-reload reapplies touch semantics against the already-consumed-grant state, and the final stored session's featureState still reflects the tombstone (the grant is not restored). (e) Confirm a loadAndTouch with no concurrent conflict still correctly extends idle expiry via its CAS write, and assert the actual Redis key TTL (read back via PTTL, not just the stored idleExpiresAt field) reflects the new sliding window. (f) Confirm an ACTIVE session whose idle or absolute expiry has already passed is successfully transitioned to EXPIRED by loadAndTouch's eligibility rule (not rejected as ineligible the way a grant mutation would be), and that this transition is itself atomic against a concurrent writer. (g) Confirm a persistTerminal transition sets the actual Redis key TTL (read back via PTTL) to the configured fixed terminal-retention duration, distinct from whatever sliding TTL was in effect beforehand. (h) Confirm persistTerminal called twice against an already-terminal session is a no-op on the second call (idempotent: no write, existing terminal status returned), proving terminal-state idempotency is preserved under the generalized eligibility mechanism. (i) Confirm that a discovered-expiry transition inside loadAndTouch sets the actual Redis key TTL (read back via PTTL) to the configured fixed terminal-retention duration, identical to a persistTerminal-driven logout/revoke transition, not the sliding idle-expiry duration. (j) Confirm a successful sliding-expiry touch never produces a computed TTL that would extend the session's actual expiry past its stored absoluteExpiresAt, including when the touch is retried after a revision conflict.
+
+Grant consumption, TTL, and concurrency (unchanged from prior pass).** Consumption reads the current feature-state entry for the scope key, verifies token digest/expiry, and calls `withFeatureState(scopeKey, <tombstone>)` atomically as part of the same CAS write. The grant's `expiresAt` (issuedAt + 300s) is an application-checked value inside the feature-state entry, never a Redis key TTL, so it can never outlive the session's own `idleExpiresAt`/`absoluteExpiresAt`. Exactly one concurrent consumer wins; a Redis timeout after a possible write is an uncertain outcome and must return 503 without dispatching or retrying the consume operation to infer success.
+
+**Correction to "never thrown" claim.** Not every failure path inside `attemptOnce` is converted to a typed result: only the revision-conflict-exhaustion path is explicitly caught via `onErrorResume`. Failures from `sessions.load(...)`, `protector.unprotect(...)`, or the mutator itself propagate as raw `Mono` errors to the caller. The password-validation use case must explicitly catch and map these to `SYSTEM_ERROR` itself, rather than assuming `AuthenticatedSessionConcurrencyService` fully contains every failure mode.
+
+### M1.5 implementation map (approved at the D16 anchor)
+
+`AuthenticatedSessionConcurrencyService.updateIfEligible` accepts an explicit
+eligibility predicate, a mutation receiving the freshly sampled attempt time,
+and an expiry-deadline function. All are reevaluated after each genuine revision
+conflict. Ineligible state returns `UNCHANGED` with the observed session and no
+write. Existing `updateIfUsable` delegates with the original usability gate and
+preserve-current-TTL policy, mapping an ineligible observation back to the
+original session-free `SESSION_NOT_USABLE` result. The existing two-retry budget
+and exception propagation remain unchanged.
+
+M1.5 reviewer correction at `67534c89`: when **loadAndTouch only** exhausts
+those revision conflicts, lifecycle performs one final load/unprotect/usability
+check without mutation, protection, revision generation or CAS. A usable,
+nonterminal snapshot returns ACTIVE with that freshly loaded state, not the
+last failed attempt's snapshot. Sliding expiry is best-effort under contention;
+this fallback neither updates timestamps nor renews Redis TTL. A terminal
+snapshot returns its existing terminal status, an expired ACTIVE snapshot
+returns EXPIRED without persisting retention, and a missing key returns NOT_FOUND.
+Load/decryption failures remain FAILED. There is no additional retry loop.
+The read is a point-in-time observation, not an authorization lock against a
+terminal transition that commits after that observation.
+
+Logout/revoke still return FAILED on conflict exhaustion; they cannot claim
+invalidation after an unsuccessful write. The shared writer and every
+updateIfUsable consumer still return REVISION_CONFLICT_EXHAUSTED with no session.
+Technical/uncertain write failures do not enter the touch fallback.
+
+`AuthenticatedSessionCasUpdateCommand.expiryDeadline` is an optional `Instant`:
+null selects the original atomic PTTL-preserving script; a value selects
+`update-if-current-until.lua` with its epoch-millisecond deadline. The existing
+five-argument constructor retains preserve-current behavior. Both scripts reject
+missing/malformed revisions. The lifecycle sibling checks the revision and
+positive existing TTL, validates a canonical positive integer deadline, samples Redis TIME, then
+performs SET and PEXPIREAT atomically. Invalid/elapsed deadlines return a technical
+failure without a write; they are not revision conflicts and are not retried.
+Leading-zero deadlines are rejected before SET because Redis expiry commands
+reject that representation; script errors do not roll back earlier writes.
+
+`AuthenticatedSessionLifecycleService.updateLifecycle` replaces the former blind
+touch/persistTerminal writes. Its predicate accepts nonterminal sessions even
+when authentication expiry has passed. Usable touch updates the fresh snapshot
+and uses its idle deadline capped by absolute expiry. Logout/revoke/discovered
+expiry preserve unrelated state and use a timestamp captured at the first
+terminal mutation attempt; a per-subscription holder keeps that timestamp and
+retention deadline fixed across conflicts. Terminal observations return the
+existing lifecycle status without a write or retention extension. The common
+writer protects the replacement and stamps a new revision for every applied
+mutation. Only initial creation retains the existing store path.
+
+The lifecycle constructor and Spring composition now require the shared
+concurrency service and revision generator; no fallback blind-write constructor
+was retained. The generic result adds UNCHANGED, so the existing CSRF mapper has
+an explicit defensive failure mapping for that outcome, although updateIfUsable
+never emits it. There is no public response or session JSON/encryption schema
+change and no grant lifecycle implementation in M1.5.
+
+Live source inspection also found Fund Price mode and committed-login recovery
+as existing CAS consumers, in addition to the three listed in the earlier design.
+All retain updateIfUsable and preserve-current TTL behavior. The isolated Redis
+tests run actual cache-service/CSRF writes and verify unrelated feature entries
+and exact expiry survive; existing Fund Price/replay regressions remain required.
+Race fixtures use a generic synthetic feature entry/tombstone, not M2 grant code.
+
+Isolated execution is tested with Redis 8.0.5. Production scripts use GET, PTTL,
+PSETEX or SET/PEXPIREAT, TIME and Lua cjson. Deployment Redis version, Sentinel
+failover/mTLS and clock synchronization still require environment verification;
+there is no documented deployment Redis version in the inspected repository.
+This implementation/test note does not certify deployment compatibility.
+
+Source references: `AuthenticatedSession.java` (`featureState`, `withFeatureState`), `AuthenticatedSessionConcurrencyService.java` (`updateIfUsable`, `updateIfEligible`, `attemptOnce`), `AuthenticatedSessionCasUpdatePort.java`, `AuthenticatedSessionCasUpdateCommand.java`, `RedisAuthenticatedSessionCasUpdateAdapter.java`, `AuthenticatedSessionConcurrencyConfig.java`, `src/main/resources/redis/authenticated-session/update-if-current.lua`, `src/main/resources/redis/authenticated-session/update-if-current-until.lua`, `AuthenticatedSessionLifecycleService.java` (`copy`, `updateLifecycle`, `logout`, `revoke`, `transitionTerminal`, `loadAndTouch`).
+
+### M2 additive write-point guard and failure contract (D16)
+
+M1.5 is approved at `bfbac598d47558a306caa0bbd5b829e19f83d17f`.
+The earlier grant references to the original preserve-TTL script are superseded
+only for grants: `updateIfUsableGuarded` uses a new sibling
+`update-if-current-guarded.lua`. The original two scripts and `updateIfUsable`
+retain their approved behavior. Optional command `usableUntil` defaults to null
+and cannot coexist with `expiryDeadline`. Freshly loaded ACTIVE/usable state is
+required in Java; each guarded attempt passes min(idleExpiresAt, absoluteExpiresAt).
+The sibling checks existence, JSON/revision and positive PTTL, validates the epoch
+millisecond deadline, then rejects Redis TIME >= usableUntil before PSETEX.
+Elapsed usability has a distinct CAS outcome mapped to SESSION_NOT_USABLE.
+Revision mismatches alone retry from a fresh snapshot/deadline. No script
+inspects encrypted feature state. The lifecycle PTTL/deadline relationship is
+tested as an observation, not an authorization assumption: initial creation
+retains its existing relative TTL (store latency can offset record idle expiry);
+touch sets the exact record idle deadline; terminal retention uses the command's
+fixed retention deadline, deliberately NOT the record's authentication deadline.
+Terminal records retain their original authentication timestamps but are unusable
+by status. Thus a universal exact PTTL/authentication-deadline invariant would
+be false under the approved M1.5 contracts. The guarded writer independently
+enforces authentication usability rather than relying on any such invariant.
+
+Grant issue and consume return UNAVAILABLE on REVISION_CONFLICT_EXHAUSTED,
+SYSTEM_FAILURE or uncertain/lost acknowledgement. M3 (D17) additionally
+distinguishes a missing/unusable session on **issue** as SESSION_NOT_USABLE
+(authentication-required HTTP 401); consume retains its M2 failure contract.
+UNAVAILABLE carries neither an issued token nor a consumed binding; future web
+mapping is the approved 503 SYSTEM_ERROR / err.password-validation.unavailable
+path. No mutation dispatch is permitted. Conflict exhaustion means this invocation
+performed no write; uncertainty may mean a write committed, but never authorizes
+dispatch or retries. Wrong scope/token/expired grant returns REJECTED without
+writing; a valid matching grant is replaced by a tombstone within CAS.
+
+Issuance timestamps are sampled on each eligible CAS attempt, not at password
+arrival. expiresAt = issuedAt + 300 seconds; application checks strict now <
+expiresAt on consumption. Commit acknowledgement can shorten the remaining
+lifetime; it cannot extend it or renew a grant. This is a conservative bounded
+300-second lifetime, not a claim that Java can timestamp the Redis linearization
+point exactly. Password success is a required explicit input to the issue
+capability; all other downstream outcomes leave existing grants unchanged.
+Only PERSONAL_INFORMATION_UPDATE is accepted. Tests may seed an unsupported
+purpose entry to prove namespace isolation, but cannot issue that purpose.
+
+M2 implementation map: `PasswordValidationGrantService` uses the guarded shared
+writer and checks selected-account ownership on every reload. Its package-private
+`PasswordValidationGrant` codec stores exactly five pipe-separated values:
+token SHA-256, canonicalizer version, payload SHA-256, issuedAt epoch ms,
+expiresAt epoch ms. No raw token, username or operation payload is persisted.
+A consumed slot contains only the `consumed` tombstone. A missing/tombstoned,
+expired, wrong-token or unsupported-version grant is REJECTED without write;
+malformed stored grant state is UNAVAILABLE without write. Session load,
+decryption/protection and CAS errors, including empty publishers, fail closed.
+Grant expiry is sampled in the application on each attempt; the atomic Redis
+guard checks session authentication deadlines independently. Concurrent issue
+commits may replace each other, but cannot lose another scope or unrelated entry.
+No endpoint, body gate, Personal Information enforcement, public HTTP mapper or
+business dispatch is implemented in M2; those remain M3/M4. The 503 mapping above
+is the required contract for the later web boundary, not a claim that an M2 HTTP
+route already exists.
+
+### M3 issuance implementation boundary (D17)
+
+`PasswordValidationController` exposes only POST /api/v1/password-validation.
+It reuses the existing authenticated cookie reader and
+CurrentPortalAccessContextResolver; the production account-context filter and
+session/CSRF validation still establish ownership and identity. The controller
+never resolves context from body or raw Account-Ref. Missing Account-Ref keeps the
+existing missing-context 400 BUSINESS_REJECTED / err.member.context.invalid
+contract; missing/malformed/unusable session, missing CSRF and unknown account
+keep authentication-required 401. Invalid CSRF is rendered only on this new route
+as the existing security access-denied 403 BUSINESS_REJECTED /
+err.security.access.denied contract, with no public message. Live source showed
+that AuthenticatedCsrfValidationException otherwise escapes the shared account
+filter without a dedicated filter-path renderer; the new route-local
+PasswordValidationRequestWebFilter contains that error without altering global
+handlers or other endpoints. It sets no-store before account/security failures.
+X-Request-Id extraction and the existing inbound-required-header filter are reused.
+
+The bounded String HTTP decoder supplies the original JSON string to
+PasswordValidationRequestParser. Its private strict-duplicate-detection parser
+visits the complete body, including every skipped nested object/array. Only the
+three envelope keys are allowed. Password uses the configured login minimum and
+maximum lengths exactly (including spaces/case; no complexity check).
+operationPayload must contain nonblank string formVersion, explicit boolean
+applyToAllAccounts, and a nonempty object fields. No YAML/business/access
+validation runs at issuance. Additional operation members and every field value
+are retained in the binding, not silently mapped away. The exact raw substring
+delimited by the parser's character offsets goes to the M1 canonicalizer;
+no JsonNode/Map/DTO serialization or binary floating point intervenes.
+Malformed JSON, trailing content, duplicates anywhere, size/depth failures,
+unknown envelope members and wrong types return code-only 400.
+Parser diagnostics/causes are discarded, never logged or rethrown with values.
+
+`IssuePasswordValidationUseCase` / `PasswordValidationIssuanceService` orchestrate
+validated input -> username throttle -> the existing M1 PasswordCheckPort ->
+guarded M2 grant issue only on CORRECT. There is no retry or result replay.
+Server context supplies actorUserId and actorUserRole to the unchanged M1 adapter,
+which retains NON_ACCOUNT / NON_RETRYABLE / NEVER and null accountEnv.
+PasswordValidationIssuanceConfig supplies production composition and reads the
+same AuthWorkflowProperties login password bounds as login. A response reports
+the remaining whole grant seconds, capped at 300, rather than extending expiry
+through storage/acknowledgement delay; an already elapsed grant returns 503.
+
+ACCOUNT_LOCKED invokes current-session lifecycle revoke. REVOKED, LOGGED_OUT,
+EXPIRED or NOT_FOUND confirms no usable current session and returns 423; FAILED,
+unexpected ACTIVE, empty publisher or exception returns 503. Both branches clear
+the authenticated cookie using the existing writer/settings. Failure emits only
+a bounded operational event and request ID through the existing FailureEventPort,
+not exception text. Telemetry failure cannot hide the cookie-clearing outcome. Other sessions
+are not revoked. Wrong password leaves the prior grant untouched. All technical
+origins and unregistered cust-id collapse to the same 503 code, except explicit
+grant-session loss -> existing authentication-required 401. Conflict exhaustion
+and ambiguous writes still withhold tokens; consume and all shared session
+contracts remain unchanged.
+
+PasswordValidationWebMapper owns the existing MutationResponse / result.data
+shape and centrally registered feature codes. Messages remain absent/null;
+DOWNSTREAM statuses, raw codes, fail-count and submitted values are never public.
+No token gate, Personal Information controller change, enforcement, CORS/proxy
+release work or M5 work is implemented in M3.
+
+## 7. Security, logging and operations
+Disable request/response body logging for issuance and protected Personal Information PUT independently of configurable opt-in body logging. Exclude the token header from header logging and sanitize DTO/command toString. Do not log password, token, raw cust-id, session cookie, CSRF, payload, or payload digest. APIM request/response logging must be tested in encrypted and plain modes. Safe events contain request ID, purpose, outcome, HTTP status and bounded reason codes only.
+
+No-store responses for issuance and authorization failures. FE keeps token in memory, not a URL, and discards it on submission, replacement, expiry or logout. FE must not interpret wrong-password 401 as unconditional session loss; account-locked 423 requires login again. After a mutation timeout, do not automatically revalidate and resubmit: first resolve the existing business outcome through the existing operational process. Fresh authorization is not business idempotency.
+
+M3 logging implementation (corrected by D18): RequestLoggingWebFilter unconditionally denies both
+body directions on the POST /api/v1/password-validation and PUT
+/api/v1/personal-information route patterns, ahead of any configured rule matching. It also
+omits throwable message text on those routes and excludes
+X-Password-Validation-Token case-insensitively on every route, even when
+allowlisted. Other method/path logging behavior is unchanged. Adversarial
+wildcard/allowlist tests and real issuance HTTP logging-enabled tests are required.
+
+### M3 routing-equivalent guard repair (D18)
+
+The independent reviewer found that raw `getPath().value()` equality is narrower
+than WebFlux routing: decoded segments and matrix parameters can reach the same
+handler. `PasswordValidationRouteMatcher` is the single source of the two route
+strings, reused by controller annotations and both filters. It parses each
+PathPattern once with PathPatternParser.defaultInstance and matches
+request.getPath().pathWithinApplication(), with the corresponding POST/PUT method.
+It does not decode/rebuild the URI, strip characters, lowercase paths or enable
+optional trailing slashes. The same matcher is available for the future M4 gate;
+no such gate is implemented here.
+
+The two fixed public route constants narrowly suppress Sonar java:S1075 on those
+fields: they are API contracts, not configurable downstream URIs. The rule must
+not induce route configurability or obscure the single source of route strings.
+
+Both matched routes receive the complete required policy: request/response body
+logging disabled even under wildcard opt-in, escaped error text omitted, token
+header excluded regardless of allowlist, no-store and code-only invalid-CSRF 403.
+Applying the route-local no-store/CSRF policy to Personal Information PUT is an
+explicit part of this repair; its body, validation, use cases, dispatch, success
+and business-error contracts are not changed. Its controller annotation merely
+references the identical shared path constant.
+
+Filter order is now strict: request logging/correlation at HIGHEST_PRECEDENCE,
+route policy at +1, authenticated account context at +2. The last annotation
+moves one slot solely so route policy wraps CSRF failures without a tie.
+RequiredRequestIdWebFilter stays at +1, after correlation and before account
+context; no session/CAS/lifecycle contract or global exception mapping changes.
+The order architecture guard now pins all three positions, retaining its
+header-before-context invariant. Other methods/paths pass through once with
+headers unchanged.
+
+Real HTTP uses production controllers, not mocked controller mappings. With
+valid authentication/CSRF, the following routing observations apply to both
+protected methods:
+
+| Variant | Handler reached / result |
+|---|---|
+| Literal route | Yes / 200 |
+| Percent-encoded `p` in final segment (`%70`) | Yes / 200 |
+| Final-segment matrix parameter (`;x=1`), test-only permissive firewall | Yes / 200 |
+| Trailing slash | No / 404 |
+| Different final-segment case | No / 404 |
+| Matrix parameter, default security firewall | No / 400 before handler |
+
+The HTTP fixture deliberately permits semicolons only to test routing below
+the security firewall, then separately restores the default rejection and pins
+400, zero handler calls and the complete guard. Production firewall settings are
+unchanged. This distinction is observed, not an assumption that all non-routed
+paths produce 404. Gateway/deployment overrides remain unverified.
+
+Additional M1.5 deadline acceptance proof: delay execution between Java command creation and Redis script execution; assert the stored absolute deadline is unchanged, a deadline already passed is rejected without a write, and preserve-current grant mutations do not extend TTL. Repeat with revision conflict and with discovered expiry.
+
+### M4 protected submission implementation boundary (D19)
+
+M3 was approved at `8e870d40753cd1bbfc278e18fb0ede3788f38d39`. M4
+enforces only the matched Personal Information PUT. GET, issuance and all other
+methods/routes are unchanged. `PasswordValidationTokenGateWebFilter` has explicit
+order `HIGHEST_PRECEDENCE + 3`, after the existing account-context filter at +2.
+It reuses `PasswordValidationRouteMatcher` and adds no route-string copy.
+
+The gate requires Account-Ref, a resolved authenticated actor/selected-account
+context and the authenticated cookie before checking exactly one token header.
+Missing Account-Ref retains the existing 400 missing-context contract; missing
+authenticated context cannot fall through. Session/CSRF/account resolution runs
+upstream and retains its mappings without consuming a grant. Only the M2 grant
+service consumes; REJECTED maps to the approved 403, while technical/empty/
+uncertain consume outcomes map to 503 without dispatch. This conversion is
+strictly before, not around, the remaining filter/controller/update chain.
+
+The consumed digest is held only in exchange attributes while the request runs
+and removed on completion, failure or cancellation. After consumption, the gate
+reads bounded raw bytes through the application's configured HTTP message
+readers. M1's canonicalizer parses the complete raw JSON with the same strict
+duplicate-detection policy as M3, including skipped nested objects and arrays.
+Malformed/empty/non-object JSON, trailing content, duplicates and decoder
+size/depth failures receive code-only 400 VALIDATION_FAILED /
+err.request.invalid, using the existing ErrorResponseRenderer. Digest comparison
+uses PayloadDigest.matches, never a Jackson DTO. Mismatch receives the same
+403 authorization error. Both failures leave the grant consumed.
+
+After a match the exact original bytes are replayed to the existing Jackson
+DTO decoder. Structural/YAML/access checks, cache behavior, request/response
+mapping, HTTP classification and update orchestration remain unchanged.
+PersonalInformationController only replaces body-decoder ServerWebInputException
+with a fixed, cause-free instance before existing advice can log its diagnostic
+or render it. No original Jackson message, submitted value or cause survives
+that boundary; downstream/business exceptions are not converted by this change.
+The existing GET method is unchanged.
+
+`PasswordValidationTokenGateConfig` supplies a mutation binding port backed by
+the unchanged M1 canonicalizer; M3's parser/composition and issuance endpoint
+are unchanged. No M1/M2 grant/session/CAS contract, Lua script, throttle, APIM
+adapter or downstream mapping changes. M5 is not started. Independent M4 review,
+not this implementation note, remains the approval gate.

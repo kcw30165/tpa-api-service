@@ -1,0 +1,130 @@
+# 09 Release and operations
+
+Status of this document: written at the end of milestone M5. It records what was built, what was verified, what still needs a person, and how to release. Items marked **open** have not been verified by anyone yet.
+
+## 1. What is delivered
+
+M0 to M4 were each independently approved at the commits shown. M5 is under review.
+
+| Milestone | Scope | Commit |
+|---|---|---|
+| M0 | Design package | 558a18fd |
+| M1 | Contracts, payload binding, `TRPPwdValidation` adapter, strict single-submission transport | 86eb775c |
+| M1.5 | Shared session conditional writes, absolute-deadline TTL, contention fallback for touches | bfbac598 |
+| M2 | Username throttle, session-bound grant store, write-point usability guard | ec7f1617 |
+| M3 | `POST /api/v1/password-validation`, route guards, logging protections | 8e870d40 |
+| M4 | Token gate on `PUT /api/v1/personal-information` | c6981630 |
+| M5 Run A | CORS default, `.env.sample`, gate tests | 96eaacd4 (reviewed; Nick reported the Sonar gate passed) |
+| F1 | Configurable token lifetime (30 to 900 seconds, default 300) | fdc230b7 and 35f70a5b (reviewed on the diff; final gates pending) |
+| M5 documentation | This document set and the scenario script | the commit that adds this file |
+
+## 2. Release order and rollback
+
+The two sides are not compatible with each other in either order.
+
+- **BFF first:** the current frontend sends no token, so every Personal Information update is refused with 403 until the frontend ships.
+- **Frontend first:** the new frontend calls `/api/v1/password-validation`, which does not exist on the old BFF, so confirmation fails.
+
+Release both in one maintenance window, in this order: configuration (secret, CORS), then BFF, then frontend. After the release, run a smoke check with a dedicated test member under your normal change process. The scenario script in section 6 is for local builds only and must not be run against a released environment.
+
+**Rollback warning:** rolling the BFF back to a version without this feature removes the password check. Personal Information updates then succeed without confirmation. Roll the frontend back at the same time and treat the window as unprotected.
+
+## 3. Configuration
+
+| Setting | Required | Notes |
+|---|---|---|
+| `PASSWORD_VALIDATION_RATE_LIMIT_SECRET` | Yes, per environment | Base64 of at least 32 random bytes. **Identical on every replica.** Never commit a value. If it is missing, the application still starts but every issuance fails closed with 503 |
+| `PASSWORD_VALIDATION_RATE_LIMIT_MAX_ATTEMPTS` | No | Default 10 |
+| `PASSWORD_VALIDATION_RATE_LIMIT_WINDOW_SECONDS` | No | Default 60 |
+| `PASSWORD_VALIDATION_GRANT_TTL_SECONDS` | No | Token lifetime in seconds. Default 300, accepted range 30 to 900 |
+| `CORS_ALLOWED_HEADERS` | Only if overridden | Must include `X-Password-Validation-Token` and keep `Content-Type`. The built-in default already does |
+| Login password length bounds | Existing | Reused for the password check; no registration-style complexity rules apply |
+
+`.env.sample` carries blank placeholders for the secret, the defaults 10 and 60 for the limits and 300 for the token lifetime. A blank numeric value would override the built-in default, so the numeric lines must not be left empty.
+
+Recorded inbound limits (the framework defaults; the service sets no override): decoder in-memory limit 256 KiB, JSON nesting limit 1000. A deployment may override either. That has **not** been checked.
+
+The token lifetime is configurable (F1, decision D22). It is read once at startup, so a change needs a restart. Each token keeps the lifetime it was issued with, so a change affects only tokens issued afterwards. A value outside 30 to 900, a blank value or a non-numeric value stops startup with `password-validation.grant.ttl-seconds must be between 30 and 900`. The `expiresInSeconds` returned to the client is the remaining whole seconds of the issued token, capped at the setting, so it can be a second or so lower (299 for a 300 second setting).
+
+## 4. Operations checklist
+
+Before enabling in an environment:
+
+- [ ] Secret generated (for example 32 bytes from a secure random source, Base64 encoded), stored in the secret manager, identical across replicas
+- [ ] `CORS_ALLOWED_HEADERS` in the pipeline repository includes `X-Password-Validation-Token`
+- [ ] Redis supports the script behaviour the session writes rely on. Verified only against Redis 8.0.5 in isolated tests. Check the deployed version, Sentinel failover behaviour and mTLS settings
+- [ ] Redis and application clocks are synchronised (the write-point deadline check uses the Redis clock)
+- [ ] The ingress or gateway does not log request bodies or the `X-Password-Validation-Token` header for these two routes
+- [ ] APIM profile for `TRPPwdValidation` is the non-account profile, and no `accountEnv` is sent
+- [ ] Decoder and JSON depth limits in the deployed configuration match the recorded defaults, or the difference is accepted
+
+Signals to watch after release: sustained 429s for one user (a stuck client), a rise in 503 `err.password-validation.unavailable` (downstream, Redis or a missing secret), a rise in 403 `err.password-validation.authorization.invalid` on the update route (a frontend sending a different body than it confirmed), and 423 lockouts.
+
+## 5. Verification gate register (final)
+
+| Gate | Subject | Status | Owner |
+|---|---|---|---|
+| G1 | Atomic grant storage and session-usability at the write point | Implemented and proven in isolated Redis (73 cases). **Open:** deployed Redis version, Sentinel failover, clock synchronisation | Ops |
+| G2 | Token consumed before the request body is read | Resolved by real-chain HTTP tests, including a body-read probe | Closed |
+| G3 | Inbound body and depth limits | Recorded (256 KiB, depth 1000). **Open:** deployed overrides | Ops |
+| G4 | No sensitive logging | Resolved in the service by code-level route and header protections with adversarial tests. **Open:** ingress, gateway and external log pipeline | Ops |
+| G5 | `TRPPwdValidation` routing, encryption and single submission | Resolved against test doubles and a real local connector. **Open:** first live call from a local build against the dev downstream | Nick |
+| G6 | Frontend and deployment | **Open:** frontend implementation per document 08, deployed CORS values, `Retry-After` exposure | Frontend, Ops |
+| G7 | Binding of "apply to all accounts" | Closed by decision D21: TAS applies an apply-all update to every account bound to the username, so the token binds the submitted flag and fields only | Closed |
+
+## 6. Manual end-to-end check
+
+Run it against a **local build** that talks to the dev downstream systems, not against DEV, UAT or production: DEV is shared with frontend developers, UAT and end users. Use a dedicated test member, because scenario 5 performs a real update in the shared dev data. Use a freshly generated local `PASSWORD_VALIDATION_RATE_LIMIT_SECRET` and never reuse a deployed one. If the local application shares its Redis with DEV, this is also the first run of the new session scripts against that Redis (open item O-3). Set `EXPECTED_TTL_SECONDS` to the configured lifetime to have scenario 2 check the value the server reports. The server reports the remaining seconds of the new token, so the check accepts a value up to 5 seconds below the setting and never one above it.
+
+`scripts/e2e/password-validation-scenarios.sh` exercises wrong password, missing token, changed body, consumed token, replay and the throttle with `curl`. It prints only scenario names, statuses and public error codes. Read the header comment before running it. It performs a real update only with `CONFIRM_LIVE_UPDATE=yes`, and a wrong-password attempt (which counts toward the downstream lock) only with `CONFIRM_WRONG_PASSWORD_ATTEMPT=yes`. Use a test account.
+
+## 7. Open items
+
+| Id | Item | Owner | Blocks release |
+|---|---|---|---|
+| O-1 | Frontend implementation and a real-browser run of document 08 | Frontend | Yes |
+| O-2 | First live `TRPPwdValidation` call, from a local build against the dev downstream, via the scenario script | Nick | Yes |
+| O-3 | Deployed Redis version, Sentinel failover and clock synchronisation | Ops | Yes |
+| O-4 | Token lifetime: a configurable setting was added (F1, decision D22) | Nick | Closed |
+| O-5 | "Apply to all accounts" target set is not frozen; accepted (decision D21) | Nick | Closed |
+| O-6 | `Retry-After` and `X-Request-Id` are not exposed to cross-origin JavaScript | Frontend, Ops | No |
+| O-7 | Deployed `CORS_ALLOWED_HEADERS` overrides in the pipeline repository | Ops | Yes |
+| O-8 | Gateway and log-pipeline check for bodies and the token header | Ops | Yes |
+| O-9 | Confirm the Sonar analysis revision and branch used for the final gate | Nick | Yes |
+| O-10 | Global handling of CSRF failures is still route-local for these two routes; align with the logout shape later | Nick | No |
+| O-11 | Surefire text reports undercount four test classes (three architecture guards and one contract test) against the XML reports (7,226 versus 7,234 tests); XML is authoritative. The Maven console total was reported as 7,244, which the evidence does not explain | Nick | No |
+
+### Open items added at close-out
+
+| Id | Item | Owner | Blocks release |
+|---|---|---|---|
+| O-12 | Decide how strictly each purpose validates its payload at issuance when a second purpose is built (see 11) | Nick | No |
+| O-13 | Final gates at the final HEAD after F1: full suite with the isolated Redis tests, formatting check, startup and Sonar. Read the coverage of the F1 classes from that run | Nick | Yes |
+
+## 8. Merge request text
+
+**Title:** `feat(password-validation): password confirmation before personal information update`
+
+**Description:**
+
+> Adds a shared password-confirmation step. `POST /api/v1/password-validation` checks the member's password through the downstream `TRPPwdValidation` operation and returns a single-use token, valid for up to its configured lifetime (300 seconds by default), bound to the session, the selected account, the purpose and the exact reviewed payload. `PUT /api/v1/personal-information` now requires that token in `X-Password-Validation-Token`; the gate consumes it before the body is read.
+>
+> **Notes for review**
+> - The downstream owns failed-attempt counting and locking. The service never exposes the count and never retries the password call.
+> - Session writes now use revision-checked conditional writes with absolute deadlines (M1.5). Existing consumers are unchanged and covered by regression tests.
+> - Passwords, tokens and payloads are never logged; the two routes have hard logging protections.
+> - New configuration: `PASSWORD_VALIDATION_RATE_LIMIT_SECRET` (required per environment) and `PASSWORD_VALIDATION_GRANT_TTL_SECONDS` (optional, default 300, range 30 to 900).
+>
+> **Deploy:** the frontend and the BFF must be released together; see `docs/design/16-password-validation/09-release-and-operations.md`. Rolling back the BFF removes the password check.
+>
+> **Verification:** full test suite with the isolated Redis tests enabled, formatting check, startup check, static analysis. Open items are listed in section 7 of the release document.
+
+**Proposed commit messages for the M5 documentation work**
+
+```text
+docs(password-validation): add as-built frontend, release and traceability documents
+```
+
+```text
+test(e2e): add password-validation curl scenario script for manual DEV runs
+```

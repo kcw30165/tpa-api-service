@@ -20,6 +20,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -79,13 +81,14 @@ class FundPriceRequestSupportTest {
         .verifyComplete();
   }
 
-  @Test
-  void inactiveSessionReturnsEmptyOptional() {
+  @ParameterizedTest
+  @EnumSource(
+      value = AuthenticatedSessionLifecycleStatus.class,
+      mode = EnumSource.Mode.EXCLUDE,
+      names = "ACTIVE")
+  void inactiveSessionReturnsEmptyOptional(AuthenticatedSessionLifecycleStatus status) {
     when(lifecycle.loadAndTouch(any()))
-        .thenReturn(
-            Mono.just(
-                new AuthenticatedSessionLifecycleResult(
-                    AuthenticatedSessionLifecycleStatus.EXPIRED, null)));
+        .thenReturn(Mono.just(new AuthenticatedSessionLifecycleResult(status, null)));
 
     StepVerifier.create(newSupport().loadUsableSession(SESSION_ID))
         .assertNext(result -> assertThat(result).isEqualTo(Optional.empty()))

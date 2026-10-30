@@ -1,0 +1,54 @@
+{
+  "package": "password-validation-design-package",
+  "version": "1.15",
+  "files": [
+    {
+      "name": "README.md",
+      "sha256": "12fae7f59a7ecf883c3f67a1aba601b97e51dd2448671b0bcf0a6c172308f67d"
+    },
+    {
+      "name": "01-solution-design.md",
+      "sha256": "7bfab06de5b0e7345b1f329462026bfbe8f747b3233d43e94e77b8fbe7236331"
+    },
+    {
+      "name": "02-api-contract.md",
+      "sha256": "608f22b2a0c660f21d222f107f3d877464c6a14f7ee01471b228cfa34fe9e377"
+    },
+    {
+      "name": "03-downstream-contract.md",
+      "sha256": "01ee0c120b4fd8075c2e9372da849857fee15ff4fe45276937da70da8515cf5c"
+    },
+    {
+      "name": "04-validation-and-error-handling.md",
+      "sha256": "ee1cb49643109aeb83d0487b33ffa18c995c512e7b53b5131862ca50d36ecd3f"
+    },
+    {
+      "name": "05-test-and-traceability.md",
+      "sha256": "0be9048ca39e44f0f3c8cf6431c85160f591de460d2d6c4c92bd5bb0cf57a628"
+    },
+    {
+      "name": "06-implementation-plan.md",
+      "sha256": "872f9d6eee5eb9392cb787a2b811e81329a7e8aebf7a7a7595532915407cfcb1"
+    },
+    {
+      "name": "07-decisions-and-evidence.md",
+      "sha256": "b1744306b53a9895ea6c23e8265e0675b97d5c88ee463bcab02ef9f303e0c21a"
+    },
+    {
+      "name": "08-frontend-integration.md",
+      "sha256": "a130340ac0797b71a000196f3b70c19bd8501add1d9a9988bdaf409aa22a7ced"
+    },
+    {
+      "name": "09-release-and-operations.md",
+      "sha256": "f67a93dcd15fd5202f54702b3ac2bcd62f297b08fa207dbc44f091196cc514f5"
+    },
+    {
+      "name": "10-as-built-traceability.md",
+      "sha256": "52e532f6d114ecf0cf86d4f4057a4e026389777d971e753f9cf2cd40a9965d69"
+    },
+    {
+      "name": "11-purpose-catalogue.md",
+      "sha256": "96b46f5139651e3ff3012e53fb58aa048998e6481d3774a2e2e655cd0be02f99"
+    }
+  ]
+}

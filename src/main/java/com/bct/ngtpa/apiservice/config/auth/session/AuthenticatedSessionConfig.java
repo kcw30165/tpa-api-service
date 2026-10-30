@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.otp.verify.LoginOtpVerifyRetentionProperties;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionRevisionGenerator;
 import com.bct.ngtpa.apiservice.application.port.in.EstablishAuthenticatedLoginSessionUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedLoginHandoffPort;
@@ -17,6 +18,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.Establish
 import com.bct.ngtpa.apiservice.application.usecase.auth.logout.AuthenticatedLogoutService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.logout.AuthenticatedLogoutUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedAccountContextResolver;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionValidationService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LoadAndTouchAuthenticatedSessionUseCase;
@@ -68,6 +70,8 @@ public class AuthenticatedSessionConfig {
       AuthenticatedSessionPort authenticatedSessionPort,
       AuthenticatedSessionProtectorPort authenticatedSessionProtector,
       SecureAuthenticatedSessionIdGenerator authenticatedSessionIdGenerator,
+      AuthenticatedSessionRevisionGenerator revisions,
+      AuthenticatedSessionConcurrencyService concurrency,
       Clock clock,
       AuthWorkflowProperties properties) {
     if (properties.getLogin() == null) {
@@ -94,6 +98,8 @@ public class AuthenticatedSessionConfig {
         authenticatedSessionPort,
         authenticatedSessionProtector,
         authenticatedSessionIdGenerator,
+        revisions,
+        concurrency,
         Duration.ofSeconds(session.getIdleTimeoutSeconds()),
         Duration.ofSeconds(session.getAbsoluteTimeoutSeconds()),
         Duration.ofSeconds(session.getTerminalRetentionSeconds()),

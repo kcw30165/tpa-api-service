@@ -13,6 +13,7 @@ class ApimExecutionContractArchitectureTest {
   private static final List<String> FILES =
       List.of(
           "ApimExchangeRequest.java",
+          "ApimResubmissionPolicy.java",
           "ApimExchangeExecutor.java",
           "ApimSuccessfulExchange.java",
           "DefaultApimExchangeExecutor.java",

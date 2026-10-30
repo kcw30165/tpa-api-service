@@ -133,16 +133,13 @@ class AuthenticatedSessionFeatureStatePreservationTest {
     var current = session(FEATURE_STATE);
     AuthenticatedSessionPort port = mock(AuthenticatedSessionPort.class);
     when(port.load(any())).thenReturn(Mono.just(Optional.of(envelope(current))));
-    when(port.touch(any()))
-        .thenReturn(
-            Mono.just(
-                new AuthenticatedSessionPersistenceResult(
-                    AuthenticatedSessionPersistenceStatus.TOUCHED)));
     var lifecycle =
         new AuthenticatedSessionLifecycleService(
             port,
             protectorReturning(current),
             () -> ID,
+            () -> new SessionRevision("b".repeat(32)),
+            concurrency(port, protectorReturning(current)),
             Duration.ofMinutes(15),
             Duration.ofHours(8),
             Duration.ofMinutes(5),
@@ -168,6 +165,8 @@ class AuthenticatedSessionFeatureStatePreservationTest {
             port,
             protectorReturning(session(Map.of())),
             () -> ID,
+            () -> new SessionRevision("b".repeat(32)),
+            concurrency(port, protectorReturning(session(Map.of()))),
             Duration.ofMinutes(15),
             Duration.ofHours(8),
             Duration.ofMinutes(5),
@@ -232,5 +231,18 @@ class AuthenticatedSessionFeatureStatePreservationTest {
 
     assertThat(updated.fundPriceModeMetadata().mode()).isEqualTo("DAILY");
     assertThat(updated.featureState()).isEqualTo(FEATURE_STATE);
+  }
+
+  private static AuthenticatedSessionConcurrencyService concurrency(
+      AuthenticatedSessionPort port, AuthenticatedSessionProtectorPort protector) {
+    return new AuthenticatedSessionConcurrencyService(
+        port,
+        protector,
+        command ->
+            Mono.just(
+                AuthenticatedSessionCasUpdateResult.of(
+                    AuthenticatedSessionCasUpdateOutcome.APPLIED)),
+        () -> new SessionRevision("b".repeat(32)),
+        CLOCK);
   }
 }

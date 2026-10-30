@@ -28,8 +28,10 @@ class Task0043AuthenticatedSessionTerminalLifecycleArchitectureTest {
         .containsIgnoringWhitespaces("AuthenticatedSessionStatus.REVOKED")
         .containsIgnoringWhitespaces("AuthenticatedSessionStatus.EXPIRED")
         .containsIgnoringWhitespaces("terminalRetention")
-        .containsIgnoringWhitespaces("protector.protect(terminal)")
-        .containsIgnoringWhitespaces("port.touch(new TouchAuthenticatedSessionCommand")
+        .containsIgnoringWhitespaces("concurrency.updateIfEligible(")
+        .containsIgnoringWhitespaces("!session.status().terminal()")
+        .containsIgnoringWhitespaces("terminalAt.get().plus(terminalRetention)")
+        .doesNotContain("port.touch(")
         .doesNotContain("port.delete(")
         .doesNotContain("port.revoke(");
   }

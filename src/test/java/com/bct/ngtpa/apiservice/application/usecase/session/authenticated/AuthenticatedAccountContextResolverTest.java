@@ -6,9 +6,12 @@ import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.port.out.*;
+import com.bct.ngtpa.apiservice.application.usecase.account.AuthenticatedAccountLookupAdapter;
 import java.time.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -16,6 +19,26 @@ class AuthenticatedAccountContextResolverTest {
   private static final Instant NOW = Instant.parse("2026-07-20T00:00:00Z");
   private static final String SID = "sid_abcdefghijklmnopqrstuvwx";
   private static final String REF = "acc_abcdefghijklmnopqrstuvwx";
+
+  @ParameterizedTest
+  @EnumSource(
+      value = AuthenticatedSessionLifecycleStatus.class,
+      mode = EnumSource.Mode.EXCLUDE,
+      names = "ACTIVE")
+  void nonActiveResultsStillRejectContextResolutionAndAccountLookup(
+      AuthenticatedSessionLifecycleStatus status) {
+    var result = AuthenticatedSessionLifecycleResult.of(status);
+    StepVerifier.create(resolver(result).resolvePortalAccessContext(REF, SID))
+        .expectError(AuthenticatedPortalContextResolutionException.class)
+        .verify();
+    var lookup = new AuthenticatedAccountLookupAdapter(command -> Mono.just(result));
+    StepVerifier.create(lookup.listAccounts(SID))
+        .expectError(AuthenticatedPortalContextResolutionException.class)
+        .verify();
+    StepVerifier.create(lookup.getAccount(REF, SID))
+        .expectError(AuthenticatedPortalContextResolutionException.class)
+        .verify();
+  }
 
   @Test
   void resolvesSelectedAccountAndActorFromTouchedSession() {

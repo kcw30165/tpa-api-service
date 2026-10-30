@@ -58,7 +58,7 @@ class AuthenticatedSessionConcurrencyResultTest {
   @ParameterizedTest
   @EnumSource(
       value = AuthenticatedSessionConcurrencyOutcome.class,
-      names = "APPLIED",
+      names = {"APPLIED", "UNCHANGED"},
       mode = EnumSource.Mode.EXCLUDE)
   void everyNonAppliedOutcomeWithNullSessionConstructsSuccessfully(
       AuthenticatedSessionConcurrencyOutcome outcome) {
@@ -83,7 +83,7 @@ class AuthenticatedSessionConcurrencyResultTest {
   @ParameterizedTest
   @EnumSource(
       value = AuthenticatedSessionConcurrencyOutcome.class,
-      names = "APPLIED",
+      names = {"APPLIED", "UNCHANGED"},
       mode = EnumSource.Mode.EXCLUDE)
   void everyNonAppliedOutcomeWithNonNullSessionThrows(
       AuthenticatedSessionConcurrencyOutcome outcome) {
@@ -115,7 +115,7 @@ class AuthenticatedSessionConcurrencyResultTest {
   @ParameterizedTest
   @EnumSource(
       value = AuthenticatedSessionConcurrencyOutcome.class,
-      names = "APPLIED",
+      names = {"APPLIED", "UNCHANGED"},
       mode = EnumSource.Mode.EXCLUDE)
   void ofFactoryProducesATerminalResultForEveryNonAppliedOutcome(
       AuthenticatedSessionConcurrencyOutcome outcome) {
@@ -142,9 +142,26 @@ class AuthenticatedSessionConcurrencyResultTest {
   void everyNonAppliedEnumConstantIsCoveredByTheParameterizedTests() {
     long nonAppliedCount =
         Stream.of(AuthenticatedSessionConcurrencyOutcome.values())
-            .filter(o -> o != AuthenticatedSessionConcurrencyOutcome.APPLIED)
+            .filter(
+                o ->
+                    o != AuthenticatedSessionConcurrencyOutcome.APPLIED
+                        && o != AuthenticatedSessionConcurrencyOutcome.UNCHANGED)
             .count();
 
     assertThat(nonAppliedCount).isEqualTo(4);
+  }
+
+  @Test
+  void unchangedObservationRequiresAndCarriesCurrentSession() {
+    var session = session();
+    assertThat(AuthenticatedSessionConcurrencyResult.unchanged(session).session())
+        .isSameAs(session);
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> AuthenticatedSessionConcurrencyResult.unchanged(null));
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                AuthenticatedSessionConcurrencyResult.of(
+                    AuthenticatedSessionConcurrencyOutcome.UNCHANGED));
   }
 }

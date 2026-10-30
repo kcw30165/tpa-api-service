@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.PasswordValidationRouteMatcher;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
@@ -254,7 +255,9 @@ public class RequestLoggingWebFilter implements WebFilter {
     }
     event.put("elapsedMs", elapsedMillis(startNanos));
     event.put("exceptionType", throwable.getClass().getSimpleName());
-    event.put("errorMessage", loggingSanitizer.toSafeString(throwable.getMessage()));
+    if (!PasswordValidationRouteMatcher.matches(exchange.getRequest())) {
+      event.put("errorMessage", loggingSanitizer.toSafeString(throwable.getMessage()));
+    }
     log.error("{}", toJson(event));
   }
 
@@ -267,6 +270,7 @@ public class RequestLoggingWebFilter implements WebFilter {
   }
 
   private RequestLoggingProperties.EndpointRule findMatchingRule(ServerHttpRequest request) {
+    if (PasswordValidationRouteMatcher.matches(request)) return null;
     String method = request.getMethod().name();
     String path = request.getPath().value();
     return properties.getBodyLogging().getEndpoints().stream()
@@ -304,7 +308,8 @@ public class RequestLoggingWebFilter implements WebFilter {
     req.getHeaders()
         .forEach(
             (name, values) -> {
-              if (allowlist.stream().anyMatch(name::equalsIgnoreCase)) {
+              if (!"X-Password-Validation-Token".equalsIgnoreCase(name)
+                  && allowlist.stream().anyMatch(name::equalsIgnoreCase)) {
                 headers.put(name, String.join(", ", values));
               }
             });

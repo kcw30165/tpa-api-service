@@ -18,7 +18,7 @@ import reactor.core.publisher.Mono;
 
 /** Resolves selected-account context from portal_sid, Account-Ref, and authenticated CSRF. */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 1)
+@Order(Ordered.HIGHEST_PRECEDENCE + 2)
 @RequiredArgsConstructor
 public final class PortalAccessContextWebFilter implements WebFilter {
   private static final Logger LOG = LoggerFactory.getLogger(PortalAccessContextWebFilter.class);

@@ -1,5 +1,25 @@
 # APIM Exchange Executor Architecture and Developer Guide
 
+## M1 password-validation extension (2026-10-28)
+
+The current routing characterization ledger contains 21 operations after adding
+`TRPPwdValidation`; historical operation counts below describe the earlier stage.
+The new operation uses NON_ACCOUNT, null accountEnv, NON_RETRYABLE, and
+`ApimResubmissionPolicy.NEVER`. The new eighth request component is independent
+of business-retry eligibility. The retained seven-argument constructor defaults
+to ALLOW_RECOVERY, so existing token/certificate recovery and business retries
+are unchanged. NEVER requires NON_RETRYABLE in the canonical constructor.
+
+Policy-bearing facade overloads carry NEVER through plain/encrypted attempts and
+recovery contexts. NEVER suppresses application recovery, business retry and
+Reactor connector retry, accepts only HTTP 200, and suppresses request bodies
+and raw downstream error text in transport/outcome logs. Existing overloads
+retain their original behavior. This is at-most-one client submission, not
+exactly-once execution. Credential/certificate acquisition before the initial
+business request is allowed. No endpoint-string routing checks or implicit
+context policy are used. See `docs/design/16-password-validation/03-downstream-contract.md`
+and `ApimNoResubmissionTransportTest` for the detailed contract and proofs.
+
 ## Document Control
 
 | Field | Value |
