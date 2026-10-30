@@ -115,7 +115,7 @@ class ExceptionMappingsTest {
 
     assertEquals(HttpStatus.BAD_GATEWAY, descriptor.httpStatus());
     assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
-    assertEquals("DOWNSTREAM_SYSTEM", entry.type());
+    assertEquals("SYSTEM", entry.type());
     assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE, entry.code());
     assertEquals(LogLevel.ERROR, descriptor.logLevel());
   }

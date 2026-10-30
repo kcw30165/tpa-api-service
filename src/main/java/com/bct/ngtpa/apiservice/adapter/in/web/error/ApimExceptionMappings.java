@@ -58,7 +58,7 @@ public final class ApimExceptionMappings {
         return ErrorDescriptor.single(
             exception.getStatusCode(),
             ApiStatus.SYSTEM_ERROR,
-            "DOWNSTREAM_SYSTEM",
+            "SYSTEM",
             exception.getErrorCode(),
             List.of(),
             "http.api.error",
