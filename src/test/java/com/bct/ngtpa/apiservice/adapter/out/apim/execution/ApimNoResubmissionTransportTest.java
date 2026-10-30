@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.*;
+import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.server.HttpServer;
 
@@ -116,7 +117,7 @@ class ApimNoResubmissionTransportTest {
                                   assertThat(body).contains("\"password\":\" TestPassword \"");
                                 }
                                 if (scenario.equals("reset")) {
-                                  response.withConnection(connection -> connection.dispose());
+                                  response.withConnection(Disposable::dispose);
                                   return Mono.empty();
                                 }
                                 if (scenario.equals("wire-timeout")) {
@@ -173,8 +174,10 @@ class ApimNoResubmissionTransportTest {
         .noneMatch(name -> name.equalsIgnoreCase("accountEnv") || name.equalsIgnoreCase("env"));
     verify(h.crypto)
         .encryptRequest(
-            eq(PATH), eq(new TrpPwdValidationRequest("test-customer", " TestPassword ")),
-            eq(TrpPwdValidationRequest.class), eq(encrypted ? h.key : null));
+            PATH,
+            new TrpPwdValidationRequest("test-customer", " TestPassword "),
+            TrpPwdValidationRequest.class,
+            encrypted ? h.key : null);
     verify(h.crypto)
         .decryptResponseEnvelope(
             PATH, OK, TrpPwdValidationDataItem.class, encrypted ? h.key : null);
