@@ -63,18 +63,22 @@ import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import reactor.core.publisher.Mono;
 
 /**
- * Sub-task 2b.2 STEP 1, Priority 1 item 1 (2026-10-28 coverage-matrix decision): Registration
- * member-not-found, full chain, captcha enabled and disabled. Extends {@code
- * RegistrationBatch1FullChainCharacterizationTest}'s proven fixture pattern (real {@link
- * RegistrationStartProtectedOperation}, real {@link RegistrationController}, stubbing only {@link
- * ApimExchangeExecutor}); that existing class's two captcha on/off tests both reach the ELIGIBLE
- * (success) path only and do not cover member-not-found - this class fills that specific gap.
+ * Sub-task 2b.2 STEP 1, Priority 1 item 1 (2026-10-28 coverage-matrix decision; origin downgraded
+ * 2026-10-30 per E1): Registration member-not-found, full chain, captcha enabled and disabled.
+ * Extends {@code RegistrationBatch1FullChainCharacterizationTest}'s proven fixture pattern (real
+ * {@link RegistrationStartProtectedOperation}, real {@link RegistrationController}, stubbing only
+ * {@link ApimExchangeExecutor}); that existing class's two captcha on/off tests both reach the
+ * ELIGIBLE (success) path only and do not cover member-not-found - this class fills that specific
+ * gap.
  *
  * <p>Uses the REAL {@link StructuredFailureEventLogger} as the {@code FailureEventPort}
  * implementation (not a mock), with a {@link ListAppender} attached, per instruction.
- * {@code FailureOrigin.DOWNSTREAM_CONTRACT} is confirmed (via {@code
- * StructuredFailureEventLogger}'s real {@code WARN_ORIGINS} set, which does not include it, and
- * the no-cause {@code publish(event)} overload being used) to log at ERROR, not WARN.
+ * {@code FailureOrigin.DOWNSTREAM_BUSINESS} is confirmed (via {@code
+ * StructuredFailureEventLogger}'s real {@code WARN_ORIGINS} set, which includes it, and the
+ * no-cause {@code publish(event)} overload being used) to log at WARN. This is an intentional
+ * origin reclassification (E1): a recognized downstream business rejection (member not found) is
+ * an expected business outcome, not a downstream contract/transport defect, and was previously
+ * misclassified as {@code DOWNSTREAM_CONTRACT} (ERROR).
  *
  * <p>Confirmed real routing chain for this condition: {@code TrpSearchMemberApimResultMapper}
  * (lines 22-24) maps the recognized err-message {@code err.tpa.member.not.found} to {@code
@@ -89,7 +93,8 @@ import reactor.core.publisher.Mono;
  * WorkflowResultStatus.BUSINESS_FAILED}, which {@code WorkflowMutationResponseMapper.toApiStatus}
  * (line 35) maps to {@code ApiStatus.BUSINESS_REJECTED}, which {@code
  * RegistrationHttpResponses.status} (lines 66-69) maps to {@code HttpStatus.UNPROCESSABLE_ENTITY}
- * (422).
+ * (422). None of this public-response routing changes under E1; only the internal failure-event
+ * origin and log level change.
  */
 class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
 
@@ -169,11 +174,11 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
 
     assertThat(listAppender.list).hasSize(1);
     ILoggingEvent event = listAppender.list.getFirst();
-    assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(event.getLevel()).isEqualTo(Level.WARN);
     JsonNode payload = new ObjectMapper().readTree(event.getFormattedMessage());
     assertThat(payload.get("event").asText())
         .isEqualTo("event.registration.lookup.downstream_rejection");
-    assertThat(payload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_CONTRACT");
+    assertThat(payload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_BUSINESS");
     assertThat(payload.get("internalCode").asText()).isEqualTo("err.tpa.member.not.found");
     assertThat(payload.get("publicCode").asText())
         .isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED.value());
@@ -230,11 +235,11 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
 
     assertThat(listAppender.list).hasSize(1);
     ILoggingEvent event = listAppender.list.getFirst();
-    assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(event.getLevel()).isEqualTo(Level.WARN);
     JsonNode payload = new ObjectMapper().readTree(event.getFormattedMessage());
     assertThat(payload.get("event").asText())
         .isEqualTo("event.registration.lookup.downstream_rejection");
-    assertThat(payload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_CONTRACT");
+    assertThat(payload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_BUSINESS");
     assertThat(payload.get("internalCode").asText()).isEqualTo("err.tpa.member.not.found");
     assertThat(payload.get("publicCode").asText())
         .isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED.value());
@@ -424,3 +429,4 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
     }
   }
 }
+
