@@ -224,8 +224,7 @@ public final class PasswordValidationGrantService {
       String rejectionReason) {
     return switch (result.outcome()) {
       case APPLIED -> new ConsumeResult(Status.CONSUMED, consumedBinding, null);
-      case UNCHANGED ->
-          rejected(Objects.requireNonNullElse(rejectionReason, "SYSTEM_FAILURE"));
+      case UNCHANGED -> rejected(Objects.requireNonNullElse(rejectionReason, "SYSTEM_FAILURE"));
       default -> unavailable(result.outcome().name());
     };
   }

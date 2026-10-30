@@ -170,8 +170,7 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
       WebFilterChain chain,
       PasswordValidationGrantService.ConsumeResult consumed) {
     if (consumed.status() == PasswordValidationGrantService.Status.REJECTED) {
-      return rejected(
-          exchange, consumed.reason() == null ? "TOKEN_MALFORMED" : consumed.reason());
+      return rejected(exchange, consumed.reason() == null ? "TOKEN_MALFORMED" : consumed.reason());
     }
     if (consumed.status() != PasswordValidationGrantService.Status.CONSUMED
         || consumed.binding() == null) {
