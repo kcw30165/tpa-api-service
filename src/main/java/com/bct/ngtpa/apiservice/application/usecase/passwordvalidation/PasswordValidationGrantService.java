@@ -24,6 +24,8 @@ public final class PasswordValidationGrantService {
     UNAVAILABLE
   }
 
+  private static final String STATE_UNREADABLE = "STATE_UNREADABLE";
+
   public record IssueResult(Status status, String token, Instant expiresAt) {
     @Override
     public String toString() {
@@ -165,7 +167,7 @@ public final class PasswordValidationGrantService {
               rejectionReason.set(null);
               String reason = eligibilityRejectionReason(session, now, account, key, digest);
               rejectionReason.set(reason);
-              if ("STATE_UNREADABLE".equals(reason)) {
+              if (STATE_UNREADABLE.equals(reason)) {
                 throw new IllegalStateException("Password-validation grant state unavailable");
               }
               return reason == null;
@@ -199,7 +201,7 @@ public final class PasswordValidationGrantService {
     }
     var grant = PasswordValidationGrant.decode(encoded);
     if (grant == null) {
-      return "STATE_UNREADABLE";
+      return STATE_UNREADABLE;
     }
     if (grant.binding().version() != CANONICALIZER_VERSION) {
       return "VERSION_UNSUPPORTED";
@@ -234,7 +236,7 @@ public final class PasswordValidationGrantService {
         unavailable(
             failure instanceof IllegalStateException
                     && "Password-validation grant state unavailable".equals(failure.getMessage())
-                ? "STATE_UNREADABLE"
+                ? STATE_UNREADABLE
                 : failure.getClass().getSimpleName()));
   }
 
