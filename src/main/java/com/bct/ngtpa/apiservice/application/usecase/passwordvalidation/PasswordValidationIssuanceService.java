@@ -19,6 +19,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import reactor.core.publisher.Mono;
 
 public final class PasswordValidationIssuanceService implements IssuePasswordValidationUseCase {
+  private static final String DOWNSTREAM_UNAVAILABLE = "DOWNSTREAM_UNAVAILABLE";
+  private static final String REVOCATION_FAILED = "REVOCATION_FAILED";
   private static final int DEFAULT_TTL_SECONDS = PasswordValidationGrantService.DEFAULT_TTL_SECONDS;
   private final PasswordValidationThrottleService throttle;
   private final PasswordCheckPort passwords;
@@ -63,7 +65,7 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
   public Mono<PasswordValidationIssuanceResult> issue(PasswordValidationIssuanceCommand command) {
     return Mono.defer(
         () -> {
-          AtomicReference<String> reason = new AtomicReference<>("DOWNSTREAM_UNAVAILABLE");
+          AtomicReference<String> reason = new AtomicReference<>(DOWNSTREAM_UNAVAILABLE);
           return throttle
               .check(command.context().actor(), command.correlationId())
               .flatMap(
@@ -82,7 +84,7 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
               .defaultIfEmpty(PasswordValidationIssuanceResult.of(UNAVAILABLE))
               .onErrorResume(
                   failure -> {
-                    reason.set("DOWNSTREAM_UNAVAILABLE");
+                    reason.set(DOWNSTREAM_UNAVAILABLE);
                     return Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
                   })
               .doOnNext(result -> publishFailure(command, reason.get(), result));
@@ -142,7 +144,7 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
                     yield Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
                   }
                   case UNAVAILABLE -> {
-                    reason.set("DOWNSTREAM_UNAVAILABLE");
+                    reason.set(DOWNSTREAM_UNAVAILABLE);
                     yield Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
                   }
                 });
@@ -179,7 +181,7 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
                     yield PasswordValidationIssuanceResult.of(LOCKED);
                   }
                   case ACTIVE, FAILED -> {
-                    reason.set("REVOCATION_FAILED");
+                    reason.set(REVOCATION_FAILED);
                     yield PasswordValidationIssuanceResult.of(LOCK_CLEANUP_FAILED);
                   }
                 })
@@ -187,12 +189,12 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
         .doOnNext(
             result -> {
               if (result.status() == LOCK_CLEANUP_FAILED) {
-                reason.set("REVOCATION_FAILED");
+                reason.set(REVOCATION_FAILED);
               }
             })
         .onErrorResume(
             failure -> {
-              reason.set("REVOCATION_FAILED");
+              reason.set(REVOCATION_FAILED);
               return Mono.just(PasswordValidationIssuanceResult.of(LOCK_CLEANUP_FAILED));
             });
   }
@@ -212,7 +214,7 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
           default -> FailureOrigin.LOCAL_SYSTEM;
         };
     String event =
-        reason.equals("REVOCATION_FAILED")
+        reason.equals(REVOCATION_FAILED)
             ? "password-validation.invalidation.failed"
             : "password-validation.issue.rejected";
     try {

@@ -357,7 +357,9 @@ class PasswordValidationTokenGateHttpTest {
       var request = request(PATH, SID, REF, "csrf-fixture");
       String body = PAYLOAD;
       switch (row) {
-        case "missing" -> {}
+        case "missing" -> {
+          // Intentionally omit the token header to exercise missing-header rejection.
+        }
         case "blank" -> request.header(TOKEN, "");
         case "duplicate" -> request.header(TOKEN, token, token);
         case "malformed" -> request.header(TOKEN, "not-a-token");

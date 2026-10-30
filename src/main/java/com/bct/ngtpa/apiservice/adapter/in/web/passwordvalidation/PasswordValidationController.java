@@ -22,6 +22,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping(PasswordValidationRouteMatcher.ISSUANCE_PATH)
 public final class PasswordValidationController {
+  private static final String REQUEST_INVALID = "REQUEST_INVALID";
   private final IssuePasswordValidationUseCase useCase;
   private final CurrentPortalAccessContextResolver contexts;
   private final AuthenticatedSessionCookieReader cookies;
@@ -62,7 +63,7 @@ public final class PasswordValidationController {
                         var contentType = exchange.getRequest().getHeaders().getContentType();
                         if (contentType == null
                             || !MediaType.APPLICATION_JSON.isCompatibleWith(contentType)) {
-                          publishFailure(exchange, "REQUEST_INVALID", "PAGE");
+                          publishFailure(exchange, REQUEST_INVALID, "PAGE");
                           return Mono.just(mapper.invalid("PAGE"));
                         }
                         var parsed = parser.parse(body);
@@ -83,7 +84,7 @@ public final class PasswordValidationController {
         .onErrorResume(
             PasswordValidationRequestInvalidException.class,
             failure -> {
-              publishFailure(exchange, "REQUEST_INVALID", failure.target());
+              publishFailure(exchange, REQUEST_INVALID, failure.target());
               return Mono.just(mapper.invalid(failure.target()));
             })
         .onErrorResume(
@@ -96,7 +97,7 @@ public final class PasswordValidationController {
                     || failure instanceof ServerWebInputException
                     || failure instanceof ContentTooLargeException,
             failure -> {
-              publishFailure(exchange, "REQUEST_INVALID", "PAGE");
+              publishFailure(exchange, REQUEST_INVALID, "PAGE");
               return Mono.just(mapper.invalid("PAGE"));
             })
         .onErrorReturn(mapper.unavailable());
@@ -114,14 +115,14 @@ public final class PasswordValidationController {
               exchange.getAttribute(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY),
               "password-validation",
               "issue",
-              reason.equals("REQUEST_INVALID")
+              reason.equals(REQUEST_INVALID)
                   ? FailureOrigin.LOCAL_VALIDATION
                   : FailureOrigin.LOCAL_BUSINESS,
               reason,
-              reason.equals("REQUEST_INVALID")
+              reason.equals(REQUEST_INVALID)
                   ? ErrorCodes.PASSWORD_VALIDATION_REQUEST_INVALID
                   : null,
-              reason.equals("REQUEST_INVALID") ? 400 : 401,
+              reason.equals(REQUEST_INVALID) ? 400 : 401,
               false,
               Map.copyOf(dimensions)));
     } catch (RuntimeException ignored) {

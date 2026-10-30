@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedAccountRef;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.OperationPayloadBindingPort;
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationGrantService;
@@ -82,76 +83,110 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
     String accountRef =
         exchange.getRequest().getHeaders().getFirst(RequestHeaderContextKeys.ACCOUNT_REF_HEADER);
     if (!StringUtils.hasText(accountRef)) {
-      return failure(
-          exchange,
-          HttpStatus.BAD_REQUEST,
-          ApiStatus.BUSINESS_REJECTED,
-          "BUSINESS",
-          ErrorCodes.MEMBER_CONTEXT_INVALID,
-          List.of(),
-          "ACCOUNT_REF_MISSING");
+      return missingAccountRef(exchange);
     }
     PortalAccessContext context = exchange.getAttribute(PortalAccessContextKeys.ATTRIBUTE_KEY);
     var sessionId = cookies.read(exchange);
-    if (context == null
-        || context.actor() == null
-        || !StringUtils.hasText(context.actor().actorUserId())
-        || context.actor().actorUserRole() == null
-        || context.account() == null
-        || !accountRef.trim().equals(context.account().accountRef())
-        || sessionId.isEmpty()) {
-      return failure(
-          exchange,
-          HttpStatus.UNAUTHORIZED,
-          ApiStatus.BUSINESS_REJECTED,
-          "AUTHENTICATION_REQUIRED",
-          ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED,
-          List.of("PAGE"),
-          "CONTEXT_MISSING_OR_MISMATCHED");
+    if (!hasAuthenticatedContext(context, accountRef, sessionId.isPresent())) {
+      return missingAuthenticatedContext(exchange);
     }
     var tokens = exchange.getRequest().getHeaders().get(TOKEN_HEADER);
+    String tokenHeaderRejection = tokenHeaderRejectionReason(tokens);
+    if (tokenHeaderRejection != null) {
+      return rejected(exchange, tokenHeaderRejection);
+    }
+    return consumeAndDispatch(exchange, chain, context, sessionId.get(), tokens.getFirst());
+  }
+
+  private Mono<Void> missingAccountRef(ServerWebExchange exchange) {
+    return failure(
+        exchange,
+        HttpStatus.BAD_REQUEST,
+        ApiStatus.BUSINESS_REJECTED,
+        "BUSINESS",
+        ErrorCodes.MEMBER_CONTEXT_INVALID,
+        List.of(),
+        "ACCOUNT_REF_MISSING");
+  }
+
+  private Mono<Void> missingAuthenticatedContext(ServerWebExchange exchange) {
+    return failure(
+        exchange,
+        HttpStatus.UNAUTHORIZED,
+        ApiStatus.BUSINESS_REJECTED,
+        "AUTHENTICATION_REQUIRED",
+        ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED,
+        List.of("PAGE"),
+        "CONTEXT_MISSING_OR_MISMATCHED");
+  }
+
+  private static boolean hasAuthenticatedContext(
+      PortalAccessContext context, String accountRef, boolean hasSessionId) {
+    return context != null
+        && context.actor() != null
+        && StringUtils.hasText(context.actor().actorUserId())
+        && context.actor().actorUserRole() != null
+        && context.account() != null
+        && accountRef.trim().equals(context.account().accountRef())
+        && hasSessionId;
+  }
+
+  private static String tokenHeaderRejectionReason(List<String> tokens) {
     if (tokens == null || tokens.isEmpty()) {
-      return rejected(exchange, "TOKEN_HEADER_MISSING");
+      return "TOKEN_HEADER_MISSING";
     }
     if (tokens.size() != 1) {
-      return rejected(exchange, "TOKEN_HEADER_DUPLICATE");
+      return "TOKEN_HEADER_DUPLICATE";
     }
     if (!StringUtils.hasText(tokens.getFirst())) {
-      return rejected(exchange, "TOKEN_HEADER_BLANK");
+      return "TOKEN_HEADER_BLANK";
     }
+    return null;
+  }
+
+  private Mono<Void> consumeAndDispatch(
+      ServerWebExchange exchange,
+      WebFilterChain chain,
+      PortalAccessContext context,
+      AuthenticatedSessionId sessionId,
+      String token) {
     String requestId = exchange.getAttribute(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY);
     // Keep technical conversion on consume only, never on controller/update work.
     return Mono.defer(
             () ->
                 grants.consume(
-                    sessionId.get(),
+                    sessionId,
                     new AuthenticatedAccountRef(context.account().accountRef()),
                     PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE,
-                    tokens.getFirst(),
+                    token,
                     requestId))
         .defaultIfEmpty(UNAVAILABLE)
         .onErrorReturn(UNAVAILABLE)
-        .flatMap(
-            consumed -> {
-              if (consumed.status() == PasswordValidationGrantService.Status.REJECTED) {
-                return rejected(
-                    exchange, consumed.reason() == null ? "TOKEN_MALFORMED" : consumed.reason());
-              }
-              if (consumed.status() != PasswordValidationGrantService.Status.CONSUMED
-                  || consumed.binding() == null) {
-                return failure(
-                    exchange,
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    ApiStatus.SYSTEM_ERROR,
-                    "SYSTEM",
-                    ErrorCodes.PASSWORD_VALIDATION_UNAVAILABLE,
-                    List.of("PAGE"),
-                    consumed.reason() == null ? "SYSTEM_FAILURE" : consumed.reason());
-              }
-              exchange.getAttributes().put(BINDING_ATTRIBUTE, consumed.binding());
-              return bindBody(exchange, chain, consumed.binding())
-                  .doFinally(ignored -> exchange.getAttributes().remove(BINDING_ATTRIBUTE));
-            });
+        .flatMap(consumed -> dispatchConsumedGrant(exchange, chain, consumed));
+  }
+
+  private Mono<Void> dispatchConsumedGrant(
+      ServerWebExchange exchange,
+      WebFilterChain chain,
+      PasswordValidationGrantService.ConsumeResult consumed) {
+    if (consumed.status() == PasswordValidationGrantService.Status.REJECTED) {
+      return rejected(
+          exchange, consumed.reason() == null ? "TOKEN_MALFORMED" : consumed.reason());
+    }
+    if (consumed.status() != PasswordValidationGrantService.Status.CONSUMED
+        || consumed.binding() == null) {
+      return failure(
+          exchange,
+          HttpStatus.SERVICE_UNAVAILABLE,
+          ApiStatus.SYSTEM_ERROR,
+          "SYSTEM",
+          ErrorCodes.PASSWORD_VALIDATION_UNAVAILABLE,
+          List.of("PAGE"),
+          consumed.reason() == null ? "SYSTEM_FAILURE" : consumed.reason());
+    }
+    exchange.getAttributes().put(BINDING_ATTRIBUTE, consumed.binding());
+    return bindBody(exchange, chain, consumed.binding())
+        .doFinally(ignored -> exchange.getAttributes().remove(BINDING_ATTRIBUTE));
   }
 
   private Mono<Void> bindBody(
