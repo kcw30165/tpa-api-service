@@ -60,9 +60,7 @@ class UsernameRecoverySchemeProjectionTest {
 
     var schemeRefForBlankTrustCode = new UsernameRecoverySchemeRef("sch_1");
     assertThatThrownBy(
-            () ->
-                new UsernameRecoverySchemeProjection(
-                    schemeRefForBlankTrustCode, "DB", " ", true))
+            () -> new UsernameRecoverySchemeProjection(schemeRefForBlankTrustCode, "DB", " ", true))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
