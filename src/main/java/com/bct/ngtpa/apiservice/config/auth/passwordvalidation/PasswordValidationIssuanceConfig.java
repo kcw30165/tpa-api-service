@@ -4,6 +4,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowPropertie
 import com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.PasswordValidationRequestParser;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.passwordvalidation.ApimPasswordValidationAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.apim.passwordvalidation.PasswordValidationApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.passwordvalidation.PasswordValidationApimValidationConfig;
 import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayloadCanonicalizer;
 import com.bct.ngtpa.apiservice.application.port.in.IssuePasswordValidationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
@@ -14,10 +16,12 @@ import java.time.Clock;
 import org.springframework.context.annotation.*;
 
 @Configuration
+@Import(PasswordValidationApimValidationConfig.class)
 public class PasswordValidationIssuanceConfig {
   @Bean
-  ApimPasswordValidationAdapter apimPasswordValidationAdapter(ApimExchangeExecutor executor) {
-    return new ApimPasswordValidationAdapter(executor);
+  ApimPasswordValidationAdapter apimPasswordValidationAdapter(
+      ApimExchangeExecutor executor, PasswordValidationApimProperties properties) {
+    return new ApimPasswordValidationAdapter(executor, properties);
   }
 
   @Bean

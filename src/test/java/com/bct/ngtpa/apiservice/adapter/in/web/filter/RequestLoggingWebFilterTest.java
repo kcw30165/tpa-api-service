@@ -138,7 +138,7 @@ class RequestLoggingWebFilterTest {
   }
 
   @BeforeEach
-  void setUp() {
+  void attachAppenderBeforeTest() {
     logger = (Logger) LoggerFactory.getLogger(RequestLoggingWebFilter.class);
     listAppender = new ListAppender<>();
     listAppender.start();
@@ -148,7 +148,7 @@ class RequestLoggingWebFilterTest {
   }
 
   @AfterEach
-  void tearDown() {
+  void detachAppenderAfterTest() {
     logger.detachAppender(listAppender);
     listAppender.stop();
   }
