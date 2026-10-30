@@ -16,11 +16,13 @@ import java.util.Objects;
 import reactor.core.publisher.Mono;
 
 public final class ApimPasswordValidationAdapter implements PasswordCheckPort {
-  private static final String PATH = "/ws/NGTPA/v1/TRPPwdValidation";
   private final ApimExchangeExecutor executor;
+  private final String path;
 
-  public ApimPasswordValidationAdapter(ApimExchangeExecutor executor) {
+  public ApimPasswordValidationAdapter(
+      ApimExchangeExecutor executor, PasswordValidationApimProperties properties) {
     this.executor = Objects.requireNonNull(executor);
+    this.path = Objects.requireNonNull(properties).getPath();
   }
 
   @Override
@@ -30,7 +32,7 @@ public final class ApimPasswordValidationAdapter implements PasswordCheckPort {
             () ->
                 executor.postEnvelope(
                     new ApimExchangeRequest<>(
-                        PATH,
+                        path,
                         new TrpPwdValidationRequest(command.customerId(), command.password()),
                         TrpPwdValidationRequest.class,
                         TrpPwdValidationDataItem.class,

@@ -287,6 +287,8 @@ apim:
     path: /ws/NGTPA/v1/TRPGetFundPriceMode
   fund-comparison-options:
     path: /ws/NGTPA/v1/TRPGetFundCmpOpt
+  password-validation:
+    path: ${APIM_PASSWORD_VALIDATION_PATH:/ws/NGTPA/v1/TRPPwdValidation}
   account-balance:
     path: ${APIM_ACCOUNT_BALANCE_PATH:/ws/NGTPA/v1/TRPGetMemberAccBal}
   account-gain-loss:

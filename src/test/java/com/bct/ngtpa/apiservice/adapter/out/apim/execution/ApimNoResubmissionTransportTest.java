@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimPayloadFieldTransfor
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimRsaPayloadCrypto;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.passwordvalidation.ApimPasswordValidationAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.apim.passwordvalidation.PasswordValidationApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.passwordvalidation.dto.TrpPwdValidationDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.passwordvalidation.dto.TrpPwdValidationRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
@@ -273,6 +274,8 @@ class ApimNoResubmissionTransportTest {
       var pair = generator.generateKeyPair();
       key = pair.getPublic();
       var properties = new ApimProperties();
+      var passwordValidationProperties = new PasswordValidationApimProperties();
+      passwordValidationProperties.setPath(PATH);
       properties.getEncryption().setEnabled(encrypted);
       properties.getEncryption().setRequestFields(List.of("cust-id", "password"));
       properties.getRetry().getBusinessCall().setMaxAttempts(3);
@@ -364,7 +367,8 @@ class ApimNoResubmissionTransportTest {
               properties);
       adapter =
           new ApimPasswordValidationAdapter(
-              new DefaultApimExchangeExecutor(facade, crypto, properties));
+              new DefaultApimExchangeExecutor(facade, crypto, properties),
+              passwordValidationProperties);
     }
 
     PasswordCheckResult check() {

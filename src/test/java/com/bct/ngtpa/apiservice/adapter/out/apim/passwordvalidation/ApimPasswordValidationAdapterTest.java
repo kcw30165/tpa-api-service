@@ -27,7 +27,10 @@ import reactor.test.StepVerifier;
 class ApimPasswordValidationAdapterTest {
   private final ObjectMapper mapper = new ObjectMapper();
   private final ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);
-  private final ApimPasswordValidationAdapter adapter = new ApimPasswordValidationAdapter(executor);
+  private final PasswordValidationApimProperties properties =
+      properties("/ws/NGTPA/v1/TRPPwdValidation");
+  private final ApimPasswordValidationAdapter adapter =
+      new ApimPasswordValidationAdapter(executor, properties);
   private final PasswordCheckCommand command =
       new PasswordCheckCommand("test-customer", " AbC ", ActorUserRole.ROLE_INPUT, " DB ");
 
@@ -53,6 +56,21 @@ class ApimPasswordValidationAdapterTest {
     assertThat(request.request().toString())
         .contains("customerId=<redacted>", "password=<redacted>")
         .doesNotContain("test-customer", " AbC ");
+  }
+
+  @Test
+  void usesConfiguredPath() throws Exception {
+    stub("{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":true}]}}");
+    var configuredAdapter =
+        new ApimPasswordValidationAdapter(executor, properties("/custom/password-validation"));
+
+    StepVerifier.create(configuredAdapter.check(command))
+        .expectNext(PasswordCheckResult.CORRECT)
+        .verifyComplete();
+
+    var capture = ArgumentCaptor.forClass(ApimExchangeRequest.class);
+    verify(executor).postEnvelope(capture.capture());
+    assertThat(capture.getValue().path()).isEqualTo("/custom/password-validation");
   }
 
   @ParameterizedTest
@@ -155,5 +173,11 @@ class ApimPasswordValidationAdapterTest {
                     ApimResponseEnvelope.class, TrpPwdValidationDataItem.class));
     when(executor.<TrpPwdValidationRequest, TrpPwdValidationDataItem>postEnvelope(any()))
         .thenReturn(Mono.just(envelope));
+  }
+
+  private static PasswordValidationApimProperties properties(String path) {
+    var properties = new PasswordValidationApimProperties();
+    properties.setPath(path);
+    return properties;
   }
 }

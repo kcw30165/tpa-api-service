@@ -51,55 +51,79 @@ public final class JsonOperationPayloadCanonicalizer implements OperationPayload
   }
 
   private byte[] value(JsonParser parser) throws IOException {
+    return switch (parser.currentToken()) {
+      case START_OBJECT -> writeObject(parser);
+      case START_ARRAY -> writeArray(parser);
+      case VALUE_STRING -> writeString(parser);
+      case VALUE_NUMBER_INT, VALUE_NUMBER_FLOAT -> writeNumber(parser);
+      case VALUE_TRUE -> taggedValue((byte) 't');
+      case VALUE_FALSE -> taggedValue((byte) 'f');
+      case VALUE_NULL -> taggedValue((byte) '0');
+      default -> throw invalidPayload();
+    };
+  }
+
+  private byte[] writeObject(JsonParser parser) throws IOException {
     var buffer = new ByteArrayOutputStream();
     var output = new DataOutputStream(buffer);
-    switch (parser.currentToken()) {
-      case START_OBJECT -> {
-        var members = new TreeMap<String, byte[]>();
-        while (parser.nextToken() != JsonToken.END_OBJECT) {
-          if (parser.currentToken() != JsonToken.FIELD_NAME) {
-            throw invalidPayload();
-          }
-          String name = parser.currentName();
-          if (parser.nextToken() == null) {
-            throw invalidPayload();
-          }
-          members.put(name, value(parser));
-        }
-        output.writeByte('{');
-        output.writeInt(members.size());
-        for (var entry : members.entrySet()) {
-          text(output, entry.getKey());
-          output.write(entry.getValue());
-        }
+    var members = new TreeMap<String, byte[]>();
+    while (parser.nextToken() != JsonToken.END_OBJECT) {
+      if (parser.currentToken() != JsonToken.FIELD_NAME) {
+        throw invalidPayload();
       }
-      case START_ARRAY -> {
-        var items = new ArrayList<byte[]>();
-        while (parser.nextToken() != JsonToken.END_ARRAY) {
-          if (parser.currentToken() == null) {
-            throw invalidPayload();
-          }
-          items.add(value(parser));
-        }
-        output.writeByte('[');
-        output.writeInt(items.size());
-        for (byte[] item : items) {
-          output.write(item);
-        }
+      String name = parser.currentName();
+      if (parser.nextToken() == null) {
+        throw invalidPayload();
       }
-      case VALUE_STRING -> {
-        output.writeByte('s');
-        text(output, parser.getText());
-      }
-      case VALUE_NUMBER_INT, VALUE_NUMBER_FLOAT -> {
-        output.writeByte('n');
-        text(output, new BigDecimal(parser.getText()).stripTrailingZeros().toString());
-      }
-      case VALUE_TRUE -> output.writeByte('t');
-      case VALUE_FALSE -> output.writeByte('f');
-      case VALUE_NULL -> output.writeByte('0');
-      default -> throw invalidPayload();
+      members.put(name, value(parser));
     }
+    output.writeByte('{');
+    output.writeInt(members.size());
+    for (var entry : members.entrySet()) {
+      text(output, entry.getKey());
+      output.write(entry.getValue());
+    }
+    return buffer.toByteArray();
+  }
+
+  private byte[] writeArray(JsonParser parser) throws IOException {
+    var buffer = new ByteArrayOutputStream();
+    var output = new DataOutputStream(buffer);
+    var items = new ArrayList<byte[]>();
+    while (parser.nextToken() != JsonToken.END_ARRAY) {
+      if (parser.currentToken() == null) {
+        throw invalidPayload();
+      }
+      items.add(value(parser));
+    }
+    output.writeByte('[');
+    output.writeInt(items.size());
+    for (byte[] item : items) {
+      output.write(item);
+    }
+    return buffer.toByteArray();
+  }
+
+  private byte[] writeString(JsonParser parser) throws IOException {
+    var buffer = new ByteArrayOutputStream();
+    var output = new DataOutputStream(buffer);
+    output.writeByte('s');
+    text(output, parser.getText());
+    return buffer.toByteArray();
+  }
+
+  private byte[] writeNumber(JsonParser parser) throws IOException {
+    var buffer = new ByteArrayOutputStream();
+    var output = new DataOutputStream(buffer);
+    output.writeByte('n');
+    text(output, new BigDecimal(parser.getText()).stripTrailingZeros().toString());
+    return buffer.toByteArray();
+  }
+
+  private static byte[] taggedValue(byte tag) throws IOException {
+    var buffer = new ByteArrayOutputStream();
+    var output = new DataOutputStream(buffer);
+    output.writeByte(tag);
     return buffer.toByteArray();
   }
 

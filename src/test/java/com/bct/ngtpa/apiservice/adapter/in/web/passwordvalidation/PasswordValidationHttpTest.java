@@ -73,6 +73,7 @@ class PasswordValidationHttpTest {
     context = new AnnotationConfigApplicationContext();
     TestPropertyValues.of(
             "api.security.require-authentication=false",
+            "apim.password-validation.path=/ws/NGTPA/v1/TRPPwdValidation",
             "password-validation.rate-limit.secret="
                 + Base64.getEncoder().encodeToString(new byte[32]))
         .applyTo(context);
