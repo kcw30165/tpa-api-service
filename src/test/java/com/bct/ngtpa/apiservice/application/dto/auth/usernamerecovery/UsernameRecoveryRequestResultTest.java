@@ -29,12 +29,13 @@ class UsernameRecoveryRequestResultTest {
 
   @Test
   void acceptedRequestAcceptsPartiallyRequestedAndCompletedOnly() {
+    var schemeRef = new UsernameRecoverySchemeRef("sch_1");
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryRequestResult(
                     UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED,
                     UsernameRecoveryWorkflowStatus.ACTIVE,
-                    new UsernameRecoverySchemeRef("sch_1"),
+                    schemeRef,
                     "p****c@ah.ozk",
                     UsernameRecoveryDestinationType.EMAIL))
         .isInstanceOf(IllegalArgumentException.class)
@@ -43,12 +44,13 @@ class UsernameRecoveryRequestResultTest {
 
   @Test
   void acceptedRequestRequiresSuccessData() {
+    var schemeRefForMissingWorkflowStatus = new UsernameRecoverySchemeRef("sch_1");
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryRequestResult(
                     UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED,
                     null,
-                    new UsernameRecoverySchemeRef("sch_1"),
+                    schemeRefForMissingWorkflowStatus,
                     "p****c@ah.ozk",
                     UsernameRecoveryDestinationType.EMAIL))
         .isInstanceOf(IllegalArgumentException.class)
@@ -63,22 +65,26 @@ class UsernameRecoveryRequestResultTest {
                     UsernameRecoveryDestinationType.EMAIL))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("accepted request result requires a schemeRef");
+
+    var schemeRefForBlankMaskedDestination = new UsernameRecoverySchemeRef("sch_1");
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryRequestResult(
                     UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED,
                     UsernameRecoveryWorkflowStatus.COMPLETED,
-                    new UsernameRecoverySchemeRef("sch_1"),
+                    schemeRefForBlankMaskedDestination,
                     " ",
                     UsernameRecoveryDestinationType.EMAIL))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("accepted request result maskedDestination must not be blank");
+
+    var schemeRefForMissingDestinationType = new UsernameRecoverySchemeRef("sch_1");
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryRequestResult(
                     UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED,
                     UsernameRecoveryWorkflowStatus.COMPLETED,
-                    new UsernameRecoverySchemeRef("sch_1"),
+                    schemeRefForMissingDestinationType,
                     "p****c@ah.ozk",
                     null))
         .isInstanceOf(IllegalArgumentException.class)
@@ -106,12 +112,13 @@ class UsernameRecoveryRequestResultTest {
 
   @Test
   void nonAcceptedOutcomeRejectsSuccessData() {
+    var schemeRef = new UsernameRecoverySchemeRef("sch_1");
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryRequestResult(
                     UsernameRecoveryRequestResult.Outcome.SYSTEM_FAILED,
                     UsernameRecoveryWorkflowStatus.COMPLETED,
-                    new UsernameRecoverySchemeRef("sch_1"),
+                    schemeRef,
                     "p****c@ah.ozk",
                     UsernameRecoveryDestinationType.EMAIL))
         .isInstanceOf(IllegalArgumentException.class)

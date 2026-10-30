@@ -38,6 +38,7 @@ class UsernameRecoveryStartResultTest {
 
   @Test
   void sessionCreatedRequiresSessionDataAndNonEmptySchemes() {
+    var registeredSchemesForMissingCsrf = List.of(registeredProjection());
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryStartResult(
@@ -45,9 +46,11 @@ class UsernameRecoveryStartResultTest {
                     null,
                     null,
                     600,
-                    List.of(registeredProjection())))
+                    registeredSchemesForMissingCsrf))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("session-created result requires a nonblank csrfToken");
+
+    var registeredSchemesForInvalidExpiry = List.of(registeredProjection());
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryStartResult(
@@ -55,9 +58,11 @@ class UsernameRecoveryStartResultTest {
                     null,
                     "csrf",
                     0,
-                    List.of(registeredProjection())))
+                    registeredSchemesForInvalidExpiry))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("session-created result requires a positive expiresInSeconds");
+
+    List<UsernameRecoverySchemeProjection> emptySchemesForSessionCreated = List.of();
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryStartResult(
@@ -65,9 +70,11 @@ class UsernameRecoveryStartResultTest {
                     null,
                     "csrf",
                     600,
-                    List.of()))
+                    emptySchemesForSessionCreated))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("session-created result requires at least one scheme projection");
+
+    var unregisteredSchemesForSessionCreated = List.of(unregisteredProjection());
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryStartResult(
@@ -75,13 +82,18 @@ class UsernameRecoveryStartResultTest {
                     null,
                     "csrf",
                     600,
-                    List.of(unregisteredProjection())))
+                    unregisteredSchemesForSessionCreated))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("session-created result requires at least one registered scheme");
   }
 
   @Test
   void sessionCreatedRequiresSchemeRefForEveryProjection() {
+    var registeredProjectionForSession = registeredProjection();
+    var unregisteredProjectionWithoutSchemeRef =
+        new UsernameRecoverySchemeProjection(null, "DB", "DBB", false);
+    var projectionsWithMissingSchemeRef =
+        List.of(registeredProjectionForSession, unregisteredProjectionWithoutSchemeRef);
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryStartResult(
@@ -89,9 +101,7 @@ class UsernameRecoveryStartResultTest {
                     null,
                     "csrf",
                     600,
-                    List.of(
-                        registeredProjection(),
-                        new UsernameRecoverySchemeProjection(null, "DB", "DBB", false))))
+                    projectionsWithMissingSchemeRef))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("session-created result requires a schemeRef for every projection");
   }
@@ -109,13 +119,16 @@ class UsernameRecoveryStartResultTest {
 
   @Test
   void memberNotFoundRejectsSchemesOrSessionData() {
+    var registeredSchemesForMemberNotFound = List.of(registeredProjection());
     assertThatThrownBy(
             () ->
                 UsernameRecoveryStartResult.withoutSession(
                     UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND,
-                    List.of(registeredProjection())))
+                    registeredSchemesForMemberNotFound))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("member-not-found result must not carry session data or schemes");
+
+    List<UsernameRecoverySchemeProjection> emptySchemesForMemberNotFound = List.of();
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryStartResult(
@@ -123,7 +136,7 @@ class UsernameRecoveryStartResultTest {
                     null,
                     "csrf",
                     null,
-                    List.of()))
+                    emptySchemesForMemberNotFound))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("member-not-found result must not carry session data or schemes");
   }
@@ -143,6 +156,7 @@ class UsernameRecoveryStartResultTest {
 
   @Test
   void zeroRegisteredRejectsSessionDataRegisteredSchemesAndSchemeRefs() {
+    var unregisteredSchemesWithSessionData = List.of(unregisteredProjection());
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryStartResult(
@@ -150,41 +164,51 @@ class UsernameRecoveryStartResultTest {
                     null,
                     "csrf",
                     null,
-                    List.of(unregisteredProjection())))
+                    unregisteredSchemesWithSessionData))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("zero-registered result must not carry session data");
+
+    var registeredSchemesForZeroRegistered = List.of(registeredProjection());
     assertThatThrownBy(
             () ->
                 UsernameRecoveryStartResult.withoutSession(
                     UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-                    List.of(registeredProjection())))
+                    registeredSchemesForZeroRegistered))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("zero-registered result must not contain registered schemes");
+
+    var sessionBoundUnregisteredSchemes = List.of(unregisteredProjection());
     assertThatThrownBy(
             () ->
                 UsernameRecoveryStartResult.withoutSession(
                     UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-                    List.of(unregisteredProjection())))
+                    sessionBoundUnregisteredSchemes))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("zero-registered result projections must not carry schemeRef");
+
+    List<UsernameRecoverySchemeProjection> emptySchemesForZeroRegistered = List.of();
     assertThatThrownBy(
             () ->
                 UsernameRecoveryStartResult.withoutSession(
-                    UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED, List.of()))
+                    UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
+                    emptySchemesForZeroRegistered))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("zero-registered result requires at least one scheme projection");
   }
 
   @Test
   void requiresOutcomeAndCopiesSchemeList() {
-    assertThatThrownBy(() -> UsernameRecoveryStartResult.withoutSession(null, List.of()))
+    List<UsernameRecoverySchemeProjection> emptySchemes = List.of();
+    assertThatThrownBy(() -> UsernameRecoveryStartResult.withoutSession(null, emptySchemes))
         .isInstanceOf(NullPointerException.class);
 
     var result =
         UsernameRecoveryStartResult.withoutSession(
             UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND, null);
     assertThat(result.schemes()).isEmpty();
-    assertThatThrownBy(() -> result.schemes().add(registeredProjection()))
+    var schemes = result.schemes();
+    var projection = registeredProjection();
+    assertThatThrownBy(() -> schemes.add(projection))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
@@ -223,24 +247,30 @@ class UsernameRecoveryStartResultTest {
 
   @Test
   void nonSessionOutcomesRejectAuthFlowSessionId() {
+    var memberNotFoundSessionId = new AuthFlowSessionId("afs_opaque-1");
+    List<UsernameRecoverySchemeProjection> emptySchemes = List.of();
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryStartResult(
                     UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND,
-                    new AuthFlowSessionId("afs_opaque-1"),
+                    memberNotFoundSessionId,
                     null,
                     null,
-                    List.of()))
+                    emptySchemes))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("member-not-found result must not carry session data or schemes");
+
+    var zeroRegisteredSessionId = new AuthFlowSessionId("afs_opaque-1");
+    var unregisteredProjection = unregisteredProjection();
+    var unregisteredProjections = List.of(unregisteredProjection);
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryStartResult(
                     UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-                    new AuthFlowSessionId("afs_opaque-1"),
+                    zeroRegisteredSessionId,
                     null,
                     null,
-                    List.of(unregisteredProjection())))
+                    unregisteredProjections))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("zero-registered result must not carry session data");
   }

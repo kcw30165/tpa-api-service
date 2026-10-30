@@ -14,35 +14,32 @@ class UsernameRecoveryRequestCommandTest {
 
   @Test
   void requiresSessionSchemeRefAndIdempotencyKey() {
+    var schemeRef = new UsernameRecoverySchemeRef("sch_1");
     assertThatThrownBy(
-            () ->
-                new UsernameRecoveryRequestCommand(
-                    null, new UsernameRecoverySchemeRef("sch_1"), IDEMPOTENCY_KEY, null))
+            () -> new UsernameRecoveryRequestCommand(null, schemeRef, IDEMPOTENCY_KEY, null))
         .isInstanceOf(NullPointerException.class);
+
+    var authFlowSessionId = new AuthFlowSessionId("afs_1");
     assertThatThrownBy(
             () ->
-                new UsernameRecoveryRequestCommand(
-                    new AuthFlowSessionId("afs_1"), null, IDEMPOTENCY_KEY, null))
+                new UsernameRecoveryRequestCommand(authFlowSessionId, null, IDEMPOTENCY_KEY, null))
         .isInstanceOf(NullPointerException.class);
+
+    var authFlowSessionIdForNullKey = new AuthFlowSessionId("afs_1");
+    var schemeRefForNullKey = new UsernameRecoverySchemeRef("sch_1");
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryRequestCommand(
-                    new AuthFlowSessionId("afs_1"),
-                    new UsernameRecoverySchemeRef("sch_1"),
-                    null,
-                    null))
+                    authFlowSessionIdForNullKey, schemeRefForNullKey, null, null))
         .isInstanceOf(NullPointerException.class);
   }
 
   @Test
   void rejectsBlankIdempotencyKey() {
+    var authFlowSessionId = new AuthFlowSessionId("afs_1");
+    var schemeRef = new UsernameRecoverySchemeRef("sch_1");
     assertThatThrownBy(
-            () ->
-                new UsernameRecoveryRequestCommand(
-                    new AuthFlowSessionId("afs_1"),
-                    new UsernameRecoverySchemeRef("sch_1"),
-                    "   ",
-                    null))
+            () -> new UsernameRecoveryRequestCommand(authFlowSessionId, schemeRef, "   ", null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("username recovery request command idempotencyKey must not be blank");
   }

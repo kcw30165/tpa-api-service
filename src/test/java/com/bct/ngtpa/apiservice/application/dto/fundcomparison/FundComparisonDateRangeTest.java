@@ -16,13 +16,15 @@ class FundComparisonDateRangeTest {
 
   @Test
   void rejectsNullFromDate() {
-    assertThatThrownBy(() -> new FundComparisonDateRange(null, LocalDate.of(2026, 10, 15)))
+    var toDate = LocalDate.of(2026, 10, 15);
+    assertThatThrownBy(() -> new FundComparisonDateRange(null, toDate))
         .isInstanceOf(NullPointerException.class);
   }
 
   @Test
   void rejectsNullToDate() {
-    assertThatThrownBy(() -> new FundComparisonDateRange(LocalDate.of(2026, 10, 15), null))
+    var fromDate = LocalDate.of(2026, 10, 15);
+    assertThatThrownBy(() -> new FundComparisonDateRange(fromDate, null))
         .isInstanceOf(NullPointerException.class);
   }
 

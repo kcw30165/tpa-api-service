@@ -24,10 +24,11 @@ class UsernameRecoveryLookupResultTest {
 
   @Test
   void matchedRequiresAtLeastOneCandidate() {
+    List<UsernameRecoveryLookupCandidate> emptyCandidates = List.of();
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryLookupResult(
-                    UsernameRecoveryLookupResult.Status.MATCHED, List.of()))
+                    UsernameRecoveryLookupResult.Status.MATCHED, emptyCandidates))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("matched lookup requires at least one candidate");
   }
@@ -48,23 +49,28 @@ class UsernameRecoveryLookupResultTest {
 
   @Test
   void nonMatchedOutcomeRejectsCandidates() {
+    var candidate = candidate();
+    var candidates = List.of(candidate);
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryLookupResult(
-                    UsernameRecoveryLookupResult.Status.NOT_FOUND, List.of(candidate())))
+                    UsernameRecoveryLookupResult.Status.NOT_FOUND, candidates))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("non-matched lookup must not contain candidates");
   }
 
   @Test
   void requiresStatusAndCopiesCandidateList() {
-    assertThatThrownBy(() -> new UsernameRecoveryLookupResult(null, List.of()))
+    List<UsernameRecoveryLookupCandidate> emptyCandidates = List.of();
+    assertThatThrownBy(() -> new UsernameRecoveryLookupResult(null, emptyCandidates))
         .isInstanceOf(NullPointerException.class);
 
     var result =
         new UsernameRecoveryLookupResult(UsernameRecoveryLookupResult.Status.NOT_FOUND, null);
     assertThat(result.candidates()).isEmpty();
-    assertThatThrownBy(() -> result.candidates().add(candidate()))
+    var candidates = result.candidates();
+    var candidate = candidate();
+    assertThatThrownBy(() -> candidates.add(candidate))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 

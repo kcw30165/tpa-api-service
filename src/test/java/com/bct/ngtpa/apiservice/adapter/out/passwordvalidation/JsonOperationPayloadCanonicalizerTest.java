@@ -87,9 +87,10 @@ class JsonOperationPayloadCanonicalizerTest {
     var digest = canonicalizer.digest("{}");
     assertThat(digest.matches(new PayloadDigest(2, digest.sha256()))).isFalse();
     assertThat(digest.matches(null)).isFalse();
+    var sha256 = digest.sha256();
     assertThatThrownBy(() -> canonicalizer.digest(null))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new PayloadDigest(0, digest.sha256()))
+    assertThatThrownBy(() -> new PayloadDigest(0, sha256))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> new PayloadDigest(1, "bad"))
         .isInstanceOf(IllegalArgumentException.class);
