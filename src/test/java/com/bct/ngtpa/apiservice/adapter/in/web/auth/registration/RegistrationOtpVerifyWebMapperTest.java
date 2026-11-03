@@ -237,7 +237,7 @@ class RegistrationOtpVerifyWebMapperTest {
               // WorkflowMutationResponseMapper.toMutationResponse(...) call unchanged, so
               // error.type() still reflects the real toApiError() rendering
               // (descriptor.type().name()), unaffected by the override.
-              assertThat(error.type()).isEqualTo("DOWNSTREAM_SYSTEM");
+              assertThat(error.type()).isEqualTo("SYSTEM");
             });
   }
 

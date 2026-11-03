@@ -218,7 +218,7 @@ class RegistrationStartWebMapperTest {
               // status switch (target != "PAGE" short-circuits to FIELD instead, per confirmed
               // real toWorkflowErrorType logic). Rendered public JSON type through the real
               // WorkflowMutationResponseMapper.toApiError (descriptor.type().name()).
-              assertThat(error.type()).isEqualTo("DOWNSTREAM_SYSTEM");
+              assertThat(error.type()).isEqualTo("SYSTEM");
             });
   }
 
@@ -252,7 +252,7 @@ class RegistrationStartWebMapperTest {
               // DOWNSTREAM_REJECTED -> WorkflowErrorType.DOWNSTREAM_BUSINESS. Rendered public
               // JSON type through the real WorkflowMutationResponseMapper.toApiError
               // (descriptor.type().name()).
-              assertThat(error.type()).isEqualTo("DOWNSTREAM_BUSINESS");
+              assertThat(error.type()).isEqualTo("BUSINESS");
             });
   }
 

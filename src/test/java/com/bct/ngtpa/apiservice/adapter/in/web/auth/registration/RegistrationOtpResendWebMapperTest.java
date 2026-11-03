@@ -60,7 +60,7 @@ class RegistrationOtpResendWebMapperTest {
   }
 
   @Test
-  void messageDeliveryFailureMapsToDownstreamError() throws Exception {
+  void messageDeliveryFailureRendersSystemType() throws Exception {
     Object response =
         mapper.toMutationResponse(
             new ResendRegistrationOtpResult(
@@ -83,7 +83,7 @@ class RegistrationOtpResendWebMapperTest {
     // through the real WorkflowMutationResponseMapper.toApiError (descriptor.type().name()).
     // This existing test asserts via JSON string containment (not a structured lambda), so the
     // addition matches that same style.
-    assertThat(json).contains("\"type\":\"DOWNSTREAM_SYSTEM\"");
+    assertThat(json).contains("\"type\":\"SYSTEM\"");
     assertThat(json).doesNotContain("123456", "member@example.com", "SMS content", "email body");
   }
 

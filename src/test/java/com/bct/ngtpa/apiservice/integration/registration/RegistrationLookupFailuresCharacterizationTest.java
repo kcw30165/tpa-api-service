@@ -223,7 +223,7 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(body.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
     assertThat(body.errors()).hasSize(1);
     ApiError error = body.errors().getFirst();
-    assertThat(error.type()).isEqualTo("DOWNSTREAM_SYSTEM");
+    assertThat(error.type()).isEqualTo("SYSTEM");
     assertThat(error.code()).isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
     assertThat(error.targets()).isEqualTo(List.of("PAGE"));
     assertThat(error.source()).isEqualTo(SOURCE_SERVER);
@@ -346,7 +346,7 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(body.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
     assertThat(body.errors()).hasSize(1);
     ApiError error = body.errors().getFirst();
-    assertThat(error.type()).isEqualTo("DOWNSTREAM_SYSTEM");
+    assertThat(error.type()).isEqualTo("SYSTEM");
     assertThat(error.code()).isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
     assertThat(error.targets()).isEqualTo(List.of("PAGE"));
     assertThat(error.source()).isEqualTo(SOURCE_SERVER);
@@ -458,7 +458,7 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(body.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
     assertThat(body.errors()).hasSize(1);
     ApiError error = body.errors().getFirst();
-    assertThat(error.type()).isEqualTo("DOWNSTREAM_SYSTEM");
+    assertThat(error.type()).isEqualTo("SYSTEM");
     assertThat(error.code()).isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
     assertThat(error.targets()).isEqualTo(List.of("PAGE"));
     assertThat(error.source()).isEqualTo(SOURCE_SERVER);
