@@ -24,8 +24,7 @@ class AccountSummaryCurrencyCacheEntryTest {
 
   @Test
   void rejectsNullAvailableCurrencies() {
-    assertThatThrownBy(
-            () -> new AccountSummaryCurrencyCacheEntry("ACC-1", "00000008802", null))
+    assertThatThrownBy(() -> new AccountSummaryCurrencyCacheEntry("ACC-1", "00000008802", null))
         .isInstanceOf(NullPointerException.class);
   }
 

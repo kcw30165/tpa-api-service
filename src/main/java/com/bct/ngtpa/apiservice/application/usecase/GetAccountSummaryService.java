@@ -48,8 +48,8 @@ import reactor.core.publisher.Mono;
  * selectedCurrency} instead of the blank value, and the balance call's available-currency list is
  * cached in the authenticated session after it succeeds (D-2). When {@code command.currency()} is
  * supplied, it is validated against that session-cached list before either downstream operation is
- * called; a cache miss for any reason (including a missing session cookie) is rejected the same
- * way as a non-member currency (D-2/D-3). The balance call itself always receives {@code
+ * called; a cache miss for any reason (including a missing session cookie) is rejected the same way
+ * as a non-member currency (D-2/D-3). The balance call itself always receives {@code
  * command.currency()} verbatim, blank or not.
  */
 public final class GetAccountSummaryService implements GetAccountSummaryUseCase {

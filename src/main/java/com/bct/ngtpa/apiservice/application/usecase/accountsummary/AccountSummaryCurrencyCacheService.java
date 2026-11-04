@@ -20,9 +20,9 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 /**
- * Reads and writes the account-summary currency-selection cache entry in the authenticated
- * session, per docs/refactor/3-account-endpoints-restructure/8-investgl-curr-required-addendum.md
- * D-2, mirroring {@code FundComparisonOptionsCacheService}'s read/write/Wire shape exactly.
+ * Reads and writes the account-summary currency-selection cache entry in the authenticated session,
+ * per docs/refactor/3-account-endpoints-restructure/8-investgl-curr-required-addendum.md D-2,
+ * mirroring {@code FundComparisonOptionsCacheService}'s read/write/Wire shape exactly.
  *
  * <p>Read is a plain session load and decrypt, not {@code loadAndTouch}: the portal access web
  * filter already touches the session on every authenticated request, so touching again here would
@@ -33,8 +33,8 @@ import reactor.core.publisher.Mono;
  * revision-checked {@link AuthenticatedSessionConcurrencyService}. A write that is not applied, or
  * fails, is logged and skipped; it never fails the caller.
  *
- * <p>Logs carry the request id and a reason only; {@code policyNo} and {@code accountRef} are
- * never logged. Not a Spring bean by annotation (application layer stays framework-free).
+ * <p>Logs carry the request id and a reason only; {@code policyNo} and {@code accountRef} are never
+ * logged. Not a Spring bean by annotation (application layer stays framework-free).
  */
 public final class AccountSummaryCurrencyCacheService {
 
@@ -141,8 +141,7 @@ public final class AccountSummaryCurrencyCacheService {
   }
 
   private static Optional<AccountSummaryCurrencyCacheEntry> miss(String reason, String requestId) {
-    LOG.info(
-        "event=account-summary.currency-cache.miss reason={} requestId={}", reason, requestId);
+    LOG.info("event=account-summary.currency-cache.miss reason={} requestId={}", reason, requestId);
     return Optional.empty();
   }
 

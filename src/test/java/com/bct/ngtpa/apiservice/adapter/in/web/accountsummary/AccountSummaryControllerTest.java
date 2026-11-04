@@ -33,12 +33,11 @@ import reactor.core.publisher.Mono;
  * ExceptionMappingRegistry) to (ExceptionMappingRegistry, PublicMessageResolver, ErrorEventLogger,
  * ErrorResponseRenderer). No assertion changed.
  *
- * <p>InvestGL curr-required-currency (D-4): {@code GetAccountSummaryUseCase.get(...)} gained
- * {@code Optional<AuthenticatedSessionId>}, {@code accountRef}, and {@code requestId} parameters.
- * Existing tests use {@code any()} matchers for the three new parameters since they exercise
- * currency-blank behavior unaffected by the cache; {@code
- * noSessionCookieYieldsEmptyOptionalPassedToTheUseCase}, {@code
- * presentSessionCookieYieldsItsAuthenticatedSessionIdPassedToTheUseCase}, and {@code
+ * <p>InvestGL curr-required-currency (D-4): {@code GetAccountSummaryUseCase.get(...)} gained {@code
+ * Optional<AuthenticatedSessionId>}, {@code accountRef}, and {@code requestId} parameters. Existing
+ * tests use {@code any()} matchers for the three new parameters since they exercise currency-blank
+ * behavior unaffected by the cache; {@code noSessionCookieYieldsEmptyOptionalPassedToTheUseCase},
+ * {@code presentSessionCookieYieldsItsAuthenticatedSessionIdPassedToTheUseCase}, and {@code
  * accountRefFromContextIsForwardedToTheUseCase} are new, covering D-4's wiring itself.
  */
 class AccountSummaryControllerTest {

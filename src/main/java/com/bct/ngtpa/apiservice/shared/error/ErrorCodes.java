@@ -66,5 +66,6 @@ public final class ErrorCodes {
 
   public static final String ACCOUNT_SUMMARY_REQUEST_INVALID =
       "err.account-summary.request.invalid";
+
   private ErrorCodes() {}
 }

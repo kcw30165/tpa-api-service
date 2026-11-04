@@ -9,9 +9,9 @@ import java.util.Objects;
  * docs/refactor/3-account-endpoints-restructure/8-investgl-curr-required-addendum.md D-2.
  *
  * <p>Holds the available-currency list returned by TRPGetMemberAccBal on the most recent
- * blank-currency (first) load, bound to the account it was fetched for. An entry matches only
- * when both {@code accountRef} and {@code policyNo} equal the current account context, mirroring
- * {@code FundComparisonOptionsCacheEntry}'s account-identity rule. {@code toString()} hides both
+ * blank-currency (first) load, bound to the account it was fetched for. An entry matches only when
+ * both {@code accountRef} and {@code policyNo} equal the current account context, mirroring {@code
+ * FundComparisonOptionsCacheEntry}'s account-identity rule. {@code toString()} hides both
  * identifiers.
  */
 public record AccountSummaryCurrencyCacheEntry(
