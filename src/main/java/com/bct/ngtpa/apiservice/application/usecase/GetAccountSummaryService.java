@@ -1,10 +1,12 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
+import com.bct.ngtpa.apiservice.application.dto.AccountBalanceResult;
 import com.bct.ngtpa.apiservice.application.dto.FetchAccountBalanceCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetAccountBalanceCommand;
 import com.bct.ngtpa.apiservice.application.dto.accountbalance.raw.RawAccountBalanceData;
 import com.bct.ngtpa.apiservice.application.dto.accountgainloss.FetchAccountGainLossCommand;
 import com.bct.ngtpa.apiservice.application.dto.accountgainloss.GetAccountGainLossCommand;
+import com.bct.ngtpa.apiservice.application.dto.accountsummary.AccountSummaryCurrencyCacheEntry;
 import com.bct.ngtpa.apiservice.application.dto.accountsummary.AccountSummaryResult;
 import com.bct.ngtpa.apiservice.application.dto.accountsummary.GetAccountSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataKey;
@@ -13,8 +15,10 @@ import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataScope;
 import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataType;
 import com.bct.ngtpa.apiservice.application.dto.metadata.ResolveGeneralMetadataQuery;
 import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.AccountGainLossRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.AccountSummaryRequestInvalidException;
 import com.bct.ngtpa.apiservice.application.port.in.AccountBalanceAssembler;
 import com.bct.ngtpa.apiservice.application.port.in.GeneralMetadataResolver;
 import com.bct.ngtpa.apiservice.application.port.in.GetAccountSummaryUseCase;
@@ -23,7 +27,9 @@ import com.bct.ngtpa.apiservice.application.port.out.AccountGainLossSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.service.accountgainloss.AccountGainLossAssembler;
 import com.bct.ngtpa.apiservice.application.service.accountsummary.AccountSummaryAssembler;
+import com.bct.ngtpa.apiservice.application.usecase.accountsummary.AccountSummaryCurrencyCacheService;
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.Set;
 import reactor.core.publisher.Mono;
 
@@ -35,6 +41,16 @@ import reactor.core.publisher.Mono;
  *
  * <p>Neither existing assembler is modified. This class only adds the new summary-specific
  * composition performed by {@link AccountSummaryAssembler}.
+ *
+ * <p>InvestGL curr-required-currency handling (D-1 through D-4 of
+ * docs/refactor/3-account-endpoints-restructure/8-investgl-curr-required-addendum.md): when {@code
+ * command.currency()} is blank, the gain/loss call uses the balance call's own {@code
+ * selectedCurrency} instead of the blank value, and the balance call's available-currency list is
+ * cached in the authenticated session after it succeeds (D-2). When {@code command.currency()} is
+ * supplied, it is validated against that session-cached list before either downstream operation is
+ * called; a cache miss for any reason (including a missing session cookie) is rejected the same
+ * way as a non-member currency (D-2/D-3). The balance call itself always receives {@code
+ * command.currency()} verbatim, blank or not.
  */
 public final class GetAccountSummaryService implements GetAccountSummaryUseCase {
 
@@ -53,6 +69,7 @@ public final class GetAccountSummaryService implements GetAccountSummaryUseCase 
   private final AccountBalanceAssembler accountBalanceAssembler;
   private final AccountGainLossAssembler accountGainLossAssembler;
   private final AccountSummaryAssembler accountSummaryAssembler;
+  private final AccountSummaryCurrencyCacheService currencyCacheService;
 
   public GetAccountSummaryService(
       ReferenceDatePort referenceDatePort,
@@ -61,7 +78,8 @@ public final class GetAccountSummaryService implements GetAccountSummaryUseCase 
       AccountGainLossSourcePort accountGainLossSourcePort,
       AccountBalanceAssembler accountBalanceAssembler,
       AccountGainLossAssembler accountGainLossAssembler,
-      AccountSummaryAssembler accountSummaryAssembler) {
+      AccountSummaryAssembler accountSummaryAssembler,
+      AccountSummaryCurrencyCacheService currencyCacheService) {
     this.referenceDatePort = referenceDatePort;
     this.generalMetadataResolver = generalMetadataResolver;
     this.accountBalanceSourcePort = accountBalanceSourcePort;
@@ -69,10 +87,51 @@ public final class GetAccountSummaryService implements GetAccountSummaryUseCase 
     this.accountBalanceAssembler = accountBalanceAssembler;
     this.accountGainLossAssembler = accountGainLossAssembler;
     this.accountSummaryAssembler = accountSummaryAssembler;
+    this.currencyCacheService = currencyCacheService;
   }
 
   @Override
-  public Mono<AccountSummaryResult> get(GetAccountSummaryCommand command) {
+  public Mono<AccountSummaryResult> get(
+      GetAccountSummaryCommand command,
+      Optional<AuthenticatedSessionId> sessionId,
+      String accountRef,
+      String requestId) {
+    if (command.currency() != null) {
+      return validateSuppliedCurrency(command, sessionId, accountRef, requestId)
+          .then(Mono.defer(() -> proceed(command, sessionId, accountRef, requestId, false)));
+    }
+    return proceed(command, sessionId, accountRef, requestId, true);
+  }
+
+  private Mono<Void> validateSuppliedCurrency(
+      GetAccountSummaryCommand command,
+      Optional<AuthenticatedSessionId> sessionId,
+      String accountRef,
+      String requestId) {
+    if (sessionId.isEmpty()) {
+      return Mono.error(
+          new AccountSummaryRequestInvalidException("Missing authenticated session cookie"));
+    }
+    return currencyCacheService
+        .read(sessionId.get(), accountRef, command.policyNo(), requestId)
+        .flatMap(
+            cached -> {
+              if (cached.isEmpty()
+                  || !cached.get().availableCurrencies().contains(command.currency())) {
+                return Mono.<Void>error(
+                    new AccountSummaryRequestInvalidException(
+                        "currency is not an available currency for this account"));
+              }
+              return Mono.empty();
+            });
+  }
+
+  private Mono<AccountSummaryResult> proceed(
+      GetAccountSummaryCommand command,
+      Optional<AuthenticatedSessionId> sessionId,
+      String accountRef,
+      String requestId,
+      boolean cacheOnSuccess) {
     return referenceDatePort
         .resolveReferenceDate(command.accountEnv())
         .flatMap(
@@ -85,19 +144,33 @@ public final class GetAccountSummaryService implements GetAccountSummaryUseCase 
                       command.actorUserRole());
               return generalMetadataResolver
                   .resolve(query)
-                  .flatMap(metadata -> fetchAndAssemble(command, referenceDate, metadata));
+                  .flatMap(
+                      metadata ->
+                          fetchAndAssemble(
+                              command,
+                              referenceDate,
+                              metadata,
+                              sessionId,
+                              accountRef,
+                              requestId,
+                              cacheOnSuccess));
             })
         .onErrorMap(
             ex ->
                 !(ex instanceof AccountBalanceRetrievalException
-                    || ex instanceof AccountGainLossRetrievalException),
+                    || ex instanceof AccountGainLossRetrievalException
+                    || ex instanceof AccountSummaryRequestInvalidException),
             ex -> AccountBalanceRetrievalException.systemFailure());
   }
 
   private Mono<AccountSummaryResult> fetchAndAssemble(
       GetAccountSummaryCommand command,
       LocalDate referenceDate,
-      ResolvedGeneralMetadataSet metadata) {
+      ResolvedGeneralMetadataSet metadata,
+      Optional<AuthenticatedSessionId> sessionId,
+      String accountRef,
+      String requestId,
+      boolean cacheOnSuccess) {
     var balanceCommand =
         new GetAccountBalanceCommand(
             command.language(),
@@ -121,7 +194,6 @@ public final class GetAccountSummaryService implements GetAccountSummaryUseCase 
             command.actorUserId(),
             command.actorUserRole(),
             referenceDate);
-
     return accountBalanceSourcePort
         .fetchRawAccountBalance(fetchBalance)
         .flatMap(
@@ -129,9 +201,42 @@ public final class GetAccountSummaryService implements GetAccountSummaryUseCase 
                 accountBalanceAssembler
                     .assemble(balanceCommand, referenceDate, metadata, rawBalance)
                     .flatMap(
-                        balanceResult ->
-                            fetchGainLossAndAssemble(
-                                command, referenceDate, metadata, rawBalance, balanceResult)));
+                        balanceResult -> {
+                          String effectiveCurrency =
+                              command.currency() != null
+                                  ? command.currency()
+                                  : balanceResult.currencySelection().selectedCurrency();
+                          Mono<Void> cacheWrite =
+                              cacheOnSuccess
+                                  ? writeCurrencyCache(
+                                      command, balanceResult, sessionId, accountRef, requestId)
+                                  : Mono.empty();
+                          return cacheWrite.then(
+                              Mono.defer(
+                                  () ->
+                                      fetchGainLossAndAssemble(
+                                          command,
+                                          referenceDate,
+                                          metadata,
+                                          rawBalance,
+                                          balanceResult,
+                                          effectiveCurrency)));
+                        }));
+  }
+
+  private Mono<Void> writeCurrencyCache(
+      GetAccountSummaryCommand command,
+      AccountBalanceResult balanceResult,
+      Optional<AuthenticatedSessionId> sessionId,
+      String accountRef,
+      String requestId) {
+    if (sessionId.isEmpty()) {
+      return Mono.empty();
+    }
+    var entry =
+        AccountSummaryCurrencyCacheEntry.of(
+            accountRef, command.policyNo(), balanceResult.currencySelection());
+    return currencyCacheService.write(sessionId.get(), entry, requestId);
   }
 
   private Mono<AccountSummaryResult> fetchGainLossAndAssemble(
@@ -139,12 +244,13 @@ public final class GetAccountSummaryService implements GetAccountSummaryUseCase 
       LocalDate referenceDate,
       ResolvedGeneralMetadataSet metadata,
       RawAccountBalanceData rawBalance,
-      com.bct.ngtpa.apiservice.application.dto.AccountBalanceResult balanceResult) {
+      AccountBalanceResult balanceResult,
+      String effectiveCurrency) {
     var gainLossCommand =
         new GetAccountGainLossCommand(
             command.language(),
             command.period(),
-            command.currency(),
+            effectiveCurrency,
             command.accountEnv(),
             command.policyNo(),
             command.certNo(),
@@ -155,14 +261,13 @@ public final class GetAccountSummaryService implements GetAccountSummaryUseCase 
     var fetchGainLoss =
         new FetchAccountGainLossCommand(
             command.period(),
-            command.currency(),
+            effectiveCurrency,
             command.accountEnv(),
             command.policyNo(),
             command.certNo(),
             command.actorUserId(),
             command.actorUserRole(),
             referenceDate);
-
     return accountGainLossSourcePort
         .fetch(fetchGainLoss)
         .map(

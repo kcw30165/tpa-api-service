@@ -66,7 +66,7 @@ class GetAccountSummaryServiceTest {
         service(
             referenceDatePort, metadataResolver, balanceSource, gainLossSource, balanceAssembler);
 
-    StepVerifier.create(service.get(command()))
+    StepVerifier.create(service.get(command(), java.util.Optional.empty(), "ACC-1", "req-test"))
         .assertNext(
             result -> {
               assertThat(result.accountNumber()).isEqualTo("00000008802-0230");
@@ -102,7 +102,7 @@ class GetAccountSummaryServiceTest {
         service(
             referenceDatePort, metadataResolver, balanceSource, gainLossSource, balanceAssembler);
 
-    StepVerifier.create(service.get(command()))
+    StepVerifier.create(service.get(command(), java.util.Optional.empty(), "ACC-1", "req-test"))
         .expectErrorSatisfies(
             ex -> {
               assertThat(ex).isInstanceOf(AccountBalanceRetrievalException.class);
@@ -127,7 +127,7 @@ class GetAccountSummaryServiceTest {
         service(
             referenceDatePort, metadataResolver, balanceSource, gainLossSource, balanceAssembler);
 
-    StepVerifier.create(service.get(command()))
+    StepVerifier.create(service.get(command(), java.util.Optional.empty(), "ACC-1", "req-test"))
         .expectErrorSatisfies(
             ex -> {
               assertThat(ex).isInstanceOf(AccountGainLossRetrievalException.class);
@@ -151,7 +151,7 @@ class GetAccountSummaryServiceTest {
         service(
             referenceDatePort, metadataResolver, balanceSource, gainLossSource, balanceAssembler);
 
-    StepVerifier.create(service.get(command()))
+    StepVerifier.create(service.get(command(), java.util.Optional.empty(), "ACC-1", "req-test"))
         .expectErrorSatisfies(
             ex -> {
               assertThat(ex).isInstanceOf(AccountBalanceRetrievalException.class);
@@ -176,7 +176,13 @@ class GetAccountSummaryServiceTest {
         gainLossSource,
         balanceAssembler,
         new AccountGainLossAssembler(),
-        new AccountSummaryAssembler());
+        new AccountSummaryAssembler(),
+        // Deliberately null: every test in this file uses command() with currency=null,
+        // so the only call site that would touch this dependency (writeCurrencyCache) is
+        // guarded by sessionId.isEmpty() in GetAccountSummaryService -- Optional.empty() is
+        // passed at every call site above, so it always short-circuits to Mono.empty()
+        // before this field is ever read.
+        null);
   }
 
   private static GetAccountSummaryCommand command() {
