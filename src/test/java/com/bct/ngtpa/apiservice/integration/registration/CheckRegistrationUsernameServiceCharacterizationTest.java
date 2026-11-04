@@ -7,7 +7,6 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
-import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.UsernamePolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationEligibleTrustSet;
@@ -77,8 +76,7 @@ class CheckRegistrationUsernameServiceCharacterizationTest {
     var service = newService(availabilityPort);
     CheckRegistrationUsernameResult result = service.check(newCommand()).block();
 
-    assertThat(result.status())
-        .isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED);
+    assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED);
 
     var mapper = new RegistrationUsernameCheckWebMapper();
     var response = mapper.toMutationResponse(result);
@@ -124,7 +122,8 @@ class CheckRegistrationUsernameServiceCharacterizationTest {
                   + CORRELATION_ID);
       assertThat(appender.list.get(1).getLevel()).isEqualTo(Level.ERROR);
       assertThat(appender.list.get(1).getFormattedMessage())
-          .isEqualTo("event=registration.usernameCheck.failure severity=FATAL status=DOWNSTREAM_FAILURE");
+          .isEqualTo(
+              "event=registration.usernameCheck.failure severity=FATAL status=DOWNSTREAM_FAILURE");
     } finally {
       logger.detachAppender(appender);
       appender.stop();
@@ -220,9 +219,7 @@ class CheckRegistrationUsernameServiceCharacterizationTest {
         csrfTokenHash,
         null,
         new AuthFlowSessionData(
-            null,
-            null,
-            Map.of(RegistrationEligibleTrustSet.ATTRIBUTE_NAME, encodedTrustAttribute)),
+            null, null, Map.of(RegistrationEligibleTrustSet.ATTRIBUTE_NAME, encodedTrustAttribute)),
         NOW.minusSeconds(60),
         NOW.minusSeconds(60),
         NOW.plusSeconds(600));

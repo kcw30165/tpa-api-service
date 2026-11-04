@@ -7,7 +7,6 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
@@ -17,18 +16,18 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.ApimForgotPasswordUsernameLookupAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyMode;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy;
-import com.bct.ngtpa.apiservice.application.dto.session.SessionId;
-import com.bct.ngtpa.apiservice.application.dto.session.SessionIdGenerationCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionOnNewFlowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCreateCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
 import com.bct.ngtpa.apiservice.application.idempotency.CanonicalIdempotencyFingerprintFactory;
 import com.bct.ngtpa.apiservice.application.idempotency.DefaultIdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyCommands;
@@ -43,22 +42,18 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyStatus;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
-import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.service.session.SessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.session.SessionTtlCalculator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayState;
-
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordStartProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.IdempotentStartForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
-import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
-import com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
@@ -81,10 +76,10 @@ import reactor.core.publisher.Mono;
  * ApimForgotPasswordUsernameLookupAdapter} -> real {@code ForgotPasswordStartProtectedOperation} ->
  * real {@code IdempotentStartForgotPasswordService} wired to a real {@link
  * DefaultIdempotencyExecutor} (backed by a test-only in-memory {@link IdempotencyPort}, mirroring
- * the committed precedent {@code RegistrationMissingDefinitionStartResendIntegrationTest.AcquiringPort})
- * -> real {@code ForgotPasswordController.startForgotPassword} -> real {@code
- * ForgotPasswordStartWebMapper} -> real {@code ForgotPasswordHttpResponses}. Stubs only {@link
- * ApimExchangeExecutor}.
+ * the committed precedent {@code
+ * RegistrationMissingDefinitionStartResendIntegrationTest.AcquiringPort}) -> real {@code
+ * ForgotPasswordController.startForgotPassword} -> real {@code ForgotPasswordStartWebMapper} ->
+ * real {@code ForgotPasswordHttpResponses}. Stubs only {@link ApimExchangeExecutor}.
  */
 class ForgotPasswordBatch2aStartCharacterizationTest {
 
@@ -122,16 +117,16 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
    * stage=username-lookup} and returns a {@code SYSTEM_FAILED} result (confirmed,
    * ForgotPasswordStartProtectedOperation.java); {@code IdempotentStartForgotPasswordService
    * .executeAcquired} sees {@code SYSTEM_FAILED} and converts it to {@code
-   * Mono.error(IllegalStateException)} (confirmed); the real {@link DefaultIdempotencyExecutor},
-   * on first acquisition with a failing supplier, propagates that error (mirrors the committed
-   * {@code DefaultIdempotencyExecutorTest.protectedOperationFailureUsesClassifierExactlyOnce}
-   * precedent); {@code IdempotentStartForgotPasswordService.start} has no {@code onErrorResume}
-   * (confirmed), so the error reaches {@code ForgotPasswordController.startForgotPassword}'s
-   * {@code onErrorResume}, which maps to {@code startMapper.systemUnavailable()} (confirmed).
+   * Mono.error(IllegalStateException)} (confirmed); the real {@link DefaultIdempotencyExecutor}, on
+   * first acquisition with a failing supplier, propagates that error (mirrors the committed {@code
+   * DefaultIdempotencyExecutorTest.protectedOperationFailureUsesClassifierExactlyOnce} precedent);
+   * {@code IdempotentStartForgotPasswordService.start} has no {@code onErrorResume} (confirmed), so
+   * the error reaches {@code ForgotPasswordController.startForgotPassword}'s {@code onErrorResume},
+   * which maps to {@code startMapper.systemUnavailable()} (confirmed).
    *
    * <p>NOTE: this test substitutes a minimal in-memory {@link IdempotencyPort} fake for the real
-   * persistence adapter (the real Redis-backed adapter's source was not confirmed in this
-   * session); the {@link DefaultIdempotencyExecutor} itself, its constructor, and the full
+   * persistence adapter (the real Redis-backed adapter's source was not confirmed in this session);
+   * the {@link DefaultIdempotencyExecutor} itself, its constructor, and the full
    * acquire/classify/fail contract are the real production classes, confirmed via
    * DefaultIdempotencyExecutorTest.java and IdempotencyPort.java.
    */
@@ -175,7 +170,8 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
     var responses = new ForgotPasswordStartExecutionBridge(json, replayCodec, 1800);
     var policy =
         new ForgotPasswordIdempotencyIntegrationPolicy(
-            new IdempotencyOperationIdentityFactory(), new CanonicalIdempotencyFingerprintFactory());
+            new IdempotencyOperationIdentityFactory(),
+            new CanonicalIdempotencyFingerprintFactory());
 
     var idempotencyExecutor =
         new DefaultIdempotencyExecutor(
@@ -212,7 +208,8 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
     assertThat(listAppender.list).hasSize(2);
     ILoggingEvent adapterEvent = listAppender.list.get(0);
     assertThat(adapterEvent.getLevel()).isEqualTo(Level.ERROR);
-    assertThat(adapterEvent.getFormattedMessage()).contains("forgot-password.username-lookup.failed");
+    assertThat(adapterEvent.getFormattedMessage())
+        .contains("forgot-password.username-lookup.failed");
     ILoggingEvent operationEvent = listAppender.list.get(1);
     assertThat(operationEvent.getLevel()).isEqualTo(Level.ERROR);
     assertThat(operationEvent.getFormattedMessage()).contains("forgot-password.start.failed");
@@ -225,9 +222,19 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
     return new ForgotPasswordController(
         useCase,
         new ForgotPasswordStartWebMapper(Duration.ofMinutes(5)),
-        null, null, null, null, null, null, null, null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         AuthFlowCookieWriter.defaultWriter(),
-        null, null, null, null);
+        null,
+        null,
+        null,
+        null);
   }
 
   private static ForgotPasswordAuthFlowContextProtectorPort neverCalledContextProtector() {
@@ -275,7 +282,8 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
           @Override
           public Mono<AuthFlowSession> complete(AuthFlowSessionId authFlowSessionId, Instant now) {
             return Mono.error(
-                new AssertionError("session complete must not be called before the lookup failure"));
+                new AssertionError(
+                    "session complete must not be called before the lookup failure"));
           }
 
           @Override
@@ -292,7 +300,8 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
         };
     SessionIdGenerator idGenerator =
         command -> {
-          throw new AssertionError("session id generation must not be called before the lookup failure");
+          throw new AssertionError(
+              "session id generation must not be called before the lookup failure");
         };
     var lifecycle =
         new AuthFlowSessionLifecycleService(
@@ -312,14 +321,16 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
       public Mono<com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference> store(
           ForgotPasswordStartProtectedReplayState state, Duration ttl) {
         return Mono.error(
-            new AssertionError("protected replay store must not be called before the lookup failure"));
+            new AssertionError(
+                "protected replay store must not be called before the lookup failure"));
       }
 
       @Override
       public Mono<ForgotPasswordStartProtectedReplayState> load(
           com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference reference) {
         return Mono.error(
-            new AssertionError("protected replay load must not be called before the lookup failure"));
+            new AssertionError(
+                "protected replay load must not be called before the lookup failure"));
       }
     };
   }

@@ -356,10 +356,10 @@ class ApiExceptionHandlerCharacterizationTest {
    * Priority 1 item 3, scenario 1 of 2 (2026-10-28 coverage-matrix decision): plain {@link
    * ApimException} representing an upstream-503 condition. Confirmed real behavior (section 8,
    * re-verified fresh this turn): {@code ApimWebClientFacade.handleErrorBody} ALWAYS constructs
-   * {@code HttpStatus.BAD_GATEWAY} (502) regardless of the actual upstream HTTP status -
-   * {@code mapUpstreamErrorCode} varies only the public error <em>code</em>
-   * ({@code APIM_SERVICE_UNAVAILABLE} for upstream 503). This scenario mirrors that exact shape:
-   * {@code BAD_GATEWAY} status + the upstream-503-derived error code.
+   * {@code HttpStatus.BAD_GATEWAY} (502) regardless of the actual upstream HTTP status - {@code
+   * mapUpstreamErrorCode} varies only the public error <em>code</em> ({@code
+   * APIM_SERVICE_UNAVAILABLE} for upstream 503). This scenario mirrors that exact shape: {@code
+   * BAD_GATEWAY} status + the upstream-503-derived error code.
    *
    * <p><b>Flagged discrepancy (not silently resolved):</b> this scenario asserts NO stack trace,
    * matching {@link ApimExceptionMappings#upstream()}'s confirmed real {@code includeStackTrace}
@@ -389,10 +389,10 @@ class ApiExceptionHandlerCharacterizationTest {
 
   /**
    * Priority 1 item 3, scenario 2 of 2 (2026-10-28 coverage-matrix decision): plain {@link
-   * ApimException} representing an upstream-504 condition. Mirrors scenario 1 exactly - same
-   * public status 502 (BAD_GATEWAY) throughout (confirmed: {@code ApimWebClientFacade} always
-   * constructs BAD_GATEWAY regardless of actual upstream status); only the error code differs.
-   * Same flagged no-stack-trace discrepancy applies (confirmed real behavior).
+   * ApimException} representing an upstream-504 condition. Mirrors scenario 1 exactly - same public
+   * status 502 (BAD_GATEWAY) throughout (confirmed: {@code ApimWebClientFacade} always constructs
+   * BAD_GATEWAY regardless of actual upstream status); only the error code differs. Same flagged
+   * no-stack-trace discrepancy applies (confirmed real behavior).
    */
   @Test
   void apimException_upstream504_badGatewayApimTimeoutLoggedAtErrorNoStackTrace() {

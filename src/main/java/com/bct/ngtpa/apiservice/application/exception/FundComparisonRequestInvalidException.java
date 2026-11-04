@@ -11,8 +11,8 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
  * com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMapping}, {@code
  * ApplicationExceptionMappings.invalidFundComparisonRequest()}, registered in the shared {@code
  * ExceptionMappingRegistry} (not a per-type {@code @ExceptionHandler} method in {@code
- * ApiExceptionHandler}, which now has only the single catch-all {@code
- * @ExceptionHandler(Exception.class)} entry point) -- mirrors {@code
+ * ApiExceptionHandler}, which now has only the single catch-all
+ * {@code @ExceptionHandler(Exception.class)} entry point) -- mirrors {@code
  * InvalidContributionRequestException}'s and {@code InvalidNotificationRequestException}'s
  * dedicated-mapping precedent, NOT the generic {@code ApplicationExceptionMappings.generic()}
  * fallback, which hardcodes {@code ApiStatus.BUSINESS_REJECTED} and error type {@code "BUSINESS"},

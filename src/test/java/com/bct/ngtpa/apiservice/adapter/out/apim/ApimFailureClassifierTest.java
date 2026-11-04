@@ -20,14 +20,17 @@ class ApimFailureClassifierTest {
 
   @Test
   void responseInvalidApimExceptionIsContractFailure() {
-    var failure = new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID, "bad");
+    var failure =
+        new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID, "bad");
     assertThat(ApimFailureClassifier.classify(failure))
         .isEqualTo(ApimFailureCategory.DOWNSTREAM_CONTRACT);
   }
 
   @Test
   void mappingAndCryptoFailuresAreInvalidResponseFailures() {
-    assertThat(ApimFailureClassifier.classify(new ApimResponseMappingException(new RuntimeException("mapping"))))
+    assertThat(
+            ApimFailureClassifier.classify(
+                new ApimResponseMappingException(new RuntimeException("mapping"))))
         .isEqualTo(ApimFailureCategory.DOWNSTREAM_INVALID_RESPONSE);
     assertThat(ApimFailureClassifier.classify(new ApimCryptoException("crypto")))
         .isEqualTo(ApimFailureCategory.DOWNSTREAM_INVALID_RESPONSE);
@@ -58,8 +61,7 @@ class ApimFailureClassifierTest {
   @Test
   void cyclicCauseChainFailsClosedWithoutLooping() {
     var cyclic = new CyclicFailure();
-    assertThat(ApimFailureClassifier.classify(cyclic))
-        .isEqualTo(ApimFailureCategory.LOCAL_SYSTEM);
+    assertThat(ApimFailureClassifier.classify(cyclic)).isEqualTo(ApimFailureCategory.LOCAL_SYSTEM);
   }
 
   private static final class CyclicFailure extends RuntimeException {

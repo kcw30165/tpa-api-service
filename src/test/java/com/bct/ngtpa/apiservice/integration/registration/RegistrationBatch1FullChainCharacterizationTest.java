@@ -25,7 +25,6 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationCompletionAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationLookupAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimDataItem;
-import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.CaptchaPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengePolicy;
@@ -102,8 +101,8 @@ import reactor.test.StepVerifier;
 /**
  * Sub-task 2b.2 STEP 1, Batch 1 (Registration) characterization pack. Full-chain rows stub only
  * {@link ApimExchangeExecutor}; every other layer (adapter, protected operation, controller,
- * mapper, {@code RegistrationHttpResponses}) is the real production class, confirmed against
- * actual source by scripts 001, 002, 003, 005, 006, 007 (read-only investigations).
+ * mapper, {@code RegistrationHttpResponses}) is the real production class, confirmed against actual
+ * source by scripts 001, 002, 003, 005, 006, 007 (read-only investigations).
  *
  * <p><b>Idempotency wrapper bypass (both rows below).</b> Per Nick's 2026-10-27 decision, {@code
  * StartRegistrationUseCase}/{@code CompleteRegistrationUseCase} are wired directly as {@code
@@ -117,8 +116,8 @@ import reactor.test.StepVerifier;
  * usernames.load(session)} (before the protected operation runs) and {@code sha256(...)}, also
  * unrelated; {@code DefaultIdempotencyExecutor.classifyProtectedFailureThenError} (an {@code
  * onErrorResume}) and {@code markUnknownThenError} both terminate in {@code
- * Mono.error(failure)}/{@code Mono.error(original)}, preserving the original exception whenever
- * the persistence calls themselves succeed. Replay/conflict behaviour is explicitly out of scope
+ * Mono.error(failure)}/{@code Mono.error(original)}, preserving the original exception whenever the
+ * persistence calls themselves succeed. Replay/conflict behaviour is explicitly out of scope
  * ({@code RegistrationStartWorkflowIntegrationTest} covers it).
  */
 class RegistrationBatch1FullChainCharacterizationTest {
@@ -237,9 +236,9 @@ class RegistrationBatch1FullChainCharacterizationTest {
   /**
    * Proves the full chain for the central-handler catch-all row in {@code
    * 07-apim-error-classification.md} ("Registration -- ApimRegistrationCompletionAdapter
-   * (TRPRegMember)", {@code ApimProfileResolutionException} during completion). Step 1 captures
-   * the real {@code Mono} error from the real {@code ApimRegistrationCompletionAdapter} wired
-   * through the real {@code RegistrationCompleteProtectedOperation} (stubbing only {@code
+   * (TRPRegMember)", {@code ApimProfileResolutionException} during completion). Step 1 captures the
+   * real {@code Mono} error from the real {@code ApimRegistrationCompletionAdapter} wired through
+   * the real {@code RegistrationCompleteProtectedOperation} (stubbing only {@code
    * ApimExchangeExecutor}); step 2 feeds that captured exception into a real {@code
    * ApiExceptionHandler}, built identically to {@code ApiExceptionHandlerCharacterizationTest}'s
    * {@code setUp()} (script 006 confirmed this exact template), and asserts the final {@code
@@ -318,7 +317,8 @@ class RegistrationBatch1FullChainCharacterizationTest {
         new ApiExceptionHandler(
             new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
             new PublicMessageResolver(
-                (errorCode, locale, accountEnv, trustCode, schemeType) -> "message for " + errorCode),
+                (errorCode, locale, accountEnv, trustCode, schemeType) ->
+                    "message for " + errorCode),
             new ErrorEventLogger(
                 new com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer(
                     OBJECT_MAPPER, new MaskingService(new MaskingProperties()))),
@@ -333,8 +333,7 @@ class RegistrationBatch1FullChainCharacterizationTest {
             com.bct.ngtpa.apiservice.shared.web.RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY,
             "req-completion-catchall-handler");
 
-    ResponseEntity<MutationResponse<Void>> response =
-        handler.handle((Exception) failure, exchange);
+    ResponseEntity<MutationResponse<Void>> response = handler.handle((Exception) failure, exchange);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     MutationResponse<Void> mutation = response.getBody();
@@ -361,7 +360,17 @@ class RegistrationBatch1FullChainCharacterizationTest {
         useCase,
         mapper,
         AuthFlowCookieWriter.defaultWriter(),
-        null, null, null, null, null, null, null, null, null, null, null);
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   private static ApimRegistrationLookupAdapter lookupAdapter() {
@@ -578,8 +587,7 @@ class RegistrationBatch1FullChainCharacterizationTest {
             new AuthFlowSessionMutationResult(
                 AuthFlowSessionMutationOutcome.APPLIED,
                 new AuthFlowSessionSnapshot(
-                    command.updated(),
-                    new SessionRevision("22222222222222222222222222222222"))));
+                    command.updated(), new SessionRevision("22222222222222222222222222222222"))));
       }
     };
   }

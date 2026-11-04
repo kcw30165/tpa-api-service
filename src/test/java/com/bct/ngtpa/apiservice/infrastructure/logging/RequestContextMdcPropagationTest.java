@@ -95,6 +95,7 @@ class RequestContextMdcPropagationTest {
               }
             });
   }
+
   @Test
   void mdcIsClearedWhenSameReactorWorkerThreadIsReusedForADifferentContext() throws Exception {
     Class<?> configClass = Class.forName(CONFIG_CLASS_NAME);
@@ -155,5 +156,4 @@ class RequestContextMdcPropagationTest {
               }
             });
   }
-
 }

@@ -11,7 +11,9 @@ import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
-/** Pure, framework-free technical classifier. Feature-owned business rejections are out of scope. */
+/**
+ * Pure, framework-free technical classifier. Feature-owned business rejections are out of scope.
+ */
 public final class ApimFailureClassifier {
   private ApimFailureClassifier() {}
 

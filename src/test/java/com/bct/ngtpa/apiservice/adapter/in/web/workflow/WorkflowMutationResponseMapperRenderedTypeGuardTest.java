@@ -43,7 +43,11 @@ class WorkflowMutationResponseMapperRenderedTypeGuardTest {
             "BFF");
     var result =
         new WorkflowResult<Void>(
-            WorkflowResultStatus.BUSINESS_FAILED, WorkflowNextStep.NONE, null, List.of(), List.of(error));
+            WorkflowResultStatus.BUSINESS_FAILED,
+            WorkflowNextStep.NONE,
+            null,
+            List.of(),
+            List.of(error));
 
     var response = mapper.toMutationResponse(result);
 
@@ -66,7 +70,11 @@ class WorkflowMutationResponseMapperRenderedTypeGuardTest {
             "BFF");
     var result =
         new WorkflowResult<Void>(
-            WorkflowResultStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, null, List.of(), List.of(error));
+            WorkflowResultStatus.SYSTEM_FAILED,
+            WorkflowNextStep.NONE,
+            null,
+            List.of(),
+            List.of(error));
 
     var response = mapper.toMutationResponse(result);
 

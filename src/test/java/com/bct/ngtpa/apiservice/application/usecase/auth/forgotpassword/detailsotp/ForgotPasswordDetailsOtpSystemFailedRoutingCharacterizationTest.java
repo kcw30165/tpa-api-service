@@ -5,6 +5,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.ApimForgotPasswordDetailsLookupAdapter;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.ForgotPasswordResetAuthorization;
@@ -17,10 +21,6 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsStatus;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import java.time.Instant;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -40,9 +40,9 @@ import reactor.test.StepVerifier;
  * SYSTEM_FAILED}.
  *
  * <p>Public response routing through {@link ForgotPasswordDetailsOtpProtectedOperation} is not
- * characterized by this test. The verifier-to-protected-operation seam remains uncovered. A
- * second test driving {@code ForgotPasswordDetailsOtpProtectedOperation#locked} with a stubbed
- * verifier was attempted and abandoned after a bounded repair attempt, because its assumed {@code
+ * characterized by this test. The verifier-to-protected-operation seam remains uncovered. A second
+ * test driving {@code ForgotPasswordDetailsOtpProtectedOperation#locked} with a stubbed verifier
+ * was attempted and abandoned after a bounded repair attempt, because its assumed {@code
  * locked(...)} signature did not match the real production method signature.
  */
 class ForgotPasswordDetailsOtpSystemFailedRoutingCharacterizationTest {

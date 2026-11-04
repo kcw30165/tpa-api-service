@@ -30,12 +30,12 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Sub-task 2b.2 STEP 1, Batch 2a (Forgot Password Completion), Test A (aspect-weaving): real
- * {@link ApimForgotPasswordCompletionAdapter} wired through a real {@link ExecutionLoggingAspect}
- * via {@link AspectJProxyFactory}, stubbing only {@link ApimExchangeExecutor}. The adapter itself
- * writes no log line (no {@code @Slf4j}/log field) - the {@code method.execution.*} lines
- * pinned here come entirely from {@code @LogExecution(value = "apim.trpResetPassword", logArgs =
- * false)} being woven by {@link ExecutionLoggingAspect}'s annotation-based pointcut. The {@link
+ * Sub-task 2b.2 STEP 1, Batch 2a (Forgot Password Completion), Test A (aspect-weaving): real {@link
+ * ApimForgotPasswordCompletionAdapter} wired through a real {@link ExecutionLoggingAspect} via
+ * {@link AspectJProxyFactory}, stubbing only {@link ApimExchangeExecutor}. The adapter itself
+ * writes no log line (no {@code @Slf4j}/log field) - the {@code method.execution.*} lines pinned
+ * here come entirely from {@code @LogExecution(value = "apim.trpResetPassword", logArgs = false)}
+ * being woven by {@link ExecutionLoggingAspect}'s annotation-based pointcut. The {@link
  * ListAppender} is therefore attached to {@code ExecutionLoggingAspect}'s own logger, not the
  * adapter's (precedent: {@code ExecutionLoggingAspectTest.proxiedService()}, lines 336-343).
  *
@@ -83,8 +83,8 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
    * the confirmed adapter mechanism, {@code toEnvelope()} throws an {@code ApimException}
    * synchronously inside {@code .map(...)}, which becomes an {@code onError} signal. {@code
    * ExecutionLoggingAspect.decorateMono(...)} routes {@code onError} to {@code logError(...)}, so
-   * exactly {@code method.execution.start} (INFO) then {@code method.execution.error} (ERROR,
-   * with stack trace) are logged.
+   * exactly {@code method.execution.start} (INFO) then {@code method.execution.error} (ERROR, with
+   * stack trace) are logged.
    */
   @Test
   void missingEnvelopeLogsStartThenErrorWithStackTrace() {
@@ -116,11 +116,9 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
 
     assertThat(listAppender.list).hasSize(2);
     assertThat(listAppender.list.get(0).getLevel()).isEqualTo(Level.INFO);
-    assertThat(listAppender.list.get(0).getFormattedMessage())
-        .contains("method.execution.start");
+    assertThat(listAppender.list.get(0).getFormattedMessage()).contains("method.execution.start");
     assertThat(listAppender.list.get(1).getLevel()).isEqualTo(Level.ERROR);
-    assertThat(listAppender.list.get(1).getFormattedMessage())
-        .contains("method.execution.error");
+    assertThat(listAppender.list.get(1).getFormattedMessage()).contains("method.execution.error");
     assertThat(listAppender.list.get(1).getThrowableProxy()).isNotNull();
   }
 
@@ -128,8 +126,8 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
    * Scenario 2 of 3: the executor's {@code postEnvelope(...)} itself fails with an unexpected,
    * non-crypto error (e.g. transport failure). {@code onErrorResume} only intercepts crypto
    * failures, so this propagates to {@code onErrorMap}'s {@code safeFailure}, which wraps it as an
-   * {@code ApimException} - still an {@code onError} signal. Same log shape as scenario 1:
-   * {@code method.execution.start} then {@code method.execution.error} with stack trace.
+   * {@code ApimException} - still an {@code onError} signal. Same log shape as scenario 1: {@code
+   * method.execution.start} then {@code method.execution.error} with stack trace.
    */
   @Test
   void unexpectedFailureLogsStartThenErrorWithStackTrace() {
@@ -150,11 +148,9 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
 
     assertThat(listAppender.list).hasSize(2);
     assertThat(listAppender.list.get(0).getLevel()).isEqualTo(Level.INFO);
-    assertThat(listAppender.list.get(0).getFormattedMessage())
-        .contains("method.execution.start");
+    assertThat(listAppender.list.get(0).getFormattedMessage()).contains("method.execution.start");
     assertThat(listAppender.list.get(1).getLevel()).isEqualTo(Level.ERROR);
-    assertThat(listAppender.list.get(1).getFormattedMessage())
-        .contains("method.execution.error");
+    assertThat(listAppender.list.get(1).getFormattedMessage()).contains("method.execution.error");
     assertThat(listAppender.list.get(1).getThrowableProxy()).isNotNull();
   }
 
@@ -174,8 +170,7 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
           @Override
           public <R, D> Mono<ApimResponseEnvelope<D>> postEnvelope(
               ApimExchangeRequest<R, D> request) {
-            return Mono.error(
-                new ApimCryptoException("Failed to decrypt APIM response payload."));
+            return Mono.error(new ApimCryptoException("Failed to decrypt APIM response payload."));
           }
         };
     ForgotPasswordCompletionPort adapter = proxiedAdapter(executor);
@@ -185,30 +180,27 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
 
     ForgotPasswordCompletionResult result = adapter.complete(command).block();
     assertThat(result).isNotNull();
-    assertThat(result.status())
-        .isEqualTo(ForgotPasswordCompletionResult.Status.UNKNOWN_OUTCOME);
+    assertThat(result.status()).isEqualTo(ForgotPasswordCompletionResult.Status.UNKNOWN_OUTCOME);
 
     assertThat(listAppender.list).hasSize(2);
     assertThat(listAppender.list.get(0).getLevel()).isEqualTo(Level.INFO);
-    assertThat(listAppender.list.get(0).getFormattedMessage())
-        .contains("method.execution.start");
+    assertThat(listAppender.list.get(0).getFormattedMessage()).contains("method.execution.start");
     assertThat(listAppender.list.get(1).getLevel()).isEqualTo(Level.INFO);
-    assertThat(listAppender.list.get(1).getFormattedMessage())
-        .contains("method.execution.success");
+    assertThat(listAppender.list.get(1).getFormattedMessage()).contains("method.execution.success");
     assertThat(listAppender.list)
         .noneMatch(event -> event.getFormattedMessage().contains("method.execution.error"));
   }
 
   /**
-   * 4th scenario (Batch 2a follow-up): the downstream envelope is present with an empty
-   * {@code err-message} and empty {@code data}. Per
+   * 4th scenario (Batch 2a follow-up): the downstream envelope is present with an empty {@code
+   * err-message} and empty {@code data}. Per
    * ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest.
-   * complete_emptyButPresentResponse_returnsTechnicalFailureResult, this does not throw -
-   * {@code toEnvelope()} passes the envelope through unchanged and {@code resultMapper.toResult(...)}
-   * maps it to a normal {@link ForgotPasswordCompletionResult} with status
-   * {@code TECHNICAL_FAILURE}. Since the @LogExecution-annotated complete(...) method's own Mono
-   * completes with {@code onNext} (a result value), not {@code onError}, the aspect logs
-   * method.execution.start then method.execution.success (INFO), with no method.execution.error.
+   * complete_emptyButPresentResponse_returnsTechnicalFailureResult, this does not throw - {@code
+   * toEnvelope()} passes the envelope through unchanged and {@code resultMapper.toResult(...)} maps
+   * it to a normal {@link ForgotPasswordCompletionResult} with status {@code TECHNICAL_FAILURE}.
+   * Since the @LogExecution-annotated complete(...) method's own Mono completes with {@code onNext}
+   * (a result value), not {@code onError}, the aspect logs method.execution.start then
+   * method.execution.success (INFO), with no method.execution.error.
    */
   @Test
   void emptyButPresentResponseLogsStartThenSuccess() {
@@ -233,11 +225,9 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
 
     assertThat(listAppender.list).hasSize(2);
     assertThat(listAppender.list.get(0).getLevel()).isEqualTo(Level.INFO);
-    assertThat(listAppender.list.get(0).getFormattedMessage())
-        .contains("method.execution.start");
+    assertThat(listAppender.list.get(0).getFormattedMessage()).contains("method.execution.start");
     assertThat(listAppender.list.get(1).getLevel()).isEqualTo(Level.INFO);
-    assertThat(listAppender.list.get(1).getFormattedMessage())
-        .contains("method.execution.success");
+    assertThat(listAppender.list.get(1).getFormattedMessage()).contains("method.execution.success");
     assertThat(listAppender.list)
         .noneMatch(event -> event.getFormattedMessage().contains("method.execution.error"));
   }

@@ -72,24 +72,24 @@ import reactor.core.publisher.Mono;
  * gap.
  *
  * <p>Uses the REAL {@link StructuredFailureEventLogger} as the {@code FailureEventPort}
- * implementation (not a mock), with a {@link ListAppender} attached, per instruction.
- * {@code FailureOrigin.DOWNSTREAM_BUSINESS} is confirmed (via {@code
- * StructuredFailureEventLogger}'s real {@code WARN_ORIGINS} set, which includes it, and the
- * no-cause {@code publish(event)} overload being used) to log at WARN. This is an intentional
- * origin reclassification (E1): a recognized downstream business rejection (member not found) is
- * an expected business outcome, not a downstream contract/transport defect, and was previously
- * misclassified as {@code DOWNSTREAM_CONTRACT} (ERROR).
+ * implementation (not a mock), with a {@link ListAppender} attached, per instruction. {@code
+ * FailureOrigin.DOWNSTREAM_BUSINESS} is confirmed (via {@code StructuredFailureEventLogger}'s real
+ * {@code WARN_ORIGINS} set, which includes it, and the no-cause {@code publish(event)} overload
+ * being used) to log at WARN. This is an intentional origin reclassification (E1): a recognized
+ * downstream business rejection (member not found) is an expected business outcome, not a
+ * downstream contract/transport defect, and was previously misclassified as {@code
+ * DOWNSTREAM_CONTRACT} (ERROR).
  *
  * <p>Confirmed real routing chain for this condition: {@code TrpSearchMemberApimResultMapper}
  * (lines 22-24) maps the recognized err-message {@code err.tpa.member.not.found} to {@code
  * RegistrationLookupResult(NOT_ELIGIBLE, [], null)} - a normal result, not an exception. {@code
  * RegistrationStartProtectedOperation.handleLookup} (lines 179-185) routes {@code NOT_ELIGIBLE} to
  * {@code StartRegistrationResultStatus.VERIFICATION_FAILED} with error target {@code
- * "identityValue"}. {@code RegistrationStartWebMapper.toWorkflowErrorType} (lines 201-213):
- * because the target is non-null and not {@code "PAGE"}, the target-check short-circuits BEFORE
- * the status switch, so the resulting {@code WorkflowErrorType} is {@code FIELD}, not {@code
- * BUSINESS} (the value the switch's {@code VERIFICATION_FAILED} case would otherwise produce).
- * {@code toWorkflowStatus} maps {@code VERIFICATION_FAILED} to {@code
+ * "identityValue"}. {@code RegistrationStartWebMapper.toWorkflowErrorType} (lines 201-213): because
+ * the target is non-null and not {@code "PAGE"}, the target-check short-circuits BEFORE the status
+ * switch, so the resulting {@code WorkflowErrorType} is {@code FIELD}, not {@code BUSINESS} (the
+ * value the switch's {@code VERIFICATION_FAILED} case would otherwise produce). {@code
+ * toWorkflowStatus} maps {@code VERIFICATION_FAILED} to {@code
  * WorkflowResultStatus.BUSINESS_FAILED}, which {@code WorkflowMutationResponseMapper.toApiStatus}
  * (line 35) maps to {@code ApiStatus.BUSINESS_REJECTED}, which {@code
  * RegistrationHttpResponses.status} (lines 66-69) maps to {@code HttpStatus.UNPROCESSABLE_ENTITY}
@@ -108,8 +108,7 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
   void setUp() {
     listAppender = new ListAppender<>();
     listAppender.start();
-    failureEventLoggerLogger =
-        (Logger) LoggerFactory.getLogger(StructuredFailureEventLogger.class);
+    failureEventLoggerLogger = (Logger) LoggerFactory.getLogger(StructuredFailureEventLogger.class);
     failureEventLoggerLogger.addAppender(listAppender);
   }
 
@@ -275,7 +274,17 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
         useCase,
         mapper,
         AuthFlowCookieWriter.defaultWriter(),
-        null, null, null, null, null, null, null, null, null, null, null);
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   private static RegistrationSessionPort recordingSessionPort() {
@@ -333,11 +342,7 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
         return new RegistrationAuthWorkflowPolicy(
             preStartChallenge,
             new CaptchaPolicy(
-                7,
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
-                true,
-                300,
-                5),
+                7, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", true, 300, 5),
             null,
             null,
             null);
@@ -429,4 +434,3 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
     }
   }
 }
-

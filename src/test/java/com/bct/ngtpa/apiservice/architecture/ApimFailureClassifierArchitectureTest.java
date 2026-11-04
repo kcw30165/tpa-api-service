@@ -16,7 +16,13 @@ class ApimFailureClassifierArchitectureTest {
     assertThat(source)
         .doesNotContain("@Component", "@Service", "reactor.", "Mono<", "Flux<")
         .doesNotContain("err.tpa.", "err.login.", "err.registration.", "err.forgot-password.")
-        .doesNotContain("ApiStatus", "HttpStatus", "WorkflowErrorType", "application.usecase", "adapter.in.web", "shared.logging")
+        .doesNotContain(
+            "ApiStatus",
+            "HttpStatus",
+            "WorkflowErrorType",
+            "application.usecase",
+            "adapter.in.web",
+            "shared.logging")
         .doesNotContain("DOWNSTREAM_BUSINESS");
   }
 }

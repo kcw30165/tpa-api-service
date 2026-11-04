@@ -27,13 +27,13 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 /**
- * Sub-task 2b.2 STEP 1, Batch 2a (Forgot Password Completion). Executor-to-logger seam: real
- * {@link DefaultApimExchangeExecutor} constructed via its 3-arg legacy constructor (which builds a
- * real, non-mocked {@link ApimExchangeOutcomeLogger} internally - see
- * DefaultApimExchangeExecutor.java lines 47-58), stubbing only {@link ApimWebClientFacade} and
- * {@link ApimPayloadCryptoService}. A {@link ListAppender} is attached to {@link
- * ApimExchangeOutcomeLogger}'s own logger, not this executor's, because that is the class that
- * actually emits the log line (precedent: ApimExchangeOutcomeLoggerTest lines 40-51).
+ * Sub-task 2b.2 STEP 1, Batch 2a (Forgot Password Completion). Executor-to-logger seam: real {@link
+ * DefaultApimExchangeExecutor} constructed via its 3-arg legacy constructor (which builds a real,
+ * non-mocked {@link ApimExchangeOutcomeLogger} internally - see DefaultApimExchangeExecutor.java
+ * lines 47-58), stubbing only {@link ApimWebClientFacade} and {@link ApimPayloadCryptoService}. A
+ * {@link ListAppender} is attached to {@link ApimExchangeOutcomeLogger}'s own logger, not this
+ * executor's, because that is the class that actually emits the log line (precedent:
+ * ApimExchangeOutcomeLoggerTest lines 40-51).
  *
  * <p>Per Nick's 2026-10-28 "one scenario passing before adding the others" instruction, this class
  * currently contains ONLY scenario 1 of 5 (facade error -&gt; one {@code apim.exchange.failed}
@@ -42,8 +42,8 @@ import reactor.test.StepVerifier;
  * {@code apim.contract.invalid} ERROR, and well-formed envelope -&gt; no log) are deliberately not
  * yet added. The outcome-logger level assertions for those four classifications already exist and
  * are pinned at the logger-unit level in {@code ApimExchangeOutcomeLoggerTest} lines 53-119; this
- * class exists only to characterize that {@link DefaultApimExchangeExecutor} actually wires
- * reactor signals into that logger, not to repeat those classification-level assertions.
+ * class exists only to characterize that {@link DefaultApimExchangeExecutor} actually wires reactor
+ * signals into that logger, not to repeat those classification-level assertions.
  */
 class DefaultApimExchangeExecutorLoggingTest {
 
@@ -129,11 +129,11 @@ class DefaultApimExchangeExecutorLoggingTest {
 
   /**
    * Scenario 2 of 5: {@link ApimPayloadCryptoService#decryptResponseEnvelope} throws {@link
-   * ApimCryptoException} synchronously inside {@code postPlain(...)}'s {@code Mono.defer(...)}.
-   * The exception becomes an {@code onError} signal on the returned {@code Mono}, and {@code
+   * ApimCryptoException} synchronously inside {@code postPlain(...)}'s {@code Mono.defer(...)}. The
+   * exception becomes an {@code onError} signal on the returned {@code Mono}, and {@code
    * doOnEach(...)} routes it to {@code outcomeLogger.logExchangeFailure(...)}, producing exactly
-   * one ERROR-level {@code apim.exchange.failed} log line (same event as scenario 1 - this
-   * executor does not distinguish crypto failures from transport failures at the logging seam).
+   * one ERROR-level {@code apim.exchange.failed} log line (same event as scenario 1 - this executor
+   * does not distinguish crypto failures from transport failures at the logging seam).
    */
   @Test
   void responseDecryptThrowsLogsExactlyOneApimExchangeFailedAtError() {

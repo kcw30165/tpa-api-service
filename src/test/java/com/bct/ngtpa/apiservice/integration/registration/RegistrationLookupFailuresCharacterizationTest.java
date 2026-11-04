@@ -8,6 +8,8 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
@@ -27,10 +29,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengeType;
 import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
-import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
+import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
@@ -116,8 +116,7 @@ class RegistrationLookupFailuresCharacterizationTest {
 
     failureEventAppender = new ListAppender<>();
     failureEventAppender.start();
-    failureEventLoggerLogger =
-        (Logger) LoggerFactory.getLogger(StructuredFailureEventLogger.class);
+    failureEventLoggerLogger = (Logger) LoggerFactory.getLogger(StructuredFailureEventLogger.class);
     failureEventLoggerLogger.addAppender(failureEventAppender);
 
     registrationStartWebMapperAppender = new ListAppender<>();
@@ -185,8 +184,8 @@ class RegistrationLookupFailuresCharacterizationTest {
 
     StartRegistrationCommand command =
         new StartRegistrationCommand(
-            new com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey(
-                "idem-empty-data-captcha-disabled-001"),
+            new com.bct.ngtpa.apiservice.application.dto.auth.idempotency
+                .RegistrationIdempotencyKey("idem-empty-data-captcha-disabled-001"),
             "GPFS",
             "1234567890",
             "31/01/1980",
@@ -210,7 +209,8 @@ class RegistrationLookupFailuresCharacterizationTest {
         new ApiExceptionHandler(
             new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
             new PublicMessageResolver(
-                (errorCode, locale, accountEnv, trustCode, schemeType) -> "message for " + errorCode),
+                (errorCode, locale, accountEnv, trustCode, schemeType) ->
+                    "message for " + errorCode),
             new ErrorEventLogger(loggingSanitizer),
             new ErrorResponseRenderer());
 
@@ -281,8 +281,15 @@ class RegistrationLookupFailuresCharacterizationTest {
               ApimExchangeRequest<R, D> request) {
             TrpSearchMemberApimDataItem blankEnvItem =
                 new TrpSearchMemberApimDataItem(
-                    "", "trust1", "schemeType1", "policy1", "cert1", "termStatus1", "termDate1",
-                    true, "cust1");
+                    "",
+                    "trust1",
+                    "schemeType1",
+                    "policy1",
+                    "cert1",
+                    "termStatus1",
+                    "termDate1",
+                    true,
+                    "cust1");
             ApimResponseBody<TrpSearchMemberApimDataItem> responseBody =
                 new ApimResponseBody<>("", List.of(blankEnvItem));
             ApimResponseEnvelope<TrpSearchMemberApimDataItem> envelope =
@@ -308,8 +315,8 @@ class RegistrationLookupFailuresCharacterizationTest {
 
     StartRegistrationCommand command =
         new StartRegistrationCommand(
-            new com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey(
-                "idem-invalid-account-data-captcha-disabled-001"),
+            new com.bct.ngtpa.apiservice.application.dto.auth.idempotency
+                .RegistrationIdempotencyKey("idem-invalid-account-data-captcha-disabled-001"),
             "GPFS",
             "1234567890",
             "31/01/1980",
@@ -333,7 +340,8 @@ class RegistrationLookupFailuresCharacterizationTest {
         new ApiExceptionHandler(
             new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
             new PublicMessageResolver(
-                (errorCode, locale, accountEnv, trustCode, schemeType) -> "message for " + errorCode),
+                (errorCode, locale, accountEnv, trustCode, schemeType) ->
+                    "message for " + errorCode),
             new ErrorEventLogger(loggingSanitizer),
             new ErrorResponseRenderer());
 
@@ -420,8 +428,8 @@ class RegistrationLookupFailuresCharacterizationTest {
 
     StartRegistrationCommand command =
         new StartRegistrationCommand(
-            new com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey(
-                "idem-unexpected-error-captcha-disabled-001"),
+            new com.bct.ngtpa.apiservice.application.dto.auth.idempotency
+                .RegistrationIdempotencyKey("idem-unexpected-error-captcha-disabled-001"),
             "GPFS",
             "1234567890",
             "31/01/1980",
@@ -445,7 +453,8 @@ class RegistrationLookupFailuresCharacterizationTest {
         new ApiExceptionHandler(
             new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
             new PublicMessageResolver(
-                (errorCode, locale, accountEnv, trustCode, schemeType) -> "message for " + errorCode),
+                (errorCode, locale, accountEnv, trustCode, schemeType) ->
+                    "message for " + errorCode),
             new ErrorEventLogger(loggingSanitizer),
             new ErrorResponseRenderer());
 
@@ -497,8 +506,7 @@ class RegistrationLookupFailuresCharacterizationTest {
   // ───────── Enabled-captcha scenario 1 of 3: EMPTY_DATA, captcha ENABLED ─────────
 
   @Test
-  void registrationStart_captchaEnabled_emptyData_realChainReachesBadGateway502()
-      throws Exception {
+  void registrationStart_captchaEnabled_emptyData_realChainReachesBadGateway502() throws Exception {
     var loggingSanitizer =
         new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties()));
     var failureEventLogger = new StructuredFailureEventLogger(loggingSanitizer);
@@ -538,19 +546,15 @@ class RegistrationLookupFailuresCharacterizationTest {
 
     StartRegistrationUseCase useCase = operation::execute;
     RegistrationController controller =
-        startOnlyController(useCase, new RegistrationStartWebMapper(java.time.Duration.ofMinutes(5)));
+        startOnlyController(
+            useCase, new RegistrationStartWebMapper(java.time.Duration.ofMinutes(5)));
 
     var response =
         controller
             .startRegistration(
                 new com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto
                     .RegistrationStartRequest(
-                    "GPFS",
-                    "1234567890",
-                    "31/01/1980",
-                    "member@example.com",
-                    null,
-                    challengeId),
+                    "GPFS", "1234567890", "31/01/1980", "member@example.com", null, challengeId),
                 "idem-empty-data-captcha-enabled-001",
                 "req-empty-data-captcha-enabled-001",
                 "en",
@@ -620,8 +624,15 @@ class RegistrationLookupFailuresCharacterizationTest {
               ApimExchangeRequest<R, D> request) {
             TrpSearchMemberApimDataItem blankEnvItem =
                 new TrpSearchMemberApimDataItem(
-                    "", "trust1", "schemeType1", "policy1", "cert1", "termStatus1", "termDate1",
-                    true, "cust1");
+                    "",
+                    "trust1",
+                    "schemeType1",
+                    "policy1",
+                    "cert1",
+                    "termStatus1",
+                    "termDate1",
+                    true,
+                    "cust1");
             ApimResponseBody<TrpSearchMemberApimDataItem> responseBody =
                 new ApimResponseBody<>("", List.of(blankEnvItem));
             ApimResponseEnvelope<TrpSearchMemberApimDataItem> envelope =
@@ -651,19 +662,15 @@ class RegistrationLookupFailuresCharacterizationTest {
 
     StartRegistrationUseCase useCase = operation::execute;
     RegistrationController controller =
-        startOnlyController(useCase, new RegistrationStartWebMapper(java.time.Duration.ofMinutes(5)));
+        startOnlyController(
+            useCase, new RegistrationStartWebMapper(java.time.Duration.ofMinutes(5)));
 
     var response =
         controller
             .startRegistration(
                 new com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto
                     .RegistrationStartRequest(
-                    "GPFS",
-                    "1234567890",
-                    "31/01/1980",
-                    "member@example.com",
-                    null,
-                    challengeId),
+                    "GPFS", "1234567890", "31/01/1980", "member@example.com", null, challengeId),
                 "idem-invalid-account-data-captcha-enabled-001",
                 "req-invalid-account-data-captcha-enabled-001",
                 "en",
@@ -757,19 +764,15 @@ class RegistrationLookupFailuresCharacterizationTest {
 
     StartRegistrationUseCase useCase = operation::execute;
     RegistrationController controller =
-        startOnlyController(useCase, new RegistrationStartWebMapper(java.time.Duration.ofMinutes(5)));
+        startOnlyController(
+            useCase, new RegistrationStartWebMapper(java.time.Duration.ofMinutes(5)));
 
     var response =
         controller
             .startRegistration(
                 new com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto
                     .RegistrationStartRequest(
-                    "GPFS",
-                    "1234567890",
-                    "31/01/1980",
-                    "member@example.com",
-                    null,
-                    challengeId),
+                    "GPFS", "1234567890", "31/01/1980", "member@example.com", null, challengeId),
                 "idem-unexpected-error-captcha-enabled-001",
                 "req-unexpected-error-captcha-enabled-001",
                 "en",
@@ -842,8 +845,7 @@ class RegistrationLookupFailuresCharacterizationTest {
   }
 
   private static RegistrationCsrPort fixedCsrfPort() {
-    return authFlowSessionId ->
-        Mono.error(new AssertionError("CSRF binding must not be invoked"));
+    return authFlowSessionId -> Mono.error(new AssertionError("CSRF binding must not be invoked"));
   }
 
   private static RegistrationOtpPort recordingOtpPort() {
@@ -867,11 +869,7 @@ class RegistrationLookupFailuresCharacterizationTest {
         return new RegistrationAuthWorkflowPolicy(
             preStartChallenge,
             new CaptchaPolicy(
-                7,
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
-                true,
-                300,
-                5),
+                7, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", true, 300, 5),
             null,
             null,
             null);
@@ -895,7 +893,6 @@ class RegistrationLookupFailuresCharacterizationTest {
     return exchange;
   }
 
-
   private static RegistrationController startOnlyController(
       StartRegistrationUseCase useCase, RegistrationStartWebMapper mapper) {
     return new RegistrationController(
@@ -903,7 +900,17 @@ class RegistrationLookupFailuresCharacterizationTest {
         mapper,
         com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter
             .defaultWriter(),
-        null, null, null, null, null, null, null, null, null, null, null);
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   private static AuthWorkflowPolicyPort captchaEnabledPolicy() {
@@ -969,10 +976,8 @@ class RegistrationLookupFailuresCharacterizationTest {
     }
 
     @Override
-    public Mono<com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallenge>
-        markLocked(
-            com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId id,
-            Instant at) {
+    public Mono<com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallenge> markLocked(
+        com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId id, Instant at) {
       return Mono.just(values.get(id));
     }
 
