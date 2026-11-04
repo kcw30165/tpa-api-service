@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.integration.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -142,6 +142,7 @@ class RegistrationLookupFailuresCharacterizationTest {
   // ───────── Scenario 1 of 6: EMPTY_DATA, captcha DISABLED ─────────
 
   @Test
+  @SuppressWarnings("java:S5961")
   void registrationStart_captchaDisabled_emptyData_realChainReachesServiceUnavailable503()
       throws Exception {
     var loggingSanitizer =
@@ -197,9 +198,10 @@ class RegistrationLookupFailuresCharacterizationTest {
             "req-empty-data-captcha-disabled-001",
             java.time.Duration.ofMinutes(5));
 
-    RegistrationLookupDownstreamException captured =
-        catchThrowableOfType(
-            () -> operation.execute(command).block(), RegistrationLookupDownstreamException.class);
+    Mono<?> execution = operation.execute(command);
+    Throwable thrown = catchThrowable(execution::block);
+    assertThat(thrown).isInstanceOf(RegistrationLookupDownstreamException.class);
+    RegistrationLookupDownstreamException captured = (RegistrationLookupDownstreamException) thrown;
 
     assertThat(captured).isNotNull();
     assertThat(captured.reason())
@@ -267,6 +269,7 @@ class RegistrationLookupFailuresCharacterizationTest {
   }
 
   @Test
+  @SuppressWarnings("java:S5961")
   void registrationStart_captchaDisabled_invalidAccountData_realChainReachesServiceUnavailable503()
       throws Exception {
     var loggingSanitizer =
@@ -328,9 +331,10 @@ class RegistrationLookupFailuresCharacterizationTest {
             "req-invalid-account-data-captcha-disabled-001",
             java.time.Duration.ofMinutes(5));
 
-    RegistrationLookupDownstreamException captured =
-        catchThrowableOfType(
-            () -> operation.execute(command).block(), RegistrationLookupDownstreamException.class);
+    Mono<?> execution = operation.execute(command);
+    Throwable thrown = catchThrowable(execution::block);
+    assertThat(thrown).isInstanceOf(RegistrationLookupDownstreamException.class);
+    RegistrationLookupDownstreamException captured = (RegistrationLookupDownstreamException) thrown;
 
     assertThat(captured).isNotNull();
     assertThat(captured.reason())
@@ -389,6 +393,7 @@ class RegistrationLookupFailuresCharacterizationTest {
   }
 
   @Test
+  @SuppressWarnings("java:S5961")
   void registrationStart_captchaDisabled_unexpectedError_realChainReachesServiceUnavailable503()
       throws Exception {
     var loggingSanitizer =
@@ -441,9 +446,10 @@ class RegistrationLookupFailuresCharacterizationTest {
             "req-unexpected-error-captcha-disabled-001",
             java.time.Duration.ofMinutes(5));
 
-    RegistrationLookupDownstreamException captured =
-        catchThrowableOfType(
-            () -> operation.execute(command).block(), RegistrationLookupDownstreamException.class);
+    Mono<?> execution = operation.execute(command);
+    Throwable thrown = catchThrowable(execution::block);
+    assertThat(thrown).isInstanceOf(RegistrationLookupDownstreamException.class);
+    RegistrationLookupDownstreamException captured = (RegistrationLookupDownstreamException) thrown;
 
     assertThat(captured).isNotNull();
     assertThat(captured.reason())
