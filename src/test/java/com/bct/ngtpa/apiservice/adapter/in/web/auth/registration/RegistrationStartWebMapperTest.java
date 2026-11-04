@@ -212,12 +212,6 @@ class RegistrationStartWebMapperTest {
         .satisfies(
             error -> {
               assertThat(error.code()).isEqualTo("err.registration.message.deliveryFailed");
-              // Item 4 addition (2026-10-28 decision, corrected 2026-10-29 after script 106's
-              // anchor-mismatch safety check caught the ambiguity): this is the CORRECT site for
-              // RegistrationStartWebMapper.java:207 - target="PAGE" is required to reach the
-              // status switch (target != "PAGE" short-circuits to FIELD instead, per confirmed
-              // real toWorkflowErrorType logic). Rendered public JSON type through the real
-              // WorkflowMutationResponseMapper.toApiError (descriptor.type().name()).
               assertThat(error.type()).isEqualTo("SYSTEM");
             });
   }
@@ -248,10 +242,6 @@ class RegistrationStartWebMapperTest {
         .satisfies(
             error -> {
               assertThat(error.code()).isEqualTo("err.workflow.downstream.businessRejected");
-              // Item 4 addition (2026-10-28 decision): RegistrationStartWebMapper.java:209 maps
-              // DOWNSTREAM_REJECTED -> WorkflowErrorType.DOWNSTREAM_BUSINESS. Rendered public
-              // JSON type through the real WorkflowMutationResponseMapper.toApiError
-              // (descriptor.type().name()).
               assertThat(error.type()).isEqualTo("BUSINESS");
             });
   }

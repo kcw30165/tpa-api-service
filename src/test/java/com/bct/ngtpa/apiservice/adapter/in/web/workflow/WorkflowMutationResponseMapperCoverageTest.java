@@ -40,7 +40,7 @@ class WorkflowMutationResponseMapperCoverageTest {
             List.of());
     var response = mapper.toMutationResponse(result);
     assertThat(response.messages())
-        .extracting(message -> message.type())
+        .extracting(com.bct.ngtpa.apiservice.adapter.in.web.response.ApiMessage::type)
         .containsExactly("SUCCESS", "WARNING");
   }
 
