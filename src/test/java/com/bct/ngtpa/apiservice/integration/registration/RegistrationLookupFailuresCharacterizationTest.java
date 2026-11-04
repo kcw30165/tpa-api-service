@@ -142,6 +142,8 @@ class RegistrationLookupFailuresCharacterizationTest {
   // ───────── Scenario 1 of 6: EMPTY_DATA, captcha DISABLED ─────────
 
   @Test
+  // This full-chain characterization keeps the coupled exception, HTTP response, http.api.error,
+  // and FailureEvent contracts together so one failure cannot mask divergence in another layer.
   @SuppressWarnings("java:S5961")
   void registrationStart_captchaDisabled_emptyData_realChainReachesServiceUnavailable503()
       throws Exception {
@@ -269,6 +271,8 @@ class RegistrationLookupFailuresCharacterizationTest {
   }
 
   @Test
+  // This full-chain characterization keeps the coupled exception, HTTP response, http.api.error,
+  // and FailureEvent contracts together so one failure cannot mask divergence in another layer.
   @SuppressWarnings("java:S5961")
   void registrationStart_captchaDisabled_invalidAccountData_realChainReachesServiceUnavailable503()
       throws Exception {
@@ -393,6 +397,8 @@ class RegistrationLookupFailuresCharacterizationTest {
   }
 
   @Test
+  // This full-chain characterization keeps the coupled exception, HTTP response, http.api.error,
+  // and FailureEvent contracts together so one failure cannot mask divergence in another layer.
   @SuppressWarnings("java:S5961")
   void registrationStart_captchaDisabled_unexpectedError_realChainReachesServiceUnavailable503()
       throws Exception {

@@ -54,14 +54,7 @@ class LoginStartWebMapperTest {
         .isEqualTo("err.login.credentials.invalid");
   }
 
-  /**
-   * Priority 1 item 4, scenario 1 of 5 (2026-10-28 decision): {@code LoginStartWebMapper.java:63}.
-   * Confirmed real source: {@code case UNAVAILABLE -> failure(ApiStatus.SYSTEM_ERROR,
-   * LoginErrorKey.CREDENTIALS_UNAVAILABLE.value(), "DOWNSTREAM")} - the literal string {@code
-   * "DOWNSTREAM"} is passed as the ApiError <em>source</em> argument, matching the instruction to
-   * assert {@code errors[].source == "DOWNSTREAM"} verbatim. Pins today's value only; 2b.2a is
-   * expected to flip this later.
-   */
+  /** Confirms UNAVAILABLE remains SYSTEM_ERROR while public error source is BFF. */
   @Test
   void unavailableStatusMapsToDownstreamSourceAndSystemError() {
     var response =
@@ -76,7 +69,7 @@ class LoginStartWebMapperTest {
         .singleElement()
         .satisfies(
             error -> {
-              assertThat(error.source()).isEqualTo("DOWNSTREAM");
+              assertThat(error.source()).isEqualTo("BFF");
               assertThat(error.code()).isEqualTo(LoginErrorKey.CREDENTIALS_UNAVAILABLE.value());
             });
   }

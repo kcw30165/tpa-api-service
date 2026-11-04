@@ -782,4 +782,3 @@ Every confirmed `new ApimException(` construction site (`ApimWebClientFacade.jav
 - `RegistrationHttpResponses.status()`'s duplicate `SYSTEM_ERROR`/`BUSINESS_REJECTED` branches (the second `ApiStatus.SYSTEM_ERROR` check, which would return `SERVICE_UNAVAILABLE`, is unreachable because the first check always returns `BAD_GATEWAY`; the repeated `BUSINESS_REJECTED` condition is harmless); no change proposed in M2b.
 - 4xx vs 5xx downstream status both resolve identically via the facade today; whether a 4xx should classify differently is open.
 - Whether confirmed swallow sites should publish a `FailureEvent` (M3 3.7).
-
