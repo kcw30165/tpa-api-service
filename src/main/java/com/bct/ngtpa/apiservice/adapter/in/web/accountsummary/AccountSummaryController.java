@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.accountsummary;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.accountsummary.*;
@@ -8,13 +9,16 @@ import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.accountgainloss.AccountGainLossPeriod;
 import com.bct.ngtpa.apiservice.application.dto.accountsummary.AccountSummaryResult;
 import com.bct.ngtpa.apiservice.application.dto.accountsummary.GetAccountSummaryCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.port.in.GetAccountSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.shared.web.*;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
+import java.util.Objects;
+import java.util.Optional;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /**
@@ -28,14 +32,37 @@ import reactor.core.publisher.Mono;
  * matches {@code /api/v1/account/balance} because this controller reuses the same application-level
  * {@link CurrencySelection}, {@link AccountOverview}, and {@link InvestmentPortfolio} types that
  * {@code AccountBalanceController} maps, via {@link AccountSummaryResult} (S3).
+ *
+ * <p>InvestGL curr-required-currency (D-4 of
+ * docs/refactor/3-account-endpoints-restructure/8-investgl-curr-required-addendum.md): the session
+ * id is read through {@link AuthenticatedSessionCookieReader} and the request id from {@link
+ * RequestHeaderContext}, and both are handed to the use case alongside the selected account's
+ * {@code accountRef} so the currency cache (D-2) can be read/written. A missing cookie only skips
+ * caching on a blank-currency load; on a non-blank currency it fails the request the same way as a
+ * non-member currency (D-2/D-3), matching {@code FundComparisonOptionsController}'s exact pattern.
  */
 @RestController
 @RequestMapping("/api/v1")
-@RequiredArgsConstructor
 public class AccountSummaryController {
 
   private final GetAccountSummaryUseCase getAccountSummaryUseCase;
   private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
+  private final AuthenticatedSessionCookieReader sessionCookieReader;
+
+  public AccountSummaryController(
+      GetAccountSummaryUseCase getAccountSummaryUseCase,
+      CurrentPortalAccessContextResolver currentPortalAccessContextResolver,
+      AuthenticatedSessionCookieReader sessionCookieReader) {
+    this.getAccountSummaryUseCase =
+        Objects.requireNonNull(
+            getAccountSummaryUseCase, "getAccountSummaryUseCase must not be null");
+    this.currentPortalAccessContextResolver =
+        Objects.requireNonNull(
+            currentPortalAccessContextResolver,
+            "currentPortalAccessContextResolver must not be null");
+    this.sessionCookieReader =
+        Objects.requireNonNull(sessionCookieReader, "sessionCookieReader must not be null");
+  }
 
   @GetMapping(value = "/account/summary", produces = MediaType.APPLICATION_JSON_VALUE)
   public Mono<MutationResponse<AccountSummaryResultResponse>> getAccountSummary(
@@ -43,19 +70,27 @@ public class AccountSummaryController {
       @RequestParam(value = "period", required = false, defaultValue = "SINCE_SCHEME_INCEPTION")
           AccountGainLossPeriod period,
       @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false)
-          String acceptLanguage) {
+          String acceptLanguage,
+      ServerWebExchange exchange) {
     return Mono.deferContextual(
         v -> {
           RequestHeaderContext h = v.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
           String l = RequestLanguageResolver.resolve(h, acceptLanguage, "en");
+          String requestId = h == null ? null : h.requestId();
+          Optional<AuthenticatedSessionId> sessionId = sessionCookieReader.read(exchange);
           return currentPortalAccessContextResolver
               .current()
-              .flatMap(c -> invoke(c, l, clean(currency), period));
+              .flatMap(c -> invoke(c, l, clean(currency), period, sessionId, requestId));
         });
   }
 
   private Mono<MutationResponse<AccountSummaryResultResponse>> invoke(
-      PortalAccessContext c, String l, String currency, AccountGainLossPeriod period) {
+      PortalAccessContext c,
+      String l,
+      String currency,
+      AccountGainLossPeriod period,
+      Optional<AuthenticatedSessionId> sessionId,
+      String requestId) {
     var a = c.account();
     var x = c.actor();
     return getAccountSummaryUseCase
@@ -70,7 +105,10 @@ public class AccountSummaryController {
                 a.trustCode(),
                 a.schemeType(),
                 x.actorUserId(),
-                x.actorUserRole()))
+                x.actorUserRole()),
+            sessionId,
+            a.accountRef(),
+            requestId)
         .map(this::success);
   }
 

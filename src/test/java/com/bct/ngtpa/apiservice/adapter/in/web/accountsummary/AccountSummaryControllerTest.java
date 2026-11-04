@@ -1,17 +1,21 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.accountsummary;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.accountgainloss.AccountGainLossPeriod;
 import com.bct.ngtpa.apiservice.application.dto.accountsummary.AccountSummaryResult;
 import com.bct.ngtpa.apiservice.application.dto.accountsummary.GainLossBreakdown;
 import com.bct.ngtpa.apiservice.application.dto.accountsummary.GainLossBreakdownHolding;
 import com.bct.ngtpa.apiservice.application.dto.accountsummary.GetAccountSummaryCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.port.in.GetAccountSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -28,8 +32,16 @@ import reactor.core.publisher.Mono;
  * call in {@code assertBalanceFailure} changed from (ErrorMessageResolver, LoggingSanitizer,
  * ExceptionMappingRegistry) to (ExceptionMappingRegistry, PublicMessageResolver, ErrorEventLogger,
  * ErrorResponseRenderer). No assertion changed.
+ *
+ * <p>InvestGL curr-required-currency (D-4): {@code GetAccountSummaryUseCase.get(...)} gained {@code
+ * Optional<AuthenticatedSessionId>}, {@code accountRef}, and {@code requestId} parameters. Existing
+ * tests use {@code any()} matchers for the three new parameters since they exercise currency-blank
+ * behavior unaffected by the cache; {@code noSessionCookieYieldsEmptyOptionalPassedToTheUseCase},
+ * {@code presentSessionCookieYieldsItsAuthenticatedSessionIdPassedToTheUseCase}, and {@code
+ * accountRefFromContextIsForwardedToTheUseCase} are new, covering D-4's wiring itself.
  */
 class AccountSummaryControllerTest {
+
   @Test
   void typedBalanceFailuresUseApprovedPolicyThroughRealAdvice() {
     assertBalanceFailure(
@@ -67,8 +79,10 @@ class AccountSummaryControllerTest {
                 Mockito.mock(com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver.class)),
             new com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger(sanitizer),
             new com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer());
-    GetAccountSummaryUseCase useCase = command -> Mono.error(failure);
-    WebTestClient.bindToController(new AccountSummaryController(useCase, resolver(context())))
+    GetAccountSummaryUseCase useCase =
+        (command, sessionId, accountRef, requestId) -> Mono.error(failure);
+    WebTestClient.bindToController(
+            new AccountSummaryController(useCase, resolver(context()), noSessionCookie()))
         .controllerAdvice(advice)
         .webFilter(
             (exchange, chain) -> {
@@ -103,8 +117,7 @@ class AccountSummaryControllerTest {
   void defaultsPeriodToSinceSchemeInceptionAndCurrencyToNull() {
     var captor = ArgumentCaptor.forClass(GetAccountSummaryCommand.class);
     GetAccountSummaryUseCase useCase = Mockito.mock(GetAccountSummaryUseCase.class);
-    when(useCase.get(captor.capture())).thenReturn(Mono.just(result()));
-
+    when(useCase.get(captor.capture(), any(), any(), any())).thenReturn(Mono.just(result()));
     client(useCase, resolver(context()))
         .get()
         .uri("/api/v1/account/summary")
@@ -112,7 +125,6 @@ class AccountSummaryControllerTest {
         .exchange()
         .expectStatus()
         .isOk();
-
     assertThat(captor.getValue().period()).isEqualTo(AccountGainLossPeriod.SINCE_SCHEME_INCEPTION);
     assertThat(captor.getValue().currency()).isNull();
   }
@@ -121,8 +133,7 @@ class AccountSummaryControllerTest {
   void blankCurrencyIsCleanedToNullExactlyLikeAccountBalance() {
     var captor = ArgumentCaptor.forClass(GetAccountSummaryCommand.class);
     GetAccountSummaryUseCase useCase = Mockito.mock(GetAccountSummaryUseCase.class);
-    when(useCase.get(captor.capture())).thenReturn(Mono.just(result()));
-
+    when(useCase.get(captor.capture(), any(), any(), any())).thenReturn(Mono.just(result()));
     client(useCase, resolver(context()))
         .get()
         .uri("/api/v1/account/summary?currency=")
@@ -130,7 +141,6 @@ class AccountSummaryControllerTest {
         .exchange()
         .expectStatus()
         .isOk();
-
     assertThat(captor.getValue().currency()).isNull();
   }
 
@@ -138,8 +148,7 @@ class AccountSummaryControllerTest {
   void selectedCurrencyAndPeriodAreForwarded() {
     var captor = ArgumentCaptor.forClass(GetAccountSummaryCommand.class);
     GetAccountSummaryUseCase useCase = Mockito.mock(GetAccountSummaryUseCase.class);
-    when(useCase.get(captor.capture())).thenReturn(Mono.just(result()));
-
+    when(useCase.get(captor.capture(), any(), any(), any())).thenReturn(Mono.just(result()));
     client(useCase, resolver(context()))
         .get()
         .uri("/api/v1/account/summary?currency=USD&period=YEAR_TO_DATE")
@@ -147,7 +156,6 @@ class AccountSummaryControllerTest {
         .exchange()
         .expectStatus()
         .isOk();
-
     assertThat(captor.getValue().currency()).isEqualTo("USD");
     assertThat(captor.getValue().period()).isEqualTo(AccountGainLossPeriod.YEAR_TO_DATE);
   }
@@ -156,8 +164,7 @@ class AccountSummaryControllerTest {
   void selectedAccountContextIsForwardedIntoTheCommand() {
     var captor = ArgumentCaptor.forClass(GetAccountSummaryCommand.class);
     GetAccountSummaryUseCase useCase = Mockito.mock(GetAccountSummaryUseCase.class);
-    when(useCase.get(captor.capture())).thenReturn(Mono.just(result()));
-
+    when(useCase.get(captor.capture(), any(), any(), any())).thenReturn(Mono.just(result()));
     client(useCase, resolver(context()))
         .get()
         .uri("/api/v1/account/summary")
@@ -165,7 +172,6 @@ class AccountSummaryControllerTest {
         .exchange()
         .expectStatus()
         .isOk();
-
     var command = captor.getValue();
     assertThat(command.accountEnv()).isEqualTo("JP");
     assertThat(command.policyNo()).isEqualTo("00000008802");
@@ -176,7 +182,7 @@ class AccountSummaryControllerTest {
 
   @Test
   void responseUsesResultDataWithAccountNumberFirstAndBreakdownLast() {
-    client(c -> Mono.just(result()), resolver(context()))
+    client((c, s, a, r) -> Mono.just(result()), resolver(context()))
         .get()
         .uri("/api/v1/account/summary")
         .header("X-Request-Id", "req-5")
@@ -200,6 +206,59 @@ class AccountSummaryControllerTest {
         .isEqualTo("10.00")
         .jsonPath("$.result.data.gainLossBreakdown.holdings[0].portfolioPercentage")
         .isEqualTo("25.0");
+  }
+
+  @Test
+  void noSessionCookieYieldsEmptyOptionalPassedToTheUseCase() {
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Optional<AuthenticatedSessionId>> sessionIdCaptor =
+        ArgumentCaptor.forClass(Optional.class);
+    GetAccountSummaryUseCase useCase = Mockito.mock(GetAccountSummaryUseCase.class);
+    when(useCase.get(any(), sessionIdCaptor.capture(), any(), any()))
+        .thenReturn(Mono.just(result()));
+    client(useCase, resolver(context()), noSessionCookie())
+        .get()
+        .uri("/api/v1/account/summary")
+        .header("X-Request-Id", "req-6")
+        .exchange()
+        .expectStatus()
+        .isOk();
+    assertThat(sessionIdCaptor.getValue()).isEmpty();
+  }
+
+  @Test
+  void presentSessionCookieYieldsItsAuthenticatedSessionIdPassedToTheUseCase() {
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Optional<AuthenticatedSessionId>> sessionIdCaptor =
+        ArgumentCaptor.forClass(Optional.class);
+    GetAccountSummaryUseCase useCase = Mockito.mock(GetAccountSummaryUseCase.class);
+    when(useCase.get(any(), sessionIdCaptor.capture(), any(), any()))
+        .thenReturn(Mono.just(result()));
+    var sessionId = new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
+    client(useCase, resolver(context()), exchange -> Optional.of(sessionId))
+        .get()
+        .uri("/api/v1/account/summary")
+        .header("X-Request-Id", "req-7")
+        .exchange()
+        .expectStatus()
+        .isOk();
+    assertThat(sessionIdCaptor.getValue()).contains(sessionId);
+  }
+
+  @Test
+  void accountRefFromContextIsForwardedToTheUseCase() {
+    var accountRefCaptor = ArgumentCaptor.forClass(String.class);
+    GetAccountSummaryUseCase useCase = Mockito.mock(GetAccountSummaryUseCase.class);
+    when(useCase.get(any(), any(), accountRefCaptor.capture(), any()))
+        .thenReturn(Mono.just(result()));
+    client(useCase, resolver(context()))
+        .get()
+        .uri("/api/v1/account/summary")
+        .header("X-Request-Id", "req-8")
+        .exchange()
+        .expectStatus()
+        .isOk();
+    assertThat(accountRefCaptor.getValue()).isEqualTo("ACC-1");
   }
 
   private static AccountSummaryResult result() {
@@ -240,9 +299,20 @@ class AccountSummaryControllerTest {
     };
   }
 
+  private static AuthenticatedSessionCookieReader noSessionCookie() {
+    return exchange -> Optional.empty();
+  }
+
   private static WebTestClient client(
       GetAccountSummaryUseCase useCase, CurrentPortalAccessContextResolver resolver) {
-    var controller = new AccountSummaryController(useCase, resolver);
+    return client(useCase, resolver, noSessionCookie());
+  }
+
+  private static WebTestClient client(
+      GetAccountSummaryUseCase useCase,
+      CurrentPortalAccessContextResolver resolver,
+      AuthenticatedSessionCookieReader sessionCookieReader) {
+    var controller = new AccountSummaryController(useCase, resolver, sessionCookieReader);
     return WebTestClient.bindToController(controller).build();
   }
 
