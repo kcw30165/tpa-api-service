@@ -57,7 +57,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import reactor.core.publisher.Mono;
@@ -92,7 +91,7 @@ import reactor.core.publisher.Mono;
  * toWorkflowStatus} maps {@code VERIFICATION_FAILED} to {@code
  * WorkflowResultStatus.BUSINESS_FAILED}, which {@code WorkflowMutationResponseMapper.toApiStatus}
  * (line 35) maps to {@code ApiStatus.BUSINESS_REJECTED}, which {@code
- * RegistrationHttpResponses.status} (lines 66-69) maps to {@code HttpStatus.UNPROCESSABLE_ENTITY}
+ * RegistrationHttpResponses.status} (lines 66-69) maps to {@code HttpStatus.UNPROCESSABLE_CONTENT}
  * (422). None of this public-response routing changes under E1; only the internal failure-event
  * origin and log level change.
  */
@@ -160,7 +159,7 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
                 new MockServerHttpResponse())
             .block();
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    assertThat(response.getStatusCode().value()).isEqualTo(422);
     MutationResponse<?> body = (MutationResponse<?>) response.getBody();
     assertThat(body).isNotNull();
     assertThat(body.success()).isFalse();
@@ -221,7 +220,7 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
                 new MockServerHttpResponse())
             .block();
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    assertThat(response.getStatusCode().value()).isEqualTo(422);
     MutationResponse<?> body = (MutationResponse<?>) response.getBody();
     assertThat(body).isNotNull();
     assertThat(body.success()).isFalse();
@@ -246,8 +245,7 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
     assertThat(payload.get("retryable").asBoolean()).isFalse();
   }
 
-  // ───────── shared fixtures (duplicated from RegistrationBatch1FullChainCharacterizationTest;
-  // not shared across test classes) ─────────
+  // ───────── shared fixtures ─────────
 
   private static ApimRegistrationLookupAdapter memberNotFoundLookupAdapter(
       StructuredFailureEventLogger failureEventLogger) {

@@ -197,7 +197,7 @@ class CheckRegistrationUsernameServiceCharacterizationTest {
         CLOCK);
   }
 
-  private static CheckRegistrationUsernameCommand newCommand() throws Exception {
+  private static CheckRegistrationUsernameCommand newCommand() {
     return new CheckRegistrationUsernameCommand(
         validAuthFlowSessionId(),
         CSRF_TOKEN,
