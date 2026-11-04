@@ -6,7 +6,10 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.net.ConnectException;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
@@ -48,6 +51,16 @@ class ApimFailureClassifierTest {
     assertThat(ApimFailureClassifier.classify(new ConnectException("refused")))
         .isEqualTo(ApimFailureCategory.DOWNSTREAM_TRANSPORT);
     assertThat(ApimFailureClassifier.classify(new SocketTimeoutException("timeout")))
+        .isEqualTo(ApimFailureCategory.DOWNSTREAM_TRANSPORT);
+  }
+
+  @Test
+  void remainingTransportExceptionTypesAreTransportFailures() {
+    assertThat(ApimFailureClassifier.classify(new SocketException("socket")))
+        .isEqualTo(ApimFailureCategory.DOWNSTREAM_TRANSPORT);
+    assertThat(ApimFailureClassifier.classify(new UnknownHostException("dns")))
+        .isEqualTo(ApimFailureCategory.DOWNSTREAM_TRANSPORT);
+    assertThat(ApimFailureClassifier.classify(new TimeoutException("timeout")))
         .isEqualTo(ApimFailureCategory.DOWNSTREAM_TRANSPORT);
   }
 
