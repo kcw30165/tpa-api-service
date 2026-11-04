@@ -246,7 +246,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
         response,
         HttpStatus.BAD_GATEWAY,
         ApiStatus.SYSTEM_ERROR,
-        "DOWNSTREAM_SYSTEM",
+        "SYSTEM",
         ErrorCodes.APIM_UPSTREAM_FAILURE,
         List.of(),
         "REQ-011");
