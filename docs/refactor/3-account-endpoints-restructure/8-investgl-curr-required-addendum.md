@@ -109,3 +109,51 @@ new code applies only to the pre-downstream currency-membership check in D-2.
 No change to TRPGetMemberAccBal's request contract, to AccountContext's shape,
 or to any Account Balance behaviour. No change to /api/v1/account/gain-loss.
 No new Redis adapter or configuration key.
+
+### Decision D-4: controller / use-case wiring
+
+Confirmed from FundComparisonOptionsController and
+FundComparisonOptionsUseCase.getOptionsAndCache's real content, the direct
+precedent for "read cache before the business call, write cache after it
+succeeds, keyed by a cookie-derived session id": the cache read/write is not
+performed by the controller directly. The controller reads
+AuthenticatedSessionId via the existing AuthenticatedSessionCookieReader (a
+missing or malformed cookie yields Optional.empty() and only skips caching; it
+never fails the request), and passes sessionId, accountRef, and requestId as
+additional parameters into the use case method itself. The use case performs
+the cache read/write internally, alongside its existing business logic.
+
+This changes GetAccountSummaryUseCase's public method shape:
+
+- Current: Mono<AccountSummaryResult> get(GetAccountSummaryCommand command)
+- New: Mono<AccountSummaryResult> get(GetAccountSummaryCommand command,
+  Optional<AuthenticatedSessionId> sessionId, String accountRef, String
+  requestId)
+
+AccountSummaryController supplies accountRef from
+PortalAccessContext.account().accountRef() (already resolved today, just not
+currently passed to the use case) and requestId from the existing
+RequestHeaderContext, matching FundComparisonOptionsController's exact
+pattern. sessionId comes from AuthenticatedSessionCookieReader.read(exchange),
+newly injected into AccountSummaryController the same way it already is into
+FundComparisonOptionsController and PersonalInformationController.
+
+Inside GetAccountSummaryService.get: when command.currency() is non-blank,
+read the currency cache first (D-2's AccountSummaryCurrencyCacheService) and
+reject via AccountSummaryRequestInvalidException on any miss (D-3) before
+calling referenceDatePort or either downstream operation. When
+command.currency() is blank, proceed as today; after the balance call
+succeeds (inside fetchAndAssemble), write the currency cache from
+balanceResult.currencySelection() before continuing to
+fetchGainLossAndAssemble. A missing sessionId (cookie absent/malformed) only
+skips the write in the blank-currency path; it does not fail the request,
+matching D-2's "write never errors" behaviour and
+FundComparisonOptionsController's "missing cookie only skips caching" comment
+verbatim.
+
+This is an additive, backward-incompatible signature change to
+GetAccountSummaryUseCase (not an overload): the interface has exactly one
+production implementation (GetAccountSummaryService) and one production
+caller (AccountSummaryController), both updated together in the same change,
+so no compatibility constructor or overload is introduced, mirroring how
+FundComparisonOptionsUseCase itself has no legacy no-cache overload either.
