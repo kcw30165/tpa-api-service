@@ -329,3 +329,13 @@ reused thread (9ca1e685).
 </td>
  </tr>
 </table>
+
+### Deferred after reduced-scope M2b completion (approved 2026-11-04)
+
+- Attach the shared APIM failure classification to each feature, one feature-owned change at a time.
+- Preserve feature-owned downstream business-code tables, public response contracts, replay snapshots,
+  and M2b log-level rules when those migrations resume.
+- Revisit the documented Registration, Login, Forgot Password, Username Recovery, Account Balance,
+  Account Gain/Loss, Fund Price, and remaining APIM rows during that follow-up work.
+- The deferred migrations are not completed by the shared classifier alone and are not milestone-gate
+  evidence for the original "every APIM failure classified" objective.

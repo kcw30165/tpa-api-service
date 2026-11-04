@@ -635,3 +635,17 @@ handlers, appender, dispatcher and adapters, each uncovered branch justified in 
 
 Use one new branch and one MR per milestone. Open that milestone's MR only after its gate passes; merge it with a merge commit (no squash), then start the next milestone from the updated `origin/dev`. Jenkins/runtime
 values for PROD/DR (ERROR_ALERT_ENABLED=true, recipients) are a separate pipeline change.
+
+### M2b reduced-scope completion addendum (approved 2026-11-04)
+
+M2b completion is intentionally reduced to the following delivered scope:
+- E1: Registration `err.tpa.member.not.found` is `DOWNSTREAM_BUSINESS` and WARN.
+- E2: no public workflow error `type` renders a `DOWNSTREAM_*` value.
+- The shared pure APIM classifier distinguishes `DOWNSTREAM_CONTRACT`,
+  `DOWNSTREAM_INVALID_RESPONSE`, `DOWNSTREAM_TRANSPORT`, and `LOCAL_SYSTEM`.
+- The final M2b milestone gates pass.
+
+The original 2b.4..2b.n goal to attach classification to every feature APIM failure is deferred to
+follow-up work. M2b must not be reported as completing the original "every APIM failure classified"
+goal. No Registration, Forgot Password, Login, Username Recovery, or other feature migration is part
+of this reduced completion scope.
