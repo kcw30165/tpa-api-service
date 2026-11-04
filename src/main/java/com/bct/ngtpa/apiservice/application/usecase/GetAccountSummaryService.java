@@ -28,6 +28,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.service.accountgainloss.AccountGainLossAssembler;
 import com.bct.ngtpa.apiservice.application.service.accountsummary.AccountSummaryAssembler;
 import com.bct.ngtpa.apiservice.application.usecase.accountsummary.AccountSummaryCurrencyCacheService;
+import lombok.RequiredArgsConstructor;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Set;
@@ -52,6 +53,7 @@ import reactor.core.publisher.Mono;
  * as a non-member currency (D-2/D-3). The balance call itself always receives {@code
  * command.currency()} verbatim, blank or not.
  */
+@RequiredArgsConstructor
 public final class GetAccountSummaryService implements GetAccountSummaryUseCase {
 
   private static final Set<GeneralMetadataKey> REQUIRED_METADATA =
@@ -71,24 +73,6 @@ public final class GetAccountSummaryService implements GetAccountSummaryUseCase 
   private final AccountSummaryAssembler accountSummaryAssembler;
   private final AccountSummaryCurrencyCacheService currencyCacheService;
 
-  public GetAccountSummaryService(
-      ReferenceDatePort referenceDatePort,
-      GeneralMetadataResolver generalMetadataResolver,
-      AccountBalanceSourcePort accountBalanceSourcePort,
-      AccountGainLossSourcePort accountGainLossSourcePort,
-      AccountBalanceAssembler accountBalanceAssembler,
-      AccountGainLossAssembler accountGainLossAssembler,
-      AccountSummaryAssembler accountSummaryAssembler,
-      AccountSummaryCurrencyCacheService currencyCacheService) {
-    this.referenceDatePort = referenceDatePort;
-    this.generalMetadataResolver = generalMetadataResolver;
-    this.accountBalanceSourcePort = accountBalanceSourcePort;
-    this.accountGainLossSourcePort = accountGainLossSourcePort;
-    this.accountBalanceAssembler = accountBalanceAssembler;
-    this.accountGainLossAssembler = accountGainLossAssembler;
-    this.accountSummaryAssembler = accountSummaryAssembler;
-    this.currencyCacheService = currencyCacheService;
-  }
 
   @Override
   public Mono<AccountSummaryResult> get(
