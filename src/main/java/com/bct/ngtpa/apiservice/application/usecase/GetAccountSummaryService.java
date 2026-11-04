@@ -28,10 +28,10 @@ import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.service.accountgainloss.AccountGainLossAssembler;
 import com.bct.ngtpa.apiservice.application.service.accountsummary.AccountSummaryAssembler;
 import com.bct.ngtpa.apiservice.application.usecase.accountsummary.AccountSummaryCurrencyCacheService;
-import lombok.RequiredArgsConstructor;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 
 /**
@@ -72,7 +72,6 @@ public final class GetAccountSummaryService implements GetAccountSummaryUseCase 
   private final AccountGainLossAssembler accountGainLossAssembler;
   private final AccountSummaryAssembler accountSummaryAssembler;
   private final AccountSummaryCurrencyCacheService currencyCacheService;
-
 
   @Override
   public Mono<AccountSummaryResult> get(
