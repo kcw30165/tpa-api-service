@@ -110,7 +110,7 @@ R-3 decision, non-null enforcement, SYSTEM_FAILURE on blank identifiers, and a
 redaction check proving the composed value is absent from observability output.
 
 
-### S8 InvestGL curr-required currency handling
+## S8 InvestGL curr-required currency handling
 
 See 8-investgl-curr-required-addendum.md for the full decision set. Adds effective-currency derivation for the gain-loss call inside GetAccountSummaryService, an avai-currency cache in AuthenticatedSession.featureState written on first load and validated on subsequent calls, and a new ACCOUNT_SUMMARY_REQUEST_INVALID / 400 error code. Does not touch /api/v1/account/gain-loss, TRPGetMemberAccBal's request contract, or AccountContext.
 
