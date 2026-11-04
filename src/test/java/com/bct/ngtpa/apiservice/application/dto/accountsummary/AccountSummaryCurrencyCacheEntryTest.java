@@ -11,14 +11,15 @@ class AccountSummaryCurrencyCacheEntryTest {
 
   @Test
   void rejectsBlankAccountRef() {
-    assertThatThrownBy(
-            () -> new AccountSummaryCurrencyCacheEntry(" ", "00000008802", List.of("HKD")))
+    var currencies = List.of("HKD");
+    assertThatThrownBy(() -> new AccountSummaryCurrencyCacheEntry(" ", "00000008802", currencies))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void rejectsBlankPolicyNo() {
-    assertThatThrownBy(() -> new AccountSummaryCurrencyCacheEntry("ACC-1", "", List.of("HKD")))
+    var currencies = List.of("HKD");
+    assertThatThrownBy(() -> new AccountSummaryCurrencyCacheEntry("ACC-1", "", currencies))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -30,17 +31,17 @@ class AccountSummaryCurrencyCacheEntryTest {
 
   @Test
   void rejectsEmptyAvailableCurrencies() {
+    var currencies = List.<String>of();
     assertThatThrownBy(
-            () -> new AccountSummaryCurrencyCacheEntry("ACC-1", "00000008802", List.of()))
+            () -> new AccountSummaryCurrencyCacheEntry("ACC-1", "00000008802", currencies))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void rejectsABlankCurrencyEntry() {
+    var currencies = java.util.Arrays.asList("HKD", " ");
     assertThatThrownBy(
-            () ->
-                new AccountSummaryCurrencyCacheEntry(
-                    "ACC-1", "00000008802", java.util.Arrays.asList("HKD", " ")))
+            () -> new AccountSummaryCurrencyCacheEntry("ACC-1", "00000008802", currencies))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
