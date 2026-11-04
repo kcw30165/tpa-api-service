@@ -75,6 +75,18 @@ operation:
   state, or a non-conforming caller), not a normal flow, so it fails closed
   rather than silently reconstructing trust it no longer has.
 
+### D-2 correction (key scoping and naming, 04/11/2026)
+
+D-2 above is corrected as follows. The per-account key scheme ("account-summary.currency.avai:" + accountRef) was proposed before FundComparisonOptionsCacheService and PersonalInformationConfigCacheService had been read in full; it does not match the established convention and is superseded by this section. "avai" was also downstream TRPGetMemberAccBal wire terminology and is replaced here with meaningful Java-side naming; it continues to refer only to response.data[0].curr[0].avai/selected when describing the downstream contract itself.
+
+**Key.** A single constant FEATURE_KEY = "account-summary.currency", not a per-account key, matching FundComparisonOptionsCacheService.FEATURE_KEY ("fund-comparison.options") and PersonalInformationConfigCacheService.FEATURE_KEY ("personal-information.config"). Account identity is embedded inside the cached value itself, not the key.
+
+**Cache entry.** A new record AccountSummaryCurrencyCacheEntry(accountRef, policyNo, List<String> availableCurrencies), mirroring FundComparisonOptionsCacheEntry's shape exactly: constructor validation rejects blank accountRef/policyNo and an empty availableCurrencies list; a belongsTo(accountRef, policyNo) method is the sole account-identity check; toString() hides both identifiers. A private nested Wire record governs exactly what is serialized, the same least-privilege pattern used by both precedents.
+
+**Cache service.** A new class AccountSummaryCurrencyCacheService, structurally identical to FundComparisonOptionsCacheService and PersonalInformationConfigCacheService: read(sessionId, accountRef, policyNo, requestId) returns Mono<Optional<AccountSummaryCurrencyCacheEntry>> and never errors -- session missing, undecryptable, not usable, key absent, unparseable, an unknown shape, failed entry validation, and an accountRef/policyNo mismatch (entry.belongsTo(...) returns false) all collapse uniformly to a logged miss with a reason tag, exactly as both precedents do. write(sessionId, entry, requestId) returns Mono<Void> and also never errors; it reuses the existing AuthenticatedSessionConcurrencyService via session.withFeatureState(FEATURE_KEY, encoded) -- no new CAS mechanism, no new Redis adapter.
+
+**Consequence for the read/validate path.** The prior description of a cache miss ("absent") is unchanged in outcome -- still rejects as ACCOUNT_SUMMARY_REQUEST_INVALID/400 before calling either downstream operation -- but a stored entry belonging to a *different* account than the one currently selected is now also correctly treated as a miss via belongsTo(...), rather than being silently matched by an accountRef-scoped key that would have made a cross-account check unnecessary by construction. This is a strictly safer outcome than the superseded per-account-key design, not a behavior change requiring new sign-off.
+
 ### Decision D-3: error contract
 
 New error code ACCOUNT_SUMMARY_REQUEST_INVALID / err.account-summary.request.invalid,
