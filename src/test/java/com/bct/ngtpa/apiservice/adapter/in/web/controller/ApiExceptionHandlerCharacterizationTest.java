@@ -153,7 +153,7 @@ class ApiExceptionHandlerCharacterizationTest {
         response,
         HttpStatus.SERVICE_UNAVAILABLE,
         ApiStatus.SYSTEM_ERROR,
-        "DOWNSTREAM_SYSTEM",
+        "SYSTEM",
         SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value(),
         List.of("PAGE"),
         "req-1",
