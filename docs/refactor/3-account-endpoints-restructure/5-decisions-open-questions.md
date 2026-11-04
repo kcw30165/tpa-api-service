@@ -72,6 +72,8 @@ one `currency` value to both upstream calls, so the whole payload is
 internally consistent in a single currency. Currency selection remains fully
 available on summary.
 
+> Addendum 04/11/2026: Q-7's assumption that TRPGetInvestGL accepts curr with the same "empty string on initial load" semantics as TRPGetMemberAccBal no longer holds. The downstream operation now requires a non-empty curr. See 8-investgl-curr-required-addendum.md for the effective-currency derivation, the session-cached avai validation, and the new error code this introduces. /api/v1/account/gain-loss is unaffected by this addendum and remains out of scope.
+
 **Q-8 E2E scenario pack — DECIDED, low risk.** Extend the existing
 `scripts/e2e/scenarios/account-balance/` pack with a summary scenario rather
 than creating a new pack. The bootstrap, login journey, and assertion helpers

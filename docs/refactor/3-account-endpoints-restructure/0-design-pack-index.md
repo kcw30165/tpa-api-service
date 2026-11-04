@@ -22,6 +22,7 @@
 - 5-decisions-open-questions.md
 - 6-implementation-plan.md
 - 7-account-balance-deprecation-plan.md
+- 8-investgl-curr-required-addendum.md
 - handover.md
 
 ## Preserved baselines
