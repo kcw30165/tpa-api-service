@@ -19,7 +19,10 @@ public final class ApimFailureClassifier {
     Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
     Throwable current = failure;
     while (current != null && visited.add(current)) {
-      if (ApimCryptoFailureClassifier.isCryptoFailure(current) || responseInvalid(current)) {
+      if (ApimCryptoFailureClassifier.isCryptoFailure(current)) {
+        return ApimFailureCategory.DOWNSTREAM_INVALID_RESPONSE;
+      }
+      if (responseInvalid(current)) {
         return ApimFailureCategory.DOWNSTREAM_CONTRACT;
       }
       if (current instanceof ApimException || transport(current)) {

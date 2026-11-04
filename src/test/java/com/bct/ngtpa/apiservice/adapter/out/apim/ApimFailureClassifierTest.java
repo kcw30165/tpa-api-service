@@ -26,11 +26,11 @@ class ApimFailureClassifierTest {
   }
 
   @Test
-  void mappingAndCryptoFailuresAreContractFailures() {
+  void mappingAndCryptoFailuresAreInvalidResponseFailures() {
     assertThat(ApimFailureClassifier.classify(new ApimResponseMappingException(new RuntimeException("mapping"))))
-        .isEqualTo(ApimFailureCategory.DOWNSTREAM_CONTRACT);
+        .isEqualTo(ApimFailureCategory.DOWNSTREAM_INVALID_RESPONSE);
     assertThat(ApimFailureClassifier.classify(new ApimCryptoException("crypto")))
-        .isEqualTo(ApimFailureCategory.DOWNSTREAM_CONTRACT);
+        .isEqualTo(ApimFailureCategory.DOWNSTREAM_INVALID_RESPONSE);
   }
 
   @Test
