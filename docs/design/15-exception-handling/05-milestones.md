@@ -379,12 +379,13 @@ ErrorLogCallSiteRatchetArchitectureTest
 </table>
 
 
-### M2b - Downstream (APIM) error classification (no public behaviour change)
+### M2b - Downstream (APIM) error classification (approved reduced scope)
 
-Added 2026-10-26, approved by Nick. M2b runs on its own branch from `origin/dev` after the M2 MR is
-merged, and is merged before M3 starts. M3 chooses WARN or ERROR from `FailureOrigin`; M2b first makes
-every APIM failure carry one consistent classification, so M3 does not decide feature by feature and a
-downstream business rejection can never raise an ERROR alert.
+Added 2026-10-26, approved by Nick. The reduced-scope completion addendum below supersedes the
+original full-integration objective and the original 2b.4..2b.n schedule. M2b delivers E1, E2 and the
+shared pure technical classifier; it does not attach classification to every feature APIM failure.
+M3 starts after M2b merges and combines the deferred feature integrations with incident-log migration.
+This document does not assert that the M2b merge has already occurred.
 
 Rules:
 
@@ -395,7 +396,7 @@ Rules:
   feature. Only the classification and its shape are shared.
 - Result-based workflows (Login, Registration, Forgot Password, Username Recovery) keep their results
   and idempotency replay snapshots (D6).
-- Log levels do not change in M2b. It only attaches the classification; level changes happen in M3.
+- Except for approved E1, log levels do not change in M2b. Remaining level changes happen in M3.
 
 | # | Commit type | Work | Main tests |
 |---|---|---|---|
@@ -403,18 +404,25 @@ Rules:
 | 2b.1 | docs | `07-apim-error-classification.md`: categories and their `FailureOrigin` (business rejection -> `DOWNSTREAM_BUSINESS`; envelope or contract violation -> `DOWNSTREAM_CONTRACT`; unparsable or undecryptable response -> `DOWNSTREAM_INVALID_RESPONSE`; timeout, connection failure or HTTP 5xx -> `DOWNSTREAM_TRANSPORT`), the 2b.0 inventory, the shared versus feature-owned split, and open questions. Nick approves before 2b.2 | - |
 | 2b.2 | test | Characterization pack for every APIM outcome found in 2b.0 (public status, body, message, log event, level) on unchanged production code | APIM outcome characterization tests |
 | 2b.3 | feat | Shared, pure classification type and classifier (names fixed in 2b.1), not yet used | classifier unit tests, branch >= 95% |
-| 2b.4..2b.n | refactor | One commit per feature: attach the shared classification to its APIM failures; feature code tables unchanged | characterization unchanged |
+| 2b.4..2b.n | deferred | Not delivered by reduced-scope M2b. Integrate each feature during M3 using the deferred-work schedule below; feature code tables remain feature-owned | existing characterization plus targeted tests for changed paths |
 | 2b.gate | - | Milestone gate: `mvn spotless:check`, full `mvn test`, per-class instruction and branch coverage including anonymous classes; then Nick runs the startup smoke test and SonarQube | - |
 
 
 **Sub-task 2b.1 addendum (docs(exception-handling): add APIM error classification design):** see docs/design/15-exception-handling/07-apim-error-classification.md for the full APIM error classification design. Two approved exceptions to the M2b "no change" rules were recorded there:
-- E1 (log level): Registration `err.tpa.member.not.found` moves from `FailureOrigin.DOWNSTREAM_CONTRACT` to `FailureOrigin.DOWNSTREAM_BUSINESS` (ERROR -> WARN), pinned fail-first in the Registration feature commit (sub-task 2b.4..2b.n). No other log level changes in M2b.
+- E1 (log level): Registration `err.tpa.member.not.found` moves from `FailureOrigin.DOWNSTREAM_CONTRACT` to `FailureOrigin.DOWNSTREAM_BUSINESS` (ERROR -> WARN), delivered in reduced-scope M2b with fail-first characterization; remaining Registration integration is deferred to M3. No other log level changes in M2b.
 - E2 (public contract): no `DOWNSTREAM_*` value may reach the frontend; enforced by new sub-task **2b.2a** (runs after 2b.2, before 2b.3). FE confirmed by Nick: no dependence on any `DOWNSTREAM_*` value; E2 approved.
 
 ### M3 - Call-site migration (one ERROR per incident)
 
-**Depends on M2b:** M3 starts only after M2b is merged; its INCIDENT/DIAGNOSTIC classification of APIM
-call sites uses the M2b `FailureOrigin` classification.
+**Depends on M2b:** start M3 from updated `origin/dev` only after the approved reduced-scope M2b
+branch is merged. For each feature, attach the shared APIM classification and migrate incident logging
+in the same bounded feature slice. The classifier produces `ApimFailureCategory`; map it to the
+existing `FailureOrigin` at an appropriate adapter/observability boundary. Do not introduce an
+application-to-adapter dependency or change exception identity/public routing merely to carry metadata.
+
+**Execution order:** Registration (3.3), Forgot Password (3.2), Login (3.1), Username Recovery
+(3.9), then the remaining account/fund and existing M3 scopes. Existing sub-task IDs are retained;
+table numbering is not execution order. The deferred-work schedule below is authoritative.
   
 Each sub-task: read-only classification table first (INCIDENT / DIAGNOSTIC), Nick approves, then
 implementation, and KNOWN_REMAINING shrinks.
@@ -649,3 +657,66 @@ The original 2b.4..2b.n goal to attach classification to every feature APIM fail
 follow-up work. M2b must not be reported as completing the original "every APIM failure classified"
 goal. No Registration, Forgot Password, Login, Username Recovery, or other feature migration is part
 of this reduced completion scope.
+
+### M3 deferred-work schedule and closure criteria (approved 2026-11-04)
+
+Deferred means scheduled into the next milestone, not indefinitely postponed. This schedule assigns
+follow-up work without reopening M2b or claiming that any feature integration is already complete.
+Nick owns sequencing and approval; the implementer delivers each slice and the independent reviewer
+checks its evidence. All rows below are pending until separately implemented and validated.
+
+| Order / ID | Scope and destination | Required outcome | Status |
+|---|---|---|---|
+| First / 3.3 | Registration: lookup, username availability and completion | Integrate technical classification at the adapter boundary and consolidate incident logging. Preserve E1 business/WARN behavior, both captcha paths, public responses and replay semantics. Use bounded internal steps; one coherent feature commit when green. | Pending after M2b merge |
+| Second / 3.2 | Forgot Password: start, details/OTP, resend and completion | Integrate classification and logging. Revisit the deferred Details/OTP SYSTEM_FAILED seam and Completion response/replay proof only where required to establish changed-path behavior. Do not redesign the public contract. | Pending |
+| Third / 3.1 | Login: start, OTP verify/resend, account-list retrieval and session establishment | Integrate classification and incident ownership while preserving BFF source, public statuses/codes and replay behavior. | Pending |
+| Fourth / 3.9 | Username Recovery | Integrate classification and logging; preserve feature-owned business rejections, public outcomes and no-ERROR behavior for expected member-not-found. | Pending |
+| Remaining / 3.10 | Account Summary, Account Balance, Account Gain/Loss and other account/fund adapters not covered by existing M3 rows | Migrate one feature at a time; reuse current adapter/mapping tests and add only changed-path gaps. | Pending |
+| Existing / 3.4 | Authenticated session lifecycle and validation services | Complete existing incident/diagnostic migration; classifier integration applies only to actual APIM paths. | Pending |
+| Existing / 3.5 | Personal Information | Refresh stale inventory/citations against current retrieval/update adapters during this slice, then integrate classification/logging without changing response contracts. | Pending |
+| Existing / 3.6 | Fund Price, Fund Fact Sheet, Fund Comparison, Config Service adapter and APIM facade profile-resolution | Cover the remaining feature/technical paths; keep business-code tables local to each feature. Avoid duplicating work completed under 3.10. | Pending |
+| Final / 3.7 and 3.8 | Swallowed-failure audit and observer downgrades | Establish incident ownership for swallowed system failures; downgrade duplicate observers only after ownership is proven; shrink the existing ERROR-call ratchet accurately. | Pending |
+
+#### Per-feature acceptance criteria
+
+- Reuse existing characterization; do not restart an exhaustive inventory or require a full-chain test
+  for every row. First identify only the changed paths and their existing behavioral tests.
+- Use the shared pure classifier for technical APIM failures. Recognized business-code tables stay
+  feature-owned. Preserve DOWNSTREAM_INVALID_RESPONSE for crypto/response-mapping failures.
+- Keep internal classification internal. Preserve E2 public BUSINESS/SYSTEM types, normalized public
+  ApiStatus, BFF Login source and approved lowercase message keys.
+- Preserve HTTP status, codes, targets, messages, headers, captcha behavior and idempotency/replay
+  snapshots. Any desired public-contract change requires separate approval and scope.
+- Assign one incident ERROR owner for technical incidents; expected business rejections do not become
+  technical ERROR alerts. Prove changed event levels, stack-trace policy and duplicate-observer behavior.
+- Keep adapter dependencies out of application code. Do not wrap exceptions or mutate replay/result
+  records solely to attach classification unless routing preservation is proven and separately approved.
+- Use fail-first tests for behavior changes, compile, test-compile and targeted tests for changed classes.
+  Do not run full-suite/formatting/Sonar/smoke gates after every internal step. Run the established full
+  milestone gates once at M3 completion; run formatting apply only at the agreed stabilization stage.
+- Each completed feature records its commit, tests, incident owner and remaining gaps. The existing
+  KNOWN_REMAINING ratchet may shrink but must not hide newly introduced ERROR call sites.
+- Stop and escalate after three consecutive failed attempts or ten scripts without a commit.
+
+#### Other deferred items and explicit destinations
+
+| Item | Destination and timing | Closure condition |
+|---|---|---|
+| Forgot Password Details/OTP SYSTEM_FAILED routing | Forgot Password M3 slice, only to the extent needed for changed logging/classification | Behavioral evidence for the changed path; any remaining unrelated seam stays explicitly tracked. |
+| Forgot Password Completion public-response/replay Test B | Forgot Password M3 slice when its changes require this proof; otherwise separate follow-up | Do not claim replay/public routing covered by adapter-only tests. |
+| Personal Information stale rows/citations | Personal Information M3 slice | Trace current source and update affected rows only. |
+| O-17: outbound request-body logging/privacy | Separate early security/privacy fix after M2b merge; do not wait for all feature migrations | Nick/security authority agree scope; remove or sanitize sensitive body content and prove it with focused tests. |
+| RegistrationHttpResponses duplicate/dead branches and cross-feature HTTP-status inconsistencies | Separate cleanup/contract work, not classifier-integration prerequisites | Preserve current behavior for cleanup; obtain explicit approval for status changes. |
+| Technical username-check failure rendered as BUSINESS | Separate public-contract decision owned by Nick | Decide intended public type and implement only under approved scope. |
+| Original every-APIM-failure-classified objective | Aggregate completion of the deferred feature integrations, not reduced M2b | Every in-scope feature has implementation and evidence; remaining gaps are explicit. |
+
+#### M3 completion and M4 activation boundary
+
+M3 closes only when its agreed feature integrations, incident ownership, swallowed-failure audit,
+observer migration and ratchet gates are complete, followed by the established milestone validation.
+Do not silently transfer unfinished M3 features into a claim of full completion.
+
+M4 alerting may be developed separately after its prerequisites are agreed, but alert activation for
+an environment must wait until the included paths have validated classification and incident
+ownership. Expected business rejections must not generate technical ERROR alerts. Existing security,
+recipient, deployment and operational approvals still apply; this schedule does not grant them.
