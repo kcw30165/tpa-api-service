@@ -15,20 +15,17 @@ import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.mapper.UsernameRecoveryStartWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.mapper.UsernameRecoveryRequestWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.mapper.UsernameRecoveryCancelWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryStartResponsePolicy;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryRequestResponsePolicy;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.mapper.UsernameRecoveryRequestWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.mapper.UsernameRecoveryStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryCancelResponsePolicy;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryRequestResponsePolicy;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryStartResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.cookie.HttpSessionCookieAdapter;
-import com.bct.ngtpa.apiservice.application.dto.session.SessionCookiePolicy;
-import com.bct.ngtpa.apiservice.application.dto.session.SessionCookieSameSite;
-import com.bct.ngtpa.apiservice.application.port.in.StartUsernameRecoveryUseCase;
-import com.bct.ngtpa.apiservice.application.port.in.RequestUsernameRecoveryUseCase;
-import com.bct.ngtpa.apiservice.application.port.in.CancelUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartResult;
+import com.bct.ngtpa.apiservice.application.dto.session.SessionCookiePolicy;
+import com.bct.ngtpa.apiservice.application.dto.session.SessionCookieSameSite;
 import com.bct.ngtpa.apiservice.application.idempotency.DefaultIdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFailureClassification;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint;
@@ -40,6 +37,9 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationTo
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationTokenGenerator;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalResponseSnapshot;
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
+import com.bct.ngtpa.apiservice.application.port.in.CancelUsernameRecoveryUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.RequestUsernameRecoveryUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.StartUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.IdempotentStartUsernameRecoveryService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.UsernameRecoveryIdempotencyIntegrationPolicy;
@@ -93,7 +93,8 @@ class UsernameRecoveryLegacyStartReplayHttpTest {
   @Test
   void aCompletedLegacyZeroRegisteredReplayFailsClosedAsHttp503WithNoSideEffects()
       throws Exception {
-    IdempotentTerminalResponseSnapshot legacy = LegacyStartReplaySnapshotFixture.zeroRegistered(envelope);
+    IdempotentTerminalResponseSnapshot legacy =
+        LegacyStartReplaySnapshotFixture.zeroRegistered(envelope);
     assertThat(legacy.serializedSafeBody()).contains("ZERO_REGISTERED");
     assertThat(legacy.protectedReplayReference()).isNull();
 
@@ -125,7 +126,8 @@ class UsernameRecoveryLegacyStartReplayHttpTest {
     // no protected replay resolution or storage
     assertThat(replayPort.resolves).isZero();
     assertThat(replayPort.stores).isZero();
-    // nothing below the start operation was reached: no CAPTCHA, no APIM lookup, no session, no delivery
+    // nothing below the start operation was reached: no CAPTCHA, no APIM lookup, no session, no
+    // delivery
     verify(fixture.harness.captcha, never()).consume(any());
     verify(fixture.harness.sessions, never()).createRevisioned(any());
     verify(fixture.harness.sessions, never()).updateRevisioned(any());
@@ -139,7 +141,8 @@ class UsernameRecoveryLegacyStartReplayHttpTest {
   @Test
   void aCompletedMemberNotFoundReplayThroughTheSameChainStillReturnsTheExistingRejection()
       throws Exception {
-    IdempotentTerminalResponseSnapshot control = LegacyStartReplaySnapshotFixture.memberNotFound(codec);
+    IdempotentTerminalResponseSnapshot control =
+        LegacyStartReplaySnapshotFixture.memberNotFound(codec);
 
     EntityExchangeResult<byte[]> exchange = post(clientReplaying(control));
 
@@ -229,7 +232,8 @@ class UsernameRecoveryLegacyStartReplayHttpTest {
   }
 
   /** Protected replay storage: any use is a test failure, and every call is counted. */
-  private static final class CountingReplayPort implements UsernameRecoveryStartProtectedReplayPort {
+  private static final class CountingReplayPort
+      implements UsernameRecoveryStartProtectedReplayPort {
     private int stores;
     private int resolves;
 
@@ -237,13 +241,15 @@ class UsernameRecoveryLegacyStartReplayHttpTest {
     public Mono<ProtectedReplayReference> store(
         UsernameRecoveryStartProtectedReplayState state, Duration ttl) {
       stores++;
-      return Mono.error(new AssertionError("a session-less snapshot must not use protected storage"));
+      return Mono.error(
+          new AssertionError("a session-less snapshot must not use protected storage"));
     }
 
     @Override
     public Mono<UsernameRecoveryStartResult> resolve(ProtectedReplayReference reference) {
       resolves++;
-      return Mono.error(new AssertionError("a session-less snapshot must not resolve protected state"));
+      return Mono.error(
+          new AssertionError("a session-less snapshot must not resolve protected state"));
     }
   }
 }

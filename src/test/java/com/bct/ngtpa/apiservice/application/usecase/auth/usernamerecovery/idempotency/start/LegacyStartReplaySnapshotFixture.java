@@ -10,9 +10,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Builds persisted START replay snapshots for tests that live outside this package. It uses the real
- * wire records and the real response envelope, so the shapes are the ones the codec itself writes
- * and reads.
+ * Builds persisted START replay snapshots for tests that live outside this package. It uses the
+ * real wire records and the real response envelope, so the shapes are the ones the codec itself
+ * writes and reads.
  */
 public final class LegacyStartReplaySnapshotFixture {
   private LegacyStartReplaySnapshotFixture() {}
