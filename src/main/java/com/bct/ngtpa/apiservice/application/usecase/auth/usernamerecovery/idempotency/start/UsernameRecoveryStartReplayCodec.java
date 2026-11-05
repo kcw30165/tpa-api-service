@@ -1,4 +1,5 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.start;
+
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartResult.Outcome;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;

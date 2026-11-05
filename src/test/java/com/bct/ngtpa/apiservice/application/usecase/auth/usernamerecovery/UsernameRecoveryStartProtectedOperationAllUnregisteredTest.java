@@ -1,8 +1,8 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery;
 
+import static com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartOperationHarness.CSRF_HASH;
 import static com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartOperationHarness.NOW;
 import static com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartOperationHarness.RAW_CSRF;
-import static com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartOperationHarness.CSRF_HASH;
 import static com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartOperationHarness.TTL;
 import static com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartOperationHarness.matched;
 import static com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartOperationHarness.unregistered;
@@ -97,7 +97,9 @@ class UsernameRecoveryStartProtectedOperationAllUnregisteredTest {
               assertThat(result.schemes())
                   .allSatisfy(scheme -> assertThat(scheme.registered()).isFalse());
               List<UsernameRecoverySchemeRef> refs =
-                  result.schemes().stream().map(UsernameRecoverySchemeProjection::schemeRef).toList();
+                  result.schemes().stream()
+                      .map(UsernameRecoverySchemeProjection::schemeRef)
+                      .toList();
               assertThat(refs).doesNotContainNull().doesNotHaveDuplicates().hasSize(3);
               assertThat(refs).allSatisfy(ref -> assertThat(ref.value()).isNotBlank());
             })

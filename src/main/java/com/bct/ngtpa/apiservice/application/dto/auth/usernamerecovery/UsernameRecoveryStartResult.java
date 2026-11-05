@@ -7,18 +7,19 @@ import java.util.Objects;
 /**
  * Application result of the Username Recovery start flow.
  *
- * <p>Design references: {@code docs/design/6-username-recovery/username-recovery-api-contract-design.md}
- * section 4 (a valid, non-empty lookup result returns {@code csrfToken}, {@code expiresInSeconds}
- * and safe {@code schemes}, including when every scheme is unregistered; member-not-found returns
- * {@code RESTART_FLOW}) and {@code
- * docs/design/6-username-recovery/username-recovery-solution-design.md} section 6 (the session,
- * CSRF token and opaque Scheme-Refs are created for every valid, non-empty lookup result).
+ * <p>Design references: {@code
+ * docs/design/6-username-recovery/username-recovery-api-contract-design.md} section 4 (a valid,
+ * non-empty lookup result returns {@code csrfToken}, {@code expiresInSeconds} and safe {@code
+ * schemes}, including when every scheme is unregistered; member-not-found returns {@code
+ * RESTART_FLOW}) and {@code docs/design/6-username-recovery/username-recovery-solution-design.md}
+ * section 6 (the session, CSRF token and opaque Scheme-Refs are created for every valid, non-empty
+ * lookup result).
  *
  * <p>Invariants: {@code outcome} is required. {@code SESSION_CREATED} requires a nonblank {@code
  * csrfToken}, a positive {@code expiresInSeconds}, at least one scheme projection and a
  * session-bound schemeRef on every projection; the projections may be registered, unregistered or
- * mixed. {@code MEMBER_NOT_FOUND} carries no session data and no schemes. {@link #toString()}
- * never discloses the CSRF token or the auth-flow session id.
+ * mixed. {@code MEMBER_NOT_FOUND} carries no session data and no schemes. {@link #toString()} never
+ * discloses the CSRF token or the auth-flow session id.
  *
  * <p>The {@code authFlowSessionId} component (Repair 024A) is server/transport-only: it never
  * enters the public projection or the replay snapshots, and a result without a session ({@link

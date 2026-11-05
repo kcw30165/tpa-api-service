@@ -61,7 +61,8 @@ class RedisUsernameRecoveryStartProtectedReplayAdapterAllUnregisteredTest {
   private final AuthFlowSessionPort sessions = mock(AuthFlowSessionPort.class);
   private final UsernameRecoveryAuthFlowContextBinding contexts =
       mock(UsernameRecoveryAuthFlowContextBinding.class);
-  private final CreateAuthFlowSessionCsrfUseCase csrf = mock(CreateAuthFlowSessionCsrfUseCase.class);
+  private final CreateAuthFlowSessionCsrfUseCase csrf =
+      mock(CreateAuthFlowSessionCsrfUseCase.class);
 
   private final AuthFlowSessionId sid = new AuthFlowSessionId("afs-unamerec-1");
   private final ProtectedReplayReference reference =
@@ -90,7 +91,8 @@ class RedisUsernameRecoveryStartProtectedReplayAdapterAllUnregisteredTest {
     when(sessions.loadSnapshot(any()))
         .thenReturn(
             Mono.just(
-                Optional.of(new AuthFlowSessionSnapshot(session, new SessionRevision("0".repeat(32))))));
+                Optional.of(
+                    new AuthFlowSessionSnapshot(session, new SessionRevision("0".repeat(32))))));
     var context = mock(UsernameRecoveryAuthFlowContext.class);
     when(context.workflowStatus()).thenReturn(UsernameRecoveryWorkflowStatus.ACTIVE);
     var first = candidate("sch_ref_1", "OI", "JPM");

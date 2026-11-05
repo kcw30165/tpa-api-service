@@ -83,8 +83,7 @@ class UsernameRecoveryStartRegisteredAndNotFoundPreservationTest {
   void memberNotFoundStillCreatesNoSession() {
     var harness = new UsernameRecoveryStartOperationHarness();
     harness.lookupReturns(
-        new UsernameRecoveryLookupResult(
-            UsernameRecoveryLookupResult.Status.NOT_FOUND, List.of()));
+        new UsernameRecoveryLookupResult(UsernameRecoveryLookupResult.Status.NOT_FOUND, List.of()));
 
     StepVerifier.create(harness.execute())
         .assertNext(
@@ -106,8 +105,7 @@ class UsernameRecoveryStartRegisteredAndNotFoundPreservationTest {
     List<UsernameRecoveryLookupCandidate> none = List.of();
     assertThatThrownBy(
             () ->
-                new UsernameRecoveryLookupResult(
-                    UsernameRecoveryLookupResult.Status.MATCHED, none))
+                new UsernameRecoveryLookupResult(UsernameRecoveryLookupResult.Status.MATCHED, none))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("matched lookup requires at least one candidate");
   }
@@ -169,7 +167,8 @@ class UsernameRecoveryStartRegisteredAndNotFoundPreservationTest {
         new UsernameRecoveryVerifiedDestination(
             "member@example.com", UsernameRecoveryVerifiedDestination.Channel.EMAIL);
     var allRequested =
-        List.of(candidate("sch_r1", "DBA", true, "user-1", UsernameRecoveryDeliveryState.REQUESTED));
+        List.of(
+            candidate("sch_r1", "DBA", true, "user-1", UsernameRecoveryDeliveryState.REQUESTED));
     assertThatThrownBy(
             () ->
                 new UsernameRecoveryAuthFlowContext(
@@ -238,7 +237,14 @@ class UsernameRecoveryStartRegisteredAndNotFoundPreservationTest {
     boolean requested = state == UsernameRecoveryDeliveryState.REQUESTED;
     return new UsernameRecoverySessionCandidate(
         new UsernameRecoveryCandidate(
-            new UsernameRecoverySchemeRef(ref), "DB", trustCode, registered, userName, state, null, null),
+            new UsernameRecoverySchemeRef(ref),
+            "DB",
+            trustCode,
+            registered,
+            userName,
+            state,
+            null,
+            null),
         requested ? NOW : null,
         requested ? "sender-ref" : null);
   }

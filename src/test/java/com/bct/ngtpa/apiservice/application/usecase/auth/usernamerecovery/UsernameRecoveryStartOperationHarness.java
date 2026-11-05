@@ -176,7 +176,8 @@ public final class UsernameRecoveryStartOperationHarness {
     return new UsernameRecoveryLookupCandidate(env, trustCode, true, userName, null, null);
   }
 
-  public static UsernameRecoveryLookupResult matched(UsernameRecoveryLookupCandidate... candidates) {
+  public static UsernameRecoveryLookupResult matched(
+      UsernameRecoveryLookupCandidate... candidates) {
     return new UsernameRecoveryLookupResult(
         UsernameRecoveryLookupResult.Status.MATCHED, List.of(candidates));
   }

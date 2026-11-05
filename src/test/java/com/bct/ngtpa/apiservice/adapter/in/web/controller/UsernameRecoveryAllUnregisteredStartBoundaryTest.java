@@ -46,8 +46,7 @@ class UsernameRecoveryAllUnregisteredStartBoundaryTest {
   @Test
   void anAllUnregisteredDownstreamResultReachesTheSuccessfulSelectAccountResponse()
       throws Exception {
-    fixture.givenApimReturns(
-        "", List.of(unregisteredItem("OI", "JPM", "JP MORGAN CHASE - JMCI")));
+    fixture.givenApimReturns("", List.of(unregisteredItem("OI", "JPM", "JP MORGAN CHASE - JMCI")));
 
     EntityExchangeResult<byte[]> exchange = start();
 
@@ -89,7 +88,9 @@ class UsernameRecoveryAllUnregisteredStartBoundaryTest {
     assertThat(fixture.harness.creates.get()).isEqualTo(1);
     var context = fixture.harness.binding.load(fixture.harness.storedSession());
     assertThat(context.workflowStatus()).isEqualTo(UsernameRecoveryWorkflowStatus.ACTIVE);
-    assertThat(context.candidates()).singleElement().satisfies(c -> assertThat(c.registered()).isFalse());
+    assertThat(context.candidates())
+        .singleElement()
+        .satisfies(c -> assertThat(c.registered()).isFalse());
   }
 
   @Test
@@ -165,7 +166,8 @@ class UsernameRecoveryAllUnregisteredStartBoundaryTest {
 
     // wrong CSRF with a valid session and an unregistered Scheme-Ref
     assertPreDispatchFailure(
-        run(sessionId, schemeRef, "wrong-csrf"), UsernameRecoveryRequestException.Reason.SECURITY_INVALID);
+        run(sessionId, schemeRef, "wrong-csrf"),
+        UsernameRecoveryRequestException.Reason.SECURITY_INVALID);
     // unknown Scheme-Ref with a valid session and CSRF
     StepVerifier.create(run(sessionId, "sch_does_not_exist", csrf))
         .assertNext(

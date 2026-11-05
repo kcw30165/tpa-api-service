@@ -46,8 +46,7 @@ class IdempotentStartUsernameRecoveryServiceAllUnregisteredReplayTest {
     when(fixture.responses.toTransientResponse(result, 200)).thenReturn(response);
     when(fixture.responses.fromTransientResponse(response)).thenReturn(result);
 
-    StepVerifier.create(
-            fixture.service.start(UsernameRecoveryStartOperationHarness.command()))
+    StepVerifier.create(fixture.service.start(UsernameRecoveryStartOperationHarness.command()))
         .expectNext(result)
         .verifyComplete();
 
@@ -64,8 +63,7 @@ class IdempotentStartUsernameRecoveryServiceAllUnregisteredReplayTest {
     fixture.executor.terminal = response;
     when(fixture.responses.fromTransientResponse(response)).thenReturn(result);
 
-    StepVerifier.create(
-            fixture.service.start(UsernameRecoveryStartOperationHarness.command()))
+    StepVerifier.create(fixture.service.start(UsernameRecoveryStartOperationHarness.command()))
         .expectNext(result)
         .verifyComplete();
 
