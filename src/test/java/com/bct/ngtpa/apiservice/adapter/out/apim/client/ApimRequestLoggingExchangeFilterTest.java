@@ -32,8 +32,7 @@ class ApimRequestLoggingExchangeFilterTest {
   private final LoggingSanitizer loggingSanitizer = loggingSanitizerWithDefaults();
   private final RequestLoggingProperties requestLoggingProperties = enabledHeaderProperties();
   private final ApimRequestLoggingExchangeFilter filter =
-      new ApimRequestLoggingExchangeFilter(
-          requestLoggingProperties, "", loggingSanitizer, objectMapper);
+      new ApimRequestLoggingExchangeFilter(requestLoggingProperties, "", objectMapper);
 
   private static RequestLoggingProperties enabledHeaderProperties() {
     RequestLoggingProperties properties = new RequestLoggingProperties();
@@ -159,7 +158,7 @@ class ApimRequestLoggingExchangeFilterTest {
     RequestLoggingProperties properties = enabledHeaderProperties();
     properties.setEnabled(false);
     ApimRequestLoggingExchangeFilter disabled =
-        new ApimRequestLoggingExchangeFilter(properties, "", loggingSanitizer, objectMapper);
+        new ApimRequestLoggingExchangeFilter(properties, "", objectMapper);
     invokeFilter(
         disabled.filter(),
         ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test")).build(),
@@ -172,7 +171,7 @@ class ApimRequestLoggingExchangeFilterTest {
     RequestLoggingProperties properties = enabledHeaderProperties();
     properties.setLogHeaders(false);
     ApimRequestLoggingExchangeFilter withoutHeaders =
-        new ApimRequestLoggingExchangeFilter(properties, "", loggingSanitizer, objectMapper);
+        new ApimRequestLoggingExchangeFilter(properties, "", objectMapper);
     invokeFilter(
         withoutHeaders.filter(),
         ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test"))
@@ -189,7 +188,7 @@ class ApimRequestLoggingExchangeFilterTest {
     properties.setHeaderAllowlist(
         java.util.List.of("user-agent", "ACCEPT", "Authorization", "X-Password-Validation-Token"));
     ApimRequestLoggingExchangeFilter configured =
-        new ApimRequestLoggingExchangeFilter(properties, "", loggingSanitizer, objectMapper);
+        new ApimRequestLoggingExchangeFilter(properties, "", objectMapper);
     invokeFilter(
         configured.filter(),
         ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test"))
@@ -231,8 +230,7 @@ class ApimRequestLoggingExchangeFilterTest {
             "X-Password-Key",
             "X-API-Key-Variant"));
     ApimRequestLoggingExchangeFilter configured =
-        new ApimRequestLoggingExchangeFilter(
-            properties, "X-Custom-Apim-Credential", loggingSanitizer, objectMapper);
+        new ApimRequestLoggingExchangeFilter(properties, "X-Custom-Apim-Credential", objectMapper);
     ClientRequest request =
         ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test"))
             .header("Accept", "application/json")

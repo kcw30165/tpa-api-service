@@ -42,7 +42,7 @@ public class ApimExchangeOutcomeLogger {
         ApimEnvelopeSchemaClassifier.classify(envelope);
     switch (classification.kind()) {
       case MALFORMED -> logContractInvalid(request, classification.malformedReason(), requestId);
-      case BUSINESS_REJECTED -> logBusinessRejected(request, envelope, requestId);
+      case BUSINESS_REJECTED -> logBusinessRejected(request, requestId);
       case SUCCESS -> {
         // Intentionally silent - see class-level Javadoc.
       }
@@ -71,8 +71,7 @@ public class ApimExchangeOutcomeLogger {
     log.error("{}", toJson(event));
   }
 
-  private <D> void logBusinessRejected(
-      ApimExchangeRequest<?, D> request, ApimResponseEnvelope<D> envelope, String requestId) {
+  private void logBusinessRejected(ApimExchangeRequest<?, ?> request, String requestId) {
     Map<String, Object> event = baseEvent("apim.business.rejected", request, requestId);
     log.warn("{}", toJson(event));
   }

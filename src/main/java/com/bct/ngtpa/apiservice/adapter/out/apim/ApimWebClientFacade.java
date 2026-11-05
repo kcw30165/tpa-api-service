@@ -103,10 +103,7 @@ public class ApimWebClientFacade {
         new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties())),
         new ApimContextPropagationExchangeFilter(),
         new ApimRequestLoggingExchangeFilter(
-            disabledRequestLoggingProperties(),
-            apimProperties,
-            new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties())),
-            objectMapper));
+            disabledRequestLoggingProperties(), apimProperties, objectMapper));
   }
 
   private static RequestLoggingProperties disabledRequestLoggingProperties() {

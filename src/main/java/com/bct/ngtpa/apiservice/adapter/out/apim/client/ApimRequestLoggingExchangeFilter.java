@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.client;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import reactor.core.publisher.Mono;
@@ -34,26 +34,23 @@ public class ApimRequestLoggingExchangeFilter {
 
   private final RequestLoggingProperties properties;
   private final String apimCredentialHeaderName;
-  private final LoggingSanitizer loggingSanitizer;
   private final ObjectMapper objectMapper;
 
+  @Autowired
   public ApimRequestLoggingExchangeFilter(
       RequestLoggingProperties properties,
       ApimProperties apimProperties,
-      LoggingSanitizer loggingSanitizer,
       ObjectMapper objectMapper) {
-    this(properties, apimProperties.getApiKeyHeaderName(), loggingSanitizer, objectMapper);
+    this(properties, apimProperties.getApiKeyHeaderName(), objectMapper);
   }
 
   ApimRequestLoggingExchangeFilter(
       RequestLoggingProperties properties,
       String apimCredentialHeaderName,
-      LoggingSanitizer loggingSanitizer,
       ObjectMapper objectMapper) {
     this.properties = properties;
     this.apimCredentialHeaderName =
         apimCredentialHeaderName == null ? "" : apimCredentialHeaderName;
-    this.loggingSanitizer = loggingSanitizer;
     this.objectMapper = objectMapper;
   }
 

@@ -30,7 +30,7 @@ class ApimWebClientConfigTest {
       new ApimContextPropagationExchangeFilter();
   private final ApimRequestLoggingExchangeFilter requestLoggingFilter =
       new ApimRequestLoggingExchangeFilter(
-          new RequestLoggingProperties(), new ApimProperties(), loggingSanitizer, objectMapper);
+          new RequestLoggingProperties(), new ApimProperties(), objectMapper);
   private final ApimWebClientConfig config =
       new ApimWebClientConfig(requestIdFilter, requestLoggingFilter);
 
