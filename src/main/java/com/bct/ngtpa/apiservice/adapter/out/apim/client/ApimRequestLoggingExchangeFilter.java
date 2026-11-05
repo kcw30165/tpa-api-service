@@ -36,8 +36,7 @@ public class ApimRequestLoggingExchangeFilter {
                   event.put("event", "apim.request");
                   event.put("requestId", requestId);
                   event.put("method", request.method().name());
-                  event.put("url", String.valueOf(request.url()));
-                  event.put("headers", loggingSanitizer.sanitizeValue(headers));
+                  event.put("path", request.url().getPath());
 
                   log.info("{}", toJson(event));
 

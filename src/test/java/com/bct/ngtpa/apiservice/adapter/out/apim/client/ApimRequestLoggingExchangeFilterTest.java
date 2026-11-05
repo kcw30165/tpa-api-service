@@ -94,10 +94,10 @@ class ApimRequestLoggingExchangeFilterTest {
   }
 
   @Test
-  void logEventContainsMethodUrlAndRequestId() throws Exception {
+  void logEventContainsMethodPathAndRequestIdWithoutUrlQueryOrHeaders() throws Exception {
     ExchangeFilterFunction exchangeFilter = filter.filter();
     ClientRequest request =
-        ClientRequest.create(HttpMethod.POST, URI.create("https://api.example.test/contributions"))
+        ClientRequest.create(HttpMethod.POST, URI.create("https://api.example.test/contributions?identity=O17-QUERY-MARKER"))
             .build();
 
     invokeFilter(exchangeFilter, request, "req-xyz");
@@ -105,9 +105,11 @@ class ApimRequestLoggingExchangeFilterTest {
     String message = listAppender.list.get(0).getFormattedMessage();
     var node = objectMapper.readTree(message);
     assertEquals("POST", node.get("method").asText());
-    assertEquals("https://api.example.test/contributions", node.get("url").asText());
+    assertEquals("/contributions", node.get("path").asText());
     assertEquals("req-xyz", node.get("requestId").asText());
-    assertNotNull(node.get("headers"));
+    org.junit.jupiter.api.Assertions.assertNull(node.get("url"));
+    org.junit.jupiter.api.Assertions.assertNull(node.get("headers"));
+    assertTrue(!message.contains("O17-QUERY-MARKER"));
   }
 
   @Test

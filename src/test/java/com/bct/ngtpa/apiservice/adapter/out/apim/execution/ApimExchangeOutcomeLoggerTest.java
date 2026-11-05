@@ -90,13 +90,39 @@ class ApimExchangeOutcomeLoggerTest {
   }
 
   @Test
-  void businessRejectionLogsAtWarnWithSanitizedErrMessage() {
+  void businessRejectionLogsAtWarnWithEstablishedCode() {
     outcomeLogger.logSuccessOutcome(request(), envelope("err.tpa.wrong.password", null), "req-1");
     assertThat(appender.list).hasSize(1);
     ILoggingEvent event = appender.list.get(0);
     assertThat(event.getLevel()).isEqualTo(Level.WARN);
     assertThat(event.getFormattedMessage()).contains("apim.business.rejected");
     assertThat(event.getFormattedMessage()).contains("err.tpa.wrong.password");
+  }
+
+  @Test
+  void arbitraryBusinessTextIsNeverLoggedButEstablishedCodeIsRetained() {
+    String marker = "O17-ARBITRARY-DOWNSTREAM-TEXT-CIPHERTEXT";
+    outcomeLogger.logSuccessOutcome(request(), envelope(marker, null), "req-1");
+    assertThat(appender.list).hasSize(1);
+    ILoggingEvent event = appender.list.get(0);
+    assertThat(event.getLevel()).isEqualTo(Level.WARN);
+    assertThat(event.getFormattedMessage())
+        .contains("apim.business.rejected")
+        .doesNotContain(marker, "errMessage");
+  }
+
+  @Test
+  void exchangeFailureOmitsThrowableMessagesAndPreservesTypesAndMetadata() {
+    String marker = "O17-THROWABLE-PAYLOAD-MARKER";
+    outcomeLogger.logExchangeFailure(
+        request(), new IllegalStateException(marker, new IllegalArgumentException(marker)), "req-1");
+    assertThat(appender.list).hasSize(1);
+    ILoggingEvent event = appender.list.get(0);
+    assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(event.getFormattedMessage())
+        .contains("apim.exchange.failed", "IllegalStateException", "IllegalArgumentException", PATH)
+        .doesNotContain(marker, "errorMessage");
+    assertThat(event.getThrowableProxy()).isNull();
   }
 
   @Test

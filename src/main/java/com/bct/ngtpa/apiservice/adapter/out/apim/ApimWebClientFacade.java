@@ -407,9 +407,6 @@ public class ApimWebClientFacade {
 
               WebClient.RequestHeadersSpec<?> req = request.bodyValue(requestBody);
 
-              if (retryContext.resubmissionPolicy != ApimResubmissionPolicy.NEVER) {
-                logRequest(path, requestBody);
-              }
               return req.exchangeToMono(
                   response -> handleResponse(response, profile, path, requestBody, retryContext));
             });
@@ -458,7 +455,7 @@ public class ApimWebClientFacade {
       Object requestBody,
       RetryContext retryContext) {
     if (retryContext.resubmissionPolicy == ApimResubmissionPolicy.NEVER) {
-      return upstreamFailure(statusCode, "<redacted>");
+      return upstreamFailure(statusCode);
     }
     String errorCode = extractApimErrorCode(body);
     Mono<String> tokenRetryResult =
@@ -470,17 +467,16 @@ public class ApimWebClientFacade {
     if (certRetryResult != null) {
       return certRetryResult;
     }
-    return upstreamFailure(statusCode, loggingSanitizer.sanitizeText(body));
+    return upstreamFailure(statusCode);
   }
 
-  private Mono<String> upstreamFailure(HttpStatusCode statusCode, String sanitizedBody) {
-    log.error("APIM request failed with status={} body={}", statusCode.value(), sanitizedBody);
+  private Mono<String> upstreamFailure(HttpStatusCode statusCode) {
+    log.error("APIM request failed with status={}", statusCode.value());
     return Mono.error(
         new ApimException(
             HttpStatus.BAD_GATEWAY,
             mapUpstreamErrorCode(statusCode),
-            "APIM request failed with status=%s body=%s"
-                .formatted(statusCode.value(), sanitizedBody)));
+            "APIM request failed with status=%s".formatted(statusCode.value())));
   }
 
   private Mono<String> tryInvalidTokenRetry(
@@ -535,7 +531,8 @@ public class ApimWebClientFacade {
       ApimErrorResponse err = objectMapper.readValue(body, ApimErrorResponse.class);
       return err.error();
     } catch (Exception ex) {
-      log.debug("Unable to parse APIM error body as ApimErrorResponse.", ex);
+      log.debug("Unable to parse APIM error body as ApimErrorResponse: exceptionType={}",
+          ex.getClass().getSimpleName());
       if (body.contains("\"error\":\"invalid_token\"")) {
         return "invalid_token";
       }
@@ -546,13 +543,6 @@ public class ApimWebClientFacade {
     }
   }
 
-  private void logRequest(String path, Object requestBody) {
-    try {
-      log.info("APIM outbound path={} body={}", path, loggingSanitizer.toSafeString(requestBody));
-    } catch (Exception ex) {
-      log.warn("Failed to serialise APIM request body for logging.", ex);
-    }
-  }
 
   private static String mapUpstreamErrorCode(HttpStatusCode statusCode) {
     return switch (statusCode.value()) {

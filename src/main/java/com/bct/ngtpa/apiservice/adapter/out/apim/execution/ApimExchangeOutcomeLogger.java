@@ -53,9 +53,6 @@ public class ApimExchangeOutcomeLogger {
       ApimExchangeRequest<?, ?> request, Throwable error, String requestId) {
     Map<String, Object> event = baseEvent("apim.exchange.failed", request, requestId);
     event.put("exceptionType", error.getClass().getSimpleName());
-    if (request.resubmissionPolicy() != ApimResubmissionPolicy.NEVER) {
-      event.put("errorMessage", loggingSanitizer.sanitizeText(error.getMessage()));
-    }
     Throwable innermost = rootCause(error);
     if (innermost != error) {
       event.put("rootCauseType", innermost.getClass().getSimpleName());
@@ -77,11 +74,18 @@ public class ApimExchangeOutcomeLogger {
   private <D> void logBusinessRejected(
       ApimExchangeRequest<?, D> request, ApimResponseEnvelope<D> envelope, String requestId) {
     Map<String, Object> event = baseEvent("apim.business.rejected", request, requestId);
-    if (request.resubmissionPolicy() != ApimResubmissionPolicy.NEVER) {
-      event.put(
-          "errMessage", loggingSanitizer.sanitizeText(envelope.getResponse().getErrMessage()));
+    String businessCode = establishedBusinessCode(envelope.getResponse().getErrMessage());
+    if (businessCode != null) {
+      event.put("errorCode", businessCode);
     }
     log.warn("{}", toJson(event));
+  }
+
+  private static String establishedBusinessCode(String candidate) {
+    if (candidate == null || !candidate.matches("err\\.[A-Za-z0-9_.-]+")) {
+      return null;
+    }
+    return candidate;
   }
 
   private Map<String, Object> baseEvent(

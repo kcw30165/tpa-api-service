@@ -66,7 +66,7 @@ class ApimExchangeOutcomeLoggerRootCauseTest {
 
     assertThat(single())
         .contains("\"exceptionType\":\"ApimResponseMappingException\"")
-        .contains("\"errorMessage\":\"Failed to map APIM response payload.\"")
+        .doesNotContain("errorMessage", "Failed to map APIM response payload.")
         .contains("\"rootCauseType\":\"UnrecognizedPropertyException\"")
         .contains("\"jsonPath\":\"response.data[0].extra\"")
         .doesNotContain(SECRET);
