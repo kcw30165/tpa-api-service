@@ -144,3 +144,20 @@ target/evidence/20260812-210249-username-recovery-025-2-request-cancel
   SESSION_CREATED fails hydration; the idempotency executor does not catch it, and the START
   service maps it to `SYSTEM_FAILURE`, which the response policy publishes as HTTP 503
   `SYSTEM_ERROR`.
+
+## Legacy START replay regression test and pending owner decision
+
+- `UsernameRecoveryLegacyStartReplayHttpTest` drives a completed START replay snapshot that still
+  carries the removed `ZERO_REGISTERED` outcome through the real replay codec, the real
+  `DefaultIdempotencyExecutor`, the real `IdempotentStartUsernameRecoveryService`, the real
+  controller, response policy and HTTP mapping. Only storage and the external ports are doubled.
+  Expected result: HTTP 503 `SYSTEM_ERROR`, no selection data, no cookie, no protected replay
+  resolution, no CAPTCHA consumption, no APIM lookup, no session creation and no delivery. A
+  completed `MEMBER_NOT_FOUND` replay through the same chain is the control and still returns 422.
+- Responsibilities on the failure path: the codec raises the hydration error, the shared executor
+  propagates it, the START service maps it to its typed system failure, and the controller and
+  response policy publish it as the public 503.
+- Retention: the START idempotency TTL is taken from the configured Username Recovery session TTL;
+  the per-environment value comes from configuration and has not been confirmed.
+- Owner decision pending: confirm either (A) no relevant legacy snapshot remains at deployment, or
+  (B) the bounded fail-closed retry window is accepted. Nothing is deleted or migrated.
