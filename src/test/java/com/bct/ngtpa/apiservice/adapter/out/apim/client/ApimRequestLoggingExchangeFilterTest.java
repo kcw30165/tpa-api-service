@@ -8,9 +8,6 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -29,7 +26,6 @@ import reactor.core.publisher.Mono;
 class ApimRequestLoggingExchangeFilterTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
-  private final LoggingSanitizer loggingSanitizer = loggingSanitizerWithDefaults();
   private final RequestLoggingProperties requestLoggingProperties = enabledHeaderProperties();
   private final ApimRequestLoggingExchangeFilter filter =
       new ApimRequestLoggingExchangeFilter(requestLoggingProperties, "", objectMapper);
@@ -40,22 +36,6 @@ class ApimRequestLoggingExchangeFilterTest {
     properties.setLogHeaders(true);
     properties.setHeaderAllowlist(java.util.List.of("User-Agent", "Accept", "Content-Type"));
     return properties;
-  }
-
-  private static LoggingSanitizer loggingSanitizerWithDefaults() {
-    MaskingProperties props = new MaskingProperties();
-    props
-        .getLogging()
-        .setSensitiveTokens(
-            java.util.List.of(
-                "authorization",
-                "token",
-                "secret",
-                "password",
-                "apiKey",
-                "Certificate",
-                "clientSecret"));
-    return new LoggingSanitizer(new ObjectMapper(), new MaskingService(props));
   }
 
   private ListAppender<ILoggingEvent> listAppender;
