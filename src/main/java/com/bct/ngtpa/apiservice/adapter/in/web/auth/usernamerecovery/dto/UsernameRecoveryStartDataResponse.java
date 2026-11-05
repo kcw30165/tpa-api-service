@@ -8,9 +8,12 @@ import java.util.List;
  *
  * <p>Design references: {@code
  * docs/design/6-username-recovery/username-recovery-api-contract-design.md} section 4
- * (session-created data carries {@code csrfToken}, {@code expiresInSeconds}, and {@code schemes}, including when every scheme is unregistered).
+ * (session-created data carries {@code csrfToken}, {@code expiresInSeconds}, and {@code schemes},
+ * including when every scheme is unregistered).
  *
- * <p>{@code csrfToken} and {@code expiresInSeconds} are omitted when null (Jackson {@code NON_NULL}); a session-created Start result always carries both. {@link #toString()} never discloses the CSRF token.
+ * <p>{@code csrfToken} and {@code expiresInSeconds} are omitted when null (Jackson {@code
+ * NON_NULL}); a session-created Start result always carries both. {@link #toString()} never
+ * discloses the CSRF token.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record UsernameRecoveryStartDataResponse(

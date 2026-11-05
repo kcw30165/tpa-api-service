@@ -13,8 +13,9 @@ import java.util.Objects;
  * (session-bound opaque schemeRefs, including for unregistered schemes).
  *
  * <p>Invariants: {@code accountEnv} and {@code trustCode} are required and nonblank; a registered
- * projection always carries a non-null opaque {@link UsernameRecoverySchemeRef}; an unregistered projection may be constructed without one, but a session-created Start result rejects it. {@link #toString()} never
- * discloses the opaque schemeRef.
+ * projection always carries a non-null opaque {@link UsernameRecoverySchemeRef}; an unregistered
+ * projection may be constructed without one, but a session-created Start result rejects it. {@link
+ * #toString()} never discloses the opaque schemeRef.
  */
 public record UsernameRecoverySchemeProjection(
     UsernameRecoverySchemeRef schemeRef, String accountEnv, String trustCode, boolean registered) {

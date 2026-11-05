@@ -30,9 +30,11 @@ import java.util.Objects;
  * <p>Invariants: {@code accountEnv}, {@code trustCode}, and {@code deliveryState} are required
  * (accountEnv/trustCode additionally nonblank per the APIM contract; {@code deliveryState}
  * nonnull); {@code schemeRef} is a non-null {@link UsernameRecoverySchemeRef} for registered
- * candidates; an unregistered candidate may be built without one, but every candidate inside a session ({@link UsernameRecoverySessionCandidate}) has one (any non-null Scheme-Ref is nonblank by value-object construction); {@code userName} is present and nonblank only for
- * registered candidates. {@link #toString()} never discloses {@code schemeRef}, {@code userName},
- * {@code schemeName}, or {@code schemeNameChi}.
+ * candidates; an unregistered candidate may be built without one, but every candidate inside a
+ * session ({@link UsernameRecoverySessionCandidate}) has one (any non-null Scheme-Ref is nonblank
+ * by value-object construction); {@code userName} is present and nonblank only for registered
+ * candidates. {@link #toString()} never discloses {@code schemeRef}, {@code userName}, {@code
+ * schemeName}, or {@code schemeNameChi}.
  */
 public record UsernameRecoveryCandidate(
     UsernameRecoverySchemeRef schemeRef,

@@ -30,9 +30,10 @@ import org.junit.jupiter.api.Test;
  *
  * <p>Invariants: {@code accountEnv}, {@code trustCode}, and {@code deliveryState} are required
  * (accountEnv/trustCode additionally nonblank); {@code schemeRef} is a non-null {@link
- * UsernameRecoverySchemeRef} for registered candidates; an unregistered candidate may be built without one (any non-null Scheme-Ref is nonblank by value-object construction);
- * {@code userName} is present and nonblank only for registered candidates. {@link #toString()}
- * never discloses {@code schemeRef} or {@code userName}.
+ * UsernameRecoverySchemeRef} for registered candidates; an unregistered candidate may be built
+ * without one (any non-null Scheme-Ref is nonblank by value-object construction); {@code userName}
+ * is present and nonblank only for registered candidates. {@link #toString()} never discloses
+ * {@code schemeRef} or {@code userName}.
  */
 class UsernameRecoveryCandidateTest {
 
@@ -72,7 +73,8 @@ class UsernameRecoveryCandidateTest {
 
   @Test
   void allowsNullSchemeRefForAnUnregisteredCandidateOutsideASession() {
-    // A candidate outside a session needs no Scheme-Ref; UsernameRecoverySessionCandidate requires one.
+    // A candidate outside a session needs no Scheme-Ref; UsernameRecoverySessionCandidate requires
+    // one.
     UsernameRecoveryCandidate candidate = candidate(null, false, null);
 
     assertNull(candidate.schemeRef());

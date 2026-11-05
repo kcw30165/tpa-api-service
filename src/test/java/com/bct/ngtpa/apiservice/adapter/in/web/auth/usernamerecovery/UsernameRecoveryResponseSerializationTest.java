@@ -16,8 +16,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>Uses a plain {@link ObjectMapper} (default Jackson configuration, the repository's global
  * configuration) and verifies that every record serializes exactly the approved public JSON field
- * names and values, that null session keys are omitted (Jackson NON_NULL) while
- * {@code schemeRef: null} is preserved, and that no forbidden field name can leak.
+ * names and values, that null session keys are omitted (Jackson NON_NULL) while {@code schemeRef:
+ * null} is preserved, and that no forbidden field name can leak.
  */
 class UsernameRecoveryResponseSerializationTest {
 
