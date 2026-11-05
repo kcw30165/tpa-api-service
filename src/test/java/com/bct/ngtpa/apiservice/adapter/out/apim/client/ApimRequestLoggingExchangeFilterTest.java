@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
@@ -29,8 +30,18 @@ class ApimRequestLoggingExchangeFilterTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final LoggingSanitizer loggingSanitizer = loggingSanitizerWithDefaults();
+  private final RequestLoggingProperties requestLoggingProperties = enabledHeaderProperties();
   private final ApimRequestLoggingExchangeFilter filter =
-      new ApimRequestLoggingExchangeFilter(loggingSanitizer, objectMapper);
+      new ApimRequestLoggingExchangeFilter(
+          requestLoggingProperties, loggingSanitizer, objectMapper);
+
+  private static RequestLoggingProperties enabledHeaderProperties() {
+    RequestLoggingProperties properties = new RequestLoggingProperties();
+    properties.setEnabled(true);
+    properties.setLogHeaders(true);
+    properties.setHeaderAllowlist(java.util.List.of("User-Agent", "Accept", "Content-Type"));
+    return properties;
+  }
 
   private static LoggingSanitizer loggingSanitizerWithDefaults() {
     MaskingProperties props = new MaskingProperties();
@@ -141,6 +152,60 @@ class ApimRequestLoggingExchangeFilterTest {
     assertTrue(!message.contains("super-secret-token"), "Authorization value must be masked");
     assertTrue(!message.contains("encoded-cert-data"), "Certificate value must be masked");
     assertTrue(!message.contains("my-secret-value"), "clientSecret value must be masked");
+  }
+
+  @Test
+  void loggingDisabledPassesRequestThroughWithoutEvent() {
+    RequestLoggingProperties properties = enabledHeaderProperties();
+    properties.setEnabled(false);
+    ApimRequestLoggingExchangeFilter disabled =
+        new ApimRequestLoggingExchangeFilter(properties, loggingSanitizer, objectMapper);
+    invokeFilter(
+        disabled.filter(),
+        ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test")).build(),
+        "req-disabled");
+    assertEquals(0, listAppender.list.size());
+  }
+
+  @Test
+  void headersDisabledOmitsHeadersField() throws Exception {
+    RequestLoggingProperties properties = enabledHeaderProperties();
+    properties.setLogHeaders(false);
+    ApimRequestLoggingExchangeFilter withoutHeaders =
+        new ApimRequestLoggingExchangeFilter(properties, loggingSanitizer, objectMapper);
+    invokeFilter(
+        withoutHeaders.filter(),
+        ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test"))
+            .header("Accept", "application/json")
+            .build(),
+        "req-no-headers");
+    var node = objectMapper.readTree(listAppender.list.get(0).getFormattedMessage());
+    org.junit.jupiter.api.Assertions.assertNull(node.get("headers"));
+  }
+
+  @Test
+  void configuredAllowlistIsCaseInsensitiveAndSensitiveHeadersFailClosed() throws Exception {
+    RequestLoggingProperties properties = enabledHeaderProperties();
+    properties.setHeaderAllowlist(
+        java.util.List.of("user-agent", "ACCEPT", "Authorization", "X-Password-Validation-Token"));
+    ApimRequestLoggingExchangeFilter configured =
+        new ApimRequestLoggingExchangeFilter(properties, loggingSanitizer, objectMapper);
+    invokeFilter(
+        configured.filter(),
+        ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test"))
+            .header("User-Agent", "O17-AGENT")
+            .header("Accept", "application/json")
+            .header("Authorization", "Bearer O17-AUTH")
+            .header("X-Password-Validation-Token", "O17-PASSWORD-TOKEN")
+            .build(),
+        "req-configured");
+    String message = listAppender.list.get(0).getFormattedMessage();
+    var headers = objectMapper.readTree(message).get("headers");
+    assertEquals("O17-AGENT", headers.get("User-Agent").get(0).asText());
+    assertEquals("application/json", headers.get("Accept").get(0).asText());
+    assertEquals(2, headers.size());
+    assertTrue(!message.contains("O17-AUTH"));
+    assertTrue(!message.contains("O17-PASSWORD-TOKEN"));
   }
 
   @Test
