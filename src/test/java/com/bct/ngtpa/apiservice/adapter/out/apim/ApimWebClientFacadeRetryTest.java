@@ -309,9 +309,7 @@ class ApimWebClientFacadeRetryTest {
         .expectErrorSatisfies(
             ex -> {
               assertEquals(ApimException.class, ex.getClass());
-              assertEquals(
-                  "APIM request failed with status=400",
-                  ex.getMessage());
+              assertEquals("APIM request failed with status=400", ex.getMessage());
             })
         .verify();
 
@@ -367,9 +365,7 @@ class ApimWebClientFacadeRetryTest {
         .expectErrorSatisfies(
             ex -> {
               assertEquals(ApimException.class, ex.getClass());
-              assertEquals(
-                  "APIM request failed with status=400",
-                  ex.getMessage());
+              assertEquals("APIM request failed with status=400", ex.getMessage());
             })
         .verify();
 
@@ -463,7 +459,8 @@ class ApimWebClientFacadeRetryTest {
             trackingCertificateService(builder, properties, new AtomicInteger()),
             properties);
     ch.qos.logback.classic.Logger logger =
-        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ApimWebClientFacade.class);
+        (ch.qos.logback.classic.Logger)
+            org.slf4j.LoggerFactory.getLogger(ApimWebClientFacade.class);
     ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
         new ch.qos.logback.core.read.ListAppender<>();
     appender.start();
@@ -478,7 +475,8 @@ class ApimWebClientFacadeRetryTest {
                       "nested", Map.of("identity", requestMarker),
                       "ciphertext", requestMarker,
                       "unknown", requestMarker),
-                  com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT,
+                  com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope
+                      .NON_ACCOUNT,
                   new com.bct.ngtpa.apiservice.adapter.out.apim.credential
                       .ApimCredentialResolutionContext(
                       com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null),

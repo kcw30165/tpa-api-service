@@ -97,7 +97,9 @@ class ApimRequestLoggingExchangeFilterTest {
   void logEventContainsMethodPathAndRequestIdWithoutUrlQueryOrHeaders() throws Exception {
     ExchangeFilterFunction exchangeFilter = filter.filter();
     ClientRequest request =
-        ClientRequest.create(HttpMethod.POST, URI.create("https://api.example.test/contributions?identity=O17-QUERY-MARKER"))
+        ClientRequest.create(
+                HttpMethod.POST,
+                URI.create("https://api.example.test/contributions?identity=O17-QUERY-MARKER"))
             .build();
 
     invokeFilter(exchangeFilter, request, "req-xyz");

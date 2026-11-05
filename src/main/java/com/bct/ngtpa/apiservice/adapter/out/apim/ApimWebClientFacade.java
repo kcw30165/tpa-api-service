@@ -531,7 +531,8 @@ public class ApimWebClientFacade {
       ApimErrorResponse err = objectMapper.readValue(body, ApimErrorResponse.class);
       return err.error();
     } catch (Exception ex) {
-      log.debug("Unable to parse APIM error body as ApimErrorResponse: exceptionType={}",
+      log.debug(
+          "Unable to parse APIM error body as ApimErrorResponse: exceptionType={}",
           ex.getClass().getSimpleName());
       if (body.contains("\"error\":\"invalid_token\"")) {
         return "invalid_token";
@@ -542,7 +543,6 @@ public class ApimWebClientFacade {
       return null;
     }
   }
-
 
   private static String mapUpstreamErrorCode(HttpStatusCode statusCode) {
     return switch (statusCode.value()) {

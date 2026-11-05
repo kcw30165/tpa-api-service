@@ -115,7 +115,9 @@ class ApimExchangeOutcomeLoggerTest {
   void exchangeFailureOmitsThrowableMessagesAndPreservesTypesAndMetadata() {
     String marker = "O17-THROWABLE-PAYLOAD-MARKER";
     outcomeLogger.logExchangeFailure(
-        request(), new IllegalStateException(marker, new IllegalArgumentException(marker)), "req-1");
+        request(),
+        new IllegalStateException(marker, new IllegalArgumentException(marker)),
+        "req-1");
     assertThat(appender.list).hasSize(1);
     ILoggingEvent event = appender.list.get(0);
     assertThat(event.getLevel()).isEqualTo(Level.ERROR);
