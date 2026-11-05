@@ -90,13 +90,26 @@ class ApimExchangeOutcomeLoggerTest {
   }
 
   @Test
-  void businessRejectionLogsAtWarnWithEstablishedCode() {
+  void businessRejectionLogsAtWarnWithMetadataOnly() {
     outcomeLogger.logSuccessOutcome(request(), envelope("err.tpa.wrong.password", null), "req-1");
     assertThat(appender.list).hasSize(1);
     ILoggingEvent event = appender.list.get(0);
     assertThat(event.getLevel()).isEqualTo(Level.WARN);
-    assertThat(event.getFormattedMessage()).contains("apim.business.rejected");
-    assertThat(event.getFormattedMessage()).contains("err.tpa.wrong.password");
+    assertThat(event.getFormattedMessage())
+        .contains("apim.business.rejected", PATH, "req-1", "ACCOUNT_ENV", "SAFE_BUSINESS_CALL")
+        .doesNotContain("errorCode", "err.tpa.wrong.password");
+  }
+
+  @Test
+  void codeShapedArbitraryBusinessTextIsNeverLogged() {
+    String marker = "err.O17_PRIVATE_PAYLOAD_123456";
+    outcomeLogger.logSuccessOutcome(request(), envelope(marker, null), "req-code-shaped");
+    assertThat(appender.list).hasSize(1);
+    ILoggingEvent event = appender.list.get(0);
+    assertThat(event.getLevel()).isEqualTo(Level.WARN);
+    assertThat(event.getFormattedMessage())
+        .contains("apim.business.rejected", PATH, "req-code-shaped")
+        .doesNotContain(marker, "errorCode");
   }
 
   @Test

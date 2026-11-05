@@ -74,18 +74,7 @@ public class ApimExchangeOutcomeLogger {
   private <D> void logBusinessRejected(
       ApimExchangeRequest<?, D> request, ApimResponseEnvelope<D> envelope, String requestId) {
     Map<String, Object> event = baseEvent("apim.business.rejected", request, requestId);
-    String businessCode = establishedBusinessCode(envelope.getResponse().getErrMessage());
-    if (businessCode != null) {
-      event.put("errorCode", businessCode);
-    }
     log.warn("{}", toJson(event));
-  }
-
-  private static String establishedBusinessCode(String candidate) {
-    if (candidate == null || !candidate.matches("err\\.[A-Za-z0-9_.-]+")) {
-      return null;
-    }
-    return candidate;
   }
 
   private Map<String, Object> baseEvent(

@@ -33,7 +33,7 @@ class ApimRequestLoggingExchangeFilterTest {
   private final RequestLoggingProperties requestLoggingProperties = enabledHeaderProperties();
   private final ApimRequestLoggingExchangeFilter filter =
       new ApimRequestLoggingExchangeFilter(
-          requestLoggingProperties, loggingSanitizer, objectMapper);
+          requestLoggingProperties, "", loggingSanitizer, objectMapper);
 
   private static RequestLoggingProperties enabledHeaderProperties() {
     RequestLoggingProperties properties = new RequestLoggingProperties();
@@ -159,7 +159,7 @@ class ApimRequestLoggingExchangeFilterTest {
     RequestLoggingProperties properties = enabledHeaderProperties();
     properties.setEnabled(false);
     ApimRequestLoggingExchangeFilter disabled =
-        new ApimRequestLoggingExchangeFilter(properties, loggingSanitizer, objectMapper);
+        new ApimRequestLoggingExchangeFilter(properties, "", loggingSanitizer, objectMapper);
     invokeFilter(
         disabled.filter(),
         ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test")).build(),
@@ -172,7 +172,7 @@ class ApimRequestLoggingExchangeFilterTest {
     RequestLoggingProperties properties = enabledHeaderProperties();
     properties.setLogHeaders(false);
     ApimRequestLoggingExchangeFilter withoutHeaders =
-        new ApimRequestLoggingExchangeFilter(properties, loggingSanitizer, objectMapper);
+        new ApimRequestLoggingExchangeFilter(properties, "", loggingSanitizer, objectMapper);
     invokeFilter(
         withoutHeaders.filter(),
         ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test"))
@@ -189,7 +189,7 @@ class ApimRequestLoggingExchangeFilterTest {
     properties.setHeaderAllowlist(
         java.util.List.of("user-agent", "ACCEPT", "Authorization", "X-Password-Validation-Token"));
     ApimRequestLoggingExchangeFilter configured =
-        new ApimRequestLoggingExchangeFilter(properties, loggingSanitizer, objectMapper);
+        new ApimRequestLoggingExchangeFilter(properties, "", loggingSanitizer, objectMapper);
     invokeFilter(
         configured.filter(),
         ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test"))
@@ -206,6 +206,68 @@ class ApimRequestLoggingExchangeFilterTest {
     assertEquals(2, headers.size());
     assertTrue(!message.contains("O17-AUTH"));
     assertTrue(!message.contains("O17-PASSWORD-TOKEN"));
+  }
+
+  @Test
+  void configuredCredentialAndSensitiveHeaderVariantsFailClosedWhileRequestIsUnchanged()
+      throws Exception {
+    RequestLoggingProperties properties = enabledHeaderProperties();
+    properties.setHeaderAllowlist(
+        java.util.List.of(
+            "Accept",
+            "X-Custom-Apim-Credential",
+            "x-custom-apim-credential",
+            "X-Subscription-Key",
+            "Authorization",
+            "Cookie",
+            "Set-Cookie",
+            "Session-Id",
+            "X-XSRF-TOKEN",
+            "X-Password-Validation-Token",
+            "X-Client-Secret",
+            "X-Access-Token",
+            "X-Credential-Name",
+            "X-Client-Certificate",
+            "X-Password-Key",
+            "X-API-Key-Variant"));
+    ApimRequestLoggingExchangeFilter configured =
+        new ApimRequestLoggingExchangeFilter(
+            properties, "X-Custom-Apim-Credential", loggingSanitizer, objectMapper);
+    ClientRequest request =
+        ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test"))
+            .header("Accept", "application/json")
+            .header("x-CUSTOM-apim-CREDENTIAL", "O17-CUSTOM-CREDENTIAL")
+            .header("X-Subscription-Key", "O17-SUBSCRIPTION")
+            .header("Authorization", "O17-AUTH")
+            .header("Cookie", "O17-COOKIE")
+            .header("Set-Cookie", "O17-SET-COOKIE")
+            .header("Session-Id", "O17-SESSION")
+            .header("X-XSRF-TOKEN", "O17-XSRF")
+            .header("X-Password-Validation-Token", "O17-PASSWORD-VALIDATION")
+            .header("X-Client-Secret", "O17-SECRET")
+            .header("X-Access-Token", "O17-TOKEN")
+            .header("X-Credential-Name", "O17-CREDENTIAL")
+            .header("X-Client-Certificate", "O17-CERTIFICATE")
+            .header("X-Password-Key", "O17-PASSWORD")
+            .header("X-API-Key-Variant", "O17-API-KEY")
+            .build();
+    AtomicReference<ClientRequest> captured = new AtomicReference<>();
+    configured
+        .filter()
+        .filter(
+            request,
+            forwarded -> {
+              captured.set(forwarded);
+              return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+            })
+        .contextWrite(ctx -> ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, "req-sensitive"))
+        .block();
+    String message = listAppender.list.get(0).getFormattedMessage();
+    var headers = objectMapper.readTree(message).get("headers");
+    assertEquals("application/json", headers.get("Accept").get(0).asText());
+    assertEquals(1, headers.size());
+    assertTrue(!message.contains("O17-"));
+    assertEquals(request.headers(), captured.get().headers());
   }
 
   @Test

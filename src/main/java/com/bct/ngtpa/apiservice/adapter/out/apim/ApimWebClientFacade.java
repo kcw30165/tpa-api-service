@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.client.ApimContextPropagationExchangeFilter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.client.ApimRequestLoggingExchangeFilter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
@@ -102,8 +103,18 @@ public class ApimWebClientFacade {
         new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties())),
         new ApimContextPropagationExchangeFilter(),
         new ApimRequestLoggingExchangeFilter(
+            disabledRequestLoggingProperties(),
+            apimProperties,
             new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties())),
             objectMapper));
+  }
+
+  private static RequestLoggingProperties disabledRequestLoggingProperties() {
+    RequestLoggingProperties properties = new RequestLoggingProperties();
+    properties.setEnabled(false);
+    properties.setLogHeaders(false);
+    properties.setHeaderAllowlist(java.util.List.of());
+    return properties;
   }
 
   public Mono<String> post(

@@ -16,8 +16,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.codec.HttpMessageWriter;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.mock.http.client.reactive.MockClientHttpRequest;
+import org.springframework.web.reactive.function.BodyInserter;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -434,13 +439,15 @@ class ApimWebClientFacadeRetryTest {
   }
 
   @Test
-  void transportFailureExcludesRequestAndResponsePayloadsFromLogsAndException() {
+  void transportFailureExcludesRequestAndResponsePayloadsFromLogsAndException() throws Exception {
     String requestMarker = "O17-REQUEST-DOB-NESTED-CIPHERTEXT-UNKNOWN";
     String responseMarker = "O17-RESPONSE-PLAINTEXT-NESTED-CIPHERTEXT-NONJSON";
     AtomicInteger serverCalls = new AtomicInteger();
+    AtomicReference<String> transmittedBody = new AtomicReference<>();
     ExchangeFunction exchange =
         request -> {
           serverCalls.incrementAndGet();
+          transmittedBody.set(serializeRequestBody(request));
           return Mono.just(
               ClientResponse.create(HttpStatus.BAD_GATEWAY).body(responseMarker).build());
         };
@@ -491,6 +498,16 @@ class ApimWebClientFacadeRetryTest {
               })
           .verify();
       assertEquals(1, serverCalls.get());
+      org.assertj.core.api.Assertions.assertThat(new ObjectMapper().readTree(transmittedBody.get()))
+          .isEqualTo(
+              new ObjectMapper()
+                  .valueToTree(
+                      Map.of(
+                          "ordinary", "visible-only-on-wire",
+                          "dob", requestMarker,
+                          "nested", Map.of("identity", requestMarker),
+                          "ciphertext", requestMarker,
+                          "unknown", requestMarker)));
       org.assertj.core.api.Assertions.assertThat(appender.list)
           .allSatisfy(
               event -> {
@@ -560,6 +577,33 @@ class ApimWebClientFacadeRetryTest {
     assertEquals("http://configured.example/api/test", requestUrl.get().toString());
     assertEquals("tok", apiKeyHeader.get());
     assertEquals(null, certificateHeader.get());
+  }
+
+  private static String serializeRequestBody(
+      org.springframework.web.reactive.function.client.ClientRequest request) {
+    MockClientHttpRequest mockRequest = new MockClientHttpRequest(request.method(), request.url());
+    request
+        .body()
+        .insert(
+            mockRequest,
+            new BodyInserter.Context() {
+              @Override
+              public List<HttpMessageWriter<?>> messageWriters() {
+                return ExchangeStrategies.withDefaults().messageWriters();
+              }
+
+              @Override
+              public java.util.Optional<ServerHttpRequest> serverRequest() {
+                return java.util.Optional.empty();
+              }
+
+              @Override
+              public Map<String, Object> hints() {
+                return Map.of();
+              }
+            })
+        .block();
+    return mockRequest.getBodyAsString().block();
   }
 
   private static ApimTokenService fixedTokenService(

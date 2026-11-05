@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.client;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -28,25 +29,32 @@ public class ApimRequestLoggingExchangeFilter {
           "x-api-key",
           "api-key",
           "subscription-key",
+          "x-subscription-key",
           "ocp-apim-subscription-key");
 
   private final RequestLoggingProperties properties;
+  private final String apimCredentialHeaderName;
   private final LoggingSanitizer loggingSanitizer;
   private final ObjectMapper objectMapper;
 
-  @org.springframework.beans.factory.annotation.Autowired
   public ApimRequestLoggingExchangeFilter(
       RequestLoggingProperties properties,
+      ApimProperties apimProperties,
+      LoggingSanitizer loggingSanitizer,
+      ObjectMapper objectMapper) {
+    this(properties, apimProperties.getApiKeyHeaderName(), loggingSanitizer, objectMapper);
+  }
+
+  ApimRequestLoggingExchangeFilter(
+      RequestLoggingProperties properties,
+      String apimCredentialHeaderName,
       LoggingSanitizer loggingSanitizer,
       ObjectMapper objectMapper) {
     this.properties = properties;
+    this.apimCredentialHeaderName =
+        apimCredentialHeaderName == null ? "" : apimCredentialHeaderName;
     this.loggingSanitizer = loggingSanitizer;
     this.objectMapper = objectMapper;
-  }
-
-  public ApimRequestLoggingExchangeFilter(
-      LoggingSanitizer loggingSanitizer, ObjectMapper objectMapper) {
-    this(new RequestLoggingProperties(), loggingSanitizer, objectMapper);
   }
 
   public ExchangeFilterFunction filter() {
@@ -99,9 +107,15 @@ public class ApimRequestLoggingExchangeFilter {
     return headers;
   }
 
-  private static boolean forbidden(String name) {
+  private boolean forbidden(String name) {
     String normalized = name.trim().toLowerCase(java.util.Locale.ROOT);
     return FORBIDDEN_HEADERS.contains(normalized)
+        || (!apimCredentialHeaderName.isBlank()
+            && normalized.equals(
+                apimCredentialHeaderName.trim().toLowerCase(java.util.Locale.ROOT)))
+        || normalized.contains("api-key")
+        || normalized.contains("apikey")
+        || normalized.contains("password")
         || normalized.contains("secret")
         || normalized.contains("token")
         || normalized.contains("credential")

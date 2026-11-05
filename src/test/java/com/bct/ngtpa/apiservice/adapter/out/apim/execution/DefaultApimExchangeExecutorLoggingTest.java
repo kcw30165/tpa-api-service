@@ -164,7 +164,7 @@ class DefaultApimExchangeExecutorLoggingTest {
    * ApimEnvelopeSchemaClassifier} classifies this as {@code BUSINESS_REJECTED}, and {@code
    * outcomeLogger.logSuccessOutcome(...)} routes it to {@code logBusinessRejected(...)}, producing
    * exactly one WARN-level {@code apim.business.rejected} log line. Mirrors {@code
-   * ApimExchangeOutcomeLoggerTest.businessRejectionLogsAtWarnWithSanitizedErrMessage} but exercised
+   * ApimExchangeOutcomeLoggerTest.businessRejectionLogsAtWarnWithMetadataOnly} but exercised
    * end-to-end through the real executor rather than calling the logger directly.
    */
   @Test
@@ -188,8 +188,9 @@ class DefaultApimExchangeExecutorLoggingTest {
     assertThat(listAppender.list).hasSize(1);
     ILoggingEvent event = listAppender.list.get(0);
     assertThat(event.getLevel()).isEqualTo(Level.WARN);
-    assertThat(event.getFormattedMessage()).contains("apim.business.rejected");
-    assertThat(event.getFormattedMessage()).contains("err.tpa.wrong.password");
+    assertThat(event.getFormattedMessage())
+        .contains("apim.business.rejected", PATH, "ACCOUNT_ENV", "SAFE_BUSINESS_CALL")
+        .doesNotContain("errorCode", "err.tpa.wrong.password");
   }
 
   /**

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.certificate.ApimCertificateHeaderProvider;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimOAuthClientConfig;
@@ -28,7 +29,8 @@ class ApimWebClientConfigTest {
   private final ApimContextPropagationExchangeFilter requestIdFilter =
       new ApimContextPropagationExchangeFilter();
   private final ApimRequestLoggingExchangeFilter requestLoggingFilter =
-      new ApimRequestLoggingExchangeFilter(loggingSanitizer, objectMapper);
+      new ApimRequestLoggingExchangeFilter(
+          new RequestLoggingProperties(), new ApimProperties(), loggingSanitizer, objectMapper);
   private final ApimWebClientConfig config =
       new ApimWebClientConfig(requestIdFilter, requestLoggingFilter);
 
