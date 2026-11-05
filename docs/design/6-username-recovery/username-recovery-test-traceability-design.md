@@ -17,7 +17,7 @@ Implementation follows fail-first TDD and the existing auth-workflow test conven
 | UR-R07 | Start atomically consumes VERIFIED captcha | Solution/API | service, Redis concurrency |
 | UR-R08 | TAS returns all records | APIM | adapter contract |
 | UR-R09 | Registered results display account selection | Solution/API | web mapper, controller |
-| UR-R10 | Zero registered schemes return RESTART_FLOW | Solution/API | service, mapper, no-session assertion |
+| UR-R10 | Only unregistered schemes create a normal session and return SELECT_ACCOUNT with isRegistered=false rows | Solution/API | service, mapper, session continuity, replay, boundary |
 | UR-R11 | FE receives only env/trust/registered/Scheme-Ref | API | JSON contract guard |
 | UR-R12 | Scheme-Ref opaque and session-bound | Session | generator, tampering, cross-session |
 | UR-R13 | Sender ACCEPTED maps candidate to REQUESTED | Solution/session | service, persistence mapping |
@@ -52,7 +52,7 @@ Implementation follows fail-first TDD and the existing auth-workflow test conven
 - `UsernameRecoveryCancelWebMapperTest`
 - `UsernameRecoveryPublicResponseContractTest`
 - `UsernameRecoveryCookieMappingTest`
-- `UsernameRecoveryNoSessionForZeroRegisteredContractTest`
+- `UsernameRecoveryAllUnregisteredStartBoundaryTest`
 
 ### Application
 
@@ -135,7 +135,7 @@ Implementation follows fail-first TDD and the existing auth-workflow test conven
 11. Invalid email/mobile is field-targeted.
 12. APIM member-not-found returns 422, `BUSINESS_REJECTED`, `RESTART_FLOW`, and `err.usernamerecovery.verification.failed`.
 13. No session or cookie is created for no records.
-14. Zero registered schemes return `RESTART_FLOW` and create no session, CSRF, or cookie.
+14. Only unregistered schemes create the normal session, CSRF token, cookie and opaque Scheme-Refs and return `SELECT_ACCOUNT` with `isRegistered=false` rows.
 15. One registered record returns `SELECT_ACCOUNT` and requires a click.
 16. Multiple records preserve only env, trust, registration state, and Scheme-Ref publicly.
 17. Public response excludes username, destination, policy, certificate, DOB, identity, and termination data.
@@ -233,7 +233,7 @@ Every APIM mapping row requires an adapter test. Test names or metadata should i
 
 ```text
 UR_REQ_006_finalRequestedSchemeReturnsCompleted
-UR_START_011_zeroRegisteredCreatesNoSession
+UR_START_011_allUnregisteredCreatesNormalSession
 APIM_UR_005_registeredRecordWithoutCustIdIsSystemFailed
 ```
 

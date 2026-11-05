@@ -432,3 +432,10 @@ P6-B now provides Username Recovery-owned action, operation-identity, compatibil
 - Updated stale command Javadocs to describe repository-wide shared operation identity.
 - Cleanup occurred before deployment, so deployment timestamps, environment coverage, rollback-window closure, legacy TTL drainage, and Redis-key deletion are not applicable and are not claimed.
 - Production behavior is unchanged. P6-G stabilization remains required before final closure.
+
+####### Post-P6 amendment: ZERO_REGISTERED START outcome removed
+
+- The Username Recovery START outcome model no longer contains `ZERO_REGISTERED`. An all-unregistered lookup result is a `SESSION_CREATED` result and uses the existing session-backed replay path: the safe snapshot carries only the opaque protected replay reference, and completed replay resolves the retained session continuity without repeating captcha consumption, APIM lookup or session creation. `MEMBER_NOT_FOUND` keeps its session-less replay snapshot unchanged.
+- Compatibility: the START replay codec no longer decodes `ZERO_REGISTERED`. A START snapshot that still carries that outcome fails closed at hydration (`START replay outcome is unsupported`); the shared executor reports a replay hydration failure and START maps it to its system-failure response. The old session-less result is never mapped to a successful result that would need unavailable session continuity.
+- Exposure window: START snapshots live for the configured START idempotency TTL (600 seconds in the P6 design). Only a same-key retry of an old zero-registered START made before the change and replayed after it, within that window, is affected; the caller starts a new request with a new key. No Redis data migration, flush or key deletion is performed or required.
+- Earlier P6-C notes that mention `ZERO_REGISTERED` are historical records and are not rewritten.

@@ -1,6 +1,4 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.start;
-
-import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoverySchemeProjection;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartResult.Outcome;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
@@ -142,35 +140,14 @@ public final class UsernameRecoveryStartReplayCodec {
       return switch (result.outcome()) {
         case SESSION_CREATED -> new SafePayload(result.outcome().name(), null);
         case MEMBER_NOT_FOUND -> new SafePayload(result.outcome().name(), List.of());
-        case ZERO_REGISTERED ->
-            new SafePayload(
-                result.outcome().name(),
-                result.schemes().stream()
-                    .map(s -> new SchemeWire(s.accountEnv(), s.trustCode(), s.registered()))
-                    .toList());
       };
     }
 
     UsernameRecoveryStartResult toNonSessionResult(Outcome decoded) {
-      if (decoded == Outcome.MEMBER_NOT_FOUND) {
-        if (schemes == null || !schemes.isEmpty()) throw new IllegalArgumentException();
-        return UsernameRecoveryStartResult.withoutSession(decoded, List.of());
-      }
-      if (decoded != Outcome.ZERO_REGISTERED || schemes == null || schemes.isEmpty()) {
+      if (decoded != Outcome.MEMBER_NOT_FOUND || schemes == null || !schemes.isEmpty()) {
         throw new IllegalArgumentException();
       }
-      List<UsernameRecoverySchemeProjection> projections =
-          schemes.stream()
-              .map(
-                  s -> {
-                    if (s.accountEnv() == null || s.trustCode() == null || s.registered()) {
-                      throw new IllegalArgumentException();
-                    }
-                    return new UsernameRecoverySchemeProjection(
-                        null, s.accountEnv(), s.trustCode(), false);
-                  })
-              .toList();
-      return UsernameRecoveryStartResult.withoutSession(decoded, projections);
+      return UsernameRecoveryStartResult.withoutSession(decoded, List.of());
     }
   }
 

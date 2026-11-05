@@ -119,3 +119,13 @@ Production code is unchanged. Existing 025-1 tests are unchanged. The new class 
 ## Evidence
 
 target/evidence/20260812-210249-username-recovery-025-2-request-cancel
+
+## Start-flow correction: all-unregistered start is a normal session
+
+- **Date and baseline:** 2026-11-05, branch `fix/username-recovery-unregistered-start-selection`, from `2721012d`.
+- **Change:** the `ZERO_REGISTERED` start outcome is removed. A valid, non-empty lookup result (registered-only, mixed or all unregistered) uses the existing `SESSION_CREATED` path with the revisioned session, protected candidate context, CSRF token and hash, opaque Scheme-Refs, normal expiry and the normal cookie. `/start` returns `200 SELECT_ACCOUNT` with every row, `isRegistered=false` preserved, and no registration-required error.
+- **Unchanged:** `MEMBER_NOT_FOUND` (downstream `err.tpa.member.not.found`, and empty or missing data) still returns `422 BUSINESS_REJECTED`, `RESTART_FLOW`, `err.usernamerecovery.verification.failed` with no session or cookie. `/request` for an unregistered Scheme-Ref still returns `UNREGISTERED_CANDIDATE` without reservation or delivery; session, CSRF and Scheme-Ref checks are unchanged.
+- **Protected context:** a context may now hold only unregistered candidates. A context needs at least one candidate; completion still requires at least one registered candidate with every registered candidate `REQUESTED`, so an all-unregistered session never becomes `COMPLETED` and ends by cancel or expiry.
+- **Replay compatibility:** the START replay codec no longer encodes or decodes `ZERO_REGISTERED`. A stored snapshot with that outcome fails closed and is never turned into a success. See `docs/capabilities/idempotency/username-recovery-p6-migration-design.md` (post-P6 amendment).
+- **FE expectation (not implemented in the Java BFF):** display unregistered rows and disable their username-request action.
+- **Historical wording:** earlier sections of this handover and the P6 notes that describe zero registered schemes as "no session" or `RESTART_FLOW` are historical and superseded by this section.

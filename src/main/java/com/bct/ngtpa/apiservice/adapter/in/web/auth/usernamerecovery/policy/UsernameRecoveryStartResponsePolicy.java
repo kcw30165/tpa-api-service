@@ -51,18 +51,6 @@ public final class UsernameRecoveryStartResponsePolicy {
                           UsernameRecoveryErrorKey.VERIFICATION_FAILED.value(),
                           List.of(),
                           UsernameRecoveryWorkflowMapping.SOURCE_BFF))));
-      case ZERO_REGISTERED ->
-          UsernameRecoveryWorkflowMapping.policy(
-              new MutationResponse<>(
-                  false,
-                  ApiStatus.BUSINESS_REJECTED,
-                  projectionMapper.toResult(result),
-                  List.of(),
-                  List.of(
-                      UsernameRecoveryWorkflowMapping.businessError(
-                          UsernameRecoveryErrorKey.REGISTRATION_REQUIRED.value(),
-                          List.of(),
-                          UsernameRecoveryWorkflowMapping.SOURCE_BFF))));
     };
   }
 

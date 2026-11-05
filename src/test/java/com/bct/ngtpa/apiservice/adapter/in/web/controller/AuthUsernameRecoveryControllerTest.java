@@ -120,14 +120,19 @@ class AuthUsernameRecoveryControllerTest {
   }
 
   @Test
-  void startZeroRegisteredReturns422WithoutAnyCookie() {
+  void startAllUnregisteredSessionCreatedReturns200WithTheAuthFlowCookie() {
     var response = new MockServerHttpResponse();
     var start =
         new RecordingStartUseCase(
             Mono.just(
-                UsernameRecoveryStartResult.withoutSession(
-                    UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-                    List.of(new UsernameRecoverySchemeProjection(null, "DB", "DBA", false)))));
+                new UsernameRecoveryStartResult(
+                    UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
+                    new AuthFlowSessionId("afs_unreg"),
+                    "csrf-unreg",
+                    600,
+                    List.of(
+                        new UsernameRecoverySchemeProjection(
+                            new UsernameRecoverySchemeRef("sch_u1"), "DB", "DBA", false)))));
     var controller = controller(start, neverRequest(), neverCancel());
     var request =
         new UsernameRecoveryStartRequest(
@@ -136,14 +141,15 @@ class AuthUsernameRecoveryControllerTest {
     StepVerifier.create(controller.start(request, "en", "req_2", "idem_2", response))
         .assertNext(
             entity -> {
-              assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
-              assertThat(entity.getBody().success()).isFalse();
+              assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
+              assertThat(entity.getBody().success()).isTrue();
               assertThat(entity.getBody().result().nextStep())
-                  .isEqualTo(WorkflowNextStep.RESTART_FLOW);
+                  .isEqualTo(WorkflowNextStep.SELECT_ACCOUNT);
             })
         .verifyComplete();
 
-    assertThat(response.getCookies().getFirst("auth_flow_sid")).isNull();
+    assertThat(response.getCookies().getFirst("auth_flow_sid"))
+        .satisfies(cookie -> assertThat(cookie.getValue()).isEqualTo("afs_unreg"));
     assertThat(response.getCookies().getFirst("XSRF-TOKEN")).isNull();
   }
 

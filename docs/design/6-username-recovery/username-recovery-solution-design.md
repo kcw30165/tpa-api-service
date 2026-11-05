@@ -14,12 +14,12 @@ This document defines the approved pre-login Username Recovery solution for the 
 - Java maps public `STAFF_NO` to `MemberIdentityType.STAFFNO`, stores `STAFFNO`, and sends APIM `search-by=STAFFNO`.
 - FE verifies captcha through the existing captcha endpoints before calling Username Recovery start.
 - `/username-recovery/start` receives `captchaChallengeId` but no captcha answer. Java requires Redis status `VERIFIED` and atomically changes it to `CONSUMED`.
-- A result page is shown when at least one registered scheme exists, including when only one registered scheme exists.
+- A result page is shown for every valid, non-empty lookup result, including when only one scheme exists and when every scheme is unregistered.
 - FE receives only `schemeRef`, `accountEnv`, `trustCode`, and `isRegistered`.
 - After sender acceptance, Java marks the candidate `REQUESTED`.
 - If another registered candidate is unrequested, `/request` returns `SELECT_ACCOUNT`.
 - When every registered candidate is `REQUESTED`, the session becomes `COMPLETED` and `/request` returns `RETURN_TO_LOGIN` with result status `COMPLETED`.
-- No session, CSRF token, or cookie is created when zero registered schemes exist. Start returns `RESTART_FLOW`.
+- A session, CSRF token, opaque Scheme-Refs and cookie are created for every valid, non-empty lookup result, including when no scheme is registered. Only member-not-found (including empty lookup data) creates no session and returns `RESTART_FLOW`. FE displays unregistered rows but disables their username-request action; `/request` for an unregistered Scheme-Ref returns `UNREGISTERED_CANDIDATE` without delivery.
 - FE owns rendered labels. Java returns codes only.
 - Session TTL is configurable and defaults to 600 seconds.
 - Non-production delivery uses dedicated Username Recovery destination overrides and fails closed when the applicable override is missing.
@@ -116,8 +116,8 @@ FE enablement is a usability control only. Java remains authoritative. Start acc
 7. FE calls `/username-recovery/start` with the challenge ID and no answer.
 8. Java validates input, maps the identity type, reserves idempotency, and atomically consumes the verified captcha.
 9. Java calls APIM `TRPSearchMember` and validates the generic response envelope and `cust-id` invariants.
-10. Member not found or zero registered schemes returns `RESTART_FLOW` with no session/cookie.
-11. At least one registered scheme causes session, CSRF, cookie, and opaque Scheme-Ref creation.
+10. Member not found returns `RESTART_FLOW` with no session/cookie.
+11. A valid, non-empty result (registered-only, mixed or all unregistered) causes session, CSRF, cookie, and opaque Scheme-Ref creation.
 12. FE shows registered request buttons and unregistered Registration reminders.
 13. `/request` validates cookie, CSRF, origin/referer, idempotency, and Scheme-Ref ownership.
 14. Java resolves the effective destination and calls `MessageDeliveryPort`.
@@ -132,7 +132,7 @@ ACTIVE -> PARTIALLY_REQUESTED -> COMPLETED
 ACTIVE/PARTIALLY_REQUESTED -> CANCELLED or EXPIRED
 ```
 
-Unregistered candidates do not contribute to completion counts.
+Unregistered candidates do not contribute to completion counts. A session whose candidates are all unregistered has no registered candidate to request, so it never becomes `COMPLETED`; it ends by cancel or expiry.
 
 Store only fields required by later operations:
 

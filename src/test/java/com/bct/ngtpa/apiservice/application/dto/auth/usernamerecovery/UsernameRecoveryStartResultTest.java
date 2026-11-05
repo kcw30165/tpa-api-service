@@ -73,18 +73,6 @@ class UsernameRecoveryStartResultTest {
                     emptySchemesForSessionCreated))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("session-created result requires at least one scheme projection");
-
-    var unregisteredSchemesForSessionCreated = List.of(unregisteredProjection());
-    assertThatThrownBy(
-            () ->
-                new UsernameRecoveryStartResult(
-                    UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
-                    null,
-                    "csrf",
-                    600,
-                    unregisteredSchemesForSessionCreated))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("session-created result requires at least one registered scheme");
   }
 
   @Test
@@ -139,61 +127,6 @@ class UsernameRecoveryStartResultTest {
                     emptySchemesForMemberNotFound))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("member-not-found result must not carry session data or schemes");
-  }
-
-  @Test
-  void zeroRegisteredCarriesOnlyUnregisteredNullSchemeRefProjections() {
-    var result =
-        UsernameRecoveryStartResult.withoutSession(
-            UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-            List.of(new UsernameRecoverySchemeProjection(null, "DB", "DBA", false)));
-
-    assertThat(result.schemes()).hasSize(1);
-    assertThat(result.schemes().get(0).schemeRef()).isNull();
-    assertThat(result.csrfToken()).isNull();
-    assertThat(result.expiresInSeconds()).isNull();
-  }
-
-  @Test
-  void zeroRegisteredRejectsSessionDataRegisteredSchemesAndSchemeRefs() {
-    var unregisteredSchemesWithSessionData = List.of(unregisteredProjection());
-    assertThatThrownBy(
-            () ->
-                new UsernameRecoveryStartResult(
-                    UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-                    null,
-                    "csrf",
-                    null,
-                    unregisteredSchemesWithSessionData))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("zero-registered result must not carry session data");
-
-    var registeredSchemesForZeroRegistered = List.of(registeredProjection());
-    assertThatThrownBy(
-            () ->
-                UsernameRecoveryStartResult.withoutSession(
-                    UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-                    registeredSchemesForZeroRegistered))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("zero-registered result must not contain registered schemes");
-
-    var sessionBoundUnregisteredSchemes = List.of(unregisteredProjection());
-    assertThatThrownBy(
-            () ->
-                UsernameRecoveryStartResult.withoutSession(
-                    UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-                    sessionBoundUnregisteredSchemes))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("zero-registered result projections must not carry schemeRef");
-
-    List<UsernameRecoverySchemeProjection> emptySchemesForZeroRegistered = List.of();
-    assertThatThrownBy(
-            () ->
-                UsernameRecoveryStartResult.withoutSession(
-                    UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-                    emptySchemesForZeroRegistered))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("zero-registered result requires at least one scheme projection");
   }
 
   @Test
@@ -259,20 +192,6 @@ class UsernameRecoveryStartResultTest {
                     emptySchemes))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("member-not-found result must not carry session data or schemes");
-
-    var zeroRegisteredSessionId = new AuthFlowSessionId("afs_opaque-1");
-    var unregisteredProjection = unregisteredProjection();
-    var unregisteredProjections = List.of(unregisteredProjection);
-    assertThatThrownBy(
-            () ->
-                new UsernameRecoveryStartResult(
-                    UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-                    zeroRegisteredSessionId,
-                    null,
-                    null,
-                    unregisteredProjections))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("zero-registered result must not carry session data");
   }
 
   @Test

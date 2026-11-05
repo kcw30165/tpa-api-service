@@ -166,13 +166,18 @@ class UsernameRecoveryStartPublicContractIntegrationTest {
   }
 
   @Test
-  void zeroRegisteredPublishesSafeRegistrationReminderAndNoSessionMaterial() {
+  void allUnregisteredResultPublishesTheOrdinarySuccessEnvelopeAndCookie() {
     StartUsernameRecoveryUseCase start =
         command ->
             Mono.just(
-                UsernameRecoveryStartResult.withoutSession(
-                    UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-                    List.of(new UsernameRecoverySchemeProjection(null, "DB", "DBA", false))));
+                new UsernameRecoveryStartResult(
+                    UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
+                    new AuthFlowSessionId("afs_contract-3"),
+                    "csrf-contract-3",
+                    600,
+                    List.of(
+                        new UsernameRecoverySchemeProjection(
+                            new UsernameRecoverySchemeRef("sch_contract-3"), "DB", "DBA", false))));
 
     client(start)
         .post()
@@ -183,26 +188,33 @@ class UsernameRecoveryStartPublicContractIntegrationTest {
         .bodyValue(validRequest())
         .exchange()
         .expectStatus()
-        .value(status -> assertThat(status).isEqualTo(422))
+        .isOk()
         .expectHeader()
-        .doesNotExist(HttpHeaders.SET_COOKIE)
+        .values(
+            HttpHeaders.SET_COOKIE,
+            values ->
+                assertThat(String.join("\n", values))
+                    .contains("auth_flow_sid=afs_contract-3")
+                    .contains("Path=" + COOKIE_PATH))
         .expectBody()
         .jsonPath("$.success")
-        .isEqualTo(false)
+        .isEqualTo(true)
         .jsonPath("$.status")
-        .isEqualTo("BUSINESS_REJECTED")
+        .isEqualTo("SUCCESS")
         .jsonPath("$.result.nextStep")
-        .isEqualTo("RESTART_FLOW")
-        .jsonPath("$.result.data")
-        .isEqualTo(null)
+        .isEqualTo("SELECT_ACCOUNT")
+        .jsonPath("$.result.data.csrfToken")
+        .isEqualTo("csrf-contract-3")
+        .jsonPath("$.result.data.schemes.length()")
+        .isEqualTo(1)
+        .jsonPath("$.result.data.schemes[0].schemeRef")
+        .isEqualTo("sch_contract-3")
+        .jsonPath("$.result.data.schemes[0].isRegistered")
+        .isEqualTo(false)
         .jsonPath("$.messages.length()")
         .isEqualTo(0)
-        .jsonPath("$.errors[0].code")
-        .isEqualTo("err.usernamerecovery.registration.required")
-        .jsonPath("$.errors[0].source")
-        .isEqualTo("BFF")
-        .jsonPath("$.errors[0].message")
-        .doesNotExist();
+        .jsonPath("$.errors.length()")
+        .isEqualTo(0);
   }
 
   @Test

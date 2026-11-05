@@ -115,38 +115,6 @@ class UsernameRecoveryStartProtectedOperationTest {
   }
 
   @Test
-  void zeroRegisteredReturnsSafeProjectionsAndCreatesNoSession() {
-    consumedCaptcha();
-    when(lookup.search(any()))
-        .thenReturn(
-            Mono.just(
-                new UsernameRecoveryLookupResult(
-                    UsernameRecoveryLookupResult.Status.MATCHED,
-                    List.of(
-                        new UsernameRecoveryLookupCandidate(
-                            "DB", "DBA", false, null, null, null)))));
-    StepVerifier.create(execute())
-        .assertNext(
-            r -> {
-              assertThat(r.outcome())
-                  .isEqualTo(UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED);
-              assertThat(r.authFlowSessionId()).isNull();
-              assertThat(r.csrfToken()).isNull();
-              assertThat(r.schemes())
-                  .singleElement()
-                  .satisfies(
-                      s -> {
-                        assertThat(s.schemeRef()).isNull();
-                        assertThat(s.registered()).isFalse();
-                        assertThat(s.accountEnv()).isEqualTo("DB");
-                        assertThat(s.trustCode()).isEqualTo("DBA");
-                      });
-            })
-        .verifyComplete();
-    verifyNoInteractions(sessions, contexts, csrfGenerator, csrfHasher);
-  }
-
-  @Test
   void registeredCandidatesCreateOneProtectedRevisionedEnvelopeAndTransientResult() {
     consumedCaptcha();
     when(lookup.search(any())).thenReturn(Mono.just(matched()));

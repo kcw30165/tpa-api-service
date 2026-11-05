@@ -72,7 +72,7 @@ sequenceDiagram
     TAS-->>APIM: Matched records
     APIM-->>BFF: Generic envelope and data list
     BFF->>BFF: Validate invariants and minimize candidate data
-    BFF->>BFF: Confirm at least one registered scheme
+    BFF->>BFF: Keep every candidate, registered or not
     BFF->>BFF: Generate opaque Scheme-Refs
     BFF->>REDIS: Create ACTIVE protected session and CSRF hash, TTL 600s
     REDIS-->>BFF: Session persisted
@@ -107,7 +107,7 @@ sequenceDiagram
     FE-->>U: Display FE-owned hotline assistance label
 ```
 
-## 5. Zero registered schemes
+## 5. Only unregistered schemes
 
 ```mermaid
 sequenceDiagram
@@ -115,14 +115,17 @@ sequenceDiagram
     actor U as Member
     participant FE as Angular FE
     participant BFF as Java BFF
+    participant REDIS as Redis
     participant APIM as APIM
 
     BFF->>APIM: TRPSearchMember
     APIM-->>BFF: Records with isRegistered=false only
-    BFF->>BFF: Build unregistered display projection
-    Note over BFF: No recovery session, CSRF, or cookie is created
-    BFF-->>FE: 422 BUSINESS_REJECTED and RESTART_FLOW
-    FE-->>U: Show Account Registration reminder
+    BFF->>BFF: Generate opaque Scheme-Refs for every record
+    BFF->>REDIS: Create ACTIVE protected session and CSRF hash, TTL 600s
+    REDIS-->>BFF: Session persisted
+    BFF-->>FE: 200 SELECT_ACCOUNT, schemes with isRegistered=false, CSRF, Set-Cookie
+    FE-->>U: Show Registration reminder; request action disabled on every row
+    Note over BFF,FE: /request for an unregistered Scheme-Ref returns UNREGISTERED_CANDIDATE, no delivery
 ```
 
 ## 6. Request username while another remains unrequested

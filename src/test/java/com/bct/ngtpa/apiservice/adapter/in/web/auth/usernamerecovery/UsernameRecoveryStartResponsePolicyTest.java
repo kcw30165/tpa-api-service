@@ -100,34 +100,24 @@ class UsernameRecoveryStartResponsePolicyTest {
   }
 
   @Test
-  void zeroRegisteredMapsToBusinessRejectedRestartFlowWithRegistrationReminderAndSchemesOnlyData() {
-    var result =
-        UsernameRecoveryStartResult.withoutSession(
-            Outcome.ZERO_REGISTERED,
-            List.of(new UsernameRecoverySchemeProjection(null, "DB", "DBA", false)));
-
-    var responsePolicy = policy.toPolicy(result, mapper);
+  void allUnregisteredSessionCreatedMapsToTheOrdinarySuccessSelectAccountResponse() {
+    var responsePolicy = policy.toPolicy(allUnregisteredSessionResult(), mapper);
     var body = responsePolicy.body();
 
-    assertThat(body.success()).isFalse();
-    assertThat(body.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
-    assertThat(body.result().nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
-    assertThat(body.result().data()).isNull();
-    assertThat(body.messages()).isEmpty();
-    assertThat(body.errors())
+    assertThat(body.success()).isTrue();
+    assertThat(body.status()).isEqualTo(ApiStatus.SUCCESS);
+    assertThat(body.result().nextStep()).isEqualTo(WorkflowNextStep.SELECT_ACCOUNT);
+    assertThat(body.result().data().schemes())
         .singleElement()
         .satisfies(
-            error -> {
-              assertThat(error.type()).isEqualTo("BUSINESS");
-              assertThat(error.code())
-                  .isEqualTo(UsernameRecoveryErrorKey.REGISTRATION_REQUIRED.value());
-              assertThat(error.targets()).isEmpty();
-              assertThat(error.source()).isEqualTo("BFF");
-              assertThat(error.severity()).isEqualTo("ERROR");
-              assertThat(error.message()).isNull();
+            scheme -> {
+              assertThat(scheme.schemeRef()).isEqualTo("sch_opaque-9");
+              assertThat(scheme.isRegistered()).isFalse();
             });
+    assertThat(body.messages()).isEmpty();
+    assertThat(body.errors()).isEmpty();
     assertThat(responsePolicy.httpOverride()).isNull();
-    assertThat(classifiedHttp(body.status(), responsePolicy.httpOverride())).isEqualTo(422);
+    assertThat(classifiedHttp(body.status(), responsePolicy.httpOverride())).isEqualTo(200);
   }
 
   @Test
@@ -220,7 +210,7 @@ class UsernameRecoveryStartResponsePolicyTest {
     }
     bodies.add(policy.toPolicy(sessionCreatedResult(), mapper).body());
     bodies.add(policy.toPolicy(memberNotFoundResult(), mapper).body());
-    bodies.add(policy.toPolicy(zeroRegisteredResult(), mapper).body());
+    bodies.add(policy.toPolicy(allUnregisteredSessionResult(), mapper).body());
 
     assertThat(bodies)
         .allSatisfy(
@@ -276,10 +266,15 @@ class UsernameRecoveryStartResponsePolicyTest {
     return UsernameRecoveryStartResult.withoutSession(Outcome.MEMBER_NOT_FOUND, List.of());
   }
 
-  private static UsernameRecoveryStartResult zeroRegisteredResult() {
-    return UsernameRecoveryStartResult.withoutSession(
-        Outcome.ZERO_REGISTERED,
-        List.of(new UsernameRecoverySchemeProjection(null, "DB", "DBA", false)));
+  private static UsernameRecoveryStartResult allUnregisteredSessionResult() {
+    return new UsernameRecoveryStartResult(
+        Outcome.SESSION_CREATED,
+        null,
+        "csrf-value",
+        600,
+        List.of(
+            new UsernameRecoverySchemeProjection(
+                new UsernameRecoverySchemeRef("sch_opaque-9"), "DB", "DBA", false)));
   }
 
   private static UsernameRecoveryStartException exceptionFor(Reason reason) {

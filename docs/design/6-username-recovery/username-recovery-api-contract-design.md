@@ -77,7 +77,7 @@ Validation:
 - Email/mobile validation reuses Registration.
 - Captcha ID is mandatory and must atomically consume a `VERIFIED` challenge.
 
-### Successful response with registered schemes
+### Successful response
 
 ```http
 HTTP/1.1 200 OK
@@ -114,7 +114,7 @@ Set-Cookie: auth_flow_sid=afs_opaque; Path=/api/v1/auth/username-recovery; Max-A
 }
 ```
 
-A session is created because at least one registered scheme exists.
+A session is created for every valid, non-empty lookup result, whether its schemes are all registered, mixed, or all unregistered. Rows keep their `isRegistered` flag; FE disables the request action of unregistered rows.
 
 ### Member not found
 
@@ -145,22 +145,25 @@ HTTP/1.1 422 Unprocessable Entity
 
 ### Only unregistered schemes
 
-No Username Recovery session, cookie, or CSRF token is created.
+A valid lookup result whose schemes are all unregistered is an ordinary successful start: the same session, CSRF token, opaque Scheme-Refs and cookie are created as for registered or mixed results, and every row is returned with `"isRegistered": false`. `/start` returns no registration-required error or message in this case.
 
 ```http
-HTTP/1.1 422 Unprocessable Entity
+HTTP/1.1 200 OK
+Set-Cookie: auth_flow_sid=afs_opaque; Path=/api/v1/auth/username-recovery; Max-Age=600; Secure; HttpOnly; SameSite=Strict
 ```
 
 ```json
 {
-  "success": false,
-  "status": "BUSINESS_REJECTED",
+  "success": true,
+  "status": "SUCCESS",
   "result": {
-    "nextStep": "RESTART_FLOW",
+    "nextStep": "SELECT_ACCOUNT",
     "data": {
+      "csrfToken": "csrf-value",
+      "expiresInSeconds": 600,
       "schemes": [
         {
-          "schemeRef": null,
+          "schemeRef": "sch_opaque-1",
           "accountEnv": "DB",
           "trustCode": "DBA",
           "isRegistered": false
@@ -168,17 +171,12 @@ HTTP/1.1 422 Unprocessable Entity
       ]
     }
   },
-  "messages": [
-    {
-      "type": "INFO",
-      "code": "label.usernamerecovery.complete.registration"
-    }
-  ],
+  "messages": [],
   "errors": []
 }
 ```
 
-The response is terminal for Username Recovery and gives FE enough information to render the Registration reminder.
+FE displays the rows, renders the Registration reminder, and disables the username-request action of every unregistered row (FE work; not part of the Java BFF change). The backend still enforces this: `/request` for an unregistered Scheme-Ref returns the existing `UNREGISTERED_CANDIDATE` outcome (`422`, `err.usernamerecovery.registration.required`, `SELECT_ACCOUNT`) without delivery, after the session, CSRF and Scheme-Ref checks. Such a session has no registered candidate to request, so it ends by cancel or expiry.
 
 ## 5. POST `/request`
 
@@ -314,7 +312,7 @@ Set-Cookie: auth_flow_sid=; Path=/api/v1/auth/username-recovery; Max-Age=0; Secu
 - `400 Bad Request`: malformed/missing fields or invalid state not assigned another status
 - `403 Forbidden`: CSRF or origin/referer rejection
 - `409 Conflict`: idempotency conflict, concurrent state conflict, already requested with a different key, or completed mutation
-- `422 Unprocessable Entity`: recognized business rejection, member not found, or zero registered schemes
+- `422 Unprocessable Entity`: recognized business rejection, member not found, or `/request` for an unregistered candidate
 - `429 Too Many Requests`: configured rate limit
 - `503 Service Unavailable`: internal `SYSTEM_FAILED`, public `SYSTEM_ERROR`
 
@@ -332,7 +330,7 @@ Set-Cookie: auth_flow_sid=; Path=/api/v1/auth/username-recovery; Max-Age=0; Secu
 | UR-START-008 | start | Captcha not VERIFIED | 400 | VALIDATION_FAILED | NONE | existing status-specific captcha code | none | new/verify captcha |
 | UR-START-009 | start | Captcha consume conflict | 409 | BUSINESS_REJECTED | NONE | existing consumed/conflict code | none | new captcha |
 | UR-START-010 | start | Member not found | 422 | BUSINESS_REJECTED | RESTART_FLOW | err.usernamerecovery.verification.failed | none | restart |
-| UR-START-011 | start | Zero registered schemes | 422 | BUSINESS_REJECTED | RESTART_FLOW | registration reminder code | no session/cookie | registration/restart |
+| UR-START-011 | start | Only unregistered schemes | 200 | SUCCESS | SELECT_ACCOUNT | none | session, CSRF and cookie created; unregistered rows not requestable | FE disables unregistered rows |
 | UR-START-012 | start | APIM malformed/unavailable | 503 | SYSTEM_ERROR | NONE | err.system.unavailable | none | after recovery |
 | UR-START-013 | start | Redis session creation failed | 503 | SYSTEM_ERROR | NONE | err.system.unavailable | no cookie | idempotent retry policy |
 | UR-START-014 | start | Duplicate in progress | 409 | BUSINESS_REJECTED | WAIT | shared in-progress code | existing | same key later |
