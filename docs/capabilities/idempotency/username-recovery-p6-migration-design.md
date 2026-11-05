@@ -440,8 +440,10 @@ P6-B now provides Username Recovery-owned action, operation-identity, compatibil
 - Exposure window: START snapshots live for the START idempotency TTL, which the START service takes from the configured Username Recovery session TTL (`AuthWorkflowProperties.usernameRecovery.session.ttlSeconds`); the value in each environment comes from configuration and is not asserted here. Only a same-key retry of an old zero-registered START made before the change and replayed after it, within that window, is affected; the caller starts a new request with a new key. No Redis data migration, flush or key deletion is performed or required.
 - Earlier P6-C notes that mention `ZERO_REGISTERED` are historical records and are not rewritten.
 
-- Owner decision pending (legacy START replay snapshots): it is not assumed that no snapshot
-  carrying the removed `ZERO_REGISTERED` outcome remains. The owner must confirm either (A) no
-  relevant legacy snapshot remains at deployment, or (B) the bounded fail-closed retry window is
-  accepted. Until then this item stays open. No Redis data is deleted, no TTL is changed and no
-  migration is defined.
+- Owner decision (legacy START replay snapshots): option B, recorded 2026-11-05 by Nick. The
+  bounded fail-closed retry window is accepted: a same-key retry of a completed legacy snapshot
+  that still carries the removed `ZERO_REGISTERED` outcome returns HTTP 503 `SYSTEM_ERROR` until
+  that record expires. It is not asserted that no legacy snapshot remains, and the exposure is
+  not asserted to be exactly 600 seconds; the window is the configured START idempotency TTL of
+  the environment. No Redis deletion, migration or TTL change is authorized. A fresh recovery
+  attempt must use a new idempotency key and a fresh valid CAPTCHA.

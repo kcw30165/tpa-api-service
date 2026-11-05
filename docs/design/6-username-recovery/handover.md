@@ -145,7 +145,7 @@ target/evidence/20260812-210249-username-recovery-025-2-request-cancel
   service maps it to `SYSTEM_FAILURE`, which the response policy publishes as HTTP 503
   `SYSTEM_ERROR`.
 
-## Legacy START replay regression test and pending owner decision
+## Legacy START replay regression test and owner decision
 
 - `UsernameRecoveryLegacyStartReplayHttpTest` drives a completed START replay snapshot that still
   carries the removed `ZERO_REGISTERED` outcome through the real replay codec, the real
@@ -159,5 +159,8 @@ target/evidence/20260812-210249-username-recovery-025-2-request-cancel
   response policy publish it as the public 503.
 - Retention: the START idempotency TTL is taken from the configured Username Recovery session TTL;
   the per-environment value comes from configuration and has not been confirmed.
-- Owner decision pending: confirm either (A) no relevant legacy snapshot remains at deployment, or
-  (B) the bounded fail-closed retry window is accepted. Nothing is deleted or migrated.
+- Owner decision: option B, recorded 2026-11-05 by Nick. The bounded fail-closed retry window is
+  accepted: a same-key retry of a completed legacy `ZERO_REGISTERED` START snapshot returns HTTP
+  503 `SYSTEM_ERROR` until that record expires. It is not asserted that no legacy snapshot
+  remains or that the exposure is exactly 600 seconds. No Redis deletion, migration or TTL change
+  is authorized. A fresh recovery attempt must use a new idempotency key and a fresh valid CAPTCHA.
