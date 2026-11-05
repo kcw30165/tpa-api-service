@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.execution;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,11 +27,9 @@ public class ApimExchangeOutcomeLogger {
 
   private static final int MAX_CAUSE_DEPTH = 16;
 
-  private final LoggingSanitizer loggingSanitizer;
   private final ObjectMapper objectMapper;
 
-  public ApimExchangeOutcomeLogger(LoggingSanitizer loggingSanitizer, ObjectMapper objectMapper) {
-    this.loggingSanitizer = loggingSanitizer;
+  public ApimExchangeOutcomeLogger(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
   }
 

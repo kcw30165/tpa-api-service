@@ -12,9 +12,6 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -30,9 +27,7 @@ class ApimExchangeOutcomeLoggerTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final ApimExchangeOutcomeLogger outcomeLogger =
-      new ApimExchangeOutcomeLogger(
-          new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties())),
-          objectMapper);
+      new ApimExchangeOutcomeLogger(objectMapper);
 
   private ListAppender<ILoggingEvent> appender;
   private Logger logbackLogger;
