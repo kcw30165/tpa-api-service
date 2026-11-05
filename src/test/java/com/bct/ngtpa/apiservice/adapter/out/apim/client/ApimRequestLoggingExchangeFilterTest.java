@@ -94,12 +94,17 @@ class ApimRequestLoggingExchangeFilterTest {
   }
 
   @Test
-  void logEventContainsMethodPathAndRequestIdWithoutUrlQueryOrHeaders() throws Exception {
+  void logEventContainsMethodPathRequestIdAndAllowlistedHeadersOnly() throws Exception {
     ExchangeFilterFunction exchangeFilter = filter.filter();
     ClientRequest request =
         ClientRequest.create(
                 HttpMethod.POST,
                 URI.create("https://api.example.test/contributions?identity=O17-QUERY-MARKER"))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .header("Authorization", "Bearer O17-AUTH-MARKER")
+            .header("Cookie", "sid=O17-COOKIE-MARKER")
+            .header("X-API-Key", "O17-API-KEY-MARKER")
             .build();
 
     invokeFilter(exchangeFilter, request, "req-xyz");
@@ -110,8 +115,13 @@ class ApimRequestLoggingExchangeFilterTest {
     assertEquals("/contributions", node.get("path").asText());
     assertEquals("req-xyz", node.get("requestId").asText());
     org.junit.jupiter.api.Assertions.assertNull(node.get("url"));
-    org.junit.jupiter.api.Assertions.assertNull(node.get("headers"));
+    assertEquals("application/json", node.get("headers").get("Content-Type").get(0).asText());
+    assertEquals("application/json", node.get("headers").get("Accept").get(0).asText());
+    assertEquals(2, node.get("headers").size());
     assertTrue(!message.contains("O17-QUERY-MARKER"));
+    assertTrue(!message.contains("O17-AUTH-MARKER"));
+    assertTrue(!message.contains("O17-COOKIE-MARKER"));
+    assertTrue(!message.contains("O17-API-KEY-MARKER"));
   }
 
   @Test

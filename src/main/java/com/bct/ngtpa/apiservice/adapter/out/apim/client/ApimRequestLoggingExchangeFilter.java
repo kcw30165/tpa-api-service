@@ -30,18 +30,27 @@ public class ApimRequestLoggingExchangeFilter {
                       ctx.getOrDefault(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, "");
 
                   Map<String, List<String>> headers = new LinkedHashMap<>();
-                  request.headers().forEach(headers::put);
+                  addAllowedHeader(headers, "Content-Type", request.headers().get("Content-Type"));
+                  addAllowedHeader(headers, "Accept", request.headers().get("Accept"));
 
                   Map<String, Object> event = new LinkedHashMap<>();
                   event.put("event", "apim.request");
                   event.put("requestId", requestId);
                   event.put("method", request.method().name());
                   event.put("path", request.url().getPath());
+                  event.put("headers", headers);
 
                   log.info("{}", toJson(event));
 
                   return Mono.just(request);
                 }));
+  }
+
+  private static void addAllowedHeader(
+      Map<String, List<String>> target, String name, List<String> values) {
+    if (values != null && !values.isEmpty()) {
+      target.put(name, List.copyOf(values));
+    }
   }
 
   private String toJson(Object obj) {
