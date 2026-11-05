@@ -388,7 +388,7 @@ apim:
 
 request-logging:
   enabled: true
-  log-headers: false
+  log-headers: true
   header-allowlist:
     - User-Agent
     - Accept
