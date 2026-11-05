@@ -24,8 +24,8 @@ class UsernameRecoverySchemeProjectionTest {
   }
 
   @Test
-  void unregisteredProjectionMayBePreSessionWithoutSchemeRef() {
-    // api-contract section 4 zero-registered projection carries "schemeRef": null.
+  void unregisteredProjectionMayBeConstructedWithoutSchemeRef() {
+    // The record allows it; a session-created Start result rejects such a projection.
     var projection = projection(null, false);
 
     assertThat(projection.schemeRef()).isNull();

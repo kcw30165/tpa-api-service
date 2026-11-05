@@ -98,9 +98,10 @@ final class UsernameRecoveryBoundaryFixture {
     CancelUsernameRecoveryUseCase cancel =
         (command, csrf, origin, referer) ->
             Mono.error(new AssertionError("Cancel use case must not run"));
+    // Mirrors the production auth_flow_sid policy pinned in UsernameRecoveryFeatureConfigTest (SameSite NONE).
     SessionCookiePolicy authFlow =
         new SessionCookiePolicy(
-            "auth_flow_sid", COOKIE_PATH, 600, true, true, SessionCookieSameSite.STRICT);
+            "auth_flow_sid", COOKIE_PATH, 600, true, true, SessionCookieSameSite.NONE);
     return new UsernameRecoveryController(
         start,
         new UsernameRecoveryStartWebMapper(),

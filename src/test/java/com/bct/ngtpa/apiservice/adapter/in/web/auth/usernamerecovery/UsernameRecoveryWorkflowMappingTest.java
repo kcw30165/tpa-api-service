@@ -26,8 +26,6 @@ class UsernameRecoveryWorkflowMappingTest {
 
   @Test
   void committedMessageLabelsAreExactTypedConstants() {
-    assertThat(UsernameRecoveryWorkflowMapping.MESSAGE_COMPLETE_REGISTRATION.value())
-        .isEqualTo("label.usernamerecovery.complete.registration");
     assertThat(UsernameRecoveryWorkflowMapping.MESSAGE_REQUEST_ACCEPTED.value())
         .isEqualTo("label.usernamerecovery.request.accepted");
     assertThat(UsernameRecoveryWorkflowMapping.MESSAGE_RETURN_TO_LOGIN.value())

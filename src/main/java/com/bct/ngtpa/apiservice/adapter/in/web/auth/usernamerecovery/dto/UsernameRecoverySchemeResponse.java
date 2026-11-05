@@ -5,8 +5,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.dto;
  *
  * <p>Design references: {@code
  * docs/design/6-username-recovery/username-recovery-api-contract-design.md} section 4 ({@code
- * schemeRef}, {@code accountEnv}, {@code trustCode}, {@code isRegistered}; {@code "schemeRef":
- * null} only for the pre-session zero-registered projection).
+ * schemeRef}, {@code accountEnv}, {@code trustCode}, {@code isRegistered}; the Start flow always returns a session-bound opaque Scheme-Ref, including for unregistered schemes).
  *
  * <p>The web mapper copies the opaque {@code schemeRef} string from the application projection; it
  * never fabricates a Scheme-Ref. {@link #toString()} never discloses the opaque Scheme-Ref.

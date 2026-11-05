@@ -129,3 +129,18 @@ target/evidence/20260812-210249-username-recovery-025-2-request-cancel
 - **Replay compatibility:** the START replay codec no longer encodes or decodes `ZERO_REGISTERED`. A stored snapshot with that outcome fails closed and is never turned into a success. See `docs/capabilities/idempotency/username-recovery-p6-migration-design.md` (post-P6 amendment).
 - **FE expectation (not implemented in the Java BFF):** display unregistered rows and disable their username-request action.
 - **Historical wording:** earlier sections of this handover and the P6 notes that describe zero registered schemes as "no session" or `RESTART_FLOW` are historical and superseded by this section.
+
+## Start-flow correction: post-review cleanup
+
+- Removed the `MESSAGE_COMPLETE_REGISTRATION` label constant: after the correction nothing in
+  production emits it, and the successful all-unregistered response carries empty `messages`.
+- Replaced stale "zero-registered / pre-session" wording in Javadoc, test names and comments.
+- The null-`schemeRef` allowance on `UsernameRecoverySchemeProjection`,
+  `UsernameRecoveryCandidate` and `UsernameRecoverySchemeResponse` is deliberately retained: no
+  production path produces it (`UsernameRecoveryStartResult` requires a Scheme-Ref on every
+  projection and `UsernameRecoverySessionCandidate` requires a session-bound one). Tightening it
+  is a possible follow-up that touches those three types plus the redundant check in the result.
+- Replay: a stored START snapshot that is not MEMBER_NOT_FOUND-with-empty-schemes or
+  SESSION_CREATED fails hydration; the idempotency executor does not catch it, and the START
+  service maps it to `SYSTEM_FAILURE`, which the response policy publishes as HTTP 503
+  `SYSTEM_ERROR`.

@@ -25,8 +25,6 @@ import java.util.Objects;
 public final class UsernameRecoveryWorkflowMapping {
   private static final String CODE_NOT_NULL = "code must not be null";
 
-  public static final WorkflowMessageKey MESSAGE_COMPLETE_REGISTRATION =
-      new WorkflowMessageKey("label.usernamerecovery.complete.registration");
   public static final WorkflowMessageKey MESSAGE_REQUEST_ACCEPTED =
       new WorkflowMessageKey("label.usernamerecovery.request.accepted");
   public static final WorkflowMessageKey MESSAGE_RETURN_TO_LOGIN =

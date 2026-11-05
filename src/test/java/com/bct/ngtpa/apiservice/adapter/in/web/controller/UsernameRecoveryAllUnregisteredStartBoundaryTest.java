@@ -81,7 +81,7 @@ class UsernameRecoveryAllUnregisteredStartBoundaryTest {
               assertThat(cookie.getMaxAge().getSeconds()).isEqualTo(600);
               assertThat(cookie.isHttpOnly()).isTrue();
               assertThat(cookie.isSecure()).isTrue();
-              assertThat(cookie.getSameSite()).isEqualTo("Strict");
+              assertThat(cookie.getSameSite()) .isEqualToIgnoringCase("None");
             });
 
     verify(fixture.apim).postEnvelope(any());

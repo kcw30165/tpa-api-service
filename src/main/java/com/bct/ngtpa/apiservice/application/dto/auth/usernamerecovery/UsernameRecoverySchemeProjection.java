@@ -10,12 +10,10 @@ import java.util.Objects;
  * docs/design/6-username-recovery/username-recovery-solution-design.md} section 2 (FE receives only
  * {@code schemeRef}, {@code accountEnv}, {@code trustCode}, and {@code isRegistered}) and {@code
  * docs/design/6-username-recovery/username-recovery-api-contract-design.md} section 4
- * (session-bound opaque schemeRefs, including for unregistered schemes; pre-session zero-registered
- * projections carry {@code "schemeRef": null}).
+ * (session-bound opaque schemeRefs, including for unregistered schemes).
  *
  * <p>Invariants: {@code accountEnv} and {@code trustCode} are required and nonblank; a registered
- * projection always carries a non-null opaque {@link UsernameRecoverySchemeRef}; an unregistered
- * projection may be pre-session (null) or session-bound (non-null). {@link #toString()} never
+ * projection always carries a non-null opaque {@link UsernameRecoverySchemeRef}; an unregistered projection may be constructed without one, but a session-created Start result rejects it. {@link #toString()} never
  * discloses the opaque schemeRef.
  */
 public record UsernameRecoverySchemeProjection(

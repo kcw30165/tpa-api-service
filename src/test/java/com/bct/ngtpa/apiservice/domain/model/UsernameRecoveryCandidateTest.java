@@ -23,15 +23,14 @@ import org.junit.jupiter.api.Test;
  *       (username for registered candidates only) and section 6 step 11 (opaque Scheme-Refs created
  *       only when a session is created);
  *   <li>{@code docs/design/6-username-recovery/username-recovery-api-contract-design.md} section 4
- *       (zero-registered projection carries {@code "schemeRef": null});
+ *       (session-bound opaque Scheme-Refs, including for unregistered schemes);
  *   <li>{@code docs/design/6-username-recovery/username-recovery-test-traceability-design.md} APIM
  *       invariants (registered requires username; unregistered must not carry one).
  * </ul>
  *
  * <p>Invariants: {@code accountEnv}, {@code trustCode}, and {@code deliveryState} are required
  * (accountEnv/trustCode additionally nonblank); {@code schemeRef} is a non-null {@link
- * UsernameRecoverySchemeRef} for registered candidates and may be null only for pre-session
- * unregistered projections (any non-null Scheme-Ref is nonblank by value-object construction);
+ * UsernameRecoverySchemeRef} for registered candidates; an unregistered candidate may be built without one (any non-null Scheme-Ref is nonblank by value-object construction);
  * {@code userName} is present and nonblank only for registered candidates. {@link #toString()}
  * never discloses {@code schemeRef} or {@code userName}.
  */
@@ -72,8 +71,8 @@ class UsernameRecoveryCandidateTest {
   }
 
   @Test
-  void allowsNullSchemeRefForPreSessionUnregisteredProjection() {
-    // Zero-registered responses carry no generated Scheme-Ref (api-contract section 4).
+  void allowsNullSchemeRefForAnUnregisteredCandidateOutsideASession() {
+    // A candidate outside a session needs no Scheme-Ref; UsernameRecoverySessionCandidate requires one.
     UsernameRecoveryCandidate candidate = candidate(null, false, null);
 
     assertNull(candidate.schemeRef());
