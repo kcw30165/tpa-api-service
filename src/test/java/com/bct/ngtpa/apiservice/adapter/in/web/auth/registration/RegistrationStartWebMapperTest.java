@@ -210,7 +210,10 @@ class RegistrationStartWebMapperTest {
     assertThat(response.errors())
         .singleElement()
         .satisfies(
-            error -> assertThat(error.code()).isEqualTo("err.registration.message.deliveryFailed"));
+            error -> {
+              assertThat(error.code()).isEqualTo("err.registration.message.deliveryFailed");
+              assertThat(error.type()).isEqualTo("SYSTEM");
+            });
   }
 
   @Test
@@ -237,8 +240,10 @@ class RegistrationStartWebMapperTest {
     assertThat(response.errors())
         .singleElement()
         .satisfies(
-            error ->
-                assertThat(error.code()).isEqualTo("err.workflow.downstream.businessRejected"));
+            error -> {
+              assertThat(error.code()).isEqualTo("err.workflow.downstream.businessRejected");
+              assertThat(error.type()).isEqualTo("BUSINESS");
+            });
   }
 
   @Test

@@ -52,7 +52,7 @@ public class StructuredFailureEventLogger implements FailureEventPort {
     addCauseMetadata(event, cause);
 
     String payload = loggingSanitizer.toSafeString(event);
-    if (WARN_ORIGINS.contains(failure.origin())) {
+    if (failure.origin() != null && WARN_ORIGINS.contains(failure.origin())) {
       log.warn("{}", payload);
     } else if (cause == null) {
       log.error("{}", payload);

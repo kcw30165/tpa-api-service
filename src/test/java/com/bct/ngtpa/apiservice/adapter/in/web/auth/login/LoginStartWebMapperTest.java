@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.application.dto.workflow.LoginErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.start.*;
 import java.util.List;
@@ -51,5 +52,25 @@ class LoginStartWebMapperTest {
         .singleElement()
         .extracting(error -> error.code())
         .isEqualTo("err.login.credentials.invalid");
+  }
+
+  /** Confirms UNAVAILABLE remains SYSTEM_ERROR while public error source is BFF. */
+  @Test
+  void unavailableStatusMapsToDownstreamSourceAndSystemError() {
+    var response =
+        mapper.toMutationResponse(
+            new StartLoginResult(
+                StartLoginStatus.UNAVAILABLE, null, null, null, List.of(), 0, null),
+            "en");
+
+    assertThat(response.success()).isFalse();
+    assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+    assertThat(response.errors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.source()).isEqualTo("BFF");
+              assertThat(error.code()).isEqualTo(LoginErrorKey.CREDENTIALS_UNAVAILABLE.value());
+            });
   }
 }

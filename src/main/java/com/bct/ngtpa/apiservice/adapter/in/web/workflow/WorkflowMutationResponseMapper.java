@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiMessage;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowMessageDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResult;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultPayload;
@@ -13,7 +14,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class WorkflowMutationResponseMapper {
-
   public <T> MutationResponse<WorkflowResultPayload<T>> toMutationResponse(
       WorkflowResult<T> result) {
     Objects.requireNonNull(result, "result must not be null");
@@ -49,11 +49,19 @@ public class WorkflowMutationResponseMapper {
 
   private ApiError toApiError(WorkflowErrorDescriptor descriptor) {
     return new ApiError(
-        descriptor.type().name(),
+        renderedType(descriptor.type()),
         descriptor.code(),
         descriptor.message(),
         descriptor.targets() == null ? List.of() : descriptor.targets(),
         descriptor.severity().name(),
         descriptor.source());
+  }
+
+  private String renderedType(WorkflowErrorType type) {
+    return switch (type) {
+      case DOWNSTREAM_BUSINESS -> WorkflowErrorType.BUSINESS.name();
+      case DOWNSTREAM_SYSTEM -> WorkflowErrorType.SYSTEM.name();
+      default -> type.name();
+    };
   }
 }

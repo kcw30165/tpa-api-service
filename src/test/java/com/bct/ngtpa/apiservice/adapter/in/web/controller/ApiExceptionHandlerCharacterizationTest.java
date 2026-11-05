@@ -153,7 +153,7 @@ class ApiExceptionHandlerCharacterizationTest {
         response,
         HttpStatus.SERVICE_UNAVAILABLE,
         ApiStatus.SYSTEM_ERROR,
-        "DOWNSTREAM_SYSTEM",
+        "SYSTEM",
         SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value(),
         List.of("PAGE"),
         "req-1",
@@ -344,12 +344,72 @@ class ApiExceptionHandlerCharacterizationTest {
         response,
         HttpStatus.BAD_GATEWAY,
         ApiStatus.SYSTEM_ERROR,
-        "DOWNSTREAM_SYSTEM",
+        "SYSTEM",
         ErrorCodes.APIM_UPSTREAM_FAILURE,
         List.of(),
         "req-7",
         "message for " + ErrorCodes.APIM_UPSTREAM_FAILURE);
     assertLoggedOnce(Level.ERROR, "ApimException", ErrorCodes.APIM_UPSTREAM_FAILURE, false);
+  }
+
+  /**
+   * Priority 1 item 3, scenario 1 of 2 (2026-10-28 coverage-matrix decision): plain {@link
+   * ApimException} representing an upstream-503 condition. Confirmed real behavior (section 8,
+   * re-verified fresh this turn): {@code ApimWebClientFacade.handleErrorBody} ALWAYS constructs
+   * {@code HttpStatus.BAD_GATEWAY} (502) regardless of the actual upstream HTTP status - {@code
+   * mapUpstreamErrorCode} varies only the public error <em>code</em> ({@code
+   * APIM_SERVICE_UNAVAILABLE} for upstream 503). This scenario mirrors that exact shape: {@code
+   * BAD_GATEWAY} status + the upstream-503-derived error code.
+   *
+   * <p><b>Flagged discrepancy (not silently resolved):</b> this scenario asserts NO stack trace,
+   * matching {@link ApimExceptionMappings#upstream()}'s confirmed real {@code includeStackTrace}
+   * flag (line 66, {@code false}) and the sibling {@code apimException_...} test's own confirmed
+   * assertion - even though "with stack trace" was requested. Reported explicitly rather than
+   * asserting something that would contradict real, currently-passing production code.
+   */
+  @Test
+  void apimException_upstream503_bagGatewayApimServiceUnavailableLoggedAtErrorNoStackTrace() {
+    var ex =
+        new ApimException(
+            HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_SERVICE_UNAVAILABLE, "APIM failed");
+
+    var response = handler.handle(ex, exchangeWithRequestId("req-29"));
+
+    assertMutationFailure(
+        response,
+        HttpStatus.BAD_GATEWAY,
+        ApiStatus.SYSTEM_ERROR,
+        "SYSTEM",
+        ErrorCodes.APIM_SERVICE_UNAVAILABLE,
+        List.of(),
+        "req-29",
+        "message for " + ErrorCodes.APIM_SERVICE_UNAVAILABLE);
+    assertLoggedOnce(Level.ERROR, "ApimException", ErrorCodes.APIM_SERVICE_UNAVAILABLE, false);
+  }
+
+  /**
+   * Priority 1 item 3, scenario 2 of 2 (2026-10-28 coverage-matrix decision): plain {@link
+   * ApimException} representing an upstream-504 condition. Mirrors scenario 1 exactly - same public
+   * status 502 (BAD_GATEWAY) throughout (confirmed: {@code ApimWebClientFacade} always constructs
+   * BAD_GATEWAY regardless of actual upstream status); only the error code differs. Same flagged
+   * no-stack-trace discrepancy applies (confirmed real behavior).
+   */
+  @Test
+  void apimException_upstream504_badGatewayApimTimeoutLoggedAtErrorNoStackTrace() {
+    var ex = new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_TIMEOUT, "APIM failed");
+
+    var response = handler.handle(ex, exchangeWithRequestId("req-30"));
+
+    assertMutationFailure(
+        response,
+        HttpStatus.BAD_GATEWAY,
+        ApiStatus.SYSTEM_ERROR,
+        "SYSTEM",
+        ErrorCodes.APIM_TIMEOUT,
+        List.of(),
+        "req-30",
+        "message for " + ErrorCodes.APIM_TIMEOUT);
+    assertLoggedOnce(Level.ERROR, "ApimException", ErrorCodes.APIM_TIMEOUT, false);
   }
 
   // ───────────────────────── InvalidNotificationRequestException ─────────────────────────

@@ -270,6 +270,8 @@ single-error ErrorDescriptor shape.
 
 ### M2 - Logging foundation
 
+**Status: merged to `dev` via merge commit `fb765111c614edd2eb0232e5360a88ce090159b2`.**
+
 <table>
 <tr>
 <th>  
@@ -403,6 +405,11 @@ Rules:
 | 2b.3 | feat | Shared, pure classification type and classifier (names fixed in 2b.1), not yet used | classifier unit tests, branch >= 95% |
 | 2b.4..2b.n | refactor | One commit per feature: attach the shared classification to its APIM failures; feature code tables unchanged | characterization unchanged |
 | 2b.gate | - | Milestone gate: `mvn spotless:check`, full `mvn test`, per-class instruction and branch coverage including anonymous classes; then Nick runs the startup smoke test and SonarQube | - |
+
+
+**Sub-task 2b.1 addendum (docs(exception-handling): add APIM error classification design):** see docs/design/15-exception-handling/07-apim-error-classification.md for the full APIM error classification design. Two approved exceptions to the M2b "no change" rules were recorded there:
+- E1 (log level): Registration `err.tpa.member.not.found` moves from `FailureOrigin.DOWNSTREAM_CONTRACT` to `FailureOrigin.DOWNSTREAM_BUSINESS` (ERROR -> WARN), pinned fail-first in the Registration feature commit (sub-task 2b.4..2b.n). No other log level changes in M2b.
+- E2 (public contract): no `DOWNSTREAM_*` value may reach the frontend; enforced by new sub-task **2b.2a** (runs after 2b.2, before 2b.3). FE confirmed by Nick: no dependence on any `DOWNSTREAM_*` value; E2 approved.
 
 ### M3 - Call-site migration (one ERROR per incident)
 
@@ -628,3 +635,17 @@ handlers, appender, dispatcher and adapters, each uncovered branch justified in 
 
 Use one new branch and one MR per milestone. Open that milestone's MR only after its gate passes; merge it with a merge commit (no squash), then start the next milestone from the updated `origin/dev`. Jenkins/runtime
 values for PROD/DR (ERROR_ALERT_ENABLED=true, recipients) are a separate pipeline change.
+
+### M2b reduced-scope completion addendum (approved 2026-11-04)
+
+M2b completion is intentionally reduced to the following delivered scope:
+- E1: Registration `err.tpa.member.not.found` is `DOWNSTREAM_BUSINESS` and WARN.
+- E2: no public workflow error `type` renders a `DOWNSTREAM_*` value.
+- The shared pure APIM classifier distinguishes `DOWNSTREAM_CONTRACT`,
+  `DOWNSTREAM_INVALID_RESPONSE`, `DOWNSTREAM_TRANSPORT`, and `LOCAL_SYSTEM`.
+- The final M2b milestone gates pass.
+
+The original 2b.4..2b.n goal to attach classification to every feature APIM failure is deferred to
+follow-up work. M2b must not be reported as completing the original "every APIM failure classified"
+goal. No Registration, Forgot Password, Login, Username Recovery, or other feature migration is part
+of this reduced completion scope.

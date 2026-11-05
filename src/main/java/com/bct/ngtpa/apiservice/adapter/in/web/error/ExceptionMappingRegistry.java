@@ -60,7 +60,7 @@ public final class ExceptionMappingRegistry {
   @SuppressWarnings("unchecked")
   private <T extends Throwable> ExceptionMapping<T> resolveMapping(T exception) {
     Class<?> candidate = exception.getClass();
-    while (candidate != null && Throwable.class.isAssignableFrom(candidate)) {
+    while (Throwable.class.isAssignableFrom(candidate)) {
       ExceptionMapping<? extends Throwable> mapping = mappingsByType.get(candidate);
       if (mapping != null) {
         return (ExceptionMapping<T>) mapping;

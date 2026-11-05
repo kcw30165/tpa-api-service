@@ -660,7 +660,7 @@ class ContributionControllerTest {
         .jsonPath("$.errors.length()")
         .isEqualTo(1)
         .jsonPath("$.errors[0].type")
-        .isEqualTo("DOWNSTREAM_SYSTEM")
+        .isEqualTo("SYSTEM")
         .jsonPath("$.errors[0].code")
         .isEqualTo(ErrorCodes.APIM_RESPONSE_INVALID)
         .jsonPath("$.errors[0].message")

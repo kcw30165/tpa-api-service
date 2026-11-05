@@ -28,7 +28,7 @@ public final class RegistrationExceptionMappings {
         return ErrorDescriptor.single(
             HttpStatus.SERVICE_UNAVAILABLE,
             ApiStatus.SYSTEM_ERROR,
-            "DOWNSTREAM_SYSTEM",
+            "SYSTEM",
             SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value(),
             List.of("PAGE"),
             "http.api.error",

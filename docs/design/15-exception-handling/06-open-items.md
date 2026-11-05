@@ -14,100 +14,100 @@ from evidence. Record the answer, the evidence file and the commit in this table
 
 <table>
 <tr>
-<th>  
+<th>
 #
 </th>
-<th>  
+<th>
 Item
 </th>
-<th>  
+<th>
 Resolver
 </th>
-<th>  
+<th>
 Status / resolution path
 </th>
 </tr>
 <tr>
-<td>  
+<td>
 O-1
 </td>
-<td>  
+<td>
 Spring Boot version supports built-in structured logging (3.4+)? Otherwise logstash-logback-encoder is needed.
 </td>
-<td>  
+<td>
 Implementer (fact) -> Nick (dependency)
 </td>
-<td>  
+<td>
 Resolved: Spring Boot built-in structured logging, ECS format, non-local profiles only (9198bc68).
 </td>
 </tr>
 <tr>
-<td>  
+<td>
 O-2
 </td>
-<td>  
+<td>
 io.micrometer:context-propagation as a direct dependency for MDC propagation.
 </td>
-<td>  
+<td>
 Implementer (fact) -> Nick (dependency)
 </td>
-<td>  
+<td>
 Resolved: io.micrometer:context-propagation declared directly, Boot-managed version (1dff744e). Hooks.enableAutomaticContextPropagation() is called explicitly in ReactorMdcPropagationConfig rather than via a Spring Boot auto-configuration property, because the three MDC bridges (requestId, trustCode, userRole) are each a custom ThreadLocalAccessor registered by code via ContextRegistry; no property can express that per-field mapping, so the same @PostConstruct method that must already exist to register the accessors also enables the hook.
 </td>
 </tr>
 <tr>
-<td>  
+<td>
 O-3
 </td>
-<td>  
+<td>
 Group mailbox to replace deng.nick@bcthk.com.
 </td>
-<td>  
+<td>
 Nick / operations
 </td>
-<td>  
+<td>
 Open. Configuration change only, no code.
 </td>
 </tr>
 <tr>
-<td>  
+<td>
 O-4
 </td>
-<td>  
+<td>
 Alert emails travel over the plain SMTP relay. Content is sanitized, but stack traces and logger names are internal details.
 </td>
-<td>  
+<td>
 Security authority
 </td>
-<td>  
+<td>
 Open. Sign-off required before alerting is enabled in PROD.
 </td>
 </tr>
 <tr>
-<td>  
+<td>
 O-5
 </td>
-<td>  
+<td>
 Unify public HTTP status for SYSTEM_ERROR (500/502/503) and the FORM error type on some system 503s.
 </td>
-<td>  
+<td>
 Nick + FE
 </td>
-<td>  
+<td>
 Deferred (D5). Separate follow-up after this refactor.
 </td>
 </tr>
 <tr>
-<td>  
+<td>
 O-6
 </td>
-<td>  
+<td>
 Exceptions raised in web filters other than the portal-context filter are handled by Spring's default error handler (suspected; may also log at ERROR).
 </td>
-<td>  
+<td>
 Implementer (fact) -> Nick (change)
 </td>
-<td>  
+<td>
 **Open (fact confirmed; change decision pending Nick).** Confirmed by sub-task 1.0 (script 005
 evidence, commit a13cad00): only one WebExceptionHandler bean exists
 (AuthenticatedPortalContextWebExceptionHandler); it handles only
@@ -124,85 +124,85 @@ is Nick's decision and stays open.
 </td>
 </tr>
 <tr>
-<td>  
+<td>
 O-7
 </td>
-<td>  
+<td>
 Failures before the Spring context creates beans (for example Config Service bootstrap) are not alerted.
 </td>
-<td>  
+<td>
 Nick
 </td>
-<td>  
+<td>
 **Closed 2026-10-21: accepted.** Visible as pod restart.
 </td>
 </tr>
 <tr>
-<td>  
+<td>
 O-8
 </td>
-<td>  
+<td>
 Per-pod dedup: up to one email per pod per window for the same incident.
 </td>
-<td>  
+<td>
 Nick
 </td>
-<td>  
+<td>
 **Closed 2026-10-21: accepted** (follows D3).
 </td>
 </tr>
 <tr>
-<td>  
+<td>
 O-9
 </td>
-<td>  
+<td>
 Characterization and ratchet tests replace the source-text tests; the near-duplicate Registration logging tests are merged.
 </td>
-<td>  
+<td>
 Implementer
 </td>
-<td>  
+<td>
 Open. Done inside 1.4, 2.5 and the M3 sub-tasks.
 </td>
 </tr>
 <tr>
-<td>  
+<td>
 O-10
 </td>
-<td>  
+<td>
 AuthenticatedPortalContextWebExceptionHandler (filter path) does not set the X-Request-Id response
 header and logs its own plain-text format instead of the shared http.api.error JSON event.
 </td>
-<td>  
+<td>
 Nick
 </td>
-<td>  
+<td>
 Open. Confirmed by the sub-task 1.0/1.1/1.5 characterization tests. Fixing either part is a public
 response-header or log-format change, so it is not changed in M1; Nick decides whether and when to
 align it with every other handler.
 </td>
 </tr>
 <tr>
-<td>  
+<td>
 O-11
 </td>
-<td>  
+<td>
 Exception-to-mapping registration is manual: every *ExceptionMappings bean must be listed by hand
 in ExceptionMappingRegistryConfig, so adding a new handled exception type requires an edit there
 rather than being auto-discovered.
 </td>
-<td>  
+<td>
 Nick
 </td>
-<td>  
+<td>
 Accepted unless Nick decides otherwise.
 </td>
 </tr>
 <tr>
-<td>  
+<td>
 O-12
 </td>
-<td>  
+<td>
 Java resolves message text into errors[].message for most errors (via ApiExceptionHandler's
 resolvePublicMessage / PublicMessageResolver from sub-task 1.8), which conflicts with the
 project's codes-only rule (FE/downstream owns label text). Some features
@@ -211,10 +211,10 @@ FundFactSheetRetrievalException) already return errors[].message = null instead,
 sub-task 1.6b characterization pack and preserved unchanged by sub-task 1.7's
 MessagePolicy.NONE.
 </td>
-<td>  
+<td>
 Nick + FE
 </td>
-<td>  
+<td>
 Open. Not changed in M1 (D5): the pre-existing inconsistency between the two groups of errors is
 preserved exactly as it exists today, not fixed or extended to every error type. Resolving the
 inconsistency (either making every error null, or making the three null ones resolve) is a
@@ -256,7 +256,11 @@ per-type @ExceptionHandler methods in ApiExceptionHandler.
 Implementer (first commit of M2)
 </td>
 <td>
-Open.
+**Closed.** (a) Unreachable null guard removed in ExceptionMappingRegistry's superclass walk
+(6fddd4e0). (b) Stale Javadoc in FundComparisonRequestInvalidException and
+FundPriceRequestInvalidException corrected to describe the real current
+ExceptionMappingRegistry/*ExceptionMappings mapping path instead of the removed per-type
+@ExceptionHandler methods (2d29948a).
 </td>
 </tr>
 
@@ -280,7 +284,58 @@ toSafeString. Both need a test against the real LoggingSanitizer, not a mock.
 Implementer (first production commit of M2b)
 </td>
 <td>
-Open.
+**Closed.** StructuredFailureEventLogger.publish now null-guards failure.origin() before
+Set.of(...).contains(...), so a null origin logs at ERROR instead of throwing. A
+characterization test confirms this. A second test against the real LoggingSanitizer (not a
+mock) confirms toSafeString does not mask a sensitive token embedded in cause.getMessage()
+under the sanitizedMessage key -- documented as a known, pre-existing gap, not fixed in this
+commit (6b0d6962).
 </td>
 </tr>
+
+
+<tr>
+<td>
+O-16
+</td>
+<td>
+ReactorMdcPropagationConfig registers each ThreadLocalAccessor with a reset lambda that
+unconditionally calls MDC.remove(mdcKey). Existing tests proved propagation into MDC on a thread
+hop, and that an absent context key does not leak a stale value on a freshly created single-use
+scheduler, but neither proved that MDC values set during one execution do not leak into a second,
+unrelated execution that reuses the same physical Reactor worker thread.
+</td>
+<td>
+Implementer
+</td>
+<td>
+**Closed.** mdcIsClearedWhenSameReactorWorkerThreadIsReusedForADifferentContext runs two
+sequential, separate Mono executions on the same Schedulers.newSingle worker (first sets
+trustCode/userRole, second carries only requestId) and asserts the second run reads null for
+trustCode/userRole, confirming the reset lambdas correctly clear MDC between executions on a
+reused thread (9ca1e685).
+</td>
+</tr>
+<tr>
+<td>
+ O-17
+</td>
+
+ <td> ApimWebClientFacade logs "APIM outbound path=... body=..." at INFO, and the body contains the plaintext "dob" field (and ciphertext blobs). Confirmed from real DEV evidence, 2026-10-28, requestId 35eeecac-5b0b-4e08-b5da-fb51023be1ad (TRPSearchMember outbound request body).
+</td>
+ <td> Nick / security authority
+</td>
+ <td> Open. No code change in M2b.
+</td>
+ </tr>
 </table>
+
+### Deferred after reduced-scope M2b completion (approved 2026-11-04)
+
+- Attach the shared APIM failure classification to each feature, one feature-owned change at a time.
+- Preserve feature-owned downstream business-code tables, public response contracts, replay snapshots,
+  and M2b log-level rules when those migrations resume.
+- Revisit the documented Registration, Login, Forgot Password, Username Recovery, Account Balance,
+  Account Gain/Loss, Fund Price, and remaining APIM rows during that follow-up work.
+- The deferred migrations are not completed by the shared classifier alone and are not milestone-gate
+  evidence for the original "every APIM failure classified" objective.

@@ -179,4 +179,47 @@ class StructuredFailureEventLoggerTest {
       return next;
     }
   }
+
+  @Test
+  void nullFailureOriginIsTreatedAsErrorRatherThanThrowing() {
+    when(sanitizer.toSafeString(any())).thenReturn("{\"safe\":true}");
+    var failureWithNullOrigin =
+        new FailureEvent(
+            "test.failure",
+            "req-1",
+            "TEST",
+            "operation",
+            null,
+            "internal.code",
+            "public.code",
+            503,
+            true,
+            Map.of());
+
+    events.publish(failureWithNullOrigin);
+
+    ILoggingEvent logged = singleEvent();
+    assertThat(logged.getLevel()).isEqualTo(Level.ERROR);
+  }
+
+  @Test
+  void realLoggingSanitizerDoesNotMaskSensitiveContentUnderSanitizedMessageKey() {
+    var realSanitizer =
+        new LoggingSanitizer(
+            new com.fasterxml.jackson.databind.ObjectMapper(),
+            new com.bct.ngtpa.apiservice.shared.masking.MaskingService(
+                new com.bct.ngtpa.apiservice.shared.masking.MaskingProperties()));
+    var realEvents = new StructuredFailureEventLogger(realSanitizer);
+    var cause = new IllegalStateException("token=super-secret-value-should-be-masked");
+
+    realEvents.publish(failure(FailureOrigin.LOCAL_SYSTEM), cause);
+
+    ILoggingEvent logged = singleEvent();
+    // Documents a known, confirmed gap: "sanitizedMessage" is not itself a
+    // sensitive field name, and LoggingSanitizer.toSafeString does not
+    // inspect String *content* for embedded secrets (only sanitizeValue's
+    // field-name check applies on this path; sanitizeText is never
+    // called). The raw cause message currently passes through unmasked.
+    assertThat(logged.getFormattedMessage()).contains("super-secret-value-should-be-masked");
+  }
 }

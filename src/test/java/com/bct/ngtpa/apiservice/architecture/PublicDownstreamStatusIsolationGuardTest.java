@@ -2,13 +2,26 @@ package com.bct.ngtpa.apiservice.architecture;
 
 import static org.assertj.core.api.Assertions.*;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowPublicApiStatusNormalizer;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 
 class PublicDownstreamStatusIsolationGuardTest {
+  @Test
+  void renderedJsonTypeUsesOnlyPublicBusinessAndSystemValues() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    for (String type : List.of("BUSINESS", "SYSTEM")) {
+      String json =
+          mapper.writeValueAsString(new ApiError(type, "code", null, List.of(), "ERROR", "APIM"));
+      String renderedType = mapper.readTree(json).get("type").asText();
+      assertThat(renderedType).isEqualTo(type).doesNotContain("DOWNSTREAM");
+    }
+  }
+
   @Test
   void technicalDownstreamStatusNormalizesToSystemError() {
     assertThat(WorkflowPublicApiStatusNormalizer.normalize(ApiStatus.DOWNSTREAM_ERROR))

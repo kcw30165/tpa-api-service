@@ -150,7 +150,7 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
             requestId,
             "REGISTRATION",
             "TRPSearchMember",
-            FailureOrigin.DOWNSTREAM_CONTRACT,
+            FailureOrigin.DOWNSTREAM_BUSINESS,
             "err.tpa.member.not.found",
             RegistrationErrorKey.START_VERIFICATION_FAILED.value(),
             422,

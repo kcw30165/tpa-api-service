@@ -78,7 +78,7 @@ class ExceptionMappingsTest {
 
     assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
     assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
-    assertEquals("DOWNSTREAM_SYSTEM", entry.type());
+    assertEquals("SYSTEM", entry.type());
     assertEquals(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value(), entry.code());
     assertEquals(List.of("PAGE"), entry.targets());
     assertEquals(MessagePolicy.RESOLVE, entry.policy());
@@ -115,7 +115,7 @@ class ExceptionMappingsTest {
 
     assertEquals(HttpStatus.BAD_GATEWAY, descriptor.httpStatus());
     assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
-    assertEquals("DOWNSTREAM_SYSTEM", entry.type());
+    assertEquals("SYSTEM", entry.type());
     assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE, entry.code());
     assertEquals(LogLevel.ERROR, descriptor.logLevel());
   }
