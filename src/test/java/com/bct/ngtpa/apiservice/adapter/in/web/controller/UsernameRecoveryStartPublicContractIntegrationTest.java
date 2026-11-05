@@ -195,10 +195,14 @@ class UsernameRecoveryStartPublicContractIntegrationTest {
         .isEqualTo("RESTART_FLOW")
         .jsonPath("$.result.data")
         .isEqualTo(null)
-        .jsonPath("$.messages[0].code")
-        .isEqualTo("label.usernamerecovery.complete.registration")
-        .jsonPath("$.errors.length()")
-        .isEqualTo(0);
+        .jsonPath("$.messages.length()")
+        .isEqualTo(0)
+        .jsonPath("$.errors[0].code")
+        .isEqualTo("err.usernamerecovery.registration.required")
+        .jsonPath("$.errors[0].source")
+        .isEqualTo("BFF")
+        .jsonPath("$.errors[0].message")
+        .doesNotExist();
   }
 
   @Test

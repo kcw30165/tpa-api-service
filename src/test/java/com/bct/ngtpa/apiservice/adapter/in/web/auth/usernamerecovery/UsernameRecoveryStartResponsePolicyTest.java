@@ -113,15 +113,19 @@ class UsernameRecoveryStartResponsePolicyTest {
     assertThat(body.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
     assertThat(body.result().nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
     assertThat(body.result().data()).isNull();
-    assertThat(body.messages())
+    assertThat(body.messages()).isEmpty();
+    assertThat(body.errors())
         .singleElement()
         .satisfies(
-            message -> {
-              assertThat(message.type()).isEqualTo("INFO");
-              assertThat(message.code()).isEqualTo("label.usernamerecovery.complete.registration");
-              assertThat(message.message()).isNull();
+            error -> {
+              assertThat(error.type()).isEqualTo("BUSINESS");
+              assertThat(error.code())
+                  .isEqualTo(UsernameRecoveryErrorKey.REGISTRATION_REQUIRED.value());
+              assertThat(error.targets()).isEmpty();
+              assertThat(error.source()).isEqualTo("BFF");
+              assertThat(error.severity()).isEqualTo("ERROR");
+              assertThat(error.message()).isNull();
             });
-    assertThat(body.errors()).isEmpty();
     assertThat(responsePolicy.httpOverride()).isNull();
     assertThat(classifiedHttp(body.status(), responsePolicy.httpOverride())).isEqualTo(422);
   }

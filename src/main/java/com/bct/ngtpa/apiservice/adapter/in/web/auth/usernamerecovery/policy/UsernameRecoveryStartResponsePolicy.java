@@ -57,10 +57,12 @@ public final class UsernameRecoveryStartResponsePolicy {
                   false,
                   ApiStatus.BUSINESS_REJECTED,
                   projectionMapper.toResult(result),
+                  List.of(),
                   List.of(
-                      UsernameRecoveryWorkflowMapping.infoMessage(
-                          UsernameRecoveryWorkflowMapping.MESSAGE_COMPLETE_REGISTRATION)),
-                  List.of()));
+                      UsernameRecoveryWorkflowMapping.businessError(
+                          UsernameRecoveryErrorKey.REGISTRATION_REQUIRED.value(),
+                          List.of(),
+                          UsernameRecoveryWorkflowMapping.SOURCE_BFF))));
     };
   }
 
