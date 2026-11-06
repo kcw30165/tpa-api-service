@@ -41,6 +41,10 @@ class ApimResponseDtoIgnoreUnknownArchitectureTest {
   private static final Path APIM = MAIN.resolve("com/bct/ngtpa/apiservice/adapter/out/apim");
   private static final String APIM_PACKAGE = "com.bct.ngtpa.apiservice.adapter.out.apim";
   private static final int MIN_CALL_SITES = 22;
+  private static final List<String> ADDITIONAL_RESPONSE_ROOTS =
+      List.of(
+          "com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto."
+              + "TrpGetCIMDtlApimDataItem");
   private static final Pattern EXCHANGE =
       Pattern.compile("new\\s+ApimExchangeRequest\\s*<[^>]*>\\s*\\(");
   private static final Pattern CLASS_LITERAL = Pattern.compile("\\b([A-Z]\\w*)\\.class\\b");
@@ -83,6 +87,13 @@ class ApimResponseDtoIgnoreUnknownArchitectureTest {
         } else {
           roots.add(type);
         }
+      }
+    }
+    for (String responseRoot : ADDITIONAL_RESPONSE_ROOTS) {
+      try {
+        roots.add(Class.forName(responseRoot));
+      } catch (ClassNotFoundException exception) {
+        unresolved.add(responseRoot);
       }
     }
     assertThat(callSites)
