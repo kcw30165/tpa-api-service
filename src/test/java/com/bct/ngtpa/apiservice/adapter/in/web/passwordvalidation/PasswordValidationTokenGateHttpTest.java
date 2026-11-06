@@ -82,6 +82,8 @@ class PasswordValidationTokenGateHttpTest {
       new JsonOperationPayloadCanonicalizer();
   private final AtomicInteger dispatches = new AtomicInteger();
   private final AtomicInteger downstream = new AtomicInteger();
+  private final Set<String> issuedTokens = new HashSet<>();
+  private final Set<String> issuedCimPayloadDigests = new HashSet<>();
   private AnnotationConfigApplicationContext context;
   private DisposableServer http;
   private DisposableServer baselineHttp;
@@ -166,6 +168,8 @@ class PasswordValidationTokenGateHttpTest {
   void resetFixture() {
     fixture.reset();
     cimStub.reset();
+    issuedTokens.clear();
+    issuedCimPayloadDigests.clear();
     confidentialRoute = true;
     dispatches.set(0);
     downstream.set(0);
@@ -201,6 +205,8 @@ class PasswordValidationTokenGateHttpTest {
             "A".repeat(43),
             "authenticated-actor-marker",
             bindings.digest(PAYLOAD).sha256());
+    issuedTokens.forEach(token -> assertThat(text).doesNotContain(token));
+    issuedCimPayloadDigests.forEach(digest -> assertThat(text).doesNotContain(digest));
     if (confidentialRoute) assertThat(text).doesNotContain("requestBody", "responseBody");
     logs.list.stream()
         .filter(event -> event.getThrowableProxy() != null)
@@ -1065,6 +1071,10 @@ class PasswordValidationTokenGateHttpTest {
             .block();
     assertThat(result.status()).isEqualTo(PasswordValidationGrantService.Status.ISSUED);
     fixture.consumeWrites.set(0);
+    issuedTokens.add(result.token());
+    if (purpose == PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE) {
+      issuedCimPayloadDigests.add(bindings.digest(raw).sha256());
+    }
     return result.token();
   }
 
