@@ -21,6 +21,8 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 
 class AuthRegistrationUsernameControllerTest {
@@ -38,7 +40,8 @@ class AuthRegistrationUsernameControllerTest {
             String.class,
             String.class,
             String.class,
-            org.springframework.http.server.reactive.ServerHttpResponse.class);
+            org.springframework.http.server.reactive.ServerHttpResponse.class,
+            org.springframework.web.server.ServerWebExchange.class);
     PostMapping mapping = method.getAnnotation(PostMapping.class);
     assertThat(mapping).isNotNull();
     assertThat(mapping.path()).contains("/username/check");
@@ -60,7 +63,8 @@ class AuthRegistrationUsernameControllerTest {
                     "en",
                     null,
                     null,
-                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
+                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json.get("success").asBoolean()).isFalse();
@@ -85,7 +89,8 @@ class AuthRegistrationUsernameControllerTest {
                     "en",
                     null,
                     null,
-                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
+                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json.get("success").asBoolean()).isFalse();
@@ -110,7 +115,8 @@ class AuthRegistrationUsernameControllerTest {
                     "en",
                     null,
                     null,
-                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
+                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json.get("success").asBoolean()).isFalse();
@@ -134,7 +140,8 @@ class AuthRegistrationUsernameControllerTest {
             "en",
             "https://portal.example",
             "https://portal.example/start",
-            new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
+            new org.springframework.mock.http.server.reactive.MockServerHttpResponse(),
+                    exchange())
         .block();
 
     assertThat(useCase.called).isTrue();
@@ -172,7 +179,8 @@ class AuthRegistrationUsernameControllerTest {
                     "en",
                     null,
                     null,
-                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
+                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json.get("success").asBoolean()).isTrue();
@@ -206,7 +214,8 @@ class AuthRegistrationUsernameControllerTest {
                     "en",
                     null,
                     null,
-                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
+                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json.get("success").asBoolean()).isFalse();
@@ -240,7 +249,8 @@ class AuthRegistrationUsernameControllerTest {
                     "en",
                     null,
                     null,
-                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
+                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json.get("success").asBoolean()).isFalse();
@@ -271,7 +281,8 @@ class AuthRegistrationUsernameControllerTest {
                     "en",
                     null,
                     null,
-                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
+                    new org.springframework.mock.http.server.reactive.MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json.get("success").asBoolean()).isFalse();
@@ -280,6 +291,29 @@ class AuthRegistrationUsernameControllerTest {
     assertThat(json.toString())
         .doesNotContain(
             "err.registration.username.checkFailed", "err.registration.username.isRegistered");
+  }
+
+  @Test
+  void technicalResponseMarksOwnershipOnlyAfterSuccessfulMapping() {
+    var technical = new CheckRegistrationUsernameResult(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED, WorkflowNextStep.USERNAME_CHECK, List.of(), List.of(error("err.workflow.downstream.unavailable")));
+    var technicalExchange = exchange();
+    var response = controller(new RecordingUseCase(technical)).checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null, technicalExchange.getResponse(), technicalExchange).block();
+    assertThat(response.getStatusCode().value()).isEqualTo(502);
+    assertThat(com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(technicalExchange)).isTrue();
+
+    for (CheckRegistrationUsernameResult result : List.of(successResult(), new CheckRegistrationUsernameResult(CheckRegistrationUsernameResultStatus.DOWNSTREAM_REJECTED, WorkflowNextStep.USERNAME_CHECK, List.of(), List.of(error("err.registration.username.isRegistered"))))) {
+      var exchange = exchange();
+      controller(new RecordingUseCase(result)).checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null, exchange.getResponse(), exchange).block();
+      assertThat(com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(exchange)).isFalse();
+    }
+  }
+
+  @Test
+  void escapingFailureDoesNotSetOwnershipMarker() {
+    var exchange = exchange();
+    CheckRegistrationUsernameUseCase useCase = command -> Mono.error(new IllegalStateException("unhandled"));
+    org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> controller(useCase).checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null, exchange.getResponse(), exchange).block());
+    assertThat(com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(exchange)).isFalse();
   }
 
   @Test
@@ -293,6 +327,10 @@ class AuthRegistrationUsernameControllerTest {
       value = java.util.Objects.requireNonNull(response.getBody());
     }
     return objectMapper.valueToTree(value);
+  }
+
+  private static MockServerWebExchange exchange() {
+    return MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/auth/registration/username/check").build());
   }
 
   private static RegistrationUsernameCheckRequest validRequest() {
