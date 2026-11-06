@@ -4,9 +4,6 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonToken;
@@ -46,21 +43,14 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
    * Legacy constructor retained for existing unit tests that construct this executor directly with
    * only the original three dependencies (see {@code DefaultApimExchangeExecutorTest}). Mirrors the
    * compatibility-constructor convention already used by {@link ApimWebClientFacade}: a real (not
-   * no-op) {@link ApimExchangeOutcomeLogger} is built with a fresh {@link ObjectMapper} and {@link
-   * LoggingSanitizer} so outcome logging still runs; it is simply not the Spring-managed singleton
-   * instance used in production.
+   * no-op) {@link ApimExchangeOutcomeLogger} is built with a fresh {@link ObjectMapper} so outcome
+   * logging still runs; it is simply not the Spring-managed singleton instance used in production.
    */
   public DefaultApimExchangeExecutor(
       ApimWebClientFacade facade,
       ApimPayloadCryptoService cryptoService,
       ApimProperties properties) {
-    this(
-        facade,
-        cryptoService,
-        properties,
-        new ApimExchangeOutcomeLogger(
-            new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties())),
-            new ObjectMapper()));
+    this(facade, cryptoService, properties, new ApimExchangeOutcomeLogger(new ObjectMapper()));
   }
 
   @Override

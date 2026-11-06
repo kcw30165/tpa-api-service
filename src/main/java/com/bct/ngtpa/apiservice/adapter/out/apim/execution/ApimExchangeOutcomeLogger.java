@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.execution;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,11 +27,9 @@ public class ApimExchangeOutcomeLogger {
 
   private static final int MAX_CAUSE_DEPTH = 16;
 
-  private final LoggingSanitizer loggingSanitizer;
   private final ObjectMapper objectMapper;
 
-  public ApimExchangeOutcomeLogger(LoggingSanitizer loggingSanitizer, ObjectMapper objectMapper) {
-    this.loggingSanitizer = loggingSanitizer;
+  public ApimExchangeOutcomeLogger(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
   }
 
@@ -42,7 +39,7 @@ public class ApimExchangeOutcomeLogger {
         ApimEnvelopeSchemaClassifier.classify(envelope);
     switch (classification.kind()) {
       case MALFORMED -> logContractInvalid(request, classification.malformedReason(), requestId);
-      case BUSINESS_REJECTED -> logBusinessRejected(request, envelope, requestId);
+      case BUSINESS_REJECTED -> logBusinessRejected(request, requestId);
       case SUCCESS -> {
         // Intentionally silent - see class-level Javadoc.
       }
@@ -53,9 +50,6 @@ public class ApimExchangeOutcomeLogger {
       ApimExchangeRequest<?, ?> request, Throwable error, String requestId) {
     Map<String, Object> event = baseEvent("apim.exchange.failed", request, requestId);
     event.put("exceptionType", error.getClass().getSimpleName());
-    if (request.resubmissionPolicy() != ApimResubmissionPolicy.NEVER) {
-      event.put("errorMessage", loggingSanitizer.sanitizeText(error.getMessage()));
-    }
     Throwable innermost = rootCause(error);
     if (innermost != error) {
       event.put("rootCauseType", innermost.getClass().getSimpleName());
@@ -74,13 +68,8 @@ public class ApimExchangeOutcomeLogger {
     log.error("{}", toJson(event));
   }
 
-  private <D> void logBusinessRejected(
-      ApimExchangeRequest<?, D> request, ApimResponseEnvelope<D> envelope, String requestId) {
+  private void logBusinessRejected(ApimExchangeRequest<?, ?> request, String requestId) {
     Map<String, Object> event = baseEvent("apim.business.rejected", request, requestId);
-    if (request.resubmissionPolicy() != ApimResubmissionPolicy.NEVER) {
-      event.put(
-          "errMessage", loggingSanitizer.sanitizeText(envelope.getResponse().getErrMessage()));
-    }
     log.warn("{}", toJson(event));
   }
 

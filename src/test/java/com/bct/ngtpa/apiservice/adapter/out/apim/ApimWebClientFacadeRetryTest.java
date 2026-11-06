@@ -16,8 +16,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.codec.HttpMessageWriter;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.mock.http.client.reactive.MockClientHttpRequest;
+import org.springframework.web.reactive.function.BodyInserter;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -309,9 +314,7 @@ class ApimWebClientFacadeRetryTest {
         .expectErrorSatisfies(
             ex -> {
               assertEquals(ApimException.class, ex.getClass());
-              assertEquals(
-                  "APIM request failed with status=400 body={\"error\":\"invalid_public_key\"}",
-                  ex.getMessage());
+              assertEquals("APIM request failed with status=400", ex.getMessage());
             })
         .verify();
 
@@ -367,9 +370,7 @@ class ApimWebClientFacadeRetryTest {
         .expectErrorSatisfies(
             ex -> {
               assertEquals(ApimException.class, ex.getClass());
-              assertEquals(
-                  "APIM request failed with status=400 body={\"error\":\"invalid_public_key\"}",
-                  ex.getMessage());
+              assertEquals("APIM request failed with status=400", ex.getMessage());
             })
         .verify();
 
@@ -429,12 +430,98 @@ class ApimWebClientFacadeRetryTest {
         .expectErrorSatisfies(
             ex -> {
               assertEquals(ApimException.class, ex.getClass());
-              assertEquals("APIM request failed with status=502 body=not-json", ex.getMessage());
+              assertEquals("APIM request failed with status=502", ex.getMessage());
             })
         .verify();
 
     assertEquals(1, serverCalls.get());
     assertEquals(0, refreshCount.get());
+  }
+
+  @Test
+  void transportFailureExcludesRequestAndResponsePayloadsFromLogsAndException() throws Exception {
+    String requestMarker = "O17-REQUEST-DOB-NESTED-CIPHERTEXT-UNKNOWN";
+    String responseMarker = "O17-RESPONSE-PLAINTEXT-NESTED-CIPHERTEXT-NONJSON";
+    AtomicInteger serverCalls = new AtomicInteger();
+    AtomicReference<String> transmittedBody = new AtomicReference<>();
+    ExchangeFunction exchange =
+        request -> {
+          serverCalls.incrementAndGet();
+          transmittedBody.set(serializeRequestBody(request));
+          return Mono.just(
+              ClientResponse.create(HttpStatus.BAD_GATEWAY).body(responseMarker).build());
+        };
+    WebClient.Builder builder = WebClient.builder().exchangeFunction(exchange);
+    ApimProperties properties = new ApimProperties();
+    ApimCredentialProfile profile =
+        new ApimCredentialProfile(
+            "p1", "client", "secret", "key", null, "http://localhost", List.of(), null);
+    ApimWebClientFacade facade =
+        new ApimWebClientFacade(
+            WebClient.create(),
+            builder,
+            new ObjectMapper(),
+            captureResolver(profile),
+            fixedTokenService(builder, properties, "token"),
+            trackingCertificateService(builder, properties, new AtomicInteger()),
+            properties);
+    ch.qos.logback.classic.Logger logger =
+        (ch.qos.logback.classic.Logger)
+            org.slf4j.LoggerFactory.getLogger(ApimWebClientFacade.class);
+    ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
+        new ch.qos.logback.core.read.ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      StepVerifier.create(
+              facade.post(
+                  "/api/privacy",
+                  Map.of(
+                      "ordinary", "visible-only-on-wire",
+                      "dob", requestMarker,
+                      "nested", Map.of("identity", requestMarker),
+                      "ciphertext", requestMarker,
+                      "unknown", requestMarker),
+                  com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope
+                      .NON_ACCOUNT,
+                  new com.bct.ngtpa.apiservice.adapter.out.apim.credential
+                      .ApimCredentialResolutionContext(
+                      com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null),
+                  null))
+          .expectErrorSatisfies(
+              error -> {
+                assertEquals(ApimException.class, error.getClass());
+                org.assertj.core.api.Assertions.assertThat(error.getMessage())
+                    .isEqualTo("APIM request failed with status=502")
+                    .doesNotContain(responseMarker, requestMarker);
+                org.assertj.core.api.Assertions.assertThat(error.getCause()).isNull();
+              })
+          .verify();
+      assertEquals(1, serverCalls.get());
+      org.assertj.core.api.Assertions.assertThat(new ObjectMapper().readTree(transmittedBody.get()))
+          .isEqualTo(
+              new ObjectMapper()
+                  .valueToTree(
+                      Map.of(
+                          "ordinary", "visible-only-on-wire",
+                          "dob", requestMarker,
+                          "nested", Map.of("identity", requestMarker),
+                          "ciphertext", requestMarker,
+                          "unknown", requestMarker)));
+      org.assertj.core.api.Assertions.assertThat(appender.list)
+          .allSatisfy(
+              event -> {
+                org.assertj.core.api.Assertions.assertThat(event.getFormattedMessage())
+                    .doesNotContain(requestMarker, responseMarker, "visible-only-on-wire");
+                if (event.getThrowableProxy() != null) {
+                  org.assertj.core.api.Assertions.assertThat(event.getThrowableProxy().getMessage())
+                      .doesNotContain(requestMarker, responseMarker);
+                }
+              });
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
   }
 
   @Test
@@ -490,6 +577,33 @@ class ApimWebClientFacadeRetryTest {
     assertEquals("http://configured.example/api/test", requestUrl.get().toString());
     assertEquals("tok", apiKeyHeader.get());
     assertEquals(null, certificateHeader.get());
+  }
+
+  private static String serializeRequestBody(
+      org.springframework.web.reactive.function.client.ClientRequest request) {
+    MockClientHttpRequest mockRequest = new MockClientHttpRequest(request.method(), request.url());
+    request
+        .body()
+        .insert(
+            mockRequest,
+            new BodyInserter.Context() {
+              @Override
+              public List<HttpMessageWriter<?>> messageWriters() {
+                return ExchangeStrategies.withDefaults().messageWriters();
+              }
+
+              @Override
+              public java.util.Optional<ServerHttpRequest> serverRequest() {
+                return java.util.Optional.empty();
+              }
+
+              @Override
+              public Map<String, Object> hints() {
+                return Map.of();
+              }
+            })
+        .block();
+    return mockRequest.getBodyAsString().block();
   }
 
   private static ApimTokenService fixedTokenService(

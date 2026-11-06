@@ -14,9 +14,6 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,9 +32,7 @@ class ApimExchangeOutcomeLoggerRootCauseTest {
   private static final String SECRET = "SECRET-VALUE-123";
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  private final ApimExchangeOutcomeLogger outcomeLogger =
-      new ApimExchangeOutcomeLogger(
-          new LoggingSanitizer(MAPPER, new MaskingService(new MaskingProperties())), MAPPER);
+  private final ApimExchangeOutcomeLogger outcomeLogger = new ApimExchangeOutcomeLogger(MAPPER);
 
   private ListAppender<ILoggingEvent> appender;
   private Logger logbackLogger;
@@ -66,7 +61,7 @@ class ApimExchangeOutcomeLoggerRootCauseTest {
 
     assertThat(single())
         .contains("\"exceptionType\":\"ApimResponseMappingException\"")
-        .contains("\"errorMessage\":\"Failed to map APIM response payload.\"")
+        .doesNotContain("errorMessage", "Failed to map APIM response payload.")
         .contains("\"rootCauseType\":\"UnrecognizedPropertyException\"")
         .contains("\"jsonPath\":\"response.data[0].extra\"")
         .doesNotContain(SECRET);

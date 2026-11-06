@@ -12,9 +12,6 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -30,9 +27,7 @@ class ApimExchangeOutcomeLoggerTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final ApimExchangeOutcomeLogger outcomeLogger =
-      new ApimExchangeOutcomeLogger(
-          new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties())),
-          objectMapper);
+      new ApimExchangeOutcomeLogger(objectMapper);
 
   private ListAppender<ILoggingEvent> appender;
   private Logger logbackLogger;
@@ -90,13 +85,54 @@ class ApimExchangeOutcomeLoggerTest {
   }
 
   @Test
-  void businessRejectionLogsAtWarnWithSanitizedErrMessage() {
+  void businessRejectionLogsAtWarnWithMetadataOnly() {
     outcomeLogger.logSuccessOutcome(request(), envelope("err.tpa.wrong.password", null), "req-1");
     assertThat(appender.list).hasSize(1);
     ILoggingEvent event = appender.list.get(0);
     assertThat(event.getLevel()).isEqualTo(Level.WARN);
-    assertThat(event.getFormattedMessage()).contains("apim.business.rejected");
-    assertThat(event.getFormattedMessage()).contains("err.tpa.wrong.password");
+    assertThat(event.getFormattedMessage())
+        .contains("apim.business.rejected", PATH, "req-1", "ACCOUNT_ENV", "SAFE_BUSINESS_CALL")
+        .doesNotContain("errorCode", "err.tpa.wrong.password");
+  }
+
+  @Test
+  void codeShapedArbitraryBusinessTextIsNeverLogged() {
+    String marker = "err.O17_PRIVATE_PAYLOAD_123456";
+    outcomeLogger.logSuccessOutcome(request(), envelope(marker, null), "req-code-shaped");
+    assertThat(appender.list).hasSize(1);
+    ILoggingEvent event = appender.list.get(0);
+    assertThat(event.getLevel()).isEqualTo(Level.WARN);
+    assertThat(event.getFormattedMessage())
+        .contains("apim.business.rejected", PATH, "req-code-shaped")
+        .doesNotContain(marker, "errorCode");
+  }
+
+  @Test
+  void arbitraryBusinessTextIsNeverLoggedButEstablishedCodeIsRetained() {
+    String marker = "O17-ARBITRARY-DOWNSTREAM-TEXT-CIPHERTEXT";
+    outcomeLogger.logSuccessOutcome(request(), envelope(marker, null), "req-1");
+    assertThat(appender.list).hasSize(1);
+    ILoggingEvent event = appender.list.get(0);
+    assertThat(event.getLevel()).isEqualTo(Level.WARN);
+    assertThat(event.getFormattedMessage())
+        .contains("apim.business.rejected")
+        .doesNotContain(marker, "errMessage");
+  }
+
+  @Test
+  void exchangeFailureOmitsThrowableMessagesAndPreservesTypesAndMetadata() {
+    String marker = "O17-THROWABLE-PAYLOAD-MARKER";
+    outcomeLogger.logExchangeFailure(
+        request(),
+        new IllegalStateException(marker, new IllegalArgumentException(marker)),
+        "req-1");
+    assertThat(appender.list).hasSize(1);
+    ILoggingEvent event = appender.list.get(0);
+    assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(event.getFormattedMessage())
+        .contains("apim.exchange.failed", "IllegalStateException", "IllegalArgumentException", PATH)
+        .doesNotContain(marker, "errorMessage");
+    assertThat(event.getThrowableProxy()).isNull();
   }
 
   @Test

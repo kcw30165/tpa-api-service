@@ -5,12 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.certificate.ApimCertificateHeaderProvider;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimOAuthClientConfig;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
-import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -22,13 +20,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 class ApimWebClientConfigTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
-  private final LoggingSanitizer loggingSanitizer =
-      new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties()));
 
   private final ApimContextPropagationExchangeFilter requestIdFilter =
       new ApimContextPropagationExchangeFilter();
   private final ApimRequestLoggingExchangeFilter requestLoggingFilter =
-      new ApimRequestLoggingExchangeFilter(loggingSanitizer, objectMapper);
+      new ApimRequestLoggingExchangeFilter(
+          new RequestLoggingProperties(), new ApimProperties(), objectMapper);
   private final ApimWebClientConfig config =
       new ApimWebClientConfig(requestIdFilter, requestLoggingFilter);
 
