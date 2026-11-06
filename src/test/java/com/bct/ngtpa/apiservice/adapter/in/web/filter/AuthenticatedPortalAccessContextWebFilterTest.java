@@ -12,6 +12,7 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import com.bct.ngtpa.apiservice.shared.web.*;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpCookie;
@@ -82,6 +83,30 @@ class AuthenticatedPortalAccessContextWebFilterTest {
           .expectError(AuthenticatedPortalContextResolutionException.class)
           .verify();
     }
+  }
+
+  @Test
+  void investmentChoiceGetWithAccountRefAndNoSessionCookieFailsClosed() {
+    AtomicBoolean chainInvoked = new AtomicBoolean();
+    PortalAccessContextPort port = ref -> Mono.just(CONTEXT);
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get("/api/v1/investment-choice")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, CONTEXT.account().accountRef())
+                .header(RequestHeaderContextKeys.XSRF_TOKEN_HEADER, "csrf_value"));
+
+    StepVerifier.create(
+            filter(port, command -> Mono.error(new AssertionError("validation must not run")))
+                .filter(
+                    exchange,
+                    current -> {
+                      chainInvoked.set(true);
+                      return Mono.empty();
+                    }))
+        .expectError(AuthenticatedPortalContextResolutionException.class)
+        .verify();
+
+    assertThat(chainInvoked).isFalse();
   }
 
   @Test

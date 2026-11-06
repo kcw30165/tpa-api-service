@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalExceptio
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
@@ -468,6 +469,24 @@ class ExceptionMappingsTest {
     assertEquals(ErrorCodes.FUND_FACT_SHEET_RETRIEVAL_UNAVAILABLE, entry.code());
     assertEquals(MessagePolicy.NONE, entry.policy());
     assertEquals(LogLevel.ERROR, descriptor.logLevel());
+  }
+
+  @Test
+  void investmentChoiceRetrievalMapping() {
+    var mapping = InvestmentChoiceExceptionMappings.retrievalUnavailable();
+    var exception = InvestmentChoiceDetailsRetrievalException.systemFailure();
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals(ErrorCodes.INVESTMENT_CHOICE_RETRIEVAL_UNAVAILABLE, entry.code());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
   }
 
   @Test

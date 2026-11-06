@@ -20,6 +20,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -123,6 +125,37 @@ class ApiExceptionHandlerLoggingTest {
     JsonNode payload = parse(event);
     assertEquals(ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED, payload.get("errorCode").asText());
     assertEquals("token=*** auth failed", payload.get("sanitizedMessage").asText());
+  }
+
+  @Test
+  void logsInvestmentChoiceRetrievalAtWarnOnceWithoutStackTrace() throws Exception {
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get(
+                    "/api/v1/investment-choice?policyNo=policy-secret&certNo=cert-secret")
+                .header("Account-Ref", "account-secret")
+                .cookie(new HttpCookie("portal_sid", "sid_abcdefghijklmnopqrstuvwx"))
+                .build());
+    exchange
+        .getAttributes()
+        .put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "investment-choice-req-id");
+    var response =
+        handler.handle(InvestmentChoiceDetailsRetrievalException.systemFailure(), exchange);
+
+    assertEquals(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+    ILoggingEvent event = singleEvent();
+    assertEquals(Level.WARN, event.getLevel());
+    JsonNode payload = parse(event);
+    assertEquals(
+        ErrorCodes.INVESTMENT_CHOICE_RETRIEVAL_UNAVAILABLE, payload.get("errorCode").asText());
+    assertEquals(
+        "InvestmentChoiceDetailsRetrievalException", payload.get("exceptionType").asText());
+    assertNull(event.getThrowableProxy());
+    assertTrue(
+        !event.getFormattedMessage().contains("policy-secret")
+            && !event.getFormattedMessage().contains("cert-secret")
+            && !event.getFormattedMessage().contains("account-secret")
+            && !event.getFormattedMessage().contains("sid_abcdefghijklmnopqrstuvwx"));
   }
 
   @Test

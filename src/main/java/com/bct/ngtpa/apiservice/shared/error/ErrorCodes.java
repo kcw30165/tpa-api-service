@@ -23,6 +23,8 @@ public final class ErrorCodes {
       "err.fund-price.retrieval.unavailable";
   public static final String FUND_FACT_SHEET_RETRIEVAL_UNAVAILABLE =
       "err.fund-fact-sheet.retrieval.unavailable";
+  public static final String INVESTMENT_CHOICE_RETRIEVAL_UNAVAILABLE =
+      "err.investment-choice.retrieval.unavailable";
   public static final String FUND_COMPARISON_REQUEST_INVALID =
       "err.fund-comparison.request.invalid";
   public static final String FUND_COMPARISON_RETRIEVAL_UNAVAILABLE =
