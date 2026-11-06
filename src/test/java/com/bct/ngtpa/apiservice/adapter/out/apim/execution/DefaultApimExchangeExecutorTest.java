@@ -216,4 +216,51 @@ class DefaultApimExchangeExecutorTest {
   private record RequestDto(String value) {}
 
   private record ResponseDto(String value) {}
+  @Test
+  void terminalCallerPropagatesForPlainAllowRecovery() {
+    assertPlainOwnership(ApimResubmissionPolicy.ALLOW_RECOVERY, ApimRetryEligibility.SAFE_BUSINESS_CALL);
+  }
+
+  @Test
+  void terminalCallerPropagatesForPlainNever() {
+    assertPlainOwnership(ApimResubmissionPolicy.NEVER, ApimRetryEligibility.NON_RETRYABLE);
+  }
+
+  @Test
+  void terminalCallerPropagatesForEncryptedAllowRecovery() {
+    assertEncryptedOwnership(ApimResubmissionPolicy.ALLOW_RECOVERY, ApimRetryEligibility.SAFE_BUSINESS_CALL);
+  }
+
+  @Test
+  void terminalCallerPropagatesForEncryptedNever() {
+    assertEncryptedOwnership(ApimResubmissionPolicy.NEVER, ApimRetryEligibility.NON_RETRYABLE);
+  }
+
+  private void assertPlainOwnership(
+      ApimResubmissionPolicy policy, ApimRetryEligibility eligibility) {
+    properties.getEncryption().setEnabled(false);
+    var terminal = new ApimExchangeRequest<>(PATH,SOURCE,RequestDto.class,ResponseDto.class,
+        ApimDatabaseScope.ACCOUNT_ENV,CONTEXT,eligibility,policy,ApimIncidentOwnership.TERMINAL_CALLER);
+    when(crypto.encryptRequest(PATH,SOURCE,RequestDto.class,null)).thenReturn(SOURCE);
+    when(facade.postSuccessfulExchange(PATH,SOURCE,ApimDatabaseScope.ACCOUNT_ENV,CONTEXT,
+        eligibility,policy,ApimIncidentOwnership.TERMINAL_CALLER))
+        .thenReturn(Mono.error(new IllegalStateException("terminal-stop")));
+    StepVerifier.create(executor.postEnvelope(terminal)).expectErrorMessage("terminal-stop").verify();
+    verify(facade).postSuccessfulExchange(PATH,SOURCE,ApimDatabaseScope.ACCOUNT_ENV,CONTEXT,
+        eligibility,policy,ApimIncidentOwnership.TERMINAL_CALLER);
+  }
+
+  private void assertEncryptedOwnership(
+      ApimResubmissionPolicy policy, ApimRetryEligibility eligibility) {
+    properties.getEncryption().setEnabled(true);
+    var terminal = new ApimExchangeRequest<>(PATH,SOURCE,RequestDto.class,ResponseDto.class,
+        ApimDatabaseScope.ACCOUNT_ENV,CONTEXT,eligibility,policy,ApimIncidentOwnership.TERMINAL_CALLER);
+    when(facade.postEncryptedSuccessfulExchange(eq(PATH),any(),eq(ApimDatabaseScope.ACCOUNT_ENV),
+        eq(CONTEXT),eq(eligibility),eq(policy),eq(ApimIncidentOwnership.TERMINAL_CALLER)))
+        .thenReturn(Mono.error(new IllegalStateException("terminal-stop")));
+    StepVerifier.create(executor.postEnvelope(terminal)).expectErrorMessage("terminal-stop").verify();
+    verify(facade).postEncryptedSuccessfulExchange(eq(PATH),any(),eq(ApimDatabaseScope.ACCOUNT_ENV),
+        eq(CONTEXT),eq(eligibility),eq(policy),eq(ApimIncidentOwnership.TERMINAL_CALLER));
+  }
+
 }
