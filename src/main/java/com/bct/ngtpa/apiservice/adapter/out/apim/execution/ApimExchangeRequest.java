@@ -39,11 +39,24 @@ public record ApimExchangeRequest<R, D>(
   }
 
   public ApimExchangeRequest(
-      String path, R request, Class<R> requestType, Class<D> responseDataType,
-      ApimDatabaseScope databaseScope, ApimCredentialResolutionContext credentialContext,
-      ApimRetryEligibility retryEligibility, ApimResubmissionPolicy resubmissionPolicy) {
-    this(path, request, requestType, responseDataType, databaseScope, credentialContext,
-        retryEligibility, resubmissionPolicy, ApimIncidentOwnership.APIM_OBSERVER);
+      String path,
+      R request,
+      Class<R> requestType,
+      Class<D> responseDataType,
+      ApimDatabaseScope databaseScope,
+      ApimCredentialResolutionContext credentialContext,
+      ApimRetryEligibility retryEligibility,
+      ApimResubmissionPolicy resubmissionPolicy) {
+    this(
+        path,
+        request,
+        requestType,
+        responseDataType,
+        databaseScope,
+        credentialContext,
+        retryEligibility,
+        resubmissionPolicy,
+        ApimIncidentOwnership.APIM_OBSERVER);
   }
 
   public ApimExchangeRequest {

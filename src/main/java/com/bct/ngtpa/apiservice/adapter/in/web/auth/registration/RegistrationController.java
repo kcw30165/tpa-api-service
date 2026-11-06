@@ -19,6 +19,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.Registra
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
@@ -41,7 +42,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ServerWebExchange;
-import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -394,9 +394,12 @@ public final class RegistrationController {
                           .CheckRegistrationUsernameResultStatus.CSRF_INVALID) {
                 cookieWriter.writeAuthFlowCookie(response, authFlowSessionId);
               }
-              ResponseEntity<MutationResponse<RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>>> mapped =
-                  RegistrationHttpResponses.toResponse(
-                      registrationUsernameCheckWebMapper.toMutationResponse(result));
+              ResponseEntity<
+                      MutationResponse<
+                          RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>>>
+                  mapped =
+                      RegistrationHttpResponses.toResponse(
+                          registrationUsernameCheckWebMapper.toMutationResponse(result));
               if (result.status()
                   == com.bct.ngtpa.apiservice.application.usecase.auth.registration.username
                       .CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED) {

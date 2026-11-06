@@ -139,6 +139,7 @@ public class ApimExchangeOutcomeLogger {
       return "{\"event\":\"log-serialization-failed\"}";
     }
   }
+
   private void logTechnical(ApimExchangeRequest<?, ?> request, Map<String, Object> event) {
     String payload = toJson(event);
     if (request.incidentOwnership() == ApimIncidentOwnership.TERMINAL_CALLER) {
@@ -147,5 +148,4 @@ public class ApimExchangeOutcomeLogger {
       log.error("{}", payload);
     }
   }
-
 }

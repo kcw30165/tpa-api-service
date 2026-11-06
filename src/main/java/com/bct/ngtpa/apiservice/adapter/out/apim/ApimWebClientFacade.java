@@ -144,17 +144,30 @@ public class ApimWebClientFacade {
   }
 
   public Mono<ApimSuccessfulExchange> postSuccessfulExchange(
-      String path, Object requestBody, ApimDatabaseScope scope,
-      ApimCredentialResolutionContext resolutionContext, ApimRetryEligibility retryEligibility,
+      String path,
+      Object requestBody,
+      ApimDatabaseScope scope,
+      ApimCredentialResolutionContext resolutionContext,
+      ApimRetryEligibility retryEligibility,
       ApimResubmissionPolicy resubmissionPolicy) {
-    return postSuccessfulExchange(path, requestBody, scope, resolutionContext, retryEligibility,
-        resubmissionPolicy, ApimIncidentOwnership.APIM_OBSERVER);
+    return postSuccessfulExchange(
+        path,
+        requestBody,
+        scope,
+        resolutionContext,
+        retryEligibility,
+        resubmissionPolicy,
+        ApimIncidentOwnership.APIM_OBSERVER);
   }
 
   public Mono<ApimSuccessfulExchange> postSuccessfulExchange(
-      String path, Object requestBody, ApimDatabaseScope scope,
-      ApimCredentialResolutionContext resolutionContext, ApimRetryEligibility retryEligibility,
-      ApimResubmissionPolicy resubmissionPolicy, ApimIncidentOwnership incidentOwnership) {
+      String path,
+      Object requestBody,
+      ApimDatabaseScope scope,
+      ApimCredentialResolutionContext resolutionContext,
+      ApimRetryEligibility retryEligibility,
+      ApimResubmissionPolicy resubmissionPolicy,
+      ApimIncidentOwnership incidentOwnership) {
     java.util.Objects.requireNonNull(resubmissionPolicy, "resubmissionPolicy must not be null");
     java.util.Objects.requireNonNull(incidentOwnership, "incidentOwnership must not be null");
     ApimRetryEligibility eligibility =
@@ -162,8 +175,15 @@ public class ApimWebClientFacade {
     apimProperties.validateRetryPolicy();
     return resolveProfile(scope, resolutionContext, incidentOwnership)
         .flatMap(
-            profile -> sendBusinessAttempt(profile, path, requestBody, eligibility,
-                resubmissionPolicy, incidentOwnership, 1)
+            profile ->
+                sendBusinessAttempt(
+                        profile,
+                        path,
+                        requestBody,
+                        eligibility,
+                        resubmissionPolicy,
+                        incidentOwnership,
+                        1)
                     .map(body -> new ApimSuccessfulExchange(body, profile, null)));
   }
 
@@ -174,7 +194,8 @@ public class ApimWebClientFacade {
   }
 
   public Mono<ApimCredentialProfile> resolveProfile(
-      ApimDatabaseScope scope, ApimCredentialResolutionContext resolutionContext,
+      ApimDatabaseScope scope,
+      ApimCredentialResolutionContext resolutionContext,
       ApimIncidentOwnership incidentOwnership) {
     java.util.Objects.requireNonNull(incidentOwnership, "incidentOwnership must not be null");
     return profileResolver
@@ -183,7 +204,11 @@ public class ApimWebClientFacade {
             Mono.defer(
                 () -> {
                   logProfileResolutionFailure(
-                      scope, resolutionContext, null, "profile resolver returned empty", incidentOwnership);
+                      scope,
+                      resolutionContext,
+                      null,
+                      "profile resolver returned empty",
+                      incidentOwnership);
                   return Mono.error(
                       new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException(
                           "APIM profile not found for given routing context"));
@@ -191,7 +216,11 @@ public class ApimWebClientFacade {
         .onErrorMap(
             err -> {
               logProfileResolutionFailure(
-                  scope, resolutionContext, null, err == null ? "unknown" : err.getMessage(), incidentOwnership);
+                  scope,
+                  resolutionContext,
+                  null,
+                  err == null ? "unknown" : err.getMessage(),
+                  incidentOwnership);
               return err
                       instanceof com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException
                   ? err
@@ -260,18 +289,30 @@ public class ApimWebClientFacade {
 
   public Mono<ApimSuccessfulExchange> postEncryptedSuccessfulExchange(
       String path,
-      java.util.function.BiFunction<ApimCredentialProfile, java.security.PublicKey, Object> encryptFn,
-      ApimDatabaseScope scope, ApimCredentialResolutionContext resolutionContext,
-      ApimRetryEligibility retryEligibility, ApimResubmissionPolicy resubmissionPolicy) {
-    return postEncryptedSuccessfulExchange(path, encryptFn, scope, resolutionContext,
-        retryEligibility, resubmissionPolicy, ApimIncidentOwnership.APIM_OBSERVER);
+      java.util.function.BiFunction<ApimCredentialProfile, java.security.PublicKey, Object>
+          encryptFn,
+      ApimDatabaseScope scope,
+      ApimCredentialResolutionContext resolutionContext,
+      ApimRetryEligibility retryEligibility,
+      ApimResubmissionPolicy resubmissionPolicy) {
+    return postEncryptedSuccessfulExchange(
+        path,
+        encryptFn,
+        scope,
+        resolutionContext,
+        retryEligibility,
+        resubmissionPolicy,
+        ApimIncidentOwnership.APIM_OBSERVER);
   }
 
   public Mono<ApimSuccessfulExchange> postEncryptedSuccessfulExchange(
       String path,
-      java.util.function.BiFunction<ApimCredentialProfile, java.security.PublicKey, Object> encryptFn,
-      ApimDatabaseScope scope, ApimCredentialResolutionContext resolutionContext,
-      ApimRetryEligibility retryEligibility, ApimResubmissionPolicy resubmissionPolicy,
+      java.util.function.BiFunction<ApimCredentialProfile, java.security.PublicKey, Object>
+          encryptFn,
+      ApimDatabaseScope scope,
+      ApimCredentialResolutionContext resolutionContext,
+      ApimRetryEligibility retryEligibility,
+      ApimResubmissionPolicy resubmissionPolicy,
       ApimIncidentOwnership incidentOwnership) {
     java.util.Objects.requireNonNull(resubmissionPolicy, "resubmissionPolicy must not be null");
     java.util.Objects.requireNonNull(incidentOwnership, "incidentOwnership must not be null");
@@ -279,8 +320,16 @@ public class ApimWebClientFacade {
         retryEligibility == null ? ApimRetryEligibility.NON_RETRYABLE : retryEligibility;
     apimProperties.validateRetryPolicy();
     return resolveProfile(scope, resolutionContext, incidentOwnership)
-        .flatMap(profile -> sendBusinessAttemptEncryptedSuccessful(profile, path, encryptFn,
-            eligibility, resubmissionPolicy, incidentOwnership, 1));
+        .flatMap(
+            profile ->
+                sendBusinessAttemptEncryptedSuccessful(
+                    profile,
+                    path,
+                    encryptFn,
+                    eligibility,
+                    resubmissionPolicy,
+                    incidentOwnership,
+                    1));
   }
 
   private Mono<String> sendBusinessAttempt(
@@ -288,7 +337,8 @@ public class ApimWebClientFacade {
       String path,
       Object requestBody,
       ApimRetryEligibility retryEligibility,
-      ApimResubmissionPolicy resubmissionPolicy, ApimIncidentOwnership incidentOwnership,
+      ApimResubmissionPolicy resubmissionPolicy,
+      ApimIncidentOwnership incidentOwnership,
       int attempt) {
     return Mono.defer(
             () ->
@@ -323,7 +373,8 @@ public class ApimWebClientFacade {
                       path,
                       requestBody,
                       retryEligibility,
-                      resubmissionPolicy, incidentOwnership,
+                      resubmissionPolicy,
+                      incidentOwnership,
                       attempt + 1));
             });
   }
@@ -334,7 +385,8 @@ public class ApimWebClientFacade {
       java.util.function.BiFunction<ApimCredentialProfile, java.security.PublicKey, Object>
           encryptFn,
       ApimRetryEligibility retryEligibility,
-      ApimResubmissionPolicy resubmissionPolicy, ApimIncidentOwnership incidentOwnership,
+      ApimResubmissionPolicy resubmissionPolicy,
+      ApimIncidentOwnership incidentOwnership,
       int attempt) {
     return apimCertificateService
         .getPublicKey(profile)
@@ -372,7 +424,12 @@ public class ApimWebClientFacade {
                       : Mono.delay(Duration.ofMillis(backoffMilliseconds));
               return delay.then(
                   sendBusinessAttemptEncryptedSuccessful(
-                      profile, path, encryptFn, retryEligibility, resubmissionPolicy, incidentOwnership,
+                      profile,
+                      path,
+                      encryptFn,
+                      retryEligibility,
+                      resubmissionPolicy,
+                      incidentOwnership,
                       attempt + 1));
             });
   }
@@ -602,7 +659,8 @@ public class ApimWebClientFacade {
     final ApimResubmissionPolicy resubmissionPolicy;
     final ApimIncidentOwnership incidentOwnership;
 
-    RetryContext(ApimResubmissionPolicy resubmissionPolicy, ApimIncidentOwnership incidentOwnership) {
+    RetryContext(
+        ApimResubmissionPolicy resubmissionPolicy, ApimIncidentOwnership incidentOwnership) {
       this.resubmissionPolicy = resubmissionPolicy;
       this.incidentOwnership = incidentOwnership;
     }
@@ -618,15 +676,19 @@ public class ApimWebClientFacade {
       ApimDatabaseScope scope,
       ApimCredentialResolutionContext ctx,
       String profileId,
-      String reason, ApimIncidentOwnership incidentOwnership) {
+      String reason,
+      ApimIncidentOwnership incidentOwnership) {
     try {
       Map<String, Object> event = new java.util.LinkedHashMap<>();
       event.put("event", "apim.profile.resolution.failure");
       event.put("operation", "resolve_profile");
       if (incidentOwnership == ApimIncidentOwnership.APIM_OBSERVER) {
         event.put("scope", scope == null ? null : scope.name());
-        event.put("actorRole", ctx == null || ctx.actorUserRole() == null ? null : ctx.actorUserRole().name());
-        if (ctx != null && ctx.accountEnv() != null) event.put("accountEnv", loggingSanitizer.sanitizeValue(ctx.accountEnv()));
+        event.put(
+            "actorRole",
+            ctx == null || ctx.actorUserRole() == null ? null : ctx.actorUserRole().name());
+        if (ctx != null && ctx.accountEnv() != null)
+          event.put("accountEnv", loggingSanitizer.sanitizeValue(ctx.accountEnv()));
         if (profileId != null) event.put("profileId", loggingSanitizer.sanitizeValue(profileId));
         event.put("reason", loggingSanitizer.sanitizeText(reason));
         log.error("{}", loggingSanitizer.toSafeString(event));

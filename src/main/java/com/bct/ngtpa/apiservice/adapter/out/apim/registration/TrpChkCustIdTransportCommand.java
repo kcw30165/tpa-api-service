@@ -7,7 +7,9 @@ import java.util.Objects;
 
 /** Feature-neutral typed transport command for TRPChkCustId. */
 public record TrpChkCustIdTransportCommand(
-    TrpChkCustIdApimRequest request, ActorUserRole actorUserRole, String correlationId,
+    TrpChkCustIdApimRequest request,
+    ActorUserRole actorUserRole,
+    String correlationId,
     ApimIncidentOwnership incidentOwnership) {
   public TrpChkCustIdTransportCommand(
       TrpChkCustIdApimRequest request, ActorUserRole actorUserRole, String correlationId) {

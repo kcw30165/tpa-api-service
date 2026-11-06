@@ -20,7 +20,7 @@ class ApimExecutionContractArchitectureTest {
           "ApimEnvelopeSchemaClassification.java",
           "ApimEnvelopeSchemaClassifier.java",
           "ApimExchangeOutcomeLogger.java",
-            "ApimIncidentOwnership.java");
+          "ApimIncidentOwnership.java");
 
   @Test
   void contractsHaveNoInboundSessionReactorApplicationOrFeatureDependencies() throws Exception {

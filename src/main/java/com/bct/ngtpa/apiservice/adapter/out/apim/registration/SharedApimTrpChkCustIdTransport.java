@@ -36,7 +36,8 @@ public final class SharedApimTrpChkCustIdTransport implements TrpChkCustIdTransp
             ApimDatabaseScope.NON_ACCOUNT,
             new ApimCredentialResolutionContext(command.actorUserRole(), null),
             ApimRetryEligibility.SAFE_BUSINESS_CALL,
-            com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy.ALLOW_RECOVERY,
+            com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy
+                .ALLOW_RECOVERY,
             command.incidentOwnership());
     return executor.postEnvelope(request).map(this::toEnvelope);
   }
