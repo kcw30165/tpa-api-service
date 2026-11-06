@@ -58,14 +58,14 @@ public class ApimExchangeOutcomeLogger {
     if (fieldPath != null && request.resubmissionPolicy() != ApimResubmissionPolicy.NEVER) {
       event.put("jsonPath", fieldPath);
     }
-    log.error("{}", toJson(event));
+    logTechnical(request, event);
   }
 
   private void logContractInvalid(
       ApimExchangeRequest<?, ?> request, String reason, String requestId) {
     Map<String, Object> event = baseEvent("apim.contract.invalid", request, requestId);
     event.put("reason", reason);
-    log.error("{}", toJson(event));
+    logTechnical(request, event);
   }
 
   private void logBusinessRejected(ApimExchangeRequest<?, ?> request, String requestId) {
@@ -139,4 +139,13 @@ public class ApimExchangeOutcomeLogger {
       return "{\"event\":\"log-serialization-failed\"}";
     }
   }
+  private void logTechnical(ApimExchangeRequest<?, ?> request, Map<String, Object> event) {
+    String payload = toJson(event);
+    if (request.incidentOwnership() == ApimIncidentOwnership.TERMINAL_CALLER) {
+      log.warn("{}", payload);
+    } else {
+      log.error("{}", payload);
+    }
+  }
+
 }

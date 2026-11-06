@@ -68,7 +68,7 @@ class DefaultApimExchangeExecutorOutcomeLoggingTest {
   void successEmissionInvokesSuccessLoggingWithUnalteredEnvelope() {
     ApimResponseEnvelope<String> envelope =
         new ApimResponseEnvelope<>(new ApimResponseBody<>("", List.of("x")));
-    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any()))
+    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any(), any(ApimResubmissionPolicy.class), any(ApimIncidentOwnership.class)))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", profile(), null)));
     when(crypto.decryptResponseEnvelope(PATH, "body", String.class, null)).thenReturn(envelope);
 
@@ -92,7 +92,7 @@ class DefaultApimExchangeExecutorOutcomeLoggingTest {
   void requestIdFromReactorContextIsForwardedToOutcomeLogger() {
     ApimResponseEnvelope<String> envelope =
         new ApimResponseEnvelope<>(new ApimResponseBody<>("", List.of()));
-    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any()))
+    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any(), any(ApimResubmissionPolicy.class), any(ApimIncidentOwnership.class)))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", profile(), null)));
     when(crypto.decryptResponseEnvelope(PATH, "body", String.class, null)).thenReturn(envelope);
 
@@ -108,7 +108,7 @@ class DefaultApimExchangeExecutorOutcomeLoggingTest {
   void malformedOrRejectedEnvelopeStillFlowsThroughUnalteredToCaller() {
     ApimResponseEnvelope<String> businessFailureEnvelope =
         new ApimResponseEnvelope<>(new ApimResponseBody<>("err.tpa.wrong.password", null));
-    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any()))
+    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any(), any(ApimResubmissionPolicy.class), any(ApimIncidentOwnership.class)))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", profile(), null)));
     when(crypto.decryptResponseEnvelope(PATH, "body", String.class, null))
         .thenReturn(businessFailureEnvelope);

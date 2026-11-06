@@ -72,7 +72,7 @@ class DefaultApimExchangeExecutorTest {
             SOURCE,
             ApimDatabaseScope.ACCOUNT_ENV,
             CONTEXT,
-            ApimRetryEligibility.SAFE_BUSINESS_CALL))
+            ApimRetryEligibility.SAFE_BUSINESS_CALL, ApimResubmissionPolicy.ALLOW_RECOVERY, ApimIncidentOwnership.APIM_OBSERVER))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", PROFILE, null)));
     when(crypto.decryptResponseEnvelope(PATH, "body", ResponseDto.class, null))
         .thenReturn(envelope);
@@ -94,7 +94,7 @@ class DefaultApimExchangeExecutorTest {
             fn.capture(),
             eq(ApimDatabaseScope.ACCOUNT_ENV),
             eq(CONTEXT),
-            eq(ApimRetryEligibility.SAFE_BUSINESS_CALL)))
+            eq(ApimRetryEligibility.SAFE_BUSINESS_CALL), any(ApimResubmissionPolicy.class), any(ApimIncidentOwnership.class)))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", PROFILE, successfulKey)));
     when(crypto.encryptRequest(PATH, SOURCE, RequestDto.class, attemptKey)).thenReturn(TRANSFORMED);
     when(crypto.decryptResponseEnvelope(PATH, "body", ResponseDto.class, successfulKey))
@@ -114,7 +114,7 @@ class DefaultApimExchangeExecutorTest {
             any(),
             eq(ApimDatabaseScope.ACCOUNT_ENV),
             eq(CONTEXT),
-            eq(ApimRetryEligibility.SAFE_BUSINESS_CALL)))
+            eq(ApimRetryEligibility.SAFE_BUSINESS_CALL), any(ApimResubmissionPolicy.class), any(ApimIncidentOwnership.class)))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", PROFILE, refreshed)));
     when(crypto.decryptResponseEnvelope(PATH, "body", ResponseDto.class, refreshed))
         .thenReturn(envelope);
@@ -130,7 +130,7 @@ class DefaultApimExchangeExecutorTest {
             SOURCE,
             ApimDatabaseScope.ACCOUNT_ENV,
             CONTEXT,
-            ApimRetryEligibility.SAFE_BUSINESS_CALL))
+            ApimRetryEligibility.SAFE_BUSINESS_CALL, ApimResubmissionPolicy.ALLOW_RECOVERY, ApimIncidentOwnership.APIM_OBSERVER))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", PROFILE, null)));
     when(crypto.decryptResponseEnvelope(eq(PATH), eq("body"), eq(ResponseDto.class), eq(null)))
         .thenReturn(mock(ApimResponseEnvelope.class));
@@ -141,7 +141,9 @@ class DefaultApimExchangeExecutorTest {
             SOURCE,
             ApimDatabaseScope.ACCOUNT_ENV,
             CONTEXT,
-            ApimRetryEligibility.SAFE_BUSINESS_CALL);
+            ApimRetryEligibility.SAFE_BUSINESS_CALL,
+            ApimResubmissionPolicy.ALLOW_RECOVERY,
+            ApimIncidentOwnership.APIM_OBSERVER);
   }
 
   @Test
@@ -157,7 +159,7 @@ class DefaultApimExchangeExecutorTest {
   void synchronousResponseCryptoFailureIsReactive() {
     properties.getEncryption().setEnabled(false);
     when(crypto.encryptRequest(PATH, SOURCE, RequestDto.class, null)).thenReturn(SOURCE);
-    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any()))
+    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any(), any(ApimResubmissionPolicy.class), any(ApimIncidentOwnership.class)))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", PROFILE, null)));
     when(crypto.decryptResponseEnvelope(PATH, "body", ResponseDto.class, null))
         .thenThrow(new IllegalStateException("response crypto"));
@@ -170,7 +172,7 @@ class DefaultApimExchangeExecutorTest {
   void emptySuccessfulExchangeFailsDeterministically() {
     properties.getEncryption().setEnabled(false);
     when(crypto.encryptRequest(PATH, SOURCE, RequestDto.class, null)).thenReturn(SOURCE);
-    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any()))
+    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any(), any(ApimResubmissionPolicy.class), any(ApimIncidentOwnership.class)))
         .thenReturn(Mono.empty());
     StepVerifier.create(executor.postEnvelope(request))
         .expectErrorMessage("APIM successful exchange was empty")
@@ -180,7 +182,7 @@ class DefaultApimExchangeExecutorTest {
   @Test
   void encryptedNullKeyFailsDeterministically() {
     properties.getEncryption().setEnabled(true);
-    when(facade.postEncryptedSuccessfulExchange(anyString(), any(), any(), any(), any()))
+    when(facade.postEncryptedSuccessfulExchange(anyString(), any(), any(), any(), any(), any(ApimResubmissionPolicy.class), any(ApimIncidentOwnership.class)))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", PROFILE, null)));
     StepVerifier.create(executor.postEnvelope(request))
         .expectErrorMessage("Encrypted APIM exchange missing verification key")
@@ -192,7 +194,7 @@ class DefaultApimExchangeExecutorTest {
     properties.getEncryption().setEnabled(false);
     PublicKey key = mock(PublicKey.class);
     when(crypto.encryptRequest(PATH, SOURCE, RequestDto.class, null)).thenReturn(SOURCE);
-    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any()))
+    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any(), any(ApimResubmissionPolicy.class), any(ApimIncidentOwnership.class)))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", PROFILE, key)));
     StepVerifier.create(executor.postEnvelope(request))
         .expectErrorMessage("Plain APIM exchange unexpectedly returned verification key")
@@ -204,7 +206,7 @@ class DefaultApimExchangeExecutorTest {
     properties.getEncryption().setEnabled(false);
     ApimResponseEnvelope<ResponseDto> businessFailureEnvelope = mock(ApimResponseEnvelope.class);
     when(crypto.encryptRequest(PATH, SOURCE, RequestDto.class, null)).thenReturn(SOURCE);
-    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any()))
+    when(facade.postSuccessfulExchange(anyString(), any(), any(), any(), any(), any(ApimResubmissionPolicy.class), any(ApimIncidentOwnership.class)))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("business", PROFILE, null)));
     when(crypto.decryptResponseEnvelope(PATH, "business", ResponseDto.class, null))
         .thenReturn(businessFailureEnvelope);

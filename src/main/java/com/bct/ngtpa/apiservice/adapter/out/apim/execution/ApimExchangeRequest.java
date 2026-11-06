@@ -14,7 +14,8 @@ public record ApimExchangeRequest<R, D>(
     ApimDatabaseScope databaseScope,
     ApimCredentialResolutionContext credentialContext,
     ApimRetryEligibility retryEligibility,
-    ApimResubmissionPolicy resubmissionPolicy) {
+    ApimResubmissionPolicy resubmissionPolicy,
+    ApimIncidentOwnership incidentOwnership) {
 
   /** Existing exchanges retain their established token/certificate recovery behavior. */
   public ApimExchangeRequest(
@@ -33,7 +34,16 @@ public record ApimExchangeRequest<R, D>(
         databaseScope,
         credentialContext,
         retryEligibility,
-        ApimResubmissionPolicy.ALLOW_RECOVERY);
+        ApimResubmissionPolicy.ALLOW_RECOVERY,
+        ApimIncidentOwnership.APIM_OBSERVER);
+  }
+
+  public ApimExchangeRequest(
+      String path, R request, Class<R> requestType, Class<D> responseDataType,
+      ApimDatabaseScope databaseScope, ApimCredentialResolutionContext credentialContext,
+      ApimRetryEligibility retryEligibility, ApimResubmissionPolicy resubmissionPolicy) {
+    this(path, request, requestType, responseDataType, databaseScope, credentialContext,
+        retryEligibility, resubmissionPolicy, ApimIncidentOwnership.APIM_OBSERVER);
   }
 
   public ApimExchangeRequest {
@@ -52,6 +62,7 @@ public record ApimExchangeRequest<R, D>(
         credentialContext.actorUserRole(), "credentialContext.actorUserRole must not be null");
     Objects.requireNonNull(retryEligibility, "retryEligibility must not be null");
     Objects.requireNonNull(resubmissionPolicy, "resubmissionPolicy must not be null");
+    Objects.requireNonNull(incidentOwnership, "incidentOwnership must not be null");
     if (resubmissionPolicy == ApimResubmissionPolicy.NEVER
         && retryEligibility != ApimRetryEligibility.NON_RETRYABLE) {
       throw new IllegalArgumentException("NEVER requires NON_RETRYABLE business eligibility");

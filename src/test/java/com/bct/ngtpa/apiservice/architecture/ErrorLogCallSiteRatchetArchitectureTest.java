@@ -72,7 +72,7 @@ class ErrorLogCallSiteRatchetArchitectureTest {
     map.put(
         "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/execution/"
             + "ApimExchangeOutcomeLogger.java",
-        2);
+        1);
     map.put(
         "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/"
             + "ApimForgotPasswordUsernameLookupAdapter.java",

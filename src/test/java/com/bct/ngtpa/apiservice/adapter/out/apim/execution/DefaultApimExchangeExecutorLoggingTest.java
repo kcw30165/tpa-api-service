@@ -113,7 +113,7 @@ class DefaultApimExchangeExecutorLoggingTest {
             SOURCE,
             ApimDatabaseScope.ACCOUNT_ENV,
             CONTEXT,
-            ApimRetryEligibility.SAFE_BUSINESS_CALL))
+            ApimRetryEligibility.SAFE_BUSINESS_CALL, ApimResubmissionPolicy.ALLOW_RECOVERY, ApimIncidentOwnership.APIM_OBSERVER))
         .thenReturn(Mono.error(new IllegalStateException("facade boom")));
 
     StepVerifier.create(executor.postEnvelope(request))
@@ -143,7 +143,7 @@ class DefaultApimExchangeExecutorLoggingTest {
             SOURCE,
             ApimDatabaseScope.ACCOUNT_ENV,
             CONTEXT,
-            ApimRetryEligibility.SAFE_BUSINESS_CALL))
+            ApimRetryEligibility.SAFE_BUSINESS_CALL, ApimResubmissionPolicy.ALLOW_RECOVERY, ApimIncidentOwnership.APIM_OBSERVER))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", PROFILE, null)));
     when(crypto.decryptResponseEnvelope(PATH, "body", ResponseDto.class, null))
         .thenThrow(new ApimCryptoException("Failed to decrypt APIM response payload."));
@@ -175,7 +175,7 @@ class DefaultApimExchangeExecutorLoggingTest {
             SOURCE,
             ApimDatabaseScope.ACCOUNT_ENV,
             CONTEXT,
-            ApimRetryEligibility.SAFE_BUSINESS_CALL))
+            ApimRetryEligibility.SAFE_BUSINESS_CALL, ApimResubmissionPolicy.ALLOW_RECOVERY, ApimIncidentOwnership.APIM_OBSERVER))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", PROFILE, null)));
     ApimResponseEnvelope<ResponseDto> rejectedEnvelope =
         new ApimResponseEnvelope<>(new ApimResponseBody<>("err.tpa.wrong.password", null));
@@ -209,7 +209,7 @@ class DefaultApimExchangeExecutorLoggingTest {
             SOURCE,
             ApimDatabaseScope.ACCOUNT_ENV,
             CONTEXT,
-            ApimRetryEligibility.SAFE_BUSINESS_CALL))
+            ApimRetryEligibility.SAFE_BUSINESS_CALL, ApimResubmissionPolicy.ALLOW_RECOVERY, ApimIncidentOwnership.APIM_OBSERVER))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", PROFILE, null)));
     ApimResponseEnvelope<ResponseDto> malformedEnvelope =
         new ApimResponseEnvelope<>(new ApimResponseBody<>("", null));
@@ -241,7 +241,7 @@ class DefaultApimExchangeExecutorLoggingTest {
             SOURCE,
             ApimDatabaseScope.ACCOUNT_ENV,
             CONTEXT,
-            ApimRetryEligibility.SAFE_BUSINESS_CALL))
+            ApimRetryEligibility.SAFE_BUSINESS_CALL, ApimResubmissionPolicy.ALLOW_RECOVERY, ApimIncidentOwnership.APIM_OBSERVER))
         .thenReturn(Mono.just(new ApimSuccessfulExchange("body", PROFILE, null)));
     ApimResponseEnvelope<ResponseDto> wellFormedEnvelope =
         new ApimResponseEnvelope<>(new ApimResponseBody<>("", List.of(new ResponseDto("x"))));
