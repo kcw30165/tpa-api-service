@@ -65,8 +65,7 @@ class InvestmentChoiceApplicationConfigTest {
                 mock(InvestmentChoiceSnapshotCacheService.class),
                 mock(FailureEventPort.class));
 
-    assertThat(useCase).isNotNull();
-    assertThat(useCase).isInstanceOf(GetInvestmentChoiceService.class);
+    assertThat(useCase).isNotNull().isInstanceOf(GetInvestmentChoiceService.class);
   }
 
   @Test
