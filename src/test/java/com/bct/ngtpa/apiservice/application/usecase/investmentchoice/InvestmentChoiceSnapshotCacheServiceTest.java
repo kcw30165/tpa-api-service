@@ -20,6 +20,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRev
 import com.bct.ngtpa.apiservice.application.idempotency.JacksonTransientJsonCodec;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyOutcome;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyResult;
@@ -29,10 +30,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
@@ -143,6 +146,18 @@ class InvestmentChoiceSnapshotCacheServiceTest {
     assertThat(read(ACCOUNT_REF, POLICY_NO)).contains(snapshot(ACCOUNT_REF));
     assertThat(wire.path("sources").get(1).path("available").asBoolean()).isFalse();
     assertThat(wire.path("funds").get(1).path("available").asBoolean()).isFalse();
+    assertThat(wire.path("sources").get(0).fieldNames())
+        .toIterable()
+        .containsExactlyInAnyOrder("switchSource", "available");
+    assertThat(wire.path("sources").get(1).fieldNames())
+        .toIterable()
+        .containsExactlyInAnyOrder("switchSource", "available");
+    assertThat(wire.path("funds").get(0).fieldNames())
+        .toIterable()
+        .containsExactlyInAnyOrder("fundCode", "available");
+    assertThat(wire.path("funds").get(1).fieldNames())
+        .toIterable()
+        .containsExactlyInAnyOrder("fundCode", "available");
   }
 
   @Test
@@ -275,6 +290,27 @@ class InvestmentChoiceSnapshotCacheServiceTest {
 
     StepVerifier.create(failingService.write(SID, snapshot(ACCOUNT_REF), "req-1")).verifyComplete();
     verify(concurrency, never()).updateIfUsable(any(), any(), any());
+  }
+
+  @Test
+  void operationalFailuresDoNotPublishFailureEventsOrEscape() {
+    boolean publishesFailureEvents =
+        Stream.concat(
+                Arrays.stream(InvestmentChoiceSnapshotCacheService.class.getDeclaredFields())
+                    .map(java.lang.reflect.Field::getType),
+                Arrays.stream(InvestmentChoiceSnapshotCacheService.class.getDeclaredConstructors())
+                    .flatMap(constructor -> Arrays.stream(constructor.getParameterTypes())))
+            .anyMatch(FailureEventPort.class::isAssignableFrom);
+    assertThat(publishesFailureEvents).isFalse();
+
+    when(sessions.load(any())).thenReturn(Mono.error(new IllegalStateException("redis down")));
+    StepVerifier.create(service().read(SID, ACCOUNT_REF, POLICY_NO, "req-1"))
+        .assertNext(result -> assertThat(result).isEmpty())
+        .verifyComplete();
+
+    when(concurrency.updateIfUsable(any(), any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("redis down")));
+    StepVerifier.create(service().write(SID, snapshot(ACCOUNT_REF), "req-1")).verifyComplete();
   }
 
   @Test
