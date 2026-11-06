@@ -46,9 +46,12 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.*;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerCodecConfigurer;
 import org.springframework.http.server.reactive.ReactorHttpHandlerAdapter;
 import org.springframework.test.web.reactive.server.*;
+import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.server.adapter.WebHttpHandlerBuilder;
+import org.springframework.web.util.pattern.PathPatternParser;
 import reactor.core.publisher.*;
 import reactor.core.scheduler.Schedulers;
 import reactor.netty.DisposableServer;
@@ -60,6 +63,7 @@ import reactor.util.retry.Retry;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PasswordValidationTokenGateHttpTest {
   private static final String PATH = PasswordValidationRouteMatcher.PERSONAL_INFORMATION_PATH;
+  private static final String CIM_PATH = "/api/v1/investment-choice/instructions";
   private static final String TOKEN = "X-Password-Validation-Token";
   private static final String SID = "sid_abcdefghijklmnopqrstuvwx";
   private static final String REF = "acc_abcdefghijklmnopqrstuvwx";
@@ -69,6 +73,10 @@ class PasswordValidationTokenGateHttpTest {
       "{\"formVersion\":\"v1\",\"applyToAllAccounts\":false,\"fields\":{\"mailingAddress\":\"reviewed-marker\"}}";
   private static final String GRANT_KEY =
       "password-validation:" + REF + ":PERSONAL_INFORMATION_UPDATE";
+  private static final String CIM_GRANT_KEY =
+      "password-validation:" + REF + ":CHANGE_INVESTMENT_CHOICE";
+  private static final String CIM_PAYLOAD =
+      "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":[{\"fundCode\":\"FBAL\",\"percentage\":60},{\"fundCode\":\"FHKM\",\"percentage\":40}]}";
   private static final ObjectMapper JSON = new ObjectMapper();
   private final JsonOperationPayloadCanonicalizer bindings =
       new JsonOperationPayloadCanonicalizer();
@@ -80,6 +88,7 @@ class PasswordValidationTokenGateHttpTest {
   private WebTestClient client;
   private WebTestClient baselineClient;
   private RedisFixture fixture;
+  private CimInstructionStub cimStub;
   private Logger root;
   private ListAppender<ILoggingEvent> logs;
   private boolean confidentialRoute;
@@ -98,6 +107,7 @@ class PasswordValidationTokenGateHttpTest {
     context.registerBean(RedisFixture.class, () -> fixture);
     context.register(HttpConfiguration.class);
     context.refresh();
+    cimStub = context.getBean(CimInstructionStub.class);
     var controller = context.getBean(PersonalInformationController.class);
     var update = context.getBean(UpdatePersonalInformationUseCase.class);
     when(update.execute(any()))
@@ -155,6 +165,7 @@ class PasswordValidationTokenGateHttpTest {
   @BeforeEach
   void resetFixture() {
     fixture.reset();
+    cimStub.reset();
     confidentialRoute = true;
     dispatches.set(0);
     downstream.set(0);
@@ -239,6 +250,203 @@ class PasswordValidationTokenGateHttpTest {
     assertThat(dispatches).hasValue(1);
     assertThat(downstream).hasValue(1);
     assertThat(logText()).doesNotContain(token);
+  }
+
+  @Test
+  void validCimTokenBindsBodyDispatchesOnceAndCannotBeReused() {
+    String token = issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+
+    post(CIM_PATH, SID, REF, "csrf-fixture", CIM_PAYLOAD, token).expectStatus().isOk();
+
+    assertThat(cimStub.dispatches).hasValue(1);
+    assertThat(cimStub.downstream).hasValue(1);
+    assertThat(cimStub.lastBody).hasValue(CIM_PAYLOAD);
+    assertConsumed(CIM_GRANT_KEY);
+    reject(
+        post(CIM_PATH, SID, REF, "csrf-fixture", CIM_PAYLOAD, token),
+        403,
+        "BUSINESS_REJECTED",
+        authorizationCode());
+    assertThat(cimStub.dispatches).hasValue(1);
+    assertThat(cimStub.downstream).hasValue(1);
+    assertThat(logText()).doesNotContain(token);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"missing", "expired", "consumed"})
+  void cimMissingExpiredAndConsumedTokensAreRejectedBeforeDispatch(String state) {
+    String token = issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+    if (state.equals("expired")) fixture.clock.offset = Duration.ofSeconds(300);
+    if (state.equals("consumed"))
+      consume(token, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+
+    reject(
+        post(
+            CIM_PATH,
+            SID,
+            REF,
+            "csrf-fixture",
+            CIM_PAYLOAD,
+            state.equals("missing") ? new String[0] : new String[] {token}),
+        403,
+        "BUSINESS_REJECTED",
+        authorizationCode());
+
+    assertThat(cimStub.dispatches).hasValue(0);
+    assertThat(cimStub.downstream).hasValue(0);
+    assertThat(fixture.bodySubscriptions).hasValue(0);
+    assertThat(logText()).doesNotContain(token);
+  }
+
+  @Test
+  void tokenPurposesCannotBeSwappedBetweenPersonalInformationAndCimRoutes() {
+    String piToken = issue(PAYLOAD);
+    reject(
+        post(CIM_PATH, SID, REF, "csrf-fixture", CIM_PAYLOAD, piToken),
+        403,
+        "BUSINESS_REJECTED",
+        authorizationCode());
+    String cimToken = issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+    reject(put(PATH, PAYLOAD, cimToken), 403, "BUSINESS_REJECTED", authorizationCode());
+    assertThat(cimStub.dispatches).hasValue(0);
+    assertThat(cimStub.downstream).hasValue(0);
+    assertNoDispatch();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"allocations", "percentage"})
+  void cimBodyWithChangedAllocationBindingIsRejected(String changedPart) {
+    String submitted =
+        changedPart.equals("allocations")
+            ? "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":[{\"fundCode\":\"FHKM\",\"percentage\":40},{\"fundCode\":\"FBAL\",\"percentage\":60}]}"
+            : CIM_PAYLOAD.replace("\"percentage\":60", "\"percentage\":61");
+    String token = issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+
+    reject(
+        post(CIM_PATH, SID, REF, "csrf-fixture", submitted, token),
+        403,
+        "BUSINESS_REJECTED",
+        authorizationCode());
+
+    assertConsumed(CIM_GRANT_KEY);
+    assertThat(cimStub.dispatches).hasValue(0);
+    assertThat(cimStub.downstream).hasValue(0);
+  }
+
+  @Test
+  void cimObjectMemberReorderingPreservesBinding() {
+    String reordered =
+        "{\"allocations\":[{\"percentage\":60,\"fundCode\":\"FBAL\"},{\"percentage\":40,\"fundCode\":\"FHKM\"}],\"switchSources\":[\"BO\",\"EE\"]}";
+    String token = issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+
+    post(CIM_PATH, SID, REF, "csrf-fixture", reordered, token).expectStatus().isOk();
+
+    assertConsumed(CIM_GRANT_KEY);
+    assertThat(cimStub.dispatches).hasValue(1);
+    assertThat(cimStub.downstream).hasValue(1);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"session", "account"})
+  void cimTokenIsBoundToSessionAndAccount(String mismatch) {
+    String token = issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+    String session = mismatch.equals("session") ? OTHER_SID : SID;
+    String account = mismatch.equals("account") ? OTHER_REF : REF;
+
+    reject(
+        post(CIM_PATH, session, account, "csrf-fixture", CIM_PAYLOAD, token),
+        403,
+        "BUSINESS_REJECTED",
+        authorizationCode());
+
+    assertThat(cimStub.dispatches).hasValue(0);
+    assertThat(cimStub.downstream).hasValue(0);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "/api/v1/investment-choice/instructions",
+        "/api/v1/%69nvestment-choice/instructions",
+        "/api/v1/investment-choice/instructions;x=1",
+        "/api;x=1/v1/investment-choice/instructions"
+      })
+  void everyCimRoutedVariantRequiresTokenAndMatchingBody(String path) {
+    String token = issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+    reject(
+        post(path, SID, REF, "csrf-fixture", CIM_PAYLOAD),
+        403,
+        "BUSINESS_REJECTED",
+        authorizationCode());
+    assertThat(cimStub.dispatches).hasValue(0);
+    post(path, SID, REF, "csrf-fixture", CIM_PAYLOAD, token).expectStatus().isOk();
+    assertThat(cimStub.dispatches).hasValue(1);
+    assertConsumed(CIM_GRANT_KEY);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "/api/v1/investment-choice/instructions/",
+        "/api/v1/Investment-choice/instructions"
+      })
+  void nonRoutedCimPathVariantsKeepExistingHandlerMappingAndDoNotConsume(String path) {
+    confidentialRoute = false;
+    String token = issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+    String original = fixture.load(SID).featureState().get(CIM_GRANT_KEY);
+    var before =
+        baselineClient
+            .post()
+            .uri(path)
+            .cookie("portal_sid", SID)
+            .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, REF)
+            .header(RequestHeaderContextKeys.XSRF_TOKEN_HEADER, "csrf-fixture")
+            .header(RequestCorrelation.REQUEST_ID_HEADER, "m4-http")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(CIM_PAYLOAD)
+            .exchange()
+            .expectBody()
+            .returnResult();
+    var after =
+        post(path, SID, REF, "csrf-fixture", CIM_PAYLOAD, token).expectBody().returnResult();
+    assertThat(after.getStatus()).isEqualTo(before.getStatus());
+    assertThat(after.getResponseBody()).isEqualTo(before.getResponseBody());
+    assertThat(fixture.load(SID).featureState()).containsEntry(CIM_GRANT_KEY, original);
+    assertThat(cimStub.dispatches).hasValue(0);
+  }
+
+  @Test
+  void getInvestmentChoiceAndOtherInstructionMethodsAreNotGated() {
+    confidentialRoute = false;
+    issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+    String grant = fixture.load(SID).featureState().get(CIM_GRANT_KEY);
+    var get =
+        client
+            .get()
+            .uri("/api/v1/investment-choice")
+            .cookie("portal_sid", SID)
+            .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, REF)
+            .header(RequestCorrelation.REQUEST_ID_HEADER, "m4-http")
+            .exchange()
+            .expectBody()
+            .returnResult();
+    var put =
+        client
+            .put()
+            .uri(CIM_PATH)
+            .cookie("portal_sid", SID)
+            .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, REF)
+            .header(RequestHeaderContextKeys.XSRF_TOKEN_HEADER, "csrf-fixture")
+            .header(RequestCorrelation.REQUEST_ID_HEADER, "m4-http")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(CIM_PAYLOAD)
+            .exchange()
+            .expectBody()
+            .returnResult();
+    assertThat(get.getStatus().value()).isNotEqualTo(403);
+    assertThat(put.getStatus().value()).isNotEqualTo(403);
+    assertThat(fixture.load(SID).featureState()).containsEntry(CIM_GRANT_KEY, grant);
+    assertThat(cimStub.dispatches).hasValue(0);
   }
 
   @ParameterizedTest
@@ -840,13 +1048,17 @@ class PasswordValidationTokenGateHttpTest {
   }
 
   private String issue(String raw) {
+    return issue(raw, PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE);
+  }
+
+  private String issue(String raw, PasswordValidationPurpose purpose) {
     var result =
         context
             .getBean(PasswordValidationGrantService.class)
             .issue(
                 new AuthenticatedSessionId(SID),
                 new AuthenticatedAccountRef(REF),
-                PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE,
+                purpose,
                 bindings.digest(raw),
                 PasswordCheckResult.CORRECT,
                 "m4-http")
@@ -857,12 +1069,16 @@ class PasswordValidationTokenGateHttpTest {
   }
 
   private void consume(String token) {
+    consume(token, PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE);
+  }
+
+  private void consume(String token, PasswordValidationPurpose purpose) {
     context
         .getBean(PasswordValidationGrantService.class)
         .consume(
             new AuthenticatedSessionId(SID),
             new AuthenticatedAccountRef(REF),
-            PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE,
+            purpose,
             token,
             "m4-http")
         .block();
@@ -879,6 +1095,27 @@ class PasswordValidationTokenGateHttpTest {
     if (ref != null) request.header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ref);
     if (csrf != null) request.header(RequestHeaderContextKeys.XSRF_TOKEN_HEADER, csrf);
     return request;
+  }
+
+  private WebTestClient.RequestBodySpec postRequest(
+      String path, String sid, String ref, String csrf) {
+    var request =
+        client
+            .post()
+            .uri(URI.create("http://127.0.0.1:" + http.port() + path))
+            .contentType(MediaType.APPLICATION_JSON)
+            .header(RequestCorrelation.REQUEST_ID_HEADER, "m4-http");
+    if (sid != null) request.cookie("portal_sid", sid);
+    if (ref != null) request.header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ref);
+    if (csrf != null) request.header(RequestHeaderContextKeys.XSRF_TOKEN_HEADER, csrf);
+    return request;
+  }
+
+  private WebTestClient.ResponseSpec post(
+      String path, String sid, String ref, String csrf, String raw, String... tokens) {
+    var request = postRequest(path, sid, ref, csrf);
+    if (tokens.length > 0) request.header(TOKEN, tokens);
+    return request.bodyValue(raw).exchange();
   }
 
   private WebTestClient.ResponseSpec put(String path, String raw, String... tokens) {
@@ -918,7 +1155,11 @@ class PasswordValidationTokenGateHttpTest {
   }
 
   private void assertConsumed() {
-    assertThat(fixture.load(SID).featureState()).containsEntry(GRANT_KEY, "consumed");
+    assertConsumed(GRANT_KEY);
+  }
+
+  private void assertConsumed(String grantKey) {
+    assertThat(fixture.load(SID).featureState()).containsEntry(grantKey, "consumed");
     assertThat(fixture.consumedBeforeBody).isTrue();
   }
 
@@ -1005,6 +1246,43 @@ class PasswordValidationTokenGateHttpTest {
     }
 
     @Bean
+    CimInstructionStub cimInstructionStub() {
+      return new CimInstructionStub();
+    }
+
+    @Bean
+    @org.springframework.core.annotation.Order(org.springframework.core.Ordered.LOWEST_PRECEDENCE)
+    org.springframework.web.server.WebFilter cimInstructionHandler(CimInstructionStub stub) {
+      var path = PathPatternParser.defaultInstance.parse(CIM_PATH);
+      var codecs = ServerCodecConfigurer.create();
+      return (exchange, chain) -> {
+        if (!HttpMethod.POST.equals(exchange.getRequest().getMethod())
+            || !path.matches(exchange.getRequest().getPath().pathWithinApplication())) {
+          return chain.filter(exchange);
+        }
+        stub.dispatches.incrementAndGet();
+        return ServerRequest.create(exchange, codecs.getReaders())
+            .bodyToMono(String.class)
+            .defaultIfEmpty("")
+            .flatMap(
+                body -> {
+                  stub.lastBody.set(body);
+                  stub.downstream.incrementAndGet();
+                  exchange.getResponse().setStatusCode(HttpStatus.OK);
+                  exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+                  return exchange
+                      .getResponse()
+                      .writeWith(
+                          Mono.just(
+                              exchange
+                                  .getResponse()
+                                  .bufferFactory()
+                                  .wrap("{\"stub\":\"ok\"}".getBytes())));
+                });
+      };
+    }
+
+    @Bean
     PersonalInformationController personalInformation(
         UpdatePersonalInformationUseCase update,
         CurrentPortalAccessContextResolver contexts,
@@ -1049,12 +1327,18 @@ class PasswordValidationTokenGateHttpTest {
                         return Flux.defer(
                             () -> {
                               fixture.bodySubscriptions.incrementAndGet();
+                              boolean cimRoute =
+                                  HttpMethod.POST.equals(original.getMethod())
+                                      && PathPatternParser.defaultInstance
+                                          .parse(CIM_PATH)
+                                          .matches(original.getPath().pathWithinApplication());
+                              String grantKey = cimRoute ? CIM_GRANT_KEY : GRANT_KEY;
                               return fixture
                                   .loadReactive(SID)
                                   .doOnNext(
                                       session -> {
                                         if (!"consumed"
-                                            .equals(session.featureState().get(GRANT_KEY))) {
+                                            .equals(session.featureState().get(grantKey))) {
                                           fixture.consumedBeforeBody.set(false);
                                         }
                                       })
@@ -1064,6 +1348,18 @@ class PasswordValidationTokenGateHttpTest {
                     })
                 .build());
       };
+    }
+  }
+
+  static class CimInstructionStub {
+    final AtomicInteger dispatches = new AtomicInteger();
+    final AtomicInteger downstream = new AtomicInteger();
+    final AtomicReference<String> lastBody = new AtomicReference<>();
+
+    void reset() {
+      dispatches.set(0);
+      downstream.set(0);
+      lastBody.set(null);
     }
   }
 

@@ -11,6 +11,7 @@ import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationGrantService;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
 import com.bct.ngtpa.apiservice.shared.web.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Optional;
@@ -150,6 +151,37 @@ class PasswordValidationTokenGateWebFilterTest {
   }
 
   @Test
+  void cimInstructionConsumesWithItsMappedPurpose() {
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/investment-choice/instructions")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, REF)
+                .header(PasswordValidationTokenGateWebFilter.TOKEN_HEADER, TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}"));
+    exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "gate-unit");
+    authenticate(exchange);
+
+    AtomicInteger calls = new AtomicInteger();
+    gate.filter(
+            exchange,
+            actual -> {
+              calls.incrementAndGet();
+              return Mono.empty();
+            })
+        .block();
+
+    assertThat(calls).hasValue(1);
+    verify(grants)
+        .consume(
+            any(),
+            any(),
+            eq(PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE),
+            eq(TOKEN),
+            eq("gate-unit"));
+  }
+
+  @Test
   void missingAccountHeaderIsRejectedBeforeToken() {
     var exchange =
         MockServerWebExchange.from(
@@ -215,6 +247,10 @@ class PasswordValidationTokenGateWebFilterTest {
     "POST,/api/v1/personal-information",
     "POST,/api/v1/password-validation",
     "PUT,/api/v1/other",
+    "GET,/api/v1/investment-choice",
+    "GET,/api/v1/investment-choice/instructions",
+    "PUT,/api/v1/investment-choice/instructions",
+    "DELETE,/api/v1/investment-choice/instructions",
     "PUT,/api/v1/personal-information/",
     "PUT,/api/v1/Personal-information"
   })

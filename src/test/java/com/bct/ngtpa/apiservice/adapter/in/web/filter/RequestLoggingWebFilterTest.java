@@ -42,7 +42,10 @@ class RequestLoggingWebFilterTest {
     "POST,/api/v1/%70assword-validation",
     "PUT,/api/v1/personal-information",
     "PUT,/api/v1/personal-information;x=1",
-    "PUT,/api/v1/%70ersonal-information"
+    "PUT,/api/v1/%70ersonal-information",
+    "POST,/api/v1/investment-choice/instructions",
+    "POST,/api/v1/investment-choice/instructions;x=1",
+    "POST,/api/v1/%69nvestment-choice/instructions"
   })
   void confidentialFailureTextIsNeverLogged(String method, String path) {
     var exchange =
@@ -68,7 +71,10 @@ class RequestLoggingWebFilterTest {
     "POST,/api/v1/%70assword-validation",
     "PUT,/api/v1/personal-information",
     "PUT,/api/v1/personal-information;x=1",
-    "PUT,/api/v1/%70ersonal-information"
+    "PUT,/api/v1/%70ersonal-information",
+    "POST,/api/v1/investment-choice/instructions",
+    "POST,/api/v1/investment-choice/instructions;x=1",
+    "POST,/api/v1/%69nvestment-choice/instructions"
   })
   void confidentialBodiesAreNeverLoggedEvenWithWildcardOptIn(String method, String path) {
     var props = enabledProperties();

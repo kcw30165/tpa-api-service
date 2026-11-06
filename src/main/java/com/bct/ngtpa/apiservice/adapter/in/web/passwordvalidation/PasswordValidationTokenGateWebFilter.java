@@ -75,8 +75,8 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-    if (!HttpMethod.PUT.equals(exchange.getRequest().getMethod())
-        || !PasswordValidationRouteMatcher.matches(exchange.getRequest())) {
+    var purpose = PasswordValidationRouteMatcher.purposeForTokenGate(exchange.getRequest());
+    if (purpose.isEmpty()) {
       return chain.filter(exchange);
     }
     exchange.getResponse().getHeaders().setCacheControl("no-store");
@@ -95,7 +95,8 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
     if (tokenHeaderRejection != null) {
       return rejected(exchange, tokenHeaderRejection);
     }
-    return consumeAndDispatch(exchange, chain, context, sessionId.get(), tokens.getFirst());
+    return consumeAndDispatch(
+        exchange, chain, context, sessionId.get(), tokens.getFirst(), purpose.get());
   }
 
   private Mono<Void> missingAccountRef(ServerWebExchange exchange) {
@@ -149,7 +150,8 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
       WebFilterChain chain,
       PortalAccessContext context,
       AuthenticatedSessionId sessionId,
-      String token) {
+      String token,
+      PasswordValidationPurpose purpose) {
     String requestId = exchange.getAttribute(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY);
     // Keep technical conversion on consume only, never on controller/update work.
     return Mono.defer(
@@ -157,7 +159,7 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
                 grants.consume(
                     sessionId,
                     new AuthenticatedAccountRef(context.account().accountRef()),
-                    PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE,
+                    purpose,
                     token,
                     requestId))
         .defaultIfEmpty(UNAVAILABLE)
