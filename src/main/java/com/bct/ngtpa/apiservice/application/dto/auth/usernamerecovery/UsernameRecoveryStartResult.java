@@ -42,10 +42,10 @@ public record UsernameRecoveryStartResult(
   public UsernameRecoveryStartResult {
     Objects.requireNonNull(outcome, "outcome must not be null");
     schemes = schemes == null ? List.of() : List.copyOf(schemes);
-    switch (outcome) {
-      case SESSION_CREATED -> validateSessionCreated(csrfToken, expiresInSeconds, schemes);
-      case MEMBER_NOT_FOUND ->
-          validateMemberNotFound(authFlowSessionId, csrfToken, expiresInSeconds, schemes);
+    if (outcome == Outcome.SESSION_CREATED) {
+      validateSessionCreated(csrfToken, expiresInSeconds, schemes);
+    } else {
+      validateMemberNotFound(authFlowSessionId, csrfToken, expiresInSeconds, schemes);
     }
   }
 
