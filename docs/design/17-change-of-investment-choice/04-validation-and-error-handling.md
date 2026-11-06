@@ -27,7 +27,7 @@ Rendered by the CIM controller with the same override as `PersonalInformationCon
 | V7 | `percentage` JSON integer 1..100 | `FIELD` | `err.investment-choice.percentage.invalid` | `["allocations[i].percentage"]` |
 | V8 | sum of `percentage` = 100 | `CROSS_FIELD` | `err.investment-choice.percentage.total-invalid` | `["allocations"]` |
 | S1 | `percentage % intervalPcnt == 0` | `FIELD` | `err.investment-choice.percentage.interval-invalid` | `["allocations[i].percentage"]` |
-| S2 | source exists in snapshot and its `avail-sw` = true (D-21, O-1) | `FIELD` | `err.investment-choice.switch-source.unavailable` | `["switchSources[i]"]` |
+| S2 | source exists in snapshot and its `avail-sw` = true (D-21, D-37) | `FIELD` | `err.investment-choice.switch-source.unavailable` | `["switchSources[i]"]` |
 | S3 | fund exists in snapshot and its `avail-sw` = true | `FIELD` | `err.investment-choice.fund.unavailable` | `["allocations[i].fundCode"]` |
 
 New constants go to `shared/error/ErrorCodes` (`UPPER_SNAKE_CASE` constant, `err.investment-choice.<reason>` value).

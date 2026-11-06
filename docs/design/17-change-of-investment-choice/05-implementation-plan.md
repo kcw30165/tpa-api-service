@@ -14,7 +14,7 @@ Branch: `feature/change-of-investment-choice` (existing worktree
 | M1 password validation second purpose | 1.1 | Purpose `CHANGE_INVESTMENT_CHOICE` in the purpose enum and parser; Personal Information unchanged (regression tests first) | M0 |
 | | 1.2 | Issuance structure check selected by purpose; strict V1-V8 for CIM | 1.1 |
 | | 1.3 | Token gate maps (method, route) -> purpose; CIM route `POST /api/v1/investment-choice/instructions`; path-variant tests | 1.2 |
-| | 1.4 | Route matcher / confidential-route registration and logging tests for the CIM route | 1.3 |
+| | 1.4 | Merged into 1.3: one route matcher drives gating and confidential logging (as built: 7bc73692, log-marker hardening fcd710eb) | 1.3 |
 | M2 TRPGetCIMDtl | 2.1 | APIM DTOs, `ignoreUnknown`, local strict formatters | M0 |
 | | 2.2 | `ApimInvestmentChoiceDetailsAdapter`: envelope interpretation, integrity rules, classifier + one `FailureEvent`, feature exception, empty eligibility slot; ledger +1 | 2.1 |
 | M3 GET | 3.1 | `InvestmentChoiceSnapshotCacheService` mirroring `PersonalInformationConfigCacheService` (read miss semantics, best-effort write, `belongsTo`) | M0 |
@@ -31,6 +31,7 @@ Branch: `feature/change-of-investment-choice` (existing worktree
 
 Every sub-task with production code also runs `ErrorLogCallSiteRatchetArchitectureTest` and
 `ApimFailureClassifierArchitectureTest`; `KNOWN_REMAINING` must not change.
+Every test run uses `-Dm15.redis.server=/usr/bin/redis-server`; zero skipped tests required.
 
 M1 may merge separately (it changes the shared password-validation capability); the CIM route stays
 unreachable until 4.4 because no controller exists before it.

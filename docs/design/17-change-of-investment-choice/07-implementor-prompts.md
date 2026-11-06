@@ -7,6 +7,7 @@ You are the implementor for api-service feature "Change of Investment Choice" (C
 Worktree: /home/nd2887/projects/orso/ngtpa/api-service-worktrees/change-of-investment-choice
 Branch: feature/change-of-investment-choice. Design pack: docs/design/17-change-of-investment-choice/ (authoritative).
 Toolchain: Maven 3.9.15 /home/nd2887/tools/apache-maven, Java 21.0.12.1 /home/nd2887/tools/jdk-21.0.12.1+1.
+Redis for tests: -Dm15.redis.server=/usr/bin/redis-server on every test run; zero skipped tests required.
 Rules: do only this sub-task; no guesses - if code at HEAD contradicts the pack, STOP and report with file:line;
 fail-first tests where behaviour changes; keep public contracts of other features unchanged;
 use the existing MutationResponse / ApiStatus / ApiError types unchanged; no nextStep;
@@ -51,7 +52,7 @@ Commit messages:
 1.1 feat(password-validation): add change-of-investment-choice purpose
 1.2 feat(password-validation): validate issuance payload structure per purpose
 1.3 feat(password-validation): gate investment-choice instruction route
-1.4 feat(password-validation): treat investment-choice instruction route as confidential
+1.4 merged into 1.3: feat(password-validation): gate and protect investment-choice instruction route
 ```
 
 ## 2.1 - 2.2 TRPGetCIMDtl
@@ -62,6 +63,9 @@ Per-operation envelope interpretation, not ApimResponseValidator.
 Error ownership per 04 s3: classify with ApimFailureClassifier, map category to FailureOrigin, publish exactly one
 FailureEvent, then the feature exception. Nonblank err-message -> DOWNSTREAM_CONTRACT; adapter-detected malformed ->
 DOWNSTREAM_INVALID_RESPONSE.
+Map ApimFailureCategory -> FailureOrigin with an exhaustive switch inside the adapter (same-named values; no shared mapper).
+Build events with new FailureEvent(...), capability "INVESTMENT_CHOICE".
+Add the adapter to ApimExecutionBoundaryCharacterizationTest's adapter list.
 Tests first: every field rule, every integrity rule, strict dates, empty data, >1 item, each err-message row,
 exactly one FailureEvent per failure with the expected origin, empty eligibility slot, ledger entry, ratchet unchanged.
 Commit messages:
@@ -92,7 +96,8 @@ Commit messages:
 Implement 01 s8-s9, 02 s2, 03 s2, 04 s1-s4.
 4.1 TRPCIMReq adapter: NON_RETRYABLE, never resubmitted; no success-flag check (D-14); outcome = success /
     err-message (DOWNSTREAM_CONTRACT event) / unknown (classified event); one FailureEvent per failure.
-4.2 Validator V1-V8, S1-S3 exactly as 04 s2; S2 pinned by one dedicated test (O-1).
+    Same exhaustive category->origin switch and FailureEvent constructor as 2.2; add to ApimExecutionBoundaryCharacterizationTest.
+4.2 Validator V1-V8, S1-S3 exactly as 04 s2; S2 pinned by one dedicated test (D-37: true = editable).
 4.3 Use case: snapshot miss -> LOCAL_SYSTEM event + 503; expansion; reconciliation once with TRPGetCIMDtl, today
     Asia/Hong_Kong, exact (switch-src, fund-code, pcnt) set; exactly one match -> 200 SUBMITTED; WARN logs only.
 4.4 Controller POST behind the token gate; VALIDATION_FAILED -> 422 override as PersonalInformationController.

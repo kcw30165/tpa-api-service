@@ -84,7 +84,7 @@ No query parameters.
 |---|---|
 | `accountNumber` | `AccountIdentifierFormatter.format(policyNo, certNo)` |
 | `intervalPercentage` | `interval-pcnt` verbatim, integer 1..100. Frontend decides dropdown vs manual entry |
-| `switchSources` | every `SwitchSrc` (Progress omits HIDDEN), sorted by `seq` ascending then code. `available` = `avail-sw` verbatim (meaning pending O-1) |
+| `switchSources` | every `SwitchSrc` (Progress omits HIDDEN), sorted by `seq` ascending then code. `available` = `avail-sw` verbatim (true = editable, false = read-only; D-37) |
 | `funds` | `SwitchFund` with `avail-sw = true` only, ordered per 01 section 7. `riskLevel` raw downstream string, null when absent |
 | `history` | `InvestMandate` grouped by `effect-date`, groups latest first; rows ordered by switch-source `seq`, then fund order. `percentage` is the downstream **string**, verbatim |
 | `history[].allocations[].fundName` | resolved from the **full** `SwitchFund` list including `avail-sw = false` |

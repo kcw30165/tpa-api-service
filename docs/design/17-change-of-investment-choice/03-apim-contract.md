@@ -30,7 +30,7 @@ credential context `(actorUserRole, accountEnv)` as Fund Fact Sheet.
 | `.switch-src` | string | yes, nonblank, unique | code |
 | `.src-desc`, `.src-chin-desc` | string | no | ignored |
 | `.seq` | integer | yes | sort key |
-| `.avail-sw` | boolean | yes | passed through; meaning pending O-1 |
+| `.avail-sw` | boolean | yes | passed through; true = editable, false = read-only (D-37) |
 | `SwitchFund[]` | array | yes, may be empty | |
 | `.fund-code` | string | yes, nonblank, unique | |
 | `.fund-name` | string | yes, nonblank (D-06) | |
@@ -107,5 +107,4 @@ A history or pending row whose `fund-code` is absent from `SwitchFund` is return
 
 | Id | Fix | Owner |
 |---|---|---|
-| O-1 | Final meaning of `SwitchSrc.avail-sw` | Progress |
 | O-6 | Sample dates `2019-02-01` / `2026-08-21` become `dd/MM/yyyy` | Progress |

@@ -9,7 +9,7 @@
 | D-03 | Member only; role from `ActorContext.actorUserRole` (`toApimValue()`); employer portal out |
 | D-04 | Print, leave warning, stepper, Account Balance widget, e-notification: frontend / out of BFF |
 | D-05 | Progress returns latest 5 records; frontend handles filter options; "Latest" = latest effective-date group |
-| D-06 | Dates `dd/MM/yyyy` end to end; English fund name mandatory, no new fallback rule |
+| D-06 | Dates `dd/MM/yyyy` end to end; English fund name mandatory and always present (downstream confirmed 2026-11-06), no new fallback rule |
 | D-07 | Pending items not in history; returned separately |
 | D-08 | CIM type not handled by the BFF |
 | D-09 | Eligibility, termination, duplicate/pending rules, cut-off: Progress |
@@ -40,12 +40,12 @@
 | D-34 | Nonblank `err-message` is published with origin `DOWNSTREAM_CONTRACT` (ERROR) (F2 = a) |
 | D-35 | Malformed submit body code `err.investment-choice.request.invalid` (F4 = a; supersedes the generic code in the earlier D-28 text) |
 | D-36 | CIM uses `ApimFailureClassifier` at its adapters and owns one incident record per failure through `FailureEventPort`; its exception mappings log below ERROR; no direct ERROR calls (E3, F1 = A). CIM has no exception-handling M3 slice |
+| D-37 | `SwitchSrc`: hidden sources are omitted by Progress; `avail-sw` Boolean, true = editable, false = read-only; downstream confirmed 2026-11-06, closes O-1 |
 
 ## Open items
 
 | Id | Item | Owner | Blocks |
 |---|---|---|---|
-| O-1 | `SwitchSrc.avail-sw` meaning. R4 note reads "true -> disable in FE"; C1 rule reads "true -> may submit". Design follows C1 (true = selectable). One mapping test pins it | Progress / Nick | 4.2 merge |
 | O-2 | Eligibility `err-message` codes for terminated, Scenario 1/2, function off, maintenance | Progress / BA | No (slot reserved) |
 | O-3 | Cancel operation contract | Progress | D.1 only |
 | O-4 | BRD vs Config Matrix 6.5.14: BRD blocks F01/F13/F17/F22, matrix defaults F01 not blocking and only F17 always blocks. BFF unaffected | BA / Progress | No |
@@ -53,3 +53,4 @@
 | O-6 | Progress sample dates still ISO | Progress | M2 live test |
 | O-7 | Pending items have no effective date after the downstream change; confirm the BRD screen needs none | BA | No |
 | O-9 | Shared executor still logs `apim.exchange.failed` at ERROR, so a CIM transport failure has two ERROR lines until exception-handling M3 3.8 | Exception-handling M3 | No |
+| O-10 | Non-matched path variants (trailing slash, case) render 404 as 500 `err.system.unexpected` via the shared exception handler. Shared web behaviour, not CIM-specific; re-check at 4.4 with the real controller | Nick / shared web | No |
