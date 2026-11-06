@@ -70,7 +70,9 @@ A history or pending row whose `fund-code` is absent from `SwitchFund` is return
 ## 2. TRPCIMReq
 
 `POST /ws/NGTPA/v1/TRPCIMReq` - `ApimRetryEligibility.NON_RETRYABLE`, never resubmitted
-(same policy as `TRPPwdValidation`). No `ref-date`, no `package-code`.
+(same policy as `TRPPwdValidation`). Configured by
+`apim.investment-choice.instruction.path` (default `/ws/NGTPA/v1/TRPCIMReq`). No `ref-date`, no
+`package-code`.
 
 ### Request
 
