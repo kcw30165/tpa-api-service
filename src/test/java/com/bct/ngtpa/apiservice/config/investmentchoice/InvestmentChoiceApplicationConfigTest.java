@@ -150,8 +150,8 @@ class InvestmentChoiceApplicationConfigTest {
               SESSION_ID.value(),
               FUND_CODE,
               PERCENTAGE,
-              "POLICY_MARKER_TOO_LONG");
-      softly.assertThat(allMessages).doesNotContain("\"certNo\":\"" + CERT_NO + "\"");
+              "POLICY_MARKER_TOO_LONG",
+              "\"certNo\":\"" + CERT_NO + "\"");
       softly.assertAll();
     } finally {
       logger.detachAppender(appender);

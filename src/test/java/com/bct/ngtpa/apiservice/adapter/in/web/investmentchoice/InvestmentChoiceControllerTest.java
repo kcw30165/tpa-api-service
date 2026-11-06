@@ -44,6 +44,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -94,7 +95,7 @@ class InvestmentChoiceControllerTest {
               "errors": []
             }
             """,
-            true);
+            JsonCompareMode.STRICT);
   }
 
   @Test
@@ -312,7 +313,7 @@ class InvestmentChoiceControllerTest {
               ]
             }
             """,
-            true)
+            JsonCompareMode.STRICT)
         .jsonPath("$.errors[0].message")
         .doesNotExist();
   }

@@ -315,11 +315,16 @@ class InvestmentChoiceSnapshotCacheServiceTest {
 
   @Test
   void requiresItsArgumentsAndDependencies() {
-    assertThatThrownBy(() -> service().read(null, ACCOUNT_REF, POLICY_NO, "req-1"))
+    var readService = service();
+    var sessionWriteService = service();
+    var snapshotWriteService = service();
+    var snapshot = snapshot(ACCOUNT_REF);
+
+    assertThatThrownBy(() -> readService.read(null, ACCOUNT_REF, POLICY_NO, "req-1"))
         .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> service().write(null, snapshot(ACCOUNT_REF), "req-1"))
+    assertThatThrownBy(() -> sessionWriteService.write(null, snapshot, "req-1"))
         .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> service().write(SID, null, "req-1"))
+    assertThatThrownBy(() -> snapshotWriteService.write(SID, null, "req-1"))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(
             () ->
