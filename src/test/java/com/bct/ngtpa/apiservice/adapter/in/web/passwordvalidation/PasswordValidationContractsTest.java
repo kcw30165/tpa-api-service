@@ -44,6 +44,7 @@ class PasswordValidationContractsTest {
           "personal_information_update",
           " PERSONAL_INFORMATION_UPDATE",
           "INVESTMENT_CHANGE",
+          "CHANGE_INVESTMENT_CHOICE",
           "FUND_SWITCH",
           "UNKNOWN"
         }) {
@@ -51,6 +52,12 @@ class PasswordValidationContractsTest {
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("Unsupported password-validation purpose");
     }
+  }
+
+  @Test
+  void changeOfInvestmentChoicePurposeUsesItsEnumNameAsWireValue() {
+    assertThat(PasswordValidationPurpose.valueOf("CHANGE_INVESTMENT_CHOICE").name())
+        .isEqualTo("CHANGE_INVESTMENT_CHOICE");
   }
 
   @Test

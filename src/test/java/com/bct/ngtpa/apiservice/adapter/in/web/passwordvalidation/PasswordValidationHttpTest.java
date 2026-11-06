@@ -341,6 +341,7 @@ class PasswordValidationHttpTest {
         "{\"password\":false}",
         "{\"password\":\"x\",\"purpose\":3}",
         "{\"password\":\"x\",\"purpose\":\"FUND_SWITCH\",\"operationPayload\":{}}",
+        "{\"password\":\"x\",\"purpose\":\"CHANGE_INVESTMENT_CHOICE\",\"operationPayload\":{\"formVersion\":\"v1\",\"applyToAllAccounts\":false,\"fields\":{\"mailingAddress\":\"reviewed-marker\"}}}",
         "{\"password\":\"x\",\"purpose\":\"personal_information_update\",\"operationPayload\":{}}",
         "{\"password\":\"x\",\"purpose\":\"PERSONAL_INFORMATION_UPDATE\",\"operationPayload\":null}",
         "{\"password\":\"x\",\"purpose\":\"PERSONAL_INFORMATION_UPDATE\",\"operationPayload\":[]}",
