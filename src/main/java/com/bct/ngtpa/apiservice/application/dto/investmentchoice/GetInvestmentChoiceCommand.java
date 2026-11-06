@@ -9,7 +9,7 @@ public record GetInvestmentChoiceCommand(
     String accountEnv,
     String policyNo,
     String certNo,
-    String accountRef,
+    String snapshotAccountRef,
     AuthenticatedSessionId sessionId,
     String requestId) {
 
@@ -18,7 +18,7 @@ public record GetInvestmentChoiceCommand(
     Objects.requireNonNull(accountEnv, "accountEnv must not be null");
     Objects.requireNonNull(policyNo, "policyNo must not be null");
     Objects.requireNonNull(certNo, "certNo must not be null");
-    Objects.requireNonNull(accountRef, "accountRef must not be null");
+    Objects.requireNonNull(snapshotAccountRef, "snapshotAccountRef must not be null");
     Objects.requireNonNull(sessionId, "sessionId must not be null");
   }
 

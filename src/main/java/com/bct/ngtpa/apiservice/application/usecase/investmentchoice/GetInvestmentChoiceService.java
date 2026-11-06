@@ -76,7 +76,8 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
     }
 
     InvestmentChoiceSnapshot snapshot =
-        InvestmentChoiceSnapshot.fromDetails(command.accountRef(), command.policyNo(), details);
+        InvestmentChoiceSnapshot.fromDetails(
+            command.snapshotAccountRef(), command.policyNo(), details);
     return snapshotCache
         .write(command.sessionId(), snapshot, command.requestId())
         .onErrorResume(
