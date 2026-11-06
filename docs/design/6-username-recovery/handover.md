@@ -119,3 +119,48 @@ Production code is unchanged. Existing 025-1 tests are unchanged. The new class 
 ## Evidence
 
 target/evidence/20260812-210249-username-recovery-025-2-request-cancel
+
+## Start-flow correction: all-unregistered start is a normal session
+
+- **Date and baseline:** 2026-11-05, branch `fix/username-recovery-unregistered-start-selection`, from `2721012d`.
+- **Change:** the `ZERO_REGISTERED` start outcome is removed. A valid, non-empty lookup result (registered-only, mixed or all unregistered) uses the existing `SESSION_CREATED` path with the revisioned session, protected candidate context, CSRF token and hash, opaque Scheme-Refs, normal expiry and the normal cookie. `/start` returns `200 SELECT_ACCOUNT` with every row, `isRegistered=false` preserved, and no registration-required error.
+- **Unchanged:** `MEMBER_NOT_FOUND` (downstream `err.tpa.member.not.found`, and empty or missing data) still returns `422 BUSINESS_REJECTED`, `RESTART_FLOW`, `err.usernamerecovery.verification.failed` with no session or cookie. `/request` for an unregistered Scheme-Ref still returns `UNREGISTERED_CANDIDATE` without reservation or delivery; session, CSRF and Scheme-Ref checks are unchanged.
+- **Protected context:** a context may now hold only unregistered candidates. A context needs at least one candidate; completion still requires at least one registered candidate with every registered candidate `REQUESTED`, so an all-unregistered session never becomes `COMPLETED` and ends by cancel or expiry.
+- **Replay compatibility:** the START replay codec no longer encodes or decodes `ZERO_REGISTERED`. A stored snapshot with that outcome fails closed and is never turned into a success. See `docs/capabilities/idempotency/username-recovery-p6-migration-design.md` (post-P6 amendment).
+- **FE expectation (not implemented in the Java BFF):** display unregistered rows and disable their username-request action.
+- **Historical wording:** earlier sections of this handover and the P6 notes that describe zero registered schemes as "no session" or `RESTART_FLOW` are historical and superseded by this section.
+
+## Start-flow correction: post-review cleanup
+
+- Removed the `MESSAGE_COMPLETE_REGISTRATION` label constant: after the correction nothing in
+  production emits it, and the successful all-unregistered response carries empty `messages`.
+- Replaced stale "zero-registered / pre-session" wording in Javadoc, test names and comments.
+- The null-`schemeRef` allowance on `UsernameRecoverySchemeProjection`,
+  `UsernameRecoveryCandidate` and `UsernameRecoverySchemeResponse` is deliberately retained: no
+  production path produces it (`UsernameRecoveryStartResult` requires a Scheme-Ref on every
+  projection and `UsernameRecoverySessionCandidate` requires a session-bound one). Tightening it
+  is a possible follow-up that touches those three types plus the redundant check in the result.
+- Replay: a stored START snapshot that is not MEMBER_NOT_FOUND-with-empty-schemes or
+  SESSION_CREATED fails hydration; the idempotency executor does not catch it, and the START
+  service maps it to `SYSTEM_FAILURE`, which the response policy publishes as HTTP 503
+  `SYSTEM_ERROR`.
+
+## Legacy START replay regression test and owner decision
+
+- `UsernameRecoveryLegacyStartReplayHttpTest` drives a completed START replay snapshot that still
+  carries the removed `ZERO_REGISTERED` outcome through the real replay codec, the real
+  `DefaultIdempotencyExecutor`, the real `IdempotentStartUsernameRecoveryService`, the real
+  controller, response policy and HTTP mapping. Only storage and the external ports are doubled.
+  Expected result: HTTP 503 `SYSTEM_ERROR`, no selection data, no cookie, no protected replay
+  resolution, no CAPTCHA consumption, no APIM lookup, no session creation and no delivery. A
+  completed `MEMBER_NOT_FOUND` replay through the same chain is the control and still returns 422.
+- Responsibilities on the failure path: the codec raises the hydration error, the shared executor
+  propagates it, the START service maps it to its typed system failure, and the controller and
+  response policy publish it as the public 503.
+- Retention: the START idempotency TTL is taken from the configured Username Recovery session TTL;
+  the per-environment value comes from configuration and has not been confirmed.
+- Owner decision: option B, recorded 2026-11-05 by Nick. The bounded fail-closed retry window is
+  accepted: a same-key retry of a completed legacy `ZERO_REGISTERED` START snapshot returns HTTP
+  503 `SYSTEM_ERROR` until that record expires. It is not asserted that no legacy snapshot
+  remains or that the exposure is exactly 600 seconds. No Redis deletion, migration or TTL change
+  is authorized. A fresh recovery attempt must use a new idempotency key and a fresh valid CAPTCHA.

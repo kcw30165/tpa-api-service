@@ -25,9 +25,8 @@ public record UsernameRecoveryAuthFlowContext(
     Objects.requireNonNull(verifiedDestination, "verifiedDestination must not be null");
     Objects.requireNonNull(language, "language must not be null");
     candidates = candidates == null ? List.of() : List.copyOf(candidates);
-    if (candidates.isEmpty()
-        || candidates.stream().noneMatch(UsernameRecoverySessionCandidate::registered)) {
-      throw new IllegalArgumentException("context requires at least one registered candidate");
+    if (candidates.isEmpty()) {
+      throw new IllegalArgumentException("context requires at least one candidate");
     }
     if (candidates.stream().map(UsernameRecoverySessionCandidate::schemeRef).distinct().count()
         != candidates.size()) {
@@ -41,9 +40,10 @@ public record UsernameRecoveryAuthFlowContext(
       throw new IllegalArgumentException("duplicate accountEnv+trustCode candidate is rejected");
     }
     boolean allRequested =
-        candidates.stream()
-            .filter(UsernameRecoverySessionCandidate::registered)
-            .allMatch(c -> c.deliveryState() == UsernameRecoveryDeliveryState.REQUESTED);
+        candidates.stream().anyMatch(UsernameRecoverySessionCandidate::registered)
+            && candidates.stream()
+                .filter(UsernameRecoverySessionCandidate::registered)
+                .allMatch(c -> c.deliveryState() == UsernameRecoveryDeliveryState.REQUESTED);
     if (allRequested != (workflowStatus == UsernameRecoveryWorkflowStatus.COMPLETED)) {
       throw new IllegalArgumentException("candidate state and workflow completion must agree");
     }

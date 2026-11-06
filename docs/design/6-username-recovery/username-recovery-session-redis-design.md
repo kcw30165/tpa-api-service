@@ -33,7 +33,7 @@ registeredCandidates is nonempty
 AND every registered candidate is REQUESTED
 ```
 
-For a result containing no registered candidate, prefer not to create a recovery session. If framework consistency requires one, create it directly as `COMPLETED`.
+A lookup result containing no registered candidate still creates the normal `ACTIVE` session, because the unregistered rows must be displayed. It has no registered candidate to request, so it never becomes `COMPLETED`; it ends by cancel or expiry.
 
 ## 3. Minimal protected session
 

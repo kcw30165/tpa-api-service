@@ -88,7 +88,7 @@ start: VERIFIED -> CONSUMED
 sender ACCEPTED -> candidate REQUESTED
 remaining usernames -> SELECT_ACCOUNT
 all requested -> COMPLETED + RETURN_TO_LOGIN
-zero registered -> no session + RESTART_FLOW
+only unregistered schemes -> normal session; rows returned with isRegistered=false
 ```
 
 ## API Paths

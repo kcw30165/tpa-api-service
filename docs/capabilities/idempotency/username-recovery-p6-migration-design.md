@@ -432,3 +432,18 @@ P6-B now provides Username Recovery-owned action, operation-identity, compatibil
 - Updated stale command Javadocs to describe repository-wide shared operation identity.
 - Cleanup occurred before deployment, so deployment timestamps, environment coverage, rollback-window closure, legacy TTL drainage, and Redis-key deletion are not applicable and are not claimed.
 - Production behavior is unchanged. P6-G stabilization remains required before final closure.
+
+####### Post-P6 amendment: ZERO_REGISTERED START outcome removed
+
+- The Username Recovery START outcome model no longer contains `ZERO_REGISTERED`. An all-unregistered lookup result is a `SESSION_CREATED` result and uses the existing session-backed replay path: the safe snapshot carries only the opaque protected replay reference, and completed replay resolves the retained session continuity without repeating captcha consumption, APIM lookup or session creation. `MEMBER_NOT_FOUND` keeps its session-less replay snapshot unchanged.
+- Compatibility: the START replay codec no longer decodes `ZERO_REGISTERED`. A START snapshot that still carries that outcome fails closed at hydration (`START replay outcome is unsupported`); the codec raises that hydration error, the shared executor propagates it without catching it, the START service maps it to its typed system failure, and the controller and response policy publish it as HTTP 503 `SYSTEM_ERROR` (pinned over HTTP by `UsernameRecoveryLegacyStartReplayHttpTest`). The old session-less result is never mapped to a successful result that would need unavailable session continuity.
+- Exposure window: START snapshots live for the START idempotency TTL, which the START service takes from the configured Username Recovery session TTL (`AuthWorkflowProperties.usernameRecovery.session.ttlSeconds`); the value in each environment comes from configuration and is not asserted here. Only a same-key retry of an old zero-registered START made before the change and replayed after it, within that window, is affected; the caller starts a new request with a new key. No Redis data migration, flush or key deletion is performed or required.
+- Earlier P6-C notes that mention `ZERO_REGISTERED` are historical records and are not rewritten.
+
+- Owner decision (legacy START replay snapshots): option B, recorded 2026-11-05 by Nick. The
+  bounded fail-closed retry window is accepted: a same-key retry of a completed legacy snapshot
+  that still carries the removed `ZERO_REGISTERED` outcome returns HTTP 503 `SYSTEM_ERROR` until
+  that record expires. It is not asserted that no legacy snapshot remains, and the exposure is
+  not asserted to be exactly 600 seconds; the window is the configured START idempotency TTL of
+  the environment. No Redis deletion, migration or TTL change is authorized. A fresh recovery
+  attempt must use a new idempotency key and a fresh valid CAPTCHA.

@@ -138,16 +138,29 @@ class UsernameRecoveryStartWebMapperTest {
   }
 
   @Test
-  void zeroRegisteredProjectsRestartFlowWithNullData() {
+  void allUnregisteredSessionCreatedProjectsSelectAccountKeepingEveryUnregisteredRow() {
     var result =
-        UsernameRecoveryStartResult.withoutSession(
-            UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
-            List.of(new UsernameRecoverySchemeProjection(null, "DB", "DBA", false)));
+        new UsernameRecoveryStartResult(
+            UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
+            null,
+            "csrf-value",
+            600,
+            List.of(
+                new UsernameRecoverySchemeProjection(
+                    new UsernameRecoverySchemeRef("sch_opaque-1"), "DB", "DBA", false),
+                new UsernameRecoverySchemeProjection(
+                    new UsernameRecoverySchemeRef("sch_opaque-2"), "DB", "DBB", false)));
 
     var response = mapper.toResult(result);
 
-    assertThat(response.nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
-    assertThat(response.data()).isNull();
+    assertThat(response.nextStep()).isEqualTo(WorkflowNextStep.SELECT_ACCOUNT);
+    assertThat(response.data()).isNotNull();
+    assertThat(response.data().schemes())
+        .extracting(UsernameRecoverySchemeResponse::schemeRef)
+        .containsExactly("sch_opaque-1", "sch_opaque-2");
+    assertThat(response.data().schemes())
+        .extracting(UsernameRecoverySchemeResponse::isRegistered)
+        .containsExactly(false, false);
   }
 
   @Test

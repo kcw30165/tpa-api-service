@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Structural contract of the public scheme projection record.
  *
- * <p>schemeRef may be null only for the pre-session zero-registered projection (approved contract),
- * and must never be disclosed by {@code toString()}.
+ * <p>schemeRef is accepted when null by the record (the Start flow never produces a null one), and
+ * must never be disclosed by {@code toString()}.
  */
 class UsernameRecoverySchemeResponseTest {
 
@@ -31,7 +31,7 @@ class UsernameRecoverySchemeResponseTest {
   }
 
   @Test
-  void nullSchemeRefAllowedForZeroRegisteredProjection() {
+  void nullSchemeRefIsNotRejectedByTheRecord() {
     var response = new UsernameRecoverySchemeResponse(null, "DB", "DBA", false);
 
     assertThat(response.schemeRef()).isNull();

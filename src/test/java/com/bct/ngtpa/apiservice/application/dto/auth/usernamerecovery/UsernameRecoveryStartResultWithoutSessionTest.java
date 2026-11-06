@@ -22,22 +22,6 @@ class UsernameRecoveryStartResultWithoutSessionTest {
   }
 
   @Test
-  void zeroRegisteredKeepsTheUnregisteredProjectionsAndCarriesNoSessionData() {
-    UsernameRecoverySchemeProjection projection =
-        new UsernameRecoverySchemeProjection(null, "DB", "DBA", false);
-
-    UsernameRecoveryStartResult result =
-        UsernameRecoveryStartResult.withoutSession(
-            UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED, List.of(projection));
-
-    assertThat(result.outcome()).isEqualTo(UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED);
-    assertThat(result.authFlowSessionId()).isNull();
-    assertThat(result.csrfToken()).isNull();
-    assertThat(result.expiresInSeconds()).isNull();
-    assertThat(result.schemes()).containsExactly(projection);
-  }
-
-  @Test
   void aSessionCreatedOutcomeIsRejectedBecauseItNeedsSessionData() {
     assertThatThrownBy(
             () ->

@@ -117,7 +117,7 @@ public final class UsernameRecoveryStartProtectedOperation {
             lookupResult ->
                 switch (lookupResult.status()) {
                   case MATCHED ->
-                      handleMatched(command, validation, lookupResult.candidates(), now);
+                      createRevisioned(command, validation, lookupResult.candidates(), now);
                   case NOT_FOUND ->
                       Mono.just(
                           UsernameRecoveryStartResult.withoutSession(
@@ -125,26 +125,6 @@ public final class UsernameRecoveryStartProtectedOperation {
                   case CONTRACT_INVALID, UNAVAILABLE, UNKNOWN_OUTCOME ->
                       Mono.error(UsernameRecoveryStartException.systemFailure());
                 });
-  }
-
-  private Mono<UsernameRecoveryStartResult> handleMatched(
-      UsernameRecoveryStartCommand command,
-      UsernameRecoveryStartValidator.Validation validation,
-      List<UsernameRecoveryLookupCandidate> candidates,
-      Instant now) {
-    if (candidates.stream().noneMatch(UsernameRecoveryLookupCandidate::registered)) {
-      List<UsernameRecoverySchemeProjection> projections =
-          candidates.stream()
-              .map(
-                  candidate ->
-                      new UsernameRecoverySchemeProjection(
-                          null, candidate.accountEnv(), candidate.trustCode(), false))
-              .toList();
-      return Mono.just(
-          UsernameRecoveryStartResult.withoutSession(
-              UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED, projections));
-    }
-    return createRevisioned(command, validation, candidates, now);
   }
 
   private Mono<UsernameRecoveryStartResult> createRevisioned(
