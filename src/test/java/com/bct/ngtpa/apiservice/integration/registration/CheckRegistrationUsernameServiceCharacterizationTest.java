@@ -94,9 +94,10 @@ class CheckRegistrationUsernameServiceCharacterizationTest {
   }
 
   @Test
-  void onErrorResumeExceptionLogsBothErrorLinesInOrder() throws Exception {
+  void onErrorResumeExceptionLogsSingleTerminalError() throws Exception {
+    String downstreamMarker = "downstream availability check failed";
     RegistrationUsernameAvailabilityPort throwingAvailabilityPort =
-        command -> Mono.error(new IllegalStateException("downstream availability check failed"));
+        command -> Mono.error(new IllegalStateException(downstreamMarker));
 
     var service = newService(throwingAvailabilityPort);
 
@@ -110,20 +111,16 @@ class CheckRegistrationUsernameServiceCharacterizationTest {
       assertThat(result.status())
           .isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED);
 
-      // Both real ERROR lines fire, in order: (1) the onErrorResume catch-all
-      // (CheckRegistrationUsernameService.java:224-226), then (2) downstreamFailed()'s own line
-      // (:302) - confirmed from the real checkAvailability() method body.
-      assertThat(appender.list).hasSize(2);
-      assertThat(appender.list.get(0).getLevel()).isEqualTo(Level.ERROR);
-      assertThat(appender.list.get(0).getFormattedMessage())
-          .isEqualTo(
-              "event=registration.usernameCheck.failure severity=FATAL status=TECHNICAL_FAILURE"
-                  + " correlationId="
-                  + CORRELATION_ID);
-      assertThat(appender.list.get(1).getLevel()).isEqualTo(Level.ERROR);
-      assertThat(appender.list.get(1).getFormattedMessage())
-          .isEqualTo(
-              "event=registration.usernameCheck.failure severity=FATAL status=DOWNSTREAM_FAILURE");
+      assertThat(appender.list).hasSize(1);
+      ILoggingEvent event = appender.list.get(0);
+      assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+      assertThat(event.getFormattedMessage())
+          .contains(
+              "event=registration.usernameCheck.failure",
+              "status=TECHNICAL_FAILURE",
+              "origin=APIM_TECHNICAL")
+          .doesNotContain(downstreamMarker);
+      assertThat(event.getThrowableProxy()).isNull();
     } finally {
       logger.detachAppender(appender);
       appender.stop();

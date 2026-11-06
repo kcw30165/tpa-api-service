@@ -1,16 +1,19 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 
+import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureClassifier;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpChkCustIdApimMapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpChkCustIdApimResultMapper;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameAvailabilityPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.RegistrationUsernameAvailabilityCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.RegistrationUsernameAvailabilityResult;
-import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import java.util.Objects;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @Component
 public class ApimRegistrationUsernameAvailabilityAdapter
     implements RegistrationUsernameAvailabilityPort {
@@ -23,7 +26,6 @@ public class ApimRegistrationUsernameAvailabilityAdapter
   }
 
   @Override
-  @LogExecution(value = "apim.trpChkCustId", logArgs = false)
   public Mono<RegistrationUsernameAvailabilityResult> checkAvailability(
       RegistrationUsernameAvailabilityCommand command) {
     Objects.requireNonNull(command, "command must not be null");
@@ -31,7 +33,16 @@ public class ApimRegistrationUsernameAvailabilityAdapter
     return transport
         .post(
             new TrpChkCustIdTransportCommand(
-                request, command.actorUserRole(), command.correlationId()))
-        .map(resultMapper::toResult);
+                request,
+                command.actorUserRole(),
+                command.correlationId(),
+                ApimIncidentOwnership.TERMINAL_CALLER))
+        .map(resultMapper::toResult)
+        .doOnError(
+            failure ->
+                log.warn(
+                    "event=registration.usernameCheck.apimFailureDiagnostic category={} correlationId={}",
+                    ApimFailureClassifier.classify(failure),
+                    command.correlationId()));
   }
 }

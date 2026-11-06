@@ -2,6 +2,11 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.registration.username;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+
 import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.UsernamePolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationEligibleTrustSet;
@@ -41,6 +46,7 @@ import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -342,6 +348,106 @@ class CheckRegistrationUsernameServiceTest {
     assertThat(sessions.updated).isNull();
   }
 
+  @Test
+  void protectionFailureLogsSingleLocalStateIncidentWithoutSensitiveData() {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
+    var service = new CheckRegistrationUsernameService(
+        sessions, expiryRefresh(sessions), availability, new FakePolicy(),
+        new FakeClassifier("err.registration.username.isRegistered"),
+        new ThrowingProtectUsernameCheckProtector("PRIVATE-PROTECT-MARKER"), CLOCK);
+    assertLocalStateFailure(service, command("csrf", selectedTrust("TL", "ENV1"), "abc1@"), "PRIVATE-PROTECT-MARKER");
+  }
+
+  @Test
+  void persistenceFailureLogsSingleLocalStateIncidentWithoutSensitiveData() {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    sessions.updateFailure = new IllegalStateException("PRIVATE-PERSIST-MARKER");
+    var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
+    var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
+    assertLocalStateFailure(service, command("csrf", selectedTrust("TL", "ENV1"), "abc1@"), "PRIVATE-PERSIST-MARKER");
+  }
+
+  @Test
+  void explicitAndFallbackBusinessRejectionsLogNoServiceIncident() {
+    assertNoServiceIncident(
+        RegistrationUsernameAvailabilityResult.rejected("err.tpa.username.taken"),
+        new FakeClassifier("err.registration.username.isRegistered"),
+        "err.registration.username.isRegistered");
+    assertNoServiceIncident(
+        RegistrationUsernameAvailabilityResult.rejected("err.tpa.unmapped.username"),
+        new FakeClassifier("err.registration.username.incorrect"),
+        "err.registration.username.incorrect");
+  }
+
+  @Test
+  void sameUsernameRepeatLogsNoIncidentAndSkipsAvailability() {
+    var existing = new UsernameCheckState(
+        new SelectedTrust("TL", "ENV1"), "abc1@", NOW.minusSeconds(60), null);
+    var sessions = FakeSessions.with(session(AuthFlowStatus.USERNAME_VERIFIED, "csrf", existing));
+    var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
+    var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
+    Logger logger = (Logger) LoggerFactory.getLogger(CheckRegistrationUsernameService.class);
+    ListAppender<ILoggingEvent> appender = attach(logger);
+    try {
+      StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+          .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE))
+          .verifyComplete();
+      assertThat(availability.calls).isZero();
+      assertThat(serviceErrors(appender)).isEmpty();
+    } finally { detach(logger, appender); }
+  }
+
+  private void assertLocalStateFailure(
+      CheckRegistrationUsernameService service, CheckRegistrationUsernameCommand command,
+      String privateMarker) {
+    Logger logger = (Logger) LoggerFactory.getLogger(CheckRegistrationUsernameService.class);
+    ListAppender<ILoggingEvent> appender = attach(logger);
+    try {
+      StepVerifier.create(service.check(command))
+          .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED))
+          .verifyComplete();
+      assertThat(serviceErrors(appender)).singleElement().satisfies(event -> {
+        assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+        assertThat(event.getFormattedMessage())
+            .contains("event=registration.usernameCheck.failure", "origin=LOCAL_STATE_FAILURE")
+            .doesNotContain(privateMarker, "abc1@", "TL", "ENV1", "encrypted-username-check", "credential", "ciphertext");
+        assertThat(event.getThrowableProxy()).isNull();
+      });
+    } finally { detach(logger, appender); }
+  }
+
+  private void assertNoServiceIncident(
+      RegistrationUsernameAvailabilityResult availabilityResult, FakeClassifier classifier,
+      String expectedCode) {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability = new FakeAvailability(availabilityResult);
+    var service = service(sessions, availability, classifier);
+    Logger logger = (Logger) LoggerFactory.getLogger(CheckRegistrationUsernameService.class);
+    ListAppender<ILoggingEvent> appender = attach(logger);
+    try {
+      StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+          .assertNext(result -> {
+            assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_REJECTED);
+            assertThat(result.errors().getFirst().code()).isEqualTo(expectedCode);
+          }).verifyComplete();
+      assertThat(serviceErrors(appender)).isEmpty();
+    } finally { detach(logger, appender); }
+  }
+
+  private static ListAppender<ILoggingEvent> attach(Logger logger) {
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start(); logger.addAppender(appender); return appender;
+  }
+  private static void detach(Logger logger, ListAppender<ILoggingEvent> appender) {
+    logger.detachAppender(appender); appender.stop();
+  }
+  private static java.util.List<ILoggingEvent> serviceErrors(ListAppender<ILoggingEvent> appender) {
+    return appender.list.stream().filter(event -> event.getLevel() == Level.ERROR)
+        .filter(event -> event.getFormattedMessage().contains("event=registration.usernameCheck.failure"))
+        .toList();
+  }
+
   private CheckRegistrationUsernameService service(
       FakeSessions sessions, FakeAvailability availability, FakeClassifier classifier) {
     return new CheckRegistrationUsernameService(
@@ -443,6 +549,7 @@ class CheckRegistrationUsernameServiceTest {
   private static final class FakeSessions implements AuthFlowSessionPort {
     AuthFlowSession session;
     AuthFlowSession updated;
+    RuntimeException updateFailure;
 
     static FakeSessions empty() {
       return new FakeSessions(null);
@@ -486,6 +593,9 @@ class CheckRegistrationUsernameServiceTest {
     @Override
     public Mono<AuthFlowSessionMutationResult> updateRevisioned(
         RevisionedAuthFlowSessionMutationCommand command) {
+      if (updateFailure != null) {
+        return Mono.error(updateFailure);
+      }
       this.updated = command.updated();
       this.session = command.updated();
       return Mono.just(
@@ -811,6 +921,18 @@ class CheckRegistrationUsernameServiceTest {
                     .isEqualTo(CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE))
         .verifyComplete();
     assertThat(availability.calls).isOne();
+  }
+
+  private static final class ThrowingProtectUsernameCheckProtector
+      implements RegistrationUsernameCheckProtectorPort {
+    private final String marker;
+    private ThrowingProtectUsernameCheckProtector(String marker) { this.marker = marker; }
+    @Override public RegistrationUsernameCheckEncryptedState protect(UsernameCheckState state) {
+      throw new IllegalStateException(marker);
+    }
+    @Override public UsernameCheckState unprotect(RegistrationUsernameCheckEncryptedState state) {
+      throw new AssertionError("unprotect must not be called");
+    }
   }
 
   private static final class ThrowingUnprotectUsernameCheckProtector

@@ -214,18 +214,20 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
         .flatMap(
             availability ->
                 switch (availability.status()) {
-                  case AVAILABLE -> storeUsernameCheck(command, session, normalized);
+                  case AVAILABLE ->
+                      Mono.defer(() -> storeUsernameCheck(command, session, normalized))
+                          .onErrorMap(RuntimeException.class, LocalUsernameStateFailure::new);
                   case REJECTED ->
                       Mono.just(downstreamRejected(availability.downstreamErrorCode()));
-                  case DOWNSTREAM_FAILED -> Mono.just(downstreamFailed());
+                  case DOWNSTREAM_FAILED -> Mono.just(downstreamFailed("APIM_TECHNICAL"));
                 })
         .onErrorResume(
-            exception -> {
-              log.error(
-                  "event=registration.usernameCheck.failure severity=FATAL status=TECHNICAL_FAILURE correlationId={}",
-                  safe(command.correlationId()));
-              return Mono.just(downstreamFailed());
-            });
+            exception ->
+                Mono.just(
+                    downstreamFailed(
+                        exception instanceof LocalUsernameStateFailure
+                            ? "LOCAL_STATE_FAILURE"
+                            : "APIM_TECHNICAL")));
   }
 
   private Mono<CheckRegistrationUsernameResult> storeUsernameCheck(
@@ -298,13 +300,21 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
     return "err.registration.username.checkFailed";
   }
 
-  private CheckRegistrationUsernameResult downstreamFailed() {
-    log.error("event=registration.usernameCheck.failure severity=FATAL status=DOWNSTREAM_FAILURE");
+  private CheckRegistrationUsernameResult downstreamFailed(String origin) {
+    log.error(
+        "event=registration.usernameCheck.failure severity=FATAL status=TECHNICAL_FAILURE origin={}",
+        origin);
     return failure(
         CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED,
         WorkflowNextStep.USERNAME_CHECK,
         WorkflowErrorType.DOWNSTREAM_SYSTEM,
         ERROR_DOWNSTREAM_UNAVAILABLE);
+  }
+
+  private static final class LocalUsernameStateFailure extends RuntimeException {
+    private LocalUsernameStateFailure(Throwable cause) {
+      super("Registration username state update failed", cause);
+    }
   }
 
   private CheckRegistrationUsernameResult validationFailure(String code) {
