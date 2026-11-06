@@ -138,7 +138,7 @@ class GetInvestmentChoiceServiceTest {
         .thenReturn(Mono.fromRunnable(() -> writeCompleted.set(true)));
 
     InOrder order = inOrder(referenceDatePort, detailsPort, snapshotCache);
-    StepVerifier.create(useCase().execute(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
         .assertNext(
             result -> {
               assertThat(result.accountNumber()).isEqualTo("00000000118-0003");
@@ -178,7 +178,7 @@ class GetInvestmentChoiceServiceTest {
       String policyNo, String certNo) {
     arrangeDetails(details());
 
-    StepVerifier.create(useCase().execute(command(policyNo, certNo)))
+    StepVerifier.create(useCase().get(command(policyNo, certNo)))
         .expectErrorSatisfies(
             error -> {
               assertThat(error).isInstanceOf(InvestmentChoiceDetailsRetrievalException.class);
@@ -219,7 +219,7 @@ class GetInvestmentChoiceServiceTest {
     when(referenceDatePort.resolveReferenceDate(ACCOUNT_ENV)).thenReturn(Mono.just(REFERENCE_DATE));
     when(detailsPort.load(any())).thenReturn(Mono.error(failure));
 
-    StepVerifier.create(useCase().execute(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
         .expectErrorSatisfies(error -> assertThat(error).isSameAs(failure))
         .verify();
 
@@ -233,7 +233,7 @@ class GetInvestmentChoiceServiceTest {
     when(referenceDatePort.resolveReferenceDate(ACCOUNT_ENV))
         .thenReturn(Mono.error(new IllegalStateException("reference-date-sensitive")));
 
-    StepVerifier.create(useCase().execute(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
         .expectErrorSatisfies(
             error -> {
               assertThat(error).isInstanceOf(InvestmentChoiceDetailsRetrievalException.class);
@@ -252,7 +252,7 @@ class GetInvestmentChoiceServiceTest {
     arrangeDetails(details);
     when(snapshotCache.write(any(), any(), any())).thenReturn(Mono.empty());
 
-    StepVerifier.create(useCase().execute(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
         .assertNext(
             result -> {
               assertThat(result.accountNumber()).isEqualTo("00000000118-0003");
@@ -270,7 +270,7 @@ class GetInvestmentChoiceServiceTest {
     when(snapshotCache.write(any(), any(), any()))
         .thenReturn(Mono.error(new IllegalStateException("snapshot-write-sensitive")));
 
-    StepVerifier.create(useCase().execute(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
         .assertNext(
             result -> {
               assertThat(result.accountNumber()).isEqualTo("00000000118-0003");
@@ -287,7 +287,7 @@ class GetInvestmentChoiceServiceTest {
     arrangeDetails(details);
     when(snapshotCache.write(any(), any(), any())).thenReturn(Mono.empty());
 
-    StepVerifier.create(useCase().execute(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
         .assertNext(result -> assertThat(result.details()).isEqualTo(details))
         .verifyComplete();
 

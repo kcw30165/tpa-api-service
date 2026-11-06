@@ -72,7 +72,7 @@ public final class InvestmentChoiceController {
                       return Mono.error(new AuthenticatedPortalContextResolutionException());
                     }
                     return useCase
-                        .execute(commandFrom(context, accountRef, sessionId.get(), requestId))
+                        .get(commandFrom(context, accountRef, sessionId.get(), requestId))
                         .map(
                             result -> {
                               MutationResponse<InvestmentChoiceResultResponse> response =

@@ -5,5 +5,6 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import reactor.core.publisher.Mono;
 
 public interface GetInvestmentChoiceUseCase {
-  Mono<InvestmentChoiceResult> execute(GetInvestmentChoiceCommand command);
+
+  Mono<InvestmentChoiceResult> get(GetInvestmentChoiceCommand command);
 }

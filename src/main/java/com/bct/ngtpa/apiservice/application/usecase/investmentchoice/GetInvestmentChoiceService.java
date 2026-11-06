@@ -19,7 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
-public class GetInvestmentChoiceService implements GetInvestmentChoiceUseCase {
+public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseCase {
 
   private static final String RETRIEVAL_PUBLIC_CODE = "err.investment-choice.retrieval.unavailable";
   private static final String IDENTIFIER_INVALID = "ACCOUNT_IDENTIFIER_INVALID";
@@ -45,7 +45,7 @@ public class GetInvestmentChoiceService implements GetInvestmentChoiceUseCase {
   }
 
   @Override
-  public Mono<InvestmentChoiceResult> execute(GetInvestmentChoiceCommand command) {
+  public Mono<InvestmentChoiceResult> get(GetInvestmentChoiceCommand command) {
     Objects.requireNonNull(command, "command must not be null");
     return referenceDatePort
         .resolveReferenceDate(command.accountEnv())
