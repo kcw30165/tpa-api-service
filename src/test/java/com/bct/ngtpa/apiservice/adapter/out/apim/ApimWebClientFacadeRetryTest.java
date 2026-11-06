@@ -3,6 +3,9 @@ package com.bct.ngtpa.apiservice.adapter.out.apim;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
+import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfileResolver;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenCacheEntry;
@@ -634,4 +637,38 @@ class ApimWebClientFacadeRetryTest {
       return Mono.just(profile);
     };
   }
+  @Test
+  void sameResolvedProfilePublisherAllocatesIndependentTokenRecoveryStatePerSubscription() {
+    AtomicInteger serverCalls = new AtomicInteger();
+    AtomicInteger refreshCount = new AtomicInteger();
+    ExchangeFunction exchange = request -> {
+      serverCalls.incrementAndGet();
+      String auth = request.headers().getFirst("Authorization");
+      return Mono.just("Bearer old-token".equals(auth)
+          ? ClientResponse.create(HttpStatus.UNAUTHORIZED).body("{\"error\":\"invalid_token\"}").build()
+          : ClientResponse.create(HttpStatus.OK).body("{\"ok\":true}").build());
+    };
+    WebClient.Builder builder = WebClient.builder().exchangeFunction(exchange);
+    ApimProperties props = new ApimProperties();
+    ApimCredentialProfile profile = new ApimCredentialProfile("p1","cid","secret","akey",null,"http://localhost",List.of(),null);
+    AtomicReference<String> token = new AtomicReference<>("old-token");
+    ApimTokenService tokens = new ApimTokenService(builder, props) {
+      @Override public Mono<String> getAccessToken(ApimCredentialProfile ignored) {
+        return Mono.just(token.get());
+      }
+      @Override public Mono<ApimTokenCacheEntry> refreshAccessToken(ApimCredentialProfile ignored) {
+        refreshCount.incrementAndGet();
+        token.set("new-token");
+        return Mono.just(new ApimTokenCacheEntry("p1","new-token","Bearer",System.currentTimeMillis()+3600000L,null));
+      }
+    };
+    ApimWebClientFacade facade = new ApimWebClientFacade(WebClient.create(),builder,new ObjectMapper(),(scope,ctx)->Mono.just(profile),tokens,new ApimCertificateService(builder,props,null),props);
+    Mono<String> publisher = facade.post("/api/test",Map.of("x","y"),profile,ApimRetryEligibility.SAFE_BUSINESS_CALL);
+    StepVerifier.create(publisher).expectNext("{\"ok\":true}").verifyComplete();
+    token.set("old-token");
+    StepVerifier.create(publisher).expectNext("{\"ok\":true}").verifyComplete();
+    assertEquals(4, serverCalls.get());
+    assertEquals(2, refreshCount.get());
+  }
+
 }

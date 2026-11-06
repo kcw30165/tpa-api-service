@@ -98,4 +98,27 @@ class SharedApimTrpChkCustIdTransportTest {
             error -> assertThat(error.getMessage()).contains("invalid/malformed response"))
         .verify();
   }
+  @Test
+  void forwardsExplicitTerminalOwnershipIntoExchangeRequest() {
+    ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);
+    var item = new TrpChkCustIdApimDataItem("db01", true, "DBA", "3010008", "STAFF");
+    when(executor.postEnvelope(any()))
+        .thenReturn(Mono.just(new ApimResponseEnvelope<>(new ApimResponseBody<>("", List.of(item)))));
+    var transport = new SharedApimTrpChkCustIdTransport(executor);
+    var command = new TrpChkCustIdTransportCommand(
+        new TrpChkCustIdApimRequest("cust-1"),
+        ActorUserRole.ROLE_USER_MBR,
+        "req-terminal",
+        com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership.TERMINAL_CALLER);
+
+    StepVerifier.create(transport.post(command)).expectNextCount(1).verifyComplete();
+
+    @SuppressWarnings("rawtypes")
+    ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
+    verify(executor).postEnvelope(captor.capture());
+    assertThat(captor.getValue().incidentOwnership())
+        .isEqualTo(com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership.TERMINAL_CALLER);
+  }
+
+
 }

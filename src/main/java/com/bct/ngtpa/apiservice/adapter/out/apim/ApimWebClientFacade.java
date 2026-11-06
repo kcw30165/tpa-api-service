@@ -290,8 +290,13 @@ public class ApimWebClientFacade {
       ApimRetryEligibility retryEligibility,
       ApimResubmissionPolicy resubmissionPolicy, ApimIncidentOwnership incidentOwnership,
       int attempt) {
-    return sendWithProfile(profile, path, requestBody,
-            new RetryContext(resubmissionPolicy, incidentOwnership))
+    return Mono.defer(
+            () ->
+                sendWithProfile(
+                    profile,
+                    path,
+                    requestBody,
+                    new RetryContext(resubmissionPolicy, incidentOwnership)))
         .onErrorResume(
             error -> {
               int maxAttempts = apimProperties.getRetry().getBusinessCall().getMaxAttempts();

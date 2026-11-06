@@ -174,4 +174,35 @@ class ApimExchangeOutcomeLoggerTest {
   private ApimResponseEnvelope<String> envelope(String errMessage, List<String> data) {
     return new ApimResponseEnvelope<>(new ApimResponseBody<>(errMessage, data));
   }
+  @Test
+  void terminalOwnedExchangeFailureLogsWarnWithoutThrowableOrMessage() {
+    String marker = "R1A-TERMINAL-THROWABLE-MARKER";
+    outcomeLogger.logExchangeFailure(terminalRequest(), new IllegalStateException(marker), "req-t");
+    assertThat(appender.list).hasSize(1);
+    ILoggingEvent event = appender.list.get(0);
+    assertThat(event.getLevel()).isEqualTo(Level.WARN);
+    assertThat(event.getFormattedMessage()).contains("apim.exchange.failed").doesNotContain(marker, "errorMessage");
+    assertThat(event.getThrowableProxy()).isNull();
+  }
+
+  @Test
+  void terminalOwnedContractInvalidLogsWarn() {
+    outcomeLogger.logSuccessOutcome(terminalRequest(), envelope("", null), "req-t");
+    assertThat(appender.list).hasSize(1);
+    assertThat(appender.list.get(0).getLevel()).isEqualTo(Level.WARN);
+    assertThat(appender.list.get(0).getFormattedMessage()).contains("apim.contract.invalid");
+  }
+
+  @Test
+  void terminalOwnedBusinessRejectionRemainsWarn() {
+    outcomeLogger.logSuccessOutcome(terminalRequest(), envelope("err.tpa.wrong.password", List.of()), "req-t");
+    assertThat(appender.list).hasSize(1);
+    assertThat(appender.list.get(0).getLevel()).isEqualTo(Level.WARN);
+    assertThat(appender.list.get(0).getFormattedMessage()).contains("apim.business.rejected");
+  }
+
+  private ApimExchangeRequest<String, String> terminalRequest() {
+    return new ApimExchangeRequest<>(PATH,"body",String.class,String.class,ApimDatabaseScope.ACCOUNT_ENV,CONTEXT,ApimRetryEligibility.SAFE_BUSINESS_CALL,ApimResubmissionPolicy.ALLOW_RECOVERY,ApimIncidentOwnership.TERMINAL_CALLER);
+  }
+
 }

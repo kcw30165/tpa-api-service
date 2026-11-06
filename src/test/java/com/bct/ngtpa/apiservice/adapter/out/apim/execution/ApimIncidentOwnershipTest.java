@@ -24,4 +24,9 @@ class ApimIncidentOwnershipTest {
   assertThat(new TrpChkCustIdTransportCommand(req,ActorUserRole.ROLE_USER_MBR,"r").incidentOwnership()).isEqualTo(ApimIncidentOwnership.APIM_OBSERVER);
   assertThatThrownBy(()->new TrpChkCustIdTransportCommand(req,ActorUserRole.ROLE_USER_MBR,"r",null)).isInstanceOf(NullPointerException.class).hasMessage("incidentOwnership must not be null");
  }
+ @Test void explicitCommandOwnershipIsPreserved() {
+  var req=new TrpChkCustIdApimRequest("u");
+  assertThat(new TrpChkCustIdTransportCommand(req,ActorUserRole.ROLE_USER_MBR,"r",ApimIncidentOwnership.TERMINAL_CALLER).incidentOwnership()).isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
+ }
+
 }
