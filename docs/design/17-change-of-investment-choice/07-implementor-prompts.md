@@ -1,6 +1,6 @@
 # 07 Implementor prompts (GitHub Copilot)
 
-Common preamble - prepend to every prompt:
+Use a fresh Copilot session for each milestone. Common preamble - prepend to every prompt:
 
 ```text
 You are the implementor for api-service feature "Change of Investment Choice" (CIM).
@@ -10,25 +10,32 @@ Toolchain: Maven 3.9.15 /home/nd2887/tools/apache-maven, Java 21.0.12.1 /home/nd
 Rules: do only this sub-task; no guesses - if code at HEAD contradicts the pack, STOP and report with file:line;
 fail-first tests where behaviour changes; keep public contracts of other features unchanged;
 use the existing MutationResponse / ApiStatus / ApiError types unchanged; no nextStep;
-never log bodies, tokens, policy, certificate, user id or percentages; run spotless:check, compile,
-test-compile and the targeted tests; produce one commit with the given message; do not push.
+no direct log.error / atError in CIM code - incidents go through FailureEventPort (04 s3);
+ErrorLogCallSiteRatchetArchitectureTest KNOWN_REMAINING must not change;
+never log bodies, tokens, policy, certificate, user id, account ref, fund codes or percentages;
+run spotless:check, compile, test-compile and the targeted tests; produce one commit with the given message; do not push.
 ```
 
-## 0.1 Read-only anchor check
+## 0.1 Read-only check of remaining facts
 
 ```text
-READ-ONLY. No source or test changes, no commit.
-Produce a fact table with file:line at HEAD, each item CONFIRMED / DIFFERS (detail) / NOT FOUND:
-1 session-scoped cache pattern (RedisCacheKeyFactory usage, TTL source, deletion on logout) usable for the CIM snapshot (01 s6);
-2 HttpStatusClassification mapping for SUCCESS, SUBMITTED, VALIDATION_FAILED, BUSINESS_REJECTED, SYSTEM_ERROR;
-3 how a non-workflow feature controller returns MutationResponse with result.data (Fund Fact Sheet as reference) and how the 503 is rendered via ExceptionMappings with ApiError.system;
-4 the existing renderer path for a 400 VALIDATION_FAILED with FIELD errors and targets on a non-workflow endpoint, and the ErrorCodes constant for err.request.invalid;
-5 shared APIM classifier entry point and how a feature adapter declares its single incident ERROR owner;
-6 ApimRoutingLedgerCharacterizationTest entry count;
-7 password-validation: token header name, purpose enum, issuance parser, token gate route matcher, confidential-route list (design 16 doc 11 s4);
-8 Fund Price display-name selection and tie-break, and whether the application layer can reuse it without a web dependency;
-9 ReferenceDatePort signature and the existing dd/MM/yyyy formatter.
-Stop after the table.
+READ-ONLY. No source, test or doc changes, no commit, no Maven.
+First verify HEAD equals the pack commit given by Nick and the worktree is clean; otherwise STOP.
+J/ = src/main/java/com/bct/ngtpa/apiservice/. Quote file:line; mark CONFIRMED / DIFFERS (detail) / NOT FOUND.
+1 ExceptionMappings: how a mapping declares log level and stack-trace policy (ErrorDescriptor, LogLevel, singleWithoutMessage
+  signatures); confirm a 503 mapping can declare WARN without stack trace; show FundFactSheetExceptionMappings as reference
+  and how ExceptionMappingRegistryConfig registers it.
+2 FailureEventPort: how ApimRegistrationLookupAdapter obtains it, and whether an application-layer use case may depend on it
+  (existing application callers, architecture tests that constrain it).
+3 PersonalInformationConfigCacheService wiring: where the bean is constructed (config class), its constructor dependencies,
+  and PersonalInformationConfigCacheEntry.belongsTo implementation.
+4 Password validation: token header name constant, PasswordValidationRouteMatcher paths, how the gate resolves purpose today,
+  and the existing PI issuance validation status code.
+5 RequestLanguageResolver.resolve signature and the zh_HK constant used by FundPriceWebMapper.displayFundName.
+6 ApimRoutingLedgerCharacterizationTest: how an entry is declared (one example) and the asserted count.
+7 Architecture tests that would constrain new packages adapter/in/web/investmentchoice, application/usecase/investmentchoice,
+  adapter/out/apim/investmentchoice (list test class and rule).
+Stop after the table; list every DIFFERS separately at the end.
 ```
 
 ## 1.1 - 1.4 Password validation second purpose
@@ -50,38 +57,45 @@ Commit messages:
 ## 2.1 - 2.2 TRPGetCIMDtl
 
 ```text
-Implement 03 section 1 exactly. SAFE_BUSINESS_CALL. Per-operation envelope interpretation, not ApimResponseValidator.
-Tests first: every field rule, every integrity rule, strict dd/MM/yyyy and HH:mm:ss, empty data, >1 item,
-each err-message row, empty eligibility slot, ledger entry. One incident ERROR owner via the shared classifier.
+Implement 03 section 1 exactly, with local strict formatters (D-33). SAFE_BUSINESS_CALL, ACCOUNT_ENV.
+Per-operation envelope interpretation, not ApimResponseValidator.
+Error ownership per 04 s3: classify with ApimFailureClassifier, map category to FailureOrigin, publish exactly one
+FailureEvent, then the feature exception. Nonblank err-message -> DOWNSTREAM_CONTRACT; adapter-detected malformed ->
+DOWNSTREAM_INVALID_RESPONSE.
+Tests first: every field rule, every integrity rule, strict dates, empty data, >1 item, each err-message row,
+exactly one FailureEvent per failure with the expected origin, empty eligibility slot, ledger entry, ratchet unchanged.
 Commit messages:
 2.1 feat(investment-choice): add TRPGetCIMDtl APIM contract types
 2.2 feat(investment-choice): add TRPGetCIMDtl adapter
 ```
 
-## 3.1 - 3.4 GET
+## 3.1 - 3.3 GET
 
 ```text
-Implement 01 s5-s7 and 02 s0-s1. Reuse FundPriceRiskLevels.sortKey and the Fund Price display-name rule found in 0.1.
-History fund names from the full SwitchFund list; available funds only avail-sw=true; pending joined by ref-no.
-Snapshot = intervalPcnt, sources (code, avail-sw), funds (code, avail-sw) only; key scoped session+accountRef; overwrite.
-Contract tests assert $.success, $.status, $.result.data..., $.messages, $.errors, and for 503
-$.result null, $.errors[0].type SYSTEM, code, targets [], message absent/null, severity ERROR, source SERVER.
+3.1 InvestmentChoiceSnapshotCacheService: copy the structure of PersonalInformationConfigCacheService (01 s6):
+    key investment-choice.snapshot, Wire record, read = miss on any failure, write = updateIfUsable best effort,
+    belongsTo(accountRef, policyNo). Tests mirror PersonalInformationConfigCacheServiceTest.
+3.2 GetInvestmentChoiceUseCase: assembly, AccountIdentifierFormatter (failure -> LOCAL_SYSTEM event + exception),
+    snapshot write after success (never fails the GET).
+3.3 Controller GET + InvestmentChoiceWebMapper (01 s7) + exception mappings (WARN, ApiError.system) + ErrorCodes.
+    Contract tests assert $.success, $.status, $.result.data..., $.messages, $.errors and for 503
+    $.result null, $.errors[0].type SYSTEM, code, targets [], severity ERROR, source SERVER, no message.
 Commit messages:
-3.1 feat(investment-choice): add fund ordering
+3.1 feat(investment-choice): cache submit snapshot in session feature state
 3.2 feat(investment-choice): assemble investment choice details
-3.3 feat(investment-choice): store submit snapshot per session and account
-3.4 feat(investment-choice): expose GET /api/v1/investment-choice
+3.3 feat(investment-choice): expose GET /api/v1/investment-choice
 ```
 
 ## 4.1 - 4.4 Submit
 
 ```text
-Implement 01 s8-s9, 02 s2, 03 s2, 04 s1-s3.
-TRPCIMReq NON_RETRYABLE and never resubmitted; no success-flag check (D-14).
-Outcomes: definite success / err-message (503, no reconciliation) / unknown (reconcile once with TRPGetCIMDtl,
-today Asia/Hong_Kong, exact (switch-src, fund-code, pcnt) set; exactly one match -> 200 SUBMITTED).
-Validation order, types, codes and targets exactly as 04 s1-s2; S2 rule pinned by one dedicated test (O-1).
-Missing snapshot -> 503 + ERROR investment-choice.submission.snapshot.missing.
+Implement 01 s8-s9, 02 s2, 03 s2, 04 s1-s4.
+4.1 TRPCIMReq adapter: NON_RETRYABLE, never resubmitted; no success-flag check (D-14); outcome = success /
+    err-message (DOWNSTREAM_CONTRACT event) / unknown (classified event); one FailureEvent per failure.
+4.2 Validator V1-V8, S1-S3 exactly as 04 s2; S2 pinned by one dedicated test (O-1).
+4.3 Use case: snapshot miss -> LOCAL_SYSTEM event + 503; expansion; reconciliation once with TRPGetCIMDtl, today
+    Asia/Hong_Kong, exact (switch-src, fund-code, pcnt) set; exactly one match -> 200 SUBMITTED; WARN logs only.
+4.4 Controller POST behind the token gate; VALIDATION_FAILED -> 422 override as PersonalInformationController.
 Commit messages:
 4.1 feat(investment-choice): add TRPCIMReq adapter
 4.2 feat(investment-choice): validate instruction against snapshot

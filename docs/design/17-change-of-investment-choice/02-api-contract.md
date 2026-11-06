@@ -1,6 +1,6 @@
 # 02 API contract (BFF <-> frontend)
 
-## 0. Envelope (existing, evidence 004)
+## 0. Envelope (existing)
 
 Every response is the existing `MutationResponse<T>(success, status, result, messages, errors)`.
 Success: `success: true`, `result` set, `errors: []`. Failure: `success: false`, `result: null`,
@@ -23,15 +23,16 @@ Success: `success: true`, `result` set, `errors: []`. Failure: `success: false`,
 }
 ```
 
-`ApiError` fields: `type`, `code`, `message` (always null, frontend owns text), `targets`,
-`severity` (`ERROR`), `source` (`SERVER`). Error types used by CIM: `SYSTEM` (via `ApiError.system`,
-`targets: []`), `FIELD`, `CROSS_FIELD`, `FORM`. `DOWNSTREAM_*` types and statuses are never public.
+`ApiError` fields: `type`, `code`, `message` (null; frontend owns text), `targets`, `severity`
+(`ERROR`), `source` (`SERVER`). Types used by CIM: `SYSTEM` (`ApiError.system`, `targets: []`),
+`FIELD`, `CROSS_FIELD`, `FORM`. `DOWNSTREAM_*` types and statuses are never public.
 
-HTTP status by `ApiStatus`: `SUCCESS`/`SUBMITTED` 200, `VALIDATION_FAILED` 400,
-`BUSINESS_REJECTED` 403 (token gate only, existing), `SYSTEM_ERROR` 503.
+HTTP status: `SUCCESS`/`SUBMITTED` 200 and `SYSTEM_ERROR` 503 via `HttpStatusClassification`;
+`VALIDATION_FAILED` **422** on the submit endpoint (controller override, same as
+`PersonalInformationController.withUpdateHttpStatus`, D-30); token-gate 403 unchanged.
 
-Common request headers: authenticated session cookie, CSRF as for other mutations, `Account-Ref`,
-`Accept-Language` (canonical language), `X-Request-Id` (mandatory, existing filter).
+Common request headers: session cookie, CSRF as for other mutations, `Account-Ref`,
+`Accept-Language`, `X-Request-Id` (mandatory, existing filter).
 Dates `dd/MM/yyyy`, times `HH:mm:ss`, as received from Progress.
 
 ## 1. GET /api/v1/investment-choice
@@ -86,9 +87,9 @@ No query parameters.
 | `switchSources` | every `SwitchSrc` (Progress omits HIDDEN), sorted by `seq` ascending then code. `available` = `avail-sw` verbatim (meaning pending O-1) |
 | `funds` | `SwitchFund` with `avail-sw = true` only, ordered per 01 section 7. `riskLevel` raw downstream string, null when absent |
 | `history` | `InvestMandate` grouped by `effect-date`, groups latest first; rows ordered by switch-source `seq`, then fund order. `percentage` is the downstream **string**, verbatim |
-| `history[].allocations[].fundName` | resolved from the **full** `SwitchFund` list including `avail-sw = false` (closed funds stay visible) |
+| `history[].allocations[].fundName` | resolved from the **full** `SwitchFund` list including `avail-sw = false` |
 | `pendingInstructions` | `PendingReq` joined to `PendingReqDtl` by `ref-no`, latest `submitDate`+`submitTime` first; `percentage` is an **integer** |
-| codes only | `src-desc` / `src-chin-desc` are not returned; frontend owns switch-source labels |
+| codes only | `src-desc` / `src-chin-desc` are not returned |
 
 `history` and `pendingInstructions` may be empty arrays.
 
@@ -96,13 +97,14 @@ No query parameters.
 
 | HTTP | status | type | code | targets | When |
 |---|---|---|---|---|---|
-| existing | existing | existing | existing | existing | session, CSRF, `Account-Ref`, `X-Request-Id` (shared behaviour, unchanged) |
-| 503 | `SYSTEM_ERROR` | `SYSTEM` | `err.investment-choice.retrieval.unavailable` | `[]` | any downstream failure, any `err-message`, malformed response, identifier formatting failure (04) |
+| existing | existing | existing | existing | existing | session, CSRF, `Account-Ref`, `X-Request-Id` (shared behaviour) |
+| 503 | `SYSTEM_ERROR` | `SYSTEM` | `err.investment-choice.retrieval.unavailable` | `[]` | any downstream failure, any `err-message`, malformed response, identifier formatting failure |
+
+A failed snapshot write does not change the GET result (D-31).
 
 ## 2. POST /api/v1/investment-choice/instructions
 
-Additional headers: the existing password-validation token header (name exactly as the token gate
-reads it, confirmed in sub-task 0.1), `Content-Type: application/json`.
+Additional headers: the existing password-validation token header, `Content-Type: application/json`.
 
 ### Request
 
@@ -139,11 +141,10 @@ allocations in request order. All sources receive the same allocation (D-22, ato
 
 | HTTP | status | type | code | targets | When |
 |---|---|---|---|---|---|
-| 403 | `BUSINESS_REJECTED` | as rendered by the gate | `err.password-validation.authorization.invalid` | as rendered by the gate | token missing, expired, consumed, other scope, payload mismatch (existing gate, unchanged) |
-| 400 | `VALIDATION_FAILED` | see 04 section 2 | see 04 section 2 | see 04 section 2 | body or snapshot validation |
-| 503 | `SYSTEM_ERROR` | `SYSTEM` | `err.investment-choice.submission.unavailable` | `[]` | downstream failure, `err-message`, missing snapshot, unreconciled unknown outcome |
+| 403 | `BUSINESS_REJECTED` | as rendered by the gate | `err.password-validation.authorization.invalid` | as rendered by the gate | token missing, expired, consumed, other scope, payload mismatch (existing gate) |
+| 422 | `VALIDATION_FAILED` | see 04 section 2 | see 04 section 2 | see 04 section 2 | body or snapshot validation |
+| 503 | `SYSTEM_ERROR` | `SYSTEM` | `err.investment-choice.submission.unavailable` | `[]` | downstream failure, `err-message`, snapshot miss, unreconciled unknown outcome |
 
 ## 3. POST /api/v1/investment-choice/instructions/{refNo}/cancel - deferred
 
-Reserved. No password token (Q9). No body. Contract completed when Progress publishes the cancel
-operation (open item O-3). Not implemented in M1-M4.
+Reserved. No password token. No body. Completed when Progress publishes the cancel operation (O-3).

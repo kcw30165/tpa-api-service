@@ -15,8 +15,7 @@ widget (existing API), post-day-end e-notification, history filters (frontend fi
 Progress returns), CIM type handling, labels and message texts (frontend owns all labels; Java
 returns codes only).
 
-CIM is not a workflow feature: responses carry no `nextStep`, `pageRef` or `actions`
-(evidence 004: `nextStep` exists only in the workflow/auth result types).
+CIM is not a workflow feature: responses carry no `nextStep`, `pageRef` or `actions`.
 
 ## 2. Responsibility split
 
@@ -31,7 +30,7 @@ CIM is not a workflow feature: responses carry no `nextStep`, `pageRef` or `acti
 | Password check and lockout | Progress via `TRPPwdValidation` (existing password-validation capability) |
 | Account Number `{formatted-policyNo}-{formatted-certNo}` | Java, `AccountIdentifierFormatter.format` |
 | Fund sorting, grouping, joining pending details | Java |
-| Submit validation against the cached GET snapshot | Java |
+| Submit validation against the session snapshot | Java |
 | History filter options, labels, messages, dropdown vs manual entry | Frontend |
 
 ## 3. Identity
@@ -45,60 +44,63 @@ resolved by `CurrentPortalAccessContextResolver` from the session and the `Accou
 | `cert-no` | `account.certNo()` |
 | `login-user-id` | `actor.actorUserId()` |
 | `login-user-role` | `actor.actorUserRole().toApimValue()` (lowercase, e.g. `role_user_mbr`) |
-| `ref-date` (TRPGetCIMDtl only) | `ReferenceDatePort.resolveReferenceDate(account.accountEnv())`, formatted `dd/MM/yyyy` |
+| `ref-date` (TRPGetCIMDtl only) | `ReferenceDatePort.resolveReferenceDate(account.accountEnv())`, formatted with a local strict `dd/MM/uuuu` formatter |
 
-The frontend never sends policy, certificate, user id or role.
+The frontend never sends policy, certificate, user id or role. The controller requires a nonblank
+`accountRef` exactly as `PersonalInformationController.requireAccountRef` does.
 
 ## 4. Components (hexagonal placement)
 
-| Layer | New component (design role; exact names checked in sub-task 0.1) |
+| Layer | Component (design role; exact names confirmed in sub-task 0.1) |
 |---|---|
-| web in | `InvestmentChoiceController` (GET, POST instructions), request/response DTOs, web mapper |
-| application | `GetInvestmentChoiceUseCase`, `SubmitInvestmentChoiceUseCase`, `InvestmentChoiceSubmissionValidator`, `InvestmentChoiceFundOrdering` |
-| application port out | `InvestmentChoiceDetailsPort` (TRPGetCIMDtl), `InvestmentChoiceInstructionPort` (TRPCIMReq), `InvestmentChoiceSnapshotStorePort` |
-| adapter out apim | `ApimInvestmentChoiceDetailsAdapter`, `ApimInvestmentChoiceInstructionAdapter`, APIM DTOs |
-| adapter out redis | `RedisInvestmentChoiceSnapshotStore` |
+| web in | `InvestmentChoiceController` (GET, POST instructions), request/response DTOs, `InvestmentChoiceWebMapper` (fund ordering, display name, grouping output) |
+| application | `GetInvestmentChoiceUseCase`, `SubmitInvestmentChoiceUseCase`, `InvestmentChoiceSubmissionValidator`, `InvestmentChoiceSnapshotCacheService` |
+| application port out | `InvestmentChoiceDetailsPort` (TRPGetCIMDtl), `InvestmentChoiceInstructionPort` (TRPCIMReq); existing `FailureEventPort`, `AuthenticatedSessionPort`, `AuthenticatedSessionProtectorPort`, `TransientJsonPort` |
+| adapter out apim | `ApimInvestmentChoiceDetailsAdapter`, `ApimInvestmentChoiceInstructionAdapter`, APIM DTOs and mappers |
 | web error | `InvestmentChoiceExceptionMappings` registered in `ExceptionMappingRegistryConfig` |
 | password validation | new purpose `CHANGE_INVESTMENT_CHOICE` (prerequisite milestone M1) |
 
-Reused as-is: `MutationResponse`, `ApiStatus`, `ApiError` factories, `AccountIdentifierFormatter`,
-`FundPriceRiskLevels.sortKey`, the Fund Price display-name rule, `ReferenceDatePort`,
-`ApimExchangeExecutor`, the shared APIM classifier, `RedisCacheKeyFactory`.
+Reused as-is: `MutationResponse`, `ApiStatus`, `ApiError` factories, `HttpStatusClassification`,
+`AccountIdentifierFormatter`, `FundPriceRiskLevels` (application dto, framework-free),
+`ReferenceDatePort`, `ApimExchangeExecutor`, `ApimFailureClassifier`, `FailureEventPort`,
+`AuthenticatedSession.withFeatureState`, `AuthenticatedSessionConcurrencyService.updateIfUsable`.
 
 ## 5. Flow - GET
 
 1. Resolve `PortalAccessContext` and reference date.
 2. Call `TRPGetCIMDtl` (`SAFE_BUSINESS_CALL`).
 3. Interpret the envelope per operation (not `ApimResponseValidator`): nonblank `err-message` or
-   malformed/empty `data` -> 503 (document 04).
-4. Build `result.data`: account number, interval, switch sources sorted by `seq`, funds with
-   `avail-sw = true` sorted (section 7), history grouped by `effect-date` latest first, pending
-   instructions joined by `ref-no` latest first.
-5. Store the submit snapshot (section 6), overwriting any previous one for the same session and account.
-6. Return 200 `SUCCESS`.
+   malformed/empty `data` -> feature exception, one `FailureEvent` (document 04).
+4. Assemble the result: account number, interval, switch sources, funds, history, pending.
+5. Write the submit snapshot (section 6). Best effort (D-31): a skipped or failed write never
+   fails the GET.
+6. Web mapper orders and shapes `result.data` (section 7). Return 200 `SUCCESS`.
 
-## 6. Submit snapshot (Redis)
+## 6. Submit snapshot (session featureState, D-29)
 
-Content, nothing else (D-22): `intervalPcnt`, every `SwitchSrc` (`switch-src`, `avail-sw`), every
-`SwitchFund` (`fund-code`, `avail-sw`).
+Mirrors `PersonalInformationConfigCacheService` exactly; framework-free, not a Spring bean by
+annotation.
 
 | Property | Rule |
 |---|---|
-| Key | Built with `RedisCacheKeyFactory`; scoped by session id **and** `accountRef`; feature segment `investment-choice:snapshot` |
-| Write | Every successful GET (and every successful reconciliation read), overwrite |
-| Read | Submit only |
-| Lifetime | Must not outlive the session. TTL mechanism follows the existing session-scoped cache pattern confirmed in sub-task 0.1 (O-8); if none exists, stop and escalate |
-| Missing on submit | 503 `SYSTEM_ERROR`, ERROR log `investment-choice.submission.snapshot.missing` (D-23) |
-| Content | No names, no history, no personal data |
+| Location | `AuthenticatedSession.featureState`, key `investment-choice.snapshot`; other features' entries untouched |
+| Content | `accountRef`, `policyNo`, `intervalPcnt`, sources (`switch-src`, `avail-sw`), funds (`fund-code`, `avail-sw`). Nothing else (D-22) |
+| Encoding | `TransientJsonPort`, private `Wire` record; unknown properties fail decoding = miss |
+| Write | Every successful GET (and every successful reconciliation read), via `concurrency.updateIfUsable(sessionId, s -> s.withFeatureState(KEY, encoded), requestId)`; overwrite; never fails the caller; skip logged at WARN |
+| Read | Submit only. Plain `sessions.load` + `protector.unprotect`; `isUsable(clock.instant())`; entry must `belongsTo(accountRef, policyNo)`. Every failure is a miss |
+| Lifetime | Session lifetime (login idle/absolute TTL, PTTL preserved on update). Logout leaves state but makes the session unusable, so reads miss |
+| Miss on submit | 503 `SYSTEM_ERROR`; the use case publishes one `FailureEvent` `investment-choice.submission.snapshot.missing` origin `LOCAL_SYSTEM` (D-23) |
+| Logging | request id and reason only; never `accountRef`, `policyNo` or snapshot content |
 
-## 7. Fund ordering
+## 7. Fund ordering (web mapper, D-32)
 
-Reuse the Fund Price rule:
+In `InvestmentChoiceWebMapper`, as Fund Price does in its web layer. Fund Price is not refactored.
 
 1. `FundPriceRiskLevels.sortKey(riskLevel)` ascending, nulls last (null, blank, `"0"` = no risk level = highest).
-2. Display name for the request language: zh_HK -> `chin-fund-name`, falling back to `fund-name`
-   when blank; otherwise `fund-name`. English name is mandatory downstream (D-06); no new rule.
-3. Ties: the existing Fund Price tie-break, confirmed in sub-task 0.1; then `fund-code`.
+2. Display name: language resolved with the existing `RequestLanguageResolver`; zh_HK ->
+   `chin-fund-name` when nonblank, otherwise `fund-name`; any other language -> `fund-name`.
+   English name is mandatory downstream (D-06).
+3. Display name case-insensitive (`Locale.ROOT`), then `fund-code`.
 
 Applied to the available-fund list, and the fund rows inside each history group and each pending instruction.
 
@@ -110,9 +112,9 @@ FE: POST /api/v1/password-validation {password, purpose: CHANGE_INVESTMENT_CHOIC
 FE: POST /api/v1/investment-choice/instructions  (password-validation token header, same body)
 BFF:
  1. token gate consumes the token, binds session + Account-Ref + purpose + exact body (403 on mismatch)
- 2. stateless body validation (400)
- 3. load snapshot (missing -> 503 + ERROR log)
- 4. snapshot validation: interval multiple, source avail-sw, fund avail-sw (400)
+ 2. stateless body validation (422)
+ 3. read snapshot (miss -> 503, one FailureEvent)
+ 4. snapshot validation: interval multiple, source avail-sw, fund avail-sw (422)
  5. expand to CIMInstr = every source x every allocation
  6. TRPCIMReq (NON_RETRYABLE, never resubmitted)
  7. definite success -> 200 SUBMITTED result.data {referenceNo, submitDate, submitTime}
@@ -120,7 +122,7 @@ BFF:
     unknown outcome  -> reconciliation (section 9)
 ```
 
-The token is consumed before validation (existing password-validation rule). Any 400 after step 1
+The token is consumed before validation (existing password-validation rule). Any 422 after step 1
 requires the member to confirm the password again. This is accepted behaviour of the shared capability.
 
 No `Idempotency-Key` (D-15): the single-use token prevents resubmission of the same confirmation.
@@ -128,14 +130,16 @@ No `Idempotency-Key` (D-15): the single-use token prevents resubmission of the s
 ## 9. Unknown-outcome reconciliation (D-17)
 
 Trigger: the TRPCIMReq exchange did not produce a readable definite answer (transport/timeout
-after send, downstream 5xx, response parse/crypto/mapping failure).
+after send, downstream 5xx, response parse/crypto/mapping failure). The instruction adapter has
+already published the incident `FailureEvent` for that exchange.
 
 1. Call `TRPGetCIMDtl` once for the same account.
 2. Candidates: `PendingReq` entries whose `submit-date` equals today (Asia/Hong_Kong) and whose
    joined `PendingReqDtl` rows equal exactly the submitted `(switch-src, fund-code, pcnt)` set.
 3. Exactly one candidate -> 200 `SUBMITTED` with that `ref-no`, `submit-date`, `submit-time`;
    WARN log `investment-choice.submission.reconciled`.
-4. Zero or several candidates, or the reconciliation call fails -> 503
-   `err.investment-choice.submission.unavailable`; one ERROR incident. The frontend reloads the
-   GET to see the pending list; no `nextStep` is returned.
+4. Zero or several candidates -> 503 `err.investment-choice.submission.unavailable`; WARN log
+   `investment-choice.submission.unreconciled` (the incident ERROR already exists). If the
+   reconciliation call itself fails, the details adapter publishes its own `FailureEvent` (a
+   separate operation incident) and the result is 503.
 5. A successful reconciliation read refreshes the snapshot.

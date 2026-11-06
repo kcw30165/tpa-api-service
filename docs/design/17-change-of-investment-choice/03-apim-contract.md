@@ -1,23 +1,25 @@
 # 03 APIM contract (BFF <-> Progress via APIM)
 
-Both operations are new routing-ledger entries in `ApimRoutingLedgerCharacterizationTest`
-(21 entries at 8f84da7a; count re-confirmed in sub-task 0.1). Envelope:
-`{ "response": { "err-message": "", "data": [ ... ] } }`, deserialized through the generic
-`ApimResponseEnvelope<T>`. Every response DTO and nested type carries
-`@JsonIgnoreProperties(ignoreUnknown = true)`. Each adapter interprets its own envelope;
-do not use `ApimResponseValidator`.
+Both operations are new entries in `ApimRoutingLedgerCharacterizationTest` (21 -> 23).
+Envelope `{ "response": { "err-message": "", "data": [ ... ] } }` through `ApimResponseEnvelope<T>`.
+Every response DTO and nested type carries `@JsonIgnoreProperties(ignoreUnknown = true)`.
+Each adapter interprets its own envelope; do not use `ApimResponseValidator`.
+
+Date/time parsing (D-33): each mapper declares its own
+`private static final DateTimeFormatter ... = DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT)`
+and, where needed, `ofPattern("HH:mm:ss").withResolverStyle(ResolverStyle.STRICT)`, as
+`ForgotPasswordTrpSearchMemberMapper` and `TrpResetPasswordApimResultMapper` do. Fund Price beans are not reused.
 
 ## 1. TRPGetCIMDtl
 
-`POST /ws/NGTPA/v1/TRPGetCIMDtl` - `ApimRetryEligibility.SAFE_BUSINESS_CALL`.
+`POST /ws/NGTPA/v1/TRPGetCIMDtl` - `ApimRetryEligibility.SAFE_BUSINESS_CALL`, `ApimDatabaseScope.ACCOUNT_ENV`,
+credential context `(actorUserRole, accountEnv)` as Fund Fact Sheet.
 
 ### Request
 
 ```json
 { "policy-no": "<account.policyNo>", "cert-no": "<account.certNo>", "ref-date": "31/08/2026" }
 ```
-
-`policy-no` and `cert-no` stay textual (configured field encryption may transform them).
 
 ### Response `data[0]` (exactly one item required)
 
@@ -26,23 +28,23 @@ do not use `ApimResponseValidator`.
 | `interval-pcnt` | integer | yes | 1..100 |
 | `SwitchSrc[]` | array | yes, may be empty | |
 | `.switch-src` | string | yes, nonblank, unique | code |
-| `.src-desc`, `.src-chin-desc` | string | no | ignored (codes only) |
+| `.src-desc`, `.src-chin-desc` | string | no | ignored |
 | `.seq` | integer | yes | sort key |
 | `.avail-sw` | boolean | yes | passed through; meaning pending O-1 |
 | `SwitchFund[]` | array | yes, may be empty | |
 | `.fund-code` | string | yes, nonblank, unique | |
 | `.fund-name` | string | yes, nonblank (D-06) | |
-| `.chin-fund-name` | string | no | blank -> English fallback |
+| `.chin-fund-name` | string | no | blank -> English |
 | `.fund-seq` | integer | no | not used |
 | `.risk-level` | string | no | `FundPriceRiskLevels` rule |
 | `.avail-sw` | boolean | yes | false -> excluded from `funds`, kept for history names |
 | `InvestMandate[]` | array | yes, may be empty | |
-| `.effect-date` | string `dd/MM/yyyy` strict | yes | group key |
+| `.effect-date` | string `dd/MM/uuuu` strict | yes | group key |
 | `.switch-src`, `.fund-code` | string | yes | |
-| `.pcnt` | string | yes, nonblank | verbatim (Progress formats) |
+| `.pcnt` | string | yes, nonblank | verbatim |
 | `PendingReq[]` | array | yes, may be empty | |
 | `.ref-no` | string | yes, unique | join key |
-| `.submit-date` | string `dd/MM/yyyy` strict | yes | |
+| `.submit-date` | string `dd/MM/uuuu` strict | yes | |
 | `.submit-time` | string `HH:mm:ss` strict | yes | |
 | `PendingReqDtl[]` | array | yes, may be empty | |
 | `.ref-no` | string | yes, must exist in `PendingReq` | |
@@ -51,19 +53,19 @@ do not use `ApimResponseValidator`.
 
 Integrity rules (violation = malformed -> 503): duplicate `switch-src` or `fund-code`; duplicate
 `ref-no` in `PendingReq`; `PendingReqDtl.ref-no` not in `PendingReq`; `PendingReq` without any
-detail; date/time not strict.
+detail; null item/list/row; date/time not strict.
 
 A history or pending row whose `fund-code` is absent from `SwitchFund` is returned with
-`fundName: null` (open item O-5), not treated as malformed.
+`fundName: null` (O-5), not treated as malformed.
 
-### err-message
+### err-message (all 503, origin `DOWNSTREAM_CONTRACT`, D-34)
 
-| Value | Meaning (Progress) | BFF |
-|---|---|---|
-| `err.account.invalid` | member not found by policy/cert (server-side context fault) | 503 retrieval unavailable |
-| `err.account.no.invest.mandate` | no data returned | 503 retrieval unavailable |
-| any other nonblank | generic | 503 retrieval unavailable |
-| future eligibility codes | not yet defined (C2 = b) | reserved slot, 04 section 4 |
+| Value | Meaning (Progress) |
+|---|---|
+| `err.account.invalid` | member not found by policy/cert (server-side context fault) |
+| `err.account.no.invest.mandate` | no data returned |
+| any other nonblank | generic |
+| future eligibility codes | reserved slot, 04 section 4 |
 
 ## 2. TRPCIMReq
 
@@ -86,26 +88,22 @@ A history or pending row whose `fund-code` is absent from `SwitchFund` is return
 
 | Field | Type | Rule |
 |---|---|---|
-| `success` | boolean | mapped into the DTO only. No `success` check in this feature; Nick's separate branch (D-14) |
-| `submit-date` | string `dd/MM/yyyy` strict | required -> `submitDate` |
+| `success` | boolean | mapped into the DTO only; no check in this feature (D-14) |
+| `submit-date` | string `dd/MM/uuuu` strict | required -> `submitDate` |
 | `submit-time` | string `HH:mm:ss` strict | required -> `submitTime` |
 | `ref-no` | string nonblank | required -> `referenceNo` |
 
-### err-message
+### err-message (all 503, origin `DOWNSTREAM_CONTRACT`, no reconciliation)
 
-| Value | Meaning | BFF |
-|---|---|---|
-| `err.account.invalid` | member not found | 503 submission unavailable, no reconciliation |
-| `err.role.not.allow.access` | login user not allowed to submit | 503 submission unavailable, no reconciliation |
-| any other nonblank | generic | 503 submission unavailable, no reconciliation |
+| Value | Meaning |
+|---|---|
+| `err.account.invalid` | member not found |
+| `err.role.not.allow.access` | login user not allowed to submit |
+| any other nonblank | generic |
 
-A nonblank `err-message` is a definite answer; reconciliation runs only for unknown outcomes (01 section 9).
+## 3. Cancel (deferred) - O-3
 
-## 3. Cancel (deferred)
-
-Progress operation not published. Open item O-3.
-
-## 4. Pending downstream fixes (tracked, not blocking design)
+## 4. Pending downstream fixes
 
 | Id | Fix | Owner |
 |---|---|---|
