@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
@@ -59,8 +60,11 @@ class PasswordValidationHttpTest {
   private static final String SID = "sid_abcdefghijklmnopqrstuvwx";
   private static final String REF = "acc_abcdefghijklmnopqrstuvwx";
   private static final String PURPOSE = "PERSONAL_INFORMATION_UPDATE";
+  private static final String CIM_PURPOSE = "CHANGE_INVESTMENT_CHOICE";
   private static final String PAYLOAD =
       "{\"formVersion\":\"v1\",\"applyToAllAccounts\":false,\"fields\":{\"mailingAddress\":\"reviewed-marker\"}}";
+  private static final String CIM_PAYLOAD =
+      "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":[{\"fundCode\":\"DBLF\",\"percentage\":60},{\"fundCode\":\"DHKM\",\"percentage\":40}]}";
   private static final ObjectMapper JSON = new ObjectMapper();
   private AnnotationConfigApplicationContext context;
   private DisposableServer server;
@@ -172,6 +176,20 @@ class PasswordValidationHttpTest {
             "requestId",
             "DOWNSTREAM");
     assertSafeLogs(token, consumed.binding().sha256());
+  }
+
+  @Test
+  void validCimPurposePayloadProceedsThroughPasswordCheckAndIssuesToken() throws Exception {
+    var result =
+        post(body("x", CIM_PURPOSE, CIM_PAYLOAD)).expectStatus().isOk().expectBody().returnResult();
+    var json = JSON.readTree(result.getResponseBody());
+
+    assertThat(json.path("success").asBoolean()).isTrue();
+    assertThat(json.path("status").asText()).isEqualTo("SUCCESS");
+    assertThat(json.at("/result/data/token").asText()).matches("[A-Za-z0-9_-]{43}");
+    assertThat(backend.passwordCalls).hasValue(1);
+    assertThat(backend.lastCheck.get().password()).isEqualTo("x");
+    assertSafeLogs();
   }
 
   @ParameterizedTest
@@ -341,7 +359,6 @@ class PasswordValidationHttpTest {
         "{\"password\":false}",
         "{\"password\":\"x\",\"purpose\":3}",
         "{\"password\":\"x\",\"purpose\":\"FUND_SWITCH\",\"operationPayload\":{}}",
-        "{\"password\":\"x\",\"purpose\":\"CHANGE_INVESTMENT_CHOICE\",\"operationPayload\":{\"formVersion\":\"v1\",\"applyToAllAccounts\":false,\"fields\":{\"mailingAddress\":\"reviewed-marker\"}}}",
         "{\"password\":\"x\",\"purpose\":\"personal_information_update\",\"operationPayload\":{}}",
         "{\"password\":\"x\",\"purpose\":\"PERSONAL_INFORMATION_UPDATE\",\"operationPayload\":null}",
         "{\"password\":\"x\",\"purpose\":\"PERSONAL_INFORMATION_UPDATE\",\"operationPayload\":[]}",
@@ -356,6 +373,30 @@ class PasswordValidationHttpTest {
         JSON.readTree(result.getResponseBody()).at("/errors/0/targets/0").asText());
     assertThat(backend.limiterCalls).hasValue(0);
     assertThat(backend.passwordCalls).hasValue(0);
+    assertSafeLogs();
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidCimPayloads")
+  void invalidCimPayloadIsRejectedBeforeThrottleAndPasswordCheck(String operation)
+      throws Exception {
+    failure(
+        post(body("x", CIM_PURPOSE, operation)),
+        400,
+        "VALIDATION_FAILED",
+        "err.password-validation.request.invalid");
+    assertThat(backend.limiterCalls).hasValue(0);
+    assertThat(backend.passwordCalls).hasValue(0);
+    assertSafeLogs();
+  }
+
+  @Test
+  void payloadValidationIsSelectedByPurpose() throws Exception {
+    for (var request : List.of(body("x", CIM_PURPOSE, PAYLOAD), body("x", PURPOSE, CIM_PAYLOAD))) {
+      failure(post(request), 400, "VALIDATION_FAILED", "err.password-validation.request.invalid");
+      assertThat(backend.limiterCalls).hasValue(0);
+      assertThat(backend.passwordCalls).hasValue(0);
+    }
     assertSafeLogs();
   }
 
@@ -790,14 +831,71 @@ class PasswordValidationHttpTest {
   }
 
   private static String body(String password) {
+    return body(password, PURPOSE, PAYLOAD);
+  }
+
+  private static String body(String password, String purpose, String operation) {
     return "{\"password\":\""
         + password
         + "\",\"purpose\":\""
-        + PURPOSE
+        + purpose
         + "\",\"operationPayload\":"
-        + PAYLOAD
+        + operation
         + "}";
   }
+
+  private static Stream<String> invalidCimPayloads() {
+    return Stream.of(
+        CIM_PAYLOAD.substring(0, CIM_PAYLOAD.length() - 1) + ",\"extra\":true}",
+        "{\"switchSources\":[\"BO\"]}",
+        "{\"allocations\":" + CIM_ALLOCATIONS + "}",
+        cimPayload("[]", CIM_ALLOCATIONS),
+        cimPayload("[\" \"]", CIM_ALLOCATIONS),
+        cimPayload("[\"BO\",1]", CIM_ALLOCATIONS),
+        cimPayload("[\"BO\",\"BO\"]", CIM_ALLOCATIONS),
+        cimPayload("[\"BO\"]", "[]"),
+        cimPayload("[\"BO\"]", "[\"DBLF\"]"),
+        cimPayload(
+            "[\"BO\"]",
+            "[{\"fundCode\":\"DBLF\",\"percentage\":60,\"extra\":false},{\"fundCode\":\"DHKM\",\"percentage\":40}]"),
+        cimPayload("[\"BO\"]", "[{\"percentage\":100}]"),
+        cimPayload("[\"BO\"]", "[{\"fundCode\":\"DBLF\"}]"),
+        cimPayload(
+            "[\"BO\"]",
+            "[{\"fundCode\":\" \",\"percentage\":60},{\"fundCode\":\"DHKM\",\"percentage\":40}]"),
+        cimPayload(
+            "[\"BO\"]",
+            "[{\"fundCode\":\"DBLF\",\"percentage\":60},{\"fundCode\":\"DBLF\",\"percentage\":40}]"),
+        cimPayload(
+            "[\"BO\"]",
+            "[{\"fundCode\":\"DBLF\",\"percentage\":60.0},{\"fundCode\":\"DHKM\",\"percentage\":40}]"),
+        cimPayload(
+            "[\"BO\"]",
+            "[{\"fundCode\":\"DBLF\",\"percentage\":\"60\"},{\"fundCode\":\"DHKM\",\"percentage\":40}]"),
+        cimPayload(
+            "[\"BO\"]",
+            "[{\"fundCode\":\"DBLF\",\"percentage\":true},{\"fundCode\":\"DHKM\",\"percentage\":40}]"),
+        cimPayload(
+            "[\"BO\"]",
+            "[{\"fundCode\":\"DBLF\",\"percentage\":null},{\"fundCode\":\"DHKM\",\"percentage\":40}]"),
+        cimPayload(
+            "[\"BO\"]",
+            "[{\"fundCode\":\"DBLF\",\"percentage\":0},{\"fundCode\":\"DHKM\",\"percentage\":100}]"),
+        cimPayload("[\"BO\"]", "[{\"fundCode\":\"DBLF\",\"percentage\":101}]"),
+        cimPayload(
+            "[\"BO\"]",
+            "[{\"fundCode\":\"DBLF\",\"percentage\":60},{\"fundCode\":\"DHKM\",\"percentage\":39}]"),
+        cimPayload(
+            "[\"BO\"]",
+            "[{\"fundCode\":\"DBLF\",\"percentage\":60},{\"fundCode\":\"DHKM\",\"percentage\":41}]"));
+  }
+
+  private static String cimPayload(String sources, String allocations) {
+    return "{\"switchSources\":" + sources + ",\"allocations\":" + allocations + "}";
+  }
+
+  private static final String CIM_ALLOCATIONS =
+      "[{\"fundCode\":\"DBLF\",\"percentage\":60},{\"fundCode\":\"DHKM\",\"percentage\":40}]";
 
   private static String grantKey() {
     return "password-validation:" + REF + ":" + PURPOSE;

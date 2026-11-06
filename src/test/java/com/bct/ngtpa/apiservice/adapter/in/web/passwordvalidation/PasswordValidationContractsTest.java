@@ -34,9 +34,11 @@ class PasswordValidationContractsTest {
   }
 
   @Test
-  void onlyExactInitialPurposeIsAccepted() {
+  void onlyExactSupportedPurposesAreAccepted() {
     assertThat(PasswordValidationPurpose.parse("PERSONAL_INFORMATION_UPDATE"))
         .isEqualTo(PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE);
+    assertThat(PasswordValidationPurpose.parse("CHANGE_INVESTMENT_CHOICE"))
+        .isEqualTo(PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
     for (String value :
         new String[] {
           null,
@@ -44,7 +46,6 @@ class PasswordValidationContractsTest {
           "personal_information_update",
           " PERSONAL_INFORMATION_UPDATE",
           "INVESTMENT_CHANGE",
-          "CHANGE_INVESTMENT_CHOICE",
           "FUND_SWITCH",
           "UNKNOWN"
         }) {

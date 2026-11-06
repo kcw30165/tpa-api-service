@@ -10,6 +10,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 class PasswordValidationRequestParserTest {
   private static final String OPERATION =
       "{\"formVersion\":\"v1\",\"applyToAllAccounts\":true,\"fields\":{\"unknown\":null},\"extra\":[1.000]}";
+  private static final String CIM_OPERATION =
+      "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":[{\"fundCode\":\"DBLF\",\"percentage\":60},{\"fundCode\":\"DHKM\",\"percentage\":40}]}";
   private final PasswordValidationRequestParser parser =
       new PasswordValidationRequestParser(new JsonOperationPayloadCanonicalizer(), 3, 5);
 
@@ -28,6 +30,26 @@ class PasswordValidationRequestParserTest {
         .hasMessage("Invalid password-validation request");
     assertThatThrownBy(() -> parser.parse(tooLong))
         .isInstanceOf(PasswordValidationRequestInvalidException.class);
+  }
+
+  @Test
+  void cimPayloadBindingIgnoresObjectMemberOrderButPreservesAllocationOrder() {
+    var parsed = parser.parse(body("abc", "CHANGE_INVESTMENT_CHOICE", CIM_OPERATION));
+    var reorderedMembers =
+        parser.parse(
+            body(
+                "abc",
+                "CHANGE_INVESTMENT_CHOICE",
+                "{\"allocations\":[{\"percentage\":60,\"fundCode\":\"DBLF\"},{\"percentage\":40,\"fundCode\":\"DHKM\"}],\"switchSources\":[\"BO\",\"EE\"]}"));
+    var reorderedAllocations =
+        parser.parse(
+            body(
+                "abc",
+                "CHANGE_INVESTMENT_CHOICE",
+                "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":[{\"fundCode\":\"DHKM\",\"percentage\":40},{\"fundCode\":\"DBLF\",\"percentage\":60}]}"));
+
+    assertThat(parsed.binding()).isEqualTo(reorderedMembers.binding());
+    assertThat(parsed.binding()).isNotEqualTo(reorderedAllocations.binding());
   }
 
   @ParameterizedTest
@@ -63,9 +85,15 @@ class PasswordValidationRequestParserTest {
   }
 
   private static String body(String password, String operation) {
+    return body(password, "PERSONAL_INFORMATION_UPDATE", operation);
+  }
+
+  private static String body(String password, String purpose, String operation) {
     return "{\"password\":\""
         + password
-        + "\",\"purpose\":\"PERSONAL_INFORMATION_UPDATE\",\"operationPayload\":"
+        + "\",\"purpose\":\""
+        + purpose
+        + "\",\"operationPayload\":"
         + operation
         + "}";
   }
