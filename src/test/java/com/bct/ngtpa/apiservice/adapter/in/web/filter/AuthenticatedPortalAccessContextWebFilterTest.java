@@ -4,12 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.*;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.SessionRevision;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import com.bct.ngtpa.apiservice.shared.web.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -18,6 +21,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpCookie;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.function.server.RequestPredicates;
+import org.springframework.web.reactive.function.server.RouterFunctions;
+import org.springframework.web.reactive.function.server.ServerResponse;
+import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -107,6 +115,52 @@ class AuthenticatedPortalAccessContextWebFilterTest {
         .verify();
 
     assertThat(chainInvoked).isFalse();
+  }
+
+  @Test
+  void investmentChoiceGetWithoutSessionReturnsUnauthorizedThroughTheFilterChain() {
+    AtomicBoolean routeInvoked = new AtomicBoolean();
+    PortalAccessContextPort port = ref -> Mono.just(CONTEXT);
+    var route =
+        RouterFunctions.route(
+            RequestPredicates.GET("/api/v1/investment-choice"),
+            request -> {
+              routeInvoked.set(true);
+              return ServerResponse.ok().build();
+            });
+    var exceptionHandler =
+        new AuthenticatedPortalContextWebExceptionHandler(
+            new ObjectMapper(),
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new ErrorResponseRenderer());
+    WebFilter exceptionBoundary =
+        (exchange, chain) ->
+            chain
+                .filter(exchange)
+                .onErrorResume(
+                    AuthenticatedPortalContextResolutionException.class,
+                    failure -> exceptionHandler.handle(exchange, failure));
+    WebTestClient client =
+        WebTestClient.bindToRouterFunction(route)
+            .webFilter(exceptionBoundary, filter(port, validSession()))
+            .build();
+
+    client
+        .get()
+        .uri("/api/v1/investment-choice")
+        .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, CONTEXT.account().accountRef())
+        .header(RequestHeaderContextKeys.XSRF_TOKEN_HEADER, "csrf_value")
+        .header(RequestCorrelation.REQUEST_ID_HEADER, "req-cim-filter")
+        .exchange()
+        .expectStatus()
+        .isUnauthorized()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("BUSINESS_REJECTED")
+        .jsonPath("$.errors[0].code")
+        .isEqualTo("err.security.authentication.required");
+
+    assertThat(routeInvoked).isFalse();
   }
 
   @Test

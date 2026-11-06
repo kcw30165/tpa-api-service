@@ -15,11 +15,17 @@ import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.GetInvestmentChoiceCommand;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetails;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceFund;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceMandate;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePending;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePendingDetail;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceResult;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSource;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.in.GetInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
@@ -28,6 +34,8 @@ import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,6 +46,7 @@ import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 class InvestmentChoiceControllerTest {
 
@@ -86,6 +95,81 @@ class InvestmentChoiceControllerTest {
             }
             """,
             true);
+  }
+
+  @Test
+  void serializesHistoryPercentagesAsStringsAndPendingPercentagesAsNumbers() {
+    InvestmentChoiceDetails details =
+        new InvestmentChoiceDetails(
+            5,
+            List.of(new InvestmentChoiceSource("BO", 1, true)),
+            List.of(new InvestmentChoiceFund("F01", "Alpha", null, "1", true)),
+            List.of(new InvestmentChoiceMandate(LocalDate.of(2026, 10, 1), "BO", "F01", "05")),
+            List.of(
+                new InvestmentChoicePending(
+                    "REF-1",
+                    LocalDate.of(2026, 10, 2),
+                    LocalTime.of(14, 30, 5),
+                    List.of(new InvestmentChoicePendingDetail("BO", "F01", 8)))));
+    WebTestClient client =
+        client(
+            command -> Mono.just(new InvestmentChoiceResult("formatted-account", details)),
+            context("ACC-1"),
+            exchange -> Optional.of(SESSION_ID));
+
+    client
+        .get()
+        .uri(ROUTE)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.result.data.history[0].allocations[0].percentage")
+        .isEqualTo("05")
+        .jsonPath("$.result.data.pendingInstructions[0].allocations[0].percentage")
+        .isEqualTo(8);
+  }
+
+  @Test
+  void responseDoesNotContainRawContextIdentifiers() {
+    PortalAccessContext sensitiveContext =
+        new PortalAccessContext(
+            new ActorContext("actor", ActorUserRole.ROLE_USER_MBR),
+            new AccountContext(
+                "account-ref-marker",
+                "JP",
+                "policy-marker",
+                "cert-marker",
+                "T",
+                "OE",
+                TermStatus.BLANK,
+                null));
+    WebTestClient client =
+        client(
+            command ->
+                Mono.just(
+                    new InvestmentChoiceResult(
+                        "formatted-account",
+                        new InvestmentChoiceDetails(
+                            5, List.of(), List.of(), List.of(), List.of()))),
+            sensitiveContext,
+            exchange -> Optional.of(SESSION_ID));
+
+    String response =
+        client
+            .get()
+            .uri(ROUTE)
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody(String.class)
+            .returnResult()
+            .getResponseBody();
+
+    assertThat(response)
+        .isNotNull()
+        .doesNotContain(
+            "policy-marker", "cert-marker", "account-ref-marker", "sid_abcdefghijklmnopqrstuvwx");
   }
 
   @Test
@@ -178,6 +262,20 @@ class InvestmentChoiceControllerTest {
         .isEqualTo("AUTHENTICATION_REQUIRED")
         .jsonPath("$.errors[0].code")
         .isEqualTo(ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED);
+    assertThat(calls).hasValue(0);
+
+    StepVerifier.create(
+            controller(
+                    command -> {
+                      calls.incrementAndGet();
+                      return Mono.error(new AssertionError("use case must not run"));
+                    },
+                    context("ACC-1"),
+                    exchange -> Optional.empty())
+                .getInvestmentChoice(
+                    null, MockServerWebExchange.from(MockServerHttpRequest.get(ROUTE).build())))
+        .expectError(AuthenticatedPortalContextResolutionException.class)
+        .verify();
     assertThat(calls).hasValue(0);
   }
 
