@@ -164,6 +164,14 @@ class ApimInvestmentChoiceDetailsAdapterTest {
   }
 
   @Test
+  void eligibilityCodeSlotIsEmptyForKnownAndUnknownErrorMessages() {
+    assertThat(InvestmentChoiceEligibilityCodes.featureCode("err.account.invalid")).isEmpty();
+    assertThat(InvestmentChoiceEligibilityCodes.featureCode("err.account.no.invest.mandate"))
+        .isEmpty();
+    assertThat(InvestmentChoiceEligibilityCodes.featureCode("err.future.unknown")).isEmpty();
+  }
+
+  @Test
   void missingRequestIdFollowsRegistrationAndPublishesNullRequestId() {
     respond(envelope("err.account.invalid", null));
 
@@ -187,6 +195,17 @@ class ApimInvestmentChoiceDetailsAdapterTest {
     assertMalformed(envelope("", List.of(item(0, valid))));
     assertMalformed(envelope("", List.of(item(101, valid))));
     assertMalformed(envelope("", List.of(item(valid, null, null, null, null, null))));
+    assertMalformed(
+        envelope(
+            "",
+            List.of(
+                item(
+                    valid,
+                    null,
+                    valid.switchFund(),
+                    valid.investMandate(),
+                    valid.pendingReq(),
+                    valid.pendingReqDtl()))));
     assertMalformed(
         envelope(
             "",
