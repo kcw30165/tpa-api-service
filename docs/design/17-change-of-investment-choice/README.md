@@ -5,9 +5,9 @@ BFF design pack for BRD *TPA ORSO Web Revamp 6.5 Change of Investment Choice* V0
 | Item | Value |
 |---|---|
 | Owner | Nick Deng (BFF API) |
-| Code anchor | `origin/dev` 8eac2b30 (evidence 001 at 8f84da7a, evidence 002 at 8eac2b30) |
+| Code anchor | `origin/dev` 8eac2b30 (evidence 001 at 8f84da7a; evidence 002 and 004 at 8eac2b30) |
 | Implementor | GitHub Copilot, one sub-task prompt at a time (document 07) |
-| Status | Design approved for implementation, except the open items in document 06 |
+| Status | Approved for implementation, except the open items in document 06 |
 
 ## Documents
 

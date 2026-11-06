@@ -1,9 +1,10 @@
 # 03 APIM contract (BFF <-> Progress via APIM)
 
 Both operations are new routing-ledger entries in `ApimRoutingLedgerCharacterizationTest`
-(21 entries at 8f84da7a -> 23). Envelope: `{ "response": { "err-message": "", "data": [ ... ] } }`.
-Every response DTO and nested type carries `@JsonIgnoreProperties(ignoreUnknown = true)`
-(`ApimResponseDtoIgnoreUnknownArchitectureTest`). Each adapter interprets its own envelope;
+(21 entries at 8f84da7a; count re-confirmed in sub-task 0.1). Envelope:
+`{ "response": { "err-message": "", "data": [ ... ] } }`, deserialized through the generic
+`ApimResponseEnvelope<T>`. Every response DTO and nested type carries
+`@JsonIgnoreProperties(ignoreUnknown = true)`. Each adapter interprets its own envelope;
 do not use `ApimResponseValidator`.
 
 ## 1. TRPGetCIMDtl
@@ -16,21 +17,23 @@ do not use `ApimResponseValidator`.
 { "policy-no": "<account.policyNo>", "cert-no": "<account.certNo>", "ref-date": "31/08/2026" }
 ```
 
+`policy-no` and `cert-no` stay textual (configured field encryption may transform them).
+
 ### Response `data[0]` (exactly one item required)
 
 | Field | Type | Required | Mapping rule |
 |---|---|---|---|
-| `interval-pcnt` | integer | yes | must be 1..100 |
+| `interval-pcnt` | integer | yes | 1..100 |
 | `SwitchSrc[]` | array | yes, may be empty | |
-| `.switch-src` | string | yes, nonblank | code |
+| `.switch-src` | string | yes, nonblank, unique | code |
 | `.src-desc`, `.src-chin-desc` | string | no | ignored (codes only) |
 | `.seq` | integer | yes | sort key |
-| `.avail-sw` | boolean | yes | passed through; meaning pending B3 |
+| `.avail-sw` | boolean | yes | passed through; meaning pending O-1 |
 | `SwitchFund[]` | array | yes, may be empty | |
 | `.fund-code` | string | yes, nonblank, unique | |
 | `.fund-name` | string | yes, nonblank (D-06) | |
 | `.chin-fund-name` | string | no | blank -> English fallback |
-| `.fund-seq` | integer | no | not used for ordering |
+| `.fund-seq` | integer | no | not used |
 | `.risk-level` | string | no | `FundPriceRiskLevels` rule |
 | `.avail-sw` | boolean | yes | false -> excluded from `funds`, kept for history names |
 | `InvestMandate[]` | array | yes, may be empty | |
@@ -46,9 +49,9 @@ do not use `ApimResponseValidator`.
 | `.switch-src`, `.fund-code` | string | yes | |
 | `.pcnt` | integer | yes, 1..100 | |
 
-Integrity rules (violation = malformed -> 503): duplicate `fund-code` in `SwitchFund`; duplicate
-`ref-no` in `PendingReq`; `PendingReqDtl.ref-no` not in `PendingReq`; `PendingReq` without any detail;
-date/time not strict.
+Integrity rules (violation = malformed -> 503): duplicate `switch-src` or `fund-code`; duplicate
+`ref-no` in `PendingReq`; `PendingReqDtl.ref-no` not in `PendingReq`; `PendingReq` without any
+detail; date/time not strict.
 
 A history or pending row whose `fund-code` is absent from `SwitchFund` is returned with
 `fundName: null` (open item O-5), not treated as malformed.
@@ -60,11 +63,11 @@ A history or pending row whose `fund-code` is absent from `SwitchFund` is return
 | `err.account.invalid` | member not found by policy/cert (server-side context fault) | 503 retrieval unavailable |
 | `err.account.no.invest.mandate` | no data returned | 503 retrieval unavailable |
 | any other nonblank | generic | 503 retrieval unavailable |
-| future eligibility codes | not yet defined (C2 = b) | reserved 422 slot, 04 section 4 |
+| future eligibility codes | not yet defined (C2 = b) | reserved slot, 04 section 4 |
 
 ## 2. TRPCIMReq
 
-`POST /ws/NGTPA/v1/TRPCIMReq` - `ApimRetryEligibility.NON_RETRYABLE`, resubmission `NEVER`
+`POST /ws/NGTPA/v1/TRPCIMReq` - `ApimRetryEligibility.NON_RETRYABLE`, never resubmitted
 (same policy as `TRPPwdValidation`). No `ref-date`, no `package-code`.
 
 ### Request
@@ -83,10 +86,10 @@ A history or pending row whose `fund-code` is absent from `SwitchFund` is return
 
 | Field | Type | Rule |
 |---|---|---|
-| `success` | boolean | mapped into the DTO only. No `success` check is added in this feature; it is delivered by Nick's separate branch (D-14). `ref-no`, `submit-date`, `submit-time` are still required |
-| `submit-date` | string `dd/MM/yyyy` strict | -> `submitDate` |
-| `submit-time` | string `HH:mm:ss` strict | -> `submitTime` |
-| `ref-no` | string nonblank | -> `referenceNo` |
+| `success` | boolean | mapped into the DTO only. No `success` check in this feature; Nick's separate branch (D-14) |
+| `submit-date` | string `dd/MM/yyyy` strict | required -> `submitDate` |
+| `submit-time` | string `HH:mm:ss` strict | required -> `submitTime` |
+| `ref-no` | string nonblank | required -> `referenceNo` |
 
 ### err-message
 
@@ -96,16 +99,15 @@ A history or pending row whose `fund-code` is absent from `SwitchFund` is return
 | `err.role.not.allow.access` | login user not allowed to submit | 503 submission unavailable, no reconciliation |
 | any other nonblank | generic | 503 submission unavailable, no reconciliation |
 
-A nonblank `err-message` is a definite downstream answer; reconciliation runs only for unknown
-outcomes (01 section 9).
+A nonblank `err-message` is a definite answer; reconciliation runs only for unknown outcomes (01 section 9).
 
 ## 3. Cancel (deferred)
 
-Progress endpoint not published. Open item O-3.
+Progress operation not published. Open item O-3.
 
 ## 4. Pending downstream fixes (tracked, not blocking design)
 
 | Id | Fix | Owner |
 |---|---|---|
-| B3 | Final meaning of `SwitchSrc.avail-sw` | Progress |
-| R1 | Sample dates `2019-02-01` / `2026-08-21` become `dd/MM/yyyy` | Progress |
+| O-1 | Final meaning of `SwitchSrc.avail-sw` | Progress |
+| O-6 | Sample dates `2019-02-01` / `2026-08-21` become `dd/MM/yyyy` | Progress |
