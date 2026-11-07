@@ -2,6 +2,9 @@ package com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
@@ -52,6 +55,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -414,6 +418,113 @@ class InvestmentChoiceControllerTest {
   }
 
   @Test
+  void submitPathsDoNotLogSensitiveRequestData() {
+    Logger logger = (Logger) LoggerFactory.getLogger(ApiExceptionHandler.class);
+    ListAppender<ILoggingEvent> captured = new ListAppender<>();
+    captured.start();
+    logger.addAppender(captured);
+    try {
+      submitPost(
+              submitClient(
+                  command ->
+                      Mono.just(
+                          new InvestmentChoiceSubmitOutcome.Submitted(
+                              new InvestmentChoiceSubmission(
+                                  "referenceNo-secret",
+                                  LocalDate.of(2026, 11, 6),
+                                  LocalTime.NOON))),
+                  sensitiveContext("account-ref-secret"),
+                  exchange -> Optional.of(SESSION_ID)),
+              VALID_INSTRUCTION)
+          .expectStatus()
+          .isOk();
+
+      submitPost(
+              submitClient(
+                  command ->
+                      Mono.just(
+                          new InvestmentChoiceSubmitOutcome.Submitted(
+                              new InvestmentChoiceSubmission(
+                                  "referenceNo-secret",
+                                  LocalDate.of(2026, 11, 6),
+                                  LocalTime.NOON))),
+                  sensitiveContext("account-ref-secret"),
+                  exchange -> Optional.of(SESSION_ID)),
+              "{\"switchSources\":[\"BO\"],\"allocations\":[{\"fundCode\":\"FBAL\",\"percentage\":99}]}")
+          .expectStatus()
+          .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+
+      submitPost(
+              submitClient(
+                  command ->
+                      Mono.just(
+                          new InvestmentChoiceSubmitOutcome.Invalid(
+                              List.of(
+                                  new InvestmentChoiceViolation(
+                                      InvestmentChoiceViolation.Kind.FIELD,
+                                      ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
+                                      List.of("allocations[0].fundCode"))))),
+                  sensitiveContext("account-ref-secret"),
+                  exchange -> Optional.of(SESSION_ID)),
+              VALID_INSTRUCTION)
+          .expectStatus()
+          .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+
+      submitPost(
+              submitClient(
+                  command -> Mono.error(new InvestmentChoiceSubmissionUnavailableException()),
+                  sensitiveContext("account-ref-secret"),
+                  exchange -> Optional.of(SESSION_ID)),
+              VALID_INSTRUCTION)
+          .expectStatus()
+          .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+
+      submitPost(
+              submitClient(
+                  command -> Mono.error(new AssertionError("use case must not run")),
+                  sensitiveContext("account-ref-secret"),
+                  exchange -> Optional.empty()),
+              VALID_INSTRUCTION)
+          .expectStatus()
+          .isEqualTo(HttpStatus.UNAUTHORIZED);
+
+      submitPost(
+              submitClient(
+                  command -> Mono.error(new AssertionError("use case must not run")),
+                  sensitiveContext(" "),
+                  exchange -> Optional.of(SESSION_ID)),
+              VALID_INSTRUCTION)
+          .expectStatus()
+          .isBadRequest();
+    } finally {
+      logger.detachAppender(captured);
+      captured.stop();
+    }
+
+    String logText =
+        captured.list.stream()
+            .map(ILoggingEvent::getFormattedMessage)
+            .collect(java.util.stream.Collectors.joining("\n"));
+    assertThat(logText)
+        .contains(
+            "InvestmentChoiceSubmissionUnavailableException",
+            "AuthenticatedPortalContextResolutionException",
+            "PortalAccessContextResolutionException")
+        .doesNotContain(
+            "policyNo-secret",
+            "certNo-secret",
+            "actorUserId-secret",
+            "account-ref-secret",
+            SESSION_ID.value(),
+            "password-validation-token-secret",
+            "FBAL",
+            "FHKM",
+            "\"percentage\":60",
+            "\"percentage\":40",
+            "referenceNo-secret");
+  }
+
+  @Test
   void nonJsonContentTypeIsRejectedByTheWebFluxBodyDecoder() {
     AtomicInteger calls = new AtomicInteger();
     WebTestClient client =
@@ -772,6 +883,20 @@ class InvestmentChoiceControllerTest {
         new ActorContext("actor", ActorUserRole.ROLE_USER_MBR),
         new AccountContext(
             accountRef, "JP", "00000008802", "0230", "T", "OE", TermStatus.BLANK, null));
+  }
+
+  private static PortalAccessContext sensitiveContext(String accountRef) {
+    return new PortalAccessContext(
+        new ActorContext("actorUserId-secret", ActorUserRole.ROLE_USER_MBR),
+        new AccountContext(
+            accountRef,
+            "JP",
+            "policyNo-secret",
+            "certNo-secret",
+            "T",
+            "OE",
+            TermStatus.BLANK,
+            null));
   }
 
   private static ApiExceptionHandler advice() {

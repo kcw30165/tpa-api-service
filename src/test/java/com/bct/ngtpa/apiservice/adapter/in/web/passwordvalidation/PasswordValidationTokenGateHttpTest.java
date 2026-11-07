@@ -10,6 +10,7 @@ import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.InvestmentChoiceController;
+import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.InvestmentChoiceInstructionBodyValidator;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.InvestmentChoiceWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.personalinformation.PersonalInformationController;
@@ -87,6 +88,10 @@ class PasswordValidationTokenGateHttpTest {
   private static final ObjectMapper JSON = new ObjectMapper();
   private final JsonOperationPayloadCanonicalizer bindings =
       new JsonOperationPayloadCanonicalizer();
+  private final PasswordValidationRequestParser cimIssuanceParser =
+      new PasswordValidationRequestParser(bindings, 3, 5);
+  private final InvestmentChoiceInstructionBodyValidator cimBodyValidator =
+      new InvestmentChoiceInstructionBodyValidator();
   private final AtomicInteger dispatches = new AtomicInteger();
   private final AtomicInteger downstream = new AtomicInteger();
   private final Set<String> issuedTokens = new HashSet<>();
@@ -398,6 +403,80 @@ class PasswordValidationTokenGateHttpTest {
                 List.of(
                     new InvestmentChoiceInstructionRequest.Allocation("FBAL", 60),
                     new InvestmentChoiceInstructionRequest.Allocation("FHKM", 40))));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource(
+      "com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.InvestmentChoiceInstructionPasswordValidationParityTest#parityCases")
+  void cimGateUsesIssuanceAndBodyValidatorOutcomesForTheSameRawBody(
+      String name,
+      String rawBody,
+      boolean expectedIssuanceAcceptance,
+      boolean expectedValidatorAcceptance)
+      throws com.fasterxml.jackson.core.JsonProcessingException {
+    boolean issuanceAccepts = cimIssuanceAccepts(rawBody);
+    boolean validatorAccepts = cimBodyValidator.validate(JSON.readTree(rawBody)).isValid();
+
+    assertThat(new boolean[] {issuanceAccepts, validatorAccepts})
+        .containsExactly(expectedIssuanceAcceptance, expectedValidatorAcceptance);
+
+    if (!issuanceAccepts) {
+      String token = issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+      if (!JSON.readTree(rawBody).isObject()) {
+        assertCimBodyIntegrityRejected(rawBody, token);
+      } else {
+        reject(
+            post(CIM_PATH, SID, REF, "csrf-fixture", rawBody, token),
+            403,
+            "BUSINESS_REJECTED",
+            authorizationCode());
+        assertNoDispatch();
+      }
+      return;
+    }
+
+    String token = issue(rawBody, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+    var response =
+        post(CIM_PATH, SID, REF, "csrf-fixture", rawBody, token).expectBody().returnResult();
+    assertThat(response.getStatus().value())
+        .as(name)
+        .isEqualTo(expectedValidatorAcceptance ? 200 : 422);
+    assertConsumed(CIM_GRANT_KEY);
+    if (expectedValidatorAcceptance) {
+      assertThat(cimStub.dispatches).hasValue(1);
+    } else {
+      assertNoDispatch();
+    }
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource(
+      "com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.InvestmentChoiceInstructionPasswordValidationParityTest#duplicateMemberBodies")
+  void cimGateRejectsDuplicateMemberBodiesAsInvalidBeforeController(String name, String rawBody) {
+    String token = issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+    assertCimBodyIntegrityRejected(rawBody, token);
+  }
+
+  private void assertCimBodyIntegrityRejected(String rawBody, String token) {
+    // The gate is the authority on raw-body integrity and runs before the controller.
+    reject(
+        post(CIM_PATH, SID, REF, "csrf-fixture", rawBody, token),
+        400,
+        "VALIDATION_FAILED",
+        ErrorCodes.REQUEST_INVALID,
+        "PAGE");
+    assertReasonLine("BODY_INVALID");
+    assertConsumed(CIM_GRANT_KEY);
+    assertNoDispatch();
+
+    logs.list.clear();
+    reject(
+        post(CIM_PATH, SID, REF, "csrf-fixture", CIM_PAYLOAD, token),
+        403,
+        "BUSINESS_REJECTED",
+        authorizationCode());
+    assertReasonLine("ALREADY_CONSUMED");
+    assertNoDispatch();
   }
 
   @Test
@@ -1150,6 +1229,18 @@ class PasswordValidationTokenGateHttpTest {
     return issue(raw, PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE);
   }
 
+  private boolean cimIssuanceAccepts(String rawBody) {
+    try {
+      cimIssuanceParser.parse(
+          "{\"password\":\"abc\",\"purpose\":\"CHANGE_INVESTMENT_CHOICE\",\"operationPayload\":"
+              + rawBody
+              + "}");
+      return true;
+    } catch (PasswordValidationRequestInvalidException exception) {
+      return false;
+    }
+  }
+
   private String issue(String raw, PasswordValidationPurpose purpose) {
     var result =
         context
@@ -1228,18 +1319,23 @@ class PasswordValidationTokenGateHttpTest {
   }
 
   private void reject(
-      WebTestClient.ResponseSpec response, int httpStatus, String status, String code) {
-    response
-        .expectStatus()
-        .isEqualTo(httpStatus)
-        .expectHeader()
-        .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
-        .expectHeader()
-        .valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
-        .expectHeader()
-        .valueEquals(RequestCorrelation.REQUEST_ID_HEADER, "m4-http")
-        .expectBody()
-        .jsonPath("$.success")
+      WebTestClient.ResponseSpec response,
+      int httpStatus,
+      String status,
+      String code,
+      String... targets) {
+    var body =
+        response
+            .expectStatus()
+            .isEqualTo(httpStatus)
+            .expectHeader()
+            .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+            .expectHeader()
+            .valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+            .expectHeader()
+            .valueEquals(RequestCorrelation.REQUEST_ID_HEADER, "m4-http")
+            .expectBody();
+    body.jsonPath("$.success")
         .isEqualTo(false)
         .jsonPath("$.status")
         .isEqualTo(status)
@@ -1251,6 +1347,9 @@ class PasswordValidationTokenGateHttpTest {
         .isEmpty()
         .jsonPath("$.requestId")
         .doesNotExist();
+    if (targets.length > 0) {
+      body.jsonPath("$.errors[0].targets").isEqualTo(List.of(targets));
+    }
   }
 
   private String authorizationCode() {
