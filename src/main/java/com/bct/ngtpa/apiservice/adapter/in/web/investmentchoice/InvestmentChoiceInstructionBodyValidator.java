@@ -11,8 +11,13 @@ import java.util.Set;
 
 public final class InvestmentChoiceInstructionBodyValidator {
 
-  private static final Set<String> BODY_MEMBERS = Set.of("switchSources", "allocations");
-  private static final Set<String> ALLOCATION_MEMBERS = Set.of("fundCode", "percentage");
+  private static final String SWITCH_SOURCES_MEMBER = "switchSources";
+  private static final String ALLOCATIONS_MEMBER = "allocations";
+  private static final String PERCENTAGE_MEMBER = "percentage";
+  private static final String FUND_CODE_MEMBER = "fundCode";
+  private static final String ALLOCATIONS_TARGET_PREFIX = "allocations[";
+  private static final Set<String> BODY_MEMBERS = Set.of(SWITCH_SOURCES_MEMBER, ALLOCATIONS_MEMBER);
+  private static final Set<String> ALLOCATION_MEMBERS = Set.of(FUND_CODE_MEMBER, PERCENTAGE_MEMBER);
 
   public ValidationResult validate(JsonNode body) {
     if (hasMalformedStructure(body)) {
@@ -24,8 +29,8 @@ public final class InvestmentChoiceInstructionBodyValidator {
                   List.of())));
     }
 
-    JsonNode switchSources = body.get("switchSources");
-    JsonNode allocations = body.get("allocations");
+    JsonNode switchSources = body.get(SWITCH_SOURCES_MEMBER);
+    JsonNode allocations = body.get(ALLOCATIONS_MEMBER);
     List<InvestmentChoiceViolation> violations = new ArrayList<>();
 
     appendSwitchSourceViolations(switchSources, violations);
@@ -40,33 +45,50 @@ public final class InvestmentChoiceInstructionBodyValidator {
     if (body == null || !body.isObject() || containsUnknownMember(body, BODY_MEMBERS)) {
       return true;
     }
-    JsonNode switchSources = body.get("switchSources");
+    return hasMalformedArrayShapes(body)
+        || hasMalformedSwitchSourceItems(body.get(SWITCH_SOURCES_MEMBER))
+        || hasMalformedAllocationItems(body.get(ALLOCATIONS_MEMBER));
+  }
+
+  private boolean hasMalformedArrayShapes(JsonNode body) {
+    JsonNode switchSources = body.get(SWITCH_SOURCES_MEMBER);
     if (switchSources != null && !switchSources.isArray()) {
       return true;
     }
-    JsonNode allocations = body.get("allocations");
-    if (allocations != null && !allocations.isArray()) {
-      return true;
+    JsonNode allocations = body.get(ALLOCATIONS_MEMBER);
+    return allocations != null && !allocations.isArray();
+  }
+
+  private boolean hasMalformedSwitchSourceItems(JsonNode switchSources) {
+    if (switchSources == null) {
+      return false;
     }
-    if (switchSources != null) {
-      for (JsonNode source : switchSources) {
-        if (!source.isTextual()) {
-          return true;
-        }
-      }
-    }
-    if (allocations != null) {
-      for (JsonNode allocation : allocations) {
-        if (!allocation.isObject() || containsUnknownMember(allocation, ALLOCATION_MEMBERS)) {
-          return true;
-        }
-        JsonNode fundCode = allocation.get("fundCode");
-        if (fundCode != null && !fundCode.isTextual()) {
-          return true;
-        }
+    for (JsonNode source : switchSources) {
+      if (!source.isTextual()) {
+        return true;
       }
     }
     return false;
+  }
+
+  private boolean hasMalformedAllocationItems(JsonNode allocations) {
+    if (allocations == null) {
+      return false;
+    }
+    for (JsonNode allocation : allocations) {
+      if (hasMalformedAllocation(allocation)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean hasMalformedAllocation(JsonNode allocation) {
+    if (!allocation.isObject() || containsUnknownMember(allocation, ALLOCATION_MEMBERS)) {
+      return true;
+    }
+    JsonNode fundCode = allocation.get(FUND_CODE_MEMBER);
+    return fundCode != null && !fundCode.isTextual();
   }
 
   private boolean containsUnknownMember(JsonNode object, Set<String> knownMembers) {
@@ -95,7 +117,7 @@ public final class InvestmentChoiceInstructionBodyValidator {
               violation(
                   InvestmentChoiceViolation.Kind.FIELD,
                   ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_DUPLICATE,
-                  "switchSources[" + index + "]"));
+                  SWITCH_SOURCES_MEMBER + "[" + index + "]"));
         }
       }
     }
@@ -104,7 +126,7 @@ public final class InvestmentChoiceInstructionBodyValidator {
           violation(
               InvestmentChoiceViolation.Kind.FIELD,
               ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_REQUIRED,
-              "switchSources"));
+              SWITCH_SOURCES_MEMBER));
     }
     violations.addAll(duplicates);
   }
@@ -116,7 +138,7 @@ public final class InvestmentChoiceInstructionBodyValidator {
           violation(
               InvestmentChoiceViolation.Kind.FIELD,
               ErrorCodes.INVESTMENT_CHOICE_ALLOCATION_REQUIRED,
-              "allocations"));
+              ALLOCATIONS_MEMBER));
       return;
     }
 
@@ -128,28 +150,28 @@ public final class InvestmentChoiceInstructionBodyValidator {
     boolean allPercentagesValid = true;
     for (int index = 0; index < allocations.size(); index++) {
       JsonNode allocation = allocations.get(index);
-      JsonNode fundCodeNode = allocation.get("fundCode");
+      JsonNode fundCodeNode = allocation.get(FUND_CODE_MEMBER);
       if (fundCodeNode == null || fundCodeNode.textValue().isBlank()) {
         missingFunds.add(
             violation(
                 InvestmentChoiceViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_FUND_REQUIRED,
-                "allocations[" + index + "].fundCode"));
+                ALLOCATIONS_TARGET_PREFIX + index + "]." + FUND_CODE_MEMBER));
       } else if (!seenFunds.add(fundCodeNode.textValue())) {
         duplicateFunds.add(
             violation(
                 InvestmentChoiceViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_FUND_DUPLICATE,
-                "allocations[" + index + "].fundCode"));
+                ALLOCATIONS_TARGET_PREFIX + index + "]." + FUND_CODE_MEMBER));
       }
 
-      JsonNode percentage = allocation.get("percentage");
+      JsonNode percentage = allocation.get(PERCENTAGE_MEMBER);
       if (!validPercentage(percentage)) {
         invalidPercentages.add(
             violation(
                 InvestmentChoiceViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_INVALID,
-                "allocations[" + index + "].percentage"));
+                ALLOCATIONS_TARGET_PREFIX + index + "]." + PERCENTAGE_MEMBER));
         allPercentagesValid = false;
       } else {
         percentageTotal += percentage.intValue();
@@ -163,7 +185,7 @@ public final class InvestmentChoiceInstructionBodyValidator {
           violation(
               InvestmentChoiceViolation.Kind.CROSS_FIELD,
               ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_TOTAL_INVALID,
-              "allocations"));
+              ALLOCATIONS_MEMBER));
     }
   }
 
@@ -186,7 +208,8 @@ public final class InvestmentChoiceInstructionBodyValidator {
     for (JsonNode allocation : allocations) {
       mappedAllocations.add(
           new InvestmentChoiceInstructionRequest.Allocation(
-              allocation.get("fundCode").textValue(), allocation.get("percentage").intValue()));
+              allocation.get(FUND_CODE_MEMBER).textValue(),
+              allocation.get(PERCENTAGE_MEMBER).intValue()));
     }
     return new InvestmentChoiceInstructionRequest(sources, mappedAllocations);
   }

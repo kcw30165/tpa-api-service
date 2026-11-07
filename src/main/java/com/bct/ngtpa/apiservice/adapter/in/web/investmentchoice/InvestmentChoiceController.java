@@ -47,6 +47,8 @@ import tools.jackson.databind.JsonNode;
 @RequestMapping("/api/v1")
 public final class InvestmentChoiceController {
 
+  private static final String ERROR_SOURCE = "SERVER";
+
   private final GetInvestmentChoiceUseCase useCase;
   private final SubmitInvestmentChoiceUseCase submitUseCase;
   private final CurrentPortalAccessContextResolver contextResolver;
@@ -173,15 +175,12 @@ public final class InvestmentChoiceController {
 
   private MutationResponse<InvestmentChoiceSubmissionResultResponse> submissionResponse(
       InvestmentChoiceSubmitOutcome outcome) {
-    if (outcome instanceof InvestmentChoiceSubmitOutcome.Submitted submitted) {
+    if (outcome instanceof InvestmentChoiceSubmitOutcome.Submitted(var submission)) {
       return MutationResponse.success(
-          ApiStatus.SUBMITTED,
-          webMapper.toSubmissionResultResponse(submitted.submission()),
-          List.of());
+          ApiStatus.SUBMITTED, webMapper.toSubmissionResultResponse(submission), List.of());
     }
-    if (outcome instanceof InvestmentChoiceSubmitOutcome.Invalid invalid) {
-      return MutationResponse.failure(
-          ApiStatus.VALIDATION_FAILED, validationErrors(invalid.violations()));
+    if (outcome instanceof InvestmentChoiceSubmitOutcome.Invalid(var violations)) {
+      return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, validationErrors(violations));
     }
     throw new IllegalStateException("Unsupported investment choice submit outcome");
   }
@@ -192,10 +191,12 @@ public final class InvestmentChoiceController {
             violation ->
                 switch (violation.kind()) {
                   case FIELD ->
-                      ApiError.field(violation.code(), null, violation.targets(), "SERVER");
+                      ApiError.field(violation.code(), null, violation.targets(), ERROR_SOURCE);
                   case CROSS_FIELD ->
-                      ApiError.crossField(violation.code(), null, violation.targets(), "SERVER");
-                  case FORM -> ApiError.form(violation.code(), null, violation.targets(), "SERVER");
+                      ApiError.crossField(
+                          violation.code(), null, violation.targets(), ERROR_SOURCE);
+                  case FORM ->
+                      ApiError.form(violation.code(), null, violation.targets(), ERROR_SOURCE);
                 })
         .toList();
   }
