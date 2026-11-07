@@ -226,6 +226,8 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
                         downstreamFailed(origin == null ? "APIM_TECHNICAL" : origin.name()));
                   }
                 })
+        // APIM-classified adapter failures are returned as DOWNSTREAM_FAILED; this handles local
+        // state failures and unexpected, unclassified errors from the port.
         .onErrorResume(
             exception ->
                 Mono.just(
