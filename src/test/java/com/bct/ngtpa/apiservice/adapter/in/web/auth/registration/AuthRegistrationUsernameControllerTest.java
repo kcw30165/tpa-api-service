@@ -350,6 +350,34 @@ class AuthRegistrationUsernameControllerTest {
   }
 
   @Test
+  void mapperFailureBeforeResponseConstructionDoesNotSetOwnershipMarker() {
+    var technical =
+        new CheckRegistrationUsernameResult(
+            CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED,
+            WorkflowNextStep.USERNAME_CHECK,
+            List.of(),
+            List.of(error("err.workflow.downstream.unavailable")));
+    var mapper = org.mockito.Mockito.mock(RegistrationUsernameCheckWebMapper.class);
+    org.mockito.Mockito.when(mapper.toMutationResponse(org.mockito.ArgumentMatchers.any()))
+        .thenThrow(new IllegalStateException("mapper-before-response"));
+    var exchange = exchange();
+    var controller = controller(new RecordingUseCase(technical), mapper);
+
+    org.junit.jupiter.api.Assertions.assertThrows(
+        IllegalStateException.class,
+        () ->
+            controller
+                .checkUsername(
+                    validRequest(), "afs", "csrf", "req", "en", null, null,
+                    exchange.getResponse(), exchange)
+                .block());
+    assertThat(
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(
+                exchange))
+        .isFalse();
+  }
+
+  @Test
   void escapingFailureDoesNotSetOwnershipMarker() {
     var exchange = exchange();
     CheckRegistrationUsernameUseCase useCase =
@@ -418,6 +446,11 @@ class AuthRegistrationUsernameControllerTest {
   }
 
   private static RegistrationController controller(CheckRegistrationUsernameUseCase useCase) {
+    return controller(useCase, new RegistrationUsernameCheckWebMapper());
+  }
+
+  private static RegistrationController controller(
+      CheckRegistrationUsernameUseCase useCase, RegistrationUsernameCheckWebMapper mapper) {
     return new RegistrationController(
         null,
         null,
@@ -433,7 +466,7 @@ class AuthRegistrationUsernameControllerTest {
         null,
         null,
         useCase,
-        new RegistrationUsernameCheckWebMapper());
+        mapper);
   }
 
   private static final class RecordingUseCase implements CheckRegistrationUsernameUseCase {
