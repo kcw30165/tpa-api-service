@@ -81,10 +81,13 @@ class InvestmentChoiceSnapshotTest {
   @ParameterizedTest
   @ValueSource(ints = {0, -1, 101})
   void rejectsIntervalOutsideInclusiveRange(int intervalPcnt) {
+    List<InvestmentChoiceSnapshot.SwitchSource> emptySources = List.of();
+    List<InvestmentChoiceSnapshot.Fund> emptyFunds = List.of();
+
     assertThatThrownBy(
             () ->
                 new InvestmentChoiceSnapshot(
-                    ACCOUNT_REF, POLICY_NO, intervalPcnt, List.of(), List.of()))
+                    ACCOUNT_REF, POLICY_NO, intervalPcnt, emptySources, emptyFunds))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("intervalPcnt must be between 1 and 100");
   }
