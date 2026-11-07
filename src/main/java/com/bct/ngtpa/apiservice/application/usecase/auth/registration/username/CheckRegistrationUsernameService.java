@@ -219,7 +219,12 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
                           .onErrorMap(RuntimeException.class, LocalUsernameStateFailure::new);
                   case REJECTED ->
                       Mono.just(downstreamRejected(availability.downstreamErrorCode()));
-                  case DOWNSTREAM_FAILED -> Mono.just(downstreamFailed("APIM_TECHNICAL"));
+                  case DOWNSTREAM_FAILED -> {
+                    var origin = availability.failureOrigin();
+                    // Results without an origin retain the established safe default.
+                    yield Mono.just(
+                        downstreamFailed(origin == null ? "APIM_TECHNICAL" : origin.name()));
+                  }
                 })
         .onErrorResume(
             exception ->

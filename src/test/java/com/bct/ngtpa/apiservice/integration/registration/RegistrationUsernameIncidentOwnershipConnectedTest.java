@@ -370,7 +370,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
             "r1c-http503-user1!",
             marker,
             3,
-            "DOWNSTREAM_TRANSPORT");
+            "DOWNSTREAM_TRANSPORT",
+            "APIM_TECHNICAL");
     List<ILoggingEvent> facadeWarnings =
         requestEvents.stream()
             .filter(
@@ -406,7 +407,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         "r1c-http400-user1!",
         marker,
         1,
-        "DOWNSTREAM_TRANSPORT");
+        "DOWNSTREAM_TRANSPORT",
+        "APIM_TECHNICAL");
   }
 
   @Test
@@ -423,6 +425,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         marker,
         marker,
         0,
+        "LOCAL_SYSTEM",
         "LOCAL_SYSTEM");
   }
 
@@ -439,6 +442,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         "r1c-profileerror-user1!",
         marker,
         0,
+        "LOCAL_SYSTEM",
         "LOCAL_SYSTEM");
   }
 
@@ -460,7 +464,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         "r1c-connect-user1!",
         marker,
         3,
-        "DOWNSTREAM_TRANSPORT");
+        "DOWNSTREAM_TRANSPORT",
+        "APIM_TECHNICAL");
   }
 
   @Test
@@ -476,7 +481,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         "r1c-timeout-user1!",
         marker,
         3,
-        "DOWNSTREAM_TRANSPORT");
+        "DOWNSTREAM_TRANSPORT",
+        "APIM_TECHNICAL");
   }
 
   @Test
@@ -555,7 +561,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
             "r1c-dtofailure-user1!",
             marker,
             1,
-            "DOWNSTREAM_INVALID_RESPONSE");
+            "DOWNSTREAM_INVALID_RESPONSE",
+            "APIM_TECHNICAL");
 
     assertThat(allEventText(requestEvents)).contains("ApimResponseMappingException");
   }
@@ -789,7 +796,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
       String username,
       String marker,
       int expectedExchanges,
-      String expectedCategory)
+      String expectedCategory,
+      String expectedOrigin)
       throws IOException {
     int startIndex = applicationEvents.size();
     EntityExchangeResult<byte[]> response =
@@ -817,7 +825,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     assertThat(terminalError.getLoggerName())
         .isEqualTo(CheckRegistrationUsernameService.class.getName());
     assertThat(terminalError.getFormattedMessage())
-        .contains("event=registration.usernameCheck.failure", "origin=APIM_TECHNICAL");
+        .contains("event=registration.usernameCheck.failure", "origin=" + expectedOrigin);
     assertThat(terminalError.getThrowableProxy()).isNull();
 
     List<ILoggingEvent> adapterDiagnostics =

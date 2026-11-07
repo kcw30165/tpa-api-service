@@ -266,16 +266,90 @@ class CheckRegistrationUsernameServiceTest {
         new FakeAvailability(RegistrationUsernameAvailabilityResult.downstreamFailed());
     var classifier = new FakeClassifier("downstream.generic.businessRejected");
     var service = service(sessions, availability, classifier);
+    Logger logger = (Logger) LoggerFactory.getLogger(CheckRegistrationUsernameService.class);
+    ListAppender<ILoggingEvent> appender = attach(logger);
 
-    StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
-        .assertNext(
-            result ->
+    try {
+      StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+          .assertNext(
+              result -> {
                 assertThat(result.status())
-                    .isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED))
-        .verifyComplete();
+                    .isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED);
+                assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.USERNAME_CHECK);
+                assertThat(result.messages()).isEmpty();
+                assertThat(result.errors())
+                    .singleElement()
+                    .satisfies(
+                        error ->
+                            assertThat(error.code()).isEqualTo("err.workflow.downstream.unavailable"));
+              })
+          .verifyComplete();
 
-    assertThat(classifier.calls).isZero();
-    assertThat(sessions.updated).isNull();
+      assertThat(serviceErrors(appender))
+          .singleElement()
+          .satisfies(
+              event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(event.getFormattedMessage())
+                    .contains(
+                        "event=registration.usernameCheck.failure",
+                        "status=TECHNICAL_FAILURE",
+                        "origin=APIM_TECHNICAL")
+                    .doesNotContain("PRIVATE-DOWNSTREAM-MARKER", "abc1@", "TL", "ENV1");
+                assertThat(event.getThrowableProxy()).isNull();
+              });
+      assertThat(classifier.calls).isZero();
+      assertThat(sessions.updated).isNull();
+    } finally {
+      detach(logger, appender);
+    }
+  }
+
+  @Test
+  void downstreamFailedWithCarriedLocalOriginLogsSingleErrorAndPreservesResult() {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability =
+        new FakeAvailability(
+            RegistrationUsernameAvailabilityResult.downstreamFailed(
+                RegistrationUsernameAvailabilityFailureOrigin.LOCAL_SYSTEM));
+    var classifier = new FakeClassifier("downstream.generic.businessRejected");
+    var service = service(sessions, availability, classifier);
+    Logger logger = (Logger) LoggerFactory.getLogger(CheckRegistrationUsernameService.class);
+    ListAppender<ILoggingEvent> appender = attach(logger);
+    try {
+      StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+          .assertNext(
+              result -> {
+                assertThat(result.status())
+                    .isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED);
+                assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.USERNAME_CHECK);
+                assertThat(result.messages()).isEmpty();
+                assertThat(result.errors())
+                    .singleElement()
+                    .satisfies(
+                        error ->
+                            assertThat(error.code()).isEqualTo("err.workflow.downstream.unavailable"));
+              })
+          .verifyComplete();
+
+      assertThat(serviceErrors(appender))
+          .singleElement()
+          .satisfies(
+              event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(event.getFormattedMessage())
+                    .contains(
+                        "event=registration.usernameCheck.failure",
+                        "status=TECHNICAL_FAILURE",
+                        "origin=LOCAL_SYSTEM")
+                    .doesNotContain("PRIVATE-DOWNSTREAM-MARKER", "abc1@", "TL", "ENV1");
+                assertThat(event.getThrowableProxy()).isNull();
+              });
+      assertThat(classifier.calls).isZero();
+      assertThat(sessions.updated).isNull();
+    } finally {
+      detach(logger, appender);
+    }
   }
 
   @Test
