@@ -25,6 +25,28 @@ public final class ErrorCodes {
       "err.fund-fact-sheet.retrieval.unavailable";
   public static final String INVESTMENT_CHOICE_RETRIEVAL_UNAVAILABLE =
       "err.investment-choice.retrieval.unavailable";
+  public static final String INVESTMENT_CHOICE_REQUEST_INVALID =
+      "err.investment-choice.request.invalid";
+  public static final String INVESTMENT_CHOICE_SWITCH_SOURCE_REQUIRED =
+      "err.investment-choice.switch-source.required";
+  public static final String INVESTMENT_CHOICE_SWITCH_SOURCE_DUPLICATE =
+      "err.investment-choice.switch-source.duplicate";
+  public static final String INVESTMENT_CHOICE_ALLOCATION_REQUIRED =
+      "err.investment-choice.allocation.required";
+  public static final String INVESTMENT_CHOICE_FUND_REQUIRED =
+      "err.investment-choice.fund.required";
+  public static final String INVESTMENT_CHOICE_FUND_DUPLICATE =
+      "err.investment-choice.fund.duplicate";
+  public static final String INVESTMENT_CHOICE_PERCENTAGE_INVALID =
+      "err.investment-choice.percentage.invalid";
+  public static final String INVESTMENT_CHOICE_PERCENTAGE_TOTAL_INVALID =
+      "err.investment-choice.percentage.total-invalid";
+  public static final String INVESTMENT_CHOICE_PERCENTAGE_INTERVAL_INVALID =
+      "err.investment-choice.percentage.interval-invalid";
+  public static final String INVESTMENT_CHOICE_SWITCH_SOURCE_UNAVAILABLE =
+      "err.investment-choice.switch-source.unavailable";
+  public static final String INVESTMENT_CHOICE_FUND_UNAVAILABLE =
+      "err.investment-choice.fund.unavailable";
   public static final String FUND_COMPARISON_REQUEST_INVALID =
       "err.fund-comparison.request.invalid";
   public static final String FUND_COMPARISON_RETRIEVAL_UNAVAILABLE =
