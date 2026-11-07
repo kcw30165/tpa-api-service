@@ -261,9 +261,12 @@ class CheckRegistrationUsernameServiceTest {
 
   @Test
   void downstreamFailedBypassesClassifierAndDoesNotStoreUsernameCheck() {
+    String privateMarker = "PRIVATE-DOWNSTREAM-MARKER";
     var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
     var availability =
-        new FakeAvailability(RegistrationUsernameAvailabilityResult.downstreamFailed());
+        new FakeAvailability(
+            new RegistrationUsernameAvailabilityResult(
+                RegistrationUsernameAvailabilityStatus.DOWNSTREAM_FAILED, privateMarker, null));
     var classifier = new FakeClassifier("downstream.generic.businessRejected");
     var service = service(sessions, availability, classifier);
     Logger logger = (Logger) LoggerFactory.getLogger(CheckRegistrationUsernameService.class);
@@ -295,7 +298,7 @@ class CheckRegistrationUsernameServiceTest {
                         "event=registration.usernameCheck.failure",
                         "status=TECHNICAL_FAILURE",
                         "origin=APIM_TECHNICAL")
-                    .doesNotContain("PRIVATE-DOWNSTREAM-MARKER", "abc1@", "TL", "ENV1");
+                    .doesNotContain(privateMarker, "abc1@", "TL", "ENV1");
                 assertThat(event.getThrowableProxy()).isNull();
               });
       assertThat(classifier.calls).isZero();
@@ -307,10 +310,13 @@ class CheckRegistrationUsernameServiceTest {
 
   @Test
   void downstreamFailedWithCarriedLocalOriginLogsSingleErrorAndPreservesResult() {
+    String privateMarker = "PRIVATE-DOWNSTREAM-MARKER";
     var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
     var availability =
         new FakeAvailability(
-            RegistrationUsernameAvailabilityResult.downstreamFailed(
+            new RegistrationUsernameAvailabilityResult(
+                RegistrationUsernameAvailabilityStatus.DOWNSTREAM_FAILED,
+                privateMarker,
                 RegistrationUsernameAvailabilityFailureOrigin.LOCAL_SYSTEM));
     var classifier = new FakeClassifier("downstream.generic.businessRejected");
     var service = service(sessions, availability, classifier);
@@ -342,7 +348,7 @@ class CheckRegistrationUsernameServiceTest {
                         "event=registration.usernameCheck.failure",
                         "status=TECHNICAL_FAILURE",
                         "origin=LOCAL_SYSTEM")
-                    .doesNotContain("PRIVATE-DOWNSTREAM-MARKER", "abc1@", "TL", "ENV1");
+                    .doesNotContain(privateMarker, "abc1@", "TL", "ENV1");
                 assertThat(event.getThrowableProxy()).isNull();
               });
       assertThat(classifier.calls).isZero();
