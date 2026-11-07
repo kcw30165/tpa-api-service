@@ -218,7 +218,7 @@ class ApimInvestmentChoiceInstructionAdapterTest {
         Arguments.of(
             new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID, "bad"),
             FailureOrigin.DOWNSTREAM_CONTRACT,
-            InvestmentChoiceSubmissionRejectedException.class),
+            InvestmentChoiceSubmissionUnknownOutcomeException.class),
         Arguments.of(
             new ApimResponseMappingException(new IllegalArgumentException("mapping")),
             FailureOrigin.DOWNSTREAM_INVALID_RESPONSE,

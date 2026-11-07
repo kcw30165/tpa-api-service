@@ -123,21 +123,10 @@ public final class ApimInvestmentChoiceInstructionAdapter
   }
 
   private Throwable submissionException(Throwable failure) {
-    if (failure instanceof InvestmentChoiceSubmissionRejectedException
-        || failure instanceof InvestmentChoiceSubmissionUnknownOutcomeException) {
-      return failure;
-    }
     if (failure instanceof DownstreamErrorMessageException) {
       return new InvestmentChoiceSubmissionRejectedException();
     }
-    if (failure instanceof InvestmentChoiceMalformedResponseException) {
-      return new InvestmentChoiceSubmissionUnknownOutcomeException();
-    }
-    return switch (ApimFailureClassifier.classify(failure)) {
-      case DOWNSTREAM_CONTRACT -> new InvestmentChoiceSubmissionRejectedException();
-      case DOWNSTREAM_INVALID_RESPONSE, DOWNSTREAM_TRANSPORT, LOCAL_SYSTEM ->
-          new InvestmentChoiceSubmissionUnknownOutcomeException();
-    };
+    return new InvestmentChoiceSubmissionUnknownOutcomeException();
   }
 
   private void publishFailure(reactor.core.publisher.Signal<InvestmentChoiceSubmission> signal) {
