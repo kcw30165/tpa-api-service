@@ -21,6 +21,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
@@ -150,6 +151,36 @@ class ApiExceptionHandlerLoggingTest {
         ErrorCodes.INVESTMENT_CHOICE_RETRIEVAL_UNAVAILABLE, payload.get("errorCode").asText());
     assertEquals(
         "InvestmentChoiceDetailsRetrievalException", payload.get("exceptionType").asText());
+    assertNull(event.getThrowableProxy());
+    assertTrue(
+        !event.getFormattedMessage().contains("policy-secret")
+            && !event.getFormattedMessage().contains("cert-secret")
+            && !event.getFormattedMessage().contains("account-secret")
+            && !event.getFormattedMessage().contains("sid_abcdefghijklmnopqrstuvwx"));
+  }
+
+  @Test
+  void logsInvestmentChoiceSubmissionAtWarnOnceWithoutStackTrace() throws Exception {
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post(
+                    "/api/v1/investment-choice/instructions?policyNo=policy-secret&certNo=cert-secret")
+                .header("Account-Ref", "account-secret")
+                .cookie(new HttpCookie("portal_sid", "sid_abcdefghijklmnopqrstuvwx"))
+                .build());
+    exchange
+        .getAttributes()
+        .put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "investment-choice-submit-req-id");
+    var response = handler.handle(new InvestmentChoiceSubmissionUnavailableException(), exchange);
+
+    assertEquals(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+    ILoggingEvent event = singleEvent();
+    assertEquals(Level.WARN, event.getLevel());
+    JsonNode payload = parse(event);
+    assertEquals(
+        ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_UNAVAILABLE, payload.get("errorCode").asText());
+    assertEquals(
+        "InvestmentChoiceSubmissionUnavailableException", payload.get("exceptionType").asText());
     assertNull(event.getThrowableProxy());
     assertTrue(
         !event.getFormattedMessage().contains("policy-secret")

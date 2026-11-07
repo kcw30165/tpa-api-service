@@ -50,6 +50,7 @@ public class ExceptionMappingRegistryConfig {
             AccountGainLossExceptionMappings.retrievalFailure(),
             FundFactSheetExceptionMappings.retrievalUnavailable(),
             InvestmentChoiceExceptionMappings.retrievalUnavailable(),
+            InvestmentChoiceExceptionMappings.submissionUnavailable(),
             WebExchangeBindExceptionMappings.validationFailed());
     return new ExceptionMappingRegistry(mappings, CatchAllExceptionMapping.INSTANCE);
   }

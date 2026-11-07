@@ -17,6 +17,7 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequest
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
@@ -490,6 +491,24 @@ class ExceptionMappingsTest {
   }
 
   @Test
+  void investmentChoiceSubmissionMapping() {
+    var mapping = InvestmentChoiceExceptionMappings.submissionUnavailable();
+    var exception = new InvestmentChoiceSubmissionUnavailableException();
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals(ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_UNAVAILABLE, entry.code());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+  }
+
+  @Test
   void webExchangeBindMappingProducesOneEntryPerFieldErrorInOrder() throws Exception {
     var mapping = WebExchangeBindExceptionMappings.validationFailed();
     var exception = bindExceptionWithTwoFieldErrors("notificationId", "status");
@@ -546,11 +565,11 @@ class ExceptionMappingsTest {
   // ───────────────────────── registry assembly ─────────────────────────
 
   @Test
-  void configAssemblesExactlyTwentyFourMappingsPlusCatchAll() {
+  void configAssemblesExactlyTwentyFiveMappingsPlusCatchAll() {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(24, registry.mappingCount());
+    assertEquals(25, registry.mappingCount());
 
     ErrorDescriptor updateUnavailable =
         registry.resolve(
@@ -562,6 +581,17 @@ class ExceptionMappingsTest {
         ErrorCodes.PERSONAL_INFORMATION_UPDATE_UNAVAILABLE,
         updateUnavailable.errors().getFirst().code());
     assertEquals(MessagePolicy.NONE, updateUnavailable.errors().getFirst().policy());
+
+    ErrorDescriptor submissionUnavailable =
+        registry.resolve(
+            new InvestmentChoiceSubmissionUnavailableException(),
+            new ErrorContext("POST", "/api/v1/investment-choice/instructions", "req-submit"));
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, submissionUnavailable.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, submissionUnavailable.apiStatus());
+    assertEquals(
+        ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_UNAVAILABLE,
+        submissionUnavailable.errors().getFirst().code());
+    assertEquals(MessagePolicy.NONE, submissionUnavailable.errors().getFirst().policy());
 
     ErrorDescriptor fundComparison =
         registry.resolve(

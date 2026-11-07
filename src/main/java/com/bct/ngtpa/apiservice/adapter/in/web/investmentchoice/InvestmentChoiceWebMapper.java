@@ -6,6 +6,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.Investm
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceHistoryResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoicePendingAllocationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoicePendingInstructionResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceSubmissionDataResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceSubmissionResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceSwitchSourceResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels;
@@ -16,6 +18,7 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePendingDetail;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceResult;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSource;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
@@ -99,6 +102,16 @@ public final class InvestmentChoiceWebMapper {
             .toList(),
         history(details, fundNames, mandateOrder),
         pending(details, fundNames, pendingDetailOrder));
+  }
+
+  public InvestmentChoiceSubmissionResultResponse toSubmissionResultResponse(
+      InvestmentChoiceSubmission submission) {
+    Objects.requireNonNull(submission, "submission must not be null");
+    return new InvestmentChoiceSubmissionResultResponse(
+        new InvestmentChoiceSubmissionDataResponse(
+            submission.referenceNo(),
+            DATE_FORMATTER.format(submission.submitDate()),
+            TIME_FORMATTER.format(submission.submitTime())));
   }
 
   private static List<InvestmentChoiceHistoryResponse> history(

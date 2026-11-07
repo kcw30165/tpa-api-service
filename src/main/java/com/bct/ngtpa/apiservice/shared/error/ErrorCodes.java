@@ -25,6 +25,8 @@ public final class ErrorCodes {
       "err.fund-fact-sheet.retrieval.unavailable";
   public static final String INVESTMENT_CHOICE_RETRIEVAL_UNAVAILABLE =
       "err.investment-choice.retrieval.unavailable";
+  public static final String INVESTMENT_CHOICE_SUBMISSION_UNAVAILABLE =
+      "err.investment-choice.submission.unavailable";
   public static final String INVESTMENT_CHOICE_REQUEST_INVALID =
       "err.investment-choice.request.invalid";
   public static final String INVESTMENT_CHOICE_SWITCH_SOURCE_REQUIRED =

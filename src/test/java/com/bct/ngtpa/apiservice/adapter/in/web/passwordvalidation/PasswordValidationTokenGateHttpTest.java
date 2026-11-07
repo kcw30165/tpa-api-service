@@ -8,6 +8,9 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.InvestmentChoiceController;
+import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.InvestmentChoiceWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.personalinformation.PersonalInformationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.*;
@@ -16,6 +19,10 @@ import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayl
 import com.bct.ngtpa.apiservice.adapter.out.redis.*;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.*;
 import com.bct.ngtpa.apiservice.application.dto.*;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceInstructionRequest;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.PasswordCheckResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.port.in.*;
@@ -25,6 +32,7 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
 import com.bct.ngtpa.apiservice.infrastructure.security.session.AesGcmAuthenticatedSessionProtector;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.ServerSocket;
@@ -46,10 +54,9 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.*;
 import org.springframework.http.MediaType;
-import org.springframework.http.codec.ServerCodecConfigurer;
 import org.springframework.http.server.reactive.ReactorHttpHandlerAdapter;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.reactive.server.*;
-import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.server.adapter.WebHttpHandlerBuilder;
 import org.springframework.web.util.pattern.PathPatternParser;
 import reactor.core.publisher.*;
@@ -197,10 +204,18 @@ class PasswordValidationTokenGateHttpTest {
             "reviewed-marker",
             "decoder-secret-marker",
             "consume-secret-marker",
+            "policy-secret",
+            "cert-secret",
+            "actor-user-secret",
             SID,
             OTHER_SID,
             REF,
             OTHER_REF,
+            "FBAL",
+            "FHKM",
+            "\"percentage\":60",
+            "\"percentage\":40",
+            "ref-sensitive-e2e",
             "DB",
             "A".repeat(43),
             "authenticated-actor-marker",
@@ -262,11 +277,37 @@ class PasswordValidationTokenGateHttpTest {
   void validCimTokenBindsBodyDispatchesOnceAndCannotBeReused() {
     String token = issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
 
-    post(CIM_PATH, SID, REF, "csrf-fixture", CIM_PAYLOAD, token).expectStatus().isOk();
+    post(CIM_PATH, SID, REF, "csrf-fixture", CIM_PAYLOAD, token)
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .json(
+            """
+            {
+              "success": true,
+              "status": "SUBMITTED",
+              "result": {
+                "data": {
+                  "referenceNo": "ref-sensitive-e2e",
+                  "submitDate": "06/11/2026",
+                  "submitTime": "09:05:07"
+                }
+              },
+              "messages": [],
+              "errors": []
+            }
+            """,
+            JsonCompareMode.STRICT);
 
     assertThat(cimStub.dispatches).hasValue(1);
     assertThat(cimStub.downstream).hasValue(1);
-    assertThat(cimStub.lastBody).hasValue(CIM_PAYLOAD);
+    assertThat(cimStub.lastBody)
+        .hasValue(
+            new InvestmentChoiceInstructionRequest(
+                List.of("BO", "EE"),
+                List.of(
+                    new InvestmentChoiceInstructionRequest.Allocation("FBAL", 60),
+                    new InvestmentChoiceInstructionRequest.Allocation("FHKM", 40))));
     assertConsumed(CIM_GRANT_KEY);
     reject(
         post(CIM_PATH, SID, REF, "csrf-fixture", CIM_PAYLOAD, token),
@@ -350,6 +391,58 @@ class PasswordValidationTokenGateHttpTest {
     assertConsumed(CIM_GRANT_KEY);
     assertThat(cimStub.dispatches).hasValue(1);
     assertThat(cimStub.downstream).hasValue(1);
+    assertThat(cimStub.lastBody)
+        .hasValue(
+            new InvestmentChoiceInstructionRequest(
+                List.of("BO", "EE"),
+                List.of(
+                    new InvestmentChoiceInstructionRequest.Allocation("FBAL", 60),
+                    new InvestmentChoiceInstructionRequest.Allocation("FHKM", 40))));
+  }
+
+  @Test
+  void validTokenWithBodyRuleViolationConsumesTokenAndReturns422() {
+    String invalid =
+        "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":[{\"fundCode\":\"FBAL\",\"percentage\":60},{\"fundCode\":\"FHKM\",\"percentage\":39}]}";
+    String token = issue(invalid, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+
+    post(CIM_PATH, SID, REF, "csrf-fixture", invalid, token)
+        .expectStatus()
+        .isEqualTo(422)
+        .expectBody()
+        .json(
+            """
+            {
+              "success": false,
+              "status": "VALIDATION_FAILED",
+              "result": null,
+              "messages": [],
+              "errors": [
+                {"type":"CROSS_FIELD","code":"err.investment-choice.percentage.total-invalid","targets":["allocations"],"severity":"ERROR","source":"SERVER"}
+              ]
+            }
+            """,
+            JsonCompareMode.STRICT);
+
+    assertConsumed(CIM_GRANT_KEY);
+    assertThat(cimStub.dispatches).hasValue(0);
+    assertThat(cimStub.downstream).hasValue(0);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"[]", "{\"switchSources\":[\"BO\"]"})
+  void nonObjectAndMalformedJsonAreRejectedByGateBeforeController(String body) {
+    String token = issue(CIM_PAYLOAD, PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+
+    reject(
+        post(CIM_PATH, SID, REF, "csrf-fixture", body, token),
+        400,
+        "VALIDATION_FAILED",
+        ErrorCodes.REQUEST_INVALID);
+
+    assertConsumed(CIM_GRANT_KEY);
+    assertThat(cimStub.dispatches).hasValue(0);
+    assertThat(cimStub.downstream).hasValue(0);
   }
 
   @ParameterizedTest
@@ -1225,6 +1318,28 @@ class PasswordValidationTokenGateHttpTest {
   })
   static class HttpConfiguration {
     @Bean
+    @Primary
+    RequestLoggingProperties tokenGateLoggingProperties() {
+      var properties = new RequestLoggingProperties();
+      properties.setLogHeaders(true);
+      properties.setHeaderAllowlist(List.of(TOKEN, "Content-Type"));
+      properties.getBodyLogging().setEnabled(true);
+      for (var route :
+          List.of(
+              Map.entry("POST", "/api/v1/password-validation"),
+              Map.entry("PUT", PATH),
+              Map.entry("POST", CIM_PATH))) {
+        var rule = new RequestLoggingProperties.EndpointRule();
+        rule.setMethod(route.getKey());
+        rule.setPathPattern(route.getValue());
+        rule.setLogRequestBody(true);
+        rule.setLogResponseBody(true);
+        properties.getBodyLogging().getEndpoints().add(rule);
+      }
+      return properties;
+    }
+
+    @Bean
     com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver messages() {
       return mock(com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver.class);
     }
@@ -1261,35 +1376,34 @@ class PasswordValidationTokenGateHttpTest {
     }
 
     @Bean
-    @org.springframework.core.annotation.Order(org.springframework.core.Ordered.LOWEST_PRECEDENCE)
-    org.springframework.web.server.WebFilter cimInstructionHandler(CimInstructionStub stub) {
-      var path = PathPatternParser.defaultInstance.parse(CIM_PATH);
-      var codecs = ServerCodecConfigurer.create();
-      return (exchange, chain) -> {
-        if (!HttpMethod.POST.equals(exchange.getRequest().getMethod())
-            || !path.matches(exchange.getRequest().getPath().pathWithinApplication())) {
-          return chain.filter(exchange);
-        }
+    SubmitInvestmentChoiceUseCase investmentChoiceSubmit(CimInstructionStub stub) {
+      return command -> {
         stub.dispatches.incrementAndGet();
-        return ServerRequest.create(exchange, codecs.getReaders())
-            .bodyToMono(String.class)
-            .defaultIfEmpty("")
-            .flatMap(
-                body -> {
-                  stub.lastBody.set(body);
-                  stub.downstream.incrementAndGet();
-                  exchange.getResponse().setStatusCode(HttpStatus.OK);
-                  exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-                  return exchange
-                      .getResponse()
-                      .writeWith(
-                          Mono.just(
-                              exchange
-                                  .getResponse()
-                                  .bufferFactory()
-                                  .wrap("{\"stub\":\"ok\"}".getBytes())));
-                });
+        stub.downstream.incrementAndGet();
+        stub.lastCommand.set(command);
+        stub.lastBody.set(command.request());
+        return Mono.just(
+            new InvestmentChoiceSubmitOutcome.Submitted(
+                new InvestmentChoiceSubmission(
+                    "ref-sensitive-e2e",
+                    java.time.LocalDate.of(2026, 11, 6),
+                    java.time.LocalTime.of(9, 5, 7))));
       };
+    }
+
+    @Bean
+    InvestmentChoiceController investmentChoiceController(
+        SubmitInvestmentChoiceUseCase submit,
+        CurrentPortalAccessContextResolver contexts,
+        AuthenticatedSessionCookieReader cookies,
+        ObjectMapper objectMapper) {
+      return new InvestmentChoiceController(
+          mock(GetInvestmentChoiceUseCase.class),
+          submit,
+          contexts,
+          cookies,
+          new InvestmentChoiceWebMapper(),
+          objectMapper);
     }
 
     @Bean
@@ -1364,11 +1478,13 @@ class PasswordValidationTokenGateHttpTest {
   static class CimInstructionStub {
     final AtomicInteger dispatches = new AtomicInteger();
     final AtomicInteger downstream = new AtomicInteger();
-    final AtomicReference<String> lastBody = new AtomicReference<>();
+    final AtomicReference<SubmitInvestmentChoiceCommand> lastCommand = new AtomicReference<>();
+    final AtomicReference<InvestmentChoiceInstructionRequest> lastBody = new AtomicReference<>();
 
     void reset() {
       dispatches.set(0);
       downstream.set(0);
+      lastCommand.set(null);
       lastBody.set(null);
     }
   }
