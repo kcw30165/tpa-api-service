@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -10,6 +11,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimRequest;
@@ -117,12 +119,11 @@ class SharedApimTrpChkCustIdTransportTest {
 
     StepVerifier.create(transport.post(command)).expectNextCount(1).verifyComplete();
 
-    @SuppressWarnings("rawtypes")
-    ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
-    verify(executor).postEnvelope(captor.capture());
-    assertThat(captor.getValue().incidentOwnership())
-        .isEqualTo(
-            com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership
-                .TERMINAL_CALLER);
+    verify(executor)
+        .postEnvelope(
+            argThat(
+                (ApimExchangeRequest<TrpChkCustIdApimRequest, TrpChkCustIdApimDataItem> request) ->
+                    request != null
+                        && request.incidentOwnership() == ApimIncidentOwnership.TERMINAL_CALLER));
   }
 }
