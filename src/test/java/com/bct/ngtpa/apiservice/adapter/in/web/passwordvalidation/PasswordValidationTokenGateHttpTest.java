@@ -465,7 +465,11 @@ class PasswordValidationTokenGateHttpTest {
         "VALIDATION_FAILED",
         ErrorCodes.REQUEST_INVALID,
         "PAGE");
-    assertReasonLine("BODY_INVALID");
+    assertReasonLine(
+        "BODY_INVALID",
+        CIM_PATH,
+        "POST",
+        PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE.name());
     assertConsumed(CIM_GRANT_KEY);
     assertNoDispatch();
 
@@ -475,7 +479,11 @@ class PasswordValidationTokenGateHttpTest {
         403,
         "BUSINESS_REJECTED",
         authorizationCode());
-    assertReasonLine("ALREADY_CONSUMED");
+    assertReasonLine(
+        "ALREADY_CONSUMED",
+        CIM_PATH,
+        "POST",
+        PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE.name());
     assertNoDispatch();
   }
 
@@ -1377,23 +1385,28 @@ class PasswordValidationTokenGateHttpTest {
   }
 
   private void assertReasonLine(String reason) {
+    assertReasonLine(reason, PATH, "PUT", null);
+  }
+
+  private void assertReasonLine(String reason, String route, String method, String purpose) {
     var lines =
         logs.list.stream()
             .map(ILoggingEvent::getFormattedMessage)
             .filter(
                 line -> line.contains("\"event\":\"password-validation.authorization.rejected\""))
             .toList();
+    var expected =
+        new java.util.ArrayList<>(
+            List.of(
+                "\"reason\":\"" + reason + "\"",
+                "\"stage\":\"token-gate\"",
+                "\"requestId\":\"m4-http\"",
+                "\"route\":\"" + route + "\"",
+                "\"method\":\"" + method + "\""));
+    if (purpose != null) expected.add("\"purpose\":\"" + purpose + "\"");
     assertThat(lines)
         .singleElement()
-        .satisfies(
-            line ->
-                assertThat(line)
-                    .contains(
-                        "\"reason\":\"" + reason + "\"",
-                        "\"stage\":\"token-gate\"",
-                        "\"requestId\":\"m4-http\"",
-                        "\"route\":\"" + PATH + "\"",
-                        "\"method\":\"PUT\""));
+        .satisfies(line -> assertThat(line).contains(expected.toArray(String[]::new)));
   }
 
   private static HttpHeaders headersWithoutRequestId(HttpHeaders source) {
