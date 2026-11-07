@@ -37,6 +37,8 @@ import java.util.Optional;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -76,6 +78,16 @@ class InvestmentChoiceSnapshotCacheServiceTest {
         List.of(
             new InvestmentChoiceSnapshot.Fund("FUND_A", true),
             new InvestmentChoiceSnapshot.Fund("FUND_B", false)));
+  }
+
+  private static String snapshotJson(int intervalPcnt) {
+    return "{\"accountRef\":\""
+        + ACCOUNT_REF
+        + "\",\"policyNo\":\""
+        + POLICY_NO
+        + "\",\"intervalPcnt\":"
+        + intervalPcnt
+        + ",\"sources\":[],\"funds\":[]}";
   }
 
   private static AuthenticatedSession session(
@@ -217,6 +229,16 @@ class InvestmentChoiceSnapshotCacheServiceTest {
                     + "\",\"intervalPcnt\":5,\"sources\":[],\"funds\":[],\"unexpected\":true}")));
 
     assertThat(read(ACCOUNT_REF, POLICY_NO)).isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {-1, 0, 101})
+  void readMissesWhenStoredSnapshotIntervalIsOutOfRange(int intervalPcnt) {
+    stored(usableSession(Map.of(KEY, snapshotJson(intervalPcnt))));
+
+    StepVerifier.create(service().read(SID, ACCOUNT_REF, POLICY_NO, "req-1"))
+        .assertNext(result -> assertThat(result).isEmpty())
+        .verifyComplete();
   }
 
   @Test

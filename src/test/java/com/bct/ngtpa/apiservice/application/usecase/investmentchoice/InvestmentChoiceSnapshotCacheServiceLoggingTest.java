@@ -33,6 +33,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
@@ -232,5 +234,33 @@ class InvestmentChoiceSnapshotCacheServiceLoggingTest {
         .anyMatch(message -> message.contains("reason=session-unusable"))
         .anyMatch(message -> message.contains("reason=account-mismatch"))
         .anyMatch(message -> message.contains("reason=session-not-usable"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {-1, 0, 101})
+  void invalidStoredIntervalsLogOnlyAnUnreadableMissReason(int intervalPcnt) {
+    String encoded =
+        "{\"accountRef\":\""
+            + ACCOUNT_REF
+            + "\",\"policyNo\":\""
+            + POLICY_NO
+            + "\",\"intervalPcnt\":"
+            + intervalPcnt
+            + ",\"sources\":[],\"funds\":[]}";
+    when(sessions.load(any())).thenReturn(Mono.just(Optional.of(envelope())));
+    when(protector.unprotect(any())).thenReturn(usableSession(Map.of(KEY, encoded)));
+
+    assertThat(service().read(SID, ACCOUNT_REF, POLICY_NO, "req-interval-" + intervalPcnt).block())
+        .isEmpty();
+
+    assertThat(events()).hasSize(1);
+    ILoggingEvent event = events().getFirst();
+    assertThat(event.getLevel()).isEqualTo(Level.INFO);
+    assertThat(event.getFormattedMessage())
+        .isEqualTo(
+            "event=investment-choice.snapshot-cache.miss reason=unreadable requestId=req-interval-"
+                + intervalPcnt)
+        .doesNotContain(
+            ACCOUNT_REF, POLICY_NO, SID.value(), "member-1", "FUND_A", "FUND_B", "BO", "EE");
   }
 }

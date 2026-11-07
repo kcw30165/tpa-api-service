@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class InvestmentChoiceSnapshotTest {
 
@@ -70,5 +72,25 @@ class InvestmentChoiceSnapshotTest {
     assertThatThrownBy(
             () -> new InvestmentChoiceSnapshot(ACCOUNT_REF, POLICY_NO, 5, List.of(), null))
         .isInstanceOf(NullPointerException.class);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, -1, 101})
+  void rejectsIntervalOutsideInclusiveRange(int intervalPcnt) {
+    assertThatThrownBy(
+            () ->
+                new InvestmentChoiceSnapshot(
+                    ACCOUNT_REF, POLICY_NO, intervalPcnt, List.of(), List.of()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("intervalPcnt must be between 1 and 100");
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 100})
+  void acceptsInclusiveIntervalBoundaries(int intervalPcnt) {
+    var snapshot =
+        new InvestmentChoiceSnapshot(ACCOUNT_REF, POLICY_NO, intervalPcnt, List.of(), List.of());
+
+    assertThat(snapshot.intervalPcnt()).isEqualTo(intervalPcnt);
   }
 }

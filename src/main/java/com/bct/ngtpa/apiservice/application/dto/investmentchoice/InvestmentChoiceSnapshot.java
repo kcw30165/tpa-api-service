@@ -14,6 +14,9 @@ public record InvestmentChoiceSnapshot(
   public InvestmentChoiceSnapshot {
     requireText(accountRef, "accountRef");
     requireText(policyNo, "policyNo");
+    if (intervalPcnt < 1 || intervalPcnt > 100) {
+      throw new IllegalArgumentException("intervalPcnt must be between 1 and 100");
+    }
     sources = List.copyOf(Objects.requireNonNull(sources, "sources must not be null"));
     funds = List.copyOf(Objects.requireNonNull(funds, "funds must not be null"));
   }
