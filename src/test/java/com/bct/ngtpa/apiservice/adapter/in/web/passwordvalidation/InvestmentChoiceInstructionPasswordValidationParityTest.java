@@ -80,8 +80,7 @@ class InvestmentChoiceInstructionPasswordValidationParityTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("duplicateMemberCases")
   void controllerKeepsLastDuplicateMemberAndGateIsBodyIntegrityAuthority(
-      String name, String body, InvestmentChoiceInstructionRequest expectedInstruction)
-      throws JsonProcessingException {
+      String name, String body, InvestmentChoiceInstructionRequest expectedInstruction) {
     // Characterization only, not endorsement: raw-body integrity belongs to the gate.
     var controllerResponse =
         controllerClient

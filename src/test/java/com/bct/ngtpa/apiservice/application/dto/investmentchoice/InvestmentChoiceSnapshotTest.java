@@ -61,16 +61,20 @@ class InvestmentChoiceSnapshotTest {
 
   @Test
   void rejectsInvalidIdentifiersAndNullLists() {
-    assertThatThrownBy(() -> new InvestmentChoiceSnapshot(null, POLICY_NO, 5, List.of(), List.of()))
+    List<InvestmentChoiceSnapshot.SwitchSource> emptySources = List.of();
+    List<InvestmentChoiceSnapshot.Fund> emptyFunds = List.of();
+
+    assertThatThrownBy(
+            () -> new InvestmentChoiceSnapshot(null, POLICY_NO, 5, emptySources, emptyFunds))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
-            () -> new InvestmentChoiceSnapshot(ACCOUNT_REF, " ", 5, List.of(), List.of()))
+            () -> new InvestmentChoiceSnapshot(ACCOUNT_REF, " ", 5, emptySources, emptyFunds))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
-            () -> new InvestmentChoiceSnapshot(ACCOUNT_REF, POLICY_NO, 5, null, List.of()))
+            () -> new InvestmentChoiceSnapshot(ACCOUNT_REF, POLICY_NO, 5, null, emptyFunds))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(
-            () -> new InvestmentChoiceSnapshot(ACCOUNT_REF, POLICY_NO, 5, List.of(), null))
+            () -> new InvestmentChoiceSnapshot(ACCOUNT_REF, POLICY_NO, 5, emptySources, null))
         .isInstanceOf(NullPointerException.class);
   }
 

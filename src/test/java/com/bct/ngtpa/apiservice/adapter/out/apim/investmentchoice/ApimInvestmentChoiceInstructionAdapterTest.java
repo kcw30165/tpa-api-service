@@ -155,8 +155,7 @@ class ApimInvestmentChoiceInstructionAdapterTest {
     "err.role.not.allow.access",
     "err.investment-choice.future-code"
   })
-  void errorMessageIsARejectedSubmissionAndPublishesOneContractEvent(String errorCode)
-      throws Exception {
+  void errorMessageIsARejectedSubmissionAndPublishesOneContractEvent(String errorCode) {
     respond(envelope(errorCode, null));
 
     StepVerifier.create(adapter().submit(command()).contextWrite(requestContext()))
@@ -234,7 +233,7 @@ class ApimInvestmentChoiceInstructionAdapterTest {
   }
 
   @Test
-  void publishesOnceWhenRequestIdIsAbsent() throws Exception {
+  void publishesOnceWhenRequestIdIsAbsent() {
     respond(envelope("err.account.invalid", null));
 
     StepVerifier.create(adapter().submit(command()))
@@ -245,7 +244,7 @@ class ApimInvestmentChoiceInstructionAdapterTest {
   }
 
   @Test
-  void eventsAndCapturedLogsDoNotContainSensitiveInstructionValues() throws Exception {
+  void eventsAndCapturedLogsDoNotContainSensitiveInstructionValues() {
     respond(envelope("err.account.invalid", null));
 
     StepVerifier.create(adapter().submit(command()).contextWrite(requestContext()))

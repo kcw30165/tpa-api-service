@@ -65,10 +65,13 @@ class InvestmentChoiceInstructionApimConfigurationTest {
 
     assertThat(yaml)
         .contains(
-            "\n  investment-choice:\n"
-                + "    details:\n"
-                + "      path: ${APIM_INVESTMENT_CHOICE_DETAILS_PATH:/ws/NGTPA/v1/TRPGetCIMDtl}\n"
-                + "    instruction:\n"
-                + "      path: ${APIM_INVESTMENT_CHOICE_INSTRUCTION_PATH:/ws/NGTPA/v1/TRPCIMReq}\n");
+            """
+
+              investment-choice:
+                details:
+                  path: ${APIM_INVESTMENT_CHOICE_DETAILS_PATH:/ws/NGTPA/v1/TRPGetCIMDtl}
+                instruction:
+                  path: ${APIM_INVESTMENT_CHOICE_INSTRUCTION_PATH:/ws/NGTPA/v1/TRPCIMReq}
+            """);
   }
 }
