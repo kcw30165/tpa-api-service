@@ -36,7 +36,8 @@ class ApimExecutionBoundaryCharacterizationTest {
             "ApimUpdatePersonalInformationAdapter.java",
             "registration/ApimRegistrationLookupAdapter.java",
             "investmentchoice/ApimInvestmentChoiceDetailsAdapter.java",
-            "investmentchoice/ApimInvestmentChoiceInstructionAdapter.java")) {
+            "investmentchoice/ApimInvestmentChoiceInstructionAdapter.java",
+            "investmentchoice/ApimInvestmentChoiceCancelAdapter.java")) {
       String source = normalized(read(file));
       assertThat(source)
           .as(file)

@@ -227,6 +227,15 @@ class ApimRoutingLedgerCharacterizationTest {
               "command.accountEnv()",
               "NON_RETRYABLE",
               "EXECUTOR",
+              "ACCOUNT_ENV"),
+          e(
+              "TRPCnclCIMReq",
+              "investmentchoice/ApimInvestmentChoiceCancelAdapter.java",
+              "ACCOUNT_ENV",
+              "command.actorUserRole()",
+              "command.accountEnv()",
+              "NON_RETRYABLE",
+              "EXECUTOR",
               "ACCOUNT_ENV"));
 
   @Test
@@ -234,7 +243,7 @@ class ApimRoutingLedgerCharacterizationTest {
     assertThat(LEDGER)
         .extracting(Entry::operation)
         .doesNotHaveDuplicates()
-        .hasSize(23)
+        .hasSize(24)
         .containsExactlyInAnyOrder(
             "TRPPwdValidation",
             "TRPGetInvestGL",
@@ -258,7 +267,8 @@ class ApimRoutingLedgerCharacterizationTest {
             "TRPGetFundPriceMode",
             "TRPGetFundFactSheet",
             "TRPGetCIMDtl",
-            "TRPCIMReq");
+            "TRPCIMReq",
+            "TRPCnclCIMReq");
   }
 
   @Test

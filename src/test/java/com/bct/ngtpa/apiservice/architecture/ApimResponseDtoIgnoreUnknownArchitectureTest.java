@@ -40,7 +40,7 @@ class ApimResponseDtoIgnoreUnknownArchitectureTest {
   private static final Path MAIN = Path.of("src/main/java");
   private static final Path APIM = MAIN.resolve("com/bct/ngtpa/apiservice/adapter/out/apim");
   private static final String APIM_PACKAGE = "com.bct.ngtpa.apiservice.adapter.out.apim";
-  private static final int MIN_CALL_SITES = 23;
+  private static final int MIN_CALL_SITES = 24;
   private static final Pattern EXCHANGE =
       Pattern.compile("new\\s+ApimExchangeRequest\\s*<[^>]*>\\s*\\(");
   private static final Pattern CLASS_LITERAL = Pattern.compile("\\b([A-Z]\\w*)\\.class\\b");

@@ -105,7 +105,7 @@ A history or pending row whose `fund-code` is absent from `SwitchFund` is return
 
 ## 3. TRPCnclCIMReq (cancel)
 
-`POST /ws/NGTPA/v1/TRPCnclCIMReq` - `ApimRetryEligibility.NON_RETRYABLE`, never resubmitted (same policy as `TRPCIMReq`); `ApimDatabaseScope.ACCOUNT_ENV`; credential context `(actorUserRole, accountEnv)`. New ledger entry (23 -> 24). New configuration key `apim.investment-choice.cancel.path`, default `/ws/NGTPA/v1/TRPCnclCIMReq`, with fail-fast validation like the other two paths.
+`POST /ws/NGTPA/v1/TRPCnclCIMReq` - `ApimRetryEligibility.NON_RETRYABLE`, never resubmitted (same policy as `TRPCIMReq`); `ApimDatabaseScope.ACCOUNT_ENV`; credential context `(actorUserRole, accountEnv)`. New ledger entry (23 -> 24). New configuration key `apim.investment-choice.cancel.path`, default `/ws/NGTPA/v1/TRPCnclCIMReq`, with fail-fast validation like the other two paths. The environment override is `APIM_INVESTMENT_CHOICE_CANCEL_PATH`.
 
 ### Request
 

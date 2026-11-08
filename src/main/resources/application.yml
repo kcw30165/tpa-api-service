@@ -300,6 +300,8 @@ apim:
       path: ${APIM_INVESTMENT_CHOICE_DETAILS_PATH:/ws/NGTPA/v1/TRPGetCIMDtl}
     instruction:
       path: ${APIM_INVESTMENT_CHOICE_INSTRUCTION_PATH:/ws/NGTPA/v1/TRPCIMReq}
+    cancel:
+      path: ${APIM_INVESTMENT_CHOICE_CANCEL_PATH:/ws/NGTPA/v1/TRPCnclCIMReq}
   general-metadata:
     path: ${APIM_GENERAL_METADATA_PATH:/ws/NGTPA/v1/TRPGetGeneralMetaData}
   routing:
