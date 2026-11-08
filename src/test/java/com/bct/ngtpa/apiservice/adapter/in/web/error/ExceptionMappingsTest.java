@@ -536,7 +536,7 @@ class ExceptionMappingsTest {
             .resolve(new InvestmentChoiceCancelNotCancellableException(), CONTEXT);
     ErrorEntry entry = firstEntry(descriptor);
 
-    assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, descriptor.httpStatus());
+    assertEquals(HttpStatus.UNPROCESSABLE_CONTENT, descriptor.httpStatus());
     assertEquals(ApiStatus.BUSINESS_REJECTED, descriptor.apiStatus());
     assertEquals("BUSINESS", entry.type());
     assertEquals("err.investment-choice.cancel.not-cancellable", entry.code());

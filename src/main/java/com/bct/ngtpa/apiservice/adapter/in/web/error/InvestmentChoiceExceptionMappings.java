@@ -10,6 +10,8 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 
 public final class InvestmentChoiceExceptionMappings {
+  private static final String SYSTEM_ERROR_TYPE = "SYSTEM";
+  private static final String HTTP_API_ERROR = "http.api.error";
 
   private InvestmentChoiceExceptionMappings() {}
 
@@ -26,10 +28,10 @@ public final class InvestmentChoiceExceptionMappings {
         return ErrorDescriptor.singleWithoutMessage(
             HttpStatus.SERVICE_UNAVAILABLE,
             ApiStatus.SYSTEM_ERROR,
-            "SYSTEM",
+            SYSTEM_ERROR_TYPE,
             ErrorCodes.INVESTMENT_CHOICE_RETRIEVAL_UNAVAILABLE,
             List.of(),
-            "http.api.error",
+            HTTP_API_ERROR,
             LogLevel.WARN,
             false);
       }
@@ -50,10 +52,10 @@ public final class InvestmentChoiceExceptionMappings {
         return ErrorDescriptor.singleWithoutMessage(
             HttpStatus.SERVICE_UNAVAILABLE,
             ApiStatus.SYSTEM_ERROR,
-            "SYSTEM",
+            SYSTEM_ERROR_TYPE,
             ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_UNAVAILABLE,
             List.of(),
-            "http.api.error",
+            HTTP_API_ERROR,
             LogLevel.WARN,
             false);
       }
@@ -73,10 +75,10 @@ public final class InvestmentChoiceExceptionMappings {
         return ErrorDescriptor.singleWithoutMessage(
             HttpStatus.SERVICE_UNAVAILABLE,
             ApiStatus.SYSTEM_ERROR,
-            "SYSTEM",
+            SYSTEM_ERROR_TYPE,
             ErrorCodes.INVESTMENT_CHOICE_CANCEL_UNAVAILABLE,
             List.of(),
-            "http.api.error",
+            HTTP_API_ERROR,
             LogLevel.WARN,
             false);
       }
@@ -95,12 +97,12 @@ public final class InvestmentChoiceExceptionMappings {
       public ErrorDescriptor describe(
           InvestmentChoiceCancelNotCancellableException exception, ErrorContext context) {
         return ErrorDescriptor.singleWithoutMessage(
-            HttpStatus.UNPROCESSABLE_ENTITY,
+            HttpStatus.UNPROCESSABLE_CONTENT,
             ApiStatus.BUSINESS_REJECTED,
             "BUSINESS",
             ErrorCodes.INVESTMENT_CHOICE_CANCEL_NOT_CANCELLABLE,
             List.of(),
-            "http.api.error",
+            HTTP_API_ERROR,
             LogLevel.WARN,
             false);
       }

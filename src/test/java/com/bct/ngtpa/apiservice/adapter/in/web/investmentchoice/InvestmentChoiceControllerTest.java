@@ -673,7 +673,7 @@ class InvestmentChoiceControllerTest {
     return Stream.of(
         Arguments.of(
             new InvestmentChoiceCancelNotCancellableException(),
-            HttpStatus.UNPROCESSABLE_ENTITY,
+            HttpStatus.UNPROCESSABLE_CONTENT,
             """
             {
               "success": false,
