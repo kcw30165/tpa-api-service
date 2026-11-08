@@ -3,11 +3,20 @@ package com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation;
 import static org.assertj.core.api.Assertions.*;
 
 import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayloadCanonicalizer;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class PasswordValidationRequestParserTest {
+  private static final String CANCEL_PURPOSE = "CANCEL_INVESTMENT_CHOICE";
+  private static final String REF_NO_FIELD = "refNo";
+  private static final String CANCEL_REFERENCE_NO = "260001449";
+  private static final String OTHER_REFERENCE_NO = "260001450";
+  private static final String CANCEL_OPERATION = quotedRefNoOperation(CANCEL_REFERENCE_NO);
+  private static final String DIFFERENT_CANCEL_OPERATION = quotedRefNoOperation(OTHER_REFERENCE_NO);
   private static final String OPERATION =
       "{\"formVersion\":\"v1\",\"applyToAllAccounts\":true,\"fields\":{\"unknown\":null},\"extra\":[1.000]}";
   private static final String CIM_OPERATION =
@@ -50,6 +59,73 @@ class PasswordValidationRequestParserTest {
 
     assertThat(parsed.binding()).isEqualTo(reorderedMembers.binding());
     assertThat(parsed.binding()).isNotEqualTo(reorderedAllocations.binding());
+  }
+
+  @Test
+  void cancelPayloadBindingIsStableForTheSameReferenceAndDifferentForAnother() {
+    var parsed = parser.parse(body("abc", CANCEL_PURPOSE, CANCEL_OPERATION));
+    var repeated = parser.parse(body("abc", CANCEL_PURPOSE, CANCEL_OPERATION));
+    var different = parser.parse(body("abc", CANCEL_PURPOSE, DIFFERENT_CANCEL_OPERATION));
+
+    assertThat(parsed.purpose().name()).isEqualTo(CANCEL_PURPOSE);
+    assertThat(parsed.binding()).isEqualTo(repeated.binding()).isNotEqualTo(different.binding());
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidCancelOperations")
+  void invalidCancelOperationShapesAreRejected(String name, String operation) {
+    String raw = body("abc", CANCEL_PURPOSE, operation);
+
+    assertThatThrownBy(() -> parser.parse(raw))
+        .isInstanceOf(PasswordValidationRequestInvalidException.class)
+        .hasMessage("Invalid password-validation request")
+        .hasNoCause();
+  }
+
+  private static Stream<Arguments> invalidCancelOperations() {
+    return Stream.of(
+        Arguments.of("root-not-object", "[]"),
+        Arguments.of("unknown-member", unknownMemberOperation()),
+        Arguments.of("missing-refNo", "{}"),
+        Arguments.of("null-refNo", refNoOperation("null")),
+        Arguments.of("number-refNo", refNoOperation(CANCEL_REFERENCE_NO)),
+        Arguments.of("boolean-refNo", refNoOperation("true")),
+        Arguments.of("array-refNo", refNoOperation("[]")),
+        Arguments.of("object-refNo", refNoOperation("{}")),
+        Arguments.of("blank-refNo", refNoOperation("\" \\t \"")),
+        Arguments.of("duplicate-refNo", duplicateRefNoOperation()));
+  }
+
+  private static String quotedRefNoOperation(String value) {
+    return """
+        {"%s":"%s"}
+        """
+        .formatted(REF_NO_FIELD, value)
+        .strip();
+  }
+
+  private static String refNoOperation(String value) {
+    return """
+        {"%s":%s}
+        """
+        .formatted(REF_NO_FIELD, value)
+        .strip();
+  }
+
+  private static String unknownMemberOperation() {
+    return """
+        {"%s":"%s","extra":true}
+        """
+        .formatted(REF_NO_FIELD, CANCEL_REFERENCE_NO)
+        .strip();
+  }
+
+  private static String duplicateRefNoOperation() {
+    return """
+        {"%s":"%s","%s":"%s"}
+        """
+        .formatted(REF_NO_FIELD, CANCEL_REFERENCE_NO, REF_NO_FIELD, OTHER_REFERENCE_NO)
+        .strip();
   }
 
   @ParameterizedTest

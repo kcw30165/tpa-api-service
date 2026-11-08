@@ -13,6 +13,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class PasswordValidationContractsTest {
+  private static final String CANCEL_PURPOSE = "CANCEL_INVESTMENT_CHOICE";
   private final ObjectMapper mapper = new ObjectMapper();
 
   @Test
@@ -39,6 +40,7 @@ class PasswordValidationContractsTest {
         .isEqualTo(PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE);
     assertThat(PasswordValidationPurpose.parse("CHANGE_INVESTMENT_CHOICE"))
         .isEqualTo(PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE);
+    assertThat(PasswordValidationPurpose.parse(CANCEL_PURPOSE).name()).isEqualTo(CANCEL_PURPOSE);
     for (String value :
         new String[] {
           null,
@@ -59,6 +61,11 @@ class PasswordValidationContractsTest {
   void changeOfInvestmentChoicePurposeUsesItsEnumNameAsWireValue() {
     assertThat(PasswordValidationPurpose.valueOf("CHANGE_INVESTMENT_CHOICE").name())
         .isEqualTo("CHANGE_INVESTMENT_CHOICE");
+  }
+
+  @Test
+  void cancelInvestmentChoicePurposeUsesItsEnumNameAsWireValue() {
+    assertThat(PasswordValidationPurpose.parse(CANCEL_PURPOSE).name()).isEqualTo(CANCEL_PURPOSE);
   }
 
   @Test

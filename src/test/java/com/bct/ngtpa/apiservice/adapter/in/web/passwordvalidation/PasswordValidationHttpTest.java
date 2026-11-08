@@ -61,10 +61,16 @@ class PasswordValidationHttpTest {
   private static final String REF = "acc_abcdefghijklmnopqrstuvwx";
   private static final String PURPOSE = "PERSONAL_INFORMATION_UPDATE";
   private static final String CIM_PURPOSE = "CHANGE_INVESTMENT_CHOICE";
+  private static final String CANCEL_PURPOSE = "CANCEL_INVESTMENT_CHOICE";
+  private static final String REF_NO_FIELD = "refNo";
+  private static final String CANCEL_REFERENCE_NO = "260001449";
+  private static final String OTHER_REFERENCE_NO = "260001450";
+  private static final String INVALID_REQUEST_CODE = "err.password-validation.request.invalid";
   private static final String PAYLOAD =
       "{\"formVersion\":\"v1\",\"applyToAllAccounts\":false,\"fields\":{\"mailingAddress\":\"reviewed-marker\"}}";
   private static final String CIM_PAYLOAD =
       "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":[{\"fundCode\":\"DBLF\",\"percentage\":60},{\"fundCode\":\"DHKM\",\"percentage\":40}]}";
+  private static final String CANCEL_PAYLOAD = quotedCancelRefNoPayload(CANCEL_REFERENCE_NO);
   private static final ObjectMapper JSON = new ObjectMapper();
   private AnnotationConfigApplicationContext context;
   private DisposableServer server;
@@ -189,6 +195,37 @@ class PasswordValidationHttpTest {
     assertThat(json.at("/result/data/token").asText()).matches("[A-Za-z0-9_-]{43}");
     assertThat(backend.passwordCalls).hasValue(1);
     assertThat(backend.lastCheck.get().password()).isEqualTo("x");
+    assertSafeLogs();
+  }
+
+  @Test
+  void validCancelPurposePayloadProceedsThroughPasswordCheckAndIssuesToken() throws Exception {
+    var result =
+        post(body("x", CANCEL_PURPOSE, CANCEL_PAYLOAD))
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .returnResult();
+    var json = JSON.readTree(result.getResponseBody());
+    String token = json.at("/result/data/token").asText();
+
+    assertThat(json.path("success").asBoolean()).isTrue();
+    assertThat(json.path("status").asText()).isEqualTo("SUCCESS");
+    assertThat(token).matches("[A-Za-z0-9_-]{43}");
+    assertThat(backend.passwordCalls).hasValue(1);
+    assertThat(backend.limiterCalls).hasValue(1);
+    var consumed =
+        context
+            .getBean(PasswordValidationGrantService.class)
+            .consume(
+                new AuthenticatedSessionId(SID),
+                new AuthenticatedAccountRef(REF),
+                PasswordValidationPurpose.parse(CANCEL_PURPOSE),
+                token,
+                "test")
+            .block();
+    assertThat(consumed.binding())
+        .isEqualTo(new JsonOperationPayloadCanonicalizer().digest(CANCEL_PAYLOAD));
     assertSafeLogs();
   }
 
@@ -390,14 +427,76 @@ class PasswordValidationHttpTest {
     assertSafeLogs();
   }
 
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidCancelPayloads")
+  void invalidCancelPayloadIsRejectedBeforeThrottleAndPasswordCheck(String name, String operation) {
+    failure(
+        post(body("x", CANCEL_PURPOSE, operation)), 400, "VALIDATION_FAILED", INVALID_REQUEST_CODE);
+    assertThat(backend.limiterCalls).hasValue(0);
+    assertThat(backend.passwordCalls).hasValue(0);
+    assertSafeLogs();
+  }
+
   @Test
   void payloadValidationIsSelectedByPurpose() throws Exception {
-    for (var request : List.of(body("x", CIM_PURPOSE, PAYLOAD), body("x", PURPOSE, CIM_PAYLOAD))) {
+    for (var request :
+        List.of(
+            body("x", CIM_PURPOSE, PAYLOAD),
+            body("x", PURPOSE, CIM_PAYLOAD),
+            body("x", CANCEL_PURPOSE, CIM_PAYLOAD),
+            body("x", CIM_PURPOSE, CANCEL_PAYLOAD),
+            body("x", PURPOSE, CANCEL_PAYLOAD))) {
       failure(post(request), 400, "VALIDATION_FAILED", "err.password-validation.request.invalid");
       assertThat(backend.limiterCalls).hasValue(0);
       assertThat(backend.passwordCalls).hasValue(0);
     }
     assertSafeLogs();
+  }
+
+  private static Stream<Arguments> invalidCancelPayloads() {
+    return Stream.of(
+        Arguments.of("root-not-object", "[]"),
+        Arguments.of("unknown-member", unknownCancelPayload()),
+        Arguments.of("missing-refNo", "{}"),
+        Arguments.of("null-refNo", cancelRefNoPayload("null")),
+        Arguments.of("number-refNo", cancelRefNoPayload(CANCEL_REFERENCE_NO)),
+        Arguments.of("boolean-refNo", cancelRefNoPayload("true")),
+        Arguments.of("array-refNo", cancelRefNoPayload("[]")),
+        Arguments.of("object-refNo", cancelRefNoPayload("{}")),
+        Arguments.of("blank-refNo", cancelRefNoPayload("\" \\t \"")),
+        Arguments.of("duplicate-refNo", duplicateCancelPayload()));
+  }
+
+  private static String cancelRefNoPayload(String serializedValue) {
+    return """
+        {"%s":%s}
+        """
+        .formatted(REF_NO_FIELD, serializedValue)
+        .strip();
+  }
+
+  private static String quotedCancelRefNoPayload(String value) {
+    return """
+        {"%s":"%s"}
+        """
+        .formatted(REF_NO_FIELD, value)
+        .strip();
+  }
+
+  private static String unknownCancelPayload() {
+    return """
+        {"%s":"%s","extra":true}
+        """
+        .formatted(REF_NO_FIELD, CANCEL_REFERENCE_NO)
+        .strip();
+  }
+
+  private static String duplicateCancelPayload() {
+    return """
+        {"%s":"%s","%s":"%s"}
+        """
+        .formatted(REF_NO_FIELD, CANCEL_REFERENCE_NO, REF_NO_FIELD, OTHER_REFERENCE_NO)
+        .strip();
   }
 
   @ParameterizedTest

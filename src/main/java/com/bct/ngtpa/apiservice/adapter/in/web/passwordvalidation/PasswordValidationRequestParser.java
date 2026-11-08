@@ -11,6 +11,7 @@ public final class PasswordValidationRequestParser {
   private static final String PASSWORD = "password";
   private static final String PURPOSE = "purpose";
   private static final String OPERATION_PAYLOAD = "operationPayload";
+  private static final String REF_NO = "refNo";
   private final JsonFactory factory =
       JsonFactory.builder().enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION).build();
   private final OperationPayloadBindingPort bindings;
@@ -68,7 +69,8 @@ public final class PasswordValidationRequestParser {
           PASSWORD);
       require(
           PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE.name().equals(purpose)
-              || PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE.name().equals(purpose),
+              || PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE.name().equals(purpose)
+              || PasswordValidationPurpose.CANCEL_INVESTMENT_CHOICE.name().equals(purpose),
           PURPOSE);
       var parsedPurpose = PasswordValidationPurpose.parse(purpose);
       require(operation != null, OPERATION_PAYLOAD);
@@ -84,6 +86,21 @@ public final class PasswordValidationRequestParser {
     switch (purpose) {
       case PERSONAL_INFORMATION_UPDATE -> validatePersonalInformationOperation(raw);
       case CHANGE_INVESTMENT_CHOICE -> validateChangeInvestmentChoiceOperation(raw);
+      case CANCEL_INVESTMENT_CHOICE -> validateCancelInvestmentChoiceOperation(raw);
+    }
+  }
+
+  private void validateCancelInvestmentChoiceOperation(String raw) throws IOException {
+    try (JsonParser parser = factory.createParser(raw)) {
+      require(parser.nextToken() == JsonToken.START_OBJECT, OPERATION_PAYLOAD);
+      require(
+          parser.nextToken() == JsonToken.FIELD_NAME && REF_NO.equals(parser.currentName()),
+          OPERATION_PAYLOAD);
+      require(
+          parser.nextToken() == JsonToken.VALUE_STRING && !parser.getText().isBlank(),
+          OPERATION_PAYLOAD);
+      require(parser.nextToken() == JsonToken.END_OBJECT, OPERATION_PAYLOAD);
+      require(parser.nextToken() == null, OPERATION_PAYLOAD);
     }
   }
 
