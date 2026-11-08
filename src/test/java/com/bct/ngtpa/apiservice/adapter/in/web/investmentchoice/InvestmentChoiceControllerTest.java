@@ -80,11 +80,18 @@ class InvestmentChoiceControllerTest {
   private static final String SUBMIT_ROUTE = "/api/v1/investment-choice/instructions";
   private static final String CANCEL_ROUTE = "/api/v1/investment-choice/instructions/cancel";
   private static final String CANCEL_REFERENCE_NO = "260001449";
+  private static final String PRESERVED_REFERENCE_NO = "0260001449";
   private static final String CANCEL_BODY =
       """
       {"refNo":"%s"}
       """
           .formatted(CANCEL_REFERENCE_NO)
+          .strip();
+  private static final String BODY_WITH_PRESERVED_REFERENCE =
+      """
+      {"refNo":"%s"}
+      """
+          .formatted(PRESERVED_REFERENCE_NO)
           .strip();
   private static final AuthenticatedSessionId SESSION_ID =
       new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
@@ -472,6 +479,25 @@ class InvestmentChoiceControllerTest {
                 SESSION_ID,
                 "req-42",
                 CANCEL_REFERENCE_NO));
+  }
+
+  @Test
+  void passesLeadingZeroReferenceNumberToUseCaseUnchanged() {
+    AtomicReference<String> receivedReferenceNo = new AtomicReference<>();
+    WebTestClient client =
+        cancelClient(
+            command -> {
+              receivedReferenceNo.set(command.referenceNo());
+              return Mono.just(
+                  new InvestmentChoiceCancelOutcome.Cancelled(
+                      new InvestmentChoiceCancellation(command.referenceNo())));
+            },
+            context("ACC-1"),
+            exchange -> Optional.of(SESSION_ID));
+
+    cancelPost(client, BODY_WITH_PRESERVED_REFERENCE).expectStatus().isOk();
+
+    assertThat(receivedReferenceNo.get()).isEqualTo(PRESERVED_REFERENCE_NO);
   }
 
   @ParameterizedTest
