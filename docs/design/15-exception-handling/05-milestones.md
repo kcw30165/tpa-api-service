@@ -432,7 +432,7 @@ incomplete.
 The terminal-origin labels identify failures owned by `CheckRegistrationUsernameService`:
 
 - `APIM_TECHNICAL`: the service owns the terminal ERROR for a technical APIM failure.
-- `LOCAL_SYSTEM`: the service owns the terminal ERROR for a local-system failure classified at the APIM adapter boundary.
+- `LOCAL_SYSTEM`: the service owns the terminal ERROR for a failure on our side before or around the APIM call, for example credential-profile resolution. No downstream response was involved.
 - `LOCAL_STATE_FAILURE`: the service owns the terminal ERROR for a local username-state failure.
 
 Known M3a limitations:
