@@ -279,11 +279,13 @@ class InvestmentChoiceApplicationConfigTest {
             new InvestmentChoiceSnapshot.SwitchSource("EE", true)),
         List.of(
             new InvestmentChoiceSnapshot.Fund(FUND_CODE, true),
-            new InvestmentChoiceSnapshot.Fund(OTHER_FUND_CODE, true)));
+            new InvestmentChoiceSnapshot.Fund(OTHER_FUND_CODE, true)),
+        List.of());
   }
 
   private static InvestmentChoiceSnapshot unavailableSnapshot() {
-    return new InvestmentChoiceSnapshot(ACCOUNT_REF, POLICY_NO, 20, List.of(), List.of());
+    return new InvestmentChoiceSnapshot(
+        ACCOUNT_REF, POLICY_NO, 20, List.of(), List.of(), List.of());
   }
 
   private static InvestmentChoiceDetails detailsWithPending() {

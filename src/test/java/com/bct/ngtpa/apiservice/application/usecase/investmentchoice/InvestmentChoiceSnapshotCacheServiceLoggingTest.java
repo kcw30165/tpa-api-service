@@ -30,10 +30,13 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -46,6 +49,8 @@ class InvestmentChoiceSnapshotCacheServiceLoggingTest {
   private static final String ACCOUNT_REF = "acc_sensitive_marker";
   private static final String POLICY_NO = "policy_sensitive_marker";
   private static final String KEY = "investment-choice.snapshot";
+  private static final String PENDING_REFERENCE_NO = "260001449";
+  private static final String PENDING_REF_PROPERTY_PREFIX = ",\"pendingRefNos\":";
 
   private final Logger logger =
       (Logger) LoggerFactory.getLogger(InvestmentChoiceSnapshotCacheService.class);
@@ -90,7 +95,8 @@ class InvestmentChoiceSnapshotCacheServiceLoggingTest {
             new InvestmentChoiceSnapshot.SwitchSource("EE", false)),
         List.of(
             new InvestmentChoiceSnapshot.Fund("FUND_A", true),
-            new InvestmentChoiceSnapshot.Fund("FUND_B", false)));
+            new InvestmentChoiceSnapshot.Fund("FUND_B", false)),
+        List.of(PENDING_REFERENCE_NO));
   }
 
   private static AuthenticatedSession session(
@@ -152,11 +158,10 @@ class InvestmentChoiceSnapshotCacheServiceLoggingTest {
     service().read(SID, ACCOUNT_REF, POLICY_NO, "req-4").block();
 
     String unknownProperty =
-        "{\"accountRef\":\""
-            + ACCOUNT_REF
-            + "\",\"policyNo\":\""
-            + POLICY_NO
-            + "\",\"intervalPcnt\":5,\"sources\":[],\"funds\":[],\"unexpected\":true}";
+        """
+        {"accountRef":"%s","policyNo":"%s","intervalPcnt":5,"sources":[],"funds":[],"pendingRefNos":["%s"],"unexpected":true}
+        """
+            .formatted(ACCOUNT_REF, POLICY_NO, PENDING_REFERENCE_NO);
     when(protector.unprotect(any())).thenReturn(usableSession(Map.of(KEY, unknownProperty)));
     service().read(SID, ACCOUNT_REF, POLICY_NO, "req-5").block();
 
@@ -218,6 +223,7 @@ class InvestmentChoiceSnapshotCacheServiceLoggingTest {
                         SID.value(),
                         "FUND_A",
                         "FUND_B",
+                        PENDING_REFERENCE_NO,
                         "BO",
                         "EE",
                         "backend detail",
@@ -240,13 +246,10 @@ class InvestmentChoiceSnapshotCacheServiceLoggingTest {
   @ValueSource(ints = {-1, 0, 101})
   void invalidStoredIntervalsLogOnlyAnUnreadableMissReason(int intervalPcnt) {
     String encoded =
-        "{\"accountRef\":\""
-            + ACCOUNT_REF
-            + "\",\"policyNo\":\""
-            + POLICY_NO
-            + "\",\"intervalPcnt\":"
-            + intervalPcnt
-            + ",\"sources\":[],\"funds\":[]}";
+        """
+        {"accountRef":"%s","policyNo":"%s","intervalPcnt":%d,"sources":[],"funds":[],"pendingRefNos":[]}
+        """
+            .formatted(ACCOUNT_REF, POLICY_NO, intervalPcnt);
     when(sessions.load(any())).thenReturn(Mono.just(Optional.of(envelope())));
     when(protector.unprotect(any())).thenReturn(usableSession(Map.of(KEY, encoded)));
 
@@ -262,5 +265,39 @@ class InvestmentChoiceSnapshotCacheServiceLoggingTest {
                 + intervalPcnt)
         .doesNotContain(
             ACCOUNT_REF, POLICY_NO, SID.value(), "member-1", "FUND_A", "FUND_B", "BO", "EE");
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidPendingReferenceWires")
+  void invalidPendingReferenceWiresLogOneReasonOnlyInfoMiss(String scenario, String encoded) {
+    when(sessions.load(any())).thenReturn(Mono.just(Optional.of(envelope())));
+    when(protector.unprotect(any())).thenReturn(usableSession(Map.of(KEY, encoded)));
+
+    assertThat(service().read(SID, ACCOUNT_REF, POLICY_NO, "req-pending").block())
+        .as(scenario)
+        .isEmpty();
+
+    assertThat(events()).hasSize(1);
+    ILoggingEvent event = events().getFirst();
+    assertThat(event.getLevel()).isEqualTo(Level.INFO);
+    assertThat(event.getFormattedMessage())
+        .isEqualTo(
+            "event=investment-choice.snapshot-cache.miss reason=unreadable requestId=req-pending")
+        .doesNotContain(PENDING_REFERENCE_NO);
+  }
+
+  static Stream<Arguments> invalidPendingReferenceWires() {
+    return Stream.of(
+        Arguments.of("missing field", pendingReferenceWire("")),
+        Arguments.of("null field", pendingReferenceWire(PENDING_REF_PROPERTY_PREFIX + "null")),
+        Arguments.of(
+            "blank element", pendingReferenceWire(PENDING_REF_PROPERTY_PREFIX + "[\"\"]")));
+  }
+
+  private static String pendingReferenceWire(String field) {
+    return """
+        {"accountRef":"%s","policyNo":"%s","intervalPcnt":5,"sources":[],"funds":[]%s}
+        """
+        .formatted(ACCOUNT_REF, POLICY_NO, field);
   }
 }

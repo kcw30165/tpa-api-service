@@ -68,6 +68,7 @@ class SubmitInvestmentChoiceServiceTest {
   private static final String POLICY_NO = "policy-sensitive";
   private static final String CERT_NO = "cert-sensitive";
   private static final String SNAPSHOT_ACCOUNT_REF = "snapshot-account-ref-sensitive";
+  private static final String PENDING_REFERENCE_NO = "260001449";
   private static final AuthenticatedSessionId SESSION_ID =
       new AuthenticatedSessionId("sid_session-sensitive-0123456789");
   private static final String REQUEST_ID = "request-safe";
@@ -145,7 +146,8 @@ class SubmitInvestmentChoiceServiceTest {
             new InvestmentChoiceSnapshot.SwitchSource("EE", true)),
         List.of(
             new InvestmentChoiceSnapshot.Fund("FBAL", true),
-            new InvestmentChoiceSnapshot.Fund("FHKM", true)));
+            new InvestmentChoiceSnapshot.Fund("FHKM", true)),
+        List.of());
   }
 
   private static InvestmentChoiceDetails details(List<InvestmentChoicePending> pending) {
@@ -195,7 +197,8 @@ class SubmitInvestmentChoiceServiceTest {
             "60",
             "40",
             "adapter-ref-sensitive",
-            "pending-ref-sensitive");
+            "pending-ref-sensitive",
+            PENDING_REFERENCE_NO);
   }
 
   @Test
@@ -280,7 +283,8 @@ class SubmitInvestmentChoiceServiceTest {
             List.of(
                 new InvestmentChoiceSnapshot.SwitchSource("BO", true),
                 new InvestmentChoiceSnapshot.SwitchSource("EE", false)),
-            List.of(new InvestmentChoiceSnapshot.Fund("FBAL", false)));
+            List.of(new InvestmentChoiceSnapshot.Fund("FBAL", false)),
+            List.of());
     when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.of(invalidSnapshot)));
 
@@ -341,7 +345,7 @@ class SubmitInvestmentChoiceServiceTest {
   @Test
   void unknownOutcomeMatchesTheExactPendingSetAndRefreshesSnapshotBeforeSuccess() {
     arrangeUnknownOutcomeWithDetails(
-        details(List.of(pending("pending-ref-sensitive", HK_TODAY, matchingPendingRows()))));
+        details(List.of(pending(PENDING_REFERENCE_NO, HK_TODAY, matchingPendingRows()))));
     var refreshed = new AtomicBoolean();
     when(snapshotCache.write(eq(SESSION_ID), any(), eq(REQUEST_ID)))
         .thenReturn(Mono.fromRunnable(() -> refreshed.set(true)));
@@ -353,13 +357,16 @@ class SubmitInvestmentChoiceServiceTest {
                   .isEqualTo(
                       new InvestmentChoiceSubmitOutcome.Submitted(
                           new InvestmentChoiceSubmission(
-                              "pending-ref-sensitive", HK_TODAY, LocalTime.of(9, 15))));
+                              PENDING_REFERENCE_NO, HK_TODAY, LocalTime.of(9, 15))));
               assertThat(refreshed).isTrue();
             })
         .verifyComplete();
 
     verify(snapshotCache, times(1)).read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
-    verify(snapshotCache, times(1)).write(eq(SESSION_ID), any(), eq(REQUEST_ID));
+    var refreshedSnapshot = ArgumentCaptor.forClass(InvestmentChoiceSnapshot.class);
+    verify(snapshotCache, times(1))
+        .write(eq(SESSION_ID), refreshedSnapshot.capture(), eq(REQUEST_ID));
+    assertThat(refreshedSnapshot.getValue().pendingRefNos()).containsExactly(PENDING_REFERENCE_NO);
     verify(referenceDatePort).resolveReferenceDate(ACCOUNT_ENV);
     var detailsCommand = ArgumentCaptor.forClass(InvestmentChoiceDetailsCommand.class);
     verify(detailsPort).load(detailsCommand.capture());

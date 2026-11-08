@@ -3,6 +3,10 @@ package com.bct.ngtpa.apiservice.application.dto.investmentchoice;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -12,6 +16,9 @@ class InvestmentChoiceSnapshotTest {
 
   private static final String ACCOUNT_REF = "acc_abcdefghijklmnopqrstuvwx";
   private static final String POLICY_NO = "00000008802";
+  private static final String PENDING_REF_ONE = "260001449";
+  private static final String PENDING_REF_TWO = "260001450";
+  private static final String PENDING_REF_THREE = "260001451";
 
   @Test
   void mapsEverySourceAndFundFromDetailsIncludingUnavailableEntries() {
@@ -40,6 +47,27 @@ class InvestmentChoiceSnapshotTest {
         .containsExactly(
             new InvestmentChoiceSnapshot.Fund("FUND_A", true),
             new InvestmentChoiceSnapshot.Fund("FUND_B", false));
+    assertThat(snapshot.pendingRefNos()).isEmpty();
+  }
+
+  @Test
+  void fromDetailsCollectsDistinctPendingReferencesInFirstAppearanceOrder() {
+    var details =
+        new InvestmentChoiceDetails(
+            5,
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(
+                pending(PENDING_REF_ONE),
+                pending(PENDING_REF_TWO),
+                pending(PENDING_REF_ONE),
+                pending(PENDING_REF_THREE)));
+
+    var snapshot = InvestmentChoiceSnapshot.fromDetails(ACCOUNT_REF, POLICY_NO, details);
+
+    assertThat(snapshot.pendingRefNos())
+        .containsExactly(PENDING_REF_ONE, PENDING_REF_TWO, PENDING_REF_THREE);
   }
 
   @Test
@@ -50,7 +78,8 @@ class InvestmentChoiceSnapshotTest {
             POLICY_NO,
             5,
             List.of(new InvestmentChoiceSnapshot.SwitchSource("BO", true)),
-            List.of(new InvestmentChoiceSnapshot.Fund("FUND_A", true)));
+            List.of(new InvestmentChoiceSnapshot.Fund("FUND_A", true)),
+            List.of());
 
     assertThat(snapshot.belongsTo(ACCOUNT_REF, POLICY_NO)).isTrue();
     assertThat(snapshot.belongsTo("acc_otherotherotherotherother", POLICY_NO)).isFalse();
@@ -65,17 +94,78 @@ class InvestmentChoiceSnapshotTest {
     List<InvestmentChoiceSnapshot.Fund> emptyFunds = List.of();
 
     assertThatThrownBy(
-            () -> new InvestmentChoiceSnapshot(null, POLICY_NO, 5, emptySources, emptyFunds))
+            () ->
+                new InvestmentChoiceSnapshot(
+                    null, POLICY_NO, 5, emptySources, emptyFunds, List.of()))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
-            () -> new InvestmentChoiceSnapshot(ACCOUNT_REF, " ", 5, emptySources, emptyFunds))
+            () ->
+                new InvestmentChoiceSnapshot(
+                    ACCOUNT_REF, " ", 5, emptySources, emptyFunds, List.of()))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
-            () -> new InvestmentChoiceSnapshot(ACCOUNT_REF, POLICY_NO, 5, null, emptyFunds))
+            () ->
+                new InvestmentChoiceSnapshot(
+                    ACCOUNT_REF, POLICY_NO, 5, null, emptyFunds, List.of()))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(
-            () -> new InvestmentChoiceSnapshot(ACCOUNT_REF, POLICY_NO, 5, emptySources, null))
+            () ->
+                new InvestmentChoiceSnapshot(
+                    ACCOUNT_REF, POLICY_NO, 5, emptySources, null, List.of()))
         .isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(
+            () ->
+                new InvestmentChoiceSnapshot(
+                    ACCOUNT_REF, POLICY_NO, 5, emptySources, emptyFunds, null))
+        .isInstanceOf(NullPointerException.class);
+  }
+
+  @Test
+  void rejectsNullOrBlankPendingReferencesWithoutIncludingValuesInMessages() {
+    assertThatThrownBy(
+            () ->
+                new InvestmentChoiceSnapshot(
+                    ACCOUNT_REF,
+                    POLICY_NO,
+                    5,
+                    List.of(),
+                    List.of(),
+                    Arrays.asList(PENDING_REF_ONE, null)))
+        .isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(
+            () ->
+                new InvestmentChoiceSnapshot(
+                    ACCOUNT_REF, POLICY_NO, 5, List.of(), List.of(), List.of(" ")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("pendingRefNos elements must not be blank");
+  }
+
+  @Test
+  void acceptsEmptyAndMultiplePendingReferencesAndCopiesThemImmutably() {
+    var empty = snapshotWithPendingReferences(List.of());
+    List<String> mutableReferences = new ArrayList<>(List.of(PENDING_REF_ONE, PENDING_REF_TWO));
+    var snapshot = snapshotWithPendingReferences(mutableReferences);
+    mutableReferences.add(PENDING_REF_THREE);
+
+    assertThat(empty.pendingRefNos()).isEmpty();
+    assertThat(snapshot.pendingRefNos()).containsExactly(PENDING_REF_ONE, PENDING_REF_TWO);
+    assertThatThrownBy(() -> snapshot.pendingRefNos().add(PENDING_REF_THREE))
+        .isInstanceOf(UnsupportedOperationException.class);
+  }
+
+  @Test
+  void withoutPendingRefRemovesOnlyTheRequestedValueAndPreservesOrder() {
+    var snapshot =
+        snapshotWithPendingReferences(List.of(PENDING_REF_ONE, PENDING_REF_TWO, PENDING_REF_THREE));
+
+    var updated = snapshot.withoutPendingRef(PENDING_REF_TWO);
+    var unchanged = snapshot.withoutPendingRef("260001452");
+
+    assertThat(updated.pendingRefNos()).containsExactly(PENDING_REF_ONE, PENDING_REF_THREE);
+    assertThat(snapshot.pendingRefNos())
+        .containsExactly(PENDING_REF_ONE, PENDING_REF_TWO, PENDING_REF_THREE);
+    assertThat(unchanged.pendingRefNos())
+        .containsExactly(PENDING_REF_ONE, PENDING_REF_TWO, PENDING_REF_THREE);
   }
 
   @ParameterizedTest
@@ -87,7 +177,7 @@ class InvestmentChoiceSnapshotTest {
     assertThatThrownBy(
             () ->
                 new InvestmentChoiceSnapshot(
-                    ACCOUNT_REF, POLICY_NO, intervalPcnt, emptySources, emptyFunds))
+                    ACCOUNT_REF, POLICY_NO, intervalPcnt, emptySources, emptyFunds, List.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("intervalPcnt must be between 1 and 100");
   }
@@ -96,8 +186,19 @@ class InvestmentChoiceSnapshotTest {
   @ValueSource(ints = {1, 100})
   void acceptsInclusiveIntervalBoundaries(int intervalPcnt) {
     var snapshot =
-        new InvestmentChoiceSnapshot(ACCOUNT_REF, POLICY_NO, intervalPcnt, List.of(), List.of());
+        new InvestmentChoiceSnapshot(
+            ACCOUNT_REF, POLICY_NO, intervalPcnt, List.of(), List.of(), List.of());
 
     assertThat(snapshot.intervalPcnt()).isEqualTo(intervalPcnt);
+  }
+
+  private static InvestmentChoiceSnapshot snapshotWithPendingReferences(List<String> references) {
+    return new InvestmentChoiceSnapshot(
+        ACCOUNT_REF, POLICY_NO, 5, List.of(), List.of(), references);
+  }
+
+  private static InvestmentChoicePending pending(String referenceNo) {
+    return new InvestmentChoicePending(
+        referenceNo, LocalDate.of(2026, 11, 6), LocalTime.of(9, 15), List.of());
   }
 }

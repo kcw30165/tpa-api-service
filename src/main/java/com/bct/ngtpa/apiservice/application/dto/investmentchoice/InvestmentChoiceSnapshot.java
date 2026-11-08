@@ -9,7 +9,8 @@ public record InvestmentChoiceSnapshot(
     String policyNo,
     int intervalPcnt,
     List<SwitchSource> sources,
-    List<Fund> funds) {
+    List<Fund> funds,
+    List<String> pendingRefNos) {
 
   public InvestmentChoiceSnapshot {
     requireText(accountRef, "accountRef");
@@ -19,6 +20,11 @@ public record InvestmentChoiceSnapshot(
     }
     sources = List.copyOf(Objects.requireNonNull(sources, "sources must not be null"));
     funds = List.copyOf(Objects.requireNonNull(funds, "funds must not be null"));
+    pendingRefNos =
+        List.copyOf(Objects.requireNonNull(pendingRefNos, "pendingRefNos must not be null"));
+    if (pendingRefNos.stream().anyMatch(String::isBlank)) {
+      throw new IllegalArgumentException("pendingRefNos elements must not be blank");
+    }
   }
 
   public static InvestmentChoiceSnapshot fromDetails(
@@ -31,7 +37,18 @@ public record InvestmentChoiceSnapshot(
         details.sources().stream()
             .map(source -> new SwitchSource(source.code(), source.avail()))
             .toList(),
-        details.funds().stream().map(fund -> new Fund(fund.code(), fund.avail())).toList());
+        details.funds().stream().map(fund -> new Fund(fund.code(), fund.avail())).toList(),
+        details.pending().stream().map(InvestmentChoicePending::refNo).distinct().toList());
+  }
+
+  public InvestmentChoiceSnapshot withoutPendingRef(String referenceNo) {
+    return new InvestmentChoiceSnapshot(
+        accountRef,
+        policyNo,
+        intervalPcnt,
+        sources,
+        funds,
+        pendingRefNos.stream().filter(reference -> !reference.equals(referenceNo)).toList());
   }
 
   /** True only when both identifiers match; anything else is a cache miss. */
@@ -47,6 +64,8 @@ public record InvestmentChoiceSnapshot(
         + sources.size()
         + ", fundCount="
         + funds.size()
+        + ", pendingRefCount="
+        + pendingRefNos.size()
         + "]";
   }
 

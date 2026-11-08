@@ -340,7 +340,8 @@ class InvestmentChoiceInstructionBodyValidatorTest {
                 new InvestmentChoiceSnapshot.SwitchSource("EE", true)),
             List.of(
                 new InvestmentChoiceSnapshot.Fund("DBLF", true),
-                new InvestmentChoiceSnapshot.Fund("DHKM", true)));
+                new InvestmentChoiceSnapshot.Fund("DHKM", true)),
+            List.of());
 
     assertThat(body.isValid()).isTrue();
     assertThat(body.request())

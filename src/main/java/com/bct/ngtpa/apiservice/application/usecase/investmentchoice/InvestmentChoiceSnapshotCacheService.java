@@ -157,7 +157,8 @@ public final class InvestmentChoiceSnapshotCacheService {
       String policyNo,
       int intervalPcnt,
       List<InvestmentChoiceSnapshot.SwitchSource> sources,
-      List<InvestmentChoiceSnapshot.Fund> funds) {
+      List<InvestmentChoiceSnapshot.Fund> funds,
+      List<String> pendingRefNos) {
 
     static Wire from(InvestmentChoiceSnapshot snapshot) {
       return new Wire(
@@ -165,11 +166,13 @@ public final class InvestmentChoiceSnapshotCacheService {
           snapshot.policyNo(),
           snapshot.intervalPcnt(),
           snapshot.sources(),
-          snapshot.funds());
+          snapshot.funds(),
+          snapshot.pendingRefNos());
     }
 
     InvestmentChoiceSnapshot toSnapshot() {
-      return new InvestmentChoiceSnapshot(accountRef, policyNo, intervalPcnt, sources, funds);
+      return new InvestmentChoiceSnapshot(
+          accountRef, policyNo, intervalPcnt, sources, funds, pendingRefNos);
     }
   }
 }

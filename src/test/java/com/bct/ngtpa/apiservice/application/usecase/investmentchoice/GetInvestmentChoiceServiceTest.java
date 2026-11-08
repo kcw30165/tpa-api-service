@@ -19,6 +19,7 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.GetInvestmentCh
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetails;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetailsCommand;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceFund;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePending;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSource;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
@@ -31,6 +32,7 @@ import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceDetailsPort
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
@@ -53,6 +55,8 @@ class GetInvestmentChoiceServiceTest {
   private static final String REQUEST_ID = "request-safe";
   private static final String SUCCESS_POLICY_NO = "118";
   private static final String SUCCESS_CERT_NO = "3";
+  private static final String PENDING_REF_ONE = "260001449";
+  private static final String PENDING_REF_TWO = "260001450";
   private static final AuthenticatedSessionId SESSION_ID =
       new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
   private static final ActorUserRole ROLE = ActorUserRole.ROLE_USER_MBR;
@@ -105,6 +109,19 @@ class GetInvestmentChoiceServiceTest {
     return new InvestmentChoiceDetails(5, List.of(), List.of(), List.of(), List.of());
   }
 
+  private static InvestmentChoiceDetails detailsWithPendingReferences() {
+    return new InvestmentChoiceDetails(
+        25,
+        List.of(new InvestmentChoiceSource("BO", 1, true)),
+        List.of(new InvestmentChoiceFund("FUN01", "Fund One", "基金一", "1", true)),
+        List.of(),
+        List.of(pending(PENDING_REF_ONE), pending(PENDING_REF_TWO), pending(PENDING_REF_ONE)));
+  }
+
+  private static InvestmentChoicePending pending(String referenceNo) {
+    return new InvestmentChoicePending(referenceNo, REFERENCE_DATE, LocalTime.of(9, 15), List.of());
+  }
+
   private void arrangeDetails(InvestmentChoiceDetails value) {
     when(referenceDatePort.resolveReferenceDate(ACCOUNT_ENV)).thenReturn(Mono.just(REFERENCE_DATE));
     when(detailsPort.load(any())).thenReturn(Mono.just(value));
@@ -124,6 +141,8 @@ class GetInvestmentChoiceServiceTest {
             "CERT",
             "FUN01",
             "FUN02",
+            PENDING_REF_ONE,
+            PENDING_REF_TWO,
             "BO",
             "EE",
             "25");
@@ -167,8 +186,26 @@ class GetInvestmentChoiceServiceTest {
                     new InvestmentChoiceSnapshot.SwitchSource("EE", false)),
                 List.of(
                     new InvestmentChoiceSnapshot.Fund("FUN01", true),
-                    new InvestmentChoiceSnapshot.Fund("FUN02", false))));
+                    new InvestmentChoiceSnapshot.Fund("FUN02", false)),
+                List.of()));
     verifyNoInteractions(failures);
+    assertNoSensitiveLogValues();
+  }
+
+  @Test
+  void writesDistinctPendingReferencesFromDetailsIntoTheSnapshot() {
+    var details = detailsWithPendingReferences();
+    arrangeDetails(details);
+    when(snapshotCache.write(any(), any(), any())).thenReturn(Mono.empty());
+
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+        .assertNext(result -> assertThat(result.details()).isEqualTo(details))
+        .verifyComplete();
+
+    var snapshot = ArgumentCaptor.forClass(InvestmentChoiceSnapshot.class);
+    verify(snapshotCache).write(eq(SESSION_ID), snapshot.capture(), eq(REQUEST_ID));
+    assertThat(snapshot.getValue().pendingRefNos())
+        .containsExactly(PENDING_REF_ONE, PENDING_REF_TWO);
     assertNoSensitiveLogValues();
   }
 

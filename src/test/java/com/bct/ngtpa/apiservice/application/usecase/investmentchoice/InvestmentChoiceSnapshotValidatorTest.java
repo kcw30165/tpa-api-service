@@ -24,7 +24,12 @@ class InvestmentChoiceSnapshotValidatorTest {
       List<InvestmentChoiceSnapshot.SwitchSource> sources,
       List<InvestmentChoiceSnapshot.Fund> funds) {
     return new InvestmentChoiceSnapshot(
-        "acc_validvaluevalidvaluevalidvalue", "policy-valid", intervalPcnt, sources, funds);
+        "acc_validvaluevalidvaluevalidvalue",
+        "policy-valid",
+        intervalPcnt,
+        sources,
+        funds,
+        List.of());
   }
 
   private static InvestmentChoiceViolation violation(

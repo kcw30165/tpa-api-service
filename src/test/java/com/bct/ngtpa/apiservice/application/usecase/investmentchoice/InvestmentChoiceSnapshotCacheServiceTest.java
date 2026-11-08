@@ -38,6 +38,8 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
@@ -55,6 +57,9 @@ class InvestmentChoiceSnapshotCacheServiceTest {
   private static final String POLICY_NO = "00000008802";
   private static final String KEY = "investment-choice.snapshot";
   private static final String PERSONAL_INFORMATION_KEY = "personal-information.config";
+  private static final String PENDING_REF_ONE = "260001449";
+  private static final String PENDING_REF_TWO = "260001450";
+  private static final String PENDING_REF_PROPERTY_PREFIX = ",\"pendingRefNos\":";
 
   private final AuthenticatedSessionPort sessions = mock(AuthenticatedSessionPort.class);
   private final AuthenticatedSessionProtectorPort protector =
@@ -77,17 +82,22 @@ class InvestmentChoiceSnapshotCacheServiceTest {
             new InvestmentChoiceSnapshot.SwitchSource("EE", false)),
         List.of(
             new InvestmentChoiceSnapshot.Fund("FUND_A", true),
-            new InvestmentChoiceSnapshot.Fund("FUND_B", false)));
+            new InvestmentChoiceSnapshot.Fund("FUND_B", false)),
+        List.of(PENDING_REF_ONE, PENDING_REF_TWO));
   }
 
   private static String snapshotJson(int intervalPcnt) {
-    return "{\"accountRef\":\""
-        + ACCOUNT_REF
-        + "\",\"policyNo\":\""
-        + POLICY_NO
-        + "\",\"intervalPcnt\":"
-        + intervalPcnt
-        + ",\"sources\":[],\"funds\":[]}";
+    return snapshotJson(
+        intervalPcnt,
+        PENDING_REF_PROPERTY_PREFIX
+            + "[\"%s\",\"%s\"]".formatted(PENDING_REF_ONE, PENDING_REF_TWO));
+  }
+
+  private static String snapshotJson(int intervalPcnt, String pendingRefField) {
+    return """
+        {"accountRef":"%s","policyNo":"%s","intervalPcnt":%d,"sources":[],"funds":[]%s}
+        """
+        .formatted(ACCOUNT_REF, POLICY_NO, intervalPcnt, pendingRefField);
   }
 
   private static AuthenticatedSession session(
@@ -152,10 +162,13 @@ class InvestmentChoiceSnapshotCacheServiceTest {
     JsonNode wire = new ObjectMapper().readTree(updated.featureState().get(KEY));
     assertThat(wire.fieldNames())
         .toIterable()
-        .containsExactlyInAnyOrder("accountRef", "policyNo", "intervalPcnt", "sources", "funds");
+        .containsExactlyInAnyOrder(
+            "accountRef", "policyNo", "intervalPcnt", "sources", "funds", "pendingRefNos");
     stored(updated);
 
     assertThat(read(ACCOUNT_REF, POLICY_NO)).contains(snapshot(ACCOUNT_REF));
+    assertThat(wire.path("pendingRefNos").get(0).asText()).isEqualTo(PENDING_REF_ONE);
+    assertThat(wire.path("pendingRefNos").get(1).asText()).isEqualTo(PENDING_REF_TWO);
     assertThat(wire.path("sources").get(1).path("available").asBoolean()).isFalse();
     assertThat(wire.path("funds").get(1).path("available").asBoolean()).isFalse();
     assertThat(wire.path("sources").get(0).fieldNames())
@@ -222,13 +235,28 @@ class InvestmentChoiceSnapshotCacheServiceTest {
         usableSession(
             Map.of(
                 KEY,
-                "{\"accountRef\":\""
-                    + ACCOUNT_REF
-                    + "\",\"policyNo\":\""
-                    + POLICY_NO
-                    + "\",\"intervalPcnt\":5,\"sources\":[],\"funds\":[],\"unexpected\":true}")));
+                snapshotJson(
+                    5,
+                    PENDING_REF_PROPERTY_PREFIX
+                        + "[\"%s\"],\"unexpected\":true".formatted(PENDING_REF_ONE)))));
 
     assertThat(read(ACCOUNT_REF, POLICY_NO)).isEmpty();
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidPendingReferenceFields")
+  void readMissesWhenStoredPendingReferencesAreMissingNullOrBlank(
+      String scenario, String pendingRefField) {
+    stored(usableSession(Map.of(KEY, snapshotJson(5, pendingRefField))));
+
+    assertThat(read(ACCOUNT_REF, POLICY_NO)).as(scenario).isEmpty();
+  }
+
+  static Stream<Arguments> invalidPendingReferenceFields() {
+    return Stream.of(
+        Arguments.of("missing", ""),
+        Arguments.of("null", PENDING_REF_PROPERTY_PREFIX + "null"),
+        Arguments.of("blank", PENDING_REF_PROPERTY_PREFIX + "[\"\"]"));
   }
 
   @ParameterizedTest
