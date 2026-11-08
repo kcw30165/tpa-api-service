@@ -10,15 +10,13 @@ import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.AppenderBase;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config
-    .RegistrationIdempotencyProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.RegistrationIdempotencyProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CancelRegistrationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper
-    .RegistrationUsernameCheckWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequiredRequestIdWebFilter;
@@ -66,7 +64,6 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthF
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState;
 import com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase;
-import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
@@ -75,10 +72,9 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefres
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameCheckProtectorPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordUsernameLookupCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.RegistrationUsernameAvailabilityCommand;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start
-    .StartForgotPasswordUsernameLookupCommand;
 import com.bct.ngtpa.apiservice.infrastructure.logging.ExecutionLoggingAspect;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
@@ -87,8 +83,8 @@ import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.URI;
@@ -136,9 +132,9 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.EntityExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -256,8 +252,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     String requestId = "r1c-explicit-rejection-request";
     sessions.seedOtpVerified(csrf);
     scenarioExchange.respond(
-        HttpStatus.OK,
-        "{\"response\":{\"err-message\":\"err.tpa.username.taken\",\"data\":[]}}");
+        HttpStatus.OK, "{\"response\":{\"err-message\":\"err.tpa.username.taken\",\"data\":[]}}");
     int startIndex = applicationEvents.size();
 
     usernameRequest(csrf, requestId)
@@ -299,10 +294,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     assertHttpObservation(requestEvents, requestId, 422, Level.WARN);
     assertThat(requestEvents)
         .filteredOn(
-            event ->
-                event
-                    .getFormattedMessage()
-                    .contains("\"event\":\"http.request.failed\""))
+            event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
         .singleElement()
         .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
     assertNoAdapterExecutionEvents(requestEvents);
@@ -316,8 +308,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     String requestId = "r1c-business-fallback-request";
     sessions.seedOtpVerified(csrf);
     scenarioExchange.respond(
-        HttpStatus.OK,
-        "{\"response\":{\"err-message\":\"" + downstreamMarker + "\",\"data\":[]}}");
+        HttpStatus.OK, "{\"response\":{\"err-message\":\"" + downstreamMarker + "\",\"data\":[]}}");
     int startIndex = applicationEvents.size();
 
     usernameRequest(csrf, requestId)
@@ -334,10 +325,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     assertThat(
             classificationAdapter.classify(
                 new DownstreamErrorClassificationRequest(
-                    "registration-username-check",
-                    "APIM_TAS",
-                    "TRPChkCustId",
-                    downstreamMarker)))
+                    "registration-username-check", "APIM_TAS", "TRPChkCustId", downstreamMarker)))
         .isEqualTo(
             new DownstreamErrorClassification(
                 "DOWNSTREAM_REJECTION",
@@ -360,8 +348,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     String csrf = "r1c-csrf-http-503";
     String marker = "r1c-http-503-private-marker";
     sessions.seedOtpVerified(csrf);
-    scenarioExchange.respond(
-        HttpStatus.SERVICE_UNAVAILABLE, "{\"error\":\"" + marker + "\"}");
+    scenarioExchange.respond(HttpStatus.SERVICE_UNAVAILABLE, "{\"error\":\"" + marker + "\"}");
     List<ILoggingEvent> requestEvents =
         assertTechnicalFailure(
             "http-503",
@@ -417,7 +404,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     String marker = "r1c-empty-profile-private-marker";
     sessions.seedOtpVerified(csrf);
     profileResolver.useEmptyProfile();
-    // This marker is only the synthetic username used to prove it is not logged, not resolver context.
+    // This marker is only the synthetic username used to prove it is not logged, not resolver
+    // context.
     assertTechnicalFailure(
         "profile-empty",
         csrf,
@@ -490,8 +478,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     String csrf = "r1c-csrf-contract-marker";
     String requestId = "r1c-contract-invalid-request";
     sessions.seedOtpVerified(csrf);
-    scenarioExchange.respond(
-        HttpStatus.OK, "{\"response\":{\"err-message\":\"\",\"data\":[]}}");
+    scenarioExchange.respond(HttpStatus.OK, "{\"response\":{\"err-message\":\"\",\"data\":[]}}");
     int startIndex = applicationEvents.size();
 
     usernameRequest(csrf, requestId)
@@ -509,8 +496,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     assertThat(scenarioExchange.calls()).isEqualTo(1);
     assertThat(scenarioExchange.observations())
         .singleElement()
-        .satisfies(
-            observation -> assertThat(observation.path()).isEqualTo("/apim" + APIM_PATH));
+        .satisfies(observation -> assertThat(observation.path()).isEqualTo("/apim" + APIM_PATH));
 
     List<ILoggingEvent> errors = errorEvents(requestEvents);
     assertThat(errors)
@@ -531,9 +517,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         .anyMatch(
             event ->
                 event.getLevel() == Level.WARN
-                    && event
-                        .getFormattedMessage()
-                        .contains("\"event\":\"apim.contract.invalid\""));
+                    && event.getFormattedMessage().contains("\"event\":\"apim.contract.invalid\""));
     assertThat(requestEvents)
         .anyMatch(
             event ->
@@ -553,8 +537,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     String marker = "r1c-malformed-data-private-marker";
     sessions.seedOtpVerified(csrf);
     scenarioExchange.respond(
-        HttpStatus.OK,
-        "{\"response\":{\"err-message\":\"\",\"data\":\"" + marker + "\"}}");
+        HttpStatus.OK, "{\"response\":{\"err-message\":\"\",\"data\":\"" + marker + "\"}}");
 
     List<ILoggingEvent> requestEvents =
         assertTechnicalFailure(
@@ -590,8 +573,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   }
 
   @Test
-  void persistenceFailureProducesLocalStateIncidentAfterOneSuccessfulExchange()
-      throws IOException {
+  void persistenceFailureProducesLocalStateIncidentAfterOneSuccessfulExchange() throws IOException {
     String csrf = "r1c-csrf-persistence-failure";
     String marker = "r1c-persistence-failure-private-marker";
     sessions.seedOtpVerified(csrf);
@@ -643,8 +625,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         .expectBody()
         .jsonPath("$.status")
         .isEqualTo("SUCCESS");
-    List<ILoggingEvent> repeatEvents =
-        awaitRequestCompletion(repeatedRequestId, repeatStartIndex);
+    List<ILoggingEvent> repeatEvents = awaitRequestCompletion(repeatedRequestId, repeatStartIndex);
 
     assertThat(errorEvents(repeatEvents)).isEmpty();
     assertThat(scenarioExchange.calls()).isEqualTo(1);
@@ -663,8 +644,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     String requestId = "r1c-legacy-forgot-password-request";
     String username = "r1c-legacy-user1!";
     String marker = "r1c-legacy-response-private-marker";
-    scenarioExchange.respond(
-        HttpStatus.SERVICE_UNAVAILABLE, "{\"error\":\"" + marker + "\"}");
+    scenarioExchange.respond(HttpStatus.SERVICE_UNAVAILABLE, "{\"error\":\"" + marker + "\"}");
     ApimForgotPasswordUsernameLookupAdapter legacyAdapter =
         new ApimForgotPasswordUsernameLookupAdapter(executor, Map.of());
     int startIndex = applicationEvents.size();
@@ -674,8 +654,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
                 .lookup(
                     new StartForgotPasswordUsernameLookupCommand(
                         username, requestId, ActorUserRole.ROLE_USER_MBR))
-                .contextWrite(
-                    Context.of(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId)))
+                .contextWrite(Context.of(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId)))
         .expectError()
         .verify();
 
@@ -692,7 +671,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         .filteredOn(event -> event.getLoggerName().equals(ApimWebClientFacade.class.getName()))
         .hasSize(3);
     assertThat(errors)
-        .filteredOn(event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+        .filteredOn(
+            event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
         .singleElement()
         .satisfies(
             event ->
@@ -701,7 +681,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     assertThat(errors)
         .filteredOn(
             event ->
-                event.getLoggerName()
+                event
+                    .getLoggerName()
                     .equals(ApimForgotPasswordUsernameLookupAdapter.class.getName()))
         .singleElement()
         .satisfies(
@@ -716,8 +697,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         .hasSize(2);
     assertThat(requestEvents)
         .noneMatch(
-            event ->
-                event.getFormattedMessage().contains("\"event\":\"http.request.failed\""));
+            event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""));
     assertThat(requestEvents)
         .noneMatch(
             event ->
@@ -749,8 +729,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
     assertThat(
             ApimRegistrationUsernameAvailabilityAdapter.class
-                .getMethod(
-                    "checkAvailability", RegistrationUsernameAvailabilityCommand.class)
+                .getMethod("checkAvailability", RegistrationUsernameAvailabilityCommand.class)
                 .getAnnotation(LogExecution.class))
         .isNull();
 
@@ -770,8 +749,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   @Test
   void focusedContextExcludesRedisConnectionFactory() {
     List<String> names = infrastructureBeanNames();
-    assertThat(names)
-        .contains(ConfigBackedDownstreamErrorClassificationAdapter.class.getName());
+    assertThat(names).contains(ConfigBackedDownstreamErrorClassificationAdapter.class.getName());
     assertThat(applicationContext.getBeansOfType(RedisConnectionFactory.class)).isEmpty();
   }
 
@@ -819,8 +797,10 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         .isEqualTo("err.workflow.downstream.unavailable");
 
     // SharedApimTrpChkCustIdTransport.java:38-41 selects SAFE_BUSINESS_CALL and ALLOW_RECOVERY.
-    // ApimWebClientFacade.java:352-378 caps transient retries at maxAttempts; ApimProperties.java:69
-    // sets three total attempts. HTTP 400 stops after one, and profile resolution precedes exchange.
+    // ApimWebClientFacade.java:352-378 caps transient retries at maxAttempts;
+    // ApimProperties.java:69
+    // sets three total attempts. HTTP 400 stops after one, and profile resolution precedes
+    // exchange.
     assertThat(scenarioExchange.calls()).isEqualTo(expectedExchanges);
     List<ILoggingEvent> errors = errorEvents(requestEvents);
     assertThat(errors).hasSize(1);
@@ -839,7 +819,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
             .filter(
                 event ->
                     event.getLevel() == Level.WARN
-                        && event.getLoggerName()
+                        && event
+                            .getLoggerName()
                             .equals(ApimRegistrationUsernameAvailabilityAdapter.class.getName())
                         && event
                             .getFormattedMessage()
@@ -849,8 +830,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         .singleElement()
         .satisfies(
             event ->
-                assertThat(event.getFormattedMessage())
-                    .contains("category=" + expectedCategory));
+                assertThat(event.getFormattedMessage()).contains("category=" + expectedCategory));
     assertHttpObservation(requestEvents, requestId, 502, Level.WARN);
     assertNoAdapterExecutionEvents(requestEvents);
     assertNoSensitiveMarkers(requestEvents, requestMarkers(csrf));
@@ -895,7 +875,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     assertThat(requestEvents)
         .noneMatch(
             event ->
-                event.getLoggerName()
+                event
+                        .getLoggerName()
                         .equals(ApimRegistrationUsernameAvailabilityAdapter.class.getName())
                     && event
                         .getFormattedMessage()
@@ -958,13 +939,11 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         csrf);
   }
 
-  private void assertNoSensitiveMarkers(
-      List<ILoggingEvent> requestEvents, String... markers) {
+  private void assertNoSensitiveMarkers(List<ILoggingEvent> requestEvents, String... markers) {
     assertThat(allEventText(requestEvents)).doesNotContain(markers);
   }
 
-  private void assertNoSensitiveMarkers(
-      List<ILoggingEvent> requestEvents, List<String> markers) {
+  private void assertNoSensitiveMarkers(List<ILoggingEvent> requestEvents, List<String> markers) {
     assertNoSensitiveMarkers(requestEvents, markers.toArray(String[]::new));
   }
 
@@ -1020,7 +999,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   }
 
   private static String allEventText(List<ILoggingEvent> events) {
-    return events.stream().map(RegistrationUsernameIncidentOwnershipConnectedTest::eventText)
+    return events.stream()
+        .map(RegistrationUsernameIncidentOwnershipConnectedTest::eventText)
         .reduce("", (left, right) -> left + "\n" + right);
   }
 
@@ -1051,9 +1031,11 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     if (event.getArgumentArray() != null) {
       text.append('\n').append(Arrays.deepToString(event.getArgumentArray()));
     }
-    event.getMDCPropertyMap()
+    event
+        .getMDCPropertyMap()
         .forEach((key, value) -> text.append('\n').append(key).append('=').append(value));
-    appendThrowable(text, event.getThrowableProxy(), Collections.newSetFromMap(new IdentityHashMap<>()));
+    appendThrowable(
+        text, event.getThrowableProxy(), Collections.newSetFromMap(new IdentityHashMap<>()));
     return text.toString();
   }
 
@@ -1062,10 +1044,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     if (throwable == null || !visited.add(throwable)) {
       return;
     }
-    text.append('\n')
-        .append(throwable.getClassName())
-        .append(": ")
-        .append(throwable.getMessage());
+    text.append('\n').append(throwable.getClassName()).append(": ").append(throwable.getMessage());
     appendThrowable(text, throwable.getCause(), visited);
     for (IThrowableProxy suppressed : throwable.getSuppressed()) {
       appendThrowable(text, suppressed, visited);
@@ -1258,7 +1237,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
     @Override
     public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
-      return Mono.error(new UnsupportedOperationException("Session creation is outside this fixture"));
+      return Mono.error(
+          new UnsupportedOperationException("Session creation is outside this fixture"));
     }
 
     @Override
@@ -1267,8 +1247,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     }
 
     @Override
-    public synchronized Mono<Optional<AuthFlowSessionSnapshot>> loadSnapshot(
-        AuthFlowSessionId id) {
+    public synchronized Mono<Optional<AuthFlowSessionSnapshot>> loadSnapshot(AuthFlowSessionId id) {
       return Mono.just(
           Optional.ofNullable(session)
               .map(current -> new AuthFlowSessionSnapshot(current, currentRevision())));
@@ -1374,16 +1353,19 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   @EnableAutoConfiguration(
       // The fixture uses plain HTTP and does not exercise TLS metrics.
       excludeName = {
-          "org.springframework.boot.micrometer.metrics.autoconfigure.ssl.SslMetricsAutoConfiguration",
-          "org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration",
-          "org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration",
-          "org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration",
-          "org.springframework.boot.data.redis.autoconfigure.health.DataRedisHealthContributorAutoConfiguration",
-          "org.springframework.boot.data.redis.autoconfigure.health.DataRedisReactiveHealthContributorAutoConfiguration",
-          "org.springframework.boot.data.redis.autoconfigure.observation.LettuceObservationAutoConfiguration"
+        "org.springframework.boot.micrometer.metrics.autoconfigure.ssl.SslMetricsAutoConfiguration",
+        "org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration",
+        "org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration",
+        "org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration",
+        "org.springframework.boot.data.redis.autoconfigure.health.DataRedisHealthContributorAutoConfiguration",
+        "org.springframework.boot.data.redis.autoconfigure.health.DataRedisReactiveHealthContributorAutoConfiguration",
+        "org.springframework.boot.data.redis.autoconfigure.observation.LettuceObservationAutoConfiguration"
       })
-  @EnableConfigurationProperties(
-      {CorsProperties.class, ApimProperties.class, BffPagesProperties.class})
+  @EnableConfigurationProperties({
+    CorsProperties.class,
+    ApimProperties.class,
+    BffPagesProperties.class
+  })
   @EnableAspectJAutoProxy(proxyTargetClass = true)
   @Import({SecurityConfig.class, ConfigBackedDownstreamErrorClassificationAdapter.class})
   static class TestApplication {
@@ -1493,8 +1475,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         RequestLoggingProperties requestLoggingProperties,
         ApimProperties properties,
         ObjectMapper mapper) {
-      return new ApimRequestLoggingExchangeFilter(
-          requestLoggingProperties, properties, mapper);
+      return new ApimRequestLoggingExchangeFilter(requestLoggingProperties, properties, mapper);
     }
 
     @Bean
@@ -1548,12 +1529,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         ApimAesKeyFactory aesKeyFactory,
         ApimAppCertificateService appCertificateService) {
       return new ApimPayloadCryptoService(
-          properties,
-          mapper,
-          fieldTransformer,
-          rsaCrypto,
-          aesKeyFactory,
-          appCertificateService);
+          properties, mapper, fieldTransformer, rsaCrypto, aesKeyFactory, appCertificateService);
     }
 
     @Bean

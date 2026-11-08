@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureClassifier;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureCategory;
+import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureClassifier;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpChkCustIdApimMapper;
@@ -49,8 +49,7 @@ public class ApimRegistrationUsernameAvailabilityAdapter
                   command.correlationId());
               RegistrationUsernameAvailabilityFailureOrigin origin =
                   switch (category) {
-                    case LOCAL_SYSTEM ->
-                        RegistrationUsernameAvailabilityFailureOrigin.LOCAL_SYSTEM;
+                    case LOCAL_SYSTEM -> RegistrationUsernameAvailabilityFailureOrigin.LOCAL_SYSTEM;
                     case DOWNSTREAM_CONTRACT, DOWNSTREAM_INVALID_RESPONSE, DOWNSTREAM_TRANSPORT ->
                         RegistrationUsernameAvailabilityFailureOrigin.APIM_TECHNICAL;
                   };

@@ -368,8 +368,15 @@ class AuthRegistrationUsernameControllerTest {
         () ->
             controller
                 .checkUsername(
-                    validRequest(), "afs", "csrf", "req", "en", null, null,
-                    exchange.getResponse(), exchange)
+                    validRequest(),
+                    "afs",
+                    "csrf",
+                    "req",
+                    "en",
+                    null,
+                    null,
+                    exchange.getResponse(),
+                    exchange)
                 .block());
     assertThat(
             com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(

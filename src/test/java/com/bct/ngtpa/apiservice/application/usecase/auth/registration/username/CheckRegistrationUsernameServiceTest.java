@@ -286,7 +286,8 @@ class CheckRegistrationUsernameServiceTest {
                     .singleElement()
                     .satisfies(
                         error ->
-                            assertThat(error.code()).isEqualTo("err.workflow.downstream.unavailable"));
+                            assertThat(error.code())
+                                .isEqualTo("err.workflow.downstream.unavailable"));
               })
           .verifyComplete();
 
@@ -339,9 +340,7 @@ class CheckRegistrationUsernameServiceTest {
 
     String message = terminalErrorMessage(correlationId);
 
-    assertThat(message)
-        .contains("requestId=request??id")
-        .doesNotContain("\r", "\n");
+    assertThat(message).contains("requestId=request??id").doesNotContain("\r", "\n");
   }
 
   @Test
@@ -370,7 +369,8 @@ class CheckRegistrationUsernameServiceTest {
                     .singleElement()
                     .satisfies(
                         error ->
-                            assertThat(error.code()).isEqualTo("err.workflow.downstream.unavailable"));
+                            assertThat(error.code())
+                                .isEqualTo("err.workflow.downstream.unavailable"));
               })
           .verifyComplete();
 
@@ -624,8 +624,7 @@ class CheckRegistrationUsernameServiceTest {
 
     try {
       StepVerifier.create(
-              service.check(
-                  command("csrf", selectedTrust("TL", "ENV1"), "abc1@", correlationId)))
+              service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@", correlationId)))
           .assertNext(
               result ->
                   assertThat(result.status())
