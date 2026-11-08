@@ -10,7 +10,10 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.CancelInvestmentChoiceCommand;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.GetInvestmentChoiceCommand;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancelOutcome;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancellation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetails;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceFund;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceInstructionRequest;
@@ -21,24 +24,31 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSource;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelNotCancellableException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionRejectedException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnknownOutcomeException;
+import com.bct.ngtpa.apiservice.application.port.in.CancelInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.SubmitInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceCancelPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceDetailsPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceInstructionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
+import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.CancelInvestmentChoiceService;
 import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.GetInvestmentChoiceService;
 import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.InvestmentChoiceSnapshotCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.SubmitInvestmentChoiceService;
 import com.bct.ngtpa.apiservice.infrastructure.logging.ExecutionLoggingAspect;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,6 +58,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.assertj.core.api.SoftAssertions;
@@ -64,6 +75,12 @@ class InvestmentChoiceApplicationConfigTest {
 
   private static final String POLICY_NO = "POLICY_MARK";
   private static final String CERT_NO = "3";
+  private static final String CERT_NO_JSON_MARKER =
+      """
+      "certNo":"%s"
+      """
+          .formatted(CERT_NO)
+          .strip();
   private static final String SUBMIT_CERT_NO = "SUBMIT_CERT_MARKER";
   private static final String ACCOUNT_REF = "ACCOUNT_REF_MARKER";
   private static final String ACTOR_USER_ID = "ACTOR_USER_MARKER";
@@ -72,7 +89,14 @@ class InvestmentChoiceApplicationConfigTest {
   private static final String FUND_CODE = "FBAL";
   private static final String OTHER_FUND_CODE = "FHKM";
   private static final String PERCENTAGE = "60";
+  private static final String ACCOUNT_ENV = "SIT";
   private static final String REQUEST_ID = "request-safe";
+  private static final String CANCEL_ACTOR_USER_ID = "CANCEL_ACTOR_MARKER";
+  private static final String CANCEL_POLICY_NO = "CANCEL_POLICY_MARKER";
+  private static final String CANCEL_CERT_NO = "CANCEL_CERT_MARKER";
+  private static final String CANCEL_SNAPSHOT_ACCOUNT_REF = "CANCEL_ACCOUNT_REF_MARKER";
+  private static final String CANCEL_REFERENCE_NO = "260001449";
+  private static final String OTHER_CANCEL_REFERENCE_NO = "260001450";
   private static final InvestmentChoiceInstructionRequest VALID_REQUEST =
       new InvestmentChoiceInstructionRequest(
           List.of("BO", "EE"),
@@ -127,6 +151,7 @@ class InvestmentChoiceApplicationConfigTest {
           .withBean(
               InvestmentChoiceInstructionPort.class,
               () -> mock(InvestmentChoiceInstructionPort.class))
+          .withBean(InvestmentChoiceCancelPort.class, () -> mock(InvestmentChoiceCancelPort.class))
           .withBean(
               Clock.class, () -> Clock.fixed(Instant.parse("2026-11-05T16:30:00Z"), ZoneOffset.UTC))
           .withBean(FailureEventPort.class, () -> mock(FailureEventPort.class))
@@ -147,7 +172,7 @@ class InvestmentChoiceApplicationConfigTest {
                 InvestmentChoiceInstructionPort instructionPort =
                     context.getBean(InvestmentChoiceInstructionPort.class);
 
-                when(referenceDates.resolveReferenceDate("SIT"))
+                when(referenceDates.resolveReferenceDate(ACCOUNT_ENV))
                     .thenReturn(Mono.just(LocalDate.of(2026, 10, 15)));
                 when(detailsPort.load(any())).thenReturn(Mono.just(details()));
                 when(snapshotCache.write(any(), any(), any())).thenReturn(Mono.empty());
@@ -246,11 +271,117 @@ class InvestmentChoiceApplicationConfigTest {
               "pending-reference-sensitive",
               "POLICY_MARKER_TOO_LONG",
               SUBMIT_CERT_NO,
-              "\"certNo\":\"" + CERT_NO + "\"");
+              CERT_NO_JSON_MARKER);
       softly.assertAll();
     } finally {
       logger.detachAppender(appender);
       submitLogger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  @Test
+  void cancelUseCaseIsNotProxiedOrLoggedByExecutionAspect() {
+    Logger logger = (Logger) LoggerFactory.getLogger(ExecutionLoggingAspect.class);
+    Logger cancelLogger = (Logger) LoggerFactory.getLogger(CancelInvestmentChoiceService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    cancelLogger.addAppender(appender);
+    AtomicBoolean cancelProxied = new AtomicBoolean(true);
+    ObjectMapper objectMapper = new ObjectMapper();
+    ExecutionLoggingAspect aspect =
+        new ExecutionLoggingAspect(
+            new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties())),
+            objectMapper);
+
+    try {
+      new ApplicationContextRunner()
+          .withConfiguration(AutoConfigurations.of(AopAutoConfiguration.class))
+          .withUserConfiguration(InvestmentChoiceApplicationConfig.class)
+          .withBean(ExecutionLoggingAspect.class, () -> aspect)
+          .withBean(ReferenceDatePort.class, () -> mock(ReferenceDatePort.class))
+          .withBean(
+              InvestmentChoiceDetailsPort.class, () -> mock(InvestmentChoiceDetailsPort.class))
+          .withBean(
+              AccountIdentifierFormatter.class, () -> new AccountIdentifierFormatter(11, 4, '0'))
+          .withBean(
+              InvestmentChoiceSnapshotCacheService.class,
+              () -> mock(InvestmentChoiceSnapshotCacheService.class))
+          .withBean(
+              InvestmentChoiceInstructionPort.class,
+              () -> mock(InvestmentChoiceInstructionPort.class))
+          .withBean(InvestmentChoiceCancelPort.class, () -> mock(InvestmentChoiceCancelPort.class))
+          .withBean(
+              Clock.class, () -> Clock.fixed(Instant.parse("2026-11-05T16:30:00Z"), ZoneOffset.UTC))
+          .withBean(FailureEventPort.class, () -> mock(FailureEventPort.class))
+          .run(
+              context -> {
+                assertThat(context).hasNotFailed();
+                CancelInvestmentChoiceUseCase cancelUseCase =
+                    context.getBean(CancelInvestmentChoiceUseCase.class);
+                cancelProxied.set(AopUtils.isAopProxy(cancelUseCase));
+                InvestmentChoiceSnapshotCacheService cache =
+                    context.getBean(InvestmentChoiceSnapshotCacheService.class);
+                InvestmentChoiceCancelPort cancelPort =
+                    context.getBean(InvestmentChoiceCancelPort.class);
+
+                when(cache.read(any(), any(), any(), any()))
+                    .thenReturn(
+                        Mono.just(Optional.of(cancelSnapshot(List.of(CANCEL_REFERENCE_NO)))));
+                when(cancelPort.cancel(any()))
+                    .thenReturn(Mono.just(new InvestmentChoiceCancellation(CANCEL_REFERENCE_NO)));
+                verifyCancelSuccess(cancelUseCase);
+
+                when(cache.read(any(), any(), any(), any()))
+                    .thenReturn(
+                        Mono.just(Optional.of(cancelSnapshot(List.of(OTHER_CANCEL_REFERENCE_NO)))));
+                verifyCancelInvalid(cancelUseCase);
+
+                when(cache.read(any(), any(), any(), any()))
+                    .thenReturn(Mono.just(Optional.empty()));
+                verifyCancelUnavailable(cancelUseCase);
+
+                when(cache.read(any(), any(), any(), any()))
+                    .thenReturn(
+                        Mono.just(Optional.of(cancelSnapshot(List.of(CANCEL_REFERENCE_NO)))));
+                when(cancelPort.cancel(any()))
+                    .thenReturn(Mono.error(new InvestmentChoiceCancelNotCancellableException()));
+                verifyCancelNotCancellable(cancelUseCase);
+
+                when(cancelPort.cancel(any()))
+                    .thenReturn(Mono.error(new InvestmentChoiceCancelUnavailableException()));
+                verifyCancelUnavailable(cancelUseCase);
+              });
+
+      List<String> messages =
+          appender.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
+      String allMessages = messages.stream().collect(Collectors.joining("\n"));
+      SoftAssertions softly = new SoftAssertions();
+      softly
+          .assertThat(cancelProxied.get())
+          .as("the cancel use-case bean is not proxied")
+          .isFalse();
+      softly
+          .assertThat(messages)
+          .noneMatch(message -> message.contains("\"event\":\"method.execution."));
+      softly
+          .assertThat(appender.list)
+          .noneMatch(event -> event.getLevel().isGreaterOrEqual(Level.ERROR));
+      softly
+          .assertThat(allMessages)
+          .doesNotContain(
+              CANCEL_ACTOR_USER_ID,
+              CANCEL_POLICY_NO,
+              CANCEL_CERT_NO,
+              CANCEL_SNAPSHOT_ACCOUNT_REF,
+              SESSION_ID.value(),
+              CANCEL_REFERENCE_NO,
+              OTHER_CANCEL_REFERENCE_NO);
+      softly.assertAll();
+    } finally {
+      logger.detachAppender(appender);
+      cancelLogger.detachAppender(appender);
       appender.stop();
     }
   }
@@ -260,13 +391,69 @@ class InvestmentChoiceApplicationConfigTest {
     return new SubmitInvestmentChoiceCommand(
         ACTOR_USER_ID,
         ActorUserRole.ROLE_USER_MBR,
-        "SIT",
+        ACCOUNT_ENV,
         POLICY_NO,
         SUBMIT_CERT_NO,
         ACCOUNT_REF,
         SESSION_ID,
         REQUEST_ID,
         request);
+  }
+
+  private static void verifyCancelSuccess(CancelInvestmentChoiceUseCase useCase) {
+    StepVerifier.create(useCase.cancel(cancelCommand(CANCEL_REFERENCE_NO)))
+        .assertNext(
+            outcome ->
+                assertThat(outcome)
+                    .isEqualTo(
+                        new InvestmentChoiceCancelOutcome.Cancelled(
+                            new InvestmentChoiceCancellation(CANCEL_REFERENCE_NO))))
+        .verifyComplete();
+  }
+
+  private static void verifyCancelInvalid(CancelInvestmentChoiceUseCase useCase) {
+    StepVerifier.create(useCase.cancel(cancelCommand(CANCEL_REFERENCE_NO)))
+        .assertNext(
+            outcome ->
+                assertThat(outcome)
+                    .isEqualTo(
+                        new InvestmentChoiceCancelOutcome.Invalid(
+                            List.of(
+                                new InvestmentChoiceViolation(
+                                    InvestmentChoiceViolation.Kind.FIELD,
+                                    ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID,
+                                    List.of("refNo"))))))
+        .verifyComplete();
+  }
+
+  private static void verifyCancelUnavailable(CancelInvestmentChoiceUseCase useCase) {
+    StepVerifier.create(useCase.cancel(cancelCommand(CANCEL_REFERENCE_NO)))
+        .expectError(InvestmentChoiceCancelUnavailableException.class)
+        .verify();
+  }
+
+  private static void verifyCancelNotCancellable(CancelInvestmentChoiceUseCase useCase) {
+    StepVerifier.create(useCase.cancel(cancelCommand(CANCEL_REFERENCE_NO)))
+        .expectError(InvestmentChoiceCancelNotCancellableException.class)
+        .verify();
+  }
+
+  private static CancelInvestmentChoiceCommand cancelCommand(String referenceNo) {
+    return new CancelInvestmentChoiceCommand(
+        CANCEL_ACTOR_USER_ID,
+        ActorUserRole.ROLE_USER_MBR,
+        ACCOUNT_ENV,
+        CANCEL_POLICY_NO,
+        CANCEL_CERT_NO,
+        CANCEL_SNAPSHOT_ACCOUNT_REF,
+        SESSION_ID,
+        REQUEST_ID,
+        referenceNo);
+  }
+
+  private static InvestmentChoiceSnapshot cancelSnapshot(List<String> pendingRefNos) {
+    return new InvestmentChoiceSnapshot(
+        CANCEL_SNAPSHOT_ACCOUNT_REF, CANCEL_POLICY_NO, 20, List.of(), List.of(), pendingRefNos);
   }
 
   private static InvestmentChoiceSnapshot snapshot() {
@@ -304,7 +491,13 @@ class InvestmentChoiceApplicationConfigTest {
 
   private static GetInvestmentChoiceCommand command(String policyNo) {
     return new GetInvestmentChoiceCommand(
-        ActorUserRole.ROLE_USER_MBR, "SIT", policyNo, CERT_NO, ACCOUNT_REF, SESSION_ID, REQUEST_ID);
+        ActorUserRole.ROLE_USER_MBR,
+        ACCOUNT_ENV,
+        policyNo,
+        CERT_NO,
+        ACCOUNT_REF,
+        SESSION_ID,
+        REQUEST_ID);
   }
 
   private static InvestmentChoiceDetails details() {

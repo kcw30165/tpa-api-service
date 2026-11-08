@@ -21,7 +21,8 @@ class InvestmentChoiceValidationErrorCodesTest {
                 ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_TOTAL_INVALID,
                 ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_INTERVAL_INVALID,
                 ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_UNAVAILABLE,
-                ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE))
+                ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
+                ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID))
         .containsExactly(
             "err.investment-choice.request.invalid",
             "err.investment-choice.switch-source.required",
@@ -33,6 +34,7 @@ class InvestmentChoiceValidationErrorCodesTest {
             "err.investment-choice.percentage.total-invalid",
             "err.investment-choice.percentage.interval-invalid",
             "err.investment-choice.switch-source.unavailable",
-            "err.investment-choice.fund.unavailable");
+            "err.investment-choice.fund.unavailable",
+            "err.investment-choice.cancel.ref-invalid");
   }
 }

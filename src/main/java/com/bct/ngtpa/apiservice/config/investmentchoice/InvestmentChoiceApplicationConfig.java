@@ -1,12 +1,15 @@
 package com.bct.ngtpa.apiservice.config.investmentchoice;
 
+import com.bct.ngtpa.apiservice.application.port.in.CancelInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.SubmitInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceCancelPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceDetailsPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceInstructionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
+import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.CancelInvestmentChoiceService;
 import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.GetInvestmentChoiceService;
 import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.InvestmentChoiceSnapshotCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.SubmitInvestmentChoiceService;
@@ -38,5 +41,13 @@ public class InvestmentChoiceApplicationConfig {
       Clock clock) {
     return new SubmitInvestmentChoiceService(
         referenceDatePort, detailsPort, instructionPort, snapshotCache, failures, clock);
+  }
+
+  @Bean
+  CancelInvestmentChoiceUseCase cancelInvestmentChoiceUseCase(
+      InvestmentChoiceSnapshotCacheService snapshotCache,
+      InvestmentChoiceCancelPort cancelPort,
+      FailureEventPort failures) {
+    return new CancelInvestmentChoiceService(snapshotCache, cancelPort, failures);
   }
 }
