@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set +x
 set -Eeuo pipefail
 umask 077
 
@@ -11,7 +12,7 @@ umask 077
 #   Test member                  must have an editable switch source and at least two available funds
 # Optional:
 #   ACCEPT_LANGUAGE             defaults to en
-#   CIM_USE_PASSWORD=yes        enable token-binding/replay scenarios (3 verifications)
+#   CIM_USE_PASSWORD=yes        enable token-binding/replay scenarios (up to 3 verifications)
 #   CIM_LIVE_SUBMIT=yes         enable the live submit/cancel scenario (3 more verifications)
 #   CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA
 #   CIM_DRY_RUN=yes             list planned scenarios/commands without network access
@@ -48,16 +49,26 @@ if [[ "$LIVE_SUBMIT" == yes && "${CIM_CONFIRM_LIVE_SUBMIT:-}" != I-UNDERSTAND-TH
 fi
 
 dry_request() {
-  local method="$1" path="$2" auth="$3" token="$4" body="$5"
+  local method="$1" path="$2" auth="$3" token="$4" body="$5" account_ref csrf
+  account_ref="${6:-$auth}"
+  csrf="${7:-$auth}"
   printf '  curl --connect-timeout %s --max-time %s -X %s <BASE_URL>%s' \
     "$CONNECT_TIMEOUT" "$REQUEST_TIMEOUT" "$method" "$path"
   printf " -H 'Accept-Language: <configured>' -H 'X-Request-Id: <fresh>'"
   if [[ "$auth" == yes ]]; then
-    printf " -H 'Cookie: portal_sid=<masked>' -H 'X-XSRF-TOKEN: <masked>' -H 'Account-Ref: <masked>'"
+    printf " -H 'Cookie: portal_sid=<masked>'"
   fi
+  [[ "$csrf" == yes ]] && printf " -H 'X-XSRF-TOKEN: <masked>'"
+  [[ "$account_ref" == yes ]] && printf " -H 'Account-Ref: <masked>'"
   [[ "$token" == none ]] || printf " -H '%s: %s'" "$TOKEN_HEADER" "$token"
   [[ "$body" == no ]] || printf " --data-binary '<body masked>'"
   printf '\n'
+}
+
+skip_scenario() {
+  local name="$1" reason="$2"
+  printf 'SKIP %s reason=%s\n' "$name" "$reason"
+  SKIPPED=$((SKIPPED + 1))
 }
 
 dry_run() {
@@ -68,10 +79,11 @@ dry_run() {
   printf 'Scenarios: S1 S2 S3 S4 S5 S6 S7 S8 S9'
   [[ "$USE_PASSWORD" == yes ]] && printf ' P1 P2 P3'
   [[ "$LIVE_SUBMIT" == yes ]] && printf ' L1 L2 L3 L4'
-  printf '\nPassword verifications: %s\n' "$password_issuances"
+  printf '\nPassword verifications if P1 is available: %s\n' "$password_issuances"
+  [[ "$USE_PASSWORD" != yes ]] || printf 'P1 may be skipped if the S1 snapshot cannot form an isolated validation failure.\n'
   printf 'Planned curl commands:\n'
   dry_request GET "$DETAILS_PATH" yes none no
-  dry_request GET "$DETAILS_PATH" no none no
+  dry_request GET "$DETAILS_PATH" no none no yes yes
   dry_request POST "$SUBMIT_PATH" yes none yes
   dry_request POST "$SUBMIT_PATH" yes '<invalid-token>' yes
   dry_request POST "$ISSUE_PATH" yes none yes
@@ -152,6 +164,7 @@ touch "$COOKIE_JAR"
 chmod 600 "$COOKIE_JAR"
 
 PASSED=0
+SKIPPED=0
 FAILED=0
 SCENARIO=''
 LIVE_REFERENCE=''
@@ -159,10 +172,11 @@ LIVE_SUBMITTED=no
 # shellcheck disable=SC2329 # Invoked indirectly by the EXIT trap.
 on_exit() {
   local result=$?
+  if [[ "$result" -ne 0 && "$FAILED" -eq 0 ]]; then FAILED=1; fi
   if [[ "$result" -ne 0 && "$LIVE_SUBMITTED" == yes ]]; then
     printf 'MANUAL CLEANUP: submitted referenceNo=%s; inspect its status and cancel manually if it remains pending.\n' "$LIVE_REFERENCE" >&2
   fi
-  printf 'Summary: passed=%s failed=%s\n' "$PASSED" "$FAILED"
+  printf 'Summary: passed=%s skipped=%s failed=%s\n' "$PASSED" "$SKIPPED" "$FAILED"
   rm -f -- "$COOKIE_JAR"
   rmdir -- "$WORK_DIR"
 }
@@ -196,16 +210,19 @@ assert_error_target() {
 }
 
 request() {
-  local method="$1" path="$2" authenticated="$3" token="$4" body="$5"
+  local method="$1" path="$2" authenticated="$3" token="$4" body="$5" include_account_ref include_csrf
   local request_id raw curl_rc header_fd body_fd
+  include_account_ref="${6:-$authenticated}"
+  include_csrf="${7:-$authenticated}"
   REQUEST_NUMBER=$((REQUEST_NUMBER + 1))
   request_id="cim-${BASHPID}-${REQUEST_NUMBER}-$(date +%s%N)"
   exec {header_fd}< <(
     printf 'Accept-Language: %s\nX-Request-Id: %s\n' "$ACCEPT_LANGUAGE" "$request_id"
     if [[ "$authenticated" == yes ]]; then
-      printf 'Cookie: portal_sid=%s\nX-XSRF-TOKEN: %s\nAccount-Ref: %s\n' \
-        "$SESSION_COOKIE" "$CSRF_TOKEN" "$ACCOUNT_REF"
+      printf 'Cookie: portal_sid=%s\n' "$SESSION_COOKIE"
     fi
+    [[ "$include_csrf" == yes ]] && printf 'X-XSRF-TOKEN: %s\n' "$CSRF_TOKEN"
+    [[ "$include_account_ref" == yes ]] && printf 'Account-Ref: %s\n' "$ACCOUNT_REF"
     [[ "$token" == none ]] || printf '%s: %s\n' "$TOKEN_HEADER" "$token"
   )
   local -a args=(
@@ -244,13 +261,6 @@ ERROR_CODE=''
 RESPONSE_BODY=''
 REQUEST_BODY=''
 GET_DATA=''
-PASSWORD_ISSUANCES=0
-if [[ "$USE_PASSWORD" == yes ]]; then
-  PASSWORD_ISSUANCES=3
-  [[ "$LIVE_SUBMIT" == yes ]] && PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 3))
-  printf 'WARNING: every token issuance verifies the password and counts toward the member password-validation throttle.\n'
-  printf 'Password verifications this run: %s\n' "$PASSWORD_ISSUANCES"
-fi
 
 password_json() {
   local purpose="$1" operation="$2" password="$3"
@@ -289,6 +299,42 @@ fund_count="$(jq -r '.funds | length' <<<"$GET_DATA")"
 first_fund="$(jq -r '.funds[0].fundCode // empty' <<<"$GET_DATA")"
 second_fund="$(jq -r '.funds[1].fundCode // empty' <<<"$GET_DATA")"
 interval="$(jq -r '.intervalPercentage' <<<"$GET_DATA")"
+
+P1_SKIP_REASON=''
+P1_BODY=''
+P1_CODE=''
+P1_TARGET=''
+if [[ "$USE_PASSWORD" == yes ]]; then
+  if [[ -z "$first_fund" ]]; then
+    P1_SKIP_REASON='S1 has no available fund for an isolated snapshot validation'
+  elif [[ "$interval" -gt 1 && -n "$editable_source" && "$fund_count" -ge 2 \
+    && -n "$second_fund" && "$first_fund" != "$second_fund" ]]; then
+    P1_BODY="$(jq -cn --arg source "$editable_source" --arg first "$first_fund" --arg second "$second_fund" \
+      '{switchSources:[$source],allocations:[{fundCode:$first,percentage:1},{fundCode:$second,percentage:99}]}')"
+    P1_CODE=err.investment-choice.percentage.interval-invalid
+    P1_TARGET='allocations[0].percentage'
+  elif [[ "$interval" -gt 1 && -n "$editable_source" && $((100 % interval)) -ne 0 ]]; then
+    P1_BODY="$(jq -cn --arg source "$editable_source" --arg fund "$first_fund" \
+      '{switchSources:[$source],allocations:[{fundCode:$fund,percentage:100}]}')"
+    P1_CODE=err.investment-choice.percentage.interval-invalid
+    P1_TARGET='allocations[0].percentage'
+  elif [[ $((100 % interval)) -eq 0 ]]; then
+    unavailable_source=CIM-UNAVAILABLE-SOURCE
+    source_suffix=0
+    while jq -e --arg source "$unavailable_source" \
+      '.switchSources | any(.[]; .switchSource == $source)' <<<"$GET_DATA" >/dev/null 2>&1; do
+      source_suffix=$((source_suffix + 1))
+      unavailable_source="CIM-UNAVAILABLE-SOURCE-$source_suffix"
+    done
+    P1_BODY="$(jq -cn --arg source "$unavailable_source" --arg fund "$first_fund" \
+      '{switchSources:[$source],allocations:[{fundCode:$fund,percentage:100}]}')"
+    P1_CODE=err.investment-choice.switch-source.unavailable
+    P1_TARGET='switchSources[0]'
+  else
+    P1_SKIP_REASON='S1 has no editable source for interval-invalid, and 100 is not interval-valid for unavailable-source validation'
+  fi
+fi
+
 if [[ "$LIVE_SUBMIT" == yes ]]; then
   [[ -n "$editable_source" ]] || fail_scenario LIVE-preflight 'editable switch source' 'none' ''
   [[ "$fund_count" -ge 2 && -n "$first_fund" && -n "$second_fund" ]] \
@@ -299,8 +345,18 @@ fi
 ERROR_CODE=''
 pass_scenario S1
 
+PASSWORD_ISSUANCES=0
+if [[ "$USE_PASSWORD" == yes ]]; then
+  PASSWORD_ISSUANCES=2
+  [[ -n "$P1_SKIP_REASON" ]] || PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
+  [[ "$LIVE_SUBMIT" == yes ]] && PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 3))
+  printf 'WARNING: every token issuance verifies the password and counts toward the member password-validation throttle.\n'
+  printf 'Password verifications this run: %s\n' "$PASSWORD_ISSUANCES"
+  [[ -z "$P1_SKIP_REASON" ]] || printf 'P1 will be skipped if reached: %s\n' "$P1_SKIP_REASON"
+fi
+
 SCENARIO=S2
-request GET "$DETAILS_PATH" no none no
+request GET "$DETAILS_PATH" no none no yes yes
 assert_result S2 401 err.security.authentication.required
 
 SCENARIO=S3
@@ -350,34 +406,21 @@ request POST "$ISSUE_PATH" yes none present
 assert_result S9-blank 400 err.password-validation.request.invalid
 
 if [[ "$USE_PASSWORD" == yes ]]; then
-  [[ -n "$CIM_PASSWORD" ]] || fail_scenario P1 'CIM_PASSWORD configured' 'missing' ''
-  if [[ -n "$editable_source" && "$interval" =~ ^[0-9]+$ && "$interval" -gt 1 && -n "$first_fund" && -n "$second_fund" ]]; then
-    P1_BODY="$(jq -cn --arg source "$editable_source" --arg first "$first_fund" --arg second "$second_fund" \
-      '{switchSources:[$source],allocations:[{fundCode:$first,percentage:1},{fundCode:$second,percentage:99}]}')"
-    P1_CODE=err.investment-choice.percentage.interval-invalid
-    P1_TARGET='allocations[0].percentage'
-  elif [[ -n "$editable_source" && "$interval" =~ ^[0-9]+$ && $((100 % interval)) -ne 0 && -n "$first_fund" ]]; then
-    P1_BODY="$(jq -cn --arg source "$editable_source" --arg fund "$first_fund" \
-      '{switchSources:[$source],allocations:[{fundCode:$fund,percentage:100}]}')"
-    P1_CODE=err.investment-choice.percentage.interval-invalid
-    P1_TARGET='allocations[0].percentage'
+  if [[ -n "$P1_SKIP_REASON" ]]; then
+    skip_scenario P1 "$P1_SKIP_REASON"
   else
-    P1_BODY="$(jq -cn --arg fund "${first_fund:-CIM-FUND}" \
-      '{switchSources:["CIM-UNAVAILABLE-SOURCE"],allocations:[{fundCode:$fund,percentage:100}]}')"
-    P1_CODE=err.investment-choice.switch-source.unavailable
-    P1_TARGET='switchSources[0]'
+    SCENARIO=P1-issue
+    issue_token CHANGE_INVESTMENT_CHOICE "$P1_BODY" "$CIM_PASSWORD" P1-issue
+    P1_TOKEN="$TOKEN_VALUE"
+    REQUEST_BODY="$P1_BODY"
+    SCENARIO=P1-submit
+    request POST "$SUBMIT_PATH" yes "$P1_TOKEN" present
+    assert_result P1-submit 422 "$P1_CODE"
+    assert_error_target "$P1_TARGET"
+    REQUEST_BODY="$P1_BODY"
+    request POST "$SUBMIT_PATH" yes "$P1_TOKEN" present
+    assert_result P1-reuse 403 err.password-validation.authorization.invalid
   fi
-  SCENARIO=P1-issue
-  issue_token CHANGE_INVESTMENT_CHOICE "$P1_BODY" "$CIM_PASSWORD" P1-issue
-  P1_TOKEN="$TOKEN_VALUE"
-  REQUEST_BODY="$P1_BODY"
-  SCENARIO=P1-submit
-  request POST "$SUBMIT_PATH" yes "$P1_TOKEN" present
-  assert_result P1-submit 422 "$P1_CODE"
-  assert_error_target "$P1_TARGET"
-  REQUEST_BODY="$P1_BODY"
-  request POST "$SUBMIT_PATH" yes "$P1_TOKEN" present
-  assert_result P1-reuse 403 err.password-validation.authorization.invalid
 
   P2_BODY='{"refNo":"000000000"}'
   SCENARIO=P2-issue
@@ -475,5 +518,5 @@ if [[ "$USE_PASSWORD" == yes ]]; then
   fi
 fi
 
-printf 'All enabled CIM scenarios passed.\n'
+printf 'All enabled CIM scenarios completed.\n'
 exit 0
