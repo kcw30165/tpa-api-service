@@ -284,6 +284,44 @@ class CancelInvestmentChoiceServiceTest {
     verify(failureEvents, never()).publish(any());
   }
 
+  @Test
+  void emptyCancelResultPublishesSafeFailureAndDoesNotRewriteSnapshot() {
+    when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(Mono.just(Optional.of(snapshot(List.of(REFERENCE_NO)))));
+    when(cancelPort.cancel(any())).thenReturn(Mono.empty());
+
+    StepVerifier.create(service().cancel(command(REFERENCE_NO)))
+        .expectError(InvestmentChoiceCancelUnavailableException.class)
+        .verify();
+
+    ArgumentCaptor<FailureEvent> event = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(failureEvents, times(1)).publish(event.capture());
+    assertThat(event.getValue())
+        .isEqualTo(
+            new FailureEvent(
+                "investment-choice.cancel.empty_result",
+                REQUEST_ID,
+                "INVESTMENT_CHOICE",
+                "CANCEL",
+                FailureOrigin.LOCAL_SYSTEM,
+                "EMPTY_RESULT",
+                "err.investment-choice.cancel.unavailable",
+                503,
+                false,
+                Map.of("reason", "empty")));
+    assertThat(event.getValue().toString())
+        .doesNotContain(
+            ACTOR_USER_ID,
+            POLICY_NO,
+            CERT_NO,
+            SNAPSHOT_ACCOUNT_REF,
+            SESSION_ID.value(),
+            REFERENCE_NO,
+            OTHER_REFERENCE_NO);
+    verify(cancelPort, times(1)).cancel(any());
+    verify(snapshotCache, never()).write(any(), any(), any());
+  }
+
   @ParameterizedTest
   @MethodSource("snapshotWriteResults")
   void snapshotWriteSkipOrFailureDoesNotChangeCancellationResult(Mono<Void> writeResult) {

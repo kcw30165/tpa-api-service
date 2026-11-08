@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.usecase.investmentchoice;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.CancelInvestmentChoiceCommand;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancelCommand;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancelOutcome;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancellation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
@@ -24,6 +25,9 @@ public final class CancelInvestmentChoiceService implements CancelInvestmentChoi
   private static final String SNAPSHOT_OPERATION = "SNAPSHOT";
   private static final String SNAPSHOT_MISSING_EVENT = "investment-choice.cancel.snapshot.missing";
   private static final String SNAPSHOT_MISSING = "SNAPSHOT_MISSING";
+  private static final String CANCEL_OPERATION = "CANCEL";
+  private static final String CANCEL_EMPTY_RESULT_EVENT = "investment-choice.cancel.empty_result";
+  private static final String CANCEL_EMPTY_RESULT = "EMPTY_RESULT";
   private static final String CANCEL_UNAVAILABLE = "err.investment-choice.cancel.unavailable";
 
   private final InvestmentChoiceSnapshotCacheService snapshotCache;
@@ -79,6 +83,7 @@ public final class CancelInvestmentChoiceService implements CancelInvestmentChoi
             command.certNo(),
             command.referenceNo());
     return Mono.defer(() -> cancelPort.cancel(cancelCommand))
+        .switchIfEmpty(Mono.defer(() -> emptyCancelResult(command)))
         .<InvestmentChoiceCancelOutcome>map(InvestmentChoiceCancelOutcome.Cancelled::new)
         .flatMap(
             outcome ->
@@ -90,6 +95,27 @@ public final class CancelInvestmentChoiceService implements CancelInvestmentChoi
                                 command.requestId()))
                     .onErrorResume(error -> Mono.empty())
                     .thenReturn(outcome));
+  }
+
+  private Mono<InvestmentChoiceCancellation> emptyCancelResult(
+      CancelInvestmentChoiceCommand command) {
+    try {
+      failures.publish(
+          new FailureEvent(
+              CANCEL_EMPTY_RESULT_EVENT,
+              command.requestId(),
+              CAPABILITY,
+              CANCEL_OPERATION,
+              FailureOrigin.LOCAL_SYSTEM,
+              CANCEL_EMPTY_RESULT,
+              CANCEL_UNAVAILABLE,
+              503,
+              false,
+              Map.of("reason", "empty")));
+    } catch (RuntimeException ignored) {
+      // Telemetry must not change the cancellation outcome.
+    }
+    return Mono.error(new InvestmentChoiceCancelUnavailableException());
   }
 
   private Mono<InvestmentChoiceCancelOutcome> snapshotMissing(
