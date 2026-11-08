@@ -20,6 +20,9 @@ import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayl
 import com.bct.ngtpa.apiservice.adapter.out.redis.*;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.*;
 import com.bct.ngtpa.apiservice.application.dto.*;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.CancelInvestmentChoiceCommand;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancelOutcome;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancellation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceInstructionRequest;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
@@ -43,6 +46,7 @@ import java.time.*;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.*;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
@@ -77,6 +81,9 @@ class PasswordValidationTokenGateHttpTest {
   private static final String CANCEL_REFERENCE_NO = "260001449";
   private static final String OTHER_CANCEL_REFERENCE_NO = "260001450";
   private static final String CANCEL_ERROR_TEXT = "cancel-error-marker";
+  private static final String CANCEL_EMPTY_REFERENCE_PAYLOAD = "{\"refNo\":\"\"}";
+  private static final String CANCEL_EXTRA_MEMBER_PAYLOAD =
+      "{\"refNo\":\"260001449\",\"extra\":true}";
   private static final String TOKEN = "X-Password-Validation-Token";
   private static final String SID = "sid_abcdefghijklmnopqrstuvwx";
   private static final String REF = "acc_abcdefghijklmnopqrstuvwx";
@@ -351,13 +358,19 @@ class PasswordValidationTokenGateHttpTest {
         .expectBody()
         .json(
             """
-            {"stub":"cancel-ok"}
+            {
+              "success": true,
+              "status": "SUCCESS",
+              "result": {"data": {"referenceNo": "260001449"}},
+              "messages": [],
+              "errors": []
+            }
             """,
             JsonCompareMode.STRICT);
 
     assertThat(cancelStub.dispatches).hasValue(1);
     assertThat(cancelStub.downstream).hasValue(1);
-    assertThat(cancelStub.lastBody).hasValue(CANCEL_PAYLOAD);
+    assertThat(cancelStub.lastCommand.get().referenceNo()).isEqualTo(CANCEL_REFERENCE_NO);
     assertConsumed(CANCEL_GRANT_KEY);
     reject(
         post(CANCEL_PATH, SID, REF, "csrf-fixture", CANCEL_PAYLOAD, token),
@@ -367,6 +380,68 @@ class PasswordValidationTokenGateHttpTest {
     assertThat(cancelStub.dispatches).hasValue(1);
     assertThat(cancelStub.downstream).hasValue(1);
     assertThat(logText()).doesNotContain(token, CANCEL_REFERENCE_NO);
+  }
+
+  @ParameterizedTest
+  @MethodSource("cancelBodiesRejectedByController")
+  void validCancelTokensAreConsumedBeforeControllerValidation(
+      String body, String errorType, String errorCode, List<String> targets) {
+    String token = issue(body, PasswordValidationPurpose.parse(CANCEL_PURPOSE));
+
+    post(CANCEL_PATH, SID, REF, "csrf-fixture", body, token)
+        .expectStatus()
+        .isEqualTo(422)
+        .expectBody()
+        .jsonPath("$.success")
+        .isEqualTo(false)
+        .jsonPath("$.status")
+        .isEqualTo("VALIDATION_FAILED")
+        .jsonPath("$.errors[0].type")
+        .isEqualTo(errorType)
+        .jsonPath("$.errors[0].code")
+        .isEqualTo(errorCode)
+        .jsonPath("$.errors[0].targets")
+        .isEqualTo(targets);
+
+    assertConsumed(CANCEL_GRANT_KEY);
+    assertThat(cancelStub.dispatches).hasValue(0);
+  }
+
+  private static Stream<Arguments> cancelBodiesRejectedByController() {
+    return Stream.of(
+        Arguments.of(
+            CANCEL_EMPTY_REFERENCE_PAYLOAD,
+            "FIELD",
+            "err.investment-choice.cancel.ref-required",
+            List.of("refNo")),
+        Arguments.of(
+            CANCEL_EXTRA_MEMBER_PAYLOAD,
+            "FORM",
+            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
+            List.of()));
+  }
+
+  @ParameterizedTest
+  @MethodSource("cancelBodiesRejectedByGate")
+  void cancelGateRejectsMalformedNonObjectAndDuplicateMemberBodies(String body) {
+    String token = issue(CANCEL_PAYLOAD, PasswordValidationPurpose.parse(CANCEL_PURPOSE));
+
+    reject(
+        post(CANCEL_PATH, SID, REF, "csrf-fixture", body, token),
+        400,
+        "VALIDATION_FAILED",
+        ErrorCodes.REQUEST_INVALID);
+
+    assertConsumed(CANCEL_GRANT_KEY);
+    assertThat(cancelStub.dispatches).hasValue(0);
+  }
+
+  private static Stream<Arguments> cancelBodiesRejectedByGate() {
+    return Stream.of(
+        Arguments.of("[]"),
+        Arguments.of("\"body\""),
+        Arguments.of("{\"refNo\":"),
+        Arguments.of("{\"refNo\":\"260001449\",\"refNo\":\"260001450\"}"));
   }
 
   @ParameterizedTest
@@ -553,15 +628,19 @@ class PasswordValidationTokenGateHttpTest {
 
     postRequest(CANCEL_PATH, SID, REF, "csrf-fixture")
         .header(TOKEN, token)
-        .header("X-Test-Cancel-Error", "true")
         .bodyValue(CANCEL_PAYLOAD)
         .exchange()
         .expectStatus()
-        .is5xxServerError();
+        .isOk();
 
     assertThat(logText())
-        .contains("\"event\":\"http.request.error\"")
-        .doesNotContain(CANCEL_ERROR_TEXT, "errorMessage", "requestBody", "responseBody");
+        .doesNotContain(
+            CANCEL_PAYLOAD,
+            token,
+            CANCEL_REFERENCE_NO,
+            "requestBody",
+            "responseBody",
+            "errorMessage");
   }
 
   @ParameterizedTest
@@ -1745,6 +1824,18 @@ class PasswordValidationTokenGateHttpTest {
     }
 
     @Bean
+    CancelInvestmentChoiceUseCase investmentChoiceCancel(CancelInstructionStub stub) {
+      return command -> {
+        stub.dispatches.incrementAndGet();
+        stub.downstream.incrementAndGet();
+        stub.lastCommand.set(command);
+        return Mono.just(
+            new InvestmentChoiceCancelOutcome.Cancelled(
+                new InvestmentChoiceCancellation(command.referenceNo())));
+      };
+    }
+
+    @Bean
     SubmitInvestmentChoiceUseCase investmentChoiceSubmit(CimInstructionStub stub) {
       return command -> {
         stub.dispatches.incrementAndGet();
@@ -1763,53 +1854,18 @@ class PasswordValidationTokenGateHttpTest {
     @Bean
     InvestmentChoiceController investmentChoiceController(
         SubmitInvestmentChoiceUseCase submit,
+        CancelInvestmentChoiceUseCase cancel,
         CurrentPortalAccessContextResolver contexts,
         AuthenticatedSessionCookieReader cookies,
         ObjectMapper objectMapper) {
       return new InvestmentChoiceController(
           mock(GetInvestmentChoiceUseCase.class),
           submit,
+          cancel,
           contexts,
           cookies,
           new InvestmentChoiceWebMapper(),
           objectMapper);
-    }
-
-    @Bean
-    @org.springframework.core.annotation.Order(org.springframework.core.Ordered.LOWEST_PRECEDENCE)
-    org.springframework.web.server.WebFilter cancelInstructionHandler(CancelInstructionStub stub) {
-      var path = PathPatternParser.defaultInstance.parse(CANCEL_PATH);
-      var codecs = org.springframework.http.codec.ServerCodecConfigurer.create();
-      return (exchange, chain) -> {
-        if (!HttpMethod.POST.equals(exchange.getRequest().getMethod())
-            || !path.matches(exchange.getRequest().getPath().pathWithinApplication())) {
-          return chain.filter(exchange);
-        }
-        stub.dispatches.incrementAndGet();
-        return org.springframework.web.reactive.function.server.ServerRequest.create(
-                exchange, codecs.getReaders())
-            .bodyToMono(String.class)
-            .defaultIfEmpty("")
-            .flatMap(
-                body -> {
-                  stub.lastBody.set(body);
-                  if ("true"
-                      .equals(exchange.getRequest().getHeaders().getFirst("X-Test-Cancel-Error"))) {
-                    return Mono.error(new IllegalStateException(CANCEL_ERROR_TEXT));
-                  }
-                  stub.downstream.incrementAndGet();
-                  exchange.getResponse().setStatusCode(HttpStatus.OK);
-                  exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-                  return exchange
-                      .getResponse()
-                      .writeWith(
-                          Mono.just(
-                              exchange
-                                  .getResponse()
-                                  .bufferFactory()
-                                  .wrap("{\"stub\":\"cancel-ok\"}".getBytes())));
-                });
-      };
     }
 
     @Bean
@@ -1906,12 +1962,12 @@ class PasswordValidationTokenGateHttpTest {
   static class CancelInstructionStub {
     final AtomicInteger dispatches = new AtomicInteger();
     final AtomicInteger downstream = new AtomicInteger();
-    final AtomicReference<String> lastBody = new AtomicReference<>();
+    final AtomicReference<CancelInvestmentChoiceCommand> lastCommand = new AtomicReference<>();
 
     void reset() {
       dispatches.set(0);
       downstream.set(0);
-      lastBody.set(null);
+      lastCommand.set(null);
     }
   }
 

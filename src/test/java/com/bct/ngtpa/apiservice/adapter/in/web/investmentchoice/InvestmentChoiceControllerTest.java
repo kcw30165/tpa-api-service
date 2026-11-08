@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -16,7 +17,10 @@ import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.CancelInvestmentChoiceCommand;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.GetInvestmentChoiceCommand;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancelOutcome;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancellation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetails;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceFund;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceInstructionRequest;
@@ -30,8 +34,11 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelNotCancellableException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
+import com.bct.ngtpa.apiservice.application.port.in.CancelInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.SubmitInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
@@ -71,6 +78,14 @@ class InvestmentChoiceControllerTest {
 
   private static final String ROUTE = "/api/v1/investment-choice";
   private static final String SUBMIT_ROUTE = "/api/v1/investment-choice/instructions";
+  private static final String CANCEL_ROUTE = "/api/v1/investment-choice/instructions/cancel";
+  private static final String CANCEL_REFERENCE_NO = "260001449";
+  private static final String CANCEL_BODY =
+      """
+      {"refNo":"%s"}
+      """
+          .formatted(CANCEL_REFERENCE_NO)
+          .strip();
   private static final AuthenticatedSessionId SESSION_ID =
       new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
   private static final String VALID_INSTRUCTION =
@@ -380,6 +395,328 @@ class InvestmentChoiceControllerTest {
             }
             """,
             JsonCompareMode.STRICT);
+  }
+
+  @Test
+  void cancelRouteReturnsTheExactSuccessEnvelope() {
+    WebTestClient client =
+        cancelClient(
+            command ->
+                Mono.just(
+                    new InvestmentChoiceCancelOutcome.Cancelled(
+                        new InvestmentChoiceCancellation(command.referenceNo()))),
+            context("ACC-1"),
+            exchange -> Optional.of(SESSION_ID));
+
+    client
+        .post()
+        .uri(CANCEL_ROUTE)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(CANCEL_BODY)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .json(
+            """
+            {
+              "success": true,
+              "status": "SUCCESS",
+              "result": {"data": {"referenceNo": "%s"}},
+              "messages": [],
+              "errors": []
+            }
+            """
+                .formatted(CANCEL_REFERENCE_NO),
+            JsonCompareMode.STRICT);
+  }
+
+  @Test
+  void buildsTheCancelCommandFromTrustedContextAndRequestMetadata() throws Exception {
+    AtomicReference<CancelInvestmentChoiceCommand> captured = new AtomicReference<>();
+    var controller =
+        new InvestmentChoiceController(
+            command -> Mono.error(new AssertionError("GET use case must not run")),
+            command -> Mono.error(new AssertionError("submit use case must not run")),
+            command -> {
+              captured.set(command);
+              return Mono.just(
+                  new InvestmentChoiceCancelOutcome.Cancelled(
+                      new InvestmentChoiceCancellation(command.referenceNo())));
+            },
+            resolver(context("ACC-1")),
+            exchange -> Optional.of(SESSION_ID),
+            new InvestmentChoiceWebMapper(),
+            new ObjectMapper());
+    var exchange = MockServerWebExchange.from(MockServerHttpRequest.post(CANCEL_ROUTE).build());
+
+    controller
+        .cancelInvestmentChoice(
+            Mono.just(new tools.jackson.databind.ObjectMapper().readTree(CANCEL_BODY)), exchange)
+        .contextWrite(
+            reactorContext ->
+                reactorContext.put(
+                    RequestHeaderContextKeys.CONTEXT_KEY,
+                    new RequestHeaderContext("UNTRUSTED", "req-42", "en")))
+        .block();
+
+    assertThat(captured.get())
+        .isEqualTo(
+            new CancelInvestmentChoiceCommand(
+                "actor",
+                ActorUserRole.ROLE_USER_MBR,
+                "JP",
+                "00000008802",
+                "0230",
+                "ACC-1",
+                SESSION_ID,
+                "req-42",
+                CANCEL_REFERENCE_NO));
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidCancelBodies")
+  void cancelBodyViolationsReturn422WithoutCallingTheUseCase(
+      String scenario, String body, String type, String code, List<String> targets) {
+    AtomicInteger calls = new AtomicInteger();
+    WebTestClient client =
+        cancelClient(
+            command -> {
+              calls.incrementAndGet();
+              return Mono.just(
+                  new InvestmentChoiceCancelOutcome.Cancelled(
+                      new InvestmentChoiceCancellation(command.referenceNo())));
+            },
+            context("ACC-1"),
+            exchange -> Optional.of(SESSION_ID));
+
+    cancelPost(client, body)
+        .expectStatus()
+        .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
+        .expectBody()
+        .json(validationEnvelope(type, code, targets), JsonCompareMode.STRICT);
+
+    assertThat(calls).as(scenario).hasValue(0);
+  }
+
+  private static Stream<Arguments> invalidCancelBodies() {
+    return Stream.of(
+        Arguments.of(
+            "missing body", null, "FORM", ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID, List.of()),
+        Arguments.of(
+            "empty body", "", "FORM", ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID, List.of()),
+        Arguments.of(
+            "array root", "[]", "FORM", ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID, List.of()),
+        Arguments.of(
+            "string root",
+            "\"body\"",
+            "FORM",
+            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
+            List.of()),
+        Arguments.of(
+            "unknown member",
+            "{\"refNo\":\"260001449\",\"extra\":true}",
+            "FORM",
+            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
+            List.of()),
+        Arguments.of(
+            "null reference",
+            "{\"refNo\":null}",
+            "FORM",
+            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
+            List.of()),
+        Arguments.of(
+            "numeric reference",
+            "{\"refNo\":260001449}",
+            "FORM",
+            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
+            List.of()),
+        Arguments.of(
+            "boolean reference",
+            "{\"refNo\":false}",
+            "FORM",
+            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
+            List.of()),
+        Arguments.of(
+            "array reference",
+            "{\"refNo\":[]}",
+            "FORM",
+            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
+            List.of()),
+        Arguments.of(
+            "object reference",
+            "{\"refNo\":{}}",
+            "FORM",
+            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
+            List.of()),
+        Arguments.of(
+            "missing reference",
+            "{}",
+            "FIELD",
+            ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_REQUIRED,
+            List.of("refNo")),
+        Arguments.of(
+            "blank reference",
+            "{\"refNo\":\"\"}",
+            "FIELD",
+            ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_REQUIRED,
+            List.of("refNo")),
+        Arguments.of(
+            "whitespace reference",
+            "{\"refNo\":\"   \"}",
+            "FIELD",
+            ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_REQUIRED,
+            List.of("refNo")));
+  }
+
+  @Test
+  void cancelUseCaseInvalidOutcomeReturns422() {
+    WebTestClient client =
+        cancelClient(
+            command ->
+                Mono.just(
+                    new InvestmentChoiceCancelOutcome.Invalid(
+                        List.of(
+                            new InvestmentChoiceViolation(
+                                InvestmentChoiceViolation.Kind.FIELD,
+                                ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID,
+                                List.of("refNo"))))),
+            context("ACC-1"),
+            exchange -> Optional.of(SESSION_ID));
+
+    cancelPost(client, CANCEL_BODY)
+        .expectStatus()
+        .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
+        .expectBody()
+        .json(
+            validationEnvelope(
+                "FIELD", ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID, List.of("refNo")),
+            JsonCompareMode.STRICT);
+  }
+
+  @ParameterizedTest
+  @MethodSource("mappedCancelFailures")
+  void cancelFailuresUseSafeWarnMappings(
+      RuntimeException failure, HttpStatus status, String expectedBody) {
+    Logger logger = (Logger) LoggerFactory.getLogger(ApiExceptionHandler.class);
+    ListAppender<ILoggingEvent> captured = new ListAppender<>();
+    captured.start();
+    logger.addAppender(captured);
+    try {
+      cancelPost(
+              cancelClient(
+                  command -> Mono.error(failure),
+                  sensitiveContext("account-ref-secret"),
+                  exchange -> Optional.of(SESSION_ID)),
+              CANCEL_BODY)
+          .expectStatus()
+          .isEqualTo(status)
+          .expectBody()
+          .json(expectedBody, JsonCompareMode.STRICT);
+    } finally {
+      logger.detachAppender(captured);
+      captured.stop();
+    }
+
+    assertThat(captured.list)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    String logText =
+        captured.list.stream()
+            .map(ILoggingEvent::getFormattedMessage)
+            .collect(java.util.stream.Collectors.joining("\n"));
+    assertThat(logText)
+        .doesNotContain(
+            "policyNo-secret",
+            "certNo-secret",
+            "actorUserId-secret",
+            "account-ref-secret",
+            SESSION_ID.value(),
+            "password-validation-token-secret",
+            CANCEL_REFERENCE_NO,
+            "FBAL",
+            "FHKM",
+            "\"percentage\"");
+  }
+
+  private static Stream<Arguments> mappedCancelFailures() {
+    return Stream.of(
+        Arguments.of(
+            new InvestmentChoiceCancelNotCancellableException(),
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            """
+            {
+              "success": false,
+              "status": "BUSINESS_REJECTED",
+              "result": null,
+              "messages": [],
+              "errors": [
+                {
+                  "type": "BUSINESS",
+                  "code": "err.investment-choice.cancel.not-cancellable",
+                  "targets": [],
+                  "severity": "ERROR",
+                  "source": "SERVER"
+                }
+              ]
+            }
+            """),
+        Arguments.of(
+            new InvestmentChoiceCancelUnavailableException(),
+            HttpStatus.SERVICE_UNAVAILABLE,
+            """
+            {
+              "success": false,
+              "status": "SYSTEM_ERROR",
+              "result": null,
+              "messages": [],
+              "errors": [
+                {
+                  "type": "SYSTEM",
+                  "code": "err.investment-choice.cancel.unavailable",
+                  "targets": [],
+                  "severity": "ERROR",
+                  "source": "SERVER"
+                }
+              ]
+            }
+            """));
+  }
+
+  @Test
+  void missingAccountRefAndSessionRejectCancelBeforeCallingTheUseCase() {
+    AtomicInteger calls = new AtomicInteger();
+    CancelInvestmentChoiceUseCase cancelUseCase =
+        command -> {
+          calls.incrementAndGet();
+          return Mono.error(new AssertionError("cancel use case must not run"));
+        };
+    WebTestClient missingAccount =
+        cancelClient(cancelUseCase, context(" "), exchange -> Optional.of(SESSION_ID));
+
+    cancelPost(missingAccount, CANCEL_BODY)
+        .expectStatus()
+        .isBadRequest()
+        .expectBody()
+        .jsonPath("$.errors[0].code")
+        .isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID);
+
+    WebTestClient missingSession =
+        cancelClient(cancelUseCase, context("ACC-1"), exchange -> Optional.empty());
+    cancelPost(missingSession, CANCEL_BODY)
+        .expectStatus()
+        .isEqualTo(HttpStatus.UNAUTHORIZED)
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("BUSINESS_REJECTED")
+        .jsonPath("$.errors[0].code")
+        .isEqualTo(ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED);
+
+    assertThat(calls).hasValue(0);
   }
 
   @Test
@@ -814,6 +1151,11 @@ class InvestmentChoiceControllerTest {
     return body == null ? request.exchange() : request.bodyValue(body).exchange();
   }
 
+  private static WebTestClient.ResponseSpec cancelPost(WebTestClient client, String body) {
+    var request = client.post().uri(CANCEL_ROUTE).contentType(MediaType.APPLICATION_JSON);
+    return body == null || body.isEmpty() ? request.exchange() : request.bodyValue(body).exchange();
+  }
+
   private static WebTestClient client(
       GetInvestmentChoiceUseCase useCase,
       PortalAccessContext context,
@@ -830,6 +1172,7 @@ class InvestmentChoiceControllerTest {
     return new InvestmentChoiceController(
         useCase,
         command -> Mono.error(new AssertionError("submit use case must not run")),
+        command -> Mono.error(new AssertionError("cancel use case must not run")),
         resolver(context),
         sessionCookieReader,
         new InvestmentChoiceWebMapper(),
@@ -858,10 +1201,28 @@ class InvestmentChoiceControllerTest {
     return new InvestmentChoiceController(
         getUseCase,
         submitUseCase,
+        command -> Mono.error(new AssertionError("cancel use case must not run")),
         resolver(context),
         sessionCookieReader,
         new InvestmentChoiceWebMapper(),
         new ObjectMapper());
+  }
+
+  private static WebTestClient cancelClient(
+      CancelInvestmentChoiceUseCase cancelUseCase,
+      PortalAccessContext context,
+      AuthenticatedSessionCookieReader sessionCookieReader) {
+    return WebTestClient.bindToController(
+            new InvestmentChoiceController(
+                command -> Mono.error(new AssertionError("GET use case must not run")),
+                command -> Mono.error(new AssertionError("submit use case must not run")),
+                cancelUseCase,
+                resolver(context),
+                sessionCookieReader,
+                new InvestmentChoiceWebMapper(),
+                new ObjectMapper()))
+        .controllerAdvice(advice())
+        .build();
   }
 
   private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {

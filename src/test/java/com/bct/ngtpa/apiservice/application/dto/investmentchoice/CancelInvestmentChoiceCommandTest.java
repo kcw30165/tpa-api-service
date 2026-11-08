@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import java.lang.reflect.RecordComponent;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -44,7 +45,7 @@ class CancelInvestmentChoiceCommandTest {
         Arguments.of("policyNo", 3),
         Arguments.of("certNo", 4),
         Arguments.of("snapshotAccountRef", 5),
-        Arguments.of("sessionId", 6),
+        Arguments.of("authenticatedSessionId", 6),
         Arguments.of("referenceNo", 7));
   }
 
@@ -69,6 +70,13 @@ class CancelInvestmentChoiceCommandTest {
             SNAPSHOT_ACCOUNT_REF,
             SESSION_ID.value(),
             REFERENCE_NO);
+  }
+
+  @Test
+  void avoidsGenericAccountAndSessionComponentNames() {
+    assertThat(CancelInvestmentChoiceCommand.class.getRecordComponents())
+        .extracting(RecordComponent::getName)
+        .doesNotContain("accountRef", "sessionId");
   }
 
   private static CancelInvestmentChoiceCommand command(String referenceNo, String requestId) {

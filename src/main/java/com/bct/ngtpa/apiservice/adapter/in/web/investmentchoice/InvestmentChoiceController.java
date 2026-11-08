@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
+import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceCancellationResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceSubmissionResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
@@ -9,13 +10,16 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.HttpStatusClassification
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.CancelInvestmentChoiceCommand;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.GetInvestmentChoiceCommand;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancelOutcome;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceInstructionRequest;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
+import com.bct.ngtpa.apiservice.application.port.in.CancelInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.SubmitInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
@@ -51,22 +55,27 @@ public final class InvestmentChoiceController {
 
   private final GetInvestmentChoiceUseCase useCase;
   private final SubmitInvestmentChoiceUseCase submitUseCase;
+  private final CancelInvestmentChoiceUseCase cancelUseCase;
   private final CurrentPortalAccessContextResolver contextResolver;
   private final AuthenticatedSessionCookieReader sessionCookieReader;
   private final InvestmentChoiceWebMapper webMapper;
   private final ObjectMapper objectMapper;
   private final InvestmentChoiceInstructionBodyValidator bodyValidator =
       new InvestmentChoiceInstructionBodyValidator();
+  private final InvestmentChoiceCancelBodyValidator cancelBodyValidator =
+      new InvestmentChoiceCancelBodyValidator();
 
   public InvestmentChoiceController(
       GetInvestmentChoiceUseCase useCase,
       SubmitInvestmentChoiceUseCase submitUseCase,
+      CancelInvestmentChoiceUseCase cancelUseCase,
       CurrentPortalAccessContextResolver contextResolver,
       AuthenticatedSessionCookieReader sessionCookieReader,
       InvestmentChoiceWebMapper webMapper,
       ObjectMapper objectMapper) {
     this.useCase = Objects.requireNonNull(useCase, "useCase must not be null");
     this.submitUseCase = Objects.requireNonNull(submitUseCase, "submitUseCase must not be null");
+    this.cancelUseCase = Objects.requireNonNull(cancelUseCase, "cancelUseCase must not be null");
     this.contextResolver =
         Objects.requireNonNull(contextResolver, "contextResolver must not be null");
     this.sessionCookieReader =
@@ -164,6 +173,63 @@ public final class InvestmentChoiceController {
         });
   }
 
+  @PostMapping(
+      value = "/investment-choice/instructions/cancel",
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<MutationResponse<InvestmentChoiceCancellationResultResponse>>>
+      cancelInvestmentChoice(
+          @RequestBody(required = false) Mono<JsonNode> requestBody, ServerWebExchange exchange) {
+    return Mono.deferContextual(
+        contextView -> {
+          RequestHeaderContext headers =
+              contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
+          String requestId = headers == null ? null : headers.requestId();
+          Optional<AuthenticatedSessionId> sessionId = sessionCookieReader.read(exchange);
+          return contextResolver
+              .current()
+              .flatMap(
+                  context -> {
+                    String accountRef = requireAccountRef(context);
+                    if (sessionId.isEmpty()) {
+                      return Mono.error(new AuthenticatedPortalContextResolutionException());
+                    }
+                    return cancelBody(
+                        requestBody, context, accountRef, sessionId.get(), requestId, exchange);
+                  });
+        });
+  }
+
+  private Mono<ResponseEntity<MutationResponse<InvestmentChoiceCancellationResultResponse>>>
+      cancelBody(
+          Mono<JsonNode> requestBody,
+          PortalAccessContext context,
+          String snapshotAccountRef,
+          AuthenticatedSessionId sessionId,
+          String requestId,
+          ServerWebExchange exchange) {
+    return requestBody
+        .map(this::toValidationTree)
+        .defaultIfEmpty(NullNode.getInstance())
+        .flatMap(
+            body -> {
+              var validation = cancelBodyValidator.validate(body);
+              if (!validation.isValid()) {
+                return Mono.just(
+                    cancelResponse(
+                        exchange,
+                        MutationResponse.failure(
+                            ApiStatus.VALIDATION_FAILED,
+                            validationErrors(validation.violations()))));
+              }
+              CancelInvestmentChoiceCommand command =
+                  cancelCommandFrom(
+                      context, snapshotAccountRef, sessionId, requestId, validation.referenceNo());
+              return cancelUseCase
+                  .cancel(command)
+                  .map(outcome -> cancelResponse(exchange, cancellationResponse(outcome)));
+            });
+  }
+
   private com.fasterxml.jackson.databind.JsonNode toValidationTree(JsonNode body) {
     try {
       return objectMapper.readTree(body.toString());
@@ -183,6 +249,18 @@ public final class InvestmentChoiceController {
       return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, validationErrors(violations));
     }
     throw new IllegalStateException("Unsupported investment choice submit outcome");
+  }
+
+  private MutationResponse<InvestmentChoiceCancellationResultResponse> cancellationResponse(
+      InvestmentChoiceCancelOutcome outcome) {
+    if (outcome instanceof InvestmentChoiceCancelOutcome.Cancelled(var cancellation)) {
+      return MutationResponse.success(
+          ApiStatus.SUCCESS, webMapper.toCancellationResultResponse(cancellation), List.of());
+    }
+    if (outcome instanceof InvestmentChoiceCancelOutcome.Invalid(var violations)) {
+      return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, validationErrors(violations));
+    }
+    throw new IllegalStateException("Unsupported investment choice cancel outcome");
   }
 
   private static List<ApiError> validationErrors(List<InvestmentChoiceViolation> violations) {
@@ -205,6 +283,18 @@ public final class InvestmentChoiceController {
       submitResponse(
           ServerWebExchange exchange,
           MutationResponse<InvestmentChoiceSubmissionResultResponse> response) {
+    var status =
+        response.status() == ApiStatus.VALIDATION_FAILED
+            ? HttpStatus.UNPROCESSABLE_CONTENT
+            : HttpStatusClassification.classify(response.status());
+    exchange.getResponse().setStatusCode(status);
+    return ResponseEntity.status(status).body(response);
+  }
+
+  private static ResponseEntity<MutationResponse<InvestmentChoiceCancellationResultResponse>>
+      cancelResponse(
+          ServerWebExchange exchange,
+          MutationResponse<InvestmentChoiceCancellationResultResponse> response) {
     var status =
         response.status() == ApiStatus.VALIDATION_FAILED
             ? HttpStatus.UNPROCESSABLE_CONTENT
@@ -246,6 +336,25 @@ public final class InvestmentChoiceController {
         sessionId,
         requestId,
         request);
+  }
+
+  private static CancelInvestmentChoiceCommand cancelCommandFrom(
+      PortalAccessContext context,
+      String snapshotAccountRef,
+      AuthenticatedSessionId sessionId,
+      String requestId,
+      String referenceNo) {
+    var account = context.account();
+    return new CancelInvestmentChoiceCommand(
+        context.actor().actorUserId(),
+        context.actor().actorUserRole(),
+        account.accountEnv(),
+        account.policyNo(),
+        account.certNo(),
+        snapshotAccountRef,
+        sessionId,
+        requestId,
+        referenceNo);
   }
 
   private static String requireAccountRef(PortalAccessContext context) {

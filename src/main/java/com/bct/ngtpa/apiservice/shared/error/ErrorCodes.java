@@ -49,6 +49,12 @@ public final class ErrorCodes {
       "err.investment-choice.switch-source.unavailable";
   public static final String INVESTMENT_CHOICE_FUND_UNAVAILABLE =
       "err.investment-choice.fund.unavailable";
+  public static final String INVESTMENT_CHOICE_CANCEL_UNAVAILABLE =
+      "err.investment-choice.cancel.unavailable";
+  public static final String INVESTMENT_CHOICE_CANCEL_NOT_CANCELLABLE =
+      "err.investment-choice.cancel.not-cancellable";
+  public static final String INVESTMENT_CHOICE_CANCEL_REF_REQUIRED =
+      "err.investment-choice.cancel.ref-required";
   public static final String INVESTMENT_CHOICE_CANCEL_REF_INVALID =
       "err.investment-choice.cancel.ref-invalid";
   public static final String FUND_COMPARISON_REQUEST_INVALID =

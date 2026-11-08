@@ -49,7 +49,7 @@ public final class CancelInvestmentChoiceService implements CancelInvestmentChoi
     return Mono.defer(
             () ->
                 snapshotCache.read(
-                    command.sessionId(),
+                    command.authenticatedSessionId(),
                     command.snapshotAccountRef(),
                     command.policyNo(),
                     command.requestId()))
@@ -90,7 +90,7 @@ public final class CancelInvestmentChoiceService implements CancelInvestmentChoi
                 Mono.defer(
                         () ->
                             snapshotCache.write(
-                                command.sessionId(),
+                                command.authenticatedSessionId(),
                                 snapshot.withoutPendingRef(command.referenceNo()),
                                 command.requestId()))
                     .onErrorResume(error -> Mono.empty())

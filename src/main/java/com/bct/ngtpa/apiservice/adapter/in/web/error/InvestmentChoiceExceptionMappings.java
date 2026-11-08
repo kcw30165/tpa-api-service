@@ -1,6 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.error;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelNotCancellableException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -50,6 +52,53 @@ public final class InvestmentChoiceExceptionMappings {
             ApiStatus.SYSTEM_ERROR,
             "SYSTEM",
             ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_UNAVAILABLE,
+            List.of(),
+            "http.api.error",
+            LogLevel.WARN,
+            false);
+      }
+    };
+  }
+
+  public static ExceptionMapping<InvestmentChoiceCancelUnavailableException> cancelUnavailable() {
+    return new ExceptionMapping<>() {
+      @Override
+      public Class<InvestmentChoiceCancelUnavailableException> exceptionType() {
+        return InvestmentChoiceCancelUnavailableException.class;
+      }
+
+      @Override
+      public ErrorDescriptor describe(
+          InvestmentChoiceCancelUnavailableException exception, ErrorContext context) {
+        return ErrorDescriptor.singleWithoutMessage(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            ApiStatus.SYSTEM_ERROR,
+            "SYSTEM",
+            ErrorCodes.INVESTMENT_CHOICE_CANCEL_UNAVAILABLE,
+            List.of(),
+            "http.api.error",
+            LogLevel.WARN,
+            false);
+      }
+    };
+  }
+
+  public static ExceptionMapping<InvestmentChoiceCancelNotCancellableException>
+      cancelNotCancellable() {
+    return new ExceptionMapping<>() {
+      @Override
+      public Class<InvestmentChoiceCancelNotCancellableException> exceptionType() {
+        return InvestmentChoiceCancelNotCancellableException.class;
+      }
+
+      @Override
+      public ErrorDescriptor describe(
+          InvestmentChoiceCancelNotCancellableException exception, ErrorContext context) {
+        return ErrorDescriptor.singleWithoutMessage(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            ApiStatus.BUSINESS_REJECTED,
+            "BUSINESS",
+            ErrorCodes.INVESTMENT_CHOICE_CANCEL_NOT_CANCELLABLE,
             List.of(),
             "http.api.error",
             LogLevel.WARN,

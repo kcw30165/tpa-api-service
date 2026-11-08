@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 class InvestmentChoiceValidationErrorCodesTest {
 
   @Test
-  void exposesTheValidationCodesFromTheCimContract() {
+  void exposesTheInvestmentChoiceErrorCodesFromTheContract() {
     assertThat(
             List.of(
                 ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
@@ -22,6 +22,9 @@ class InvestmentChoiceValidationErrorCodesTest {
                 ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_INTERVAL_INVALID,
                 ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_UNAVAILABLE,
                 ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
+                ErrorCodes.INVESTMENT_CHOICE_CANCEL_UNAVAILABLE,
+                ErrorCodes.INVESTMENT_CHOICE_CANCEL_NOT_CANCELLABLE,
+                ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_REQUIRED,
                 ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID))
         .containsExactly(
             "err.investment-choice.request.invalid",
@@ -35,6 +38,9 @@ class InvestmentChoiceValidationErrorCodesTest {
             "err.investment-choice.percentage.interval-invalid",
             "err.investment-choice.switch-source.unavailable",
             "err.investment-choice.fund.unavailable",
+            "err.investment-choice.cancel.unavailable",
+            "err.investment-choice.cancel.not-cancellable",
+            "err.investment-choice.cancel.ref-required",
             "err.investment-choice.cancel.ref-invalid");
   }
 }

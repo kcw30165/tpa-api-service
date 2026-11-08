@@ -1,6 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceAllocationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceCancellationDataResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceCancellationResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceFundResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceHistoryResponse;
@@ -11,6 +13,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.Investm
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceSwitchSourceResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.application.dto.fundprice.FundPriceRiskLevels;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancellation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetails;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceFund;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceMandate;
@@ -112,6 +115,13 @@ public final class InvestmentChoiceWebMapper {
             submission.referenceNo(),
             DATE_FORMATTER.format(submission.submitDate()),
             TIME_FORMATTER.format(submission.submitTime())));
+  }
+
+  public InvestmentChoiceCancellationResultResponse toCancellationResultResponse(
+      InvestmentChoiceCancellation cancellation) {
+    Objects.requireNonNull(cancellation, "cancellation must not be null");
+    return new InvestmentChoiceCancellationResultResponse(
+        new InvestmentChoiceCancellationDataResponse(cancellation.referenceNo()));
   }
 
   private static List<InvestmentChoiceHistoryResponse> history(

@@ -16,6 +16,8 @@ import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalExceptio
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelNotCancellableException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
@@ -509,6 +511,42 @@ class ExceptionMappingsTest {
   }
 
   @Test
+  void investmentChoiceCancelUnavailableMapping() {
+    ErrorDescriptor descriptor =
+        new ExceptionMappingRegistryConfig()
+            .exceptionMappingRegistry()
+            .resolve(new InvestmentChoiceCancelUnavailableException(), CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals("err.investment-choice.cancel.unavailable", entry.code());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+  }
+
+  @Test
+  void investmentChoiceCancelNotCancellableMapping() {
+    ErrorDescriptor descriptor =
+        new ExceptionMappingRegistryConfig()
+            .exceptionMappingRegistry()
+            .resolve(new InvestmentChoiceCancelNotCancellableException(), CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, descriptor.httpStatus());
+    assertEquals(ApiStatus.BUSINESS_REJECTED, descriptor.apiStatus());
+    assertEquals("BUSINESS", entry.type());
+    assertEquals("err.investment-choice.cancel.not-cancellable", entry.code());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+  }
+
+  @Test
   void webExchangeBindMappingProducesOneEntryPerFieldErrorInOrder() throws Exception {
     var mapping = WebExchangeBindExceptionMappings.validationFailed();
     var exception = bindExceptionWithTwoFieldErrors("notificationId", "status");
@@ -565,11 +603,11 @@ class ExceptionMappingsTest {
   // ───────────────────────── registry assembly ─────────────────────────
 
   @Test
-  void configAssemblesExactlyTwentyFiveMappingsPlusCatchAll() {
+  void configAssemblesExactlyTwentySevenMappingsPlusCatchAll() {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(25, registry.mappingCount());
+    assertEquals(27, registry.mappingCount());
 
     ErrorDescriptor updateUnavailable =
         registry.resolve(

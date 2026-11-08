@@ -11,7 +11,7 @@ public record CancelInvestmentChoiceCommand(
     String policyNo,
     String certNo,
     String snapshotAccountRef,
-    AuthenticatedSessionId sessionId,
+    AuthenticatedSessionId authenticatedSessionId,
     String requestId,
     String referenceNo) {
 
@@ -22,7 +22,7 @@ public record CancelInvestmentChoiceCommand(
     Objects.requireNonNull(policyNo, "policyNo must not be null");
     Objects.requireNonNull(certNo, "certNo must not be null");
     Objects.requireNonNull(snapshotAccountRef, "snapshotAccountRef must not be null");
-    Objects.requireNonNull(sessionId, "sessionId must not be null");
+    Objects.requireNonNull(authenticatedSessionId, "authenticatedSessionId must not be null");
     Objects.requireNonNull(referenceNo, "referenceNo must not be null");
     if (referenceNo.isBlank()) {
       throw new IllegalArgumentException("referenceNo must not be blank");

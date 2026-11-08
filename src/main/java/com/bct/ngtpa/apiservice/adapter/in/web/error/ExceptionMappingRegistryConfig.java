@@ -51,6 +51,8 @@ public class ExceptionMappingRegistryConfig {
             FundFactSheetExceptionMappings.retrievalUnavailable(),
             InvestmentChoiceExceptionMappings.retrievalUnavailable(),
             InvestmentChoiceExceptionMappings.submissionUnavailable(),
+            InvestmentChoiceExceptionMappings.cancelUnavailable(),
+            InvestmentChoiceExceptionMappings.cancelNotCancellable(),
             WebExchangeBindExceptionMappings.validationFailed());
     return new ExceptionMappingRegistry(mappings, CatchAllExceptionMapping.INSTANCE);
   }
