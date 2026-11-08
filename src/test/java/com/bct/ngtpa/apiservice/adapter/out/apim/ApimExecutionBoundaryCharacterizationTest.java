@@ -18,7 +18,7 @@ class ApimExecutionBoundaryCharacterizationTest {
     String source = normalized(read("ApimWebClientFacade.java"));
     assertThat(source)
         .contains(
-            "return resolveProfile(scope, resolutionContext)",
+            "return resolveProfile(scope, resolutionContext, incidentOwnership)",
             "invalid_token",
             "invalid_public_key",
             "tokenRetry",
