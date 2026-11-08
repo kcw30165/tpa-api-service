@@ -73,10 +73,11 @@ class ApimIncidentOwnershipTest {
   }
 
   @Test
-  void commandDefaultsAndRejectsNull() {
+  void canonicalCommandPreservesObserverAndRejectsNull() {
     var req = new TrpChkCustIdApimRequest("u");
     assertThat(
-            new TrpChkCustIdTransportCommand(req, ActorUserRole.ROLE_USER_MBR, "r")
+            new TrpChkCustIdTransportCommand(
+                    req, ActorUserRole.ROLE_USER_MBR, "r", ApimIncidentOwnership.APIM_OBSERVER)
                 .incidentOwnership())
         .isEqualTo(ApimIncidentOwnership.APIM_OBSERVER);
     assertThatThrownBy(

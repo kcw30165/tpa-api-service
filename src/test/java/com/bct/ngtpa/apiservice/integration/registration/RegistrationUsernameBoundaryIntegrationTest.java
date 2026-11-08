@@ -67,15 +67,17 @@ class RegistrationUsernameBoundaryIntegrationTest {
   void availabilityBoundaryDistinguishesRejectedFromTechnicalFailure() {
     var rejected =
         new RegistrationUsernameAvailabilityResult(
-            RegistrationUsernameAvailabilityStatus.REJECTED, "err.tpa.username.taken");
+            RegistrationUsernameAvailabilityStatus.REJECTED, "err.tpa.username.taken", null);
     var failed =
         new RegistrationUsernameAvailabilityResult(
-            RegistrationUsernameAvailabilityStatus.DOWNSTREAM_FAILED, null);
+            RegistrationUsernameAvailabilityStatus.DOWNSTREAM_FAILED, null, null);
 
     assertThat(rejected.status()).isEqualTo(RegistrationUsernameAvailabilityStatus.REJECTED);
     assertThat(rejected.downstreamErrorCode()).isEqualTo("err.tpa.username.taken");
+    assertThat(rejected.failureOrigin()).isNull();
     assertThat(failed.status()).isEqualTo(RegistrationUsernameAvailabilityStatus.DOWNSTREAM_FAILED);
     assertThat(failed.downstreamErrorCode()).isNull();
+    assertThat(failed.failureOrigin()).isNull();
   }
 
   private static java.util.List<String> componentNames(Class<?> type) {

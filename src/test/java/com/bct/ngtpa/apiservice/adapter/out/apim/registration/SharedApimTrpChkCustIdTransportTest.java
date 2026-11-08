@@ -38,7 +38,10 @@ class SharedApimTrpChkCustIdTransportTest {
     var transport = new SharedApimTrpChkCustIdTransport(executor);
     var command =
         new TrpChkCustIdTransportCommand(
-            new TrpChkCustIdApimRequest("cust-1"), ActorUserRole.ROLE_USER_MBR, "req-123");
+            new TrpChkCustIdApimRequest("cust-1"),
+            ActorUserRole.ROLE_USER_MBR,
+            "req-123",
+            ApimIncidentOwnership.APIM_OBSERVER);
 
     StepVerifier.create(transport.post(command))
         .assertNext(
@@ -66,6 +69,7 @@ class SharedApimTrpChkCustIdTransportTest {
     assertThat(exchange.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
     assertThat(exchange.credentialContext().accountEnv()).isNull();
     assertThat(exchange.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
+    assertThat(exchange.incidentOwnership()).isEqualTo(ApimIncidentOwnership.APIM_OBSERVER);
   }
 
   @Test
@@ -78,7 +82,10 @@ class SharedApimTrpChkCustIdTransportTest {
     StepVerifier.create(
             transport.post(
                 new TrpChkCustIdTransportCommand(
-                    new TrpChkCustIdApimRequest("cust-1"), ActorUserRole.ROLE_USER_MBR, "req-124")))
+                    new TrpChkCustIdApimRequest("cust-1"),
+                    ActorUserRole.ROLE_USER_MBR,
+                    "req-124",
+                    ApimIncidentOwnership.APIM_OBSERVER)))
         .expectErrorSatisfies(error -> assertThat(error.getMessage()).contains("missing response"))
         .verify();
   }
@@ -95,7 +102,10 @@ class SharedApimTrpChkCustIdTransportTest {
     StepVerifier.create(
             transport.post(
                 new TrpChkCustIdTransportCommand(
-                    new TrpChkCustIdApimRequest("cust-1"), ActorUserRole.ROLE_USER_MBR, "req-125")))
+                    new TrpChkCustIdApimRequest("cust-1"),
+                    ActorUserRole.ROLE_USER_MBR,
+                    "req-125",
+                    ApimIncidentOwnership.APIM_OBSERVER)))
         .expectErrorSatisfies(
             error -> assertThat(error.getMessage()).contains("invalid/malformed response"))
         .verify();

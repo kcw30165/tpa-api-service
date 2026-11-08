@@ -4,11 +4,6 @@ public record RegistrationUsernameAvailabilityResult(
     RegistrationUsernameAvailabilityStatus status,
     String downstreamErrorCode,
     RegistrationUsernameAvailabilityFailureOrigin failureOrigin) {
-  public RegistrationUsernameAvailabilityResult(
-      RegistrationUsernameAvailabilityStatus status, String downstreamErrorCode) {
-    this(status, downstreamErrorCode, null);
-  }
-
   public static RegistrationUsernameAvailabilityResult available() {
     return new RegistrationUsernameAvailabilityResult(
         RegistrationUsernameAvailabilityStatus.AVAILABLE, null, null);

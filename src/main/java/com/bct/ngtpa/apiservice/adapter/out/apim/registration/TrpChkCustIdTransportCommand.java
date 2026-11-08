@@ -11,11 +11,6 @@ public record TrpChkCustIdTransportCommand(
     ActorUserRole actorUserRole,
     String correlationId,
     ApimIncidentOwnership incidentOwnership) {
-  public TrpChkCustIdTransportCommand(
-      TrpChkCustIdApimRequest request, ActorUserRole actorUserRole, String correlationId) {
-    this(request, actorUserRole, correlationId, ApimIncidentOwnership.APIM_OBSERVER);
-  }
-
   public TrpChkCustIdTransportCommand {
     Objects.requireNonNull(request, "request must not be null");
     Objects.requireNonNull(actorUserRole, "actorUserRole must not be null");
