@@ -520,7 +520,10 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
               assertThat(event.getLoggerName())
                   .isEqualTo(CheckRegistrationUsernameService.class.getName());
               assertThat(event.getFormattedMessage())
-                  .contains("event=registration.usernameCheck.failure", "origin=APIM_TECHNICAL");
+                  .contains(
+                      "event=registration.usernameCheck.failure",
+                      "origin=APIM_TECHNICAL",
+                      "requestId=" + requestId);
               assertThat(event.getThrowableProxy()).isNull();
             });
 
@@ -825,7 +828,10 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     assertThat(terminalError.getLoggerName())
         .isEqualTo(CheckRegistrationUsernameService.class.getName());
     assertThat(terminalError.getFormattedMessage())
-        .contains("event=registration.usernameCheck.failure", "origin=" + expectedOrigin);
+        .contains(
+            "event=registration.usernameCheck.failure",
+            "origin=" + expectedOrigin,
+            "requestId=" + requestId);
     assertThat(terminalError.getThrowableProxy()).isNull();
 
     List<ILoggingEvent> adapterDiagnostics =
@@ -881,7 +887,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
               assertThat(event.getFormattedMessage())
                   .contains(
                       "event=registration.usernameCheck.failure",
-                      "origin=LOCAL_STATE_FAILURE")
+                      "origin=LOCAL_STATE_FAILURE",
+                      "requestId=" + requestId)
                   .doesNotContain("origin=APIM_TECHNICAL");
               assertThat(event.getThrowableProxy()).isNull();
             });

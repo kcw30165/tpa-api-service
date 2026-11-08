@@ -262,6 +262,7 @@ class CheckRegistrationUsernameServiceTest {
   @Test
   void downstreamFailedBypassesClassifierAndDoesNotStoreUsernameCheck() {
     String privateMarker = "PRIVATE-DOWNSTREAM-MARKER";
+    String requestId = "synthetic-request-id";
     var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
     var availability =
         new FakeAvailability(
@@ -273,7 +274,8 @@ class CheckRegistrationUsernameServiceTest {
     ListAppender<ILoggingEvent> appender = attach(logger);
 
     try {
-      StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
+      StepVerifier.create(
+              service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@", requestId)))
           .assertNext(
               result -> {
                 assertThat(result.status())
@@ -297,7 +299,8 @@ class CheckRegistrationUsernameServiceTest {
                     .contains(
                         "event=registration.usernameCheck.failure",
                         "status=TECHNICAL_FAILURE",
-                        "origin=APIM_TECHNICAL")
+                        "origin=APIM_TECHNICAL",
+                        "requestId=" + requestId)
                     .doesNotContain(privateMarker, "abc1@", "TL", "ENV1");
                 assertThat(event.getThrowableProxy()).isNull();
               });
@@ -306,6 +309,39 @@ class CheckRegistrationUsernameServiceTest {
     } finally {
       detach(logger, appender);
     }
+  }
+
+  @Test
+  void terminalErrorOmitsNullAndBlankRequestIds() {
+    for (String correlationId : new String[] {null, "  "}) {
+      String message = terminalErrorMessage(correlationId);
+
+      assertThat(message)
+          .contains("event=registration.usernameCheck.failure")
+          .doesNotContain("requestId=", "null");
+    }
+  }
+
+  @Test
+  void terminalErrorTruncatesLongRequestIds() {
+    String correlationId = "x".repeat(300);
+
+    String message = terminalErrorMessage(correlationId);
+
+    assertThat(message)
+        .contains("requestId=" + "x".repeat(128) + "...")
+        .doesNotContain("x".repeat(129));
+  }
+
+  @Test
+  void terminalErrorReplacesControlCharactersInRequestIds() {
+    String correlationId = "request\r\nid";
+
+    String message = terminalErrorMessage(correlationId);
+
+    assertThat(message)
+        .contains("requestId=request??id")
+        .doesNotContain("\r", "\n");
   }
 
   @Test
@@ -575,6 +611,33 @@ class CheckRegistrationUsernameServiceTest {
         .toList();
   }
 
+  private String terminalErrorMessage(String correlationId) {
+    var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
+    var availability =
+        new FakeAvailability(
+            new RegistrationUsernameAvailabilityResult(
+                RegistrationUsernameAvailabilityStatus.DOWNSTREAM_FAILED, "private-marker", null));
+    var service =
+        service(sessions, availability, new FakeClassifier("downstream.generic.businessRejected"));
+    Logger logger = (Logger) LoggerFactory.getLogger(CheckRegistrationUsernameService.class);
+    ListAppender<ILoggingEvent> appender = attach(logger);
+
+    try {
+      StepVerifier.create(
+              service.check(
+                  command("csrf", selectedTrust("TL", "ENV1"), "abc1@", correlationId)))
+          .assertNext(
+              result ->
+                  assertThat(result.status())
+                      .isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED))
+          .verifyComplete();
+      assertThat(serviceErrors(appender)).hasSize(1);
+      return serviceErrors(appender).getFirst().getFormattedMessage();
+    } finally {
+      detach(logger, appender);
+    }
+  }
+
   private CheckRegistrationUsernameService service(
       FakeSessions sessions, FakeAvailability availability, FakeClassifier classifier) {
     return new CheckRegistrationUsernameService(
@@ -611,6 +674,11 @@ class CheckRegistrationUsernameServiceTest {
 
   private CheckRegistrationUsernameCommand command(
       String csrf, RegistrationSelectedTrust selectedTrust, String username) {
+    return command(csrf, selectedTrust, username, "req-1");
+  }
+
+  private CheckRegistrationUsernameCommand command(
+      String csrf, RegistrationSelectedTrust selectedTrust, String username, String correlationId) {
     return new CheckRegistrationUsernameCommand(
         new AuthFlowSessionId("afs_secret"),
         csrf,
@@ -619,7 +687,7 @@ class CheckRegistrationUsernameServiceTest {
         "https://portal.test",
         "https://portal.test/register",
         "en",
-        "req-1");
+        correlationId);
   }
 
   private RegistrationSelectedTrust selectedTrust(String trustCode, String accountEnv) {

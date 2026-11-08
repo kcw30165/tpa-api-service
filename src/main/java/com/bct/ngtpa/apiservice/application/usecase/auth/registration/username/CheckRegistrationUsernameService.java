@@ -223,7 +223,9 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
                     var origin = availability.failureOrigin();
                     // Results without an origin retain the established safe default.
                     yield Mono.just(
-                        downstreamFailed(origin == null ? "APIM_TECHNICAL" : origin.name()));
+                        downstreamFailed(
+                            origin == null ? "APIM_TECHNICAL" : origin.name(),
+                            command.correlationId()));
                   }
                 })
         // APIM-classified adapter failures are returned as DOWNSTREAM_FAILED; this handles local
@@ -234,7 +236,8 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
                     downstreamFailed(
                         exception instanceof LocalUsernameStateFailure
                             ? "LOCAL_STATE_FAILURE"
-                            : "APIM_TECHNICAL")));
+                            : "APIM_TECHNICAL",
+                        command.correlationId())));
   }
 
   private Mono<CheckRegistrationUsernameResult> storeUsernameCheck(
@@ -307,15 +310,42 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
     return "err.registration.username.checkFailed";
   }
 
-  private CheckRegistrationUsernameResult downstreamFailed(String origin) {
+  private CheckRegistrationUsernameResult downstreamFailed(String origin, String correlationId) {
+    String requestId = sanitizeRequestId(correlationId);
     log.error(
-        "event=registration.usernameCheck.failure severity=FATAL status=TECHNICAL_FAILURE origin={}",
-        origin);
+        "event=registration.usernameCheck.failure severity=FATAL status=TECHNICAL_FAILURE origin={}{}",
+        origin,
+        requestId == null ? "" : " requestId=" + requestId);
     return failure(
         CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED,
         WorkflowNextStep.USERNAME_CHECK,
         WorkflowErrorType.DOWNSTREAM_SYSTEM,
         ERROR_DOWNSTREAM_UNAVAILABLE);
+  }
+
+  // The upstream request-ID filter does not validate client-supplied values.
+  private static String sanitizeRequestId(String requestId) {
+    if (requestId == null || requestId.isBlank()) {
+      return null;
+    }
+
+    int codePointCount = requestId.codePointCount(0, requestId.length());
+    int boundedCodePointCount = Math.min(codePointCount, 128);
+    StringBuilder sanitized = new StringBuilder(boundedCodePointCount + 3);
+    int offset = 0;
+    for (int index = 0; index < boundedCodePointCount; index++) {
+      int codePoint = requestId.codePointAt(offset);
+      if (codePoint < 0x20 || codePoint == 0x7f) {
+        sanitized.append('?');
+      } else {
+        sanitized.appendCodePoint(codePoint);
+      }
+      offset += Character.charCount(codePoint);
+    }
+    if (codePointCount > boundedCodePointCount) {
+      sanitized.append("...");
+    }
+    return sanitized.toString();
   }
 
   private static final class LocalUsernameStateFailure extends RuntimeException {
