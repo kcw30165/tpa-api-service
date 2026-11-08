@@ -294,7 +294,10 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
                   "method",
                   request.getMethod().name()));
       PasswordValidationRouteMatcher.purposeForTokenGate(request)
-          .filter(purpose -> purpose == PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE)
+          .filter(
+              purpose ->
+                  purpose == PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE
+                      || purpose == PasswordValidationPurpose.CANCEL_INVESTMENT_CHOICE)
           .ifPresent(purpose -> dimensions.put("purpose", purpose.name()));
       failures.publish(
           new FailureEvent(

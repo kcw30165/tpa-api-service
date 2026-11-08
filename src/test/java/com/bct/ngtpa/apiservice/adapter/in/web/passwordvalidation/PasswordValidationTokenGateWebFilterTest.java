@@ -186,6 +186,37 @@ class PasswordValidationTokenGateWebFilterTest {
   }
 
   @Test
+  void cancelInstructionConsumesWithItsMappedPurpose() {
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/investment-choice/instructions/cancel")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, REF)
+                .header(PasswordValidationTokenGateWebFilter.TOKEN_HEADER, TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}"));
+    exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "gate-unit");
+    authenticate(exchange);
+
+    AtomicInteger calls = new AtomicInteger();
+    gate.filter(
+            exchange,
+            actual -> {
+              calls.incrementAndGet();
+              return Mono.empty();
+            })
+        .block();
+
+    assertThat(calls).hasValue(1);
+    verify(grants)
+        .consume(
+            any(),
+            any(),
+            eq(PasswordValidationPurpose.parse("CANCEL_INVESTMENT_CHOICE")),
+            eq(TOKEN),
+            eq("gate-unit"));
+  }
+
+  @Test
   void cimRejectionEventUsesMatchedRouteMethodAndPurposeWithoutSensitiveDimensions() {
     var exchange =
         unauthenticatedRequest(HttpMethod.POST, "/api/v1/investment-choice/instructions");
@@ -202,6 +233,25 @@ class PasswordValidationTokenGateWebFilterTest {
                 "route", "/api/v1/investment-choice/instructions",
                 "method", "POST",
                 "purpose", "CHANGE_INVESTMENT_CHOICE"));
+  }
+
+  @Test
+  void cancelRejectionEventUsesMatchedRouteMethodAndPurposeWithoutSensitiveDimensions() {
+    String cancelPath = "/api/v1/investment-choice/instructions/cancel";
+    var exchange = unauthenticatedRequest(HttpMethod.POST, cancelPath);
+    authenticate(exchange);
+
+    gate.filter(exchange, ignored -> Mono.error(new AssertionError("Dispatched"))).block();
+
+    var event = capturedFailureEvent();
+    assertThat(event.safeDimensions())
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(
+                "stage", "token-gate",
+                "reason", "TOKEN_HEADER_MISSING",
+                "route", cancelPath,
+                "method", "POST",
+                "purpose", "CANCEL_INVESTMENT_CHOICE"));
   }
 
   @Test

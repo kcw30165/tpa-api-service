@@ -37,7 +37,10 @@ class PasswordValidationRequestWebFilterTest {
     "PUT,/api/v1/%70ersonal-information",
     "POST,/api/v1/investment-choice/instructions",
     "POST,/api/v1/investment-choice/instructions;x=1",
-    "POST,/api/v1/%69nvestment-choice/instructions"
+    "POST,/api/v1/%69nvestment-choice/instructions",
+    "POST,/api/v1/investment-choice/instructions/cancel",
+    "POST,/api/v1/investment-choice/instructions/cancel;x=1",
+    "POST,/api/v1/investment-choice/instructions/%63ancel"
   })
   void routedVariantsHaveNoStoreAndSafeCsrfMapping(String method, String path) {
     var exchange =
@@ -74,7 +77,11 @@ class PasswordValidationRequestWebFilterTest {
     "GET,/api/v1/investment-choice/instructions",
     "PUT,/api/v1/investment-choice/instructions",
     "POST,/api/v1/investment-choice/instructions/",
-    "POST,/api/v1/Investment-choice/instructions"
+    "POST,/api/v1/Investment-choice/instructions",
+    "GET,/api/v1/investment-choice/instructions/cancel",
+    "PUT,/api/v1/investment-choice/instructions/cancel",
+    "POST,/api/v1/investment-choice/instructions/cancel/",
+    "POST,/api/v1/investment-choice/instructions/Cancel"
   })
   void otherMethodsAndUnmatchedPathsPassThroughOnceWithoutChangingHeaders(
       String method, String path) {
