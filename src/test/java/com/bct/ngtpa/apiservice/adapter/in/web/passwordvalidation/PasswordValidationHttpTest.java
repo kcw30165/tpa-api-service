@@ -30,8 +30,10 @@ import com.bct.ngtpa.apiservice.shared.web.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
@@ -65,7 +67,7 @@ class PasswordValidationHttpTest {
   private WebTestClient client;
   private Backend backend;
   private Logger root;
-  private ListAppender<ILoggingEvent> logs;
+  private AwaitableListAppender logs;
   private int failureEventCount;
 
   @BeforeAll
@@ -109,7 +111,7 @@ class PasswordValidationHttpTest {
             org.springframework.security.web.server.firewall.StrictServerWebExchangeFirewall.class)
         .setAllowSemicolon(true);
     root = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-    logs = new ListAppender<>();
+    logs = new AwaitableListAppender();
     logs.start();
     root.addAppender(logs);
     failureEventCount = 0;
@@ -517,7 +519,7 @@ class PasswordValidationHttpTest {
       response.expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store");
       assertSafeLogs();
     }
-    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+    assertThat(logs.snapshot().stream().map(ILoggingEvent::getFormattedMessage))
         .noneMatch(message -> message.contains("header-marker"));
   }
 
@@ -560,7 +562,7 @@ class PasswordValidationHttpTest {
         .expectHeader()
         .valueEquals(HttpHeaders.CACHE_CONTROL, "no-store");
     var requestEvents =
-        logs.list.stream()
+        logs.snapshot().stream()
             .filter(event -> event.getLoggerName().equals(RequestLoggingWebFilter.class.getName()))
             .map(ILoggingEvent::getFormattedMessage)
             .toList();
@@ -678,7 +680,7 @@ class PasswordValidationHttpTest {
 
   private void assertSafeLogs(String... additional) {
     String text =
-        logs.list.stream()
+        logs.snapshot().stream()
             .map(ILoggingEvent::getFormattedMessage)
             .collect(java.util.stream.Collectors.joining("\n"));
     assertThat(text)
@@ -700,14 +702,19 @@ class PasswordValidationHttpTest {
   }
 
   private void assertIssuanceReason(String reason, String target) {
-    var lines =
-        logs.list.stream()
-            .map(ILoggingEvent::getFormattedMessage)
-            .filter(
-                line ->
-                    line.contains("\"event\":\"password-validation.issue.rejected\"")
-                        || line.contains("\"event\":\"password-validation.invalidation.failed\""))
-            .toList();
+    var snapshot =
+        logs.awaitSnapshot(
+            events ->
+                issuanceReasonLines(events).stream()
+                    .skip(failureEventCount)
+                    .anyMatch(
+                        line ->
+                            line.contains("\"reason\":\"" + reason + "\"")
+                                && line.contains("\"requestId\":\"m3-http\"")
+                                && (target == null
+                                    || line.contains("\"target\":\"" + target + "\""))),
+            reason);
+    var lines = issuanceReasonLines(snapshot);
     var newLines = lines.subList(failureEventCount, lines.size());
     failureEventCount = lines.size();
     assertThat(newLines)
@@ -723,6 +730,62 @@ class PasswordValidationHttpTest {
                 assertThat(line).contains("\"target\":\"" + target + "\"");
               }
             });
+  }
+
+  private static List<String> issuanceReasonLines(List<ILoggingEvent> events) {
+    return events.stream()
+        .map(ILoggingEvent::getFormattedMessage)
+        .filter(
+            line ->
+                line.contains("\"event\":\"password-validation.issue.rejected\"")
+                    || line.contains("\"event\":\"password-validation.invalidation.failed\""))
+        .toList();
+  }
+
+  private static final class AwaitableListAppender extends ListAppender<ILoggingEvent> {
+    private static final Duration EVENT_TIMEOUT = Duration.ofSeconds(5);
+
+    private final Object monitor = new Object();
+
+    @Override
+    protected void append(ILoggingEvent event) {
+      synchronized (monitor) {
+        super.append(event);
+        monitor.notifyAll();
+      }
+    }
+
+    private List<ILoggingEvent> snapshot() {
+      synchronized (monitor) {
+        return List.copyOf(list);
+      }
+    }
+
+    private List<ILoggingEvent> awaitSnapshot(
+        Predicate<List<ILoggingEvent>> condition, String reason) {
+      long deadline = System.nanoTime() + EVENT_TIMEOUT.toNanos();
+      synchronized (monitor) {
+        while (true) {
+          List<ILoggingEvent> snapshot = List.copyOf(list);
+          if (condition.test(snapshot)) {
+            return snapshot;
+          }
+          long remaining = deadline - System.nanoTime();
+          if (remaining <= 0) {
+            throw new AssertionError(
+                "Timed out waiting for password-validation issuance event: " + reason);
+          }
+          try {
+            TimeUnit.NANOSECONDS.timedWait(monitor, remaining);
+          } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(
+                "Interrupted while waiting for password-validation issuance event: " + reason,
+                exception);
+          }
+        }
+      }
+    }
   }
 
   private static String body(String password) {
