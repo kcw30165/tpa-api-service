@@ -49,7 +49,6 @@ class InvestmentChoiceInstructionPasswordValidationParityTest {
       """
       {"refNo":"260001449"}
       """;
-  private static final String CANCEL_REFERENCE_NO = "260001449";
 
   private final ObjectMapper json = new ObjectMapper();
   private final PasswordValidationRequestParser parser =

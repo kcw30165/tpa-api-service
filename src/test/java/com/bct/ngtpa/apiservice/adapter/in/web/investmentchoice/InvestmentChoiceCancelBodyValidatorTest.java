@@ -16,8 +16,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class InvestmentChoiceCancelBodyValidatorTest {
 
-  private static final String FORM = "FORM";
-  private static final String FIELD = "FIELD";
   private static final String REF_REQUIRED = "err.investment-choice.cancel.ref-required";
   private static final String VALID_REFERENCE_NO = "260001449";
   private static final ObjectMapper JSON = new ObjectMapper();

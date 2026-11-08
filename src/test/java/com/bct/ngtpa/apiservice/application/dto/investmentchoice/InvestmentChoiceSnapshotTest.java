@@ -92,26 +92,27 @@ class InvestmentChoiceSnapshotTest {
   void rejectsInvalidIdentifiersAndNullLists() {
     List<InvestmentChoiceSnapshot.SwitchSource> emptySources = List.of();
     List<InvestmentChoiceSnapshot.Fund> emptyFunds = List.of();
+    List<String> emptyPendingReferences = List.of();
 
     assertThatThrownBy(
             () ->
                 new InvestmentChoiceSnapshot(
-                    null, POLICY_NO, 5, emptySources, emptyFunds, List.of()))
+                    null, POLICY_NO, 5, emptySources, emptyFunds, emptyPendingReferences))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
             () ->
                 new InvestmentChoiceSnapshot(
-                    ACCOUNT_REF, " ", 5, emptySources, emptyFunds, List.of()))
+                    ACCOUNT_REF, " ", 5, emptySources, emptyFunds, emptyPendingReferences))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
             () ->
                 new InvestmentChoiceSnapshot(
-                    ACCOUNT_REF, POLICY_NO, 5, null, emptyFunds, List.of()))
+                    ACCOUNT_REF, POLICY_NO, 5, null, emptyFunds, emptyPendingReferences))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(
             () ->
                 new InvestmentChoiceSnapshot(
-                    ACCOUNT_REF, POLICY_NO, 5, emptySources, null, List.of()))
+                    ACCOUNT_REF, POLICY_NO, 5, emptySources, null, emptyPendingReferences))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(
             () ->
@@ -122,20 +123,19 @@ class InvestmentChoiceSnapshotTest {
 
   @Test
   void rejectsNullOrBlankPendingReferencesWithoutIncludingValuesInMessages() {
+    List<InvestmentChoiceSnapshot.SwitchSource> emptySources = List.of();
+    List<InvestmentChoiceSnapshot.Fund> emptyFunds = List.of();
+    List<String> nullPendingReferences = Arrays.asList(PENDING_REF_ONE, null);
     assertThatThrownBy(
             () ->
                 new InvestmentChoiceSnapshot(
-                    ACCOUNT_REF,
-                    POLICY_NO,
-                    5,
-                    List.of(),
-                    List.of(),
-                    Arrays.asList(PENDING_REF_ONE, null)))
+                    ACCOUNT_REF, POLICY_NO, 5, emptySources, emptyFunds, nullPendingReferences))
         .isInstanceOf(NullPointerException.class);
+    List<String> blankPendingReferences = List.of(" ");
     assertThatThrownBy(
             () ->
                 new InvestmentChoiceSnapshot(
-                    ACCOUNT_REF, POLICY_NO, 5, List.of(), List.of(), List.of(" ")))
+                    ACCOUNT_REF, POLICY_NO, 5, emptySources, emptyFunds, blankPendingReferences))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("pendingRefNos elements must not be blank");
   }
@@ -149,7 +149,8 @@ class InvestmentChoiceSnapshotTest {
 
     assertThat(empty.pendingRefNos()).isEmpty();
     assertThat(snapshot.pendingRefNos()).containsExactly(PENDING_REF_ONE, PENDING_REF_TWO);
-    assertThatThrownBy(() -> snapshot.pendingRefNos().add(PENDING_REF_THREE))
+    List<String> immutableReferences = snapshot.pendingRefNos();
+    assertThatThrownBy(() -> immutableReferences.add(PENDING_REF_THREE))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
@@ -173,11 +174,17 @@ class InvestmentChoiceSnapshotTest {
   void rejectsIntervalOutsideInclusiveRange(int intervalPcnt) {
     List<InvestmentChoiceSnapshot.SwitchSource> emptySources = List.of();
     List<InvestmentChoiceSnapshot.Fund> emptyFunds = List.of();
+    List<String> emptyPendingReferences = List.of();
 
     assertThatThrownBy(
             () ->
                 new InvestmentChoiceSnapshot(
-                    ACCOUNT_REF, POLICY_NO, intervalPcnt, emptySources, emptyFunds, List.of()))
+                    ACCOUNT_REF,
+                    POLICY_NO,
+                    intervalPcnt,
+                    emptySources,
+                    emptyFunds,
+                    emptyPendingReferences))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("intervalPcnt must be between 1 and 100");
   }
