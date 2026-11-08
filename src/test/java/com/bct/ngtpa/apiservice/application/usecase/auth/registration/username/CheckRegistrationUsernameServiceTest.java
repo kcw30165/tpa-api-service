@@ -324,6 +324,26 @@ class CheckRegistrationUsernameServiceTest {
   }
 
   @Test
+  void terminalErrorSanitizesRequestIdsToPreventLogFieldInjection() {
+    String message = terminalErrorMessage("abc origin=LOCAL_SYSTEM severity=INFO");
+
+    assertThat(message)
+        .contains("origin=APIM_TECHNICAL")
+        .doesNotContain("origin=LOCAL_SYSTEM", "severity=INFO");
+    assertThat(message.split("origin=", -1)).hasSize(2);
+    assertThat(message).contains("requestId=abc?origin?LOCAL_SYSTEM?severity?INFO");
+  }
+
+  @Test
+  void terminalErrorReplacesNonAsciiRequestIdCharacters() {
+    String correlationId = "id\u0085\u2028\u2029end";
+
+    String message = terminalErrorMessage(correlationId);
+
+    assertThat(message).contains("requestId=id???end").doesNotContain("\u0085", "\u2028", "\u2029");
+  }
+
+  @Test
   void terminalErrorTruncatesLongRequestIds() {
     String correlationId = "x".repeat(300);
 

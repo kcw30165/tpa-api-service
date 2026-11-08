@@ -323,7 +323,8 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
         ERROR_DOWNSTREAM_UNAVAILABLE);
   }
 
-  // The upstream request-ID filter does not validate client-supplied values.
+  // The filter does not validate X-Request-Id; this plain key=value event cannot allow spaces or
+  // '='.
   private static String sanitizeRequestId(String requestId) {
     if (requestId == null || requestId.isBlank()) {
       return null;
@@ -335,10 +336,16 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
     int offset = 0;
     for (int index = 0; index < boundedCodePointCount; index++) {
       int codePoint = requestId.codePointAt(offset);
-      if (codePoint < 0x20 || codePoint == 0x7f) {
-        sanitized.append('?');
-      } else {
+      if ((codePoint >= 'A' && codePoint <= 'Z')
+          || (codePoint >= 'a' && codePoint <= 'z')
+          || (codePoint >= '0' && codePoint <= '9')
+          || codePoint == '.'
+          || codePoint == '_'
+          || codePoint == ':'
+          || codePoint == '-') {
         sanitized.appendCodePoint(codePoint);
+      } else {
+        sanitized.append('?');
       }
       offset += Character.charCount(codePoint);
     }
