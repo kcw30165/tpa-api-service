@@ -22,10 +22,10 @@
 | D-16 | Password via `POST /api/v1/password-validation`, then the token header on submit; no OTP; strict issuance validation |
 | D-17 | Unknown outcome: one TRPGetCIMDtl call, match today's pending by exact detail set |
 | D-18 | All TRPGetCIMDtl / TRPCIMReq `err-message` values -> 503 |
-| D-19 | Cancel endpoint designed now, implemented after Progress publishes it; no password |
+| D-19 | Superseded by D-38 to D-43 (Nick, 2026-11-07): the cancel endpoint is implemented now and needs a password token |
 | D-20 | Errors via the exception-management capability, per feature |
 | D-21 | Submit validates against the snapshot: interval multiple, source `avail-sw` true, fund `avail-sw` true |
-| D-22 | One atomic TRPCIMReq for all selected sources; snapshot holds interval, sources, funds only (plus ownership keys) |
+| D-22 | One atomic TRPCIMReq for all selected sources; the snapshot holds interval, sources, funds and (D-40) the pending reference numbers, plus ownership keys |
 | D-23 | Snapshot miss on submit -> 503 + one incident record |
 | D-24 | Eligibility codes: reserved 422 slot, empty until Progress defines codes |
 | D-25 | TRPCIMReq has no `ref-date`, no `package-code`; PendingReq carries `submit-date` + `submit-time` |
@@ -41,16 +41,24 @@
 | D-35 | Malformed submit body code `err.investment-choice.request.invalid` (F4 = a; supersedes the generic code in the earlier D-28 text) |
 | D-36 | CIM uses `ApimFailureClassifier` at its adapters and owns one incident record per failure through `FailureEventPort`; its exception mappings log below ERROR; no direct ERROR calls (E3, F1 = A). CIM has no exception-handling M3 slice |
 | D-37 | `SwitchSrc`: hidden sources are omitted by Progress; `avail-sw` Boolean, true = editable, false = read-only; downstream confirmed 2026-11-06, closes O-1 |
+| D-38 | Cancel operation `TRPCnclCIMReq` with `login-user-id`, `login-user-role`, `policy-no`, `cert-no`, `ref-no`; response `data[0].success` mapped, not inspected (D-14); NON_RETRYABLE, never resubmitted; config key `apim.investment-choice.cancel.path` |
+| D-39 | Cancel endpoint `POST /api/v1/investment-choice/instructions/cancel` with body `{"refNo": "..."}`; password-confirmed with purpose `CANCEL_INVESTMENT_CHOICE`, the body is the `operationPayload` (token bound to the reference); no path variable |
+| D-40 | The GET snapshot also stores the pending `ref-no` values; cancel validates `refNo` against them. Snapshot miss -> 503; reference absent -> 422 `...cancel.ref-invalid` with no downstream call; after a successful cancel the reference is removed best effort |
+| D-41 | Cancel outcomes: `err.request.cannot.be.cancelled` -> 422 `BUSINESS_REJECTED` `...cancel.not-cancellable` (WARN, `DOWNSTREAM_BUSINESS`); every other `err-message` and every throwable -> 503 `...cancel.unavailable` (`DOWNSTREAM_CONTRACT` or classified); no reconciliation |
+| D-42 | Cancel success returns the validated requested reference in `result.data.referenceNo`; any `ref-no` in the downstream response is ignored |
+| D-43 | Progress enforces that the reference belongs to the member; Java does not call `TRPGetCIMDtl` before cancelling. The snapshot membership check is an additional Java-side guard |
 
 ## Open items
 
 | Id | Item | Owner | Blocks |
 |---|---|---|---|
 | O-2 | Eligibility `err-message` codes for terminated, Scenario 1/2, function off, maintenance | Progress / BA | No (slot reserved) |
-| O-3 | Cancel operation contract | Progress | D.1 only |
 | O-4 | BRD vs Config Matrix 6.5.14: BRD blocks F01/F13/F17/F22, matrix defaults F01 not blocking and only F17 always blocks. BFF unaffected | BA / Progress | No |
 | O-5 | History or pending fund code absent from `SwitchFund` -> `fundName: null`. Confirm Progress always includes closed funds | Progress | No |
 | O-6 | Progress sample dates still ISO | Progress | M2 live test |
 | O-7 | Pending items have no effective date after the downstream change; confirm the BRD screen needs none | BA | No |
 | O-9 | Shared executor still logs `apim.exchange.failed` at ERROR, so a CIM transport failure has two ERROR lines until exception-handling M3 3.8 | Exception-handling M3 | No |
 | O-10 | Non-matched path variants (trailing slash, case) render 404 as 500 `err.system.unexpected` via the shared exception handler. Shared web behaviour, not CIM-specific; re-check at 4.4 with the real controller | Nick / shared web | No |
+| O-11 | A non-empty body with a missing or `text/plain` Content-Type is rejected before the use case and rendered as HTTP 500 (same behaviour as Personal Information). Shared web behaviour | Nick / shared web | No |
+| O-12 | At controller level, duplicate JSON member names collapse to the last member; the token gate (strict canonicalizer, 400 `err.request.invalid`) is the authority on body integrity, so production requests never reach the controller with duplicates | Nick | No |
+| O-13 | A reference created by a definite submit success is not in the snapshot until the next GET (only a reconciled success refreshes it), so cancelling it needs a GET first. Decide whether a definite submit success should also refresh the snapshot | Nick | No |

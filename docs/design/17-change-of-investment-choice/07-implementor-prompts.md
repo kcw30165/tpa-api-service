@@ -107,3 +107,16 @@ Commit messages:
 4.3 feat(investment-choice): submit and reconcile instruction
 4.4 feat(investment-choice): expose POST /api/v1/investment-choice/instructions
 ```
+
+## 4b.0 - 4b.3 Cancel (M4b)
+
+Prompts are issued one at a time by Nick's reviewer with the expected HEAD filled in. Scope and rules are in 01 s10, 02 s3, 03 s3, 04 s8 and 06 D-38 to D-43. Commit messages:
+
+```text
+4b.0 feat(password-validation): add cancel-investment-choice purpose and issuance check
+4b.0 feat(password-validation): gate and protect investment-choice cancel route
+4b.1 feat(investment-choice): add TRPCnclCIMReq adapter
+4b.2 feat(investment-choice): track pending references in the snapshot
+4b.2 feat(investment-choice): cancel pending instruction
+4b.3 feat(investment-choice): expose POST /api/v1/investment-choice/instructions/cancel
+```

@@ -24,9 +24,12 @@ Branch: `feature/change-of-investment-choice` (existing worktree
 | | 4.2 | Body and snapshot validator (V1-V8, S1-S3) | 3.1 |
 | | 4.3 | `SubmitInvestmentChoiceUseCase`: snapshot miss event, expansion, outcome mapping, reconciliation | 4.1, 4.2 |
 | | 4.4 | Controller POST behind the token gate with the 422 override; contract tests for every row of 02 section 2 and 04 section 4 | 1.4, 4.3 |
-| M5 close | 5.1 | Curl scenario script (local build vs dev downstream, test member, explicit live-submit opt-in) | M4 |
+| M4b cancel | 4b.0 | Password validation third purpose `CANCEL_INVESTMENT_CHOICE`: purpose enum, strict issuance check for `{"refNo": "..."}` (CV1, CV2), gate mapping (POST, exact path `/api/v1/investment-choice/instructions/cancel`), confidential-route logging; M1 pattern, two commits | M4 |
+| | 4b.1 | `TRPCnclCIMReq` DTOs and `ApimInvestmentChoiceCancelAdapter` (`NON_RETRYABLE`, never resubmitted), `InvestmentChoiceCancelCommand`, port, exceptions (not-cancellable, unavailable), classifier + one `FailureEvent`, config key `apim.investment-choice.cancel.path`; ledger 23 -> 24 | M4 |
+| | 4b.2 | Snapshot gains `pendingRefNos` (D-40), `CancelInvestmentChoiceService.cancel` (snapshot read, membership check, adapter, best-effort removal), bean wiring; no method named `execute`, no `accountRef`/`sessionId` components | 4b.0, 4b.1 |
+| | 4b.3 | Controller `POST /api/v1/investment-choice/instructions/cancel` behind the token gate, 422/503 mappings, `ErrorCodes`, end-to-end tests behind the real gate | 4b.2 |
+| M5 close | 5.1 | Curl scenario script (local build vs dev downstream, test member, explicit live-submit opt-in, plus a cancel scenario) | M4b |
 | | 5.2 | As-built notes and traceability in this pack; milestone gate; MR (squash the docs commits) | 5.1 |
-| Deferred | D.1 | Cancel endpoint, after Progress publishes the operation (O-3) | Progress |
 | Deferred | D.2 | Eligibility codes -> 422 slot (O-2) | Progress |
 
 Every sub-task with production code also runs `ErrorLogCallSiteRatchetArchitectureTest` and

@@ -96,3 +96,44 @@ targets `[]`), log level per section 3.
 - Register `POST /api/v1/investment-choice/instructions` as a confidential route (password-validation requirement).
 - Never log: request or response bodies, token, percentages, fund codes, policy, certificate, user id, account ref.
 - Allowed: request id, operation, `err-message` code, origin, reason, counts.
+
+## 8. Cancel (M4b)
+
+### 8.1 Validation (HTTP 422, `VALIDATION_FAILED`, `result: null`)
+
+Rendered like the submit validation (controller override, D-30). Every error: `message: null`, `severity: ERROR`, `source: SERVER`.
+
+| # | Rule | type | code | targets |
+|---|---|---|---|---|
+| CV1 | body is a JSON object with only `refNo`; `refNo` is a JSON string | `FORM` | `err.investment-choice.request.invalid` | `[]` |
+| CV2 | `refNo` missing or blank | `FIELD` | `err.investment-choice.cancel.ref-required` | `["refNo"]` |
+| CS1 | `refNo` not among the snapshot's pending references | `FIELD` | `err.investment-choice.cancel.ref-invalid` | `["refNo"]` |
+
+CV1 takes precedence over CV2. `refNo` has no format rule (C6). CV1 and CV2 also run at password-validation issuance for `CANCEL_INVESTMENT_CHOICE` (strict, same renderer as the other purposes), and a parity test pins that issuance and the controller agree on every body.
+
+### 8.2 Error matrix
+
+| Case | HTTP | status | type / code | Incident (ERROR) | Other logs |
+|---|---|---|---|---|---|
+| Token problem | 403 | `BUSINESS_REJECTED` | existing gate rendering | existing gate event | existing |
+| CV1, CV2, CS1 | 422 | `VALIDATION_FAILED` | section 8.1 | none | INFO |
+| Snapshot miss (absent, unreadable, unusable session, account mismatch, stale shape) | 503 | `SYSTEM_ERROR` | `SYSTEM` / `err.investment-choice.cancel.unavailable` | use case, `LOCAL_SYSTEM`, operation `SNAPSHOT`, event `investment-choice.cancel.snapshot.missing` | cache service INFO miss reason |
+| `err.request.cannot.be.cancelled` | 422 | `BUSINESS_REJECTED` | `err.investment-choice.cancel.not-cancellable` | none (WARN only): adapter publishes `DOWNSTREAM_BUSINESS` | executor WARN |
+| Any other `err-message` | 503 | `SYSTEM_ERROR` | `SYSTEM` / `err.investment-choice.cancel.unavailable` | adapter, `DOWNSTREAM_CONTRACT` | executor WARN |
+| Malformed success | 503 | `SYSTEM_ERROR` | same | adapter, `DOWNSTREAM_INVALID_RESPONSE` | - |
+| Throwable (transport, crypto, contract, local) | 503 | `SYSTEM_ERROR` | same | adapter, classified origin | executor ERROR for transport (O-9) |
+| Success | 200 | `SUCCESS` | - | none | snapshot removal best effort; a skipped write logs one WARN |
+
+Every failure: `success: false`, `result: null`, `messages: []`, `message: null`. Public responses never expose `DOWNSTREAM_*`, `err-message` values, policy, certificate, user id, reference numbers or the token.
+
+### 8.3 Events
+
+Cancel adapter events: capability `INVESTMENT_CHOICE`, operation `TRPCnclCIMReq`, event `investment-choice.cancel.downstream_failure`, `retryable` false, `httpStatus` 503 (422 for the business rejection), `publicCode` `err.investment-choice.cancel.unavailable` (or `...not-cancellable`). Snapshot miss: operation `SNAPSHOT`, event `investment-choice.cancel.snapshot.missing`, origin `LOCAL_SYSTEM`. Exactly one event per failure. `safeDimensions` carry reasons only.
+
+### 8.4 Logging and privacy
+
+Never log: `refNo`, any pending reference number, the request or response body, the token, policy, certificate, user id, account ref, session id. Register `POST /api/v1/investment-choice/instructions/cancel` as a confidential route, with the same logging tests as the submit route.
+
+### 8.5 New `ErrorCodes` constants
+
+`INVESTMENT_CHOICE_CANCEL_UNAVAILABLE`, `INVESTMENT_CHOICE_CANCEL_NOT_CANCELLABLE`, `INVESTMENT_CHOICE_CANCEL_REF_REQUIRED`, `INVESTMENT_CHOICE_CANCEL_REF_INVALID`, with the values given in section 8.1 and 8.2.

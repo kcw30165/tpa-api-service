@@ -8,7 +8,7 @@ In scope (member portal, `ROLE_USER_MBR` only):
 |---|---|---|
 | Show CIM page: account number, allowed step, switch sources, available funds, allocation history, pending instructions | `GET /api/v1/investment-choice` | `TRPGetCIMDtl` |
 | Submit a change of investment instruction after password confirmation | `POST /api/v1/investment-choice/instructions` | `TRPCIMReq` |
-| Cancel a pending instruction | `POST /api/v1/investment-choice/instructions/{refNo}/cancel` | Progress operation not yet provided - **deferred** (D-19) |
+| Cancel a pending instruction | `POST /api/v1/investment-choice/instructions/cancel` | `TRPCnclCIMReq`; password-confirmed (D-38, D-39) |
 
 Out of scope for the BFF: employer portal, print, leave-page warning, stepper, Account Balance
 widget (existing API), post-day-end e-notification, history filters (frontend filters the records
@@ -84,7 +84,7 @@ annotation.
 | Property | Rule |
 |---|---|
 | Location | `AuthenticatedSession.featureState`, key `investment-choice.snapshot`; other features' entries untouched |
-| Content | `accountRef`, `policyNo`, `intervalPcnt`, sources (`switch-src`, `avail-sw`), funds (`fund-code`, `avail-sw`). Nothing else (D-22) |
+| Content | `accountRef`, `policyNo`, `intervalPcnt`, sources (`switch-src`, `avail-sw`), funds (`fund-code`, `avail-sw`), `pendingRefNos` (the distinct `ref-no` values of `PendingReq`). Nothing else (D-22 as amended by D-40) |
 | Encoding | `TransientJsonPort`, private `Wire` record; unknown properties fail decoding = miss |
 | Write | Every successful GET (and every successful reconciliation read), via `concurrency.updateIfUsable(sessionId, s -> s.withFeatureState(KEY, encoded), requestId)`; overwrite; never fails the caller; skip logged at WARN |
 | Read | Submit only. Plain `sessions.load` + `protector.unprotect`; `isUsable(clock.instant())`; entry must `belongsTo(accountRef, policyNo)`. Every failure is a miss |
@@ -143,3 +143,27 @@ already published the incident `FailureEvent` for that exchange.
    reconciliation call itself fails, the details adapter publishes its own `FailureEvent` (a
    separate operation incident) and the result is 503.
 5. A successful reconciliation read refreshes the snapshot.
+
+## 10. Flow - cancel (M4b, D-38 to D-43)
+
+```text
+FE: POST /api/v1/password-validation {password, purpose: CANCEL_INVESTMENT_CHOICE, operationPayload: {"refNo": "<ref>"}}
+    -> 200 result.data {token, expiresInSeconds}
+FE: POST /api/v1/investment-choice/instructions/cancel  (password-validation token header, body {"refNo": "<ref>"})
+BFF:
+ 1. token gate consumes the token, binds session + Account-Ref + purpose + exact body (403 on mismatch)
+ 2. body validation: object with only refNo, a nonblank string (422)
+ 3. read snapshot (miss -> 503, one FailureEvent)
+ 4. refNo must be in the snapshot's pendingRefNos (else 422 ref-invalid; no downstream call, no event)
+ 5. TRPCnclCIMReq (NON_RETRYABLE, never resubmitted)
+ 6. success -> 200 SUCCESS result.data {referenceNo = the validated refNo}; remove refNo from the snapshot (best effort)
+    err.request.cannot.be.cancelled -> 422 BUSINESS_REJECTED not-cancellable
+    any other err-message, or any throwable -> 503 cancel.unavailable (no reconciliation)
+```
+
+- Progress enforces that the reference belongs to the member (D-43); Java does not call `TRPGetCIMDtl` before cancelling.
+- The snapshot check is a Java-side guard: a cancel token can only be used for a reference this session has been shown by a GET.
+- No reconciliation (D-41): after a timeout the outcome is unknown, and "no longer pending" cannot tell cancelled from executed. The frontend reloads the GET.
+- A reference created by a definite submit success is not in the snapshot until the next GET (O-13).
+- Snapshot removal after success is a best-effort rewrite through `updateIfUsable`; a concurrent GET may win, which only costs the member a reload.
+- A stored snapshot without `pendingRefNos` (written before this change) fails decoding and is a miss.

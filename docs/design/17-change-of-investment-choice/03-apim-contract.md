@@ -103,7 +103,46 @@ A history or pending row whose `fund-code` is absent from `SwitchFund` is return
 | `err.role.not.allow.access` | login user not allowed to submit |
 | any other nonblank | generic |
 
-## 3. Cancel (deferred) - O-3
+## 3. TRPCnclCIMReq (cancel)
+
+`POST /ws/NGTPA/v1/TRPCnclCIMReq` - `ApimRetryEligibility.NON_RETRYABLE`, never resubmitted (same policy as `TRPCIMReq`); `ApimDatabaseScope.ACCOUNT_ENV`; credential context `(actorUserRole, accountEnv)`. New ledger entry (23 -> 24). New configuration key `apim.investment-choice.cancel.path`, default `/ws/NGTPA/v1/TRPCnclCIMReq`, with fail-fast validation like the other two paths.
+
+### Request
+
+```json
+{
+  "login-user-id": "<actor.actorUserId>",
+  "login-user-role": "role_user_mbr",
+  "policy-no": "<account.policyNo>",
+  "cert-no": "<account.certNo>",
+  "ref-no": "<validated refNo>"
+}
+```
+
+All values are strings, including `cert-no` (field encryption already covers `policy-no` and `cert-no`).
+
+### Response `data[0]`
+
+| Field | Type | Rule |
+|---|---|---|
+| `success` | boolean | mapped into the DTO only; no check in this feature (D-14). `success:false` with an empty `err-message` is documented by Progress as impossible |
+| `ref-no` | string | optional; ignored. The downstream team may add it to the response; Java does not depend on it (D-42) |
+
+Exactly one data item is required.
+
+### err-message and outcomes
+
+| Value | Meaning (Progress) | Outcome | Event origin |
+|---|---|---|---|
+| `err.request.cannot.be.cancelled` | already processed or processing | 422 `BUSINESS_REJECTED` `...cancel.not-cancellable` | `DOWNSTREAM_BUSINESS` (WARN) |
+| `err.tpa.cust.id.not.registered` | user not registered | 503 `...cancel.unavailable` | `DOWNSTREAM_CONTRACT`, `internalCode` = the code |
+| `err.request.invalid` | request invalid (a Java-side fault) | 503 | `DOWNSTREAM_CONTRACT`, `internalCode` = the code |
+| `err.role.not.allow.access` | role not allowed | 503 | `DOWNSTREAM_CONTRACT`, `internalCode` = the code |
+| any other nonblank | generic | 503 | `DOWNSTREAM_CONTRACT`, `internalCode` = the code |
+| malformed success (empty data, two items) | - | 503 | `DOWNSTREAM_INVALID_RESPONSE` |
+| any throwable | transport, crypto, contract, local | 503 | classified by `ApimFailureClassifier`, exhaustive switch |
+
+There is no reconciliation after a timeout or unknown outcome (D-41). Ownership of the reference by the member is enforced by Progress (D-43); Java does not call `TRPGetCIMDtl` first.
 
 ## 4. Pending downstream fixes
 
