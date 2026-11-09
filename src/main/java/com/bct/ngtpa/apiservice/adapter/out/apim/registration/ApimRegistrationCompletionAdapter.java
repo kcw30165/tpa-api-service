@@ -3,7 +3,9 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpRegMemberApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpRegMemberApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpRegMemberApimMapper;
@@ -43,7 +45,9 @@ public class ApimRegistrationCompletionAdapter implements RegistrationCompletion
             TrpRegMemberApimDataItem.class,
             ApimDatabaseScope.ACCOUNT_ENV,
             new ApimCredentialResolutionContext(command.actorUserRole(), command.accountEnv()),
-            ApimRetryEligibility.NON_RETRYABLE);
+            ApimRetryEligibility.NON_RETRYABLE,
+            ApimResubmissionPolicy.ALLOW_RECOVERY,
+            ApimIncidentOwnership.TERMINAL_CALLER);
     return executor
         .postEnvelope(request)
         .map(

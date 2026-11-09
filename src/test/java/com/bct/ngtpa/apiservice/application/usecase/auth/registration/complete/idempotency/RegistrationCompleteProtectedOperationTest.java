@@ -122,6 +122,11 @@ class RegistrationCompleteProtectedOperationTest {
     assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.SELECT_TRUST);
     assertThat(state.status()).isEqualTo(AuthFlowStatus.TRUST_SELECTION_READY);
     assertThat(result.clearAuthFlowCookie()).isFalse();
+    ArgumentCaptor<RegistrationLookupCommand> lookupCommand =
+        ArgumentCaptor.forClass(RegistrationLookupCommand.class);
+    verify(lookup).searchMember(lookupCommand.capture());
+    assertThat(lookupCommand.getValue().invocationIntent())
+        .isEqualTo(RegistrationLookupInvocationIntent.DEFAULT);
   }
 
   @Test

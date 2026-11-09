@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.shared.logging.LogExecutionFailurePolicy;
 import java.util.Objects;
 
 public record RegistrationCompletionCommand(
@@ -13,7 +14,8 @@ public record RegistrationCompletionCommand(
     String mobileNumber,
     String email,
     String correlationId,
-    ActorUserRole actorUserRole) {
+    ActorUserRole actorUserRole)
+    implements LogExecutionFailurePolicy {
   public RegistrationCompletionCommand {
     accountEnv = required(accountEnv, "accountEnv");
     trustCode = required(trustCode, "trustCode");
@@ -30,6 +32,11 @@ public record RegistrationCompletionCommand(
     Objects.requireNonNull(value, name + " must not be null");
     if (value.isBlank()) throw new IllegalArgumentException(name + " must not be blank");
     return value;
+  }
+
+  @Override
+  public boolean warningOnlyOnFailure() {
+    return true;
   }
 
   @Override

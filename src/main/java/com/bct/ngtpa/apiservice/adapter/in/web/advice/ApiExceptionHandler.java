@@ -84,7 +84,9 @@ public class ApiExceptionHandler {
     if (descriptor.logLevel() == LogLevel.ERROR
         && descriptor.httpStatus().is5xxServerError()
         && HttpMethod.POST.equals(exchange.getRequest().getMethod())
-        && "/api/v1/auth/registration/start".equals(exchange.getRequest().getPath().value())) {
+        && ("/api/v1/auth/registration/start".equals(exchange.getRequest().getPath().value())
+            || "/api/v1/auth/registration/complete"
+                .equals(exchange.getRequest().getPath().value()))) {
       TerminalIncidentHttpObservation.markOwned(exchange);
     }
 

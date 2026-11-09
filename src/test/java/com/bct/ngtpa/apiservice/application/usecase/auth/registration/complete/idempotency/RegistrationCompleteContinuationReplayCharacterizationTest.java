@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.idempotency;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -61,6 +62,8 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.C
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionResult;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete
+    .RegistrationCompletionPreDispatchException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationPasswordValidationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationPasswordValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationUsernameCheckContextLoader;
@@ -266,6 +269,45 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
     verify(lookup, times(1)).searchMember(any());
   }
 
+  @Test
+  void preDispatchFailureIsProvenFailedAndSameKeyRetryDoesNotResubmit() {
+    when(completion.complete(any()))
+        .thenReturn(
+            Mono.error(
+                new RegistrationCompletionPreDispatchException(
+                    new IllegalStateException("profile mapping failed"))));
+
+    assertThatThrownBy(() -> service.complete(command()).block())
+        .isInstanceOf(RegistrationCompletionPreDispatchException.class);
+
+    assertThat(persistence.record.status()).isEqualTo(IdempotencyStatus.FAILED);
+    assertThat(persistence.failCalls).isOne();
+    assertThat(persistence.markUnknownCalls).isZero();
+    CompleteRegistrationResult retry = service.complete(command()).block();
+    assertThat(retry.status()).isEqualTo(CompleteRegistrationResultStatus.INVALID_AUTH_FLOW);
+    verify(completion, times(1)).complete(any());
+    assertThat(persistence.reserveCalls).isOne();
+    assertThat(persistence.loadCalls).isOne();
+  }
+
+  @Test
+  void ambiguousPostDispatchFailureBecomesUnknownAndSameKeyRetryDoesNotResubmit() {
+    when(completion.complete(any()))
+        .thenReturn(Mono.error(new IllegalStateException("downstream response lost")));
+
+    assertThatThrownBy(() -> service.complete(command()).block())
+        .isInstanceOf(IllegalStateException.class);
+
+    assertThat(persistence.record.status()).isEqualTo(IdempotencyStatus.UNKNOWN_OUTCOME);
+    assertThat(persistence.markUnknownCalls).isOne();
+    assertThat(persistence.failCalls).isZero();
+    CompleteRegistrationResult retry = service.complete(command()).block();
+    assertThat(retry.status()).isEqualTo(CompleteRegistrationResultStatus.INVALID_AUTH_FLOW);
+    verify(completion, times(1)).complete(any());
+    assertThat(persistence.reserveCalls).isOne();
+    assertThat(persistence.loadCalls).isOne();
+  }
+
   private RegistrationController registrationController() {
     var pages = new BffPagesProperties();
     return new RegistrationController(
@@ -416,6 +458,8 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
     private int reserveCalls;
     private int completeCalls;
     private int loadCalls;
+    private int failCalls;
+    private int markUnknownCalls;
 
     @Override
     public Mono<IdempotencyReservation> reserve(IdempotencyCommands.Reserve command) {
@@ -472,12 +516,34 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
 
     @Override
     public Mono<IdempotencyRecord> fail(IdempotencyCommands.Fail command) {
-      return Mono.error(new AssertionError("continuation result should be replayable"));
+      failCalls++;
+      record =
+          new IdempotencyRecord(
+              command.operationId(),
+              command.fingerprint(),
+              command.reservationToken(),
+              IdempotencyStatus.FAILED,
+              null,
+              record.createdAt(),
+              command.now(),
+              command.now().plus(command.ttl()));
+      return Mono.just(record);
     }
 
     @Override
     public Mono<IdempotencyRecord> markUnknown(IdempotencyCommands.MarkUnknown command) {
-      return Mono.error(new AssertionError("continuation result should be replayable"));
+      markUnknownCalls++;
+      record =
+          new IdempotencyRecord(
+              command.operationId(),
+              command.fingerprint(),
+              command.reservationToken(),
+              IdempotencyStatus.UNKNOWN_OUTCOME,
+              null,
+              record.createdAt(),
+              command.now(),
+              command.now().plus(command.ttl()));
+      return Mono.just(record);
     }
 
     @Override

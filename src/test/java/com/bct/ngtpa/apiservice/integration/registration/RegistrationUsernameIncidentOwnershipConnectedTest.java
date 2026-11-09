@@ -25,6 +25,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequiredRequestIdWebFilter;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimAppCertificateService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimCertificateService;
@@ -45,6 +46,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeOutcomeLo
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.DefaultApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.ApimForgotPasswordUsernameLookupAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationCompletionAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationLookupAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationUsernameAvailabilityAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.SharedApimTrpChkCustIdTransport;
@@ -90,6 +92,7 @@ import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameCheckPr
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordUsernameLookupCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.RegistrationUsernameAvailabilityCommand;
@@ -158,6 +161,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.test.web.reactive.server.EntityExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.client.ClientRequest;
@@ -203,9 +208,11 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   @Autowired ObjectMapper objectMapper;
   @Autowired ApimProperties apimProperties;
   @Autowired RequestLoggingWebFilter requestLoggingWebFilter;
+  @Autowired ApiExceptionHandler apiExceptionHandler;
   @Autowired RegistrationController registrationController;
   @Autowired CheckRegistrationUsernameService usernameService;
   @Autowired ApimRegistrationUsernameAvailabilityAdapter usernameAdapter;
+  @Autowired ApimRegistrationCompletionAdapter completionAdapter;
   @Autowired ConfigBackedDownstreamErrorClassificationAdapter classificationAdapter;
   @Autowired SharedApimTrpChkCustIdTransport sharedTransport;
   @Autowired DefaultApimExchangeExecutor executor;
@@ -358,6 +365,110 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
             });
     assertHttpObservation(requestEvents, requestId, 422, Level.WARN);
     assertThat(scenarioExchange.calls()).isEqualTo(1);
+  }
+
+  @Test
+  void registrationCompletionProfileFailureUsesTerminalDiagnosticsWithoutDispatch() {
+    String requestId = "r2-completion-profile-failure";
+    String downstreamMarker = "r2-private-profile-marker-not-for-logs";
+    profileResolver.failProfile(new IllegalStateException(downstreamMarker));
+    int startIndex = applicationEvents.size();
+    AtomicReference<Throwable> failure = new AtomicReference<>();
+
+    StepVerifier.create(
+            completionAdapter
+                .complete(completionCommand(requestId))
+                .contextWrite(Context.of(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId)))
+        .expectErrorSatisfies(failure::set)
+        .verify();
+
+    assertThat(failure.get()).isInstanceOf(Exception.class);
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/registration/complete")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, requestId));
+    var response = apiExceptionHandler.handle((Exception) failure.get(), exchange);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().errors().getFirst().code())
+        .isEqualTo(com.bct.ngtpa.apiservice.shared.error.ErrorCodes.SYSTEM_UNEXPECTED);
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isTrue();
+
+    List<ILoggingEvent> requestEvents = applicationEvents.eventsFrom(startIndex);
+    assertThat(scenarioExchange.calls()).isZero();
+    assertTerminalCallerCompletionWarnings(requestEvents, requestId);
+    assertThat(errorEvents(requestEvents).getFirst().getThrowableProxy()).isNull();
+    assertNoSensitiveMarkers(requestEvents, downstreamMarker, USERNAME_MARKER, TRUST_CODE_MARKER);
+  }
+
+  @Test
+  void registrationCompletionHttpFailureUsesTerminalDiagnosticsWithoutResubmission() {
+    String requestId = "r2-completion-http-failure";
+    String responseMarker = "r2-private-http-response-marker";
+    scenarioExchange.respond(
+        HttpStatus.SERVICE_UNAVAILABLE, "{\"error\":\"" + responseMarker + "\"}");
+    int startIndex = applicationEvents.size();
+    AtomicReference<Throwable> failure = new AtomicReference<>();
+
+    StepVerifier.create(
+            completionAdapter
+                .complete(completionCommand(requestId))
+                .contextWrite(Context.of(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId)))
+        .expectErrorSatisfies(failure::set)
+        .verify();
+
+    assertThat(failure.get()).isInstanceOf(Exception.class);
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/registration/complete")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, requestId));
+    var response = apiExceptionHandler.handle((Exception) failure.get(), exchange);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    assertThat(response.getBody().errors().getFirst().code())
+        .isEqualTo(com.bct.ngtpa.apiservice.shared.error.ErrorCodes.APIM_SERVICE_UNAVAILABLE);
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isTrue();
+
+    List<ILoggingEvent> requestEvents = applicationEvents.eventsFrom(startIndex);
+    assertThat(scenarioExchange.calls()).isOne();
+    assertThat(scenarioExchange.observations())
+        .singleElement()
+        .satisfies(observation -> assertThat(observation.path()).endsWith("/TRPRegMember"));
+    assertTerminalCallerCompletionWarnings(requestEvents, requestId);
+    assertNoSensitiveMarkers(
+        requestEvents,
+        responseMarker,
+        USERNAME_MARKER,
+        TRUST_CODE_MARKER,
+        ACCOUNT_ENV_MARKER,
+        TOKEN_MARKER,
+        API_KEY_MARKER,
+        CLIENT_SECRET_MARKER);
+  }
+
+  @Test
+  void registrationCompletionBusinessRejectionHasNoIncidentError() {
+    scenarioExchange.respond(
+        HttpStatus.OK,
+        "{\"response\":{\"err-message\":\"err.tpa.member.not.found\",\"data\":[]}}");
+    int startIndex = applicationEvents.size();
+
+    StepVerifier.create(
+            completionAdapter
+                .complete(completionCommand("r2-completion-business-rejection"))
+                .contextWrite(
+                    Context.of(
+                        RequestCorrelation.REQUEST_ID_CONTEXT_KEY,
+                        "r2-completion-business-rejection")))
+        .expectNextMatches(result -> result.status().name().equals("REJECTED"))
+        .verifyComplete();
+
+    List<ILoggingEvent> requestEvents = applicationEvents.eventsFrom(startIndex);
+    assertThat(scenarioExchange.calls()).isOne();
+    assertThat(errorEvents(requestEvents)).isEmpty();
+    assertThat(requestEvents)
+        .filteredOn(
+            event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
   }
 
   @Test
@@ -958,6 +1069,68 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
               assertThat(event.getFormattedMessage()).doesNotContain("\"errorMessage\"");
             });
     assertHttpObservation(requestEvents, requestId, status, Level.WARN);
+  }
+
+  private void assertTerminalCallerCompletionWarnings(
+      List<ILoggingEvent> requestEvents, String requestId) {
+    assertThat(requestEvents)
+        .filteredOn(
+            event ->
+                (event.getLoggerName().equals(ApimWebClientFacade.class.getName())
+                        || event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName())
+                        || event.getLoggerName().equals(ApiExceptionHandler.class.getName())
+                        || (event.getLoggerName().equals(ExecutionLoggingAspect.class.getName())
+                            && event.getFormattedMessage()
+                                .contains("\"event\":\"method.execution.error\""))))
+        .extracting(ILoggingEvent::getLoggerName)
+        .containsExactly(
+            ApimWebClientFacade.class.getName(),
+            ApimExchangeOutcomeLogger.class.getName(),
+            ExecutionLoggingAspect.class.getName(),
+            ApiExceptionHandler.class.getName());
+    assertThat(errorEvents(requestEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName()).isEqualTo(ApiExceptionHandler.class.getName());
+              assertThat(event.getFormattedMessage()).contains("\"event\":\"http.api.error\"");
+            });
+    assertThat(requestEvents)
+        .filteredOn(event -> event.getLoggerName().equals(ApimWebClientFacade.class.getName()))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
+    assertThat(requestEvents)
+        .filteredOn(
+            event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
+    assertThat(requestEvents)
+        .filteredOn(
+            event ->
+                event.getLoggerName().equals(ExecutionLoggingAspect.class.getName())
+                    && event.getFormattedMessage().contains("\"event\":\"method.execution.error\""))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage()).contains(requestId);
+              assertThat(event.getFormattedMessage()).doesNotContain("\"errorMessage\"");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+  }
+
+  private static RegistrationCompletionCommand completionCommand(String requestId) {
+    return new RegistrationCompletionCommand(
+        "DB",
+        "DBA",
+        "db02",
+        "3011825",
+        "Password1!",
+        "15/07/1969",
+        "66290597",
+        "",
+        requestId,
+        ActorUserRole.ROLE_USER_MBR);
   }
 
   private WebTestClient.ResponseSpec usernameRequest(
@@ -1813,6 +1986,12 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         FailureEventPort failureEventPort,
         MaskingService maskingService) {
       return new ApimRegistrationLookupAdapter(executor, failureEventPort, maskingService);
+    }
+
+    @Bean
+    ApimRegistrationCompletionAdapter registrationCompletionAdapter(
+        DefaultApimExchangeExecutor executor) {
+      return new ApimRegistrationCompletionAdapter(executor);
     }
 
     @Bean

@@ -22,6 +22,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationCompletionAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationLookupAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimDataItem;
@@ -260,13 +262,15 @@ class RegistrationBatch1FullChainCharacterizationTest {
    */
   @Test
   void registrationCompletion_profileResolutionFailure_realChainReachesCatchAllCentralHandler() {
+    AtomicReference<ApimExchangeRequest<?, ?>> capturedRequest = new AtomicReference<>();
     ApimExchangeExecutor executor =
         new ApimExchangeExecutor() {
           @Override
           public <R, D> Mono<ApimResponseEnvelope<D>> postEnvelope(
               ApimExchangeRequest<R, D> request) {
+            capturedRequest.set(request);
             return Mono.error(
-                new ApimProfileResolutionException("no mapping for accountEnv DB-pre-dispatch"));
+                new ApimProfileResolutionException("pre-dispatch-private-marker-726a"));
           }
         };
     var completionAdapter = new ApimRegistrationCompletionAdapter(executor);
@@ -313,6 +317,10 @@ class RegistrationBatch1FullChainCharacterizationTest {
     Throwable failure = captured.get();
     assertThat(failure).isInstanceOf(RegistrationCompletionPreDispatchException.class);
     assertThat(failure.getMessage()).doesNotContain("accountEnv", "no mapping", "profile");
+    assertThat(capturedRequest.get().incidentOwnership())
+        .isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
+    assertThat(capturedRequest.get().resubmissionPolicy())
+        .isEqualTo(ApimResubmissionPolicy.ALLOW_RECOVERY);
 
     ApiExceptionHandler handler =
         new ApiExceptionHandler(
@@ -350,7 +358,8 @@ class RegistrationBatch1FullChainCharacterizationTest {
     assertThat(listAppender.list).hasSize(1);
     ILoggingEvent event = listAppender.list.getFirst();
     assertThat(event.getLevel()).isEqualTo(Level.ERROR);
-    assertThat(event.getThrowableProxy()).isNotNull();
+    assertThat(event.getThrowableProxy()).isNull();
+    assertThat(event.getFormattedMessage()).doesNotContain("pre-dispatch-private-marker-726a");
   }
 
   // ───────────────────────── shared fixtures ─────────────────────────

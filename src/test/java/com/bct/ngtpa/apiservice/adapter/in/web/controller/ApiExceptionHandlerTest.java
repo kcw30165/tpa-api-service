@@ -264,24 +264,32 @@ class ApiExceptionHandlerTest {
   }
 
   @Test
-  void onlyRegistrationStartTerminalErrorsMarkTheCompletedHttpObservation() {
+  void onlyRegistrationStartAndCompletionTerminalErrorsMarkTheCompletedHttpObservation() {
     ServerWebExchange registrationStart =
         MockServerWebExchange.from(
             MockServerHttpRequest.post("/api/v1/auth/registration/start")
                 .header(RequestCorrelation.REQUEST_ID_HEADER, "REQ-START"));
-    ServerWebExchange unrelatedEndpoint =
+    ServerWebExchange registrationComplete =
         MockServerWebExchange.from(
             MockServerHttpRequest.post("/api/v1/auth/registration/complete")
                 .header(RequestCorrelation.REQUEST_ID_HEADER, "REQ-COMPLETE"));
+    ServerWebExchange unrelatedEndpoint =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/registration/cancel")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, "REQ-CANCEL"));
 
     handler.handle(
         new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
         registrationStart);
     handler.handle(
         new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
+        registrationComplete);
+    handler.handle(
+        new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
         unrelatedEndpoint);
 
     assertTrue(TerminalIncidentHttpObservation.isOwned(registrationStart));
+    assertTrue(TerminalIncidentHttpObservation.isOwned(registrationComplete));
     assertFalse(TerminalIncidentHttpObservation.isOwned(unrelatedEndpoint));
   }
 

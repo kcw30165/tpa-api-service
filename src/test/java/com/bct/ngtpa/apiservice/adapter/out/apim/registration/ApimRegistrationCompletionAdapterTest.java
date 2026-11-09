@@ -13,6 +13,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpRegMemberApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
@@ -52,7 +53,8 @@ class ApimRegistrationCompletionAdapterTest {
     assertThat(x.credentialContext().accountEnv()).isEqualTo("DB");
     assertThat(x.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
     assertThat(x.retryEligibility()).isEqualTo(ApimRetryEligibility.NON_RETRYABLE);
-    assertThat(x.incidentOwnership()).isEqualTo(ApimIncidentOwnership.APIM_OBSERVER);
+    assertThat(x.resubmissionPolicy()).isEqualTo(ApimResubmissionPolicy.ALLOW_RECOVERY);
+    assertThat(x.incidentOwnership()).isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
   }
 
   private RegistrationCompletionCommand command() {
