@@ -18,9 +18,11 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckSt
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFailureClassification;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOutcome;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionResult;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextLoader;
@@ -29,6 +31,7 @@ import com.bct.ngtpa.apiservice.application.service.auth.registration.context.Re
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResultStatus;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionPreDispatchException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationPasswordValidationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationPasswordValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationUsernameCheckContextLoader;
@@ -40,6 +43,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -333,5 +337,35 @@ class SharedCompleteRegistrationServiceTest {
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(CompleteRegistrationResultStatus.UNKNOWN_OUTCOME))
         .verifyComplete();
+  }
+
+  @Test
+  void completionFailureClassifierSeparatesKnownPreDispatchFromAmbiguousFailure() {
+    givenReadyForExecute();
+    givenIdempotencyIdentityBuildable();
+    AtomicReference<IdempotentExecutionCommand> execution = new AtomicReference<>();
+    when(executor.execute(any()))
+        .thenAnswer(
+            invocation -> {
+              execution.set(invocation.getArgument(0));
+              return Mono.just(
+                  new IdempotentExecutionResult(
+                      IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING, null));
+            });
+
+    StepVerifier.create(newService().complete(command()))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(CompleteRegistrationResultStatus.UNKNOWN_OUTCOME))
+        .verifyComplete();
+
+    var preDispatch =
+        new RegistrationCompletionPreDispatchException(new IllegalStateException("profile"));
+    var possibleDispatchFailure = new IllegalStateException("downstream timeout");
+    assertThat(execution.get().failureClassifier().classify(preDispatch))
+        .isEqualTo(IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT);
+    assertThat(execution.get().failureClassifier().classify(possibleDispatchFailure))
+        .isEqualTo(IdempotencyFailureClassification.POSSIBLE_SIDE_EFFECT);
   }
 }
