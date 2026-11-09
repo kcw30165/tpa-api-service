@@ -2,6 +2,10 @@ package com.bct.ngtpa.apiservice.integration.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
@@ -37,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -242,6 +247,51 @@ class RegistrationStartWorkflowIntegrationTest {
     assertThat(sessions.created).isEqualTo(sessionCreates);
     assertThat(otp.destinations).hasSize(otpCreates);
     assertThat(messages.recipients).hasSize(deliveries);
+  }
+
+  @Test
+  @RegistrationTestCase("TC-033")
+  void completedFailureReplayDoesNotReemitIncidentOrRepeatLookup() {
+    Logger mapperLogger = (Logger) LoggerFactory.getLogger(RegistrationStartWebMapper.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    mapperLogger.addAppender(appender);
+    try {
+      String challenge = verifiedCaptcha();
+      Map<String, Object> request =
+          body("GPFS", "1234567890", "member@example.com", null, challenge);
+      lookup.failure = new IllegalStateException("synthetic lookup transport failure");
+
+      startWithKey("failure-replay-key", request)
+          .expectStatus()
+          .isEqualTo(502)
+          .expectBody()
+          .jsonPath("$.status")
+          .isEqualTo("SYSTEM_ERROR")
+          .jsonPath("$.errors[0].code")
+          .isEqualTo("err.workflow.system.unavailable");
+      assertThat(lookup.calls).isEqualTo(1);
+      assertThat(appender.list).filteredOn(event -> event.getLevel() == Level.ERROR).hasSize(1);
+
+      startWithKey("failure-replay-key", request)
+          .expectStatus()
+          .isEqualTo(502)
+          .expectBody()
+          .jsonPath("$.status")
+          .isEqualTo("SYSTEM_ERROR")
+          .jsonPath("$.errors[0].code")
+          .isEqualTo("err.workflow.system.unavailable");
+
+      assertThat(lookup.calls).isEqualTo(1);
+      assertThat(sessions.created).isZero();
+      assertThat(otp.destinations).isEmpty();
+      assertThat(messages.recipients).isEmpty();
+      assertThat(idempotency.completed).isEqualTo(1);
+      assertThat(appender.list).filteredOn(event -> event.getLevel() == Level.ERROR).hasSize(1);
+    } finally {
+      mapperLogger.detachAppender(appender);
+      appender.stop();
+    }
   }
 
   @Test
@@ -712,6 +762,7 @@ class RegistrationStartWorkflowIntegrationTest {
   static final class RecordingLookupPort implements RegistrationLookupPort {
     int calls;
     RegistrationLookupResult result;
+    RuntimeException failure;
 
     RecordingLookupPort() {
       reset();
@@ -719,11 +770,15 @@ class RegistrationStartWorkflowIntegrationTest {
 
     public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
       calls++;
+      if (failure != null) {
+        return Mono.error(failure);
+      }
       return Mono.just(result);
     }
 
     void reset() {
       calls = 0;
+      failure = null;
       result =
           new RegistrationLookupResult(
               RegistrationLookupStatus.ELIGIBLE,

@@ -19,6 +19,7 @@ import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupInvocationIntent;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import java.util.List;
@@ -27,10 +28,10 @@ import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-/** Records the current Registration TRPSearchMember invocation ownership for M3b-R0 review. */
+/** Verifies Registration TRPSearchMember ownership is scoped to the Start invocation. */
 class ApimRegistrationLookupOwnershipCharacterizationTest {
   @Test
-  void registrationLookupCurrentlyUsesApimObserverOwnership() {
+  void registrationStartUsesTerminalCallerAndOtherInvocationsKeepObserverOwnership() {
     ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);
     when(executor.postEnvelope(any()))
         .thenReturn(
@@ -49,7 +50,16 @@ class ApimRegistrationLookupOwnershipCharacterizationTest {
             new TrpSearchMemberApimResultMapper(),
             mock(FailureEventPort.class),
             mock(MaskingService.class));
-    var command =
+    var startCommand =
+        new RegistrationLookupCommand(
+            MemberIdentityType.GPN,
+            "G12345678",
+            "01/01/1990",
+            RegistrationContactType.EMAIL,
+            "member@example.com",
+            ActorUserRole.ROLE_USER_MBR,
+            RegistrationLookupInvocationIntent.START);
+    var otherCommand =
         new RegistrationLookupCommand(
             MemberIdentityType.GPN,
             "G12345678",
@@ -58,14 +68,18 @@ class ApimRegistrationLookupOwnershipCharacterizationTest {
             "member@example.com",
             ActorUserRole.ROLE_USER_MBR);
 
-    StepVerifier.create(adapter.searchMember(command)).expectNextCount(1).verifyComplete();
+    StepVerifier.create(adapter.searchMember(startCommand)).expectNextCount(1).verifyComplete();
+    StepVerifier.create(adapter.searchMember(otherCommand)).expectNextCount(1).verifyComplete();
 
     @SuppressWarnings("rawtypes")
     ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
-    verify(executor).postEnvelope(captor.capture());
-    ApimExchangeRequest<?, ?> exchange = captor.getValue();
-    assertThat(exchange.path()).isEqualTo("/ws/NGTPA/v1/TRPSearchMember");
-    assertThat(exchange.databaseScope()).isEqualTo(ApimDatabaseScope.NON_ACCOUNT);
-    assertThat(exchange.incidentOwnership()).isEqualTo(ApimIncidentOwnership.APIM_OBSERVER);
+    verify(executor, org.mockito.Mockito.times(2)).postEnvelope(captor.capture());
+    var exchanges = captor.getAllValues();
+    assertThat(exchanges).hasSize(2);
+    assertThat(exchanges.getFirst().path()).isEqualTo("/ws/NGTPA/v1/TRPSearchMember");
+    assertThat(exchanges.getFirst().databaseScope()).isEqualTo(ApimDatabaseScope.NON_ACCOUNT);
+    assertThat(exchanges.getFirst().incidentOwnership())
+        .isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
+    assertThat(exchanges.get(1).incidentOwnership()).isEqualTo(ApimIncidentOwnership.APIM_OBSERVER);
   }
 }

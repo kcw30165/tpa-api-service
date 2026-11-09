@@ -17,6 +17,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistry;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.LogLevel;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
@@ -260,6 +261,28 @@ class ApiExceptionHandlerTest {
         ErrorCodes.APIM_UPSTREAM_FAILURE,
         List.of(),
         "REQ-APIM");
+  }
+
+  @Test
+  void onlyRegistrationStartTerminalErrorsMarkTheCompletedHttpObservation() {
+    ServerWebExchange registrationStart =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/registration/start")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, "REQ-START"));
+    ServerWebExchange unrelatedEndpoint =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/registration/complete")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, "REQ-COMPLETE"));
+
+    handler.handle(
+        new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
+        registrationStart);
+    handler.handle(
+        new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
+        unrelatedEndpoint);
+
+    assertTrue(TerminalIncidentHttpObservation.isOwned(registrationStart));
+    assertFalse(TerminalIncidentHttpObservation.isOwned(unrelatedEndpoint));
   }
 
   @Test

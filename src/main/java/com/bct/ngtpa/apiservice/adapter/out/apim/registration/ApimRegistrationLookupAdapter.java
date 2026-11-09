@@ -5,6 +5,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchMemberApimMapper;
@@ -66,6 +68,10 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
   public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
     Objects.requireNonNull(command, "command must not be null");
     TrpSearchMemberApimRequest body = requestMapper.toApimRequest(command);
+    ApimIncidentOwnership incidentOwnership =
+        command.invocationIntent() == RegistrationLookupInvocationIntent.START
+            ? ApimIncidentOwnership.TERMINAL_CALLER
+            : ApimIncidentOwnership.APIM_OBSERVER;
     var request =
         new ApimExchangeRequest<>(
             API_NAME,
@@ -74,7 +80,9 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
             TrpSearchMemberApimDataItem.class,
             ApimDatabaseScope.NON_ACCOUNT,
             new ApimCredentialResolutionContext(command.actorUserRole(), null),
-            ApimRetryEligibility.SAFE_BUSINESS_CALL);
+            ApimRetryEligibility.SAFE_BUSINESS_CALL,
+            ApimResubmissionPolicy.ALLOW_RECOVERY,
+            incidentOwnership);
     return withFailureLogging(
         executor.postEnvelope(request).map(envelope -> toResult(envelope, command)), command);
   }
@@ -118,7 +126,9 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
                   requestId,
                   "REGISTRATION",
                   "TRPSearchMember",
-                  FailureOrigin.DOWNSTREAM_CONTRACT,
+                  command.invocationIntent() == RegistrationLookupInvocationIntent.START
+                      ? FailureOrigin.DOWNSTREAM_TECHNICAL
+                      : FailureOrigin.DOWNSTREAM_CONTRACT,
                   exception.downstreamErrorCode(),
                   SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value(),
                   503,

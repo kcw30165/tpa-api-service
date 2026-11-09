@@ -141,6 +141,7 @@ class StructuredFailureEventLoggerTest {
         Arguments.of(FailureOrigin.LOCAL_VALIDATION, Level.WARN),
         Arguments.of(FailureOrigin.LOCAL_BUSINESS, Level.WARN),
         Arguments.of(FailureOrigin.DOWNSTREAM_BUSINESS, Level.WARN),
+        Arguments.of(FailureOrigin.DOWNSTREAM_TECHNICAL, Level.WARN),
         Arguments.of(FailureOrigin.DOWNSTREAM_CONTRACT, Level.ERROR),
         Arguments.of(FailureOrigin.DOWNSTREAM_INVALID_RESPONSE, Level.ERROR),
         Arguments.of(FailureOrigin.DOWNSTREAM_TRANSPORT, Level.ERROR),

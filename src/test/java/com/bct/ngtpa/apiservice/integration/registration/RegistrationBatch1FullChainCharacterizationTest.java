@@ -93,7 +93,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
-import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -177,7 +176,8 @@ class RegistrationBatch1FullChainCharacterizationTest {
                 "req-captcha-enabled-001",
                 "en",
                 null,
-                new MockServerHttpResponse())
+                MockServerWebExchange.from(
+                    MockServerHttpRequest.post("/api/v1/auth/registration/start")))
             .block();
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -220,7 +220,8 @@ class RegistrationBatch1FullChainCharacterizationTest {
                 "req-captcha-disabled-001",
                 "en",
                 null,
-                new MockServerHttpResponse())
+                MockServerWebExchange.from(
+                    MockServerHttpRequest.post("/api/v1/auth/registration/start")))
             .block();
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);

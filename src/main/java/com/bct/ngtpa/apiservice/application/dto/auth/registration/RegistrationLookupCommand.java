@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.dto.auth.registration;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
+import com.bct.ngtpa.apiservice.shared.logging.LogExecutionFailurePolicy;
 import java.util.Objects;
 
 /**
@@ -14,7 +15,26 @@ public record RegistrationLookupCommand(
     String dateOfBirth,
     RegistrationContactType contactType,
     String contactValue,
-    ActorUserRole actorUserRole) {
+    ActorUserRole actorUserRole,
+    RegistrationLookupInvocationIntent invocationIntent)
+    implements LogExecutionFailurePolicy {
+  public RegistrationLookupCommand(
+      MemberIdentityType identityType,
+      String identityValue,
+      String dateOfBirth,
+      RegistrationContactType contactType,
+      String contactValue,
+      ActorUserRole actorUserRole) {
+    this(
+        identityType,
+        identityValue,
+        dateOfBirth,
+        contactType,
+        contactValue,
+        actorUserRole,
+        RegistrationLookupInvocationIntent.DEFAULT);
+  }
+
   public RegistrationLookupCommand {
     Objects.requireNonNull(identityType, "identityType must not be null");
     Objects.requireNonNull(identityValue, "identityValue must not be null");
@@ -22,12 +42,18 @@ public record RegistrationLookupCommand(
     Objects.requireNonNull(contactType, "contactType must not be null");
     Objects.requireNonNull(contactValue, "contactValue must not be null");
     Objects.requireNonNull(actorUserRole, "actorUserRole must not be null");
+    Objects.requireNonNull(invocationIntent, "invocationIntent must not be null");
     identityValue = identityValue.trim();
     dateOfBirth = dateOfBirth.trim();
     contactValue = contactValue.trim();
     if (identityValue.isBlank() || dateOfBirth.isBlank() || contactValue.isBlank()) {
       throw new IllegalArgumentException("registration lookup command fields must not be blank");
     }
+  }
+
+  @Override
+  public boolean warningOnlyOnFailure() {
+    return invocationIntent == RegistrationLookupInvocationIntent.START;
   }
 
   @Override
@@ -38,6 +64,8 @@ public record RegistrationLookupCommand(
         + contactType
         + ", contactValue=<redacted>, actorUserRole="
         + actorUserRole
+        + ", invocationIntent="
+        + invocationIntent
         + "]";
   }
 }

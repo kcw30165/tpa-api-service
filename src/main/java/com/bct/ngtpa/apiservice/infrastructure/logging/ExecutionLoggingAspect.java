@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.infrastructure.logging;
 
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
+import com.bct.ngtpa.apiservice.shared.logging.LogExecutionFailurePolicy;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -69,7 +70,7 @@ public class ExecutionLoggingAspect {
         logSuccess(context, elapsedMillis(startNanos), result, requestId);
         return result;
       } catch (Throwable throwable) {
-        logError(context, elapsedMillis(startNanos), throwable, requestId);
+        logFailure(context, elapsedMillis(startNanos), throwable, requestId);
         throw throwable;
       }
     }
@@ -85,7 +86,7 @@ public class ExecutionLoggingAspect {
       }
       return result;
     } catch (Throwable throwable) {
-      logError(context, -1L, throwable, null);
+      logFailure(context, -1L, throwable, null);
       throw throwable;
     }
   }
@@ -104,7 +105,7 @@ public class ExecutionLoggingAspect {
                   result -> logSuccess(context, elapsedMillis(startNanos.get()), result, requestId))
               .doOnError(
                   throwable ->
-                      logError(context, elapsedMillis(startNanos.get()), throwable, requestId));
+                      logFailure(context, elapsedMillis(startNanos.get()), throwable, requestId));
         });
   }
 
@@ -126,7 +127,7 @@ public class ExecutionLoggingAspect {
                           context, elapsedMillis(startNanos.get()), itemCount.get(), requestId))
               .doOnError(
                   throwable ->
-                      logError(context, elapsedMillis(startNanos.get()), throwable, requestId));
+                      logFailure(context, elapsedMillis(startNanos.get()), throwable, requestId));
         });
   }
 
@@ -169,6 +170,21 @@ public class ExecutionLoggingAspect {
     log.error("{}", toJson(event), throwable);
   }
 
+  private void logFailure(
+      InvocationContext context, long elapsedMillis, Throwable throwable, String requestId) {
+    if (!context.warningOnlyOnFailure()) {
+      logError(context, elapsedMillis, throwable, requestId);
+      return;
+    }
+    Map<String, Object> event = buildEventBase("method.execution.error", context, requestId);
+    if (elapsedMillis >= 0) {
+      event.put(KEY_ELAPSED_MS, elapsedMillis);
+    }
+    event.put("exceptionType", throwable.getClass().getSimpleName());
+    event.put("errorMessage", loggingSanitizer.toSafeString(throwable.getMessage()));
+    log.warn("{}", toJson(event));
+  }
+
   private Map<String, Object> buildEventBase(
       String eventName, InvocationContext context, String requestId) {
     Map<String, Object> event = new LinkedHashMap<>();
@@ -205,6 +221,7 @@ public class ExecutionLoggingAspect {
       String label,
       boolean logArgs,
       boolean logResult,
+      boolean warningOnlyOnFailure,
       Object[] args) {
 
     @Override
@@ -219,6 +236,8 @@ public class ExecutionLoggingAspect {
           + logArgs
           + ", logResult="
           + logResult
+          + ", warningOnlyOnFailure="
+          + warningOnlyOnFailure
           + ", args="
           + Arrays.toString(args)
           + "]";
@@ -232,6 +251,7 @@ public class ExecutionLoggingAspect {
           logExecution.value(),
           logExecution.logArgs(),
           logExecution.logResult(),
+          warningOnlyOnFailure(joinPoint.getArgs()),
           joinPoint.getArgs());
     }
 
@@ -240,7 +260,21 @@ public class ExecutionLoggingAspect {
       String className = signature.getDeclaringType().getSimpleName();
       String methodName = signature.getName();
       return new InvocationContext(
-          className, methodName, className + "." + methodName, true, false, joinPoint.getArgs());
+          className,
+          methodName,
+          className + "." + methodName,
+          true,
+          false,
+          warningOnlyOnFailure(joinPoint.getArgs()),
+          joinPoint.getArgs());
+    }
+
+    private static boolean warningOnlyOnFailure(Object[] args) {
+      return Arrays.stream(args)
+          .anyMatch(
+              argument ->
+                  argument instanceof LogExecutionFailurePolicy policy
+                      && policy.warningOnlyOnFailure());
     }
 
     @Override
@@ -253,12 +287,14 @@ public class ExecutionLoggingAspect {
           && Objects.equals(label(), other.label())
           && logArgs() == other.logArgs()
           && logResult() == other.logResult()
+          && warningOnlyOnFailure() == other.warningOnlyOnFailure()
           && Arrays.deepEquals(args(), other.args());
     }
 
     @Override
     public int hashCode() {
       int result = Objects.hash(className(), methodName(), label(), logArgs(), logResult());
+      result = 31 * result + Boolean.hashCode(warningOnlyOnFailure());
       result = 31 * result + Arrays.deepHashCode(args());
       return result;
     }

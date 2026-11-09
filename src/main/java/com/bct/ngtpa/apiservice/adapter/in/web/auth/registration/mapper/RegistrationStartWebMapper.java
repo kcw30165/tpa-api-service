@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
+import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationMessageKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
@@ -239,6 +240,9 @@ public class RegistrationStartWebMapper {
 
   private void logFatalIfNeeded(StartRegistrationResult result) {
     if (result == null || result.status() == null) {
+      return;
+    }
+    if (result.idempotencyOutcome() == RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY) {
       return;
     }
     if (result.status() != StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED

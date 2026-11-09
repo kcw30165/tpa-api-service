@@ -58,7 +58,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /**
@@ -102,6 +103,8 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
 
   private Logger failureEventLoggerLogger;
   private ListAppender<ILoggingEvent> listAppender;
+  private Logger registrationStartWebMapperLogger;
+  private ListAppender<ILoggingEvent> registrationStartWebMapperAppender;
 
   @BeforeEach
   void setUp() {
@@ -109,12 +112,19 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
     listAppender.start();
     failureEventLoggerLogger = (Logger) LoggerFactory.getLogger(StructuredFailureEventLogger.class);
     failureEventLoggerLogger.addAppender(listAppender);
+    registrationStartWebMapperAppender = new ListAppender<>();
+    registrationStartWebMapperAppender.start();
+    registrationStartWebMapperLogger =
+        (Logger) LoggerFactory.getLogger(RegistrationStartWebMapper.class);
+    registrationStartWebMapperLogger.addAppender(registrationStartWebMapperAppender);
   }
 
   @AfterEach
   void tearDown() {
     failureEventLoggerLogger.detachAppender(listAppender);
     listAppender.stop();
+    registrationStartWebMapperLogger.detachAppender(registrationStartWebMapperAppender);
+    registrationStartWebMapperAppender.stop();
   }
 
   // ───────── Scenario 1 of 2: captcha ENABLED, member not found ─────────
@@ -156,7 +166,8 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
                 "req-member-not-found-captcha-enabled-001",
                 "en",
                 null,
-                new MockServerHttpResponse())
+                MockServerWebExchange.from(
+                    MockServerHttpRequest.post("/api/v1/auth/registration/start")))
             .block();
 
     assertThat(response.getStatusCode().value()).isEqualTo(422);
@@ -182,6 +193,11 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
         .isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED.value());
     assertThat(payload.get("httpStatus").asInt()).isEqualTo(422);
     assertThat(payload.get("retryable").asBoolean()).isFalse();
+    assertThat(listAppender.list).noneMatch(loggedEvent -> loggedEvent.getLevel() == Level.ERROR);
+    assertThat(event.getFormattedMessage())
+        .doesNotContain("1234567890", "31/01/1980", "member@example.com");
+    assertThat(registrationStartWebMapperAppender.list)
+        .noneMatch(loggedEvent -> loggedEvent.getLevel() == Level.ERROR);
   }
 
   @Test
@@ -217,7 +233,8 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
                 "req-member-not-found-captcha-disabled-001",
                 "en",
                 null,
-                new MockServerHttpResponse())
+                MockServerWebExchange.from(
+                    MockServerHttpRequest.post("/api/v1/auth/registration/start")))
             .block();
 
     assertThat(response.getStatusCode().value()).isEqualTo(422);
@@ -243,6 +260,11 @@ class RegistrationMemberNotFoundCaptchaFullChainCharacterizationTest {
         .isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED.value());
     assertThat(payload.get("httpStatus").asInt()).isEqualTo(422);
     assertThat(payload.get("retryable").asBoolean()).isFalse();
+    assertThat(listAppender.list).noneMatch(loggedEvent -> loggedEvent.getLevel() == Level.ERROR);
+    assertThat(event.getFormattedMessage())
+        .doesNotContain("1234567890", "31/01/1980", "member@example.com");
+    assertThat(registrationStartWebMapperAppender.list)
+        .noneMatch(loggedEvent -> loggedEvent.getLevel() == Level.ERROR);
   }
 
   // ───────── shared fixtures ─────────

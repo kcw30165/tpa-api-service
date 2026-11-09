@@ -8,11 +8,13 @@ import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistry;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.LogLevel;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -79,6 +81,12 @@ public class ApiExceptionHandler {
         exchange,
         exception,
         registry.diagnosticMessage(exception));
+    if (descriptor.logLevel() == LogLevel.ERROR
+        && descriptor.httpStatus().is5xxServerError()
+        && HttpMethod.POST.equals(exchange.getRequest().getMethod())
+        && "/api/v1/auth/registration/start".equals(exchange.getRequest().getPath().value())) {
+      TerminalIncidentHttpObservation.markOwned(exchange);
+    }
 
     return renderer.render(descriptor, messages, context);
   }

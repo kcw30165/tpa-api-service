@@ -63,7 +63,8 @@ public final class SharedStartRegistrationService implements StartRegistrationUs
       IdempotencyReservationOutcome outcome,
       com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse response) {
     return switch (outcome) {
-      case ACQUIRED, COMPLETED_REPLAY -> responses.fromTransientResponse(response);
+      case ACQUIRED -> responses.fromTransientResponse(response);
+      case COMPLETED_REPLAY -> completedReplay(response);
       case DUPLICATE_IN_PROGRESS ->
           failure(
               StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS,
@@ -82,6 +83,24 @@ public final class SharedStartRegistrationService implements StartRegistrationUs
       case UNKNOWN_OUTCOME_EXISTING ->
           systemFailure(RegistrationIdempotencyStartOutcome.UNKNOWN_OUTCOME_EXISTING);
     };
+  }
+
+  private StartRegistrationResult completedReplay(
+      com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse response) {
+    StartRegistrationResult result = responses.fromTransientResponse(response);
+    return new StartRegistrationResult(
+        result.status(),
+        result.nextStep(),
+        result.maskedDestination(),
+        result.otpExpiresInSeconds(),
+        result.resendCooldownSeconds(),
+        result.remainingResendAttempts(),
+        result.csrfToken(),
+        result.authFlowSessionId(),
+        result.messages(),
+        result.errors(),
+        RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY,
+        result.replaySnapshot());
   }
 
   private StartRegistrationResult systemFailure(RegistrationIdempotencyStartOutcome outcome) {

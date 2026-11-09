@@ -14,6 +14,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
@@ -86,13 +87,9 @@ import reactor.core.publisher.Mono;
  * "PAGE"}, logged at ERROR with no stack trace - the {@code reason()} only changes the internal
  * diagnostic message text, not any public-facing field.
  *
- * <p>Per Reactor's own operator semantics, an exception thrown inside {@code .map(...)} (where
- * {@code TrpSearchMemberApimResultMapper.toResult} is invoked) becomes an {@code onError} signal
- * and structurally bypasses any {@code onNext}-based side effect - including {@code
- * ApimRegistrationLookupAdapter}'s {@code FailureEvent} publish, which is confirmed (in Priority 1
- * item 1's passing tests) to run only for the {@code NOT_ELIGIBLE} NORMAL-RESULT case. This
- * scenario therefore asserts NO {@code FailureEvent}/{@code StructuredFailureEventLogger} output -
- * the real test run itself will surface it immediately if that reasoning is wrong.
+ * <p>Adapter failure events observe technical errors but remain diagnostics for the Start
+ * invocation. The selected terminal owner is the central exception handler when CAPTCHA is
+ * disabled, and the Start mapper when CAPTCHA is enabled.
  */
 class RegistrationLookupFailuresCharacterizationTest {
 
@@ -218,7 +215,8 @@ class RegistrationLookupFailuresCharacterizationTest {
             new ErrorEventLogger(loggingSanitizer),
             new ErrorResponseRenderer());
 
-    var response = handler.handle(captured, exchangeWithRequestId("req-empty-data-001"));
+    var exchange = exchangeWithRequestId("req-empty-data-001");
+    var response = handler.handle(captured, exchange);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
     MutationResponse<?> body = response.getBody();
@@ -235,6 +233,7 @@ class RegistrationLookupFailuresCharacterizationTest {
     // "/api/v1/auth/registration" and short-circuits message() to null BEFORE MessagePolicy.RESOLVE
     // is ever reached - confirmed real source behavior, not a test-construction bug.
     assertThat(error.message()).isNull();
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isTrue();
 
     assertThat(apiExceptionHandlerAppender.list).hasSize(1);
     ILoggingEvent event = apiExceptionHandlerAppender.list.getFirst();
@@ -248,26 +247,22 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(payload.get("exceptionType").asText())
         .isEqualTo("RegistrationLookupDownstreamException");
 
-    // ApimRegistrationLookupAdapter.withFailureLogging uses .doOnEach(...), which (unlike
-    // .doOnNext) sees EVERY signal type including onError - so the thrown
-    // RegistrationLookupDownstreamException's onError signal still triggers the adapter's own
-    // FailureEvent publish, confirmed by real source (adapter lines 108-126) and real test log
-    // output: event="registration.lookup.downstream_contract_failure", internalCode=null (the
-    // adapter's own throw site passes null as downstreamErrorCode for EMPTY_DATA),
-    // publicCode=DOWNSTREAM_UNAVAILABLE, httpStatus=503, retryable=true (hardcoded).
+    // The adapter diagnostic is WARN; the exception handler is the sole terminal ERROR owner.
     assertThat(failureEventAppender.list).hasSize(1);
     ILoggingEvent failureEvent = failureEventAppender.list.getFirst();
-    assertThat(failureEvent.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(failureEvent.getLevel()).isEqualTo(Level.WARN);
     JsonNode failurePayload = new ObjectMapper().readTree(failureEvent.getFormattedMessage());
     assertThat(failurePayload.get("event").asText())
         .isEqualTo("registration.lookup.downstream_contract_failure");
-    assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_CONTRACT");
+    assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_TECHNICAL");
     assertThat(failurePayload.get("internalCode").isNull()).isTrue();
     assertThat(failurePayload.get("publicCode").asText())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
     assertThat(failurePayload.get("httpStatus").asInt()).isEqualTo(503);
     assertThat(failurePayload.get("retryable").asBoolean()).isTrue();
     assertThat(failurePayload.get("dimensions").get("reason").asText()).isEqualTo("EMPTY_DATA");
+    assertSafeLookupDiagnostics(failureEvent);
+    assertSingleTerminalError();
   }
 
   @Test
@@ -382,11 +377,11 @@ class RegistrationLookupFailuresCharacterizationTest {
 
     assertThat(failureEventAppender.list).hasSize(1);
     ILoggingEvent failureEvent = failureEventAppender.list.getFirst();
-    assertThat(failureEvent.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(failureEvent.getLevel()).isEqualTo(Level.WARN);
     JsonNode failurePayload = new ObjectMapper().readTree(failureEvent.getFormattedMessage());
     assertThat(failurePayload.get("event").asText())
         .isEqualTo("registration.lookup.downstream_contract_failure");
-    assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_CONTRACT");
+    assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_TECHNICAL");
     assertThat(failurePayload.get("internalCode").isNull()).isTrue();
     assertThat(failurePayload.get("publicCode").asText())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
@@ -394,6 +389,8 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(failurePayload.get("retryable").asBoolean()).isTrue();
     assertThat(failurePayload.get("dimensions").get("reason").asText())
         .isEqualTo("INVALID_ACCOUNT_DATA");
+    assertSafeLookupDiagnostics(failureEvent);
+    assertSingleTerminalError();
   }
 
   @Test
@@ -501,11 +498,11 @@ class RegistrationLookupFailuresCharacterizationTest {
     // non-blank errMessage (not null), so internalCode is expected to be populated here.
     assertThat(failureEventAppender.list).hasSize(1);
     ILoggingEvent failureEvent = failureEventAppender.list.getFirst();
-    assertThat(failureEvent.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(failureEvent.getLevel()).isEqualTo(Level.WARN);
     JsonNode failurePayload = new ObjectMapper().readTree(failureEvent.getFormattedMessage());
     assertThat(failurePayload.get("event").asText())
         .isEqualTo("registration.lookup.downstream_contract_failure");
-    assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_CONTRACT");
+    assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_TECHNICAL");
     assertThat(failurePayload.get("internalCode").asText()).isEqualTo(syntheticErrMessage);
     assertThat(failurePayload.get("publicCode").asText())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
@@ -513,6 +510,8 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(failurePayload.get("retryable").asBoolean()).isTrue();
     assertThat(failurePayload.get("dimensions").get("reason").asText())
         .isEqualTo("UNEXPECTED_ERROR");
+    assertSafeLookupDiagnostics(failureEvent);
+    assertSingleTerminalError();
   }
 
   // ───────── Enabled-captcha scenario 1 of 3: EMPTY_DATA, captcha ENABLED ─────────
@@ -561,6 +560,7 @@ class RegistrationLookupFailuresCharacterizationTest {
         startOnlyController(
             useCase, new RegistrationStartWebMapper(java.time.Duration.ofMinutes(5)));
 
+    var exchange = exchangeWithRequestId("req-empty-data-captcha-enabled-001");
     var response =
         controller
             .startRegistration(
@@ -571,7 +571,7 @@ class RegistrationLookupFailuresCharacterizationTest {
                 "req-empty-data-captcha-enabled-001",
                 "en",
                 null,
-                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
+                exchange)
             .block();
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
@@ -586,6 +586,7 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(error.targets()).isEqualTo(List.of("PAGE"));
     assertThat(error.source()).isEqualTo(SOURCE_SERVER);
     assertThat(error.message()).isNull();
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isTrue();
 
     // This response never reaches ApiExceptionHandler (the exception is caught by
     // onErrorResume before the controller sees it) - so NO http.api.error log line fires here.
@@ -606,17 +607,19 @@ class RegistrationLookupFailuresCharacterizationTest {
     // disabled-path scenarios).
     assertThat(failureEventAppender.list).hasSize(1);
     ILoggingEvent failureEvent = failureEventAppender.list.getFirst();
-    assertThat(failureEvent.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(failureEvent.getLevel()).isEqualTo(Level.WARN);
     JsonNode failurePayload = new ObjectMapper().readTree(failureEvent.getFormattedMessage());
     assertThat(failurePayload.get("event").asText())
         .isEqualTo("registration.lookup.downstream_contract_failure");
-    assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_CONTRACT");
+    assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_TECHNICAL");
     assertThat(failurePayload.get("internalCode").isNull()).isTrue();
     assertThat(failurePayload.get("publicCode").asText())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
     assertThat(failurePayload.get("httpStatus").asInt()).isEqualTo(503);
     assertThat(failurePayload.get("retryable").asBoolean()).isTrue();
     assertThat(failurePayload.get("dimensions").get("reason").asText()).isEqualTo("EMPTY_DATA");
+    assertSafeLookupDiagnostics(failureEvent);
+    assertSingleTerminalError();
   }
 
   // ───────── Enabled-captcha scenario 2 of 3: INVALID_ACCOUNT_DATA, captcha ENABLED ─────────
@@ -677,6 +680,7 @@ class RegistrationLookupFailuresCharacterizationTest {
         startOnlyController(
             useCase, new RegistrationStartWebMapper(java.time.Duration.ofMinutes(5)));
 
+    var exchange = exchangeWithRequestId("req-invalid-account-data-captcha-enabled-001");
     var response =
         controller
             .startRegistration(
@@ -687,7 +691,7 @@ class RegistrationLookupFailuresCharacterizationTest {
                 "req-invalid-account-data-captcha-enabled-001",
                 "en",
                 null,
-                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
+                exchange)
             .block();
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
@@ -702,6 +706,7 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(error.targets()).isEqualTo(List.of("PAGE"));
     assertThat(error.source()).isEqualTo(SOURCE_SERVER);
     assertThat(error.message()).isNull();
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isTrue();
 
     assertThat(apiExceptionHandlerAppender.list).isEmpty();
 
@@ -716,11 +721,11 @@ class RegistrationLookupFailuresCharacterizationTest {
 
     assertThat(failureEventAppender.list).hasSize(1);
     ILoggingEvent failureEvent = failureEventAppender.list.getFirst();
-    assertThat(failureEvent.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(failureEvent.getLevel()).isEqualTo(Level.WARN);
     JsonNode failurePayload = new ObjectMapper().readTree(failureEvent.getFormattedMessage());
     assertThat(failurePayload.get("event").asText())
         .isEqualTo("registration.lookup.downstream_contract_failure");
-    assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_CONTRACT");
+    assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_TECHNICAL");
     assertThat(failurePayload.get("internalCode").isNull()).isTrue();
     assertThat(failurePayload.get("publicCode").asText())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
@@ -728,6 +733,8 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(failurePayload.get("retryable").asBoolean()).isTrue();
     assertThat(failurePayload.get("dimensions").get("reason").asText())
         .isEqualTo("INVALID_ACCOUNT_DATA");
+    assertSafeLookupDiagnostics(failureEvent);
+    assertSingleTerminalError();
   }
 
   // ───────── Enabled-captcha scenario 3 of 3: UNEXPECTED_ERROR, captcha ENABLED ─────────
@@ -779,6 +786,7 @@ class RegistrationLookupFailuresCharacterizationTest {
         startOnlyController(
             useCase, new RegistrationStartWebMapper(java.time.Duration.ofMinutes(5)));
 
+    var exchange = exchangeWithRequestId("req-unexpected-error-captcha-enabled-001");
     var response =
         controller
             .startRegistration(
@@ -789,7 +797,7 @@ class RegistrationLookupFailuresCharacterizationTest {
                 "req-unexpected-error-captcha-enabled-001",
                 "en",
                 null,
-                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
+                exchange)
             .block();
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
@@ -804,6 +812,7 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(error.targets()).isEqualTo(List.of("PAGE"));
     assertThat(error.source()).isEqualTo(SOURCE_SERVER);
     assertThat(error.message()).isNull();
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isTrue();
 
     assertThat(apiExceptionHandlerAppender.list).isEmpty();
 
@@ -821,11 +830,11 @@ class RegistrationLookupFailuresCharacterizationTest {
     // mechanism confirmed in the disabled-path UNEXPECTED_ERROR scenario.
     assertThat(failureEventAppender.list).hasSize(1);
     ILoggingEvent failureEvent = failureEventAppender.list.getFirst();
-    assertThat(failureEvent.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(failureEvent.getLevel()).isEqualTo(Level.WARN);
     JsonNode failurePayload = new ObjectMapper().readTree(failureEvent.getFormattedMessage());
     assertThat(failurePayload.get("event").asText())
         .isEqualTo("registration.lookup.downstream_contract_failure");
-    assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_CONTRACT");
+    assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_TECHNICAL");
     assertThat(failurePayload.get("internalCode").asText()).isEqualTo(syntheticErrMessage);
     assertThat(failurePayload.get("publicCode").asText())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
@@ -833,6 +842,8 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(failurePayload.get("retryable").asBoolean()).isTrue();
     assertThat(failurePayload.get("dimensions").get("reason").asText())
         .isEqualTo("UNEXPECTED_ERROR");
+    assertSafeLookupDiagnostics(failureEvent);
+    assertSingleTerminalError();
   }
 
   // ───────── shared fixtures ─────────
@@ -903,6 +914,22 @@ class RegistrationLookupFailuresCharacterizationTest {
             com.bct.ngtpa.apiservice.shared.web.RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY,
             requestId);
     return exchange;
+  }
+
+  private void assertSafeLookupDiagnostics(ILoggingEvent event) {
+    assertThat(event.getFormattedMessage())
+        .doesNotContain("1234567890", "31/01/1980", "member@example.com");
+  }
+
+  private void assertSingleTerminalError() {
+    long errors =
+        apiExceptionHandlerAppender.list.stream()
+                .filter(event -> event.getLevel() == Level.ERROR)
+                .count()
+            + registrationStartWebMapperAppender.list.stream()
+                .filter(event -> event.getLevel() == Level.ERROR)
+                .count();
+    assertThat(errors).isEqualTo(1);
   }
 
   private static RegistrationController startOnlyController(

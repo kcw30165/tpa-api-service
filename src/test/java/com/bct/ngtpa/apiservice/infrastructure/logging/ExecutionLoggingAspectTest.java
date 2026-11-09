@@ -9,6 +9,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
+import com.bct.ngtpa.apiservice.shared.logging.LogExecutionFailurePolicy;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
@@ -126,6 +127,29 @@ class ExecutionLoggingAspectTest {
             .get(1)
             .getFormattedMessage()
             .contains("\"event\":\"method.execution.error\""));
+  }
+
+  @Test
+  void logsInvocationOwnedDiagnosticFailureAtWarningWithoutThrowableOrSensitiveArguments() {
+    ProxiedService proxied = proxiedService();
+
+    StepVerifier.create(
+            proxied.proxy().policyFailure(new InvocationLogPolicy(true, "password-secret-value")))
+        .expectErrorSatisfies(error -> assertEquals("password=secret-value", error.getMessage()))
+        .verify();
+
+    ILoggingEvent warning = listAppender.list.getLast();
+    assertEquals(Level.WARN, warning.getLevel());
+    assertTrue(warning.getFormattedMessage().contains("\"event\":\"method.execution.error\""));
+    assertEquals(null, warning.getThrowableProxy());
+    assertFalse(warning.getFormattedMessage().contains("password-secret-value"));
+
+    listAppender.list.clear();
+    StepVerifier.create(proxied.proxy().policyFailure(new InvocationLogPolicy(false, "unused")))
+        .expectError()
+        .verify();
+    assertEquals(Level.ERROR, listAppender.list.getLast().getLevel());
+    assertTrue(listAppender.list.getLast().getThrowableProxy() != null);
   }
 
   @Test
@@ -344,6 +368,14 @@ class ExecutionLoggingAspectTest {
 
   private record ProxiedService(TestService target, TestService proxy) {}
 
+  private record InvocationLogPolicy(boolean warningOnly, String secret)
+      implements LogExecutionFailurePolicy {
+    @Override
+    public boolean warningOnlyOnFailure() {
+      return warningOnly;
+    }
+  }
+
   private static MaskingService maskingService() {
     MaskingProperties properties = new MaskingProperties();
     properties
@@ -398,6 +430,11 @@ class ExecutionLoggingAspectTest {
             monoSubscriptions.incrementAndGet();
             return Mono.error(new IllegalStateException("mono-boom"));
           });
+    }
+
+    @LogExecution(value = "policy.failure")
+    Mono<String> policyFailure(InvocationLogPolicy policy) {
+      return Mono.error(new IllegalStateException("password=secret-value"));
     }
 
     @LogExecution(value = "flux.success", logResult = true)

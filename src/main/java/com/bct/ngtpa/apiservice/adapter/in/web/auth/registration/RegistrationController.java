@@ -20,6 +20,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.Registra
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
@@ -74,7 +75,8 @@ public final class RegistrationController {
           @RequestHeader(name = "X-Request-Id", required = false) String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage,
           @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionIdCookie,
-          ServerHttpResponse response) {
+          ServerWebExchange exchange) {
+    ServerHttpResponse response = exchange.getResponse();
     if (idempotencyKey == null || idempotencyKey.isBlank())
       return Mono.just(
           RegistrationHttpResponses.toResponse(
@@ -87,8 +89,14 @@ public final class RegistrationController {
             result -> {
               if (result.status() == StartRegistrationResultStatus.STARTED)
                 cookieWriter.writeAuthFlowCookie(response, result.authFlowSessionId());
-              return RegistrationHttpResponses.toResponse(
-                  mapper.toMutationResponse(result, acceptLanguage));
+              var mapped = mapper.toMutationResponse(result, acceptLanguage);
+              if (mapped.status() == ApiStatus.SYSTEM_ERROR
+                  && (result.status() == StartRegistrationResultStatus.SYSTEM_FAILED
+                      || result.status()
+                          == StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED)) {
+                TerminalIncidentHttpObservation.markOwned(exchange);
+              }
+              return RegistrationHttpResponses.toResponse(mapped);
             });
   }
 

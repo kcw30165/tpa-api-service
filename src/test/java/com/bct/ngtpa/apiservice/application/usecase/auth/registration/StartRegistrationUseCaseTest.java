@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIde
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupInvocationIntent;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
@@ -57,6 +58,8 @@ class StartRegistrationUseCaseTest {
         .verifyComplete();
     assertThat(fixture.executor.protectedCalls).isEqualTo(1);
     assertThat(fixture.lookup.calls).isEqualTo(1);
+    assertThat(fixture.lookup.command.invocationIntent())
+        .isEqualTo(RegistrationLookupInvocationIntent.START);
     assertThat(fixture.session.created).isEqualTo(1);
     assertThat(fixture.otp.calls).isEqualTo(1);
     assertThat(fixture.message.calls).isEqualTo(1);
@@ -75,6 +78,10 @@ class StartRegistrationUseCaseTest {
               assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.STARTED);
               assertThat(result.csrfToken()).isEqualTo("csrf_token_safe");
               assertThat(result.authFlowSessionId()).isEqualTo("afs_session_for_cookie");
+              assertThat(result.idempotencyOutcome())
+                  .isEqualTo(
+                      com.bct.ngtpa.apiservice.application.dto.auth.idempotency
+                          .RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY);
             })
         .verifyComplete();
     assertThat(fixture.executor.protectedCalls).isZero();
@@ -298,10 +305,12 @@ class StartRegistrationUseCaseTest {
   private static final class Lookup implements RegistrationLookupPort {
     int calls;
     boolean eligible = true;
+    RegistrationLookupCommand command;
 
     @Override
     public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
       calls++;
+      this.command = command;
       return Mono.just(
           eligible
               ? new RegistrationLookupResult(

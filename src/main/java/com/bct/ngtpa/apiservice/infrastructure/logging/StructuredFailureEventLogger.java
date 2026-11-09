@@ -20,7 +20,8 @@ public class StructuredFailureEventLogger implements FailureEventPort {
       Set.of(
           FailureOrigin.LOCAL_VALIDATION,
           FailureOrigin.LOCAL_BUSINESS,
-          FailureOrigin.DOWNSTREAM_BUSINESS);
+          FailureOrigin.DOWNSTREAM_BUSINESS,
+          FailureOrigin.DOWNSTREAM_TECHNICAL);
 
   private final LoggingSanitizer loggingSanitizer;
 
