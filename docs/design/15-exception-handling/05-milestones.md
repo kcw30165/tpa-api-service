@@ -701,6 +701,29 @@ checks its evidence. All rows below are pending until separately implemented and
 | Existing / 3.6 | Fund Price, Fund Fact Sheet, Fund Comparison, Config Service adapter and APIM facade profile-resolution | Cover the remaining feature/technical paths; keep business-code tables local to each feature. Avoid duplicating work completed under 3.10. | Pending |
 | Final / 3.7 and 3.8 | Swallowed-failure audit and observer downgrades | Establish incident ownership for swallowed system failures; downgrade duplicate observers only after ownership is proven; shrink the existing ERROR-call ratchet accurately. | Pending |
 
+#### M3 delivery plan (addendum)
+
+| Milestone | Scope | Status |
+|---|---|---|
+| M3a | Registration username check (`TRPChkCustId`), pilot and shared ownership plumbing | Merged and deployed |
+| M3b | Registration remainder: lookup/start (`TRPSearchMember`), completion (`TRPRegMember`), post-completion continuation | Next |
+| M3c | Forgot Password | Pending |
+| M3d | Login | Pending |
+| M3e | Username Recovery | Pending |
+| M3f | Personal Information | Pending |
+| M3g | Account and fund features | Pending |
+| M3h | Swallowed-failure audit, duplicate-observer cleanup, ERROR ratchet | Pending |
+
+- Each feature milestone uses one branch, one MR, and one independent review.
+- Within a milestone, each operation has one reviewed checkpoint: fail-first tests, compile,
+  test-compile, targeted tests, and a passing commit before proceeding.
+- Run the full suite, startup smoke, and SonarQube once at the feature boundary, not at each
+  operation checkpoint.
+- Split a feature into smaller milestones only by explicit decision after investigation shows it
+  is too large.
+- A milestone closes only after merge; M3 closes after M3h is merged.
+- The original 3.x subtask numbers remain design references, not delivery sequence.
+
 #### Per-feature acceptance criteria
 
 - Reuse existing characterization; do not restart an exhaustive inventory or require a full-chain test
