@@ -46,6 +46,9 @@ import reactor.netty.http.client.HttpClient;
 @Service
 public class ApimWebClientFacade {
 
+  private static final String INCIDENT_OWNERSHIP_NULL_MESSAGE =
+      "incidentOwnership must not be null";
+
   private final WebClient apimWebClient;
   private final WebClient.Builder webClientBuilder;
   private final ObjectMapper objectMapper;
@@ -169,7 +172,7 @@ public class ApimWebClientFacade {
       ApimResubmissionPolicy resubmissionPolicy,
       ApimIncidentOwnership incidentOwnership) {
     java.util.Objects.requireNonNull(resubmissionPolicy, "resubmissionPolicy must not be null");
-    java.util.Objects.requireNonNull(incidentOwnership, "incidentOwnership must not be null");
+    java.util.Objects.requireNonNull(incidentOwnership, INCIDENT_OWNERSHIP_NULL_MESSAGE);
     ApimRetryEligibility eligibility =
         retryEligibility == null ? ApimRetryEligibility.NON_RETRYABLE : retryEligibility;
     apimProperties.validateRetryPolicy();
@@ -197,7 +200,7 @@ public class ApimWebClientFacade {
       ApimDatabaseScope scope,
       ApimCredentialResolutionContext resolutionContext,
       ApimIncidentOwnership incidentOwnership) {
-    java.util.Objects.requireNonNull(incidentOwnership, "incidentOwnership must not be null");
+    java.util.Objects.requireNonNull(incidentOwnership, INCIDENT_OWNERSHIP_NULL_MESSAGE);
     return profileResolver
         .resolve(scope, resolutionContext)
         .switchIfEmpty(
@@ -315,7 +318,7 @@ public class ApimWebClientFacade {
       ApimResubmissionPolicy resubmissionPolicy,
       ApimIncidentOwnership incidentOwnership) {
     java.util.Objects.requireNonNull(resubmissionPolicy, "resubmissionPolicy must not be null");
-    java.util.Objects.requireNonNull(incidentOwnership, "incidentOwnership must not be null");
+    java.util.Objects.requireNonNull(incidentOwnership, INCIDENT_OWNERSHIP_NULL_MESSAGE);
     ApimRetryEligibility eligibility =
         retryEligibility == null ? ApimRetryEligibility.NON_RETRYABLE : retryEligibility;
     apimProperties.validateRetryPolicy();
@@ -683,14 +686,7 @@ public class ApimWebClientFacade {
       event.put("event", "apim.profile.resolution.failure");
       event.put("operation", "resolve_profile");
       if (incidentOwnership == ApimIncidentOwnership.APIM_OBSERVER) {
-        event.put("scope", scope == null ? null : scope.name());
-        event.put(
-            "actorRole",
-            ctx == null || ctx.actorUserRole() == null ? null : ctx.actorUserRole().name());
-        if (ctx != null && ctx.accountEnv() != null)
-          event.put("accountEnv", loggingSanitizer.sanitizeValue(ctx.accountEnv()));
-        if (profileId != null) event.put("profileId", loggingSanitizer.sanitizeValue(profileId));
-        event.put("reason", loggingSanitizer.sanitizeText(reason));
+        addObserverResolutionDetails(event, scope, ctx, profileId, reason);
         log.error("{}", loggingSanitizer.toSafeString(event));
       } else {
         event.put("classification", "PROFILE_RESOLUTION_FAILURE");
@@ -703,5 +699,24 @@ public class ApimWebClientFacade {
         log.error("apim.profile.resolution.failure: failed to log structured event", ex);
       }
     }
+  }
+
+  private void addObserverResolutionDetails(
+      Map<String, Object> event,
+      ApimDatabaseScope scope,
+      ApimCredentialResolutionContext ctx,
+      String profileId,
+      String reason) {
+    event.put("scope", scope == null ? null : scope.name());
+    event.put(
+        "actorRole",
+        ctx == null || ctx.actorUserRole() == null ? null : ctx.actorUserRole().name());
+    if (ctx != null && ctx.accountEnv() != null) {
+      event.put("accountEnv", loggingSanitizer.sanitizeValue(ctx.accountEnv()));
+    }
+    if (profileId != null) {
+      event.put("profileId", loggingSanitizer.sanitizeValue(profileId));
+    }
+    event.put("reason", loggingSanitizer.sanitizeText(reason));
   }
 }

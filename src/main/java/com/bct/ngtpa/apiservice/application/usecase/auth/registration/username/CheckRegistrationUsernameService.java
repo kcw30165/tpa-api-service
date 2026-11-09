@@ -518,10 +518,6 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
     return trimmed.isEmpty() ? null : trimmed;
   }
 
-  private String safe(String value) {
-    return value == null ? "" : value;
-  }
-
   private record NormalizedInput(
       String trustCode, String accountEnv, String username, boolean selectedTrustMissing) {
     public boolean selectedTrustInvalid() {
