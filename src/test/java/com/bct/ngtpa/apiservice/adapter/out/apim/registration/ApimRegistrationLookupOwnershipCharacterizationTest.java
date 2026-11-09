@@ -20,8 +20,12 @@ import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupInvocationIntent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -81,5 +85,45 @@ class ApimRegistrationLookupOwnershipCharacterizationTest {
     assertThat(exchanges.getFirst().incidentOwnership())
         .isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
     assertThat(exchanges.get(1).incidentOwnership()).isEqualTo(ApimIncidentOwnership.APIM_OBSERVER);
+  }
+
+  @Test
+  void defaultInvocationPreservesDownstreamErrorCodeAndLegacyFailureOrigin() {
+    ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);
+    String downstreamMarker = "default-downstream-private-marker-583a";
+    when(executor.postEnvelope(any()))
+        .thenReturn(
+            Mono.just(
+                new ApimResponseEnvelope<>(new ApimResponseBody<>(downstreamMarker, List.of()))));
+    List<FailureEvent> failures = new ArrayList<>();
+    var adapter =
+        new ApimRegistrationLookupAdapter(
+            executor,
+            new TrpSearchMemberApimMapper(),
+            new TrpSearchMemberApimResultMapper(),
+            failures::add,
+            new MaskingService(new MaskingProperties()));
+    var defaultCommand =
+        new RegistrationLookupCommand(
+            MemberIdentityType.GPN,
+            "G12345678",
+            "01/01/1990",
+            RegistrationContactType.EMAIL,
+            "member@example.com",
+            ActorUserRole.ROLE_USER_MBR);
+
+    StepVerifier.create(adapter.searchMember(defaultCommand)).expectError().verify();
+
+    assertThat(failures)
+        .singleElement()
+        .satisfies(
+            failure -> {
+              assertThat(failure.internalCode()).isEqualTo(downstreamMarker);
+              assertThat(failure.origin()).isEqualTo(FailureOrigin.DOWNSTREAM_CONTRACT);
+              assertThat(failure.publicCode()).isEqualTo("err.workflow.downstream.unavailable");
+              assertThat(failure.httpStatus()).isEqualTo(503);
+              assertThat(failure.retryable()).isTrue();
+              assertThat(failure.safeDimensions().get("reason")).isEqualTo("UNEXPECTED_ERROR");
+            });
   }
 }

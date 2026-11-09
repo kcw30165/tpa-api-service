@@ -132,24 +132,29 @@ class ExecutionLoggingAspectTest {
   @Test
   void logsInvocationOwnedDiagnosticFailureAtWarningWithoutThrowableOrSensitiveArguments() {
     ProxiedService proxied = proxiedService();
+    String warningMarker = "downstream-private-marker-9b67";
 
-    StepVerifier.create(
-            proxied.proxy().policyFailure(new InvocationLogPolicy(true, "password-secret-value")))
-        .expectErrorSatisfies(error -> assertEquals("password=secret-value", error.getMessage()))
+    StepVerifier.create(proxied.proxy().policyFailure(new InvocationLogPolicy(true, warningMarker)))
+        .expectErrorSatisfies(error -> assertEquals(warningMarker, error.getMessage()))
         .verify();
 
     ILoggingEvent warning = listAppender.list.getLast();
     assertEquals(Level.WARN, warning.getLevel());
     assertTrue(warning.getFormattedMessage().contains("\"event\":\"method.execution.error\""));
     assertEquals(null, warning.getThrowableProxy());
-    assertFalse(warning.getFormattedMessage().contains("password-secret-value"));
+    assertFalse(warning.getFormattedMessage().contains(warningMarker));
+    assertFalse(warning.getFormattedMessage().contains("\"errorMessage\""));
 
     listAppender.list.clear();
-    StepVerifier.create(proxied.proxy().policyFailure(new InvocationLogPolicy(false, "unused")))
-        .expectError()
+    String legacyMarker = "legacy-downstream-private-marker-41c2";
+    StepVerifier.create(proxied.proxy().policyFailure(new InvocationLogPolicy(false, legacyMarker)))
+        .expectErrorSatisfies(error -> assertEquals(legacyMarker, error.getMessage()))
         .verify();
-    assertEquals(Level.ERROR, listAppender.list.getLast().getLevel());
-    assertTrue(listAppender.list.getLast().getThrowableProxy() != null);
+    ILoggingEvent legacyError = listAppender.list.getLast();
+    assertEquals(Level.ERROR, legacyError.getLevel());
+    assertTrue(legacyError.getFormattedMessage().contains("\"errorMessage\""));
+    assertTrue(legacyError.getFormattedMessage().contains(legacyMarker));
+    assertTrue(legacyError.getThrowableProxy() != null);
   }
 
   @Test
@@ -434,7 +439,7 @@ class ExecutionLoggingAspectTest {
 
     @LogExecution(value = "policy.failure")
     Mono<String> policyFailure(InvocationLogPolicy policy) {
-      return Mono.error(new IllegalStateException("password=secret-value"));
+      return Mono.error(new IllegalStateException(policy.secret()));
     }
 
     @LogExecution(value = "flux.success", logResult = true)

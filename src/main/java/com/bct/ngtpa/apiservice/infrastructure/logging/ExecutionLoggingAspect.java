@@ -181,7 +181,6 @@ public class ExecutionLoggingAspect {
       event.put(KEY_ELAPSED_MS, elapsedMillis);
     }
     event.put("exceptionType", throwable.getClass().getSimpleName());
-    event.put("errorMessage", loggingSanitizer.toSafeString(throwable.getMessage()));
     log.warn("{}", toJson(event));
   }
 

@@ -6,9 +6,16 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequiredRequestIdWebFilter;
 import com.bct.ngtpa.apiservice.application.dto.auth.CaptchaPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengePolicy;
@@ -26,6 +33,7 @@ import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCap
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpCreationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.*;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
 import com.bct.ngtpa.apiservice.infrastructure.security.SecurityConfig;
 import com.bct.ngtpa.apiservice.integration.registration.support.RegistrationTestCase;
@@ -51,6 +59,7 @@ import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTest
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.reactive.server.EntityExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
@@ -69,6 +78,7 @@ class RegistrationStartWorkflowIntegrationTest {
   private static final Instant NOW = Instant.parse("2026-07-17T00:00:00Z");
 
   @Autowired WebTestClient client;
+  @Autowired ObjectMapper objectMapper;
   @Autowired InMemoryCaptchaPort captcha;
   @Autowired StatefulSharedExecutor idempotency;
   @Autowired RecordingLookupPort lookup;
@@ -251,46 +261,172 @@ class RegistrationStartWorkflowIntegrationTest {
 
   @Test
   @RegistrationTestCase("TC-033")
-  void completedFailureReplayDoesNotReemitIncidentOrRepeatLookup() {
+  void completedFailureReplayPreservesHttpResponseAndWarnsWithoutAnotherIncident()
+      throws Exception {
     Logger mapperLogger = (Logger) LoggerFactory.getLogger(RegistrationStartWebMapper.class);
-    ListAppender<ILoggingEvent> appender = new ListAppender<>();
-    appender.start();
-    mapperLogger.addAppender(appender);
+    Logger requestLogger = (Logger) LoggerFactory.getLogger(RequestLoggingWebFilter.class);
+    ListAppender<ILoggingEvent> mapperAppender = new ListAppender<>();
+    ListAppender<ILoggingEvent> requestAppender = new ListAppender<>();
+    mapperAppender.start();
+    requestAppender.start();
+    mapperLogger.addAppender(mapperAppender);
+    requestLogger.addAppender(requestAppender);
     try {
       String challenge = verifiedCaptcha();
       Map<String, Object> request =
           body("GPFS", "1234567890", "member@example.com", null, challenge);
       lookup.failure = new IllegalStateException("synthetic lookup transport failure");
 
-      startWithKey("failure-replay-key", request)
-          .expectStatus()
-          .isEqualTo(502)
-          .expectBody()
-          .jsonPath("$.status")
-          .isEqualTo("SYSTEM_ERROR")
-          .jsonPath("$.errors[0].code")
-          .isEqualTo("err.workflow.system.unavailable");
+      EntityExchangeResult<byte[]> first =
+          startWithKeyAndRequestId("failure-replay-key", "r1-replay-first", request)
+              .expectStatus()
+              .isEqualTo(502)
+              .expectBody()
+              .returnResult();
       assertThat(lookup.calls).isEqualTo(1);
-      assertThat(appender.list).filteredOn(event -> event.getLevel() == Level.ERROR).hasSize(1);
+      assertThat(mapperAppender.list)
+          .filteredOn(event -> event.getLevel() == Level.ERROR)
+          .hasSize(1);
 
-      startWithKey("failure-replay-key", request)
-          .expectStatus()
-          .isEqualTo(502)
-          .expectBody()
-          .jsonPath("$.status")
-          .isEqualTo("SYSTEM_ERROR")
-          .jsonPath("$.errors[0].code")
+      EntityExchangeResult<byte[]> replay =
+          startWithKeyAndRequestId("failure-replay-key", "r1-replay-second", request)
+              .expectStatus()
+              .isEqualTo(502)
+              .expectBody()
+              .returnResult();
+
+      assertThat(objectMapper.readTree(replay.getResponseBody()))
+          .isEqualTo(objectMapper.readTree(first.getResponseBody()));
+      assertThat(first.getResponseHeaders().getFirst("X-Request-Id")).isEqualTo("r1-replay-first");
+      assertThat(replay.getResponseHeaders().getFirst("X-Request-Id"))
+          .isEqualTo("r1-replay-second");
+      assertThat(first.getResponseHeaders().getContentType())
+          .isEqualTo(replay.getResponseHeaders().getContentType());
+      assertThat(first.getResponseHeaders().getFirst("Set-Cookie")).isNull();
+      assertThat(replay.getResponseHeaders().getFirst("Set-Cookie")).isNull();
+      assertThat(objectMapper.readTree(first.getResponseBody()).path("status").asText())
+          .isEqualTo("SYSTEM_ERROR");
+      assertThat(
+              objectMapper
+                  .readTree(first.getResponseBody())
+                  .path("errors")
+                  .path(0)
+                  .path("code")
+                  .asText())
           .isEqualTo("err.workflow.system.unavailable");
-
+      assertOwnedWarningObservation(requestAppender.list, "r1-replay-first", 502);
+      assertOwnedWarningObservation(requestAppender.list, "r1-replay-second", 502);
       assertThat(lookup.calls).isEqualTo(1);
       assertThat(sessions.created).isZero();
       assertThat(otp.destinations).isEmpty();
       assertThat(messages.recipients).isEmpty();
       assertThat(idempotency.completed).isEqualTo(1);
-      assertThat(appender.list).filteredOn(event -> event.getLevel() == Level.ERROR).hasSize(1);
+      assertThat(mapperAppender.list)
+          .filteredOn(event -> event.getLevel() == Level.ERROR)
+          .hasSize(1);
     } finally {
-      mapperLogger.detachAppender(appender);
-      appender.stop();
+      mapperLogger.detachAppender(mapperAppender);
+      requestLogger.detachAppender(requestAppender);
+      mapperAppender.stop();
+      requestAppender.stop();
+    }
+  }
+
+  @Test
+  void replayCodecFailureStillReachesCentralTerminalErrorOwner() {
+    Logger apiExceptionHandlerLogger = (Logger) LoggerFactory.getLogger(ApiExceptionHandler.class);
+    Logger requestLogger = (Logger) LoggerFactory.getLogger(RequestLoggingWebFilter.class);
+    ListAppender<ILoggingEvent> apiAppender = new ListAppender<>();
+    ListAppender<ILoggingEvent> requestAppender = new ListAppender<>();
+    apiAppender.start();
+    requestAppender.start();
+    apiExceptionHandlerLogger.addAppender(apiAppender);
+    requestLogger.addAppender(requestAppender);
+    try {
+      Map<String, Object> request =
+          body("GPFS", "1234567890", "member@example.com", null, verifiedCaptcha());
+      lookup.failure = new IllegalStateException("synthetic original lookup failure");
+      startWithKeyAndRequestId("codec-failure-key", "r1-codec-first", request)
+          .expectStatus()
+          .isEqualTo(502);
+      assertThat(lookup.calls).isEqualTo(1);
+
+      idempotency.corruptOnlyStoredSafeBody();
+      startWithKeyAndRequestId("codec-failure-key", "r1-codec-replay", request)
+          .expectStatus()
+          .isEqualTo(500);
+
+      assertThat(apiAppender.list)
+          .filteredOn(event -> event.getLevel() == Level.ERROR)
+          .singleElement()
+          .satisfies(
+              event ->
+                  assertThat(event.getFormattedMessage())
+                      .contains("\"event\":\"http.api.error\"", "\"httpStatus\":500"));
+      assertOwnedWarningObservation(requestAppender.list, "r1-codec-replay", 500);
+      assertThat(lookup.calls).isEqualTo(1);
+      assertThat(idempotency.completed).isEqualTo(1);
+    } finally {
+      apiExceptionHandlerLogger.detachAppender(apiAppender);
+      requestLogger.detachAppender(requestAppender);
+      apiAppender.stop();
+      requestAppender.stop();
+    }
+  }
+
+  @Test
+  void laterUnrelatedExceptionStillHasTerminalOwnerAfterCompletedReplay() {
+    Logger apiExceptionHandlerLogger = (Logger) LoggerFactory.getLogger(ApiExceptionHandler.class);
+    Logger mapperLogger = (Logger) LoggerFactory.getLogger(RegistrationStartWebMapper.class);
+    Logger requestLogger = (Logger) LoggerFactory.getLogger(RequestLoggingWebFilter.class);
+    ListAppender<ILoggingEvent> apiAppender = new ListAppender<>();
+    ListAppender<ILoggingEvent> mapperAppender = new ListAppender<>();
+    ListAppender<ILoggingEvent> requestAppender = new ListAppender<>();
+    apiAppender.start();
+    mapperAppender.start();
+    requestAppender.start();
+    apiExceptionHandlerLogger.addAppender(apiAppender);
+    mapperLogger.addAppender(mapperAppender);
+    requestLogger.addAppender(requestAppender);
+    try {
+      String challenge = verifiedCaptcha();
+      Map<String, Object> request =
+          body("GPFS", "1234567890", "member@example.com", null, challenge);
+      lookup.failure = new IllegalStateException("synthetic original lookup failure");
+      startWithKeyAndRequestId("unrelated-failure-key", "r1-unrelated-first", request)
+          .expectStatus()
+          .isEqualTo(502);
+      startWithKeyAndRequestId("unrelated-failure-key", "r1-unrelated-replay", request)
+          .expectStatus()
+          .isEqualTo(502);
+
+      idempotency.failNextExecution(new IllegalStateException("later unrelated failure"));
+      startWithKeyAndRequestId(
+              "later-unrelated-key",
+              "r1-unrelated-later",
+              body("GPFS", "1234567890", "member@example.com", null, verifiedCaptcha()))
+          .expectStatus()
+          .isEqualTo(500);
+
+      assertThat(apiAppender.list)
+          .filteredOn(event -> event.getLevel() == Level.ERROR)
+          .singleElement()
+          .satisfies(
+              event ->
+                  assertThat(event.getFormattedMessage())
+                      .contains("\"event\":\"http.api.error\"", "\"httpStatus\":500"));
+      assertOwnedWarningObservation(requestAppender.list, "r1-unrelated-later", 500);
+      assertThat(mapperAppender.list)
+          .filteredOn(event -> event.getLevel() == Level.ERROR)
+          .hasSize(1);
+      assertThat(lookup.calls).isEqualTo(1);
+    } finally {
+      apiExceptionHandlerLogger.detachAppender(apiAppender);
+      mapperLogger.detachAppender(mapperAppender);
+      requestLogger.detachAppender(requestAppender);
+      apiAppender.stop();
+      mapperAppender.stop();
+      requestAppender.stop();
     }
   }
 
@@ -410,6 +546,34 @@ class RegistrationStartWorkflowIntegrationTest {
         .exchange();
   }
 
+  private WebTestClient.ResponseSpec startWithKeyAndRequestId(
+      String key, String requestId, Map<String, Object> body) {
+    return client
+        .post()
+        .uri(START)
+        .header("X-Request-Id", requestId)
+        .header("Idempotency-Key", key)
+        .header("Accept-Language", "en")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchange();
+  }
+
+  private static void assertOwnedWarningObservation(
+      List<ILoggingEvent> events, String requestId, int status) {
+    assertThat(events)
+        .filteredOn(
+            event ->
+                event.getFormattedMessage().contains("\"event\":\"http.request.failed\"")
+                    && event.getFormattedMessage().contains("\"requestId\":\"" + requestId + "\""))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage()).contains("\"status\":" + status);
+            });
+  }
+
   private Map<String, Object> body(
       String identityType, String identityValue, String email, String mobile, String captchaId) {
     Map<String, Object> value = new LinkedHashMap<>();
@@ -465,8 +629,47 @@ class RegistrationStartWorkflowIntegrationTest {
     }
 
     @Bean
+    MaskingProperties maskingProperties() {
+      return new MaskingProperties();
+    }
+
+    @Bean
+    MaskingService maskingService(MaskingProperties properties) {
+      return new MaskingService(properties);
+    }
+
+    @Bean
+    LoggingSanitizer loggingSanitizer(ObjectMapper mapper, MaskingService maskingService) {
+      return new LoggingSanitizer(mapper, maskingService);
+    }
+
+    @Bean
+    RequestLoggingProperties requestLoggingProperties() {
+      RequestLoggingProperties properties = new RequestLoggingProperties();
+      properties.setEnabled(true);
+      properties.setLogHeaders(false);
+      return properties;
+    }
+
+    @Bean
+    RequestLoggingWebFilter requestLoggingWebFilter(
+        RequestLoggingProperties properties, LoggingSanitizer sanitizer, ObjectMapper mapper) {
+      return new RequestLoggingWebFilter(properties, sanitizer, mapper);
+    }
+
+    @Bean
     RequiredRequestIdWebFilter requiredRequestIdWebFilter(ObjectMapper mapper) {
       return new RequiredRequestIdWebFilter(mapper);
+    }
+
+    @Bean
+    ApiExceptionHandler apiExceptionHandler(
+        LoggingSanitizer sanitizer, ErrorMessageResolver messageResolver) {
+      return new ApiExceptionHandler(
+          new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+          new PublicMessageResolver(messageResolver),
+          new ErrorEventLogger(sanitizer),
+          new ErrorResponseRenderer());
     }
 
     @Bean
@@ -686,6 +889,7 @@ class RegistrationStartWorkflowIntegrationTest {
 
   static final class StatefulSharedExecutor implements IdempotencyExecutor {
     private final Map<IdempotencyOperationId, StoredExecution> records = new ConcurrentHashMap<>();
+    private RuntimeException nextExecutionFailure;
     int completed;
 
     @Override
@@ -704,6 +908,11 @@ class RegistrationStartWorkflowIntegrationTest {
                 response ->
                     new IdempotentExecutionResult(
                         IdempotencyReservationOutcome.COMPLETED_REPLAY, response));
+      }
+      if (nextExecutionFailure != null) {
+        RuntimeException failure = nextExecutionFailure;
+        nextExecutionFailure = null;
+        return Mono.error(failure);
       }
       return command
           .protectedOperation()
@@ -730,7 +939,28 @@ class RegistrationStartWorkflowIntegrationTest {
 
     void clear() {
       records.clear();
+      nextExecutionFailure = null;
       completed = 0;
+    }
+
+    void corruptOnlyStoredSafeBody() {
+      assertThat(records).hasSize(1);
+      var entry = records.entrySet().iterator().next();
+      var stored = entry.getValue();
+      var snapshot = stored.snapshot();
+      var corrupted =
+          new IdempotentTerminalResponseSnapshot(
+              snapshot.schemaVersion(),
+              snapshot.httpStatus(),
+              snapshot.mediaType(),
+              "{corrupted-safe-body",
+              snapshot.safeHeaders(),
+              snapshot.protectedReplayReference());
+      records.put(entry.getKey(), new StoredExecution(stored.fingerprint(), corrupted));
+    }
+
+    void failNextExecution(RuntimeException failure) {
+      nextExecutionFailure = failure;
     }
   }
 

@@ -8,6 +8,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.AppenderBase;
+import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.RegistrationIdempotencyProperties;
@@ -17,6 +18,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.Registra
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequiredRequestIdWebFilter;
@@ -40,12 +45,17 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeOutcomeLo
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.DefaultApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.ApimForgotPasswordUsernameLookupAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationLookupAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationUsernameAvailabilityAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.SharedApimTrpChkCustIdTransport;
 import com.bct.ngtpa.apiservice.adapter.out.config.ConfigBackedDownstreamErrorClassificationAdapter;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.auth.CaptchaPolicy;
+import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengePolicy;
+import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengeType;
 import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.UsernamePolicy;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationEligibleTrustSet;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount;
 import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassification;
@@ -71,14 +81,24 @@ import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameCheckProtectorPort;
+import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordUsernameLookupCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.RegistrationUsernameAvailabilityCommand;
 import com.bct.ngtpa.apiservice.infrastructure.logging.ExecutionLoggingAspect;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.StructuredFailureEventLogger;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
 import com.bct.ngtpa.apiservice.infrastructure.security.SecurityConfig;
+import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
@@ -95,6 +115,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
@@ -111,6 +132,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.AfterEach;
@@ -173,6 +195,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   private static final String CYPHER_MARKER = "r1c-csrf-marker";
   private static final String APIM_PATH = SharedApimTrpChkCustIdTransport.API_NAME;
   private static final String REQUEST_PATH = "/api/v1/auth/registration/username/check";
+  private static final String START_PATH = "/api/v1/auth/registration/start";
 
   @Autowired WebTestClient webTestClient;
   @Autowired ConfigurableApplicationContext applicationContext;
@@ -195,6 +218,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   @Autowired ScenarioExchange scenarioExchange;
   @Autowired ExecutionProbe executionProbe;
   @Autowired TestProtector protector;
+  @Autowired StartTestPolicy startTestPolicy;
+  @Autowired RegistrationStartWorkflowIntegrationTest.InMemoryCaptchaPort startCaptchaPort;
 
   private Logger rootLogger;
   private ThreadSafeAppender applicationEvents;
@@ -207,6 +232,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     rootLogger.addAppender(applicationEvents);
     sessions.reset();
     protector.reset();
+    startTestPolicy.setCaptchaEnabled(false);
+    startCaptchaPort.clear();
     scenarioExchange.reset();
     profileResolver.useSuccessfulProfile();
     tokenService.useSuccessfulToken();
@@ -221,6 +248,116 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   @Test
   void springContextLoads() {
     assertThat(webTestClient).isNotNull();
+  }
+
+  @Test
+  void registrationStartTechnicalFailureCaptchaDisabledHasSingleCentralErrorOwner()
+      throws IOException {
+    String requestId = "r1c-start-technical-disabled";
+    String downstreamMarker = "r1c-start-downstream-private-8a71";
+    String responseMarker = "r1c-start-http-private-32c4";
+    scenarioExchange.respondThen(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "{\"error\":\"" + responseMarker + "\"}",
+        HttpStatus.OK,
+        "{\"response\":{\"err-message\":\"" + downstreamMarker + "\",\"data\":[]}}");
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        startRegistrationRequest(requestId, "r1c-start-disabled-key", null)
+            .expectBody()
+            .returnResult();
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    JsonNode body = objectMapper.readTree(response.getResponseBody());
+    assertThat(body.path("status").asText()).isEqualTo("SYSTEM_ERROR");
+    assertThat(body.path("errors").path(0).path("code").asText())
+        .isEqualTo("err.workflow.downstream.unavailable");
+    assertThat(errorEvents(requestEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName()).isEqualTo(ApiExceptionHandler.class.getName());
+              assertThat(event.getFormattedMessage()).contains("\"event\":\"http.api.error\"");
+            });
+    assertObserverWarnings(requestEvents, requestId, 503);
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+    assertNoSensitiveMarkers(requestEvents, downstreamMarker, responseMarker);
+  }
+
+  @Test
+  void registrationStartTechnicalFailureCaptchaEnabledHasSingleMapperErrorOwner()
+      throws IOException {
+    String requestId = "r1c-start-technical-enabled";
+    String downstreamMarker = "r1c-start-enabled-downstream-private-6e15";
+    String responseMarker = "r1c-start-enabled-http-private-19db";
+    scenarioExchange.respondThen(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "{\"error\":\"" + responseMarker + "\"}",
+        HttpStatus.OK,
+        "{\"response\":{\"err-message\":\"" + downstreamMarker + "\",\"data\":[]}}");
+    startTestPolicy.setCaptchaEnabled(true);
+    String captchaChallengeId = startCaptchaPort.seed(CaptchaStatus.VERIFIED, false);
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        startRegistrationRequest(requestId, "r1c-start-enabled-key", captchaChallengeId)
+            .expectBody()
+            .returnResult();
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    JsonNode body = objectMapper.readTree(response.getResponseBody());
+    assertThat(body.path("status").asText()).isEqualTo("SYSTEM_ERROR");
+    assertThat(body.path("errors").path(0).path("code").asText())
+        .isEqualTo("err.workflow.system.unavailable");
+    assertThat(errorEvents(requestEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName())
+                  .isEqualTo(RegistrationStartWebMapper.class.getName());
+              assertThat(event.getFormattedMessage()).contains("event=registration.start.failure");
+            });
+    assertObserverWarnings(requestEvents, requestId, 502);
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+    assertNoSensitiveMarkers(requestEvents, downstreamMarker, responseMarker);
+  }
+
+  @Test
+  void registrationStartMemberNotFoundProducesNoIncidentError() throws IOException {
+    String requestId = "r1c-start-member-not-found";
+    scenarioExchange.respond(
+        HttpStatus.OK, "{\"response\":{\"err-message\":\"err.tpa.member.not.found\",\"data\":[]}}");
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        startRegistrationRequest(requestId, "r1c-start-member-not-found-key", null)
+            .expectBody()
+            .returnResult();
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus().value()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY.value());
+    JsonNode body = objectMapper.readTree(response.getResponseBody());
+    assertThat(body.path("status").asText()).isEqualTo("BUSINESS_REJECTED");
+    assertThat(body.path("errors").path(0).path("type").asText()).isEqualTo("FIELD");
+    assertThat(body.path("errors").path(0).path("code").asText())
+        .isEqualTo("err.registration.start.verificationFailed");
+    assertThat(body.path("errors").path(0).path("targets").path(0).asText())
+        .isEqualTo("identityValue");
+    assertThat(errorEvents(requestEvents)).isEmpty();
+    assertThat(requestEvents)
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLoggerName())
+                  .isEqualTo(StructuredFailureEventLogger.class.getName());
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains("\"failureOrigin\":\"DOWNSTREAM_BUSINESS\"");
+            });
+    assertHttpObservation(requestEvents, requestId, 422, Level.WARN);
+    assertThat(scenarioExchange.calls()).isEqualTo(1);
   }
 
   @Test
@@ -757,6 +894,72 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     return usernameRequest(csrf, requestId, USERNAME_MARKER);
   }
 
+  private WebTestClient.ResponseSpec startRegistrationRequest(
+      String requestId, String idempotencyKey, String captchaChallengeId) {
+    Map<String, Object> body = new java.util.LinkedHashMap<>();
+    body.put("identityType", "GPFS");
+    body.put("identityValue", "1234567890");
+    body.put("dateOfBirth", "31/01/1980");
+    body.put("email", "member@example.com");
+    body.put("mobile", null);
+    body.put("captchaChallengeId", captchaChallengeId);
+    return webTestClient
+        .post()
+        .uri(START_PATH)
+        .header("X-Request-Id", requestId)
+        .header("Idempotency-Key", idempotencyKey)
+        .header("Accept-Language", "en")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchange();
+  }
+
+  private void assertObserverWarnings(
+      List<ILoggingEvent> requestEvents, String requestId, int status) {
+    assertThat(requestEvents)
+        .filteredOn(event -> event.getLoggerName().equals(ApimWebClientFacade.class.getName()))
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains("APIM request failed statusClass=HTTP_ERROR");
+            });
+    assertThat(requestEvents)
+        .filteredOn(
+            event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains("\"event\":\"apim.business.rejected\"");
+            });
+    assertThat(requestEvents)
+        .filteredOn(
+            event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains(
+                      "\"event\":\"registration.lookup.downstream_contract_failure\"",
+                      "\"internalCode\":\"UNEXPECTED_ERROR\"");
+            });
+    assertThat(requestEvents)
+        .filteredOn(
+            event ->
+                event.getLoggerName().equals(ExecutionLoggingAspect.class.getName())
+                    && event.getFormattedMessage().contains("\"event\":\"method.execution.error\""))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getThrowableProxy()).isNull();
+              assertThat(event.getFormattedMessage()).doesNotContain("\"errorMessage\"");
+            });
+    assertHttpObservation(requestEvents, requestId, status, Level.WARN);
+  }
+
   private WebTestClient.ResponseSpec usernameRequest(
       String csrf, String requestId, String username) {
     return webTestClient
@@ -1096,23 +1299,33 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     private final AtomicInteger calls = new AtomicInteger();
     private final CopyOnWriteArrayList<RequestObservation> observations =
         new CopyOnWriteArrayList<>();
-    private final AtomicReference<Supplier<ClientResponse>> responseFactory =
-        new AtomicReference<>(() -> ClientResponse.create(HttpStatus.OK).body("{}").build());
+    private final AtomicReference<IntFunction<ClientResponse>> responseFactory =
+        new AtomicReference<>(ignored -> ClientResponse.create(HttpStatus.OK).body("{}").build());
     private final AtomicReference<Throwable> failure = new AtomicReference<>();
 
     void reset() {
       calls.set(0);
       observations.clear();
       failure.set(null);
-      responseFactory.set(() -> ClientResponse.create(HttpStatus.OK).body("{}").build());
+      responseFactory.set(ignored -> ClientResponse.create(HttpStatus.OK).body("{}").build());
     }
 
     void respond(HttpStatus status, String body) {
       responseFactory.set(
-          () ->
+          ignored ->
               ClientResponse.create(status)
                   .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                   .body(body)
+                  .build());
+    }
+
+    void respondThen(
+        HttpStatus firstStatus, String firstBody, HttpStatus secondStatus, String secondBody) {
+      responseFactory.set(
+          call ->
+              ClientResponse.create(call == 0 ? firstStatus : secondStatus)
+                  .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                  .body(call == 0 ? firstBody : secondBody)
                   .build());
     }
 
@@ -1130,7 +1343,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
     @Override
     public Mono<ClientResponse> exchange(ClientRequest request) {
-      calls.incrementAndGet();
+      int callNumber = calls.getAndIncrement();
       observations.add(
           new RequestObservation(
               request.url().getPath(), Set.copyOf(request.headers().headerNames())));
@@ -1138,7 +1351,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
       if (configuredFailure != null) {
         return Mono.error(configuredFailure);
       }
-      return Mono.just(responseFactory.get().get());
+      return Mono.just(responseFactory.get().apply(callNumber));
     }
   }
 
@@ -1302,6 +1515,29 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     }
   }
 
+  static final class StartTestPolicy implements AuthWorkflowPolicyPort {
+    private final AtomicReference<Boolean> captchaEnabled = new AtomicReference<>(false);
+
+    void setCaptchaEnabled(boolean enabled) {
+      captchaEnabled.set(enabled);
+    }
+
+    @Override
+    public RegistrationAuthWorkflowPolicy registrationPolicy() {
+      return new RegistrationAuthWorkflowPolicy(
+          new PreStartChallengePolicy(captchaEnabled.get(), PreStartChallengeType.CAPTCHA),
+          new CaptchaPolicy(8, "ABC123", false, 300, 5),
+          null,
+          null,
+          null);
+    }
+
+    @Override
+    public Optional<String> resolveIdentityTypeSearchScope(String identityType) {
+      return Optional.empty();
+    }
+  }
+
   static final class TestProtector implements RegistrationUsernameCheckProtectorPort {
     private final AtomicInteger sequence = new AtomicInteger();
     private final AtomicInteger unprotectCalls = new AtomicInteger();
@@ -1387,6 +1623,21 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     @Bean
     LoggingSanitizer loggingSanitizer(ObjectMapper mapper, MaskingService maskingService) {
       return new LoggingSanitizer(mapper, maskingService);
+    }
+
+    @Bean
+    ErrorMessageResolver errorMessageResolver() {
+      return (code, language, accountEnv, trustCode, schemeType) -> code;
+    }
+
+    @Bean
+    ApiExceptionHandler apiExceptionHandler(
+        LoggingSanitizer sanitizer, ErrorMessageResolver resolver) {
+      return new ApiExceptionHandler(
+          new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+          new PublicMessageResolver(resolver),
+          new ErrorEventLogger(sanitizer),
+          new ErrorResponseRenderer());
     }
 
     @Bean
@@ -1547,6 +1798,24 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     }
 
     @Bean
+    StructuredFailureEventLogger structuredFailureEventLogger(LoggingSanitizer sanitizer) {
+      return new StructuredFailureEventLogger(sanitizer);
+    }
+
+    @Bean
+    FailureEventPort failureEventPort(StructuredFailureEventLogger logger) {
+      return logger;
+    }
+
+    @Bean
+    ApimRegistrationLookupAdapter registrationLookupAdapter(
+        DefaultApimExchangeExecutor executor,
+        FailureEventPort failureEventPort,
+        MaskingService maskingService) {
+      return new ApimRegistrationLookupAdapter(executor, failureEventPort, maskingService);
+    }
+
+    @Bean
     SharedApimTrpChkCustIdTransport sharedTransport(DefaultApimExchangeExecutor executor) {
       return new SharedApimTrpChkCustIdTransport(executor);
     }
@@ -1573,6 +1842,22 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     }
 
     @Bean
+    StartTestPolicy startTestPolicy() {
+      return new StartTestPolicy();
+    }
+
+    @Bean
+    RegistrationStartWorkflowIntegrationTest.InMemoryCaptchaPort startCaptchaPort() {
+      return new RegistrationStartWorkflowIntegrationTest.InMemoryCaptchaPort();
+    }
+
+    @Bean
+    RegistrationCaptchaGateService startCaptchaGate(
+        RegistrationStartWorkflowIntegrationTest.InMemoryCaptchaPort port, Clock clock) {
+      return new RegistrationCaptchaGateService(port, clock);
+    }
+
+    @Bean
     TestProtector protector() {
       return new TestProtector();
     }
@@ -1596,6 +1881,64 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     }
 
     @Bean
+    RegistrationStartProtectedOperation registrationStartProtectedOperation(
+        ApimRegistrationLookupAdapter lookup,
+        StartTestPolicy policy,
+        RegistrationCaptchaGateService captcha,
+        Clock clock,
+        MaskingService maskingService) {
+      RegistrationSessionPort sessions =
+          new RegistrationSessionPort() {
+            @Override
+            public Mono<String> createRegistrationSession(
+                String maskedDestination,
+                com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType
+                    contactType) {
+              return Mono.error(new AssertionError("Start failure must not create a session"));
+            }
+
+            @Override
+            public Mono<Void> updateOtpChallenge(
+                String authFlowSessionId,
+                String activeOtpChallengeId,
+                com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType
+                    contactType,
+                String maskedDestination) {
+              return Mono.error(new AssertionError("Start failure must not update an OTP"));
+            }
+          };
+      RegistrationCsrPort csrf =
+          sessionId -> Mono.error(new AssertionError("Start failure must not bind CSRF"));
+      RegistrationOtpPort otp =
+          (contactType, destination) ->
+              Mono.error(new AssertionError("Start failure must not create an OTP"));
+      RegistrationMessagePort message =
+          (contactType, recipient, otpCode, ttlSeconds, language, correlationId) ->
+              Mono.error(new AssertionError("Start failure must not deliver a message"));
+      return new RegistrationStartProtectedOperation(
+          new RegistrationStartValidator(maskingService),
+          lookup,
+          sessions,
+          csrf,
+          otp,
+          message,
+          policy,
+          captcha,
+          clock);
+    }
+
+    @Bean
+    StartRegistrationUseCase startRegistrationUseCase(
+        RegistrationStartProtectedOperation operation) {
+      return operation::execute;
+    }
+
+    @Bean
+    RegistrationStartWebMapper registrationStartWebMapper() {
+      return new RegistrationStartWebMapper(Duration.ofMinutes(5));
+    }
+
+    @Bean
     AuthFlowCookieWriter cookieWriter() {
       return AuthFlowCookieWriter.defaultWriter();
     }
@@ -1607,12 +1950,14 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
     @Bean
     RegistrationController controller(
+        StartRegistrationUseCase startRegistrationUseCase,
+        RegistrationStartWebMapper startMapper,
         CheckRegistrationUsernameService usernameService,
         RegistrationUsernameCheckWebMapper usernameMapper,
         AuthFlowCookieWriter cookieWriter) {
       return new RegistrationController(
-          mock(StartRegistrationUseCase.class),
-          mock(RegistrationStartWebMapper.class),
+          startRegistrationUseCase,
+          startMapper,
           cookieWriter,
           mock(CompleteRegistrationUseCase.class),
           mock(CompleteRegistrationWebMapper.class),

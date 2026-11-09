@@ -255,7 +255,7 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(failurePayload.get("event").asText())
         .isEqualTo("registration.lookup.downstream_contract_failure");
     assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_TECHNICAL");
-    assertThat(failurePayload.get("internalCode").isNull()).isTrue();
+    assertThat(failurePayload.get("internalCode").asText()).isEqualTo("EMPTY_DATA");
     assertThat(failurePayload.get("publicCode").asText())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
     assertThat(failurePayload.get("httpStatus").asInt()).isEqualTo(503);
@@ -382,7 +382,7 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(failurePayload.get("event").asText())
         .isEqualTo("registration.lookup.downstream_contract_failure");
     assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_TECHNICAL");
-    assertThat(failurePayload.get("internalCode").isNull()).isTrue();
+    assertThat(failurePayload.get("internalCode").asText()).isEqualTo("INVALID_ACCOUNT_DATA");
     assertThat(failurePayload.get("publicCode").asText())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
     assertThat(failurePayload.get("httpStatus").asInt()).isEqualTo(503);
@@ -403,7 +403,7 @@ class RegistrationLookupFailuresCharacterizationTest {
         new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties()));
     var failureEventLogger = new StructuredFailureEventLogger(loggingSanitizer);
 
-    String syntheticErrMessage = "err.tpa.synthetic.unexpected";
+    String syntheticErrMessage = "private-downstream-marker-disabled-7c91";
 
     ApimExchangeExecutor executor =
         new ApimExchangeExecutor() {
@@ -503,7 +503,8 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(failurePayload.get("event").asText())
         .isEqualTo("registration.lookup.downstream_contract_failure");
     assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_TECHNICAL");
-    assertThat(failurePayload.get("internalCode").asText()).isEqualTo(syntheticErrMessage);
+    assertThat(failurePayload.get("internalCode").asText()).isEqualTo("UNEXPECTED_ERROR");
+    assertThat(failureEvent.getFormattedMessage()).doesNotContain(syntheticErrMessage);
     assertThat(failurePayload.get("publicCode").asText())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
     assertThat(failurePayload.get("httpStatus").asInt()).isEqualTo(503);
@@ -612,7 +613,7 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(failurePayload.get("event").asText())
         .isEqualTo("registration.lookup.downstream_contract_failure");
     assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_TECHNICAL");
-    assertThat(failurePayload.get("internalCode").isNull()).isTrue();
+    assertThat(failurePayload.get("internalCode").asText()).isEqualTo("EMPTY_DATA");
     assertThat(failurePayload.get("publicCode").asText())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
     assertThat(failurePayload.get("httpStatus").asInt()).isEqualTo(503);
@@ -726,7 +727,7 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(failurePayload.get("event").asText())
         .isEqualTo("registration.lookup.downstream_contract_failure");
     assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_TECHNICAL");
-    assertThat(failurePayload.get("internalCode").isNull()).isTrue();
+    assertThat(failurePayload.get("internalCode").asText()).isEqualTo("INVALID_ACCOUNT_DATA");
     assertThat(failurePayload.get("publicCode").asText())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
     assertThat(failurePayload.get("httpStatus").asInt()).isEqualTo(503);
@@ -746,7 +747,7 @@ class RegistrationLookupFailuresCharacterizationTest {
         new LoggingSanitizer(new ObjectMapper(), new MaskingService(new MaskingProperties()));
     var failureEventLogger = new StructuredFailureEventLogger(loggingSanitizer);
 
-    String syntheticErrMessage = "err.tpa.synthetic.unexpected.enabled";
+    String syntheticErrMessage = "private-downstream-marker-enabled-3a52";
 
     ApimExchangeExecutor executor =
         new ApimExchangeExecutor() {
@@ -835,7 +836,8 @@ class RegistrationLookupFailuresCharacterizationTest {
     assertThat(failurePayload.get("event").asText())
         .isEqualTo("registration.lookup.downstream_contract_failure");
     assertThat(failurePayload.get("failureOrigin").asText()).isEqualTo("DOWNSTREAM_TECHNICAL");
-    assertThat(failurePayload.get("internalCode").asText()).isEqualTo(syntheticErrMessage);
+    assertThat(failurePayload.get("internalCode").asText()).isEqualTo("UNEXPECTED_ERROR");
+    assertThat(failureEvent.getFormattedMessage()).doesNotContain(syntheticErrMessage);
     assertThat(failurePayload.get("publicCode").asText())
         .isEqualTo(SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value());
     assertThat(failurePayload.get("httpStatus").asInt()).isEqualTo(503);

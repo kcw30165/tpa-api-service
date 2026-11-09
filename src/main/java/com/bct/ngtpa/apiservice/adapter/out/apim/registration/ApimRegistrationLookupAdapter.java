@@ -120,6 +120,10 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
               signal.getContextView().getOrDefault(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, null);
           var dimensions = safeDimensions(command);
           dimensions.put("reason", exception.reason().name());
+          String internalCode =
+              command.invocationIntent() == RegistrationLookupInvocationIntent.START
+                  ? exception.reason().name()
+                  : exception.downstreamErrorCode();
           failureEventPort.publish(
               new FailureEvent(
                   "registration.lookup.downstream_contract_failure",
@@ -129,7 +133,7 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
                   command.invocationIntent() == RegistrationLookupInvocationIntent.START
                       ? FailureOrigin.DOWNSTREAM_TECHNICAL
                       : FailureOrigin.DOWNSTREAM_CONTRACT,
-                  exception.downstreamErrorCode(),
+                  internalCode,
                   SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value(),
                   503,
                   true,
