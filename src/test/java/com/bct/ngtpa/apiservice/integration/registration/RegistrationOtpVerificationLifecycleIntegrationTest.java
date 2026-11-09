@@ -280,6 +280,14 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
       calls = 0;
       completed = 0;
     }
+
+    @Override
+    public Mono<java.util.Optional<IdempotentExecutionResult>> replayCompleted(
+        com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId operationId,
+        com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint fingerprint,
+        com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayResolver replayResolver) {
+      return Mono.error(new AssertionError("Unexpected replay-only lookup"));
+    }
   }
 
   record Stored(IdempotencyFingerprint fingerprint, IdempotentTerminalResponseSnapshot snapshot) {}

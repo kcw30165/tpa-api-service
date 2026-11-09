@@ -3,7 +3,10 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
@@ -15,6 +18,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
@@ -43,6 +47,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -66,6 +71,8 @@ class SharedCompleteRegistrationServiceTest {
       mock(RegistrationUsernameCheckContextLoader.class);
   private final RegistrationPasswordValidator passwords = mock(RegistrationPasswordValidator.class);
   private final IdempotencyExecutor executor = mock(IdempotencyExecutor.class);
+  private final IdempotencyOperationId operationId = mock(IdempotencyOperationId.class);
+  private final IdempotencyFingerprint fingerprint = mock(IdempotencyFingerprint.class);
   private final RegistrationCompleteProtectedOperation operation =
       mock(RegistrationCompleteProtectedOperation.class);
   private final RegistrationCompleteSharedExecutionBridge responses =
@@ -103,8 +110,12 @@ class SharedCompleteRegistrationServiceTest {
   }
 
   private AuthFlowSession sessionWith(AuthFlowStatus status) {
+    return sessionWith(sid, status);
+  }
+
+  private AuthFlowSession sessionWith(AuthFlowSessionId sessionId, AuthFlowStatus status) {
     return new AuthFlowSession(
-        sid,
+        sessionId,
         com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario.REGISTRATION,
         status,
         "csrfhash",
@@ -116,8 +127,12 @@ class SharedCompleteRegistrationServiceTest {
   }
 
   private CompleteRegistrationCommand command() {
+    return command(sid);
+  }
+
+  private CompleteRegistrationCommand command(AuthFlowSessionId sessionId) {
     return new CompleteRegistrationCommand(
-        sid,
+        sessionId,
         "csrf-token",
         new RegistrationIdempotencyKey("reg-complete-e2e-001"),
         "Passw0rd!",
@@ -130,16 +145,20 @@ class SharedCompleteRegistrationServiceTest {
   }
 
   private void givenIdempotencyIdentityBuildable() {
-    when(identities.create(any(), any(), any())).thenReturn(mock(IdempotencyOperationId.class));
-    when(fingerprints.create(any(), any())).thenReturn(mock(IdempotencyFingerprint.class));
+    when(identities.create(any(), any(), any())).thenReturn(operationId);
+    when(fingerprints.create(any(), any())).thenReturn(fingerprint);
   }
 
   private void givenContextValid() {
+    givenContextValid(sessionWith(AuthFlowStatus.USERNAME_VERIFIED));
+  }
+
+  private void givenContextValid(AuthFlowSession session) {
     when(contexts.load(any()))
         .thenReturn(
             Mono.just(
                 RegistrationProtectedAuthFlowContextResult.valid(
-                    "challenge-1", "j***@example.com", registrationContext())));
+                    session, "challenge-1", "j***@example.com", registrationContext())));
   }
 
   private void givenUsernameLoadsOk() {
@@ -180,6 +199,8 @@ class SharedCompleteRegistrationServiceTest {
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(CompleteRegistrationResultStatus.CSRF_INVALID))
         .verifyComplete();
+    verify(executor, never()).replayCompleted(any(), any(), any());
+    verify(executor, never()).execute(any());
   }
 
   @Test
@@ -195,12 +216,34 @@ class SharedCompleteRegistrationServiceTest {
                 assertThat(r.status())
                     .isEqualTo(CompleteRegistrationResultStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
+    verify(executor, never()).replayCompleted(any(), any(), any());
+    verify(executor, never()).execute(any());
+  }
+
+  @Test
+  void expiredContextYieldsInvalidAuthFlowWithoutInspectingReplay() {
+    when(contexts.load(any()))
+        .thenReturn(
+            Mono.just(
+                RegistrationProtectedAuthFlowContextResult.invalid(
+                    RegistrationProtectedAuthFlowContextStatus.EXPIRED_OR_TERMINAL_SESSION)));
+
+    StepVerifier.create(newService().complete(command()))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(CompleteRegistrationResultStatus.INVALID_AUTH_FLOW))
+        .verifyComplete();
+
+    verify(executor, never()).replayCompleted(any(), any(), any());
+    verify(executor, never()).execute(any());
   }
 
   @Test
   void expiryRefreshErrorPropagates() {
     givenContextValid();
-    when(expiry.refresh(any(), any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    when(expiry.refreshUsernameVerified(any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newService().complete(command()))
         .expectError(IllegalStateException.class)
         .verify();
@@ -210,8 +253,7 @@ class SharedCompleteRegistrationServiceTest {
 
   @Test
   void wrongSessionStatusYieldsInvalidState() {
-    givenContextValid();
-    when(expiry.refresh(any(), any())).thenReturn(Mono.just(sessionWith(AuthFlowStatus.OTP_SENT)));
+    givenContextValid(sessionWith(AuthFlowStatus.OTP_SENT));
     StepVerifier.create(newService().complete(command()))
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(CompleteRegistrationResultStatus.INVALID_STATE))
@@ -221,7 +263,7 @@ class SharedCompleteRegistrationServiceTest {
   @Test
   void usernameLoadThrowingYieldsInvalidAuthFlow() {
     givenContextValid();
-    when(expiry.refresh(any(), any()))
+    when(expiry.refreshUsernameVerified(any(), any()))
         .thenReturn(Mono.just(sessionWith(AuthFlowStatus.USERNAME_VERIFIED)));
     when(usernames.load(any())).thenThrow(new IllegalStateException("missing context"));
     StepVerifier.create(newService().complete(command()))
@@ -235,7 +277,7 @@ class SharedCompleteRegistrationServiceTest {
   @Test
   void passwordValidationFailureYieldsValidationFailed() {
     givenContextValid();
-    when(expiry.refresh(any(), any()))
+    when(expiry.refreshUsernameVerified(any(), any()))
         .thenReturn(Mono.just(sessionWith(AuthFlowStatus.USERNAME_VERIFIED)));
     givenUsernameLoadsOk();
     RegistrationPasswordValidationResult invalidResult =
@@ -255,7 +297,7 @@ class SharedCompleteRegistrationServiceTest {
 
   private void givenReadyForExecute() {
     givenContextValid();
-    when(expiry.refresh(any(), any()))
+    when(expiry.refreshUsernameVerified(any(), any()))
         .thenReturn(Mono.just(sessionWith(AuthFlowStatus.USERNAME_VERIFIED)));
     givenUsernameLoadsOk();
     givenPasswordValid();
@@ -275,6 +317,8 @@ class SharedCompleteRegistrationServiceTest {
             List.of());
     when(responses.fromTransientResponse(any())).thenReturn(expected);
     StepVerifier.create(newService().complete(command())).expectNext(expected).verifyComplete();
+    verify(executor).execute(any());
+    verify(executor, never()).replayCompleted(any(), any(), any());
   }
 
   @Test
@@ -291,6 +335,128 @@ class SharedCompleteRegistrationServiceTest {
             List.of());
     when(responses.fromTransientResponse(any())).thenReturn(expected);
     StepVerifier.create(newService().complete(command())).expectNext(expected).verifyComplete();
+    verify(executor).execute(any());
+    verify(executor, never()).replayCompleted(any(), any(), any());
+  }
+
+  @Test
+  void authorizedCompletingSessionReplaysWithoutExecutingCompletion() {
+    givenContextValid(sessionWith(AuthFlowStatus.COMPLETING));
+    givenUsernameLoadsOk();
+    givenPasswordValid();
+    givenIdempotencyIdentityBuildable();
+    CompleteRegistrationResult expected =
+        new CompleteRegistrationResult(
+            CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            false,
+            false,
+            List.of(),
+            List.of());
+    when(executor.replayCompleted(any(), any(), any()))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    new IdempotentExecutionResult(
+                        IdempotencyReservationOutcome.COMPLETED_REPLAY,
+                        mock(HydratedIdempotentResponse.class)))));
+    when(responses.fromTransientResponse(any())).thenReturn(expected);
+
+    StepVerifier.create(newService().complete(command())).expectNext(expected).verifyComplete();
+
+    verify(executor, never()).execute(any());
+    verify(executor).replayCompleted(eq(operationId), eq(fingerprint), any());
+    verify(operation, never()).execute(any());
+    verify(expiry, never()).refreshUsernameVerified(any(), any());
+    verify(identities).create(any(), eq(command().idempotencyKey().value()), eq(sid.value()));
+  }
+
+  @Test
+  void completingSessionWithoutEligibleReplayReturnsInvalidAuthFlow() {
+    givenContextValid(sessionWith(AuthFlowStatus.COMPLETING));
+    givenUsernameLoadsOk();
+    givenPasswordValid();
+    givenIdempotencyIdentityBuildable();
+    when(executor.replayCompleted(any(), any(), any())).thenReturn(Mono.just(Optional.empty()));
+
+    StepVerifier.create(newService().complete(command()))
+        .assertNext(
+            result -> {
+              assertThat(result.status())
+                  .isEqualTo(CompleteRegistrationResultStatus.INVALID_AUTH_FLOW);
+              assertThat(result.errors())
+                  .singleElement()
+                  .satisfies(
+                      error ->
+                          assertThat(error.code())
+                              .isEqualTo(RegistrationErrorKey.AUTH_FLOW_INVALID.value()));
+            })
+        .verifyComplete();
+
+    verify(executor, never()).execute(any());
+    verify(operation, never()).execute(any());
+    verify(expiry, never()).refreshUsernameVerified(any(), any());
+  }
+
+  @Test
+  void completingSessionPropagatesReplayStorageFailureWithoutExecuting() {
+    givenContextValid(sessionWith(AuthFlowStatus.COMPLETING));
+    givenUsernameLoadsOk();
+    givenPasswordValid();
+    givenIdempotencyIdentityBuildable();
+    IllegalStateException failure = new IllegalStateException("storage failure");
+    when(executor.replayCompleted(any(), any(), any())).thenReturn(Mono.error(failure));
+
+    StepVerifier.create(newService().complete(command()))
+        .expectErrorMatches(error -> error == failure)
+        .verify();
+
+    verify(executor, never()).execute(any());
+    verify(operation, never()).execute(any());
+  }
+
+  @Test
+  void completingSessionValidatesPasswordBeforeInspectingReplay() {
+    givenContextValid(sessionWith(AuthFlowStatus.COMPLETING));
+    givenUsernameLoadsOk();
+    RegistrationPasswordValidationResult invalidResult =
+        mock(RegistrationPasswordValidationResult.class);
+    when(invalidResult.valid()).thenReturn(false);
+    when(invalidResult.errors()).thenReturn(List.of());
+    when(passwords.validate(any(), any(), any())).thenReturn(invalidResult);
+
+    StepVerifier.create(newService().complete(command()))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(CompleteRegistrationResultStatus.VALIDATION_FAILED))
+        .verifyComplete();
+
+    verify(executor, never()).replayCompleted(any(), any(), any());
+    verify(executor, never()).execute(any());
+    verify(operation, never()).execute(any());
+  }
+
+  @Test
+  void completingReplayUsesTheCurrentSessionAsOperationScope() {
+    AuthFlowSessionId otherSessionId = new AuthFlowSessionId("afs-reg-complete-2");
+    givenContextValid(sessionWith(otherSessionId, AuthFlowStatus.COMPLETING));
+    givenUsernameLoadsOk();
+    givenPasswordValid();
+    givenIdempotencyIdentityBuildable();
+    when(executor.replayCompleted(any(), any(), any())).thenReturn(Mono.just(Optional.empty()));
+
+    StepVerifier.create(newService().complete(command(otherSessionId)))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(CompleteRegistrationResultStatus.INVALID_AUTH_FLOW))
+        .verifyComplete();
+
+    verify(identities)
+        .create(any(), eq(command().idempotencyKey().value()), eq(otherSessionId.value()));
+    verify(executor, never()).execute(any());
+    verify(operation, never()).execute(any());
   }
 
   @Test

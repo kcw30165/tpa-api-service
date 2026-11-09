@@ -27,6 +27,20 @@ public final class RevisionAwareAuthFlowSessionWriter {
             });
   }
 
+  public Mono<AuthFlowSession> updateExpectedStrict(
+      AuthFlowSession expected, AuthFlowSession updated) {
+    Objects.requireNonNull(expected);
+    Objects.requireNonNull(updated);
+    return snapshot(expected.authFlowSessionId())
+        .flatMap(
+            snapshot -> {
+              if (!snapshot.session().equals(expected)) return Mono.error(conflict());
+              return applied(
+                  sessions.updateRevisionedStrict(
+                      new RevisionedAuthFlowSessionMutationCommand(snapshot, updated)));
+            });
+  }
+
   public Mono<AuthFlowSession> complete(AuthFlowSessionId id, Instant now) {
     return snapshot(id).flatMap(s -> applied(sessions.completeRevisioned(s, now)));
   }

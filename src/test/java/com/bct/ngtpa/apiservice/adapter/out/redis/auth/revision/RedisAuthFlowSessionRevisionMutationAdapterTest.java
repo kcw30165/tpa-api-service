@@ -46,6 +46,26 @@ class RedisAuthFlowSessionRevisionMutationAdapterTest {
   }
 
   @Test
+  void strictUpdateUsesRevisionCompareAndSet() {
+    var f = new Fixture();
+    var expected = f.store();
+    String before = f.cache.value;
+    f.ops.code = 0;
+
+    var result =
+        f.adapter
+            .updateRevisionedStrict(
+                new RevisionedAuthFlowSessionMutationCommand(
+                    expected,
+                    copy(expected.session(), AuthFlowStatus.COMPLETING, NOW.plusSeconds(5))))
+            .block();
+
+    assertThat(result.outcome()).isEqualTo(AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED);
+    assertThat(f.ops.replaceCalls).isOne();
+    assertThat(f.cache.value).isEqualTo(before);
+  }
+
+  @Test
   void terminalCompleteAndCancelAreRejectedWithoutRedisMutation() {
     var f = new Fixture();
     var terminal =

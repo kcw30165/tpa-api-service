@@ -1,12 +1,14 @@
 package com.bct.ngtpa.apiservice.application.service.auth.registration.context;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 
 public record RegistrationProtectedAuthFlowContextResult(
     RegistrationProtectedAuthFlowContextStatus status,
     String activeOtpChallengeId,
     String maskedDestination,
-    RegistrationAuthFlowContext registrationContext) {
+    RegistrationAuthFlowContext registrationContext,
+    AuthFlowSession authFlowSession) {
 
   public static RegistrationProtectedAuthFlowContextResult valid(
       String activeOtpChallengeId,
@@ -16,12 +18,26 @@ public record RegistrationProtectedAuthFlowContextResult(
         RegistrationProtectedAuthFlowContextStatus.VALID,
         activeOtpChallengeId,
         maskedDestination,
-        registrationContext);
+        registrationContext,
+        null);
+  }
+
+  public static RegistrationProtectedAuthFlowContextResult valid(
+      AuthFlowSession authFlowSession,
+      String activeOtpChallengeId,
+      String maskedDestination,
+      RegistrationAuthFlowContext registrationContext) {
+    return new RegistrationProtectedAuthFlowContextResult(
+        RegistrationProtectedAuthFlowContextStatus.VALID,
+        activeOtpChallengeId,
+        maskedDestination,
+        registrationContext,
+        authFlowSession);
   }
 
   public static RegistrationProtectedAuthFlowContextResult invalid(
       RegistrationProtectedAuthFlowContextStatus status) {
-    return new RegistrationProtectedAuthFlowContextResult(status, null, null, null);
+    return new RegistrationProtectedAuthFlowContextResult(status, null, null, null, null);
   }
 
   public boolean isValid() {
@@ -34,6 +50,6 @@ public record RegistrationProtectedAuthFlowContextResult(
         + status
         + ", activeOtpChallengeId=<redacted>, maskedDestination="
         + maskedDestination
-        + ", registrationContext=<redacted>]";
+        + ", registrationContext=<redacted>, authFlowSession=<redacted>]";
   }
 }

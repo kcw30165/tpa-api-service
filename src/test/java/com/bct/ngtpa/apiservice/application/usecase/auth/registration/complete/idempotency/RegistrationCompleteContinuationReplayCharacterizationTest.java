@@ -25,6 +25,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthF
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SelectedTrust;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.idempotency.DefaultIdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyCommands;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId;
@@ -104,11 +105,16 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
             ignored ->
                 Mono.just(
                     sessionState.get().status() == AuthFlowStatus.USERNAME_VERIFIED
+                            || sessionState.get().status() == AuthFlowStatus.COMPLETING
                         ? RegistrationProtectedAuthFlowContextResult.valid(
-                            "challenge-1", "t***@example.com", registrationContext)
+                            sessionState.get(),
+                            "challenge-1",
+                            "t***@example.com",
+                            registrationContext)
                         : RegistrationProtectedAuthFlowContextResult.invalid(
                             RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS)));
-    when(expiry.refresh(eq(SID), any())).thenAnswer(ignored -> Mono.just(sessionState.get()));
+    when(expiry.refreshUsernameVerified(eq(SID), any()))
+        .thenAnswer(ignored -> Mono.just(sessionState.get()));
     when(usernames.load(any())).thenReturn(username);
     when(passwords.validate(any(), any(), any()))
         .thenReturn(RegistrationPasswordValidationResult.success());
@@ -174,32 +180,45 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
   }
 
   @Test
-  void sameKeyRetryAfterContinuationFailureIsRejectedBeforeIdempotencyReplay() {
+  void sameKeyRetryReplaysCompletedContinuationFailureWithoutRepeatingSideEffects() {
     CompleteRegistrationCommand command = command();
 
     CompleteRegistrationResult first = service.complete(command).block();
+    CompleteRegistrationResult differentRequest =
+        service.complete(command("DifferentPass1!")).block();
     CompleteRegistrationResult replay = service.complete(command).block();
 
     assertThat(first.status())
         .isEqualTo(CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED);
-    assertThat(replay.status()).isEqualTo(CompleteRegistrationResultStatus.INVALID_AUTH_FLOW);
+    assertThat(differentRequest.status())
+        .isEqualTo(CompleteRegistrationResultStatus.INVALID_AUTH_FLOW);
+    assertThat(differentRequest.errors())
+        .extracting(error -> error.code())
+        .containsExactly(RegistrationErrorKey.AUTH_FLOW_INVALID.value());
+    assertThat(replay.status())
+        .isEqualTo(CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED);
     assertThat(sessionState.get().status()).isEqualTo(AuthFlowStatus.COMPLETING);
     assertThat(persistence.record.status()).isEqualTo(IdempotencyStatus.COMPLETED);
     assertThat(persistence.completeCalls).isOne();
     assertThat(persistence.reserveCalls).isOne();
+    assertThat(persistence.loadCalls).isEqualTo(2);
     verify(completion, times(1)).complete(any());
     verify(lookup, times(1)).searchMember(any());
     verify(locks, times(1)).acquire(eq(SID), any());
-    verify(expiry, times(1)).refresh(eq(SID), any());
+    verify(expiry, times(1)).refreshUsernameVerified(eq(SID), any());
   }
 
   private static CompleteRegistrationCommand command() {
+    return command("Passw0rd!");
+  }
+
+  private static CompleteRegistrationCommand command(String password) {
     return new CompleteRegistrationCommand(
         SID,
         "csrf-token",
         new RegistrationIdempotencyKey("reg-complete-same-key"),
-        "Passw0rd!",
-        "Passw0rd!",
+        password,
+        password,
         "https://portal.example",
         "https://portal.example/complete",
         "en",
@@ -224,6 +243,7 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
     private IdempotencyRecord record;
     private int reserveCalls;
     private int completeCalls;
+    private int loadCalls;
 
     @Override
     public Mono<IdempotencyReservation> reserve(IdempotencyCommands.Reserve command) {
@@ -290,6 +310,7 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
 
     @Override
     public Mono<Optional<IdempotencyRecord>> load(IdempotencyOperationId operationId) {
+      loadCalls++;
       return Mono.just(Optional.ofNullable(record));
     }
   }

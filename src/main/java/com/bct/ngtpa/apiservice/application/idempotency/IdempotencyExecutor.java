@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.idempotency;
 
+import java.util.Optional;
 import reactor.core.publisher.Mono;
 
 /**
@@ -9,4 +10,9 @@ import reactor.core.publisher.Mono;
  */
 public interface IdempotencyExecutor {
   Mono<IdempotentExecutionResult> execute(IdempotentExecutionCommand command);
+
+  Mono<Optional<IdempotentExecutionResult>> replayCompleted(
+      IdempotencyOperationId operationId,
+      IdempotencyFingerprint fingerprint,
+      ProtectedReplayResolver replayResolver);
 }

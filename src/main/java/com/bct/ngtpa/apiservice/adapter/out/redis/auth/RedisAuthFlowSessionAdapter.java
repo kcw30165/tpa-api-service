@@ -228,6 +228,12 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
   }
 
   @Override
+  public Mono<AuthFlowSessionMutationResult> updateRevisionedStrict(
+      RevisionedAuthFlowSessionMutationCommand command) {
+    return revisionedReplace(command);
+  }
+
+  @Override
   public Mono<AuthFlowSessionMutationResult> touchRevisioned(
       AuthFlowSessionSnapshot expected, Instant now) {
     Objects.requireNonNull(now, NOW_NOT_NULL);

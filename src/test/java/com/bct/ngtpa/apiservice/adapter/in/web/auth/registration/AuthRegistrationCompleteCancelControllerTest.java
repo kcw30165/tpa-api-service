@@ -12,6 +12,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.Registrat
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase;
@@ -76,6 +80,54 @@ class AuthRegistrationCompleteCancelControllerTest {
     assertThat(json.at("/result/data/actions/0/nextStep").asText()).isEqualTo("SELECT_TRUST");
     assertThat(json.at("/result/page").isMissingNode()).isTrue();
     assertThat(json.at("/result/pageRef").isMissingNode()).isTrue();
+  }
+
+  @Test
+  void continuationFailureKeepsPublicHttpStatusAndAuthFlowCookie() throws Exception {
+    String sessionId = validAuthFlowSessionId();
+    var controller =
+        controller(
+            new CompleteUseCaseStub(
+                new CompleteRegistrationResult(
+                    CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED,
+                    WorkflowNextStep.RETURN_TO_LOGIN,
+                    false,
+                    false,
+                    List.of(),
+                    List.of(
+                        new WorkflowErrorDescriptor(
+                            WorkflowErrorType.BUSINESS,
+                            RegistrationErrorKey.REGISTRATION_COMPLETE_CONTINUATIONUNAVAILABLE
+                                .value(),
+                            null,
+                            List.of("PAGE"),
+                            WorkflowErrorSeverity.ERROR,
+                            "SERVER")))),
+            new CancelUseCaseStub(
+                new CancelRegistrationResult(
+                    CancelRegistrationResultStatus.CANCELLED, true, true, List.of())));
+    var response = new MockServerHttpResponse();
+
+    var result =
+        controller
+            .completeRegistration(
+                new CompleteRegistrationRequest("Password123!", "Password123!"),
+                sessionId,
+                "csrf",
+                validIdempotencyKey(),
+                "req",
+                "en",
+                null,
+                null,
+                response)
+            .block();
+
+    assertThat(result.getStatusCode().value()).isEqualTo(502);
+    assertThat(response.getCookies().getFirst("auth_flow_sid").getValue()).isEqualTo(sessionId);
+    JsonNode json = json(result);
+    assertThat(json.at("/status").asText()).isEqualTo("SYSTEM_ERROR");
+    assertThat(json.at("/errors/0/code").asText())
+        .isEqualTo("err.registration.complete.continuationUnavailable");
   }
 
   @Test

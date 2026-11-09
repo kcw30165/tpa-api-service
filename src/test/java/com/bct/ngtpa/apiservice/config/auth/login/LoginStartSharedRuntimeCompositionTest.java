@@ -49,11 +49,24 @@ class LoginStartSharedRuntimeCompositionTest {
 
   private ApplicationContextRunner runner() {
     IdempotencyExecutor executor =
-        command -> {
-          captured.set(command);
-          return Mono.just(
-              new IdempotentExecutionResult(
-                  IdempotencyReservationOutcome.DUPLICATE_IN_PROGRESS, null));
+        new IdempotencyExecutor() {
+          @Override
+          public Mono<IdempotentExecutionResult> execute(
+              com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand command) {
+            captured.set(command);
+            return Mono.just(
+                new IdempotentExecutionResult(
+                    IdempotencyReservationOutcome.DUPLICATE_IN_PROGRESS, null));
+          }
+
+          @Override
+          public Mono<java.util.Optional<IdempotentExecutionResult>> replayCompleted(
+              com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId operationId,
+              com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint fingerprint,
+              com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayResolver
+                  replayResolver) {
+            return Mono.error(new AssertionError("Unexpected replay-only lookup"));
+          }
         };
     return new ApplicationContextRunner()
         .withPropertyValues(

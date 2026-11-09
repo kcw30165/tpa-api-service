@@ -2,17 +2,20 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationSuccessPageMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResultStatus;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.idempotency.RegistrationCompleteReplayCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
@@ -153,6 +156,66 @@ class CompleteRegistrationWebMapperTest {
     var response = mapper.toResponse(result, "en");
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+  }
+
+  @Test
+  void continuationFailureSnapshotHydratesToTheSamePublicResponse() throws Exception {
+    var original =
+        new CompleteRegistrationResult(
+            CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            false,
+            false,
+            List.of(),
+            List.of(
+                new WorkflowErrorDescriptor(
+                    WorkflowErrorType.BUSINESS,
+                    RegistrationErrorKey.REGISTRATION_COMPLETE_CONTINUATIONUNAVAILABLE.value(),
+                    null,
+                    List.of("PAGE"),
+                    WorkflowErrorSeverity.ERROR,
+                    "SERVER")));
+    var codec = new RegistrationCompleteReplayCodec();
+    var captured = codec.capture(original);
+
+    assertThat(captured.snapshot().httpStatus()).isEqualTo(500);
+    assertThat(captured.snapshot().safeHeaders()).isEmpty();
+    JsonNode stored = objectMapper.readTree(captured.snapshot().serializedSafeBody());
+    assertThat(stored.at("/idempotencyAction").asText()).isEqualTo("complete");
+    assertThat(stored.at("/payload/status").asText()).isEqualTo("CONTINUATION_LOOKUP_FAILED");
+    assertThat(stored.at("/payload/nextStep").asText()).isEqualTo("RETURN_TO_LOGIN");
+    assertThat(stored.at("/payload/registered").asBoolean()).isFalse();
+    assertThat(stored.at("/payload/clearAuthFlowCookie").asBoolean()).isFalse();
+    assertThat(stored.at("/payload/remainingTrusts")).isEmpty();
+    assertThat(stored.at("/payload/errors/0/type").asText()).isEqualTo("BUSINESS");
+    assertThat(stored.at("/payload/errors/0/code").asText())
+        .isEqualTo("err.registration.complete.continuationUnavailable");
+    assertThat(stored.at("/payload/errors/0/message").isNull()).isTrue();
+    assertThat(stored.at("/payload/errors/0/targets/0").asText()).isEqualTo("PAGE");
+    assertThat(stored.at("/payload/errors/0/severity").asText()).isEqualTo("ERROR");
+    assertThat(stored.at("/payload/errors/0/source").asText()).isEqualTo("SERVER");
+
+    CompleteRegistrationResult hydrated = codec.hydrate(captured.snapshot());
+    assertThat(hydrated).isEqualTo(original);
+
+    var response = mapper.toResponse(hydrated, "en");
+    assertThat(response.success()).isFalse();
+    assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+    assertThat(response.messages()).isEmpty();
+    assertThat(response.errors()).hasSize(1);
+    assertThat(response.errors().getFirst().type()).isEqualTo("BUSINESS");
+    assertThat(response.errors().getFirst().code())
+        .isEqualTo("err.registration.complete.continuationUnavailable");
+    assertThat(response.errors().getFirst().message()).isNull();
+    assertThat(response.errors().getFirst().targets()).containsExactly("PAGE");
+    assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.RETURN_TO_LOGIN);
+    assertThat(response.result().data().unregisteredTrusts()).isEmpty();
+    assertThat(response.result().data().actions()).isEmpty();
+    JsonNode publicBody = objectMapper.valueToTree(response);
+    assertThat(publicBody.at("/errors/0/message").isMissingNode()).isTrue();
+
+    assertThat(RegistrationHttpResponses.toResponse(response).getStatusCode().value())
+        .isEqualTo(502);
   }
 
   @Test
