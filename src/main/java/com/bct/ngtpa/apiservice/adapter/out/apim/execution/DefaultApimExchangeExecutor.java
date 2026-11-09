@@ -89,14 +89,17 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
                       transformed,
                       request.databaseScope(),
                       request.credentialContext(),
-                      request.retryEligibility())
+                      request.retryEligibility(),
+                      ApimResubmissionPolicy.ALLOW_RECOVERY,
+                      request.incidentOwnership())
                   : facade.postSuccessfulExchange(
                       request.path(),
                       transformed,
                       request.databaseScope(),
                       request.credentialContext(),
                       request.retryEligibility(),
-                      request.resubmissionPolicy());
+                      request.resubmissionPolicy(),
+                      request.incidentOwnership());
             })
         .switchIfEmpty(Mono.error(new IllegalStateException("APIM successful exchange was empty")))
         .flatMap(
@@ -133,7 +136,9 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
                                 attemptKey),
                         request.databaseScope(),
                         request.credentialContext(),
-                        request.retryEligibility())
+                        request.retryEligibility(),
+                        ApimResubmissionPolicy.ALLOW_RECOVERY,
+                        request.incidentOwnership())
                     : facade.postEncryptedSuccessfulExchange(
                         request.path(),
                         (profile, attemptKey) ->
@@ -145,7 +150,8 @@ public final class DefaultApimExchangeExecutor implements ApimExchangeExecutor {
                         request.databaseScope(),
                         request.credentialContext(),
                         request.retryEligibility(),
-                        request.resubmissionPolicy()))
+                        request.resubmissionPolicy(),
+                        request.incidentOwnership()))
         .switchIfEmpty(Mono.error(new IllegalStateException("APIM successful exchange was empty")))
         .flatMap(
             exchange ->

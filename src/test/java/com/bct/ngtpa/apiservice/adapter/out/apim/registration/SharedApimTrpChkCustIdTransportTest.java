@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,6 +12,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
@@ -36,7 +38,10 @@ class SharedApimTrpChkCustIdTransportTest {
     var transport = new SharedApimTrpChkCustIdTransport(executor);
     var command =
         new TrpChkCustIdTransportCommand(
-            new TrpChkCustIdApimRequest("cust-1"), ActorUserRole.ROLE_USER_MBR, "req-123");
+            new TrpChkCustIdApimRequest("cust-1"),
+            ActorUserRole.ROLE_USER_MBR,
+            "req-123",
+            ApimIncidentOwnership.APIM_OBSERVER);
 
     StepVerifier.create(transport.post(command))
         .assertNext(
@@ -64,6 +69,7 @@ class SharedApimTrpChkCustIdTransportTest {
     assertThat(exchange.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
     assertThat(exchange.credentialContext().accountEnv()).isNull();
     assertThat(exchange.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
+    assertThat(exchange.incidentOwnership()).isEqualTo(ApimIncidentOwnership.APIM_OBSERVER);
   }
 
   @Test
@@ -76,7 +82,10 @@ class SharedApimTrpChkCustIdTransportTest {
     StepVerifier.create(
             transport.post(
                 new TrpChkCustIdTransportCommand(
-                    new TrpChkCustIdApimRequest("cust-1"), ActorUserRole.ROLE_USER_MBR, "req-124")))
+                    new TrpChkCustIdApimRequest("cust-1"),
+                    ActorUserRole.ROLE_USER_MBR,
+                    "req-124",
+                    ApimIncidentOwnership.APIM_OBSERVER)))
         .expectErrorSatisfies(error -> assertThat(error.getMessage()).contains("missing response"))
         .verify();
   }
@@ -93,9 +102,38 @@ class SharedApimTrpChkCustIdTransportTest {
     StepVerifier.create(
             transport.post(
                 new TrpChkCustIdTransportCommand(
-                    new TrpChkCustIdApimRequest("cust-1"), ActorUserRole.ROLE_USER_MBR, "req-125")))
+                    new TrpChkCustIdApimRequest("cust-1"),
+                    ActorUserRole.ROLE_USER_MBR,
+                    "req-125",
+                    ApimIncidentOwnership.APIM_OBSERVER)))
         .expectErrorSatisfies(
             error -> assertThat(error.getMessage()).contains("invalid/malformed response"))
         .verify();
+  }
+
+  @Test
+  void forwardsExplicitTerminalOwnershipIntoExchangeRequest() {
+    ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);
+    var item = new TrpChkCustIdApimDataItem("db01", true, "DBA", "3010008", "STAFF");
+    when(executor.postEnvelope(any()))
+        .thenReturn(
+            Mono.just(new ApimResponseEnvelope<>(new ApimResponseBody<>("", List.of(item)))));
+    var transport = new SharedApimTrpChkCustIdTransport(executor);
+    var command =
+        new TrpChkCustIdTransportCommand(
+            new TrpChkCustIdApimRequest("cust-1"),
+            ActorUserRole.ROLE_USER_MBR,
+            "req-terminal",
+            com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership
+                .TERMINAL_CALLER);
+
+    StepVerifier.create(transport.post(command)).expectNextCount(1).verifyComplete();
+
+    verify(executor)
+        .postEnvelope(
+            argThat(
+                (ApimExchangeRequest<TrpChkCustIdApimRequest, TrpChkCustIdApimDataItem> request) ->
+                    request != null
+                        && request.incidentOwnership() == ApimIncidentOwnership.TERMINAL_CALLER));
   }
 }

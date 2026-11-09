@@ -699,6 +699,107 @@ class RequestLoggingWebFilterTest {
   }
 
   @Test
+  void completedOwnedFiveHundredObservationIsWarnAndMarkerSurvivesDecoration() {
+    RequestLoggingProperties props = enabledProperties();
+    props.getBodyLogging().setEnabled(true);
+    RequestLoggingProperties.EndpointRule rule = new RequestLoggingProperties.EndpointRule();
+    rule.setMethod("GET");
+    rule.setPathPattern("/api/test");
+    rule.setLogResponseBody(true);
+    props.getBodyLogging().getEndpoints().add(rule);
+    MockServerWebExchange exchange = exchange(MockServerHttpRequest.get("/api/test").build());
+    WebFilterChain chain =
+        ex -> {
+          TerminalIncidentHttpObservation.markOwned(ex);
+          ex.getResponse().setStatusCode(org.springframework.http.HttpStatus.BAD_GATEWAY);
+          return Mono.empty();
+        };
+    StepVerifier.create(
+            new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER).filter(exchange, chain))
+        .verifyComplete();
+    ILoggingEvent end =
+        listAppender.list.stream()
+            .filter(e -> e.getFormattedMessage().contains("http.request.failed"))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(Level.WARN, end.getLevel());
+    assertEquals(502, parseJson(end.getFormattedMessage()).get("status").asInt());
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(strings = {"absent", "invalid"})
+  void completedFiveHundredWithoutValidOwnershipRetainsError(String marker) {
+    MockServerWebExchange exchange = exchange(MockServerHttpRequest.get("/api/test").build());
+    WebFilterChain chain =
+        ex -> {
+          if (marker.equals("invalid"))
+            ex.getAttributes().put(TerminalIncidentHttpObservation.ATTRIBUTE_KEY, "invalid");
+          ex.getResponse().setStatusCode(org.springframework.http.HttpStatus.BAD_GATEWAY);
+          return Mono.empty();
+        };
+    StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+    ILoggingEvent end =
+        listAppender.list.stream()
+            .filter(e -> e.getFormattedMessage().contains("http.request.failed"))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(Level.ERROR, end.getLevel());
+  }
+
+  @Test
+  void markerNeverSuppressesExceptionalTerminationOrLeaksToAnotherRequest() {
+    MockServerWebExchange marked = exchange(MockServerHttpRequest.get("/api/test").build());
+    StepVerifier.create(
+            filter.filter(
+                marked,
+                ex -> {
+                  TerminalIncidentHttpObservation.markOwned(ex);
+                  return Mono.error(new IllegalStateException("later-failure"));
+                }))
+        .expectError(IllegalStateException.class)
+        .verify();
+    assertTrue(
+        listAppender.list.stream()
+            .anyMatch(
+                e ->
+                    e.getLevel() == Level.ERROR
+                        && e.getFormattedMessage().contains("http.request.error")));
+    listAppender.list.clear();
+    MockServerWebExchange next = exchange(MockServerHttpRequest.get("/api/test").build());
+    StepVerifier.create(
+            filter.filter(
+                next,
+                ex -> {
+                  ex.getResponse().setStatusCode(org.springframework.http.HttpStatus.BAD_GATEWAY);
+                  return Mono.empty();
+                }))
+        .verifyComplete();
+    assertTrue(
+        listAppender.list.stream()
+            .anyMatch(
+                e ->
+                    e.getLevel() == Level.ERROR
+                        && e.getFormattedMessage().contains("http.request.failed")));
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(ints = {200, 422})
+  void successAndBusinessRejectionSeverityRemainUnchanged(int status) {
+    MockServerWebExchange exchange = exchange(MockServerHttpRequest.get("/api/test").build());
+    StepVerifier.create(
+            filter.filter(
+                exchange,
+                ex -> {
+                  TerminalIncidentHttpObservation.markOwned(ex);
+                  ex.getResponse().setRawStatusCode(status);
+                  return Mono.empty();
+                }))
+        .verifyComplete();
+    ILoggingEvent end = listAppender.list.getLast();
+    assertEquals(status == 200 ? Level.INFO : Level.WARN, end.getLevel());
+  }
+
+  @Test
   void requestErrorLogOmitsStatusWhenZero() {
     MockServerWebExchange exchange = exchange(MockServerHttpRequest.get("/api/test").build());
     WebFilterChain errorChain = ex -> Mono.error(new RuntimeException("fail"));

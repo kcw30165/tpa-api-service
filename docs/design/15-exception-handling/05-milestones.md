@@ -420,6 +420,28 @@ in the same bounded feature slice. The classifier produces `ApimFailureCategory`
 existing `FailureOrigin` at an appropriate adapter/observability boundary. Do not introduce an
 application-to-adapter dependency or change exception identity/public routing merely to carry metadata.
 
+#### M3a - Registration username availability check only (TRPChkCustId)
+
+M3a covers the Registration username-availability check only: typed APIM ownership plumbing, the
+`CheckRegistrationUsernameService` terminal incident owner, the completed-HTTP observation marker,
+and connected proof. Implementation is complete. Per Nick's attestations on this HEAD, these gates
+passed: `mvn clean test`, startup smoke and the SonarQube quality gate. The earlier full-suite and
+cold unscoped Spotless gates are accepted. The MR and merge are pending. M3 as a whole remains
+incomplete.
+
+The terminal-origin labels identify failures owned by `CheckRegistrationUsernameService`:
+
+- `APIM_TECHNICAL`: the service owns the terminal ERROR for a technical APIM failure.
+- `LOCAL_SYSTEM`: the service owns the terminal ERROR for a failure on our side before or around the APIM call, for example credential-profile resolution. No downstream response was involved.
+- `LOCAL_STATE_FAILURE`: the service owns the terminal ERROR for a local username-state failure.
+
+Known M3a limitations:
+- The encrypted APIM path is covered by shared-plumbing unit tests, not by a connected request test.
+- Unmigrated callers retain their existing ERROR ownership; the unmigrated Forgot Password route still logs five ERRORs from three loggers.
+- `ApimWebClientFacade` still logs ERROR with a throwable for `APIM_OBSERVER` callers when structured serialization fails.
+- Request filters do not validate `X-Request-Id`; the username-check terminal ERROR sanitizes its own copy (see O-18).
+- Sonar new-code coverage was evaluated by the quality gate only; no separate changed-line coverage figure was produced.
+
 **Execution order:** Registration (3.3), Forgot Password (3.2), Login (3.1), Username Recovery
 (3.9), then the remaining account/fund and existing M3 scopes. Existing sub-task IDs are retained;
 table numbering is not execution order. The deferred-work schedule below is authoritative.
@@ -641,8 +663,10 @@ handlers, appender, dispatcher and adapters, each uncovered branch justified in 
 
 ### Push and MR
 
-Use one new branch and one MR per milestone. Open that milestone's MR only after its gate passes; merge it with a merge commit (no squash), then start the next milestone from the updated `origin/dev`. Jenkins/runtime
-values for PROD/DR (ERROR_ALERT_ENABLED=true, recipients) are a separate pipeline change.
+Use one new branch based on updated `origin/dev` and one MR per feature slice. Open a slice's MR only
+after its gate passes; merge it with a merge commit (no squash), then start the next feature slice
+from the updated `origin/dev`. Jenkins/runtime values for PROD/DR (ERROR_ALERT_ENABLED=true,
+recipients) are a separate pipeline change.
 
 ### M2b reduced-scope completion addendum (approved 2026-11-04)
 
@@ -667,7 +691,7 @@ checks its evidence. All rows below are pending until separately implemented and
 
 | Order / ID | Scope and destination | Required outcome | Status |
 |---|---|---|---|
-| First / 3.3 | Registration: lookup, username availability and completion | Integrate technical classification at the adapter boundary and consolidate incident logging. Preserve E1 business/WARN behavior, both captcha paths, public responses and replay semantics. Use bounded internal steps; one coherent feature commit when green. | Pending after M2b merge |
+| First remaining / M3b / 3.3 | Registration: lookup, start, completion and continuation; the username-availability check is M3a | Integrate technical classification at the adapter boundary and consolidate incident logging. Preserve M3a behavior, E1 business/WARN behavior, both captcha paths, public responses and replay semantics. Use bounded internal steps; one coherent feature commit when green. | Pending |
 | Second / 3.2 | Forgot Password: start, details/OTP, resend and completion | Integrate classification and logging. Revisit the deferred Details/OTP SYSTEM_FAILED seam and Completion response/replay proof only where required to establish changed-path behavior. Do not redesign the public contract. | Pending |
 | Third / 3.1 | Login: start, OTP verify/resend, account-list retrieval and session establishment | Integrate classification and incident ownership while preserving BFF source, public statuses/codes and replay behavior. | Pending |
 | Fourth / 3.9 | Username Recovery | Integrate classification and logging; preserve feature-owned business rejections, public outcomes and no-ERROR behavior for expected member-not-found. | Pending |

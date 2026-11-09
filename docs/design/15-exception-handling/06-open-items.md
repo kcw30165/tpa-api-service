@@ -328,6 +328,23 @@ reused thread (9ca1e685).
  <td> Open. No code change in M2b.
 </td>
  </tr>
+<tr>
+<td>
+O-18
+</td>
+<td>
+RequiredRequestIdWebFilter and RequestLoggingWebFilter accept any non-blank X-Request-Id without
+character or length validation; the value reaches response headers, MDC and logs. The Registration
+username-check terminal ERROR sanitizes its own copy. Decide the rule (maximum length, allowed
+characters, reject or replace) and harden the filter.
+</td>
+<td>
+Nick / security authority
+</td>
+<td>
+Open; not in scope of M3-R1.
+</td>
+</tr>
 </table>
 
 ### Deferred after reduced-scope M2b completion (approved 2026-11-04)

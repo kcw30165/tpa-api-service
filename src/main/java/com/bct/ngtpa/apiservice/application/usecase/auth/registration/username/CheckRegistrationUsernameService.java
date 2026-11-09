@@ -214,18 +214,30 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
         .flatMap(
             availability ->
                 switch (availability.status()) {
-                  case AVAILABLE -> storeUsernameCheck(command, session, normalized);
+                  case AVAILABLE ->
+                      Mono.defer(() -> storeUsernameCheck(command, session, normalized))
+                          .onErrorMap(RuntimeException.class, LocalUsernameStateFailure::new);
                   case REJECTED ->
                       Mono.just(downstreamRejected(availability.downstreamErrorCode()));
-                  case DOWNSTREAM_FAILED -> Mono.just(downstreamFailed());
+                  case DOWNSTREAM_FAILED -> {
+                    var origin = availability.failureOrigin();
+                    // Results without an origin retain the established safe default.
+                    yield Mono.just(
+                        downstreamFailed(
+                            origin == null ? "APIM_TECHNICAL" : origin.name(),
+                            command.correlationId()));
+                  }
                 })
+        // APIM-classified adapter failures are returned as DOWNSTREAM_FAILED; this handles local
+        // state failures and unexpected, unclassified errors from the port.
         .onErrorResume(
-            exception -> {
-              log.error(
-                  "event=registration.usernameCheck.failure severity=FATAL status=TECHNICAL_FAILURE correlationId={}",
-                  safe(command.correlationId()));
-              return Mono.just(downstreamFailed());
-            });
+            exception ->
+                Mono.just(
+                    downstreamFailed(
+                        exception instanceof LocalUsernameStateFailure
+                            ? "LOCAL_STATE_FAILURE"
+                            : "APIM_TECHNICAL",
+                        command.correlationId())));
   }
 
   private Mono<CheckRegistrationUsernameResult> storeUsernameCheck(
@@ -298,13 +310,55 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
     return "err.registration.username.checkFailed";
   }
 
-  private CheckRegistrationUsernameResult downstreamFailed() {
-    log.error("event=registration.usernameCheck.failure severity=FATAL status=DOWNSTREAM_FAILURE");
+  private CheckRegistrationUsernameResult downstreamFailed(String origin, String correlationId) {
+    String requestId = sanitizeRequestId(correlationId);
+    log.error(
+        "event=registration.usernameCheck.failure severity=FATAL status=TECHNICAL_FAILURE origin={}{}",
+        origin,
+        requestId == null ? "" : " requestId=" + requestId);
     return failure(
         CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED,
         WorkflowNextStep.USERNAME_CHECK,
         WorkflowErrorType.DOWNSTREAM_SYSTEM,
         ERROR_DOWNSTREAM_UNAVAILABLE);
+  }
+
+  // The filter does not validate X-Request-Id; this plain key=value event cannot allow spaces or
+  // '='.
+  private static String sanitizeRequestId(String requestId) {
+    if (requestId == null || requestId.isBlank()) {
+      return null;
+    }
+
+    int codePointCount = requestId.codePointCount(0, requestId.length());
+    int boundedCodePointCount = Math.min(codePointCount, 128);
+    StringBuilder sanitized = new StringBuilder(boundedCodePointCount + 3);
+    int offset = 0;
+    for (int index = 0; index < boundedCodePointCount; index++) {
+      int codePoint = requestId.codePointAt(offset);
+      if ((codePoint >= 'A' && codePoint <= 'Z')
+          || (codePoint >= 'a' && codePoint <= 'z')
+          || (codePoint >= '0' && codePoint <= '9')
+          || codePoint == '.'
+          || codePoint == '_'
+          || codePoint == ':'
+          || codePoint == '-') {
+        sanitized.appendCodePoint(codePoint);
+      } else {
+        sanitized.append('?');
+      }
+      offset += Character.charCount(codePoint);
+    }
+    if (codePointCount > boundedCodePointCount) {
+      sanitized.append("...");
+    }
+    return sanitized.toString();
+  }
+
+  private static final class LocalUsernameStateFailure extends RuntimeException {
+    private LocalUsernameStateFailure(Throwable cause) {
+      super("Registration username state update failed", cause);
+    }
   }
 
   private CheckRegistrationUsernameResult validationFailure(String code) {

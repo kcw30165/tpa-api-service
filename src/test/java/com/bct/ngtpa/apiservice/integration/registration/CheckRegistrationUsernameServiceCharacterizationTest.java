@@ -94,9 +94,37 @@ class CheckRegistrationUsernameServiceCharacterizationTest {
   }
 
   @Test
-  void onErrorResumeExceptionLogsBothErrorLinesInOrder() throws Exception {
+  void localStateFailureLogsSingleTerminalErrorWithoutCauseDetail() throws Exception {
+    String marker = "local-state-secret-marker";
+    RegistrationUsernameAvailabilityPort availabilityPort =
+        command -> Mono.just(RegistrationUsernameAvailabilityResult.available());
+    var service = newServiceWithFailingProtector(availabilityPort, marker);
+    Logger logger = (Logger) LoggerFactory.getLogger(CheckRegistrationUsernameService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      CheckRegistrationUsernameResult result = service.check(newCommand()).block();
+      assertThat(result.status())
+          .isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED);
+      assertThat(appender.list).hasSize(1);
+      ILoggingEvent event = appender.list.getFirst();
+      assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+      assertThat(event.getFormattedMessage())
+          .contains("event=registration.usernameCheck.failure", "origin=LOCAL_STATE_FAILURE")
+          .doesNotContain(marker);
+      assertThat(event.getThrowableProxy()).isNull();
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  @Test
+  void onErrorResumeExceptionLogsSingleTerminalError() throws Exception {
+    String downstreamMarker = "downstream availability check failed";
     RegistrationUsernameAvailabilityPort throwingAvailabilityPort =
-        command -> Mono.error(new IllegalStateException("downstream availability check failed"));
+        command -> Mono.error(new IllegalStateException(downstreamMarker));
 
     var service = newService(throwingAvailabilityPort);
 
@@ -110,20 +138,16 @@ class CheckRegistrationUsernameServiceCharacterizationTest {
       assertThat(result.status())
           .isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED);
 
-      // Both real ERROR lines fire, in order: (1) the onErrorResume catch-all
-      // (CheckRegistrationUsernameService.java:224-226), then (2) downstreamFailed()'s own line
-      // (:302) - confirmed from the real checkAvailability() method body.
-      assertThat(appender.list).hasSize(2);
-      assertThat(appender.list.get(0).getLevel()).isEqualTo(Level.ERROR);
-      assertThat(appender.list.get(0).getFormattedMessage())
-          .isEqualTo(
-              "event=registration.usernameCheck.failure severity=FATAL status=TECHNICAL_FAILURE"
-                  + " correlationId="
-                  + CORRELATION_ID);
-      assertThat(appender.list.get(1).getLevel()).isEqualTo(Level.ERROR);
-      assertThat(appender.list.get(1).getFormattedMessage())
-          .isEqualTo(
-              "event=registration.usernameCheck.failure severity=FATAL status=DOWNSTREAM_FAILURE");
+      assertThat(appender.list).hasSize(1);
+      ILoggingEvent event = appender.list.get(0);
+      assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+      assertThat(event.getFormattedMessage())
+          .contains(
+              "event=registration.usernameCheck.failure",
+              "status=TECHNICAL_FAILURE",
+              "origin=APIM_TECHNICAL")
+          .doesNotContain(downstreamMarker);
+      assertThat(event.getThrowableProxy()).isNull();
     } finally {
       logger.detachAppender(appender);
       appender.stop();
@@ -131,6 +155,70 @@ class CheckRegistrationUsernameServiceCharacterizationTest {
   }
 
   // ───────── shared fixtures ─────────
+
+  private static CheckRegistrationUsernameService newServiceWithFailingProtector(
+      RegistrationUsernameAvailabilityPort availabilityPort, String marker) throws Exception {
+    AuthFlowSession session = validSession();
+
+    AuthFlowSessionPort sessionPort =
+        new AuthFlowSessionPort() {
+          @Override
+          public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
+            return Mono.error(new AssertionError("create() must not be called"));
+          }
+
+          @Override
+          public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId authFlowSessionId) {
+            return Mono.just(Optional.of(session));
+          }
+        };
+    AuthFlowSessionExpiryRefreshPort expiryRefreshPort = (id, now) -> Mono.just(session);
+    AuthWorkflowPolicyPort policyPort =
+        new AuthWorkflowPolicyPort() {
+          @Override
+          public RegistrationAuthWorkflowPolicy registrationPolicy() {
+            return new RegistrationAuthWorkflowPolicy(
+                null, null, null, new UsernamePolicy(3, 20, true, true, false, false, null), null);
+          }
+
+          @Override
+          public Optional<String> resolveIdentityTypeSearchScope(String identityType) {
+            return Optional.empty();
+          }
+        };
+    DownstreamErrorClassificationPort classificationPort =
+        request -> {
+          throw new AssertionError("classify() must not be called for this scenario");
+        };
+    RegistrationUsernameCheckProtectorPort protectorPort =
+        new RegistrationUsernameCheckProtectorPort() {
+          @Override
+          public com.bct.ngtpa.apiservice.application.dto.session.authflow
+                  .RegistrationUsernameCheckEncryptedState
+              protect(
+                  com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState
+                      usernameCheckState) {
+            throw new IllegalStateException(marker);
+          }
+
+          @Override
+          public com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState
+              unprotect(
+                  com.bct.ngtpa.apiservice.application.dto.session.authflow
+                          .RegistrationUsernameCheckEncryptedState
+                      encryptedState) {
+            throw new AssertionError("unprotect() must not be called for this scenario");
+          }
+        };
+    return new CheckRegistrationUsernameService(
+        sessionPort,
+        expiryRefreshPort,
+        availabilityPort,
+        policyPort,
+        classificationPort,
+        protectorPort,
+        CLOCK);
+  }
 
   private static CheckRegistrationUsernameService newService(
       RegistrationUsernameAvailabilityPort availabilityPort) throws Exception {

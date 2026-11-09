@@ -233,7 +233,9 @@ public class RequestLoggingWebFilter implements WebFilter {
     event.put("elapsedMs", elapsedMillis(startNanos));
 
     String payload = toJson(event);
-    if (status >= 500) {
+    if (status >= 500 && TerminalIncidentHttpObservation.isOwned(exchange)) {
+      log.warn("{}", payload);
+    } else if (status >= 500) {
       log.error("{}", payload);
     } else if (status >= 400) {
       log.warn("{}", payload);
