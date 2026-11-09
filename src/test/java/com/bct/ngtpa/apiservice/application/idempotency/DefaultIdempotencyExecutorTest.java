@@ -55,6 +55,36 @@ class DefaultIdempotencyExecutorTest {
   }
 
   @Test
+  void unknownOutcomeExistingDoesNotExecuteOrMutatePersistence() {
+    FakePort port = new FakePort(IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING);
+    AtomicInteger protectedCalls = new AtomicInteger();
+    AtomicInteger classifierCalls = new AtomicInteger();
+
+    IdempotentExecutionResult result =
+        executor(port)
+            .execute(
+                command(
+                    () -> {
+                      protectedCalls.incrementAndGet();
+                      return Mono.just(response());
+                    },
+                    failure -> {
+                      classifierCalls.incrementAndGet();
+                      return IdempotencyFailureClassification.POSSIBLE_SIDE_EFFECT;
+                    }))
+            .block();
+
+    assertThat(result.lifecycleOutcome())
+        .isEqualTo(IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING);
+    assertThat(protectedCalls).hasValue(0);
+    assertThat(classifierCalls).hasValue(0);
+    assertThat(port.reserveCalls).isOne();
+    assertThat(port.completed).isZero();
+    assertThat(port.failed).isZero();
+    assertThat(port.unknown).isZero();
+  }
+
+  @Test
   void replayCompletedLoadsAndHydratesMatchingRecordWithoutReserving() {
     FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
     port.loadedRecord =

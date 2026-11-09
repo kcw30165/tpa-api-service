@@ -8,6 +8,19 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CancelRegistrationWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestHeaderContextWebFilter;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationCancellationPageMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationSuccessPageMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
@@ -53,6 +66,14 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.R
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationUsernameCheckContextLoader;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationSharedFingerprintFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationSharedIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -62,6 +83,14 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.HttpCookie;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /** Characterizes same-key retry after Registration succeeded but its continuation lookup failed. */
@@ -85,6 +114,7 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
       mock(AuthFlowSessionCancellationPort.class);
   private final AtomicReference<AuthFlowSession> sessionState = new AtomicReference<>(session());
   private final InMemoryIdempotencyPort persistence = new InMemoryIdempotencyPort();
+  private final ObjectMapper objectMapper = new ObjectMapper();
   private SharedCompleteRegistrationService service;
 
   @BeforeEach
@@ -207,6 +237,148 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
     verify(locks, times(1)).acquire(eq(SID), any());
     verify(expiry, times(1)).refreshUsernameVerified(eq(SID), any());
   }
+
+  @Test
+  void controllerReturnsStructurallyIdenticalHttpResponsesForCompletedReplay() throws Exception {
+    RegistrationController controller = registrationController();
+    CapturedHttpResponse first = completeThroughController(controller, "request-first-123");
+    CapturedHttpResponse replay = completeThroughController(controller, "request-replay-456");
+
+    assertThat(first.statusCode()).isEqualTo(502);
+    assertThat(replay.statusCode()).isEqualTo(502);
+    assertThat(first.body()).isEqualTo(replay.body());
+    assertThat(first.body().path("status").asText()).isEqualTo(ApiStatus.SYSTEM_ERROR.name());
+    assertThat(first.body().at("/errors/0/code").asText())
+        .isEqualTo(RegistrationErrorKey.REGISTRATION_COMPLETE_CONTINUATIONUNAVAILABLE.value());
+    assertThat(first.body().at("/errors/0/type").asText()).isEqualTo("BUSINESS");
+    assertThat(first.body().at("/errors/0/targets/0").asText()).isEqualTo("PAGE");
+    assertThat(first.body().at("/errors/0/message").isMissingNode()).isTrue();
+    assertThat(first.body().at("/result/nextStep").asText()).isEqualTo("RETURN_TO_LOGIN");
+    assertThat(first.requestId()).isEqualTo("request-first-123");
+    assertThat(replay.requestId()).isEqualTo("request-replay-456");
+    assertThat(first.authFlowCookie()).isEqualTo(SID.value());
+    assertThat(replay.authFlowCookie()).isEqualTo(SID.value());
+
+    assertThat(persistence.reserveCalls).isOne();
+    assertThat(persistence.completeCalls).isOne();
+    assertThat(persistence.loadCalls).isOne();
+    verify(completion, times(1)).complete(any());
+    verify(lookup, times(1)).searchMember(any());
+  }
+
+  private RegistrationController registrationController() {
+    var pages = new BffPagesProperties();
+    return new RegistrationController(
+        null,
+        new RegistrationStartWebMapper(Duration.ofMinutes(5)),
+        AuthFlowCookieWriter.defaultWriter(),
+        service,
+        new CompleteRegistrationWebMapper(
+            Duration.ofMinutes(5), new RegistrationSuccessPageMapper(pages)),
+        null,
+        new CancelRegistrationWebMapper(new RegistrationCancellationPageMapper(pages)),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
+  }
+
+  private CapturedHttpResponse completeThroughController(
+      RegistrationController controller, String requestId) throws Exception {
+    var properties = new RequestLoggingProperties();
+    properties.setEnabled(false);
+    var sanitizer = new LoggingSanitizer(objectMapper, new MaskingService(new MaskingProperties()));
+    var requestFilter =
+        new RequestHeaderContextWebFilter(
+            new RequestLoggingWebFilter(properties, sanitizer, objectMapper));
+    var request =
+        MockServerHttpRequest.post("/api/v1/auth/registration/complete")
+            .cookie(new HttpCookie("auth_flow_sid", SID.value()))
+            .header("X-XSRF-TOKEN", "csrf-token")
+            .header("Idempotency-Key", "reg-complete-same-key")
+            .header(RequestCorrelation.REQUEST_ID_HEADER, requestId)
+            .header("Accept-Language", "en")
+            .header("Origin", "https://portal.example")
+            .header("Referer", "https://portal.example/complete")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                objectMapper.writeValueAsString(
+                    new CompleteRegistrationRequest("Passw0rd!", "Passw0rd!")));
+    var exchange = MockServerWebExchange.from(request);
+
+    requestFilter
+        .filter(
+            exchange,
+            current ->
+                DataBufferUtils.join(current.getRequest().getBody())
+                    .flatMap(
+                        buffer -> {
+                          CompleteRegistrationRequest body = readRequest(buffer);
+                          return controller
+                              .completeRegistration(
+                                  body,
+                                  current
+                                      .getRequest()
+                                      .getCookies()
+                                      .getFirst("auth_flow_sid")
+                                      .getValue(),
+                                  current.getRequest().getHeaders().getFirst("X-XSRF-TOKEN"),
+                                  current.getRequest().getHeaders().getFirst("Idempotency-Key"),
+                                  current
+                                      .getRequest()
+                                      .getHeaders()
+                                      .getFirst(RequestCorrelation.REQUEST_ID_HEADER),
+                                  current.getRequest().getHeaders().getFirst("Accept-Language"),
+                                  current.getRequest().getHeaders().getFirst("Origin"),
+                                  current.getRequest().getHeaders().getFirst("Referer"),
+                                  current.getResponse())
+                              .flatMap(response -> writeResponse(current, response));
+                        }))
+        .block();
+
+    DataBuffer responseBuffer = DataBufferUtils.join(exchange.getResponse().getBody()).block();
+    byte[] responseBytes = new byte[responseBuffer.readableByteCount()];
+    responseBuffer.read(responseBytes);
+    DataBufferUtils.release(responseBuffer);
+    JsonNode body = objectMapper.readTree(responseBytes);
+    return new CapturedHttpResponse(
+        exchange.getResponse().getStatusCode().value(),
+        body,
+        exchange.getResponse().getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER),
+        exchange.getResponse().getCookies().getFirst("auth_flow_sid").getValue());
+  }
+
+  private CompleteRegistrationRequest readRequest(DataBuffer buffer) {
+    byte[] bytes = new byte[buffer.readableByteCount()];
+    buffer.read(bytes);
+    DataBufferUtils.release(buffer);
+    try {
+      return objectMapper.readValue(bytes, CompleteRegistrationRequest.class);
+    } catch (IOException exception) {
+      throw new IllegalStateException("Registration test request could not be decoded", exception);
+    }
+  }
+
+  private Mono<Void> writeResponse(ServerWebExchange exchange, ResponseEntity<?> response) {
+    exchange.getResponse().setStatusCode(response.getStatusCode());
+    response
+        .getHeaders()
+        .forEach((name, values) -> exchange.getResponse().getHeaders().put(name, values));
+    try {
+      byte[] bytes = objectMapper.writeValueAsBytes(response.getBody());
+      return exchange
+          .getResponse()
+          .writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)));
+    } catch (JsonProcessingException exception) {
+      return Mono.error(exception);
+    }
+  }
+
+  private record CapturedHttpResponse(
+      int statusCode, JsonNode body, String requestId, String authFlowCookie) {}
 
   private static CompleteRegistrationCommand command() {
     return command("Passw0rd!");
