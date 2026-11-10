@@ -21,6 +21,19 @@ decided:
 
 Every other observer logs at WARN. This is what makes D1 meaningful: an ERROR means "someone must act".
 
+### Central technical ERROR payload
+
+For `ErrorEventLogger` events with `logAtError=true`, the incident payload is metadata-only:
+`event=http.api.error`, request ID when present, method, path, HTTP status, canonical error code,
+exception type, and approved value-free mapping fields. Do not evaluate a mapping diagnostic or
+`Throwable.getMessage()`, emit `sanitizedMessage`, or attach a Throwable/stack trace. This policy
+overrides `ErrorDescriptor.includeStackTrace` for central technical ERROR events without changing
+the descriptor or public response rendering.
+
+The rule is specific to the central `http.api.error` technical ERROR path. It does not change WARN
+diagnostic/optional-stack behavior, `StructuredFailureEventLogger`, `ExecutionLoggingAspect`, or
+other logger sources. Do not infer a repository-wide logging privacy guarantee from this policy.
+
 ## 2. FailureEvent changes
 
 - `StructuredFailureEventLogger` level by `FailureOrigin`:
@@ -28,7 +41,8 @@ Every other observer logs at WARN. This is what makes D1 meaningful: an ERROR me
   - ERROR: `DOWNSTREAM_CONTRACT`, `DOWNSTREAM_INVALID_RESPONSE`, `DOWNSTREAM_TRANSPORT`, `LOCAL_SYSTEM`
 - `FailureEventPort` gains `default void record(FailureEvent event, Throwable cause)`. The logger adds
   `exceptionType`, `rootCauseType` and the sanitized message, and attaches the stack trace at ERROR.
-  The existing `record(FailureEvent)` stays.
+  The existing `record(FailureEvent)` stays. This cause-bearing `StructuredFailureEventLogger`
+  policy is separate from the metadata-only central technical ERROR policy above.
 - Event names become typed constants (`LogEvent` enum or constants class in
   `infrastructure.logging`), fulfilling the deferral in `docs/capabilities/apim-error-logging`.
 

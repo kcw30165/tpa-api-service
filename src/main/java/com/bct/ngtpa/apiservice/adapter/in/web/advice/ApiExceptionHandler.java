@@ -70,17 +70,18 @@ public class ApiExceptionHandler {
       messages = messageResolver.resolve(descriptor, exception, exchange);
     }
 
+    boolean logAtError = descriptor.logLevel() == LogLevel.ERROR;
     eventLogger.log(
         log,
         new ErrorLogDirective(
             descriptor.httpStatus(),
             descriptor.errors().getFirst().code(),
-            descriptor.logLevel() == LogLevel.ERROR,
+            logAtError,
             descriptor.includeStackTrace(),
             descriptor.extraLogFields()),
         exchange,
         exception,
-        registry.diagnosticMessage(exception));
+        logAtError ? null : registry.diagnosticMessage(exception));
     ResponseEntity<MutationResponse<Void>> response =
         renderer.render(descriptor, messages, context);
     if (descriptor.logLevel() == LogLevel.ERROR

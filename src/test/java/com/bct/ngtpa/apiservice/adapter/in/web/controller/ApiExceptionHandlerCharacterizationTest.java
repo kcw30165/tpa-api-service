@@ -668,7 +668,7 @@ class ApiExceptionHandlerCharacterizationTest {
   // ───────────────────────── Unexpected exception (catch-all) ─────────────────────────
 
   @Test
-  void unexpectedException_internalServerErrorSystemErrorLoggedAtErrorWithStackTrace() {
+  void unexpectedException_internalServerErrorSystemErrorLoggedAtErrorWithoutStackTrace() {
     var response =
         handler.handle(new IllegalStateException("unexpected"), exchangeWithRequestId("req-17"));
 
@@ -681,7 +681,7 @@ class ApiExceptionHandlerCharacterizationTest {
         List.of(),
         "req-17",
         "message for " + ErrorCodes.SYSTEM_UNEXPECTED);
-    assertLoggedOnce(Level.ERROR, "IllegalStateException", ErrorCodes.SYSTEM_UNEXPECTED, true);
+    assertLoggedOnce(Level.ERROR, "IllegalStateException", ErrorCodes.SYSTEM_UNEXPECTED, false);
   }
 
   // ───────────────────────── InvalidPersonalInformationUpdateException ─────────────────────────
