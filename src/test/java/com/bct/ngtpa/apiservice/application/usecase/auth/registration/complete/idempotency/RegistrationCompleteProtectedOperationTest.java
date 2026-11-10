@@ -246,6 +246,7 @@ class RegistrationCompleteProtectedOperationTest {
     CompleteRegistrationResult result = operation.execute(input()).block();
     assertThat(result.status())
         .isEqualTo(CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED);
+    assertThat(result.registered()).isFalse();
     assertThat(result.nextStep().name()).isEqualTo("RETURN_TO_LOGIN");
     assertThat(result.toString()).doesNotContain("lookup detail");
     org.mockito.ArgumentCaptor<FailureEvent> eventCaptor =
