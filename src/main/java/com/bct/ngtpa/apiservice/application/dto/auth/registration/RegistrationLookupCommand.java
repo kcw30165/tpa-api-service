@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.application.dto.auth.registration;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
-import com.bct.ngtpa.apiservice.shared.logging.LogExecutionFailurePolicy;
+import com.bct.ngtpa.apiservice.application.observability.LogExecutionFailurePolicy;
 import java.util.Objects;
 
 /**

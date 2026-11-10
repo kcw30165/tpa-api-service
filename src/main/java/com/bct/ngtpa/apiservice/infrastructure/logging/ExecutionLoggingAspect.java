@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.infrastructure.logging;
 
+import com.bct.ngtpa.apiservice.application.observability.LogExecutionFailurePolicy;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
-import com.bct.ngtpa.apiservice.shared.logging.LogExecutionFailurePolicy;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

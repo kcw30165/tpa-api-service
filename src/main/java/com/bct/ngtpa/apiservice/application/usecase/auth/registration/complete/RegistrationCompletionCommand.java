@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
-import com.bct.ngtpa.apiservice.shared.logging.LogExecutionFailurePolicy;
+import com.bct.ngtpa.apiservice.application.observability.LogExecutionFailurePolicy;
 import java.util.Objects;
 
 public record RegistrationCompletionCommand(

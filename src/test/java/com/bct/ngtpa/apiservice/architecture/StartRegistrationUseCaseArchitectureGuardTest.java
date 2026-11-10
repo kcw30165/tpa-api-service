@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.SharedStartRegistrationService;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -15,6 +16,7 @@ class StartRegistrationUseCaseArchitectureGuardTest {
   void startRegistrationUseCaseHasNoWebRedisApimAdapterOrCookieDependencies() {
     var classes =
         new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
             .importPackages("com.bct.ngtpa.apiservice.application.usecase.auth.registration");
     ArchRuleDefinition.noClasses()
         .that()

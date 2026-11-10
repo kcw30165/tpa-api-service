@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +12,7 @@ class P4BAuthFlowSessionArchitectureGuardTest {
   void p4bApplicationAuthFlowPackagesRemainFrameworkFree() {
     JavaClasses classes =
         new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
             .importPackages(
                 "com.bct.ngtpa.apiservice.application.dto.session.authflow",
                 "com.bct.ngtpa.apiservice.application.usecase.session.authflow",
@@ -38,7 +40,9 @@ class P4BAuthFlowSessionArchitectureGuardTest {
   @Test
   void p4bRedisAdapterDoesNotDependOnWebCookieApimSmsEmailAdapters() {
     JavaClasses classes =
-        new ClassFileImporter().importPackages("com.bct.ngtpa.apiservice.adapter.out.redis.auth");
+        new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
+            .importPackages("com.bct.ngtpa.apiservice.adapter.out.redis.auth");
 
     ArchRuleDefinition.noClasses()
         .that()
