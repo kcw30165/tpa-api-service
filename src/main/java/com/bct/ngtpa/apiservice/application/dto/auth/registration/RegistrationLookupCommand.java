@@ -53,7 +53,8 @@ public record RegistrationLookupCommand(
 
   @Override
   public boolean warningOnlyOnFailure() {
-    return invocationIntent == RegistrationLookupInvocationIntent.START;
+    return invocationIntent == RegistrationLookupInvocationIntent.START
+        || invocationIntent == RegistrationLookupInvocationIntent.CONTINUATION;
   }
 
   @Override

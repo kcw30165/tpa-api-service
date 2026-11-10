@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -26,6 +27,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -53,6 +56,7 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCancellation
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCompletionLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCompletionPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextLoader;
@@ -61,9 +65,8 @@ import com.bct.ngtpa.apiservice.application.service.auth.registration.context.Re
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResultStatus;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionPreDispatchException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionResult;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete
-    .RegistrationCompletionPreDispatchException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationPasswordValidationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationPasswordValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationUsernameCheckContextLoader;
@@ -115,6 +118,7 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
   private final RegistrationLookupPort lookup = mock(RegistrationLookupPort.class);
   private final AuthFlowSessionCancellationPort cancellation =
       mock(AuthFlowSessionCancellationPort.class);
+  private final FailureEventPort failureEvents = mock(FailureEventPort.class);
   private final AtomicReference<AuthFlowSession> sessionState = new AtomicReference<>(session());
   private final InMemoryIdempotencyPort persistence = new InMemoryIdempotencyPort();
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -179,8 +183,10 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
 
     when(completion.complete(any()))
         .thenReturn(Mono.just(RegistrationCompletionResult.registered("20261109", "120000")));
-    when(lookup.searchMember(any()))
-        .thenReturn(Mono.error(new IllegalStateException("continuation unavailable")));
+    var lookupFailure = new IllegalStateException("continuation unavailable");
+    when(lookup.searchMember(any())).thenReturn(Mono.error(lookupFailure));
+    when(lookup.classifySearchMemberFailure(same(lookupFailure)))
+        .thenReturn(FailureOrigin.DOWNSTREAM_TRANSPORT);
 
     var executor =
         new DefaultIdempotencyExecutor(
@@ -196,6 +202,7 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
             completion,
             lookup,
             cancellation,
+            failureEvents,
             Duration.ofSeconds(30),
             Clock.fixed(NOW, ZoneOffset.UTC));
     service =
@@ -237,6 +244,9 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
     assertThat(persistence.loadCalls).isEqualTo(2);
     verify(completion, times(1)).complete(any());
     verify(lookup, times(1)).searchMember(any());
+    verify(failureEvents, times(1)).publish(any(FailureEvent.class));
+    verify(failureEvents, org.mockito.Mockito.never())
+        .publish(any(FailureEvent.class), any(Throwable.class));
     verify(locks, times(1)).acquire(eq(SID), any());
     verify(expiry, times(1)).refreshUsernameVerified(eq(SID), any());
   }
@@ -376,6 +386,7 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
                                   current.getRequest().getHeaders().getFirst("Accept-Language"),
                                   current.getRequest().getHeaders().getFirst("Origin"),
                                   current.getRequest().getHeaders().getFirst("Referer"),
+                                  current,
                                   current.getResponse())
                               .flatMap(response -> writeResponse(current, response));
                         }))

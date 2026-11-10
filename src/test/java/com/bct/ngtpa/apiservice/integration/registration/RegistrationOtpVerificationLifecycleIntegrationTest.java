@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.idempotency.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
@@ -378,6 +379,11 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
     public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
       calls++;
       return Mono.just(new RegistrationLookupResult(status, accounts, null));
+    }
+
+    @Override
+    public FailureOrigin classifySearchMemberFailure(Throwable failure) {
+      return FailureOrigin.LOCAL_SYSTEM;
     }
   }
 

@@ -25,6 +25,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.captcha.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.idempotency.*;
 import com.bct.ngtpa.apiservice.application.port.in.*;
@@ -45,6 +46,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -561,17 +563,29 @@ class RegistrationStartWorkflowIntegrationTest {
 
   private static void assertOwnedWarningObservation(
       List<ILoggingEvent> events, String requestId, int status) {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    while (events.stream().noneMatch(event -> matchesRequestFailure(event, requestId))
+        && System.nanoTime() < deadline) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException interrupted) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("Interrupted while awaiting the request log event", interrupted);
+      }
+    }
     assertThat(events)
-        .filteredOn(
-            event ->
-                event.getFormattedMessage().contains("\"event\":\"http.request.failed\"")
-                    && event.getFormattedMessage().contains("\"requestId\":\"" + requestId + "\""))
+        .filteredOn(event -> matchesRequestFailure(event, requestId))
         .singleElement()
         .satisfies(
             event -> {
               assertThat(event.getLevel()).isEqualTo(Level.WARN);
               assertThat(event.getFormattedMessage()).contains("\"status\":" + status);
             });
+  }
+
+  private static boolean matchesRequestFailure(ILoggingEvent event, String requestId) {
+    return event.getFormattedMessage().contains("\"event\":\"http.request.failed\"")
+        && event.getFormattedMessage().contains("\"requestId\":\"" + requestId + "\"");
   }
 
   private Map<String, Object> body(
@@ -1004,6 +1018,11 @@ class RegistrationStartWorkflowIntegrationTest {
         return Mono.error(failure);
       }
       return Mono.just(result);
+    }
+
+    @Override
+    public FailureOrigin classifySearchMemberFailure(Throwable failure) {
+      return FailureOrigin.LOCAL_SYSTEM;
     }
 
     void reset() {

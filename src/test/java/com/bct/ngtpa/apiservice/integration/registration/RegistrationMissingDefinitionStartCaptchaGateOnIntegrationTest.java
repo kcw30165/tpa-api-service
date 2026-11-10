@@ -27,6 +27,7 @@ import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryResult;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryStatus;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
 import com.bct.ngtpa.apiservice.application.dto.message.NoticeTemplateDefinition;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
@@ -332,6 +333,11 @@ class RegistrationMissingDefinitionStartCaptchaGateOnIntegrationTest {
                   new RegistrationLookupAccount(
                       "OI", "JPM", null, null, null, null, null, Boolean.FALSE, null)),
               null));
+    }
+
+    @Override
+    public FailureOrigin classifySearchMemberFailure(Throwable failure) {
+      return FailureOrigin.LOCAL_SYSTEM;
     }
   }
 

@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLo
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupInvocationIntent;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
@@ -321,6 +322,11 @@ class StartRegistrationUseCaseTest {
                   null)
               : new RegistrationLookupResult(
                   RegistrationLookupStatus.NOT_ELIGIBLE, List.of(), "not-found"));
+    }
+
+    @Override
+    public FailureOrigin classifySearchMemberFailure(Throwable failure) {
+      return FailureOrigin.LOCAL_SYSTEM;
     }
   }
 

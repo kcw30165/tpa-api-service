@@ -38,7 +38,10 @@ import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -284,6 +287,7 @@ class RegistrationBatch1FullChainCharacterizationTest {
             completionAdapter,
             neverCalledLookupPort(),
             neverCalledCancellationPort(),
+            noopFailureEventPort(),
             Duration.ofSeconds(10),
             CLOCK);
 
@@ -617,8 +621,18 @@ class RegistrationBatch1FullChainCharacterizationTest {
   }
 
   private static RegistrationLookupPort neverCalledLookupPort() {
-    return command ->
-        Mono.error(new AssertionError("lookup must not be called before the pre-dispatch failure"));
+    return new RegistrationLookupPort() {
+      @Override
+      public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
+        return Mono.error(
+            new AssertionError("lookup must not be called before the pre-dispatch failure"));
+      }
+
+      @Override
+      public FailureOrigin classifySearchMemberFailure(Throwable failure) {
+        return FailureOrigin.LOCAL_SYSTEM;
+      }
+    };
   }
 
   private static AuthFlowSessionCancellationPort neverCalledCancellationPort() {

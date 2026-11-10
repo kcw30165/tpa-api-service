@@ -69,6 +69,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLo
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassification;
 import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassificationRequest;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -231,6 +232,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   private static final String API_KEY_MARKER = "r1c-api-key-marker";
   private static final String CLIENT_SECRET_MARKER = "r1c-client-secret-marker";
   private static final String CYPHER_MARKER = "r1c-csrf-marker";
+  private static final String TRP_REG_MEMBER_SUCCESS_RESPONSE =
+      "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":true,\"create-date\":\"20260710\",\"create-time\":\"120000\"}]}}";
   private static final String APIM_PATH = SharedApimTrpChkCustIdTransport.API_NAME;
   private static final String REQUEST_PATH = "/api/v1/auth/registration/username/check";
   private static final String START_PATH = "/api/v1/auth/registration/start";
@@ -246,6 +249,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   @Autowired CheckRegistrationUsernameService usernameService;
   @Autowired ApimRegistrationUsernameAvailabilityAdapter usernameAdapter;
   @Autowired ApimRegistrationCompletionAdapter completionAdapter;
+  @Autowired ApimRegistrationLookupAdapter registrationLookupAdapter;
+  @Autowired FailureEventPort failureEventPort;
   @Autowired ConfigBackedDownstreamErrorClassificationAdapter classificationAdapter;
   @Autowired SharedApimTrpChkCustIdTransport sharedTransport;
   @Autowired DefaultApimExchangeExecutor executor;
@@ -340,9 +345,12 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     startTestPolicy.setCaptchaEnabled(true);
     String captchaChallengeId = startCaptchaPort.seed(CaptchaStatus.VERIFIED, false);
     int startIndex = applicationEvents.size();
+    WebTestClient startClient =
+        webTestClient.mutate().responseTimeout(Duration.ofSeconds(30)).build();
 
     EntityExchangeResult<byte[]> response =
-        startRegistrationRequest(requestId, "r1c-start-enabled-key", captchaChallengeId)
+        startRegistrationRequest(
+                startClient, requestId, "r1c-start-enabled-key", captchaChallengeId)
             .expectBody()
             .returnResult();
     List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
@@ -501,6 +509,307 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
             event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
         .singleElement()
         .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
+  }
+
+  @Test
+  void completedContinuationFailureMarksItsHttpObservationAsOwned() throws IOException {
+    scenarioExchange.respond(HttpStatus.OK, TRP_REG_MEMBER_SUCCESS_RESPONSE);
+    CompletionHttpHarness harness = completionHttpHarness("completion-http-csrf-token");
+    String requestId = "r3-connected-continuation-marker";
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        completionRequest(
+            harness.client(),
+            requestId,
+            "r3-continuation-marker-key",
+            "completion-http-csrf-token");
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    assertHttpObservation(requestEvents, requestId, 502, Level.WARN);
+  }
+
+  @Test
+  void continuationTransportFailureHasOneIncidentAndCompletedReplayIsReadOnly() throws IOException {
+    String csrf = "completion-http-csrf-token";
+    String idempotencyKey = "r3-continuation-transport-key";
+    String downstreamMarker = "r3-private-search-http-marker";
+    scenarioExchange.respondThen(
+        HttpStatus.OK,
+        TRP_REG_MEMBER_SUCCESS_RESPONSE,
+        HttpStatus.BAD_REQUEST,
+        "{\"error\":\"" + downstreamMarker + "\"}");
+    CompletionHttpHarness harness = completionHttpHarness(csrf, registrationLookupAdapter);
+    String requestId = "r3-connected-continuation-transport";
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> first =
+        completionRequest(harness.client(), requestId, idempotencyKey, csrf);
+    List<ILoggingEvent> firstEvents = awaitRequestCompletion(requestId, startIndex);
+    JsonNode firstBody = objectMapper.readTree(first.getResponseBody());
+
+    assertThat(first.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    assertThat(firstBody.path("status").asText()).isEqualTo("SYSTEM_ERROR");
+    assertThat(firstBody.path("success").asBoolean()).isFalse();
+    assertThat(firstBody.at("/errors/0/type").asText()).isEqualTo("BUSINESS");
+    assertThat(firstBody.at("/errors/0/code").asText())
+        .isEqualTo(
+            com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey
+                .REGISTRATION_COMPLETE_CONTINUATIONUNAVAILABLE
+                .value());
+    assertThat(firstBody.at("/errors/0/targets/0").asText()).isEqualTo("PAGE");
+    assertThat(firstBody.at("/errors/0/message").isMissingNode()).isTrue();
+    assertThat(firstBody.at("/result/nextStep").asText()).isEqualTo("RETURN_TO_LOGIN");
+    assertThat(firstBody.has("requestId")).isFalse();
+    assertThat(first.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
+        .isEqualTo(requestId);
+    assertThat(first.getResponseCookies().getFirst("auth_flow_sid").getValue())
+        .isEqualTo(SESSION_ID);
+    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.COMPLETED);
+    assertThat(sessions.current().status()).isEqualTo(AuthFlowStatus.COMPLETING);
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+    assertThat(scenarioExchange.observations())
+        .satisfiesExactly(
+            registration -> assertThat(registration.path()).endsWith("/TRPRegMember"),
+            continuation -> assertThat(continuation.path()).endsWith("/TRPSearchMember"));
+    assertThat(errorEvents(firstEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName())
+                  .isEqualTo(StructuredFailureEventLogger.class.getName());
+              assertThat(event.getFormattedMessage())
+                  .contains(
+                      "\"event\":\"registration.complete.continuation_failure\"",
+                      "\"requestId\":\"" + requestId + "\"",
+                      "\"failureOrigin\":\"DOWNSTREAM_TRANSPORT\"",
+                      "\"internalCode\":\"CONTINUATION_LOOKUP_FAILED\"");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertThat(firstEvents)
+        .filteredOn(event -> event.getLoggerName().equals(ApimWebClientFacade.class.getName()))
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage()).contains("statusClass=HTTP_ERROR");
+            });
+    assertThat(firstEvents)
+        .filteredOn(
+            event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains("\"event\":\"apim.exchange.failed\"");
+            });
+    assertThat(firstEvents)
+        .filteredOn(
+            event ->
+                event.getLoggerName().equals(ExecutionLoggingAspect.class.getName())
+                    && event.getFormattedMessage().contains("\"event\":\"method.execution.error\""))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage()).contains(requestId);
+              assertThat(event.getFormattedMessage()).doesNotContain("\"errorMessage\"");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertHttpObservation(firstEvents, requestId, 502, Level.WARN);
+    assertNoSensitiveMarkers(
+        firstEvents,
+        downstreamMarker,
+        ACCOUNT_ENV_MARKER,
+        TRUST_CODE_MARKER,
+        USERNAME_MARKER,
+        TOKEN_MARKER,
+        API_KEY_MARKER,
+        CLIENT_SECRET_MARKER,
+        "completion-private-dob-marker",
+        "completion-private-contact-marker",
+        "completion-private-password-marker",
+        "completion-private-ciphertext-marker");
+
+    String replayRequestId = "r3-connected-continuation-replay";
+    int replayStartIndex = applicationEvents.size();
+    EntityExchangeResult<byte[]> replay =
+        completionRequest(harness.client(), replayRequestId, idempotencyKey, csrf);
+    List<ILoggingEvent> replayEvents = awaitRequestCompletion(replayRequestId, replayStartIndex);
+
+    assertThat(replay.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    assertThat(replay.getResponseBody()).isEqualTo(first.getResponseBody());
+    assertThat(replay.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
+        .isEqualTo(replayRequestId);
+    assertThat(replay.getResponseCookies().getFirst("auth_flow_sid").getValue())
+        .isEqualTo(SESSION_ID);
+    assertThat(errorEvents(replayEvents)).isEmpty();
+    assertThat(replayEvents)
+        .noneMatch(
+            event ->
+                event.getLoggerName().equals(ApimWebClientFacade.class.getName())
+                    || event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName())
+                    || event.getLoggerName().equals(StructuredFailureEventLogger.class.getName())
+                    || event.getLoggerName().equals(ExecutionLoggingAspect.class.getName()));
+    assertHttpObservation(replayEvents, replayRequestId, 502, Level.WARN);
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.COMPLETED);
+    assertThat(harness.persistence().reserveCalls()).isOne();
+    assertThat(harness.persistence().loadCalls()).isOne();
+    assertNoSensitiveMarkers(replayEvents, downstreamMarker, ACCOUNT_ENV_MARKER, TRUST_CODE_MARKER);
+  }
+
+  @Test
+  void continuationContractDiagnosticIsWarningAndBusinessNotFoundHasNoIncidentError()
+      throws IOException {
+    String csrf = "completion-http-csrf-token";
+    String idempotencyKey = "r3-continuation-contract-key";
+    String downstreamMarker = "r3-private-search-contract-marker";
+    scenarioExchange.respondThen(
+        HttpStatus.OK,
+        TRP_REG_MEMBER_SUCCESS_RESPONSE,
+        HttpStatus.OK,
+        "{\"response\":{\"err-message\":\"" + downstreamMarker + "\",\"data\":[]}}");
+    CompletionHttpHarness harness = completionHttpHarness(csrf, registrationLookupAdapter);
+    String requestId = "r3-connected-continuation-contract";
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        completionRequest(harness.client(), requestId, idempotencyKey, csrf);
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    assertThat(errorEvents(requestEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName())
+                  .isEqualTo(StructuredFailureEventLogger.class.getName());
+              assertThat(event.getFormattedMessage())
+                  .contains("\"failureOrigin\":\"DOWNSTREAM_CONTRACT\"");
+            });
+    assertThat(requestEvents)
+        .filteredOn(
+            event ->
+                event.getLoggerName().equals(StructuredFailureEventLogger.class.getName())
+                    && event.getLevel() == Level.WARN)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getFormattedMessage())
+                  .contains(
+                      "\"event\":\"registration.lookup.downstream_contract_failure\"",
+                      "\"failureOrigin\":\"DOWNSTREAM_TECHNICAL\"",
+                      "\"internalCode\":\"UNEXPECTED_ERROR\"");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertThat(requestEvents)
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getLoggerName())
+                  .isEqualTo(ApimExchangeOutcomeLogger.class.getName());
+              assertThat(event.getFormattedMessage())
+                  .contains("\"event\":\"apim.business.rejected\"");
+            });
+    assertThat(requestEvents)
+        .filteredOn(
+            event ->
+                event.getLoggerName().equals(ExecutionLoggingAspect.class.getName())
+                    && event.getFormattedMessage().contains("\"event\":\"method.execution.error\""))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getThrowableProxy()).isNull();
+              assertThat(event.getFormattedMessage()).doesNotContain("\"errorMessage\"");
+            });
+    assertHttpObservation(requestEvents, requestId, 502, Level.WARN);
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+    assertNoSensitiveMarkers(
+        requestEvents, downstreamMarker, ACCOUNT_ENV_MARKER, TRUST_CODE_MARKER);
+
+    scenarioExchange.reset();
+    scenarioExchange.respondThen(
+        HttpStatus.OK,
+        TRP_REG_MEMBER_SUCCESS_RESPONSE,
+        HttpStatus.OK,
+        "{\"response\":{\"err-message\":\"err.tpa.member.not.found\",\"data\":[]}}");
+    CompletionHttpHarness businessHarness = completionHttpHarness(csrf, registrationLookupAdapter);
+    String businessRequestId = "r3-connected-continuation-business";
+    int businessStartIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> business =
+        completionRequest(
+            businessHarness.client(), businessRequestId, "r3-continuation-business-key", csrf);
+    List<ILoggingEvent> businessEvents =
+        awaitRequestCompletion(businessRequestId, businessStartIndex);
+
+    assertThat(business.getStatus()).isEqualTo(HttpStatus.OK);
+    assertThat(objectMapper.readTree(business.getResponseBody()).path("success").asBoolean())
+        .isTrue();
+    assertThat(errorEvents(businessEvents)).isEmpty();
+    assertThat(businessEvents)
+        .filteredOn(
+            event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains("\"event\":\"event.registration.lookup.downstream_rejection\"");
+            });
+    assertThat(businessEvents)
+        .noneMatch(
+            event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""));
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+  }
+
+  @Test
+  void replayStorageFailureHasItsOwnCentralIncidentWithoutRepeatingProtectedWork()
+      throws IOException {
+    String csrf = "completion-http-csrf-token";
+    String idempotencyKey = "r3-continuation-replay-storage-key";
+    scenarioExchange.respondThen(
+        HttpStatus.OK,
+        TRP_REG_MEMBER_SUCCESS_RESPONSE,
+        HttpStatus.BAD_REQUEST,
+        "{\"error\":\"continuation unavailable\"}");
+    CompletionHttpHarness harness = completionHttpHarness(csrf, registrationLookupAdapter);
+    String originalRequestId = "r3-connected-storage-original";
+    int originalStartIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> original =
+        completionRequest(harness.client(), originalRequestId, idempotencyKey, csrf);
+    awaitRequestCompletion(originalRequestId, originalStartIndex);
+    assertThat(original.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+
+    String storageMarker = "r3-private-replay-storage-marker";
+    harness.persistence().failNextLoad(new IllegalStateException(storageMarker));
+    String replayRequestId = "r3-connected-storage-failure";
+    int replayStartIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> replay =
+        completionRequest(harness.client(), replayRequestId, idempotencyKey, csrf);
+    List<ILoggingEvent> replayEvents = awaitRequestCompletion(replayRequestId, replayStartIndex);
+
+    assertThat(replay.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(errorEvents(replayEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName()).isEqualTo(ApiExceptionHandler.class.getName());
+              assertThat(event.getFormattedMessage()).contains("\"event\":\"http.api.error\"");
+              assertThat(event.getFormattedMessage()).doesNotContain(storageMarker);
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertThat(replayEvents)
+        .noneMatch(
+            event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()));
+    assertHttpObservation(replayEvents, replayRequestId, 500, Level.WARN);
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.COMPLETED);
+    assertThat(harness.persistence().reserveCalls()).isOne();
+    assertThat(harness.persistence().loadCalls()).isOne();
   }
 
   @Test
@@ -1193,6 +1502,11 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
   private WebTestClient.ResponseSpec startRegistrationRequest(
       String requestId, String idempotencyKey, String captchaChallengeId) {
+    return startRegistrationRequest(webTestClient, requestId, idempotencyKey, captchaChallengeId);
+  }
+
+  private WebTestClient.ResponseSpec startRegistrationRequest(
+      WebTestClient client, String requestId, String idempotencyKey, String captchaChallengeId) {
     Map<String, Object> body = new java.util.LinkedHashMap<>();
     body.put("identityType", "GPFS");
     body.put("identityValue", "1234567890");
@@ -1200,7 +1514,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     body.put("email", "member@example.com");
     body.put("mobile", null);
     body.put("captchaChallengeId", captchaChallengeId);
-    return webTestClient
+    return client
         .post()
         .uri(START_PATH)
         .header("X-Request-Id", requestId)
@@ -1307,6 +1621,15 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   }
 
   private CompletionHttpHarness completionHttpHarness(String csrfToken) {
+    RegistrationLookupPort lookup = mock(RegistrationLookupPort.class);
+    when(lookup.searchMember(any()))
+        .thenReturn(Mono.error(new IllegalStateException("continuation unavailable")));
+    when(lookup.classifySearchMemberFailure(any())).thenReturn(FailureOrigin.LOCAL_SYSTEM);
+    return completionHttpHarness(csrfToken, lookup);
+  }
+
+  private CompletionHttpHarness completionHttpHarness(
+      String csrfToken, RegistrationLookupPort lookup) {
     assertThat(AopUtils.isAopProxy(completionAdapter)).isTrue();
     sessions.seedCompletionSession(csrfToken);
     var registrationContext =
@@ -1367,8 +1690,9 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
             sessions,
             locks,
             completionAdapter,
-            mock(RegistrationLookupPort.class),
+            lookup,
             mock(AuthFlowSessionCancellationPort.class),
+            failureEventPort,
             Duration.ofSeconds(30),
             Clock.fixed(now, ZoneOffset.UTC));
 
@@ -1898,6 +2222,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   private static final class ConnectedIdempotencyPort implements IdempotencyPort {
     private IdempotencyRecord record;
     private int reserveCalls;
+    private int loadCalls;
+    private RuntimeException nextLoadFailure;
 
     @Override
     public Mono<IdempotencyReservation> reserve(IdempotencyCommands.Reserve command) {
@@ -1969,9 +2295,19 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
     @Override
     public Mono<Optional<IdempotencyRecord>> load(IdempotencyOperationId operationId) {
+      loadCalls++;
+      RuntimeException failure = nextLoadFailure;
+      nextLoadFailure = null;
+      if (failure != null) {
+        return Mono.error(failure);
+      }
       return Mono.just(
           Optional.ofNullable(record)
               .filter(existing -> existing.operationId().equals(operationId)));
+    }
+
+    void failNextLoad(RuntimeException failure) {
+      nextLoadFailure = failure;
     }
 
     IdempotencyRecord record() {
@@ -1980,6 +2316,10 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
     int reserveCalls() {
       return reserveCalls;
+    }
+
+    int loadCalls() {
+      return loadCalls;
     }
 
     private IdempotencyRecord updateStatus(

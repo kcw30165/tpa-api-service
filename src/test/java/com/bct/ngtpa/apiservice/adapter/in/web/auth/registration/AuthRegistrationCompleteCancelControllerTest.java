@@ -33,7 +33,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 
 class AuthRegistrationCompleteCancelControllerTest {
@@ -56,6 +58,9 @@ class AuthRegistrationCompleteCancelControllerTest {
             new CancelUseCaseStub(
                 new CancelRegistrationResult(
                     CancelRegistrationResultStatus.CANCELLED, true, true, List.of())));
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/registration/complete"));
 
     JsonNode json =
         json(
@@ -69,6 +74,7 @@ class AuthRegistrationCompleteCancelControllerTest {
                     "en",
                     null,
                     null,
+                    exchange,
                     new MockServerHttpResponse())
                 .block());
 
@@ -107,6 +113,9 @@ class AuthRegistrationCompleteCancelControllerTest {
                 new CancelRegistrationResult(
                     CancelRegistrationResultStatus.CANCELLED, true, true, List.of())));
     var response = new MockServerHttpResponse();
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/registration/complete"));
 
     var result =
         controller
@@ -119,6 +128,7 @@ class AuthRegistrationCompleteCancelControllerTest {
                 "en",
                 null,
                 null,
+                exchange,
                 response)
             .block();
 

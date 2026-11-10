@@ -34,6 +34,7 @@ import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameCommand;
@@ -116,6 +117,7 @@ public final class RegistrationController {
           @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage,
           @RequestHeader(name = "Origin", required = false) String origin,
           @RequestHeader(name = "Referer", required = false) String referer,
+          ServerWebExchange exchange,
           ServerHttpResponse response) {
     if (!hasText(authFlowSessionId)) {
       return Mono.just(
@@ -160,8 +162,13 @@ public final class RegistrationController {
                 } else {
                   cookieWriter.writeAuthFlowCookie(response, authFlowSessionId);
                 }
-                return RegistrationHttpResponses.toResponse(
-                    completeRegistrationWebMapper.toResponse(result, acceptLanguage));
+                var mapped = completeRegistrationWebMapper.toResponse(result, acceptLanguage);
+                var httpResponse = RegistrationHttpResponses.toResponse(mapped);
+                if (result.status() == CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED
+                    && mapped.status() == ApiStatus.SYSTEM_ERROR) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return httpResponse;
               });
     } catch (RuntimeException exception) {
       return Mono.just(
