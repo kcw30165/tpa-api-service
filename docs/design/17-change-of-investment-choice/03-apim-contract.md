@@ -28,14 +28,14 @@ credential context `(actorUserRole, accountEnv)` as Fund Fact Sheet.
 | `interval-pcnt` | integer | yes | 1..100 |
 | `SwitchSrc[]` | array | yes, may be empty | |
 | `.switch-src` | string | yes, nonblank, unique | code |
-| `.src-desc`, `.src-chin-desc` | string | no | ignored |
+| `.src-desc`, `.src-chin-desc` | string | no | `.src-desc` -> `switchSources[].switchSource`; `.src-chin-desc` ignored |
 | `.seq` | integer | yes | sort key |
 | `.avail-sw` | boolean | yes | passed through; true = editable, false = read-only (D-37) |
 | `SwitchFund[]` | array | yes, may be empty | |
 | `.fund-code` | string | yes, nonblank, unique | |
 | `.fund-name` | string | yes, nonblank (D-06) | |
 | `.chin-fund-name` | string | no | blank -> English |
-| `.fund-seq` | integer | no | not used |
+| `.fund-seq` | integer | no | passed through as `funds[].sequence` |
 | `.risk-level` | string | no | `FundPriceRiskLevels` rule |
 | `.avail-sw` | boolean | yes | false -> excluded from `funds`, kept for history names |
 | `InvestMandate[]` | array | yes, may be empty | |

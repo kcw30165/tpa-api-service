@@ -50,10 +50,20 @@ No query parameters.
       "accountNumber": "00000012345-0001",
       "intervalPercentage": 5,
       "switchSources": [
-        { "switchSource": "BO", "sequence": 10, "available": true }
+        {
+          "switchSourceCode": "BO",
+          "switchSource": "Employer and Member Voluntary Contributions",
+          "sequence": 10,
+          "available": true
+        }
       ],
       "funds": [
-        { "fundCode": "DHKM", "fundName": "Fidelity HKD Money Market Fund", "riskLevel": "1" }
+        {
+          "fundCode": "DHKM",
+          "fundName": "Fidelity HKD Money Market Fund",
+          "sequence": 60,
+          "riskLevel": "1"
+        }
       ],
       "history": [
         {
@@ -84,12 +94,12 @@ No query parameters.
 |---|---|
 | `accountNumber` | `AccountIdentifierFormatter.format(policyNo, certNo)` |
 | `intervalPercentage` | `interval-pcnt` verbatim, integer 1..100. Frontend decides dropdown vs manual entry |
-| `switchSources` | every `SwitchSrc` (Progress omits HIDDEN), sorted by `seq` ascending then code. `available` = `avail-sw` verbatim (true = editable, false = read-only; D-37) |
-| `funds` | `SwitchFund` with `avail-sw = true` only, ordered per 01 section 7. `riskLevel` raw downstream string, null when absent |
+| `switchSources` | every `SwitchSrc` (Progress omits HIDDEN), sorted by `seq` ascending then code. `switchSourceCode` = `switch-src`; `switchSource` = `src-desc`; `sequence` = `seq`; `available` = `avail-sw` verbatim (true = editable, false = read-only; D-37) |
+| `funds` | `SwitchFund` with `avail-sw = true` only, ordered per 01 section 7. `sequence` = `fund-seq`; `riskLevel` raw downstream string, null when absent |
 | `history` | `InvestMandate` grouped by `effect-date`, groups latest first; rows ordered by switch-source `seq`, then fund order. `percentage` is the downstream **string**, verbatim |
 | `history[].allocations[].fundName` | resolved from the **full** `SwitchFund` list including `avail-sw = false` |
 | `pendingInstructions` | `PendingReq` joined to `PendingReqDtl` by `ref-no`, latest `submitDate`+`submitTime` first; `percentage` is an **integer** |
-| codes only | `src-desc` / `src-chin-desc` are not returned |
+| switch-source description | `src-desc` is returned as `switchSource`; `src-chin-desc` is not returned |
 
 `history` and `pendingInstructions` may be empty arrays.
 

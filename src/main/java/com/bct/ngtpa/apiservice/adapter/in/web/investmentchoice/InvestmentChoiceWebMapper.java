@@ -94,14 +94,14 @@ public final class InvestmentChoiceWebMapper {
             .map(
                 source ->
                     new InvestmentChoiceSwitchSourceResponse(
-                        source.code(), source.seq(), source.avail()))
+                        source.code(), source.description(), source.seq(), source.avail()))
             .toList(),
         allFunds.stream()
             .filter(InvestmentChoiceFund::avail)
             .map(
                 fund ->
                     new InvestmentChoiceFundResponse(
-                        fund.code(), displayName(fund, chinese), fund.riskLevel()))
+                        fund.code(), displayName(fund, chinese), fund.sequence(), fund.riskLevel()))
             .toList(),
         history(details, fundNames, mandateOrder),
         pending(details, fundNames, pendingDetailOrder));

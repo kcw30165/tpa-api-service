@@ -26,11 +26,11 @@ class InvestmentChoiceSnapshotTest {
         new InvestmentChoiceDetails(
             5,
             List.of(
-                new InvestmentChoiceSource("BO", 1, true),
-                new InvestmentChoiceSource("EE", 2, false)),
+                new InvestmentChoiceSource("BO", "Both source", 1, true),
+                new InvestmentChoiceSource("EE", "Employee source", 2, false)),
             List.of(
-                new InvestmentChoiceFund("FUND_A", "A", null, null, true),
-                new InvestmentChoiceFund("FUND_B", "B", null, null, false)),
+                new InvestmentChoiceFund("FUND_A", "A", null, 60, null, true),
+                new InvestmentChoiceFund("FUND_B", "B", null, 20, null, false)),
             List.of(),
             List.of());
 

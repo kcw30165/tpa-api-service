@@ -207,6 +207,42 @@ class ApimInvestmentChoiceDetailsAdapterTest {
     verifyNoInteractions(failureEventPort);
   }
 
+  @Test
+  void carriesSourceDescriptionAndEachFundSequenceIntoApplicationDetails() {
+    var valid = validItem();
+    var item =
+        new TrpGetCIMDtlApimDataItem(
+            5,
+            List.of(
+                new SwitchSrc("BO", "Employer and Member Voluntary Contributions", null, 10, true)),
+            List.of(
+                new SwitchFund(
+                    "FAEU",
+                    "Fidelity Advantage Portfolio Fund - Asia Pacific Equity Fund",
+                    null,
+                    60,
+                    "",
+                    true),
+                new SwitchFund("FBAL", "Fidelity Balanced Fund", null, 20, "1", true)),
+            valid.investMandate(),
+            List.of(),
+            List.of());
+    respond(envelope("", List.of(item)));
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(
+            details -> {
+              assertThat(details.sources().getFirst().description())
+                  .isEqualTo("Employer and Member Voluntary Contributions");
+              assertThat(details.funds())
+                  .extracting(InvestmentChoiceFund::sequence)
+                  .containsExactly(60, 20);
+            })
+        .verifyComplete();
+
+    verifyNoInteractions(failureEventPort);
+  }
+
   @ParameterizedTest
   @org.junit.jupiter.params.provider.ValueSource(
       strings = {"err.account.invalid", "err.account.no.invest.mandate", "err.future.unknown"})

@@ -36,17 +36,17 @@ class InvestmentChoiceWebMapperTest {
     assertThat(response.intervalPercentage()).isEqualTo(5);
     assertThat(response.switchSources())
         .containsExactly(
-            new InvestmentChoiceSwitchSourceResponse("AA", 10, false),
-            new InvestmentChoiceSwitchSourceResponse("EE", 10, true),
-            new InvestmentChoiceSwitchSourceResponse("BO", 20, false));
+            new InvestmentChoiceSwitchSourceResponse("AA", "Alpha source", 10, false),
+            new InvestmentChoiceSwitchSourceResponse("EE", "Employee source", 10, true),
+            new InvestmentChoiceSwitchSourceResponse("BO", "Both source", 20, false));
     assertThat(response.funds())
         .containsExactly(
-            new InvestmentChoiceFundResponse("F02", "alpha", "1"),
-            new InvestmentChoiceFundResponse("F03", "Alpha", "1"),
-            new InvestmentChoiceFundResponse("F01", "Zulu", "1"),
-            new InvestmentChoiceFundResponse("F04", "Beta", null),
-            new InvestmentChoiceFundResponse("F05", "Beta", ""),
-            new InvestmentChoiceFundResponse("F06", "Zero", "0"));
+            new InvestmentChoiceFundResponse("F02", "alpha", 20, "1"),
+            new InvestmentChoiceFundResponse("F03", "Alpha", 30, "1"),
+            new InvestmentChoiceFundResponse("F01", "Zulu", 60, "1"),
+            new InvestmentChoiceFundResponse("F04", "Beta", 50, null),
+            new InvestmentChoiceFundResponse("F05", "Beta", 40, ""),
+            new InvestmentChoiceFundResponse("F06", "Zero", 10, "0"));
 
     assertThat(response.history())
         .containsExactly(
@@ -119,18 +119,18 @@ class InvestmentChoiceWebMapperTest {
     return new InvestmentChoiceDetails(
         5,
         List.of(
-            new InvestmentChoiceSource("BO", 20, false),
-            new InvestmentChoiceSource("EE", 10, true),
-            new InvestmentChoiceSource("AA", 10, false)),
+            new InvestmentChoiceSource("BO", "Both source", 20, false),
+            new InvestmentChoiceSource("EE", "Employee source", 10, true),
+            new InvestmentChoiceSource("AA", "Alpha source", 10, false)),
         List.of(
-            new InvestmentChoiceFund("F01", "Zulu", "祖魯", "1", true),
-            new InvestmentChoiceFund("F02", "alpha", "阿爾法", "1", true),
-            new InvestmentChoiceFund("F03", "Alpha", " ", "1", true),
-            new InvestmentChoiceFund("F04", "Beta", null, null, true),
-            new InvestmentChoiceFund("F05", "Beta", null, "", true),
-            new InvestmentChoiceFund("F06", "Zero", null, "0", true),
-            new InvestmentChoiceFund("F07", "Closed Fund", null, "2", false),
-            new InvestmentChoiceFund("F08", "Unavailable", null, "1", false)),
+            new InvestmentChoiceFund("F01", "Zulu", "祖魯", 60, "1", true),
+            new InvestmentChoiceFund("F02", "alpha", "阿爾法", 20, "1", true),
+            new InvestmentChoiceFund("F03", "Alpha", " ", 30, "1", true),
+            new InvestmentChoiceFund("F04", "Beta", null, 50, null, true),
+            new InvestmentChoiceFund("F05", "Beta", null, 40, "", true),
+            new InvestmentChoiceFund("F06", "Zero", null, 10, "0", true),
+            new InvestmentChoiceFund("F07", "Closed Fund", null, 70, "2", false),
+            new InvestmentChoiceFund("F08", "Unavailable", null, 80, "1", false)),
         List.of(
             new InvestmentChoiceMandate(LocalDate.of(2026, 10, 1), "BO", "F01", "99"),
             new InvestmentChoiceMandate(LocalDate.of(2026, 10, 1), "EE", "F06", "90"),

@@ -148,6 +148,70 @@ class InvestmentChoiceControllerTest {
   }
 
   @Test
+  void returnsSourceDescriptionAndFundSequenceInTheExactGetJsonContract() {
+    InvestmentChoiceDetails details =
+        new InvestmentChoiceDetails(
+            5,
+            List.of(
+                new InvestmentChoiceSource(
+                    "BO", "Employer and Member Voluntary Contributions", 10, true)),
+            List.of(
+                new InvestmentChoiceFund(
+                    "FAEU",
+                    "Fidelity Advantage Portfolio Fund - Asia Pacific Equity Fund",
+                    null,
+                    60,
+                    "",
+                    true)),
+            List.of(),
+            List.of());
+    WebTestClient client =
+        client(
+            command -> Mono.just(new InvestmentChoiceResult("00000008802-0230", details)),
+            context("ACC-1"),
+            exchange -> Optional.of(SESSION_ID));
+
+    client
+        .get()
+        .uri(ROUTE)
+        .header("Accept-Language", "en")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .json(
+            """
+            {
+              "success": true,
+              "status": "SUCCESS",
+              "result": {
+                "data": {
+                  "accountNumber": "00000008802-0230",
+                  "intervalPercentage": 5,
+                  "switchSources": [{
+                    "switchSourceCode": "BO",
+                    "switchSource": "Employer and Member Voluntary Contributions",
+                    "sequence": 10,
+                    "available": true
+                  }],
+                  "funds": [{
+                    "fundCode": "FAEU",
+                    "fundName": "Fidelity Advantage Portfolio Fund - Asia Pacific Equity Fund",
+                    "sequence": 60,
+                    "riskLevel": ""
+                  }],
+                  "history": [],
+                  "pendingInstructions": []
+                }
+              },
+              "messages": [],
+              "errors": []
+            }
+            """,
+            JsonCompareMode.STRICT);
+  }
+
+  @Test
   void serializesHistoryPercentagesAsStringsAndPendingPercentagesAsNumbers() {
     InvestmentChoiceDetails details =
         new InvestmentChoiceDetails(

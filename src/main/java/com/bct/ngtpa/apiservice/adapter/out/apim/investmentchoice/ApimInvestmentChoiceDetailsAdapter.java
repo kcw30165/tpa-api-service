@@ -151,7 +151,8 @@ public final class ApimInvestmentChoiceDetailsAdapter implements InvestmentChoic
           || !codes.add(row.switchSrc())) {
         throw new InvestmentChoiceMalformedResponseException();
       }
-      result.add(new InvestmentChoiceSource(row.switchSrc(), row.seq(), row.availSw()));
+      result.add(
+          new InvestmentChoiceSource(row.switchSrc(), row.srcDesc(), row.seq(), row.availSw()));
     }
     return List.copyOf(result);
   }
@@ -173,7 +174,12 @@ public final class ApimInvestmentChoiceDetailsAdapter implements InvestmentChoic
               : row.chinFundName().isBlank() ? row.fundName() : row.chinFundName();
       result.add(
           new InvestmentChoiceFund(
-              row.fundCode(), row.fundName(), chineseName, row.riskLevel(), row.availSw()));
+              row.fundCode(),
+              row.fundName(),
+              chineseName,
+              row.fundSeq(),
+              row.riskLevel(),
+              row.availSw()));
     }
     return List.copyOf(result);
   }
