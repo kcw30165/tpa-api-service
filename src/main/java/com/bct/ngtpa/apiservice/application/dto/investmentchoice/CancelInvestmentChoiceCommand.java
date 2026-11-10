@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.dto.investmentchoice;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
 import java.util.Objects;
 
 public record CancelInvestmentChoiceCommand(
@@ -13,7 +14,8 @@ public record CancelInvestmentChoiceCommand(
     String snapshotAccountRef,
     AuthenticatedSessionId authenticatedSessionId,
     String requestId,
-    String referenceNo) {
+    String referenceNo,
+    PayloadDigest authorizationBinding) {
 
   public CancelInvestmentChoiceCommand {
     Objects.requireNonNull(actorUserId, "actorUserId must not be null");
@@ -24,6 +26,7 @@ public record CancelInvestmentChoiceCommand(
     Objects.requireNonNull(snapshotAccountRef, "snapshotAccountRef must not be null");
     Objects.requireNonNull(authenticatedSessionId, "authenticatedSessionId must not be null");
     Objects.requireNonNull(referenceNo, "referenceNo must not be null");
+    Objects.requireNonNull(authorizationBinding, "authorizationBinding must not be null");
     if (referenceNo.isBlank()) {
       throw new IllegalArgumentException("referenceNo must not be blank");
     }

@@ -3,16 +3,20 @@ package com.bct.ngtpa.apiservice.application.usecase.passwordvalidation;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayloadCanonicalizer;
 import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.application.port.out.OperationPayloadBindingPort;
 import com.bct.ngtpa.apiservice.application.port.out.PasswordCheckPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.RevokeAuthenticatedSessionUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.*;
 import java.time.*;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -28,9 +32,21 @@ class PasswordValidationIssuanceServiceTest {
   private final RevokeAuthenticatedSessionUseCase revocation =
       mock(RevokeAuthenticatedSessionUseCase.class);
   private final FailureEventPort failures = mock(FailureEventPort.class);
+  private final PasswordValidationPurposePrecheckPolicyRegistry prechecks =
+      new PasswordValidationPurposePrecheckPolicyRegistry(
+          List.of(new PersonalInformationPasswordValidationPrecheckPolicy()),
+          Set.of(PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE));
+  private final OperationPayloadBindingPort bindings = new JsonOperationPayloadCanonicalizer();
   private final PasswordValidationIssuanceService service =
       new PasswordValidationIssuanceService(
-          throttle, passwords, grants, revocation, Clock.fixed(NOW, ZoneOffset.UTC), failures);
+          throttle,
+          passwords,
+          grants,
+          revocation,
+          Clock.fixed(NOW, ZoneOffset.UTC),
+          failures,
+          bindings,
+          prechecks);
   private final PasswordValidationIssuanceCommand command =
       new PasswordValidationIssuanceCommand(
           new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
@@ -40,7 +56,19 @@ class PasswordValidationIssuanceServiceTest {
                   "acc_abcdefghijklmnopqrstuvwx", "TEST", "p", "c", "t", null, null, null)),
           "unchanged-marker",
           PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE,
-          new PayloadDigest(1, "b".repeat(64)),
+          "{\"formVersion\":\"v1\",\"applyToAllAccounts\":false,\"fields\":{\"name\":\"x\"}}",
+          new PersonalInformationPasswordValidationPayload(
+              PersonalInformationPasswordValidationPayload.JsonKind.OBJECT,
+              true,
+              PersonalInformationPasswordValidationPayload.JsonKind.STRING,
+              "v1",
+              true,
+              PersonalInformationPasswordValidationPayload.JsonKind.BOOLEAN,
+              false,
+              true,
+              PersonalInformationPasswordValidationPayload.JsonKind.OBJECT,
+              List.of("formVersion", "applyToAllAccounts", "fields"),
+              List.of("name")),
           "test");
 
   private void admit(PasswordCheckResult result) {
@@ -85,7 +113,8 @@ class PasswordValidationIssuanceServiceTest {
                     null)),
             command.password(),
             command.purpose(),
-            command.binding(),
+            command.operationPayloadJson(),
+            command.payload(),
             command.correlationId());
     assertThat(service.issue(invalid).block().status())
         .isEqualTo(PasswordValidationIssuanceResult.Status.UNAVAILABLE);
@@ -181,7 +210,7 @@ class PasswordValidationIssuanceServiceTest {
     assertThat(result.expiresInSeconds()).isEqualTo(299);
     assertThat(result.toString()).doesNotContain("synthetic-token");
     assertThat(command.toString())
-        .doesNotContain("actor-marker", "unchanged-marker", command.binding().sha256());
+        .doesNotContain("actor-marker", "unchanged-marker", command.operationPayloadJson());
     var order = inOrder(throttle, passwords, grants);
     order.verify(throttle).check(any(), any());
     order.verify(passwords).check(any());
@@ -199,6 +228,8 @@ class PasswordValidationIssuanceServiceTest {
             revocation,
             Clock.fixed(NOW, ZoneOffset.UTC),
             failures,
+            bindings,
+            prechecks,
             150);
     when(grants.issue(any(), any(), any(), any(), any(), any()))
         .thenReturn(

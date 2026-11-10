@@ -1,43 +1,20 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieReader;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.InvestmentChoiceCancelBodyValidator;
-import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.InvestmentChoiceController;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.InvestmentChoiceInstructionBodyValidator;
-import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.InvestmentChoiceWebMapper;
-import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayloadCanonicalizer;
-import com.bct.ngtpa.apiservice.application.dto.AccountContext;
-import com.bct.ngtpa.apiservice.application.dto.ActorContext;
-import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
-import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
-import com.bct.ngtpa.apiservice.application.dto.TermStatus;
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancelOutcome;
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancellation;
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceInstructionRequest;
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
-import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
-import com.bct.ngtpa.apiservice.application.port.in.CancelInvestmentChoiceUseCase;
-import com.bct.ngtpa.apiservice.application.port.in.GetInvestmentChoiceUseCase;
-import com.bct.ngtpa.apiservice.application.port.in.SubmitInvestmentChoiceUseCase;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.InvestmentChoiceCancelPrecheckValidator;
+import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.InvestmentChoiceInstructionPrecheckValidator;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.reactive.server.WebTestClient;
-import reactor.core.publisher.Mono;
 
 class InvestmentChoiceInstructionPasswordValidationParityTest {
 
@@ -45,190 +22,68 @@ class InvestmentChoiceInstructionPasswordValidationParityTest {
       "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":["
           + "{\"fundCode\":\"DBLF\",\"percentage\":60},"
           + "{\"fundCode\":\"DHKM\",\"percentage\":40}]}";
-  private static final String VALID_CANCEL =
-      """
-      {"refNo":"260001449"}
-      """;
-
+  private static final String VALID_CANCEL = "{\"refNo\":\"260001449\"}";
   private final ObjectMapper json = new ObjectMapper();
-  private final PasswordValidationRequestParser parser =
-      new PasswordValidationRequestParser(new JsonOperationPayloadCanonicalizer(), 3, 5);
-  private final InvestmentChoiceInstructionBodyValidator validator =
+  private final ChangeInvestmentChoicePasswordValidationPayloadDecoder submitDecoder =
+      new ChangeInvestmentChoicePasswordValidationPayloadDecoder();
+  private final CancelInvestmentChoicePasswordValidationPayloadDecoder cancelDecoder =
+      new CancelInvestmentChoicePasswordValidationPayloadDecoder();
+  private final InvestmentChoiceInstructionBodyValidator submitFacade =
       new InvestmentChoiceInstructionBodyValidator();
-  private final InvestmentChoiceCancelBodyValidator cancelValidator =
+  private final InvestmentChoiceCancelBodyValidator cancelFacade =
       new InvestmentChoiceCancelBodyValidator();
-  private final AtomicReference<InvestmentChoiceInstructionRequest> receivedInstruction =
-      new AtomicReference<>();
-  private final AtomicReference<String> receivedCancelReferenceNo = new AtomicReference<>();
-  private final WebTestClient controllerClient = buildControllerClient();
+  private final InvestmentChoiceInstructionPrecheckValidator submitPolicyValidator =
+      new InvestmentChoiceInstructionPrecheckValidator();
+  private final InvestmentChoiceCancelPrecheckValidator cancelPolicyValidator =
+      new InvestmentChoiceCancelPrecheckValidator();
+  private final PasswordValidationRequestParser parser =
+      new PasswordValidationRequestParser(
+          PasswordValidationTestRegistrations.decoders(), json, 3, 5);
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("parityCases")
-  void issuanceParserAndSubmitBodyValidatorAgree(
-      String name,
-      String body,
-      boolean expectedIssuanceAcceptance,
-      boolean expectedValidatorAcceptance)
+  void submitPolicyAndExistingBodyValidatorAgree(
+      String name, String body, boolean expectedPolicyAcceptance, boolean expectedFacadeAcceptance)
       throws JsonProcessingException {
-    boolean issuanceAccepts = issuanceAccepts(body);
-    boolean submitAccepts = validator.validate(json.readTree(body)).isValid();
-    var controllerResponse =
-        controllerClient
-            .post()
-            .uri("/api/v1/investment-choice/instructions")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(body)
-            .exchange()
-            .expectBody()
-            .returnResult();
+    JsonNode operation = json.readTree(body);
+    boolean policyAccepts =
+        submitPolicyValidator.validate(submitDecoder.decode(operation)).isValid();
+    boolean facadeAccepts = submitFacade.validate(operation).isValid();
 
-    assertThat(new boolean[] {issuanceAccepts, submitAccepts})
-        .containsExactly(expectedIssuanceAcceptance, expectedValidatorAcceptance);
-    assertThat(controllerResponse.getStatus().value())
+    assertThat(new boolean[] {policyAccepts, facadeAccepts})
         .as(name)
-        .isEqualTo(expectedValidatorAcceptance ? 200 : 422);
-  }
-
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("duplicateMemberCases")
-  void controllerKeepsLastDuplicateMemberAndGateIsBodyIntegrityAuthority(
-      String name, String body, InvestmentChoiceInstructionRequest expectedInstruction) {
-    // Characterization only, not endorsement: raw-body integrity belongs to the gate.
-    var controllerResponse =
-        controllerClient
-            .post()
-            .uri("/api/v1/investment-choice/instructions")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(body)
-            .exchange()
-            .expectBody()
-            .returnResult();
-
-    assertThat(controllerResponse.getStatus().value()).as(name).isEqualTo(200);
-    assertThat(receivedInstruction.get()).isEqualTo(expectedInstruction);
+        .containsExactly(expectedPolicyAcceptance, expectedFacadeAcceptance);
   }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("cancelParityCases")
-  void cancelIssuanceParserAndBodyValidatorAgree(
+  void cancelPolicyAndExistingBodyValidatorAgree(
       String name, String body, boolean expectedAcceptance) throws JsonProcessingException {
-    boolean issuanceAccepts = cancelIssuanceAccepts(body);
-    boolean validatorAccepts = cancelValidator.validate(json.readTree(body)).isValid();
-    var controllerResponse =
-        controllerClient
-            .post()
-            .uri("/api/v1/investment-choice/instructions/cancel")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(body)
-            .exchange()
-            .expectBody()
-            .returnResult();
+    JsonNode operation = json.readTree(body);
+    boolean policyAccepts =
+        cancelPolicyValidator.validate(cancelDecoder.decode(operation)).isValid();
+    boolean facadeAccepts = cancelFacade.validate(operation).isValid();
 
-    assertThat(new boolean[] {issuanceAccepts, validatorAccepts})
-        .containsExactly(expectedAcceptance, expectedAcceptance);
-    assertThat(controllerResponse.getStatus().value())
+    assertThat(new boolean[] {policyAccepts, facadeAccepts})
         .as(name)
-        .isEqualTo(expectedAcceptance ? 200 : 422);
+        .containsExactly(expectedAcceptance, expectedAcceptance);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("duplicateMemberBodies")
+  void strictRawParsingRejectsDuplicateMembersAtTheIssuanceBoundary(String name, String body) {
+    assertThatThrownBy(() -> parser.parse(issuanceRequest("CHANGE_INVESTMENT_CHOICE", body)))
+        .as(name)
+        .isInstanceOf(PasswordValidationRequestInvalidException.class)
+        .hasNoCause();
   }
 
   @Test
-  void cancelControllerUsesLastDuplicateMemberAndGateOwnsDuplicateRejection() {
-    var controllerResponse =
-        controllerClient
-            .post()
-            .uri("/api/v1/investment-choice/instructions/cancel")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(
-                """
-                {"refNo":"260001449","refNo":"260001450"}
-                """)
-            .exchange()
-            .expectBody()
-            .returnResult();
-
-    assertThat(controllerResponse.getStatus().value()).isEqualTo(200);
-    assertThat(receivedCancelReferenceNo.get()).isEqualTo("260001450");
-  }
-
-  private WebTestClient buildControllerClient() {
-    var context =
-        new PortalAccessContext(
-            new ActorContext("actor", ActorUserRole.ROLE_USER_MBR),
-            new AccountContext(
-                "account-reference",
-                "JP",
-                "policy-number",
-                "certificate-number",
-                "T",
-                "OE",
-                TermStatus.BLANK,
-                null));
-    CurrentPortalAccessContextResolver contexts =
-        new CurrentPortalAccessContextResolver() {
-          @Override
-          public Mono<PortalAccessContext> current() {
-            return Mono.just(context);
-          }
-
-          @Override
-          public Mono<PortalAccessContext> currentOrEmpty() {
-            return Mono.just(context);
-          }
-        };
-    GetInvestmentChoiceUseCase getUseCase =
-        command -> Mono.error(new AssertionError("GET use case must not run"));
-    SubmitInvestmentChoiceUseCase submitUseCase =
-        command -> {
-          receivedInstruction.set(command.request());
-          return Mono.just(
-              new InvestmentChoiceSubmitOutcome.Submitted(
-                  new InvestmentChoiceSubmission(
-                      "bridge-reference", LocalDate.of(2026, 11, 6), LocalTime.NOON)));
-        };
-    CancelInvestmentChoiceUseCase cancelUseCase =
-        command -> {
-          receivedCancelReferenceNo.set(command.referenceNo());
-          return Mono.just(
-              new InvestmentChoiceCancelOutcome.Cancelled(
-                  new InvestmentChoiceCancellation(command.referenceNo())));
-        };
-    AuthenticatedSessionCookieReader sessions =
-        exchange -> Optional.of(new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"));
-    var controller =
-        new InvestmentChoiceController(
-            getUseCase,
-            submitUseCase,
-            cancelUseCase,
-            contexts,
-            sessions,
-            new InvestmentChoiceWebMapper(),
-            json);
-    return WebTestClient.bindToController(controller).build();
-  }
-
-  private boolean issuanceAccepts(String body) {
-    try {
-      parser.parse(
-          "{\"password\":\"abc\",\"purpose\":\"CHANGE_INVESTMENT_CHOICE\",\"operationPayload\":"
-              + body
-              + "}");
-      return true;
-    } catch (PasswordValidationRequestInvalidException exception) {
-      return false;
-    }
-  }
-
-  private boolean cancelIssuanceAccepts(String body) {
-    try {
-      parser.parse(
-          """
-          {"password":"abc","purpose":"CANCEL_INVESTMENT_CHOICE","operationPayload":%s}
-          """
-              .formatted(body));
-      return true;
-    } catch (PasswordValidationRequestInvalidException exception) {
-      return false;
-    }
+  void strictRawParsingRejectsTrailingContentWithoutClaimingTheTreeDecoderDetectsDuplicates() {
+    assertThatThrownBy(
+            () -> parser.parse(issuanceRequest("CHANGE_INVESTMENT_CHOICE", VALID) + " {}"))
+        .isInstanceOf(PasswordValidationRequestInvalidException.class)
+        .hasNoCause();
   }
 
   static Stream<Arguments> parityCases() {
@@ -349,32 +204,6 @@ class InvestmentChoiceInstructionPasswordValidationParityTest {
         cancelCase("empty object", "{}", false));
   }
 
-  private static Arguments cancelCase(String name, String body, boolean expectedAcceptance) {
-    return Arguments.of(name, body, expectedAcceptance);
-  }
-
-  static Stream<Arguments> duplicateMemberCases() {
-    return Stream.of(
-        Arguments.of(
-            "duplicate top-level switchSources",
-            duplicateTopLevelSwitchSources(),
-            new InvestmentChoiceInstructionRequest(
-                List.of("BO"),
-                List.of(new InvestmentChoiceInstructionRequest.Allocation("DBLF", 100)))),
-        Arguments.of(
-            "duplicate top-level allocations",
-            duplicateTopLevelAllocations(),
-            new InvestmentChoiceInstructionRequest(
-                List.of("BO"),
-                List.of(new InvestmentChoiceInstructionRequest.Allocation("DHKM", 100)))),
-        Arguments.of(
-            "duplicate allocation percentage",
-            duplicateAllocationPercentage(),
-            new InvestmentChoiceInstructionRequest(
-                List.of("BO"),
-                List.of(new InvestmentChoiceInstructionRequest.Allocation("DBLF", 100)))));
-  }
-
   static Stream<Arguments> duplicateMemberBodies() {
     return Stream.of(
         Arguments.of("duplicate top-level switchSources", duplicateTopLevelSwitchSources()),
@@ -382,9 +211,13 @@ class InvestmentChoiceInstructionPasswordValidationParityTest {
         Arguments.of("duplicate allocation percentage", duplicateAllocationPercentage()));
   }
 
+  private static Arguments cancelCase(String name, String body, boolean accepted) {
+    return Arguments.of(name, body, accepted);
+  }
+
   private static Arguments caseOf(
-      String name, String body, boolean issuanceAccepts, boolean validatorAccepts) {
-    return Arguments.of(name, body, issuanceAccepts, validatorAccepts);
+      String name, String body, boolean policyAccepted, boolean facadeAccepted) {
+    return Arguments.of(name, body, policyAccepted, facadeAccepted);
   }
 
   private static String oneHundred() {
@@ -434,5 +267,13 @@ class InvestmentChoiceInstructionPasswordValidationParityTest {
   private static String reversedMembers() {
     return "{\"allocations\":[{\"percentage\":60,\"fundCode\":\"DBLF\"},"
         + "{\"percentage\":40,\"fundCode\":\"DHKM\"}],\"switchSources\":[\"BO\",\"EE\"]}";
+  }
+
+  private static String issuanceRequest(String purpose, String body) {
+    return "{\"password\":\"abc\",\"purpose\":\""
+        + purpose
+        + "\",\"operationPayload\":"
+        + body
+        + "}";
   }
 }

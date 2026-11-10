@@ -24,7 +24,6 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSource;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelNotCancellableException;
@@ -46,9 +45,9 @@ import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.CancelInves
 import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.GetInvestmentChoiceService;
 import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.InvestmentChoiceSnapshotCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.SubmitInvestmentChoiceService;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
 import com.bct.ngtpa.apiservice.infrastructure.logging.ExecutionLoggingAspect;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -232,13 +231,27 @@ class InvestmentChoiceApplicationConfigTest {
                     .verify();
 
                 when(snapshotCache.read(any(), any(), any(), any()))
-                    .thenReturn(Mono.just(java.util.Optional.of(unavailableSnapshot())));
+                    .thenReturn(Mono.just(Optional.empty()));
+                when(instructionPort.submit(any()))
+                    .thenReturn(
+                        Mono.just(
+                            new InvestmentChoiceSubmission(
+                                "snapshot-independent-reference",
+                                LocalDate.of(2026, 11, 6),
+                                LocalTime.of(9, 15))));
                 StepVerifier.create(submitUseCase.submit(submitCommand(VALID_REQUEST)))
                     .assertNext(
                         outcome ->
                             assertThat(outcome)
-                                .isInstanceOf(InvestmentChoiceSubmitOutcome.Invalid.class))
+                                .isEqualTo(
+                                    new InvestmentChoiceSubmitOutcome.Submitted(
+                                        new InvestmentChoiceSubmission(
+                                            "snapshot-independent-reference",
+                                            LocalDate.of(2026, 11, 6),
+                                            LocalTime.of(9, 15)))))
                     .verifyComplete();
+                org.mockito.Mockito.verify(snapshotCache, org.mockito.Mockito.never())
+                    .read(any(), any(), any(), any());
               });
 
       List<String> messages =
@@ -336,11 +349,11 @@ class InvestmentChoiceApplicationConfigTest {
                 when(cache.read(any(), any(), any(), any()))
                     .thenReturn(
                         Mono.just(Optional.of(cancelSnapshot(List.of(OTHER_CANCEL_REFERENCE_NO)))));
-                verifyCancelInvalid(cancelUseCase);
+                verifyCancelSnapshotMembershipIsNotRevalidated(cancelUseCase);
 
                 when(cache.read(any(), any(), any(), any()))
                     .thenReturn(Mono.just(Optional.empty()));
-                verifyCancelUnavailable(cancelUseCase);
+                verifyCancelSuccess(cancelUseCase);
 
                 when(cache.read(any(), any(), any(), any()))
                     .thenReturn(
@@ -397,7 +410,8 @@ class InvestmentChoiceApplicationConfigTest {
         ACCOUNT_REF,
         SESSION_ID,
         REQUEST_ID,
-        request);
+        request,
+        new PayloadDigest(1, "a".repeat(64)));
   }
 
   private static void verifyCancelSuccess(CancelInvestmentChoiceUseCase useCase) {
@@ -411,18 +425,15 @@ class InvestmentChoiceApplicationConfigTest {
         .verifyComplete();
   }
 
-  private static void verifyCancelInvalid(CancelInvestmentChoiceUseCase useCase) {
+  private static void verifyCancelSnapshotMembershipIsNotRevalidated(
+      CancelInvestmentChoiceUseCase useCase) {
     StepVerifier.create(useCase.cancel(cancelCommand(CANCEL_REFERENCE_NO)))
         .assertNext(
             outcome ->
                 assertThat(outcome)
                     .isEqualTo(
-                        new InvestmentChoiceCancelOutcome.Invalid(
-                            List.of(
-                                new InvestmentChoiceViolation(
-                                    InvestmentChoiceViolation.Kind.FIELD,
-                                    ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID,
-                                    List.of("refNo"))))))
+                        new InvestmentChoiceCancelOutcome.Cancelled(
+                            new InvestmentChoiceCancellation(CANCEL_REFERENCE_NO))))
         .verifyComplete();
   }
 
@@ -448,7 +459,8 @@ class InvestmentChoiceApplicationConfigTest {
         CANCEL_SNAPSHOT_ACCOUNT_REF,
         SESSION_ID,
         REQUEST_ID,
-        referenceNo);
+        referenceNo,
+        new PayloadDigest(1, "a".repeat(64)));
   }
 
   private static InvestmentChoiceSnapshot cancelSnapshot(List<String> pendingRefNos) {
@@ -468,11 +480,6 @@ class InvestmentChoiceApplicationConfigTest {
             new InvestmentChoiceSnapshot.Fund(FUND_CODE, true),
             new InvestmentChoiceSnapshot.Fund(OTHER_FUND_CODE, true)),
         List.of());
-  }
-
-  private static InvestmentChoiceSnapshot unavailableSnapshot() {
-    return new InvestmentChoiceSnapshot(
-        ACCOUNT_REF, POLICY_NO, 20, List.of(), List.of(), List.of());
   }
 
   private static InvestmentChoiceDetails detailsWithPending() {

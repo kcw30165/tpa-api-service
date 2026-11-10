@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayloadCanonicalizer;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
@@ -55,16 +54,19 @@ class PersonalInformationPasswordValidationCompatibilityTest {
       new PersonalInformationPasswordValidationPayloadDecoder();
   private final PersonalInformationPasswordValidationPrecheckPolicy policy =
       new PersonalInformationPasswordValidationPrecheckPolicy();
+  private final PasswordValidationRequestParser parser =
+      new PasswordValidationRequestParser(
+          PasswordValidationTestRegistrations.decoders(), JSON, 3, 20);
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("piPayloadCases")
-  void existingParserAndCompatibilityPolicyHaveIdenticalDecisions(
+  void existingPiContractCorpusMatchesCompatibilityPolicy(
       String caseName, String request, boolean expectedAccepted) {
-    boolean existingAccepted = existingParserAccepts(request);
     PrecheckDecision newDecision = strictDecoderAndPolicyDecision(request);
 
-    assertThat(existingAccepted).as(caseName + " existing parser").isEqualTo(expectedAccepted);
-    assertThat(newDecision.accepted()).as(caseName + " new components").isEqualTo(existingAccepted);
+    assertThat(newDecision.accepted())
+        .as(caseName + " compatibility policy")
+        .isEqualTo(expectedAccepted);
   }
 
   @ParameterizedTest(name = "{0}")
@@ -86,7 +88,7 @@ class PersonalInformationPasswordValidationCompatibilityTest {
   @MethodSource("strictBoundaryRequests")
   void strictRawParsingRejectsMalformedDuplicateAndTrailingRequests(
       String caseName, String request) {
-    assertThat(existingParserAccepts(request)).as(caseName + " existing parser").isFalse();
+    assertThat(parserRejects(request)).as(caseName + " strict parser").isTrue();
     PrecheckDecision decision = strictDecoderAndPolicyDecision(request);
     assertThat(decision.accepted()).as(caseName + " strict JsonNode boundary").isFalse();
     assertThat(decision.result()).as(caseName + " rejected before decoder").isNull();
@@ -251,17 +253,13 @@ class PersonalInformationPasswordValidationCompatibilityTest {
         + "}";
   }
 
-  private static boolean existingParserAccepts(String request) {
+  private boolean parserRejects(String request) {
     try {
-      existingParserForDecision().parse(request);
-      return true;
-    } catch (PasswordValidationRequestInvalidException exception) {
+      parser.parse(request);
       return false;
+    } catch (PasswordValidationRequestInvalidException exception) {
+      return true;
     }
-  }
-
-  private static PasswordValidationRequestParser existingParserForDecision() {
-    return new PasswordValidationRequestParser(new JsonOperationPayloadCanonicalizer(), 3, 20);
   }
 
   private PrecheckDecision strictDecoderAndPolicyDecision(String request) {

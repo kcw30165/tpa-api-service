@@ -8,14 +8,10 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
-import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
-import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionRejectedException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.port.in.SubmitInvestmentChoiceUseCase;
-import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceDetailsPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceInstructionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
@@ -25,9 +21,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +31,6 @@ public final class SubmitInvestmentChoiceService implements SubmitInvestmentChoi
 
   private static final String SUBMISSION_UNAVAILABLE =
       "err.investment-choice.submission.unavailable";
-  private static final String SNAPSHOT_MISSING = "SNAPSHOT_MISSING";
   private static final ZoneId HONG_KONG_ZONE = ZoneId.of("Asia/Hong_Kong");
   private static final Logger LOG = LoggerFactory.getLogger(SubmitInvestmentChoiceService.class);
 
@@ -45,9 +38,6 @@ public final class SubmitInvestmentChoiceService implements SubmitInvestmentChoi
   private final InvestmentChoiceDetailsPort detailsPort;
   private final InvestmentChoiceInstructionPort instructionPort;
   private final InvestmentChoiceSnapshotCacheService snapshotCache;
-  private final InvestmentChoiceSnapshotValidator snapshotValidator =
-      new InvestmentChoiceSnapshotValidator();
-  private final FailureEventPort failures;
   private final Clock clock;
 
   public SubmitInvestmentChoiceService(
@@ -55,43 +45,17 @@ public final class SubmitInvestmentChoiceService implements SubmitInvestmentChoi
       InvestmentChoiceDetailsPort detailsPort,
       InvestmentChoiceInstructionPort instructionPort,
       InvestmentChoiceSnapshotCacheService snapshotCache,
-      FailureEventPort failures,
       Clock clock) {
     this.referenceDatePort = Objects.requireNonNull(referenceDatePort);
     this.detailsPort = Objects.requireNonNull(detailsPort);
     this.instructionPort = Objects.requireNonNull(instructionPort);
     this.snapshotCache = Objects.requireNonNull(snapshotCache);
-    this.failures = Objects.requireNonNull(failures);
     this.clock = Objects.requireNonNull(clock);
   }
 
   @Override
   public Mono<InvestmentChoiceSubmitOutcome> submit(SubmitInvestmentChoiceCommand command) {
     Objects.requireNonNull(command, "command must not be null");
-    return Mono.defer(
-            () ->
-                snapshotCache.read(
-                    command.sessionId(),
-                    command.snapshotAccountRef(),
-                    command.policyNo(),
-                    command.requestId()))
-        .defaultIfEmpty(Optional.empty())
-        .onErrorResume(error -> Mono.just(Optional.empty()))
-        .flatMap(
-            snapshot ->
-                snapshot
-                    .map(value -> submitAgainstSnapshot(command, value))
-                    .orElseGet(() -> snapshotMissing(command)));
-  }
-
-  private Mono<InvestmentChoiceSubmitOutcome> submitAgainstSnapshot(
-      SubmitInvestmentChoiceCommand command, InvestmentChoiceSnapshot snapshot) {
-    List<InvestmentChoiceViolation> violations =
-        snapshotValidator.validate(command.request(), snapshot);
-    if (!violations.isEmpty()) {
-      return Mono.just(new InvestmentChoiceSubmitOutcome.Invalid(violations));
-    }
-
     List<InvestmentChoiceInstructionRow> rows = expand(command);
     InvestmentChoiceInstructionCommand instructionCommand =
         new InvestmentChoiceInstructionCommand(
@@ -197,27 +161,6 @@ public final class SubmitInvestmentChoiceService implements SubmitInvestmentChoi
         .map(row -> new InstructionTuple(row.switchSource(), row.fundCode(), row.percentage()))
         .forEach(tuples::add);
     return Set.copyOf(tuples);
-  }
-
-  private Mono<InvestmentChoiceSubmitOutcome> snapshotMissing(
-      SubmitInvestmentChoiceCommand command) {
-    try {
-      failures.publish(
-          new FailureEvent(
-              "investment-choice.submission.snapshot.missing",
-              command.requestId(),
-              "INVESTMENT_CHOICE",
-              "SNAPSHOT",
-              FailureOrigin.LOCAL_SYSTEM,
-              SNAPSHOT_MISSING,
-              SUBMISSION_UNAVAILABLE,
-              503,
-              false,
-              Map.of("reason", "missing")));
-    } catch (RuntimeException ignored) {
-      // Telemetry must not change the submission outcome.
-    }
-    return Mono.error(unavailable());
   }
 
   private void warn(String event, String requestId) {

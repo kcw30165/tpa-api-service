@@ -4,6 +4,9 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSession
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceCancellationResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceSubmissionResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.CancelInvestmentChoicePasswordValidationPayloadDecoder;
+import com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.ChangeInvestmentChoicePasswordValidationPayloadDecoder;
+import com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.PasswordValidationTokenGateBindingAccessor;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.HttpStatusClassification;
@@ -24,6 +27,7 @@ import com.bct.ngtpa.apiservice.application.port.in.GetInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.SubmitInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
@@ -60,10 +64,14 @@ public final class InvestmentChoiceController {
   private final AuthenticatedSessionCookieReader sessionCookieReader;
   private final InvestmentChoiceWebMapper webMapper;
   private final ObjectMapper objectMapper;
-  private final InvestmentChoiceInstructionBodyValidator bodyValidator =
-      new InvestmentChoiceInstructionBodyValidator();
-  private final InvestmentChoiceCancelBodyValidator cancelBodyValidator =
-      new InvestmentChoiceCancelBodyValidator();
+  private final PasswordValidationTokenGateBindingAccessor gateBindings =
+      new PasswordValidationTokenGateBindingAccessor();
+  private final ChangeInvestmentChoicePasswordValidationPayloadDecoder submitDecoder =
+      new ChangeInvestmentChoicePasswordValidationPayloadDecoder();
+  private final CancelInvestmentChoicePasswordValidationPayloadDecoder cancelDecoder =
+      new CancelInvestmentChoicePasswordValidationPayloadDecoder();
+  private final InvestmentChoiceExecutionPayloadMapper executionPayloadMapper =
+      new InvestmentChoiceExecutionPayloadMapper();
 
   public InvestmentChoiceController(
       GetInvestmentChoiceUseCase useCase,
@@ -142,27 +150,26 @@ public final class InvestmentChoiceController {
                     if (sessionId.isEmpty()) {
                       return Mono.error(new AuthenticatedPortalContextResolutionException());
                     }
+                    Optional<PayloadDigest> binding = gateBindings.binding(exchange);
+                    if (binding.isEmpty()) {
+                      return Mono.just(submitAuthorizationRejected(exchange));
+                    }
                     return requestBody
-                        .map(this::toValidationTree)
+                        .map(this::toJsonTree)
                         .defaultIfEmpty(NullNode.getInstance())
                         .flatMap(
                             body -> {
-                              var validation = bodyValidator.validate(body);
-                              if (!validation.isValid()) {
-                                return Mono.just(
-                                    submitResponse(
-                                        exchange,
-                                        MutationResponse.failure(
-                                            ApiStatus.VALIDATION_FAILED,
-                                            validationErrors(validation.violations()))));
-                              }
+                              var request =
+                                  executionPayloadMapper.toInstructionRequest(
+                                      submitDecoder.decode(body));
                               SubmitInvestmentChoiceCommand command =
                                   submitCommandFrom(
                                       context,
                                       accountRef,
                                       sessionId.get(),
                                       requestId,
-                                      validation.request());
+                                      request,
+                                      binding.get());
                               return submitUseCase
                                   .submit(command)
                                   .map(
@@ -193,8 +200,18 @@ public final class InvestmentChoiceController {
                     if (sessionId.isEmpty()) {
                       return Mono.error(new AuthenticatedPortalContextResolutionException());
                     }
+                    Optional<PayloadDigest> binding = gateBindings.binding(exchange);
+                    if (binding.isEmpty()) {
+                      return Mono.just(cancelAuthorizationRejected(exchange));
+                    }
                     return cancelBody(
-                        requestBody, context, accountRef, sessionId.get(), requestId, exchange);
+                        requestBody,
+                        context,
+                        accountRef,
+                        sessionId.get(),
+                        requestId,
+                        binding.get(),
+                        exchange);
                   });
         });
   }
@@ -206,36 +223,28 @@ public final class InvestmentChoiceController {
           String snapshotAccountRef,
           AuthenticatedSessionId sessionId,
           String requestId,
+          PayloadDigest binding,
           ServerWebExchange exchange) {
     return requestBody
-        .map(this::toValidationTree)
+        .map(this::toJsonTree)
         .defaultIfEmpty(NullNode.getInstance())
         .flatMap(
             body -> {
-              var validation = cancelBodyValidator.validate(body);
-              if (!validation.isValid()) {
-                return Mono.just(
-                    cancelResponse(
-                        exchange,
-                        MutationResponse.failure(
-                            ApiStatus.VALIDATION_FAILED,
-                            validationErrors(validation.violations()))));
-              }
+              String referenceNo = executionPayloadMapper.toReferenceNo(cancelDecoder.decode(body));
               CancelInvestmentChoiceCommand command =
                   cancelCommandFrom(
-                      context, snapshotAccountRef, sessionId, requestId, validation.referenceNo());
+                      context, snapshotAccountRef, sessionId, requestId, referenceNo, binding);
               return cancelUseCase
                   .cancel(command)
                   .map(outcome -> cancelResponse(exchange, cancellationResponse(outcome)));
             });
   }
 
-  private com.fasterxml.jackson.databind.JsonNode toValidationTree(JsonNode body) {
+  private com.fasterxml.jackson.databind.JsonNode toJsonTree(JsonNode body) {
     try {
       return objectMapper.readTree(body.toString());
     } catch (JsonProcessingException exception) {
-      throw new IllegalStateException(
-          "Unable to convert decoded investment choice request", exception);
+      throw new IllegalStateException("Unable to decode authorized investment choice request");
     }
   }
 
@@ -324,7 +333,8 @@ public final class InvestmentChoiceController {
       String snapshotAccountRef,
       AuthenticatedSessionId sessionId,
       String requestId,
-      InvestmentChoiceInstructionRequest request) {
+      InvestmentChoiceInstructionRequest request,
+      PayloadDigest binding) {
     var account = context.account();
     return new SubmitInvestmentChoiceCommand(
         context.actor().actorUserId(),
@@ -335,7 +345,8 @@ public final class InvestmentChoiceController {
         snapshotAccountRef,
         sessionId,
         requestId,
-        request);
+        request,
+        binding);
   }
 
   private static CancelInvestmentChoiceCommand cancelCommandFrom(
@@ -343,7 +354,8 @@ public final class InvestmentChoiceController {
       String snapshotAccountRef,
       AuthenticatedSessionId sessionId,
       String requestId,
-      String referenceNo) {
+      String referenceNo,
+      PayloadDigest binding) {
     var account = context.account();
     return new CancelInvestmentChoiceCommand(
         context.actor().actorUserId(),
@@ -354,7 +366,44 @@ public final class InvestmentChoiceController {
         snapshotAccountRef,
         sessionId,
         requestId,
-        referenceNo);
+        referenceNo,
+        binding);
+  }
+
+  private static ResponseEntity<MutationResponse<InvestmentChoiceSubmissionResultResponse>>
+      submitAuthorizationRejected(ServerWebExchange exchange) {
+    var status = HttpStatus.FORBIDDEN;
+    exchange.getResponse().setStatusCode(status);
+    return ResponseEntity.status(status)
+        .body(
+            MutationResponse.failure(
+                ApiStatus.BUSINESS_REJECTED,
+                List.of(
+                    new ApiError(
+                        "BUSINESS",
+                        ErrorCodes.PASSWORD_VALIDATION_AUTHORIZATION_INVALID,
+                        null,
+                        List.of("X-Password-Validation-Token"),
+                        "ERROR",
+                        ERROR_SOURCE))));
+  }
+
+  private static ResponseEntity<MutationResponse<InvestmentChoiceCancellationResultResponse>>
+      cancelAuthorizationRejected(ServerWebExchange exchange) {
+    var status = HttpStatus.FORBIDDEN;
+    exchange.getResponse().setStatusCode(status);
+    return ResponseEntity.status(status)
+        .body(
+            MutationResponse.failure(
+                ApiStatus.BUSINESS_REJECTED,
+                List.of(
+                    new ApiError(
+                        "BUSINESS",
+                        ErrorCodes.PASSWORD_VALIDATION_AUTHORIZATION_INVALID,
+                        null,
+                        List.of("X-Password-Validation-Token"),
+                        "ERROR",
+                        ERROR_SOURCE))));
   }
 
   private static String requireAccountRef(PortalAccessContext context) {

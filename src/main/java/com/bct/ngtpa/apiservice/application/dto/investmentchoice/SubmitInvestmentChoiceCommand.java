@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.dto.investmentchoice;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
 import java.util.Objects;
 
 public record SubmitInvestmentChoiceCommand(
@@ -13,7 +14,8 @@ public record SubmitInvestmentChoiceCommand(
     String snapshotAccountRef,
     AuthenticatedSessionId sessionId,
     String requestId,
-    InvestmentChoiceInstructionRequest request) {
+    InvestmentChoiceInstructionRequest request,
+    PayloadDigest authorizationBinding) {
 
   public SubmitInvestmentChoiceCommand {
     Objects.requireNonNull(actorUserId, "actorUserId must not be null");
@@ -24,6 +26,7 @@ public record SubmitInvestmentChoiceCommand(
     Objects.requireNonNull(snapshotAccountRef, "snapshotAccountRef must not be null");
     Objects.requireNonNull(sessionId, "sessionId must not be null");
     Objects.requireNonNull(request, "request must not be null");
+    Objects.requireNonNull(authorizationBinding, "authorizationBinding must not be null");
   }
 
   @Override

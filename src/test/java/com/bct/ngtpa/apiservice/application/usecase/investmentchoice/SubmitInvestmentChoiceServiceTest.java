@@ -25,16 +25,12 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
-import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
-import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionRejectedException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnknownOutcomeException;
-import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceDetailsPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceInstructionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
@@ -44,8 +40,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
@@ -95,7 +89,6 @@ class SubmitInvestmentChoiceServiceTest {
       mock(InvestmentChoiceInstructionPort.class);
   private final InvestmentChoiceSnapshotCacheService snapshotCache =
       mock(InvestmentChoiceSnapshotCacheService.class);
-  private final FailureEventPort failures = mock(FailureEventPort.class);
   private final Clock clock = Clock.fixed(HK_BOUNDARY_INSTANT, ZoneOffset.UTC);
   private final Logger logger =
       (Logger) LoggerFactory.getLogger(SubmitInvestmentChoiceService.class);
@@ -115,7 +108,7 @@ class SubmitInvestmentChoiceServiceTest {
 
   private SubmitInvestmentChoiceService useCase() {
     return new SubmitInvestmentChoiceService(
-        referenceDatePort, detailsPort, instructionPort, snapshotCache, failures, clock);
+        referenceDatePort, detailsPort, instructionPort, snapshotCache, clock);
   }
 
   private static SubmitInvestmentChoiceCommand command(InvestmentChoiceInstructionRequest request) {
@@ -128,26 +121,13 @@ class SubmitInvestmentChoiceServiceTest {
         SNAPSHOT_ACCOUNT_REF,
         SESSION_ID,
         REQUEST_ID,
-        request);
+        request,
+        new com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest(1, "a".repeat(64)));
   }
 
   private static InvestmentChoiceInstructionRequest request(
       List<String> switchSources, InvestmentChoiceInstructionRequest.Allocation... allocations) {
     return new InvestmentChoiceInstructionRequest(switchSources, List.of(allocations));
-  }
-
-  private static InvestmentChoiceSnapshot snapshot() {
-    return new InvestmentChoiceSnapshot(
-        SNAPSHOT_ACCOUNT_REF,
-        POLICY_NO,
-        20,
-        List.of(
-            new InvestmentChoiceSnapshot.SwitchSource("BO", true),
-            new InvestmentChoiceSnapshot.SwitchSource("EE", true)),
-        List.of(
-            new InvestmentChoiceSnapshot.Fund("FBAL", true),
-            new InvestmentChoiceSnapshot.Fund("FHKM", true)),
-        List.of());
   }
 
   private static InvestmentChoiceDetails details(List<InvestmentChoicePending> pending) {
@@ -167,13 +147,7 @@ class SubmitInvestmentChoiceServiceTest {
         new InvestmentChoicePendingDetail("BO", "FHKM", 40));
   }
 
-  private void arrangeSnapshotHit() {
-    when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
-        .thenReturn(Mono.just(Optional.of(snapshot())));
-  }
-
   private void arrangeUnknownOutcomeWithDetails(InvestmentChoiceDetails details) {
-    arrangeSnapshotHit();
     when(instructionPort.submit(any()))
         .thenReturn(Mono.error(new InvestmentChoiceSubmissionUnknownOutcomeException()));
     when(referenceDatePort.resolveReferenceDate(ACCOUNT_ENV)).thenReturn(Mono.just(REFERENCE_DATE));
@@ -203,7 +177,6 @@ class SubmitInvestmentChoiceServiceTest {
 
   @Test
   void submitsExpandedRowsAndReturnsTheAdapterSubmissionWithoutReconciling() {
-    arrangeSnapshotHit();
     when(instructionPort.submit(any())).thenReturn(Mono.just(ADAPTER_SUBMISSION));
 
     StepVerifier.create(useCase().submit(command(VALID_REQUEST)))
@@ -213,122 +186,32 @@ class SubmitInvestmentChoiceServiceTest {
                     .isEqualTo(new InvestmentChoiceSubmitOutcome.Submitted(ADAPTER_SUBMISSION)))
         .verifyComplete();
 
-    InOrder order = inOrder(snapshotCache, instructionPort);
-    order
-        .verify(snapshotCache, times(1))
-        .read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    InOrder order = inOrder(instructionPort);
     var instruction = ArgumentCaptor.forClass(InvestmentChoiceInstructionCommand.class);
     order.verify(instructionPort).submit(instruction.capture());
     assertThat(instruction.getValue())
         .isEqualTo(
             new InvestmentChoiceInstructionCommand(
                 ACTOR_USER_ID, ACTOR_USER_ROLE, ACCOUNT_ENV, POLICY_NO, CERT_NO, EXPANDED_ROWS));
-    verifyNoInteractions(referenceDatePort, detailsPort, failures);
+    verifyNoInteractions(snapshotCache, referenceDatePort, detailsPort);
     assertThat(appender.list).isEmpty();
     assertNoSensitiveLogValues();
   }
 
   @Test
-  void snapshotMissPublishesOneSafeEventAndSkipsInstructionSubmission() {
-    when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
-        .thenReturn(Mono.just(Optional.empty()));
+  void executionDispatchesWithoutReadingOrRevalidatingTheSnapshot() {
+    when(instructionPort.submit(any())).thenReturn(Mono.just(ADAPTER_SUBMISSION));
 
     StepVerifier.create(useCase().submit(command(VALID_REQUEST)))
-        .expectError(InvestmentChoiceSubmissionUnavailableException.class)
-        .verify();
-
-    var event = ArgumentCaptor.forClass(FailureEvent.class);
-    verify(failures, times(1)).publish(event.capture());
-    assertThat(event.getValue())
-        .isEqualTo(
-            new FailureEvent(
-                "investment-choice.submission.snapshot.missing",
-                REQUEST_ID,
-                "INVESTMENT_CHOICE",
-                "SNAPSHOT",
-                FailureOrigin.LOCAL_SYSTEM,
-                "SNAPSHOT_MISSING",
-                "err.investment-choice.submission.unavailable",
-                503,
-                false,
-                Map.of("reason", "missing")));
-    verifyNoInteractions(instructionPort, referenceDatePort, detailsPort);
-    assertThat(appender.list).isEmpty();
-    assertThat(event.getValue().toString())
-        .doesNotContain(
-            ACTOR_USER_ID,
-            POLICY_NO,
-            CERT_NO,
-            SNAPSHOT_ACCOUNT_REF,
-            SESSION_ID.value(),
-            "FBAL",
-            "FHKM",
-            "60",
-            "40");
-    assertNoSensitiveLogValues();
-  }
-
-  @Test
-  void returnsAllSnapshotViolationsWithoutSubmittingOrPublishingEvents() {
-    var invalidRequest =
-        request(
-            List.of("BO", "EE"),
-            new InvestmentChoiceInstructionRequest.Allocation("FBAL", 60),
-            new InvestmentChoiceInstructionRequest.Allocation("FHKM", 40));
-    var invalidSnapshot =
-        new InvestmentChoiceSnapshot(
-            SNAPSHOT_ACCOUNT_REF,
-            POLICY_NO,
-            25,
-            List.of(
-                new InvestmentChoiceSnapshot.SwitchSource("BO", true),
-                new InvestmentChoiceSnapshot.SwitchSource("EE", false)),
-            List.of(new InvestmentChoiceSnapshot.Fund("FBAL", false)),
-            List.of());
-    when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
-        .thenReturn(Mono.just(Optional.of(invalidSnapshot)));
-
-    StepVerifier.create(useCase().submit(command(invalidRequest)))
-        .assertNext(
-            outcome ->
-                assertThat(outcome)
-                    .isEqualTo(
-                        new InvestmentChoiceSubmitOutcome.Invalid(
-                            List.of(
-                                violation(
-                                    InvestmentChoiceViolation.Kind.FIELD,
-                                    "err.investment-choice.percentage.interval-invalid",
-                                    "allocations[0].percentage"),
-                                violation(
-                                    InvestmentChoiceViolation.Kind.FIELD,
-                                    "err.investment-choice.percentage.interval-invalid",
-                                    "allocations[1].percentage"),
-                                violation(
-                                    InvestmentChoiceViolation.Kind.FIELD,
-                                    "err.investment-choice.switch-source.unavailable",
-                                    "switchSources[1]"),
-                                violation(
-                                    InvestmentChoiceViolation.Kind.FIELD,
-                                    "err.investment-choice.fund.unavailable",
-                                    "allocations[0].fundCode"),
-                                violation(
-                                    InvestmentChoiceViolation.Kind.FIELD,
-                                    "err.investment-choice.fund.unavailable",
-                                    "allocations[1].fundCode")))))
+        .expectNext(new InvestmentChoiceSubmitOutcome.Submitted(ADAPTER_SUBMISSION))
         .verifyComplete();
 
-    verifyNoInteractions(instructionPort, referenceDatePort, detailsPort, failures);
-    assertThat(appender.list).isEmpty();
-  }
-
-  private static InvestmentChoiceViolation violation(
-      InvestmentChoiceViolation.Kind kind, String code, String target) {
-    return new InvestmentChoiceViolation(kind, code, List.of(target));
+    verify(instructionPort).submit(any());
+    verifyNoInteractions(snapshotCache, referenceDatePort, detailsPort);
   }
 
   @Test
   void rejectedSubmissionBecomesUnavailableWithoutReconciliationOrUseCaseEvent() {
-    arrangeSnapshotHit();
     when(instructionPort.submit(any()))
         .thenReturn(Mono.error(new InvestmentChoiceSubmissionRejectedException()));
 
@@ -337,7 +220,7 @@ class SubmitInvestmentChoiceServiceTest {
         .verify();
 
     verify(instructionPort).submit(any());
-    verifyNoInteractions(referenceDatePort, detailsPort, failures);
+    verifyNoInteractions(referenceDatePort, detailsPort);
     assertThat(appender.list).isEmpty();
     assertNoSensitiveLogValues();
   }
@@ -362,7 +245,6 @@ class SubmitInvestmentChoiceServiceTest {
             })
         .verifyComplete();
 
-    verify(snapshotCache, times(1)).read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     var refreshedSnapshot = ArgumentCaptor.forClass(InvestmentChoiceSnapshot.class);
     verify(snapshotCache, times(1))
         .write(eq(SESSION_ID), refreshedSnapshot.capture(), eq(REQUEST_ID));
@@ -374,7 +256,6 @@ class SubmitInvestmentChoiceServiceTest {
         .isEqualTo(
             new InvestmentChoiceDetailsCommand(
                 ACTOR_USER_ROLE, ACCOUNT_ENV, POLICY_NO, CERT_NO, REFERENCE_DATE));
-    verifyNoInteractions(failures);
     assertThat(appender.list.stream().map(ILoggingEvent::getFormattedMessage).toList())
         .containsExactly("event=investment-choice.submission.reconciled requestId=" + REQUEST_ID);
     assertNoSensitiveLogValues();
@@ -391,10 +272,9 @@ class SubmitInvestmentChoiceServiceTest {
         .expectError(InvestmentChoiceSubmissionUnavailableException.class)
         .verify();
 
-    verify(snapshotCache, times(1)).read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, never()).read(any(), any(), any(), any());
     verify(snapshotCache, never()).write(any(), any(), any());
     verify(detailsPort).load(any());
-    verifyNoInteractions(failures);
     assertThat(appender.list.stream().map(ILoggingEvent::getFormattedMessage).toList())
         .as(scenario)
         .containsExactly("event=investment-choice.submission.unreconciled requestId=" + REQUEST_ID);
@@ -464,7 +344,6 @@ class SubmitInvestmentChoiceServiceTest {
 
   @Test
   void reconciliationReferenceDateFailureBecomesUnavailable() {
-    arrangeSnapshotHit();
     when(instructionPort.submit(any()))
         .thenReturn(Mono.error(new InvestmentChoiceSubmissionUnknownOutcomeException()));
     when(referenceDatePort.resolveReferenceDate(ACCOUNT_ENV))
@@ -474,14 +353,13 @@ class SubmitInvestmentChoiceServiceTest {
         .expectError(InvestmentChoiceSubmissionUnavailableException.class)
         .verify();
 
-    verifyNoInteractions(detailsPort, failures);
+    verifyNoInteractions(detailsPort);
     verify(snapshotCache, never()).write(any(), any(), any());
     assertThat(appender.list).isEmpty();
   }
 
   @Test
   void reconciliationDetailsFailureBecomesUnavailable() {
-    arrangeSnapshotHit();
     when(instructionPort.submit(any()))
         .thenReturn(Mono.error(new InvestmentChoiceSubmissionUnknownOutcomeException()));
     when(referenceDatePort.resolveReferenceDate(ACCOUNT_ENV)).thenReturn(Mono.just(REFERENCE_DATE));
@@ -494,7 +372,6 @@ class SubmitInvestmentChoiceServiceTest {
 
     verify(detailsPort).load(any());
     verify(snapshotCache, never()).write(any(), any(), any());
-    verifyNoInteractions(failures);
     assertThat(appender.list).isEmpty();
   }
 
@@ -526,7 +403,6 @@ class SubmitInvestmentChoiceServiceTest {
 
   @Test
   void anyUnexpectedInstructionFailureIsReconciledAsUnknownOutcome() {
-    arrangeSnapshotHit();
     when(instructionPort.submit(any()))
         .thenReturn(Mono.error(new IllegalStateException("unexpected-sensitive")));
     when(referenceDatePort.resolveReferenceDate(ACCOUNT_ENV)).thenReturn(Mono.just(REFERENCE_DATE));
@@ -542,7 +418,6 @@ class SubmitInvestmentChoiceServiceTest {
         .verifyComplete();
 
     verify(detailsPort).load(any());
-    verifyNoInteractions(failures);
     assertNoSensitiveLogValues();
   }
 }

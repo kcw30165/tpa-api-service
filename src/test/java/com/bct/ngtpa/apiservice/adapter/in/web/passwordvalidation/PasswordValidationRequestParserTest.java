@@ -22,15 +22,20 @@ class PasswordValidationRequestParserTest {
   private static final String CIM_OPERATION =
       "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":[{\"fundCode\":\"DBLF\",\"percentage\":60},{\"fundCode\":\"DHKM\",\"percentage\":40}]}";
   private final PasswordValidationRequestParser parser =
-      new PasswordValidationRequestParser(new JsonOperationPayloadCanonicalizer(), 3, 5);
+      new PasswordValidationRequestParser(
+          PasswordValidationTestRegistrations.decoders(),
+          new com.fasterxml.jackson.databind.ObjectMapper(),
+          3,
+          5);
 
   @Test
   void usesExplicitLoginBoundsPreservesSpacesAndBindsAllRawOperationMembers() {
     var parsed = parser.parse(body(" AbC ", OPERATION));
     assertThat(parsed.password()).isEqualTo(" AbC ");
-    assertThat(parsed.binding())
+    assertThat(parsed.operationPayloadJson()).isEqualTo(OPERATION);
+    assertThat(new JsonOperationPayloadCanonicalizer().digest(parsed.operationPayloadJson()))
         .isEqualTo(new JsonOperationPayloadCanonicalizer().digest(OPERATION));
-    assertThat(parsed.toString()).doesNotContain(" AbC ", OPERATION, parsed.binding().sha256());
+    assertThat(parsed.toString()).doesNotContain(" AbC ", OPERATION);
     assertThat(parser.parse(body("   ", OPERATION)).password()).isEqualTo("   ");
     String tooShort = body("ab", OPERATION);
     String tooLong = body("abcdef", OPERATION);
@@ -57,8 +62,11 @@ class PasswordValidationRequestParserTest {
                 "CHANGE_INVESTMENT_CHOICE",
                 "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":[{\"fundCode\":\"DHKM\",\"percentage\":40},{\"fundCode\":\"DBLF\",\"percentage\":60}]}"));
 
-    assertThat(parsed.binding()).isEqualTo(reorderedMembers.binding());
-    assertThat(parsed.binding()).isNotEqualTo(reorderedAllocations.binding());
+    var canonicalizer = new JsonOperationPayloadCanonicalizer();
+    assertThat(canonicalizer.digest(parsed.operationPayloadJson()))
+        .isEqualTo(canonicalizer.digest(reorderedMembers.operationPayloadJson()));
+    assertThat(canonicalizer.digest(parsed.operationPayloadJson()))
+        .isNotEqualTo(canonicalizer.digest(reorderedAllocations.operationPayloadJson()));
   }
 
   @Test
@@ -68,18 +76,21 @@ class PasswordValidationRequestParserTest {
     var different = parser.parse(body("abc", CANCEL_PURPOSE, DIFFERENT_CANCEL_OPERATION));
 
     assertThat(parsed.purpose().name()).isEqualTo(CANCEL_PURPOSE);
-    assertThat(parsed.binding()).isEqualTo(repeated.binding()).isNotEqualTo(different.binding());
+    var canonicalizer = new JsonOperationPayloadCanonicalizer();
+    assertThat(parsed.purpose().name()).isEqualTo(CANCEL_PURPOSE);
+    assertThat(canonicalizer.digest(parsed.operationPayloadJson()))
+        .isEqualTo(canonicalizer.digest(repeated.operationPayloadJson()))
+        .isNotEqualTo(canonicalizer.digest(different.operationPayloadJson()));
   }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("invalidCancelOperations")
-  void invalidCancelOperationShapesAreRejected(String name, String operation) {
-    String raw = body("abc", CANCEL_PURPOSE, operation);
-
-    assertThatThrownBy(() -> parser.parse(raw))
-        .isInstanceOf(PasswordValidationRequestInvalidException.class)
-        .hasMessage("Invalid password-validation request")
-        .hasNoCause();
+  void cancelPayloadShapesAreDecodedForPurposeOwnedValidation(String name, String operation) {
+    var parsed = parser.parse(body("abc", CANCEL_PURPOSE, operation));
+    assertThat(parsed.payload())
+        .isInstanceOf(
+            com.bct.ngtpa.apiservice.application.dto.passwordvalidation
+                .CancelInvestmentChoicePasswordValidationPayload.class);
   }
 
   private static Stream<Arguments> invalidCancelOperations() {
@@ -93,7 +104,7 @@ class PasswordValidationRequestParserTest {
         Arguments.of("array-refNo", refNoOperation("[]")),
         Arguments.of("object-refNo", refNoOperation("{}")),
         Arguments.of("blank-refNo", refNoOperation("\" \\t \"")),
-        Arguments.of("duplicate-refNo", duplicateRefNoOperation()));
+        Arguments.of("unknown-member", unknownMemberOperation()));
   }
 
   private static String quotedRefNoOperation(String value) {
@@ -140,9 +151,17 @@ class PasswordValidationRequestParserTest {
         "{\"formVersion\":\"v1\",\"applyToAllAccounts\":false,\"fields\":[]}",
         "{\"formVersion\":\"v1\",\"applyToAllAccounts\":false,\"fields\":{}}"
       })
-  void malformedOperationShapeHasValueFreeExceptionWithoutCause(String operation) {
-    String raw = body("abc", operation);
-    assertThatThrownBy(() -> parser.parse(raw))
+  void personalInformationShapeValidationIsDeferredToItsPurposePolicy(String operation) {
+    var parsed = parser.parse(body("abc", operation));
+    assertThat(parsed.payload())
+        .isInstanceOf(
+            com.bct.ngtpa.apiservice.application.dto.passwordvalidation
+                .PersonalInformationPasswordValidationPayload.class);
+  }
+
+  @Test
+  void strictRawParsingStillRejectsDuplicateMembers() {
+    assertThatThrownBy(() -> parser.parse(body("abc", CANCEL_PURPOSE, duplicateRefNoOperation())))
         .isInstanceOf(PasswordValidationRequestInvalidException.class)
         .hasMessage("Invalid password-validation request")
         .hasNoCause();

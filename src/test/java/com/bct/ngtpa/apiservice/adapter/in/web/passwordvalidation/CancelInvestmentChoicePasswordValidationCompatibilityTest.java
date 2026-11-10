@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.InvestmentChoiceCancelBodyValidator;
-import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayloadCanonicalizer;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
@@ -39,7 +38,8 @@ class CancelInvestmentChoicePasswordValidationCompatibilityTest {
   private final InvestmentChoiceCancelBodyValidator executionFacade =
       new InvestmentChoiceCancelBodyValidator();
   private final PasswordValidationRequestParser parser =
-      new PasswordValidationRequestParser(new JsonOperationPayloadCanonicalizer(), 3, 5);
+      new PasswordValidationRequestParser(
+          PasswordValidationTestRegistrations.decoders(), JSON, 3, 5);
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("cancelCorpus")

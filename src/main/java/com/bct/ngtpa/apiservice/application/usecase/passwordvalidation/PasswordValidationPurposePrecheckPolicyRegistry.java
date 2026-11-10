@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.passwordvalidation;
 
+import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.PasswordValidationPrecheckContext;
+import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.PasswordValidationPrecheckResult;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.PasswordValidationPurposePayload;
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
 import java.util.Collection;
@@ -9,6 +11,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import reactor.core.publisher.Mono;
 
 public final class PasswordValidationPurposePrecheckPolicyRegistry {
   private static final String UNSUPPORTED_PURPOSE =
@@ -61,6 +64,18 @@ public final class PasswordValidationPurposePrecheckPolicyRegistry {
     return policy;
   }
 
+  public Mono<PasswordValidationPrecheckResult> precheck(
+      PasswordValidationPurpose purpose,
+      PasswordValidationPurposePayload payload,
+      PasswordValidationPrecheckContext context) {
+    Objects.requireNonNull(payload, "payload must not be null");
+    var policy = require(purpose);
+    if (!policy.payloadType().isInstance(payload)) {
+      throw new IllegalArgumentException("Password-validation policy payload type mismatch");
+    }
+    return precheckTyped(policy, payload, context);
+  }
+
   public Set<PasswordValidationPurpose> supportedPurposes() {
     return Collections.unmodifiableSet(EnumSet.copyOf(supportedPurposes));
   }
@@ -85,5 +100,13 @@ public final class PasswordValidationPurposePrecheckPolicyRegistry {
       throw new IllegalArgumentException("At least one password-validation purpose is required");
     }
     return Collections.unmodifiableSet(EnumSet.copyOf(purposes));
+  }
+
+  private static <T extends PasswordValidationPurposePayload>
+      Mono<PasswordValidationPrecheckResult> precheckTyped(
+          PasswordValidationPurposePrecheckPolicy<T> policy,
+          PasswordValidationPurposePayload payload,
+          PasswordValidationPrecheckContext context) {
+    return policy.precheck(policy.payloadType().cast(payload), context);
   }
 }

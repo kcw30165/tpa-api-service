@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
 import java.lang.reflect.RecordComponent;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -46,7 +47,8 @@ class CancelInvestmentChoiceCommandTest {
         Arguments.of("certNo", 4),
         Arguments.of("snapshotAccountRef", 5),
         Arguments.of("authenticatedSessionId", 6),
-        Arguments.of("referenceNo", 7));
+        Arguments.of("referenceNo", 7),
+        Arguments.of("authorizationBinding", 8));
   }
 
   @ParameterizedTest
@@ -89,7 +91,8 @@ class CancelInvestmentChoiceCommandTest {
         SNAPSHOT_ACCOUNT_REF,
         SESSION_ID,
         requestId,
-        referenceNo);
+        referenceNo,
+        binding());
   }
 
   private static CancelInvestmentChoiceCommand commandWithNull(int fieldIndex) {
@@ -104,7 +107,8 @@ class CancelInvestmentChoiceCommandTest {
               OTHER_SNAPSHOT_ACCOUNT_REF,
               SESSION_ID,
               REQUEST_ID,
-              REFERENCE_NO);
+              REFERENCE_NO,
+              binding());
       case 1 ->
           new CancelInvestmentChoiceCommand(
               OTHER_ACTOR_USER_ID,
@@ -115,7 +119,8 @@ class CancelInvestmentChoiceCommandTest {
               OTHER_SNAPSHOT_ACCOUNT_REF,
               SESSION_ID,
               REQUEST_ID,
-              REFERENCE_NO);
+              REFERENCE_NO,
+              binding());
       case 2 ->
           new CancelInvestmentChoiceCommand(
               OTHER_ACTOR_USER_ID,
@@ -126,7 +131,8 @@ class CancelInvestmentChoiceCommandTest {
               OTHER_SNAPSHOT_ACCOUNT_REF,
               SESSION_ID,
               REQUEST_ID,
-              REFERENCE_NO);
+              REFERENCE_NO,
+              binding());
       case 3 ->
           new CancelInvestmentChoiceCommand(
               OTHER_ACTOR_USER_ID,
@@ -137,7 +143,8 @@ class CancelInvestmentChoiceCommandTest {
               OTHER_SNAPSHOT_ACCOUNT_REF,
               SESSION_ID,
               REQUEST_ID,
-              REFERENCE_NO);
+              REFERENCE_NO,
+              binding());
       case 4 ->
           new CancelInvestmentChoiceCommand(
               OTHER_ACTOR_USER_ID,
@@ -148,7 +155,8 @@ class CancelInvestmentChoiceCommandTest {
               OTHER_SNAPSHOT_ACCOUNT_REF,
               SESSION_ID,
               REQUEST_ID,
-              REFERENCE_NO);
+              REFERENCE_NO,
+              binding());
       case 5 ->
           new CancelInvestmentChoiceCommand(
               OTHER_ACTOR_USER_ID,
@@ -159,7 +167,8 @@ class CancelInvestmentChoiceCommandTest {
               null,
               SESSION_ID,
               REQUEST_ID,
-              REFERENCE_NO);
+              REFERENCE_NO,
+              binding());
       case 6 ->
           new CancelInvestmentChoiceCommand(
               OTHER_ACTOR_USER_ID,
@@ -170,7 +179,8 @@ class CancelInvestmentChoiceCommandTest {
               OTHER_SNAPSHOT_ACCOUNT_REF,
               null,
               REQUEST_ID,
-              REFERENCE_NO);
+              REFERENCE_NO,
+              binding());
       case 7 ->
           new CancelInvestmentChoiceCommand(
               OTHER_ACTOR_USER_ID,
@@ -181,8 +191,25 @@ class CancelInvestmentChoiceCommandTest {
               OTHER_SNAPSHOT_ACCOUNT_REF,
               SESSION_ID,
               REQUEST_ID,
+              null,
+              binding());
+      case 8 ->
+          new CancelInvestmentChoiceCommand(
+              OTHER_ACTOR_USER_ID,
+              ActorUserRole.ROLE_USER_MBR,
+              ACCOUNT_ENV,
+              OTHER_POLICY_NO,
+              OTHER_CERT_NO,
+              OTHER_SNAPSHOT_ACCOUNT_REF,
+              SESSION_ID,
+              REQUEST_ID,
+              REFERENCE_NO,
               null);
       default -> throw new IllegalArgumentException("unknown field index");
     };
+  }
+
+  private static PayloadDigest binding() {
+    return new PayloadDigest(1, "a".repeat(64));
   }
 }

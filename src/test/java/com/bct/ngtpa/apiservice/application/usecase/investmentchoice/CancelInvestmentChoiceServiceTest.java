@@ -19,8 +19,6 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancelOutcome;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancellation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation.Kind;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
@@ -28,7 +26,6 @@ import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelNotC
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelUnavailableException;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceCancelPort;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -104,7 +101,7 @@ class CancelInvestmentChoiceServiceTest {
   }
 
   @Test
-  void cancelsPendingReferenceAndRewritesSnapshotBeforeCompletion() {
+  void dispatchesBeforeRewritingSnapshotAfterCompletion() {
     when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(
             Mono.just(
@@ -128,11 +125,11 @@ class CancelInvestmentChoiceServiceTest {
             })
         .verifyComplete();
 
-    InOrder order = inOrder(snapshotCache, cancelPort);
-    order.verify(snapshotCache).read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    InOrder order = inOrder(cancelPort, snapshotCache);
     ArgumentCaptor<InvestmentChoiceCancelCommand> cancelCommand =
         ArgumentCaptor.forClass(InvestmentChoiceCancelCommand.class);
     order.verify(cancelPort).cancel(cancelCommand.capture());
+    order.verify(snapshotCache).read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     assertThat(cancelCommand.getValue())
         .isEqualTo(
             new InvestmentChoiceCancelCommand(
@@ -153,66 +150,27 @@ class CancelInvestmentChoiceServiceTest {
   }
 
   @Test
-  void missingSnapshotPublishesOneSafeFailureAndDoesNotCallCancelPort() {
+  void dispatchesBeforeBestEffortSnapshotCleanupAndSucceedsWhenSnapshotIsMissing() {
+    when(cancelPort.cancel(any()))
+        .thenReturn(Mono.just(new InvestmentChoiceCancellation(REFERENCE_NO)));
     when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.empty()));
 
     StepVerifier.create(service().cancel(command(REFERENCE_NO)))
-        .expectError(InvestmentChoiceCancelUnavailableException.class)
-        .verify();
-
-    ArgumentCaptor<FailureEvent> event = ArgumentCaptor.forClass(FailureEvent.class);
-    verify(failureEvents).publish(event.capture());
-    assertThat(event.getValue())
-        .isEqualTo(
-            new FailureEvent(
-                "investment-choice.cancel.snapshot.missing",
-                REQUEST_ID,
-                "INVESTMENT_CHOICE",
-                "SNAPSHOT",
-                FailureOrigin.LOCAL_SYSTEM,
-                "SNAPSHOT_MISSING",
-                "err.investment-choice.cancel.unavailable",
-                503,
-                false,
-                Map.of("reason", "missing")));
-    assertThat(event.getValue().toString())
-        .doesNotContain(
-            ACTOR_USER_ID,
-            POLICY_NO,
-            CERT_NO,
-            SNAPSHOT_ACCOUNT_REF,
-            SESSION_ID.value(),
-            REFERENCE_NO);
-    verify(cancelPort, never()).cancel(any());
-    verify(snapshotCache, never()).write(any(), any(), any());
-  }
-
-  @Test
-  void referenceNotPresentInSnapshotIsInvalidWithoutSideEffects() {
-    when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
-        .thenReturn(Mono.just(Optional.of(snapshot(List.of(OTHER_REFERENCE_NO)))));
-
-    StepVerifier.create(service().cancel(command(REFERENCE_NO)))
-        .assertNext(
-            outcome ->
-                assertThat(outcome)
-                    .isEqualTo(
-                        new InvestmentChoiceCancelOutcome.Invalid(
-                            List.of(
-                                new InvestmentChoiceViolation(
-                                    Kind.FIELD,
-                                    ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID,
-                                    List.of("refNo"))))))
+        .expectNext(
+            new InvestmentChoiceCancelOutcome.Cancelled(
+                new InvestmentChoiceCancellation(REFERENCE_NO)))
         .verifyComplete();
 
-    verify(cancelPort, never()).cancel(any());
+    InOrder order = inOrder(cancelPort, snapshotCache);
+    order.verify(cancelPort).cancel(any());
+    order.verify(snapshotCache).read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verify(snapshotCache, never()).write(any(), any(), any());
     verify(failureEvents, never()).publish(any());
   }
 
   @Test
-  void secondCancelAfterSnapshotRewriteIsInvalid() {
+  void repeatedExecutionDoesNotRevalidateSnapshotMembership() {
     AtomicReference<InvestmentChoiceSnapshot> storedSnapshot =
         new AtomicReference<>(snapshot(List.of(REFERENCE_NO, OTHER_REFERENCE_NO)));
     when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
@@ -237,16 +195,12 @@ class CancelInvestmentChoiceServiceTest {
             outcome ->
                 assertThat(outcome)
                     .isEqualTo(
-                        new InvestmentChoiceCancelOutcome.Invalid(
-                            List.of(
-                                new InvestmentChoiceViolation(
-                                    Kind.FIELD,
-                                    ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID,
-                                    List.of("refNo"))))))
+                        new InvestmentChoiceCancelOutcome.Cancelled(
+                            new InvestmentChoiceCancellation(REFERENCE_NO))))
         .verifyComplete();
 
-    verify(cancelPort, times(1)).cancel(any());
-    verify(snapshotCache, times(1)).write(eq(SESSION_ID), any(), eq(REQUEST_ID));
+    verify(cancelPort, times(2)).cancel(any());
+    verify(snapshotCache, times(2)).write(eq(SESSION_ID), any(), eq(REQUEST_ID));
     verify(failureEvents, never()).publish(any());
   }
 
@@ -363,7 +317,8 @@ class CancelInvestmentChoiceServiceTest {
         SNAPSHOT_ACCOUNT_REF,
         SESSION_ID,
         REQUEST_ID,
-        referenceNo);
+        referenceNo,
+        new com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest(1, "a".repeat(64)));
   }
 
   private static InvestmentChoiceSnapshot snapshot(List<String> pendingRefNos) {

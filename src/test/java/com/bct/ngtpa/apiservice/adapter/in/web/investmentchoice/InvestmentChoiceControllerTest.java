@@ -12,6 +12,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
+import com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.PasswordValidationGateBindingTestSupport;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
@@ -520,6 +521,7 @@ class InvestmentChoiceControllerTest {
             new InvestmentChoiceWebMapper(),
             new ObjectMapper());
     var exchange = MockServerWebExchange.from(MockServerHttpRequest.post(CANCEL_ROUTE).build());
+    PasswordValidationGateBindingTestSupport.bind(exchange);
 
     controller
         .cancelInvestmentChoice(
@@ -542,7 +544,8 @@ class InvestmentChoiceControllerTest {
                 "ACC-1",
                 SESSION_ID,
                 "req-42",
-                CANCEL_REFERENCE_NO));
+                CANCEL_REFERENCE_NO,
+                PasswordValidationGateBindingTestSupport.binding()));
   }
 
   @Test
@@ -562,126 +565,6 @@ class InvestmentChoiceControllerTest {
     cancelPost(client, BODY_WITH_PRESERVED_REFERENCE).expectStatus().isOk();
 
     assertThat(receivedReferenceNo.get()).isEqualTo(PRESERVED_REFERENCE_NO);
-  }
-
-  @ParameterizedTest
-  @MethodSource("invalidCancelBodies")
-  void cancelBodyViolationsReturn422WithoutCallingTheUseCase(
-      String scenario, String body, String type, String code, List<String> targets) {
-    AtomicInteger calls = new AtomicInteger();
-    WebTestClient client =
-        cancelClient(
-            command -> {
-              calls.incrementAndGet();
-              return Mono.just(
-                  new InvestmentChoiceCancelOutcome.Cancelled(
-                      new InvestmentChoiceCancellation(command.referenceNo())));
-            },
-            context("ACC-1"),
-            exchange -> Optional.of(SESSION_ID));
-
-    cancelPost(client, body)
-        .expectStatus()
-        .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
-        .expectBody()
-        .json(validationEnvelope(type, code, targets), JsonCompareMode.STRICT);
-
-    assertThat(calls).as(scenario).hasValue(0);
-  }
-
-  private static Stream<Arguments> invalidCancelBodies() {
-    return Stream.of(
-        Arguments.of(
-            "missing body", null, "FORM", ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID, List.of()),
-        Arguments.of(
-            "empty body", "", "FORM", ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID, List.of()),
-        Arguments.of(
-            "array root", "[]", "FORM", ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID, List.of()),
-        Arguments.of(
-            "string root",
-            "\"body\"",
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "unknown member",
-            "{\"refNo\":\"260001449\",\"extra\":true}",
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "null reference",
-            "{\"refNo\":null}",
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "numeric reference",
-            "{\"refNo\":260001449}",
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "boolean reference",
-            "{\"refNo\":false}",
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "array reference",
-            "{\"refNo\":[]}",
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "object reference",
-            "{\"refNo\":{}}",
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "missing reference",
-            "{}",
-            "FIELD",
-            ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_REQUIRED,
-            List.of("refNo")),
-        Arguments.of(
-            "blank reference",
-            "{\"refNo\":\"\"}",
-            "FIELD",
-            ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_REQUIRED,
-            List.of("refNo")),
-        Arguments.of(
-            "whitespace reference",
-            "{\"refNo\":\"   \"}",
-            "FIELD",
-            ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_REQUIRED,
-            List.of("refNo")));
-  }
-
-  @Test
-  void cancelUseCaseInvalidOutcomeReturns422() {
-    WebTestClient client =
-        cancelClient(
-            command ->
-                Mono.just(
-                    new InvestmentChoiceCancelOutcome.Invalid(
-                        List.of(
-                            new InvestmentChoiceViolation(
-                                InvestmentChoiceViolation.Kind.FIELD,
-                                ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID,
-                                List.of("refNo"))))),
-            context("ACC-1"),
-            exchange -> Optional.of(SESSION_ID));
-
-    cancelPost(client, CANCEL_BODY)
-        .expectStatus()
-        .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
-        .expectBody()
-        .json(
-            validationEnvelope(
-                "FIELD", ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID, List.of("refNo")),
-            JsonCompareMode.STRICT);
   }
 
   @ParameterizedTest
@@ -870,21 +753,6 @@ class InvestmentChoiceControllerTest {
               submitClient(
                   command ->
                       Mono.just(
-                          new InvestmentChoiceSubmitOutcome.Submitted(
-                              new InvestmentChoiceSubmission(
-                                  "referenceNo-secret",
-                                  LocalDate.of(2026, 11, 6),
-                                  LocalTime.NOON))),
-                  sensitiveContext("account-ref-secret"),
-                  exchange -> Optional.of(SESSION_ID)),
-              "{\"switchSources\":[\"BO\"],\"allocations\":[{\"fundCode\":\"FBAL\",\"percentage\":99}]}")
-          .expectStatus()
-          .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
-
-      submitPost(
-              submitClient(
-                  command ->
-                      Mono.just(
                           new InvestmentChoiceSubmitOutcome.Invalid(
                               List.of(
                                   new InvestmentChoiceViolation(
@@ -1008,6 +876,7 @@ class InvestmentChoiceControllerTest {
             context("ACC-1"),
             exchange -> Optional.of(SESSION_ID));
     var exchange = MockServerWebExchange.from(MockServerHttpRequest.post(SUBMIT_ROUTE).build());
+    PasswordValidationGateBindingTestSupport.bind(exchange);
 
     controller
         .submitInvestmentChoice(
@@ -1031,18 +900,66 @@ class InvestmentChoiceControllerTest {
                 "ACC-1",
                 SESSION_ID,
                 "req-42",
-                VALID_REQUEST));
+                VALID_REQUEST,
+                PasswordValidationGateBindingTestSupport.binding()));
   }
 
-  @ParameterizedTest
-  @MethodSource("invalidInstructionBodies")
-  void bodyViolationsReturn422WithoutCallingTheUseCase(
-      String scenario, String body, String type, String code, List<String> targets) {
-    AtomicInteger calls = new AtomicInteger();
-    WebTestClient client =
+  @Test
+  void cimControllersRejectMissingGateBindingBeforeUseCaseDispatch() throws Exception {
+    AtomicInteger submitCalls = new AtomicInteger();
+    AtomicInteger cancelCalls = new AtomicInteger();
+    var controller =
+        new InvestmentChoiceController(
+            command -> Mono.error(new AssertionError("GET use case must not run")),
+            command -> {
+              submitCalls.incrementAndGet();
+              return Mono.just(
+                  new InvestmentChoiceSubmitOutcome.Submitted(
+                      new InvestmentChoiceSubmission(
+                          "submission-reference", LocalDate.of(2026, 11, 6), LocalTime.NOON)));
+            },
+            command -> {
+              cancelCalls.incrementAndGet();
+              return Mono.just(
+                  new InvestmentChoiceCancelOutcome.Cancelled(
+                      new InvestmentChoiceCancellation(command.referenceNo())));
+            },
+            resolver(context("ACC-1")),
+            exchange -> Optional.of(SESSION_ID),
+            new InvestmentChoiceWebMapper(),
+            new ObjectMapper());
+    var submitExchange =
+        MockServerWebExchange.from(MockServerHttpRequest.post(SUBMIT_ROUTE).build());
+    var cancelExchange =
+        MockServerWebExchange.from(MockServerHttpRequest.post(CANCEL_ROUTE).build());
+
+    var submitResponse =
+        controller
+            .submitInvestmentChoice(
+                Mono.just(new tools.jackson.databind.ObjectMapper().readTree(VALID_INSTRUCTION)),
+                submitExchange)
+            .block();
+    var cancelResponse =
+        controller
+            .cancelInvestmentChoice(
+                Mono.just(new tools.jackson.databind.ObjectMapper().readTree(CANCEL_BODY)),
+                cancelExchange)
+            .block();
+
+    assertThat(submitResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(cancelResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(submitCalls).hasValue(0);
+    assertThat(cancelCalls).hasValue(0);
+  }
+
+  @Test
+  void payloadThatCannotBeConstructedForExecutionFailsClosedWithoutDispatch() {
+    AtomicInteger submitCalls = new AtomicInteger();
+    AtomicInteger cancelCalls = new AtomicInteger();
+    WebTestClient submitClient =
         submitClient(
             command -> {
-              calls.incrementAndGet();
+              submitCalls.incrementAndGet();
               return Mono.just(
                   new InvestmentChoiceSubmitOutcome.Submitted(
                       new InvestmentChoiceSubmission(
@@ -1050,147 +967,24 @@ class InvestmentChoiceControllerTest {
             },
             context("ACC-1"),
             exchange -> Optional.of(SESSION_ID));
-
-    submitPost(client, body)
-        .expectStatus()
-        .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
-        .expectBody()
-        .json(validationEnvelope(type, code, targets), JsonCompareMode.STRICT);
-
-    assertThat(calls).as(scenario).hasValue(0);
-  }
-
-  private static Stream<Arguments> invalidInstructionBodies() {
-    return Stream.of(
-        Arguments.of(
-            "V1 missing body",
-            null,
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "V1 non-object", "[]", "FORM", ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID, List.of()),
-        Arguments.of(
-            "V1 unknown top-level member",
-            "{\"switchSources\":[\"BO\"],\"allocations\":[{\"fundCode\":\"FBAL\",\"percentage\":100}],\"extra\":true}",
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "V1 unknown allocation member",
-            "{\"switchSources\":[\"BO\"],\"allocations\":[{\"fundCode\":\"FBAL\",\"percentage\":100,\"extra\":true}]}",
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "V1 switchSources is not an array",
-            "{\"switchSources\":\"BO\",\"allocations\":[{\"fundCode\":\"FBAL\",\"percentage\":100}]}",
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "V1 allocation is not an object",
-            "{\"switchSources\":[\"BO\"],\"allocations\":[null]}",
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "V1 fundCode is not a string",
-            "{\"switchSources\":[\"BO\"],\"allocations\":[{\"fundCode\":1,\"percentage\":100}]}",
-            "FORM",
-            ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-            List.of()),
-        Arguments.of(
-            "V2 missing switchSources",
-            "{\"allocations\":[{\"fundCode\":\"FBAL\",\"percentage\":100}]}",
-            "FIELD",
-            ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_REQUIRED,
-            List.of("switchSources")),
-        Arguments.of(
-            "V3 duplicate switch source",
-            "{\"switchSources\":[\"BO\",\"BO\"],\"allocations\":[{\"fundCode\":\"FBAL\",\"percentage\":100}]}",
-            "FIELD",
-            ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_DUPLICATE,
-            List.of("switchSources[1]")),
-        Arguments.of(
-            "V4 empty allocations",
-            "{\"switchSources\":[\"BO\"],\"allocations\":[]}",
-            "FIELD",
-            ErrorCodes.INVESTMENT_CHOICE_ALLOCATION_REQUIRED,
-            List.of("allocations")),
-        Arguments.of(
-            "V5 missing fundCode",
-            "{\"switchSources\":[\"BO\"],\"allocations\":[{\"percentage\":100}]}",
-            "FIELD",
-            ErrorCodes.INVESTMENT_CHOICE_FUND_REQUIRED,
-            List.of("allocations[0].fundCode")),
-        Arguments.of(
-            "V6 duplicate fundCode",
-            "{\"switchSources\":[\"BO\"],\"allocations\":[{\"fundCode\":\"FBAL\",\"percentage\":50},{\"fundCode\":\"FBAL\",\"percentage\":50}]}",
-            "FIELD",
-            ErrorCodes.INVESTMENT_CHOICE_FUND_DUPLICATE,
-            List.of("allocations[1].fundCode")),
-        Arguments.of(
-            "V7 percentage outside range",
-            "{\"switchSources\":[\"BO\"],\"allocations\":[{\"fundCode\":\"FBAL\",\"percentage\":0}]}",
-            "FIELD",
-            ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_INVALID,
-            List.of("allocations[0].percentage")),
-        Arguments.of(
-            "V8 percentage total",
-            "{\"switchSources\":[\"BO\"],\"allocations\":[{\"fundCode\":\"FBAL\",\"percentage\":99}]}",
-            "CROSS_FIELD",
-            ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_TOTAL_INVALID,
-            List.of("allocations")));
-  }
-
-  @Test
-  void useCaseSnapshotViolationsReturn422() {
-    var violations =
-        List.of(
-            new InvestmentChoiceViolation(
-                InvestmentChoiceViolation.Kind.FIELD,
-                ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_INTERVAL_INVALID,
-                List.of("allocations[0].percentage")),
-            new InvestmentChoiceViolation(
-                InvestmentChoiceViolation.Kind.FIELD,
-                ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_UNAVAILABLE,
-                List.of("switchSources[1]")),
-            new InvestmentChoiceViolation(
-                InvestmentChoiceViolation.Kind.FIELD,
-                ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
-                List.of("allocations[0].fundCode")));
-    AtomicInteger calls = new AtomicInteger();
-    WebTestClient client =
-        submitClient(
+    WebTestClient cancelClient =
+        cancelClient(
             command -> {
-              calls.incrementAndGet();
-              return Mono.just(new InvestmentChoiceSubmitOutcome.Invalid(violations));
+              cancelCalls.incrementAndGet();
+              return Mono.just(
+                  new InvestmentChoiceCancelOutcome.Cancelled(
+                      new InvestmentChoiceCancellation(command.referenceNo())));
             },
             context("ACC-1"),
             exchange -> Optional.of(SESSION_ID));
 
-    submitPost(client, VALID_INSTRUCTION)
+    submitPost(submitClient, "[]").expectStatus().isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    cancelPost(cancelClient, "{\"refNo\":1}")
         .expectStatus()
-        .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
-        .expectBody()
-        .json(
-            """
-            {
-              "success": false,
-              "status": "VALIDATION_FAILED",
-              "result": null,
-              "messages": [],
-              "errors": [
-                {"type":"FIELD","code":"err.investment-choice.percentage.interval-invalid","targets":["allocations[0].percentage"],"severity":"ERROR","source":"SERVER"},
-                {"type":"FIELD","code":"err.investment-choice.switch-source.unavailable","targets":["switchSources[1]"],"severity":"ERROR","source":"SERVER"},
-                {"type":"FIELD","code":"err.investment-choice.fund.unavailable","targets":["allocations[0].fundCode"],"severity":"ERROR","source":"SERVER"}
-              ]
-            }
-            """,
-            JsonCompareMode.STRICT);
+        .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
 
-    assertThat(calls).hasValue(1);
+    assertThat(submitCalls).hasValue(0);
+    assertThat(cancelCalls).hasValue(0);
   }
 
   @Test
@@ -1225,17 +1019,6 @@ class InvestmentChoiceControllerTest {
     assertThat(calls).hasValue(0);
   }
 
-  private static String validationEnvelope(String type, String code, List<String> targets) {
-    String serializedTargets =
-        targets.stream()
-            .map(target -> "\"" + target + "\"")
-            .collect(java.util.stream.Collectors.joining(","));
-    return """
-        {"success":false,"status":"VALIDATION_FAILED","result":null,"messages":[],"errors":[{"type":"%s","code":"%s","targets":[%s],"severity":"ERROR","source":"SERVER"}]}
-        """
-        .formatted(type, code, serializedTargets);
-  }
-
   private static WebTestClient.ResponseSpec submitPost(WebTestClient client, String body) {
     var request = client.post().uri(SUBMIT_ROUTE).contentType(MediaType.APPLICATION_JSON);
     return body == null ? request.exchange() : request.bodyValue(body).exchange();
@@ -1252,6 +1035,7 @@ class InvestmentChoiceControllerTest {
       AuthenticatedSessionCookieReader sessionCookieReader) {
     return WebTestClient.bindToController(controller(useCase, context, sessionCookieReader))
         .controllerAdvice(advice())
+        .webFilter(PasswordValidationGateBindingTestSupport.bindingFilter())
         .build();
   }
 
@@ -1280,6 +1064,7 @@ class InvestmentChoiceControllerTest {
                 context,
                 sessionCookieReader))
         .controllerAdvice(advice())
+        .webFilter(PasswordValidationGateBindingTestSupport.bindingFilter())
         .build();
   }
 
@@ -1312,6 +1097,7 @@ class InvestmentChoiceControllerTest {
                 new InvestmentChoiceWebMapper(),
                 new ObjectMapper()))
         .controllerAdvice(advice())
+        .webFilter(PasswordValidationGateBindingTestSupport.bindingFilter())
         .build();
   }
 
