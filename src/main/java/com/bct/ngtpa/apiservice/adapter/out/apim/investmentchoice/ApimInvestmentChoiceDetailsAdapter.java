@@ -128,9 +128,10 @@ public final class ApimInvestmentChoiceDetailsAdapter implements InvestmentChoic
     List<SwitchSrc> wireSources = item.switchSrc();
     List<SwitchFund> wireFunds = item.switchFund();
     List<InvestMandate> wireMandates = item.investMandate();
-    List<PendingReq> wirePending = item.pendingReq();
-    List<PendingReqDtl> wirePendingDetails = item.pendingReqDtl();
-    requireLists(wireSources, wireFunds, wireMandates, wirePending, wirePendingDetails);
+    List<PendingReq> wirePending = item.pendingReq() == null ? List.of() : item.pendingReq();
+    List<PendingReqDtl> wirePendingDetails =
+        item.pendingReqDtl() == null ? List.of() : item.pendingReqDtl();
+    requireLists(wireSources, wireFunds, wireMandates);
 
     List<InvestmentChoiceSource> sources = mapSources(wireSources);
     List<InvestmentChoiceFund> funds = mapFunds(wireFunds);
@@ -287,13 +288,8 @@ public final class ApimInvestmentChoiceDetailsAdapter implements InvestmentChoic
     };
   }
 
-  private static void requireLists(
-      List<?> sources, List<?> funds, List<?> mandates, List<?> pending, List<?> pendingDetails) {
-    if (sources == null
-        || funds == null
-        || mandates == null
-        || pending == null
-        || pendingDetails == null) {
+  private static void requireLists(List<?> sources, List<?> funds, List<?> mandates) {
+    if (sources == null || funds == null || mandates == null) {
       throw new InvestmentChoiceMalformedResponseException();
     }
   }

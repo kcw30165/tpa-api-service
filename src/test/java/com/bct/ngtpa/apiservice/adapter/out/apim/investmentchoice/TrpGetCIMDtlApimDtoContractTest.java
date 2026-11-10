@@ -13,6 +13,21 @@ class TrpGetCIMDtlApimDtoContractTest {
 
   private final ObjectMapper json = new ObjectMapper();
 
+  private static final String WITHOUT_PENDING =
+      """
+      {
+        "response": {
+          "err-message": "",
+          "data": [{
+            "interval-pcnt": 5,
+            "SwitchSrc": [],
+            "SwitchFund": [],
+            "InvestMandate": []
+          }]
+        }
+      }
+      """;
+
   private static final String SAMPLE =
       """
       {
@@ -125,5 +140,18 @@ class TrpGetCIMDtlApimDtoContractTest {
     assertThat(detail.pcnt()).isEqualTo(40).isInstanceOf(Integer.class);
     assertThat(source.availSw()).isInstanceOf(Boolean.class);
     assertThat(fund.availSw()).isInstanceOf(Boolean.class);
+  }
+
+  @Test
+  void omittedPendingArraysDeserializeAsNull() throws Exception {
+    JavaType type =
+        json.getTypeFactory()
+            .constructParametricType(ApimResponseEnvelope.class, TrpGetCIMDtlApimDataItem.class);
+
+    ApimResponseEnvelope<TrpGetCIMDtlApimDataItem> envelope = json.readValue(WITHOUT_PENDING, type);
+
+    var item = envelope.getResponse().getData().getFirst();
+    assertThat(item.pendingReq()).isNull();
+    assertThat(item.pendingReqDtl()).isNull();
   }
 }

@@ -42,6 +42,8 @@ import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -69,6 +71,60 @@ class ApimInvestmentChoiceDetailsAdapterTest {
   private static final String FUND_CODE = "ZZF1";
   private static final String PERCENTAGE = "60";
   private static final String REQUEST_ID = "request-id-123";
+  private static final String LIVE_RESPONSE_WITHOUT_PENDING =
+      """
+      {
+        "response": {
+          "err-message": "",
+          "data": [{
+            "interval-pcnt": 5,
+            "SwitchSrc": [{
+              "switch-src": "EE",
+              "seq": 10,
+              "avail-sw": true
+            }],
+            "SwitchFund": [
+              {
+                "fund-code": "ZZF1",
+                "fund-name": "Fund One",
+                "avail-sw": true
+              },
+              {
+                "fund-code": "ZZF2",
+                "fund-name": "Fund Two",
+                "avail-sw": true
+              }
+            ],
+            "InvestMandate": [
+              {
+                "effect-date": "05/11/2026",
+                "switch-src": "EE",
+                "fund-code": "ZZF1",
+                "pcnt": "25"
+              },
+              {
+                "effect-date": "05/11/2026",
+                "switch-src": "EE",
+                "fund-code": "ZZF2",
+                "pcnt": "25"
+              },
+              {
+                "effect-date": "05/11/2026",
+                "switch-src": "EE",
+                "fund-code": "ZZF1",
+                "pcnt": "25"
+              },
+              {
+                "effect-date": "05/11/2026",
+                "switch-src": "EE",
+                "fund-code": "ZZF2",
+                "pcnt": "25"
+              }
+            ]
+          }]
+        }
+      }
+      """;
 
   private ApimExchangeExecutor executor;
   private FailureEventPort failureEventPort;
@@ -219,37 +275,76 @@ class ApimInvestmentChoiceDetailsAdapterTest {
                     valid.pendingReqDtl()))));
     assertMalformed(
         envelope(
-            "",
-            List.of(
-                item(
-                    valid,
-                    valid.switchSrc(),
-                    valid.switchFund(),
-                    null,
-                    valid.pendingReq(),
-                    valid.pendingReqDtl()))));
-    assertMalformed(
-        envelope(
-            "",
-            List.of(
-                item(
-                    valid,
-                    valid.switchSrc(),
-                    valid.switchFund(),
-                    valid.investMandate(),
-                    null,
-                    valid.pendingReqDtl()))));
-    assertMalformed(
-        envelope(
-            "",
-            List.of(
-                item(
-                    valid,
-                    valid.switchSrc(),
-                    valid.switchFund(),
-                    valid.investMandate(),
-                    valid.pendingReq(),
-                    null))));
+            "", List.of(item(valid, valid.switchSrc(), valid.switchFund(), null, null, null))));
+  }
+
+  @Test
+  void omittedAndEmptyPendingListsAreMappedToAnEmptyPendingList() {
+    var valid = validItem();
+    List<TrpGetCIMDtlApimDataItem> cases =
+        List.of(
+            item(valid, valid.switchSrc(), valid.switchFund(), valid.investMandate(), null, null),
+            item(
+                valid,
+                valid.switchSrc(),
+                valid.switchFund(),
+                valid.investMandate(),
+                null,
+                List.of()),
+            item(
+                valid,
+                valid.switchSrc(),
+                valid.switchFund(),
+                valid.investMandate(),
+                List.of(),
+                null),
+            item(
+                valid,
+                valid.switchSrc(),
+                valid.switchFund(),
+                valid.investMandate(),
+                List.of(),
+                List.of()));
+
+    for (TrpGetCIMDtlApimDataItem item : cases) {
+      respond(envelope("", List.of(item)));
+
+      StepVerifier.create(adapter().load(command()))
+          .expectNextMatches(details -> details.pending().isEmpty())
+          .verifyComplete();
+    }
+
+    assertThat(events).isEmpty();
+    verifyNoInteractions(failureEventPort);
+  }
+
+  @Test
+  void mapsLiveResponseWithoutPendingPropertiesToEmptyPendingList() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    JavaType envelopeType =
+        mapper
+            .getTypeFactory()
+            .constructParametricType(ApimResponseEnvelope.class, TrpGetCIMDtlApimDataItem.class);
+    ApimResponseEnvelope<TrpGetCIMDtlApimDataItem> response =
+        mapper.readValue(LIVE_RESPONSE_WITHOUT_PENDING, envelopeType);
+    respond(response);
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(
+            details -> {
+              assertThat(details.intervalPcnt()).isEqualTo(5);
+              assertThat(details.sources())
+                  .containsExactly(new InvestmentChoiceSource("EE", 10, true));
+              assertThat(details.funds())
+                  .hasSize(2)
+                  .allSatisfy(fund -> assertThat(fund.avail()).isTrue());
+              assertThat(details.mandates()).hasSize(4);
+              assertThat(details.pending()).isEmpty();
+            })
+        .verifyComplete();
+
+    assertThat(events).isEmpty();
+    verifyNoInteractions(failureEventPort);
   }
 
   @Test

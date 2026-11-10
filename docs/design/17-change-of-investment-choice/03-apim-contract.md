@@ -42,18 +42,22 @@ credential context `(actorUserRole, accountEnv)` as Fund Fact Sheet.
 | `.effect-date` | string `dd/MM/uuuu` strict | yes | group key |
 | `.switch-src`, `.fund-code` | string | yes | |
 | `.pcnt` | string | yes, nonblank | verbatim |
-| `PendingReq[]` | array | yes, may be empty | |
+| `PendingReq[]` | array | optional when no pending instructions; omission maps to empty | |
 | `.ref-no` | string | yes, unique | join key |
 | `.submit-date` | string `dd/MM/uuuu` strict | yes | |
 | `.submit-time` | string `HH:mm:ss` strict | yes | |
-| `PendingReqDtl[]` | array | yes, may be empty | |
+| `PendingReqDtl[]` | array | optional when no pending instructions; omission maps to empty | |
 | `.ref-no` | string | yes, must exist in `PendingReq` | |
 | `.switch-src`, `.fund-code` | string | yes | |
 | `.pcnt` | integer | yes, 1..100 | |
 
+Progress may omit both pending arrays when there are no pending instructions. An omitted
+`PendingReq` or `PendingReqDtl` is treated as an empty array.
+
 Integrity rules (violation = malformed -> 503): duplicate `switch-src` or `fund-code`; duplicate
 `ref-no` in `PendingReq`; `PendingReqDtl.ref-no` not in `PendingReq`; `PendingReq` without any
-detail; null item/list/row; date/time not strict.
+detail; null item, required `SwitchSrc`/`SwitchFund`/`InvestMandate` list, or row; date/time not
+strict. Pending records remain subject to all listed row and reference validations.
 
 A history or pending row whose `fund-code` is absent from `SwitchFund` is returned with
 `fundName: null` (O-5), not treated as malformed.
