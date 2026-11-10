@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.idemp
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupInvocationIntent;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
@@ -98,7 +99,8 @@ public final class RegistrationOtpVerifyProtectedOperation {
             context.dateOfBirth(),
             context.contactType(),
             context.contactValue(),
-            ActorUserRole.ROLE_USER_MBR);
+            ActorUserRole.ROLE_USER_MBR,
+            RegistrationLookupInvocationIntent.DEFAULT);
     return lookup
         .searchMember(lookupCommand)
         .flatMap(

@@ -85,7 +85,8 @@ class ApimRegistrationLookupOwnershipCharacterizationTest {
             "01/01/1990",
             RegistrationContactType.EMAIL,
             "member@example.com",
-            ActorUserRole.ROLE_USER_MBR);
+            ActorUserRole.ROLE_USER_MBR,
+            RegistrationLookupInvocationIntent.DEFAULT);
     var continuationCommand =
         new RegistrationLookupCommand(
             MemberIdentityType.GPN,
@@ -219,7 +220,8 @@ class ApimRegistrationLookupOwnershipCharacterizationTest {
             "01/01/1990",
             RegistrationContactType.EMAIL,
             "member@example.com",
-            ActorUserRole.ROLE_USER_MBR);
+            ActorUserRole.ROLE_USER_MBR,
+            RegistrationLookupInvocationIntent.DEFAULT);
 
     StepVerifier.create(adapter.searchMember(defaultCommand)).expectError().verify();
 

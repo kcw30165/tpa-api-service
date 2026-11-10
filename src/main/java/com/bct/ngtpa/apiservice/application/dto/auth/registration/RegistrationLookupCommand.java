@@ -18,23 +18,6 @@ public record RegistrationLookupCommand(
     ActorUserRole actorUserRole,
     RegistrationLookupInvocationIntent invocationIntent)
     implements LogExecutionFailurePolicy {
-  public RegistrationLookupCommand(
-      MemberIdentityType identityType,
-      String identityValue,
-      String dateOfBirth,
-      RegistrationContactType contactType,
-      String contactValue,
-      ActorUserRole actorUserRole) {
-    this(
-        identityType,
-        identityValue,
-        dateOfBirth,
-        contactType,
-        contactValue,
-        actorUserRole,
-        RegistrationLookupInvocationIntent.DEFAULT);
-  }
-
   public RegistrationLookupCommand {
     Objects.requireNonNull(identityType, "identityType must not be null");
     Objects.requireNonNull(identityValue, "identityValue must not be null");

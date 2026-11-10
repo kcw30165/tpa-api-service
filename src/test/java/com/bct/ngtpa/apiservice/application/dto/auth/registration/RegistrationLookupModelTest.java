@@ -19,7 +19,8 @@ class RegistrationLookupModelTest {
                     "31/01/1980",
                     RegistrationContactType.EMAIL,
                     "member@example.com",
-                    com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))
+                    com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
+                    RegistrationLookupInvocationIntent.DEFAULT))
         .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(
             () ->
@@ -29,7 +30,8 @@ class RegistrationLookupModelTest {
                     "31/01/1980",
                     RegistrationContactType.EMAIL,
                     "member@example.com",
-                    com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))
+                    com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
+                    RegistrationLookupInvocationIntent.DEFAULT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("registration lookup command fields must not be blank");
     assertThatThrownBy(
@@ -40,7 +42,8 @@ class RegistrationLookupModelTest {
                     " ",
                     RegistrationContactType.EMAIL,
                     "member@example.com",
-                    com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))
+                    com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
+                    RegistrationLookupInvocationIntent.DEFAULT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("registration lookup command fields must not be blank");
     assertThatThrownBy(
@@ -51,7 +54,8 @@ class RegistrationLookupModelTest {
                     "31/01/1980",
                     RegistrationContactType.EMAIL,
                     " ",
-                    com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))
+                    com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
+                    RegistrationLookupInvocationIntent.DEFAULT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("registration lookup command fields must not be blank");
 
@@ -62,7 +66,8 @@ class RegistrationLookupModelTest {
             "31/01/1980",
             RegistrationContactType.EMAIL,
             "member@example.com",
-            com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
+            com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
+            RegistrationLookupInvocationIntent.DEFAULT);
     assertThat(command.toString())
         .doesNotContain("1234567890", "member@example.com", "31/01/1980", "91234567")
         .contains("GPFS", "EMAIL");

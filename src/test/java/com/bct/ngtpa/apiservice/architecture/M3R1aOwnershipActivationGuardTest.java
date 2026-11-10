@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 class M3R1aOwnershipActivationGuardTest {
   @Test
-  void onlyApprovedRegistrationOperationsAndFacadeInfrastructureOptInAtM3bR1() throws Exception {
+  void onlyApprovedRegistrationOperationsAndFacadeInfrastructureOptInAtM3bR3() throws Exception {
     var root = Path.of("src/main/java");
     var hits =
         Files.walk(root)
@@ -22,6 +22,7 @@ class M3R1aOwnershipActivationGuardTest {
             List.of(
                     "com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacade.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/execution/ApimExchangeOutcomeLogger.java",
+                    "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationCompletionAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationUsernameAvailabilityAdapter.java")
                 .stream()
@@ -36,7 +37,13 @@ class M3R1aOwnershipActivationGuardTest {
         read(
             root.resolve(
                 "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java"));
-    assertThat(lookup).contains("TERMINAL_CALLER", "@LogExecution");
+    assertThat(lookup)
+        .contains(
+            "ApimIncidentOwnership.TERMINAL_CALLER",
+            "@LogExecution",
+            "RegistrationLookupInvocationIntent.START",
+            "RegistrationLookupInvocationIntent.CONTINUATION",
+            "ApimIncidentOwnership.APIM_OBSERVER");
     String forgotPassword =
         read(
             root.resolve(
@@ -46,7 +53,7 @@ class M3R1aOwnershipActivationGuardTest {
   }
 
   @Test
-  void onlyRegistrationStartSetsTheLookupInvocationIntent() throws Exception {
+  void registrationStartCompletionAndOtpUseTheirApprovedLookupIntents() throws Exception {
     String start =
         read(
             Path.of(
@@ -61,8 +68,20 @@ class M3R1aOwnershipActivationGuardTest {
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/otp/idempotency/RegistrationOtpVerifyProtectedOperation.java"));
 
     assertThat(start).contains("RegistrationLookupInvocationIntent.START");
-    assertThat(completion).doesNotContain("RegistrationLookupInvocationIntent");
-    assertThat(otp).doesNotContain("RegistrationLookupInvocationIntent");
+    assertThat(start)
+        .doesNotContain(
+            "RegistrationLookupInvocationIntent.CONTINUATION",
+            "RegistrationLookupInvocationIntent.DEFAULT");
+    assertThat(completion)
+        .contains("RegistrationLookupInvocationIntent.CONTINUATION")
+        .doesNotContain(
+            "RegistrationLookupInvocationIntent.START",
+            "RegistrationLookupInvocationIntent.DEFAULT");
+    assertThat(otp)
+        .contains("RegistrationLookupInvocationIntent.DEFAULT")
+        .doesNotContain(
+            "RegistrationLookupInvocationIntent.START",
+            "RegistrationLookupInvocationIntent.CONTINUATION");
   }
 
   private static String read(Path p) {

@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchMe
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupInvocationIntent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +24,8 @@ class TrpSearchMemberApimMapperTest {
                 "31/01/1980",
                 RegistrationContactType.EMAIL,
                 "member@example.com",
-                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
+                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
+                RegistrationLookupInvocationIntent.DEFAULT));
 
     assertThat(request.searchBy()).isEqualTo("GPFS");
     assertThat(request.searchValue()).isEqualTo("1234567890");
@@ -42,7 +44,8 @@ class TrpSearchMemberApimMapperTest {
                 "15/01/1980",
                 RegistrationContactType.MOBILE,
                 "91234567",
-                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
+                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
+                RegistrationLookupInvocationIntent.DEFAULT));
 
     assertThat(request.searchBy()).isEqualTo("ID");
     assertThat(request.searchValue()).isEqualTo("A1234567");
@@ -62,7 +65,8 @@ class TrpSearchMemberApimMapperTest {
                   "31/01/1980",
                   RegistrationContactType.EMAIL,
                   "member@example.com",
-                  com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
+                  com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
+                  RegistrationLookupInvocationIntent.DEFAULT));
       assertThat(request.searchBy()).isEqualTo(type.name());
     }
   }

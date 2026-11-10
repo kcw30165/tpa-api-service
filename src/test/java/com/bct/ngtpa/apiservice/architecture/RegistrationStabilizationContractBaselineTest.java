@@ -155,7 +155,8 @@ class RegistrationStabilizationContractBaselineTest {
   }
 
   private boolean isOperationalEventLiteral(String literal) {
-    return "\"registration.lookup.downstream_contract_failure\"".equals(literal);
+    return "\"registration.lookup.downstream_contract_failure\"".equals(literal)
+        || "\"registration.complete.continuation_failure\"".equals(literal);
   }
 
   private List<ContractRow> contractRows() throws Exception {
