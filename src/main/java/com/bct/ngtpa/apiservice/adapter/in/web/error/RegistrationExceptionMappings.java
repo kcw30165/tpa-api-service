@@ -3,8 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.error;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete
-    .RegistrationCompletionPreDispatchException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionPreDispatchException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
 import org.springframework.http.HttpStatus;
