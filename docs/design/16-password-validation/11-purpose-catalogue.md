@@ -87,5 +87,6 @@ The accepted design does not change token scope, lifetime, consumption or
 canonicalization. It requires no legacy-token migration, grant versioning, or
 rolling-deployment handling. Personal Information issuance and PUT behavior
 remain compatibility exceptions and are not changed by CIM prechecks.
-This resolves the former O-12 design question about purpose-specific issuance
-validation; implementation remains pending separate authorization.
+Former O-12 asked how strictly purposes validate payloads at issuance. Current
+M5 issuance behavior is documented in section 2; the M6 target is documented
+here, but its implementation and runtime verification remain pending.

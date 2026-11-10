@@ -98,7 +98,7 @@ Run it against a **local build** that talks to the dev downstream systems, not a
 
 | Id | Item | Owner | Blocks release |
 |---|---|---|---|
-| O-12 | Resolved by the approved M6 purpose-specific decoder/precheck design in document 11; implementation is pending separate authorization | Nick | No (design resolved) |
+| O-12 | Documented current behavior; M6 implementation/verification pending (see document 11) | Nick | No |
 | O-13 | Final gates at the final HEAD after F1: full suite with the isolated Redis tests, formatting check, startup and Sonar. Read the coverage of the F1 classes from that run | Nick | Yes |
 
 ## 8. Merge request text
