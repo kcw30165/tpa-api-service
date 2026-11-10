@@ -1,5 +1,10 @@
 # 04 Validation and error handling
 
+Sections 1-8 record M5 implementation behavior and its evidence. The approved
+M6 target below is not implemented or runtime-verified; once separately
+implemented, it supersedes the CIM validation location and execution ownership
+described earlier. Historical M5 evidence is retained.
+
 ## 1. Submit order of checks
 
 1. Token gate (existing): 403 on any token problem; token consumed.
@@ -137,3 +142,62 @@ Never log: `refNo`, any pending reference number, the request or response body, 
 ### 8.5 New `ErrorCodes` constants
 
 `INVESTMENT_CHOICE_CANCEL_UNAVAILABLE`, `INVESTMENT_CHOICE_CANCEL_NOT_CANCELLABLE`, `INVESTMENT_CHOICE_CANCEL_REF_REQUIRED`, `INVESTMENT_CHOICE_CANCEL_REF_INVALID`, with the values given in section 8.1 and 8.2.
+
+## 9. Approved M6 purpose-owned prechecks (not implemented)
+
+### 9.1 Issuance ordering and validation ownership
+
+For `CHANGE_INVESTMENT_CHOICE`, the registered application policy runs V1-V8
+and then S1-S3. For `CANCEL_INVESTMENT_CHOICE`, it runs CV1-CV2 and
+pending-reference membership. These prechecks run during
+`POST /api/v1/password-validation`, before throttle admission and password
+verification. Each rule has one implementation in the policy; submit/cancel
+execution does not rerun it. Generic envelope parsing/validation remains its
+existing 400 behavior. Personal Information issuance and PUT behavior do not
+change.
+
+The minimum adapter-decoded representation preserves payload member presence,
+JSON kinds, unknown member names and values so application policies can return
+detailed violations. Do not introduce a general-purpose JSON framework;
+Jackson remains in adapters. The same purpose decoder strictly decodes and
+constructs the typed execution command without rerunning business validation.
+
+### 9.2 M6 error and incident ownership
+
+| Issuance outcome | HTTP / response | Incident ownership |
+|---|---|---|
+| CIM feature payload or snapshot-rule violation | 422 `VALIDATION_FAILED`, existing detailed CIM code and target | Expected violation; no technical incident |
+| CIM snapshot miss/unavailable | Feature-specific 503 `SYSTEM_ERROR` (`submission.unavailable` or `cancel.unavailable`) | Exactly one feature-owned `LOCAL_SYSTEM` `FailureEvent`; shared issuance must not publish a duplicate |
+| Generic issuance envelope error | Existing 400 contract | Existing shared behavior |
+| Wrong password | Existing response unchanged | Existing password-validation behavior |
+
+The feature policy owns snapshot-failure publication and classification. Shared
+issuance must propagate this feature-owned failure without adding its own
+incident. Existing downstream adapter events and post-success submit
+reconciliation remain unchanged.
+
+### 9.3 CIM execution after issuance authorization
+
+The token gate continues to enforce single-use authorization and session,
+account, purpose and exact-payload binding. The existing gate binding attribute
+is mandatory at each CIM controller boundary and in its command. A
+`PayloadDigest` alone does not establish authorization; the trusted fact is the
+gate's successful scope/token consumption and canonicalizer-based body-binding
+checks before dispatch. Missing binding or rejected gate checks prevent
+dispatch. Equality remains the existing canonicalized payload equality, not
+raw-byte equality.
+
+Execution retains strict decoding, typed construction, downstream dispatch,
+response mapping, submit reconciliation and existing successful snapshot
+updates. It does not repeat CIM feature business prechecks.
+
+Cancel execution performs no snapshot precheck and no pending-reference
+membership revalidation. Snapshot access retained for post-success cleanup is
+best effort only: absent/unreadable snapshot or cleanup failure cannot block
+dispatch or change a successful downstream cancellation into failure.
+Progress retains its existing current-state enforcement; do not assume Progress
+repeats every Java validation rule. Tokens do not reserve business state.
+
+No token scope/lifetime/consumption/canonicalization change, legacy-token
+migration, grant versioning, rolling-deployment handling, snapshot concurrency
+redesign, CAS refactor or GET fencing is included.

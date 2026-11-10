@@ -7,7 +7,17 @@ BFF design pack for BRD *TPA ORSO Web Revamp 6.5 Change of Investment Choice* V0
 | Owner | Nick Deng (BFF API) |
 | Code anchor | `origin/dev` 8eac2b30 (evidence 001 at 8f84da7a; 002, 004, 007 and Copilot 0.1 at 8eac2b30 code) |
 | Implementor | GitHub Copilot, one sub-task prompt at a time (document 07) |
-| Status | Approved for implementation, except the open items in document 06 |
+| Status | M0-M5 implementation as recorded; purpose-owned prechecks approved as a future design only, not implemented or runtime-verified |
+
+## Status note: purpose-owned prechecks
+
+The approved M6 password-token precheck design is recorded in this pack and
+design pack 16. It changes where CIM feature validation occurs: prechecks move
+to password-token issuance, before throttle/password verification, while CIM
+execution requires the trusted gate binding and does not repeat those business
+prechecks. Existing M5 behavior remains the current implementation until a
+separately authorized implementation. This documentation does not claim
+runtime verification or change historical implementation evidence.
 
 ## Documents
 

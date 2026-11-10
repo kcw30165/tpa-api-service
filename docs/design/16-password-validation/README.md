@@ -1,6 +1,6 @@
 # Password Validation and Transaction Authorization: design package
 
-Version 1.15. As-built documentation added (frontend integration, release and operations, traceability); requirements unchanged. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
+Version 1.16. M1-M5 implementation and owner-reported gates remain as recorded below and in the evidence documents. The M6 purpose-owned precheck design was approved on 2026-11-10; it is **not yet implemented or runtime-verified**, and this documentation checkpoint does not itself authorize implementation. M1 approved at `86eb775cd3b3f13330e65bde81aeb71f1e37813e`;
 M1.5 approved at `bfbac598d47558a306caa0bbd5b829e19f83d17f`.
 M2 approved at `ec7f1617868b03c0584a026150ffcd988c07bdcc`.
 Status at the end of M5 (as built): M1, M1.5, M2, M3 and M4 are independently approved; the commits are listed in
@@ -36,3 +36,10 @@ archive; this document alone does not certify deployment readiness.
 9. [Release and operations](09-release-and-operations.md)
 10. [As-built traceability](10-as-built-traceability.md)
 11. [Purpose catalogue](11-purpose-catalogue.md)
+
+## M6 design checkpoint (2026-11-10)
+
+The approved purpose-owned precheck design is recorded as a future target in
+documents 01, 02, 04, 05, 06, 07, 08 and 11. Current M5 behavior remains
+implemented until a separately authorized implementation. No tests or runtime
+gates for the M6 target are claimed by this documentation update.

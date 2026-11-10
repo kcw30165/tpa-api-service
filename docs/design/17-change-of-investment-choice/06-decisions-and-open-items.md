@@ -62,3 +62,20 @@
 | O-11 | A non-empty body with a missing or `text/plain` Content-Type is rejected before the use case and rendered as HTTP 500 (same behaviour as Personal Information). Shared web behaviour | Nick / shared web | No |
 | O-12 | At controller level, duplicate JSON member names collapse to the last member; the token gate (strict canonicalizer, 400 `err.request.invalid`) is the authority on body integrity, so production requests never reach the controller with duplicates | Nick | No |
 | O-13 | A reference created by a definite submit success is not in the snapshot until the next GET (only a reconciled success refreshes it), so cancelling it needs a GET first. Decide whether a definite submit success should also refresh the snapshot | Nick | No |
+
+## M6 purpose-owned prechecks (approved design; not implemented)
+
+The following decisions are approved target behavior. They do not rewrite the
+M5 implementation evidence or imply runtime verification.
+
+| Decision | Approved target |
+|---|---|
+| Purpose dispatch | No additional feature-validation HTTP request. Shared password-token issuance delegates through registered purpose-specific payload decoders and framework-free application precheck policies. Adding a purpose requires explicit purpose/route/bean registration, not a branch in the shared parser or issuance algorithm. |
+| Composition | Missing, duplicate or mismatched decoder/policy registration fails composition. The minimal representation preserves member presence, JSON kinds, unknown member names and values; it is not a general JSON framework. Jackson remains in adapters. |
+| Precheck timing | CIM submit V1-V8/S1-S3 and cancel CV1-CV2/pending-reference membership run once during issuance, before throttle/password verification. Feature rules are not repeated at execution. |
+| Issuance errors | CIM feature-payload/snapshot-rule violations return HTTP 422 `VALIDATION_FAILED` with detailed existing CIM codes/targets. Generic envelope errors retain 400; wrong-password response is unchanged. |
+| Snapshot failure ownership | CIM snapshot miss returns feature-specific 503 `SYSTEM_ERROR` and exactly one feature-owned `LOCAL_SYSTEM` `FailureEvent`. Expected violations produce no technical incident; shared issuance must not publish a duplicate event. |
+| Trusted execution handoff | Reuse the existing gate binding attribute. A `PayloadDigest` alone is not authorization. Trust comes from successful gate scope/token consumption and canonicalizer-based body-binding checks before dispatch. CIM controllers and commands require the attribute; missing binding/rejected gate prevents dispatch. |
+| Execution and current state | Preserve strict decoding, typed construction, single-use authorization, and session/account/purpose/exact-payload binding. Submit reconciliation and post-success updates remain unchanged. Progress retains existing current-state enforcement; do not assume it repeats every Java rule. A token does not reserve business state. |
+| Cancel cleanup | No snapshot precheck or membership revalidation at cancel execution. Snapshot access for post-success cleanup is best effort; missing/unreadable state or cleanup failure cannot block cancellation or turn downstream success into failure. |
+| Compatibility/scope | Personal Information issuance and PUT behavior remain unchanged. Token scope, lifetime, consumption and canonicalization remain unchanged. No legacy-token migration, grant versioning, rolling-deployment handling, expiry waiting, snapshot concurrency redesign, CAS refactor or GET fencing. |

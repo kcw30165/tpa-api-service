@@ -120,3 +120,44 @@ Prompts are issued one at a time by Nick's reviewer with the expected HEAD fille
 4b.2 feat(investment-choice): cancel pending instruction
 4b.3 feat(investment-choice): expose POST /api/v1/investment-choice/instructions/cancel
 ```
+
+## M6 purpose-owned prechecks (approved target; implementation not authorized here)
+
+The M1/M4 prompts above preserve the implementation history and acceptance
+criteria for M5. For a separately authorized M6 implementation, use design
+pack 16's M6 sections and the target contracts in documents 01, 02, 04, 05 and
+06 of this pack. Do not execute this guidance without a new implementation
+prompt.
+
+Required implementation boundaries:
+
+- Keep Jackson parsing in adapters. Add only the minimal purpose-specific
+  payload representation needed to preserve presence, JSON kinds, unknown
+  member names and decoded values. Do not create a general-purpose JSON
+  framework.
+- Register each supported purpose's decoder and framework-free application
+  precheck policy. Fail composition for missing, duplicate or mismatched
+  registrations. Adding a purpose must not add branches to shared parsing or
+  issuance algorithms.
+- Run CIM submit V1-V8/S1-S3 and cancel CV1-CV2/pending-reference membership
+  exactly once at issuance, before throttle/password verification. Return
+  detailed 422 errors, or feature-specific 503 for snapshot miss with exactly
+  one feature-owned `LOCAL_SYSTEM` event and no shared duplicate.
+- Reuse the existing gate binding attribute. Require it at the CIM controller
+  boundary and in the command. Do not treat `PayloadDigest` alone as
+  authorization; the gate's successful scope/token consumption and
+  canonicalizer-based body-binding checks establish trusted authorization.
+- Keep strict decoding and typed construction at execution, but do not rerun
+  feature prechecks. Keep submit reconciliation and existing successful
+  snapshot behavior. Cancel does no snapshot/membership check before dispatch;
+  its post-success snapshot cleanup is best effort and cannot negate downstream
+  success.
+- Preserve PI issuance/PUT behavior, Progress's existing current-state
+  enforcement, token scope/lifetime/consumption/canonicalization and all
+  explicit exclusions in document 06. No token migration/versioning, snapshot
+  concurrency redesign, CAS refactor or GET fencing.
+
+Tests must prove registration failures, precheck-before-throttle/password
+ordering, no precheck rerun at execution, unbypassable trusted handoff,
+feature error/event ownership, PI compatibility, best-effort cancel cleanup,
+and absence of submitted values/secrets from logs.

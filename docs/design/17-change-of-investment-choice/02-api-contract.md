@@ -27,9 +27,13 @@ Success: `success: true`, `result` set, `errors: []`. Failure: `success: false`,
 (`ERROR`), `source` (`SERVER`). Types used by CIM: `SYSTEM` (`ApiError.system`, `targets: []`),
 `FIELD`, `CROSS_FIELD`, `FORM`. `DOWNSTREAM_*` types and statuses are never public.
 
-HTTP status: `SUCCESS`/`SUBMITTED` 200 and `SYSTEM_ERROR` 503 via `HttpStatusClassification`;
-`VALIDATION_FAILED` **422** on the submit endpoint (controller override, same as
-`PersonalInformationController.withUpdateHttpStatus`, D-30); token-gate 403 unchanged.
+Current M5 implementation: `SUCCESS`/`SUBMITTED` 200 and `SYSTEM_ERROR` 503 via
+`HttpStatusClassification`; submit snapshot rules and cancel reference
+membership return 422 at execution. Structural CIM payload failures at
+issuance use the existing generic 400 contract. Approved M6 target (not
+implemented): all CIM feature prechecks move to password-token issuance; see
+section 4. CIM execution no longer returns those feature-precheck 422s. Gate
+403 remains unchanged.
 
 Common request headers: session cookie, CSRF as for other mutations, `Account-Ref`,
 `Accept-Language`, `X-Request-Id` (mandatory, existing filter).
@@ -152,8 +156,7 @@ allocations in request order. All sources receive the same allocation (D-22, ato
 | HTTP | status | type | code | targets | When |
 |---|---|---|---|---|---|
 | 403 | `BUSINESS_REJECTED` | as rendered by the gate | `err.password-validation.authorization.invalid` | as rendered by the gate | token missing, expired, consumed, other scope, payload mismatch (existing gate) |
-| 422 | `VALIDATION_FAILED` | see 04 section 2 | see 04 section 2 | see 04 section 2 | body or snapshot validation |
-| 503 | `SYSTEM_ERROR` | `SYSTEM` | `err.investment-choice.submission.unavailable` | `[]` | downstream failure, `err-message`, snapshot miss, unreconciled unknown outcome |
+| 503 | `SYSTEM_ERROR` | `SYSTEM` | `err.investment-choice.submission.unavailable` | `[]` | downstream failure, `err-message`, unreconciled unknown outcome |
 
 ## 3. POST /api/v1/investment-choice/instructions/cancel
 
@@ -186,10 +189,27 @@ The same body must have been sent as `operationPayload` to `POST /api/v1/passwor
 | HTTP | status | type | code | targets | When |
 |---|---|---|---|---|---|
 | 403 | `BUSINESS_REJECTED` | as rendered by the gate | `err.password-validation.authorization.invalid` | as rendered by the gate | token missing, expired, consumed, other scope, body mismatch (existing gate) |
-| 422 | `VALIDATION_FAILED` | `FORM` | `err.investment-choice.request.invalid` | `[]` | body is not an object, unknown member, `refNo` not a string |
-| 422 | `VALIDATION_FAILED` | `FIELD` | `err.investment-choice.cancel.ref-required` | `["refNo"]` | `refNo` missing or blank |
-| 422 | `VALIDATION_FAILED` | `FIELD` | `err.investment-choice.cancel.ref-invalid` | `["refNo"]` | `refNo` not among the snapshot's pending references (no downstream call) |
 | 422 | `BUSINESS_REJECTED` | existing business-rejection type | `err.investment-choice.cancel.not-cancellable` | `[]` | Progress `err.request.cannot.be.cancelled`: already processed or processing |
-| 503 | `SYSTEM_ERROR` | `SYSTEM` | `err.investment-choice.cancel.unavailable` | `[]` | downstream failure, any other `err-message`, snapshot miss, malformed response, unknown outcome |
+| 503 | `SYSTEM_ERROR` | `SYSTEM` | `err.investment-choice.cancel.unavailable` | `[]` | downstream failure, any other `err-message`, malformed response, unknown outcome |
 
 The HTTP status of `BUSINESS_REJECTED` comes from the existing `HttpStatusClassification`; sub-task 4b.3 confirms it and the type of the business error factory before coding.
+
+## 4. Approved M6 issuance precheck contract (not implemented)
+
+The following rows belong to `POST /api/v1/password-validation`, not to either
+CIM execution endpoint. Current M5 still has its existing behavior until the
+approved target is separately implemented and verified.
+
+| Purpose | Failure | HTTP | status | Public code/targets | Ownership |
+|---|---|---:|---|---|---|
+| `CHANGE_INVESTMENT_CHOICE` | V1-V8 payload or S1-S3 snapshot rule violation | 422 | `VALIDATION_FAILED` | Existing detailed CIM code and target from 04 section 2 | No technical incident |
+| `CHANGE_INVESTMENT_CHOICE` | Snapshot unavailable/miss | 503 | `SYSTEM_ERROR` | `err.investment-choice.submission.unavailable`, `[]` | One feature-owned `LOCAL_SYSTEM` `FailureEvent`; no shared duplicate |
+| `CANCEL_INVESTMENT_CHOICE` | CV1-CV2 payload or pending-reference membership violation | 422 | `VALIDATION_FAILED` | Existing detailed CIM code and target from 04 section 8.1 | No technical incident |
+| `CANCEL_INVESTMENT_CHOICE` | Snapshot unavailable/miss | 503 | `SYSTEM_ERROR` | `err.investment-choice.cancel.unavailable`, `[]` | One feature-owned `LOCAL_SYSTEM` `FailureEvent`; no shared duplicate |
+
+These are feature-policy errors returned before throttle and password
+verification. Generic issuance-envelope errors remain the existing 400
+contract; wrong-password behavior is unchanged. CIM execution still returns
+the gate's existing 403 and downstream/business/system outcomes, but does not
+repeat these feature checks. Personal Information issuance and PUT behavior
+remain unchanged.

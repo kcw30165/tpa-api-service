@@ -10,43 +10,82 @@ How `operationPayload` is defined for each purpose, and what it takes to add one
 { "password": "<entered password>", "purpose": "<PURPOSE>", "operationPayload": { } }
 ```
 
-`operationPayload` is **exactly the JSON body of the protected request** for that purpose. The frontend freezes the body the member reviewed, sends it here with the password, and later sends the same body, unchanged, to the protected route together with the returned token. The server binds the token to the session, the selected account, the purpose and that exact body. It compares the raw JSON, so member order does not matter, but values, types, array order and the presence or absence of a member all do. See [08 Frontend integration](08-frontend-integration.md), section 3.
+`operationPayload` is **exactly the JSON body of the protected request** for that purpose. The frontend freezes the body the member reviewed, sends it here with the password, and later sends the same body, unchanged, to the protected route together with the returned token. The server binds the token to the session, the selected account, the purpose and that exact body. The M5 implementation uses its existing canonicalizer (not raw-byte equality): object member order does not matter, while values, JSON kinds, array order and member presence do. The approved M6 target retains that canonicalizer. See [08 Frontend integration](08-frontend-integration.md), section 3.
 
-## 2. Supported purposes (as built)
+## 2. Supported purposes (M5 as built)
 
 | Purpose | Protected request | `operationPayload` |
 |---|---|---|
 | `PERSONAL_INFORMATION_UPDATE` | `PUT /api/v1/personal-information` | The PUT body: `formVersion`, `applyToAllAccounts`, `fields` |
+| `CHANGE_INVESTMENT_CHOICE` | `POST /api/v1/investment-choice/instructions` | The complete submit body: `switchSources`, `allocations` |
+| `CANCEL_INVESTMENT_CHOICE` | `POST /api/v1/investment-choice/instructions/cancel` | The complete cancel body: `refNo` |
 
-Structure checked at issuance for `PERSONAL_INFORMATION_UPDATE`: `formVersion` is a non-blank string, `applyToAllAccounts` is a boolean and `fields` is a non-empty object. Other members are allowed and are bound, but not validated. This check only makes sure the request can be bound. The existing validation on the PUT remains authoritative. Any other purpose value is rejected with 400.
+Current M5 issuance checks the Personal Information structure (`formVersion`
+non-blank string, `applyToAllAccounts` boolean and `fields` non-empty object),
+CIM submit V1-V8, and CIM cancel CV1-CV2. CIM issuance failures currently use
+the generic password-validation request-invalid 400 contract. Submit snapshot
+rules S1-S3 and cancel pending-reference membership are currently checked at
+protected execution. Personal Information's existing PUT validation remains
+authoritative. These are current implementation facts, not the approved M6
+target contract.
 
 Apply to all accounts: TAS applies an apply-all update to every account bound to the username. The token binds the submitted flag and fields, not the list of accounts (decision D21).
 
-## 3. Not supported yet
+## 3. Current implementation boundary
 
-Change of investment and fund switch have no payload contract and are not accepted. Both return 400 as an unknown purpose.
+By M5, all three purposes in section 2 are supported. The M6 design below
+changes where CIM snapshot-dependent checks run and how CIM issuance
+violations are rendered; it does not add the CIM purposes themselves.
+At the original M1 baseline, CIM purposes were not accepted; that historical
+status was superseded by the M1/M4 implementation milestones.
 
-## 4. Adding a purpose (design guidance, not built)
+## 4. Approved purpose-owned design (not implemented)
 
-Four places are specific to Personal Information in the code reviewed in M3 and M4. Check the source again before starting.
+The approved target retains the three purposes in section 2. Shared issuance
+does not parse feature payloads or
+contain purpose-specific branches. Each purpose has one registered decoder and
+one application precheck policy; missing, duplicate or mismatched registrations
+fail composition. Adding a purpose requires explicit purpose, route and bean
+registration, but no edit to the shared parser or issuance algorithm.
 
-1. The purpose list, `PasswordValidationPurpose`, and its parsing.
-2. The structure check in the issuance request parser, where the three required members are fixed.
-3. The token gate, which matches one route and method and consumes with one fixed purpose.
-4. The confidential-route list in `PasswordValidationRouteMatcher`.
+The minimal decoder result must preserve the information that the policy needs
+to diagnose its own feature violations: object member presence, JSON kinds,
+unknown member names and decoded values. It is not a general-purpose JSON
+framework. Jackson parsing stays in the adapter; application payload types and
+policies remain framework-free. The decoder also provides strict typed
+construction for execution without rerunning business or snapshot rules.
 
-A new purpose needs:
+| Purpose | Issuance precheck | Protected execution |
+|---|---|---|
+| `PERSONAL_INFORMATION_UPDATE` | Existing generic structure check and existing 400 behavior remain unchanged | Existing PUT YAML/access/business validation and update behavior remain unchanged |
+| `CHANGE_INVESTMENT_CHOICE` | Submit V1-V8 and S1-S3 before throttle and password verification | Require trusted gate binding; strict body decoding and typed construction; no feature precheck rerun |
+| `CANCEL_INVESTMENT_CHOICE` | CV1-CV2 and pending-reference membership before throttle and password verification | Require trusted gate binding; strict body decoding and typed construction; no snapshot precheck or membership revalidation |
 
-- A name, and exactly one protected route and method.
-- A structure check selected by purpose, replacing the fixed one.
-- A token gate registration for its route.
-- **Registration of its route in the confidential-route list.** This is a security requirement. Without it, a wildcard logging rule could log the body or the error text of that route.
-- Tests for every status, for path variants of its route, and for logging, written in the same way as for Personal Information.
+For CIM, feature violations return HTTP 422 `VALIDATION_FAILED` with existing
+detailed CIM codes and targets. A CIM snapshot miss returns a feature-specific
+HTTP 503 `SYSTEM_ERROR` and exactly one feature-owned `LOCAL_SYSTEM`
+`FailureEvent`; expected violations produce no technical incident, and shared
+issuance must not publish a duplicate event. Generic envelope errors retain
+their existing 400 contract. Wrong-password behavior is unchanged.
 
-Rules for the payload:
+The existing token gate binding attribute is the trusted handoff. A
+`PayloadDigest` alone is not proof of authorization: trust comes from the
+gate's successful scope/token consumption and payload-binding checks before
+controller dispatch. Payload equality uses the existing canonicalizer, not raw
+byte equality. The CIM controller boundary and command must require the
+attribute; a missing binding or rejected gate check prevents dispatch.
 
-- Binding covers the body only. A value in the path or the query string is not bound. Put every value that matters in the body, or bind it explicitly.
-- Keep volatile values out of the body. A timestamp or generated identifier that changes between confirmation and submission would cause a mismatch every time. The frontend must freeze it, or the endpoint must not take it.
-- Each purpose needs its own design and review. This list is not an approval.
+Submit execution retains existing downstream dispatch, reconciliation and
+post-success snapshot updates. Cancel execution does not read a snapshot before
+dispatch. Any snapshot access for post-success cleanup is best effort; missing
+or unreadable state or cleanup failure cannot block cancellation or turn
+downstream success into failure. Progress retains its existing current-state
+enforcement; do not assume it repeats every Java validation rule. Tokens do not
+reserve or freeze business state.
 
-Open decision O-12, owner Nick: whether each purpose validates its payload structure strictly at issuance, or only checks that it is a JSON object. Strict validation fails a frontend bug at confirmation, before the token is spent, but each purpose then needs its own validator. Decide this when the second purpose is built.
+The accepted design does not change token scope, lifetime, consumption or
+canonicalization. It requires no legacy-token migration, grant versioning, or
+rolling-deployment handling. Personal Information issuance and PUT behavior
+remain compatibility exceptions and are not changed by CIM prechecks.
+This resolves the former O-12 design question about purpose-specific issuance
+validation; implementation remains pending separate authorization.

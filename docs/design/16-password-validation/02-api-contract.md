@@ -17,7 +17,7 @@ Required: Account-Ref, X-XSRF-TOKEN, authenticated browser cookie. Preserve exis
 }
 ```
 
-Examples use placeholders, not real credentials or asserted production form versions. password is a required JSON string preserved exactly and checked against configured login length bounds. purpose is exactly PERSONAL_INFORMATION_UPDATE; reject unknown or future purposes before APIM. operationPayload is an object conforming to the existing Personal Information request structure. No cust-id, accountEnv or username is accepted as an identity override. Unknown top-level issuance members are rejected (authored strict-envelope specification). The existing fields map is not narrowed by this feature.
+Examples use placeholders, not real credentials or asserted production form versions. password is a required JSON string preserved exactly and checked against configured login length bounds. The M5 implementation accepts the three purposes listed in [11 Purpose catalogue](11-purpose-catalogue.md); the original M1-only restriction is historical. No cust-id, accountEnv or username is accepted as an identity override. Unknown top-level issuance members are rejected (authored strict-envelope specification). The existing fields map is not narrowed by this feature.
 
 ## Success
 HTTP 200; Cache-Control: no-store. Generic MutationResponse with a feature result.data wrapper (authored DTO shape):
@@ -79,6 +79,28 @@ only by the X-Request-Id header. A matching raw payload that cannot decode to th
 existing PUT DTO still follows existing request-error advice, but its original
 Jackson diagnostic/cause is discarded first. Valid matching submissions retain
 the existing PUT response bytes and downstream mapping.
+
+## M6 approved issuance additions (not implemented)
+
+The following target applies to `POST /api/v1/password-validation`; the current
+M5 implementation and its M1-M5 evidence are unchanged until implementation.
+Generic envelope errors keep the existing HTTP 400 contract. Personal
+Information purpose-policy failures keep their existing generic HTTP 400
+contract. The approved CIM purpose-policy responses are:
+
+| Condition | HTTP | status | errors[].code | target |
+|---|---:|---|---|---|
+| CIM submit V1-V8 or snapshot rules S1-S3 fail | 422 | `VALIDATION_FAILED` | Existing CIM validation code | Existing CIM target |
+| CIM cancel CV1-CV2 or pending-reference membership fails | 422 | `VALIDATION_FAILED` | Existing CIM validation code | Existing CIM target |
+| CIM submit snapshot is missing/unreadable/unusable or belongs to another account | 503 | `SYSTEM_ERROR` | `err.investment-choice.submission.unavailable` | `[]` |
+| CIM cancel snapshot is missing/unreadable/unusable or belongs to another account | 503 | `SYSTEM_ERROR` | `err.investment-choice.cancel.unavailable` | `[]` |
+
+These rejections occur before throttle and password verification and issue no
+token. Expected feature violations produce no technical incident. Each CIM
+snapshot-miss response has exactly one feature-owned `LOCAL_SYSTEM`
+`FailureEvent`; shared issuance does not publish a duplicate. The wrong-password
+401 and all existing token scope, lifetime, consumption and canonicalization
+contracts remain unchanged.
 
 ## FE integration
 1. Freeze the reviewed payload and serialize one confirmation request per scope.

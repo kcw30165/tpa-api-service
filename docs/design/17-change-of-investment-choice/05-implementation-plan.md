@@ -42,3 +42,23 @@ unreachable until 4.4 because no controller exists before it.
 ## Release
 
 Frontend and BFF release together. No new configuration expected.
+
+## M6 purpose-owned prechecks (approved target; not implemented)
+
+This design checkpoint does not authorize implementation. M0-M5 and their
+evidence remain the recorded implementation history. Implementation must be
+separately authorized and must preserve Personal Information behavior.
+
+| Slice | Scope | Required evidence |
+|---|---|---|
+| M6.1 Shared decoder/policy composition | Minimal framework-free payload representation, purpose decoder/policy interfaces and fail-closed registries; Jackson adapter parsing; no shared parser/issuance purpose branches | Missing/duplicate/mismatched decoder-policy registrations fail composition; supported purposes compose exactly once |
+| M6.2 Issuance orchestration and errors | Dispatch policy before throttle/password; generic 400 and wrong-password behavior unchanged; CIM detailed 422 and feature-specific 503 | Order probes prove prechecks run first and no throttle/password/grant on rejection; exactly one feature-owned event on snapshot miss |
+| M6.3 CIM purpose policies | Move submit V1-V8/S1-S3 and cancel CV1-CV2/membership into registered application policies | Rule parity and detailed code/target tests; expected violations produce no incident; snapshot failure has no shared duplicate |
+| M6.4 Trusted execution handoff | Reuse existing gate binding attribute; require it at CIM controllers and commands; strict decode/typed construction without feature precheck rerun | Bypass, rejected/missing binding and wrong scope/session/account/body/replay/expiry cannot dispatch; successful path proves prechecks are not repeated |
+| M6.5 Execution compatibility | Preserve submit downstream dispatch/reconciliation/snapshot updates; cancel no snapshot precheck, best-effort post-success cleanup only; preserve Progress and PI behavior | Regression tests cover downstream outcomes, cleanup failure, PI issuance/PUT and current-state boundaries |
+
+Use the test requirements in design 16 document 05 and CIM contract tables in
+documents 02 and 04. No token migration/versioning, rolling-deployment work,
+snapshot concurrency redesign, CAS refactor or GET fencing is authorized. Do
+not claim the approved target is implemented or runtime-verified until its
+separate implementation gates pass.

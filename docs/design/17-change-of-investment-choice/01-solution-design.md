@@ -167,3 +167,75 @@ BFF:
 - A reference created by a definite submit success is not in the snapshot until the next GET (O-13).
 - Snapshot removal after success is a best-effort rewrite through `updateIfUsable`; a concurrent GET may win, which only costs the member a reload.
 - A stored snapshot without `pendingRefNos` (written before this change) fails decoding and is a miss.
+
+## 11. Approved M6 purpose-owned prechecks (not implemented)
+
+This section is the approved target design and supersedes the M5 submit/cancel
+validation placement described in sections 8 and 10 only after a separately
+authorized implementation. Sections 1-10 and their recorded evidence remain
+the current M5 implementation description; this documentation does not claim
+the target is implemented or runtime-verified.
+
+### 11.1 Shared issuance composition
+
+`POST /api/v1/password-validation` remains the only issuance HTTP request.
+Shared issuance dispatches through registered purpose-specific payload
+decoders and framework-free application precheck policies. It contains no
+purpose branches in its parser or issuance algorithm. Adding a purpose requires
+explicit purpose, protected-route and bean registration, not changes to shared
+issuance logic. Composition fails closed if a supported purpose has a missing,
+duplicate or mismatched decoder/policy registration.
+
+The adapter decoder returns only the representation required by current
+purposes: payload member presence, JSON kinds, unknown member names and decoded
+values. This is not a general-purpose JSON framework; Jackson remains in
+adapters. The decoder also provides strict typed construction for execution.
+Typed construction is not a business-rule precheck.
+
+### 11.2 Issuance order and ownership
+
+For CIM, decoding and the registered feature policy run before username
+throttle and password verification. Submit prechecks V1-V8, then S1-S3 using
+the current snapshot. Cancel prechecks CV1-CV2 and pending-reference membership.
+Each rule has one implementation in the purpose policy; execution does not
+repeat it. A token does not reserve or freeze business state. Progress retains
+its existing current-state enforcement; do not assume it repeats every Java
+validation rule.
+
+Generic envelope errors retain the current HTTP 400 contract. CIM feature
+payload and snapshot-rule violations return HTTP 422 `VALIDATION_FAILED`, with
+the detailed codes and targets already defined in section 2 of document 04.
+A CIM snapshot miss returns a feature-specific HTTP 503 `SYSTEM_ERROR`; the
+feature policy publishes exactly one `LOCAL_SYSTEM` `FailureEvent`. Expected
+feature violations produce no technical incident, and shared issuance must not
+publish a duplicate event. Wrong-password behavior remains unchanged.
+
+Personal Information issuance and PUT behavior remain unchanged, including its
+existing issuance 400 behavior and PUT-side validation. Progress's existing
+enforcement remains unchanged.
+
+### 11.3 Trusted execution handoff
+
+Reuse the existing password-validation gate binding attribute. A
+`PayloadDigest` alone is not proof of authorization. Trust comes from successful
+gate scope/token consumption and the existing canonicalizer's body-binding
+checks before controller dispatch; equality is canonicalized payload equality,
+not raw-byte equality. Each CIM controller boundary and command requires the
+trusted binding attribute. Missing binding or any rejected gate check prevents
+dispatch. A client-supplied flag or alternate unguarded path is not accepted.
+
+After authorization, execution still strictly decodes and constructs its typed
+command, then performs downstream dispatch, response mapping and the existing
+submit reconciliation/post-success snapshot behavior. It does not rerun
+feature business prechecks.
+
+Cancel execution does not read or validate a snapshot before dispatch and does
+not rerun pending-reference membership. Retained snapshot access solely for
+post-success cleanup is best effort: missing/unreadable snapshot or cleanup
+failure cannot block the cancellation or change successful downstream
+cancellation into failure. No snapshot concurrency redesign, CAS refactor or
+GET fencing is part of this design.
+
+The existing token scope, lifetime, consumption and canonicalization do not
+change. No legacy-token migration, grant versioning, rolling-deployment
+handling, or token expiry wait is required for this local-development design.
