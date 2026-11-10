@@ -81,6 +81,8 @@ public class ApiExceptionHandler {
         exchange,
         exception,
         registry.diagnosticMessage(exception));
+    ResponseEntity<MutationResponse<Void>> response =
+        renderer.render(descriptor, messages, context);
     if (descriptor.logLevel() == LogLevel.ERROR
         && descriptor.httpStatus().is5xxServerError()
         && HttpMethod.POST.equals(exchange.getRequest().getMethod())
@@ -90,7 +92,7 @@ public class ApiExceptionHandler {
       TerminalIncidentHttpObservation.markOwned(exchange);
     }
 
-    return renderer.render(descriptor, messages, context);
+    return response;
   }
 
   private ErrorDescriptor fallbackDescriptor(ErrorDescriptor descriptor) {

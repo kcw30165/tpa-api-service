@@ -5,9 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.CatchAllExceptionMapping;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorContext;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorDescriptor;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
@@ -44,6 +47,8 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -277,6 +282,18 @@ class ApiExceptionHandlerTest {
         MockServerWebExchange.from(
             MockServerHttpRequest.post("/api/v1/auth/registration/cancel")
                 .header(RequestCorrelation.REQUEST_ID_HEADER, "REQ-CANCEL"));
+    ServerWebExchange unrelatedPath =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/test")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, "REQ-OTHER"));
+    ServerWebExchange nonPost =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get("/api/v1/auth/registration/complete")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, "REQ-GET"));
+    ServerWebExchange nonFiveHundred =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/registration/complete")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, "REQ-400"));
 
     handler.handle(
         new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
@@ -287,10 +304,96 @@ class ApiExceptionHandlerTest {
     handler.handle(
         new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
         unrelatedEndpoint);
+    handler.handle(
+        new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
+        unrelatedPath);
+    handler.handle(
+        new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
+        nonPost);
+    handler.handle(
+        new ApimException(HttpStatus.BAD_REQUEST, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
+        nonFiveHundred);
 
     assertTrue(TerminalIncidentHttpObservation.isOwned(registrationStart));
     assertTrue(TerminalIncidentHttpObservation.isOwned(registrationComplete));
     assertFalse(TerminalIncidentHttpObservation.isOwned(unrelatedEndpoint));
+    assertFalse(TerminalIncidentHttpObservation.isOwned(unrelatedPath));
+    assertFalse(TerminalIncidentHttpObservation.isOwned(nonPost));
+    assertFalse(TerminalIncidentHttpObservation.isOwned(nonFiveHundred));
+  }
+
+  @Test
+  void fiveHundredWarningMappingDoesNotMarkTheCompletedHttpObservation() {
+    ExceptionMapping<IllegalArgumentException> warningFailure =
+        new ExceptionMapping<>() {
+          @Override
+          public Class<IllegalArgumentException> exceptionType() {
+            return IllegalArgumentException.class;
+          }
+
+          @Override
+          public ErrorDescriptor describe(
+              IllegalArgumentException exception, ErrorContext context) {
+            return ErrorDescriptor.single(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                ApiStatus.SYSTEM_ERROR,
+                "SYSTEM",
+                "test.registration.warning",
+                List.of(),
+                "http.api.error",
+                LogLevel.WARN,
+                false);
+          }
+        };
+    var warningHandler =
+        new ApiExceptionHandler(
+            new ExceptionMappingRegistry(
+                List.of(warningFailure), CatchAllExceptionMapping.INSTANCE),
+            new PublicMessageResolver(errorMessageResolver()),
+            new ErrorEventLogger(loggingSanitizer()),
+            new ErrorResponseRenderer());
+    ServerWebExchange exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/registration/complete")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, "REQ-WARN"));
+
+    warningHandler.handle(new IllegalArgumentException("warning only"), exchange);
+
+    assertFalse(TerminalIncidentHttpObservation.isOwned(exchange));
+  }
+
+  @Test
+  void rendererFailureIsNotSwallowedAndDoesNotMarkCompletionOwned() {
+    ErrorResponseRenderer renderer = Mockito.mock(ErrorResponseRenderer.class);
+    RuntimeException renderFailure = new IllegalStateException("synthetic renderer failure");
+    Mockito.when(
+            renderer.render(
+                ArgumentMatchers.any(ErrorDescriptor.class),
+                ArgumentMatchers.anyList(),
+                ArgumentMatchers.any(ErrorContext.class)))
+        .thenThrow(renderFailure);
+    var rendererFailureHandler =
+        new ApiExceptionHandler(
+            new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+            new PublicMessageResolver(errorMessageResolver()),
+            new ErrorEventLogger(loggingSanitizer()),
+            renderer);
+    ServerWebExchange exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/registration/complete")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, "REQ-RENDER-FAIL"));
+
+    RuntimeException thrown =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                rendererFailureHandler.handle(
+                    new ApimException(
+                        HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
+                    exchange));
+
+    assertSame(renderFailure, thrown);
+    assertFalse(TerminalIncidentHttpObservation.isOwned(exchange));
   }
 
   @Test

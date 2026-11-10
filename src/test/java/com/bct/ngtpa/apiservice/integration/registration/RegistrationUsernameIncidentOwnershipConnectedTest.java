@@ -1,7 +1,9 @@
 package com.bct.ngtpa.apiservice.integration.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -12,6 +14,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.RegistrationIdempotencyProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CancelRegistrationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
@@ -27,6 +30,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequiredRequestIdWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationSuccessPageMapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimAppCertificateService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimCertificateService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
@@ -53,15 +57,19 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.registration.SharedApimTrpChkCu
 import com.bct.ngtpa.apiservice.adapter.out.config.ConfigBackedDownstreamErrorClassificationAdapter;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.CaptchaPolicy;
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengePolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengeType;
 import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.UsernamePolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationEligibleTrustSet;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassification;
 import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassificationRequest;
+import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCreateCommand;
@@ -73,26 +81,51 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.RegistrationUsernameCheckEncryptedState;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SelectedTrust;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState;
+import com.bct.ngtpa.apiservice.application.idempotency.DefaultIdempotencyExecutor;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyCommands;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyPort;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyRecord;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservation;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOutcome;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationToken;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyStatus;
 import com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCancellationPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCompletionLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameCheckProtectorPort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextLoader;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextResult;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordUsernameLookupCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationPasswordValidationResult;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationPasswordValidator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationUsernameCheckContextLoader;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.idempotency.RegistrationCompleteProtectedOperation;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.idempotency.RegistrationCompleteReplayCodec;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.idempotency.RegistrationCompleteSharedExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.idempotency.SharedCompleteRegistrationService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationSharedFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationSharedIdempotencyIdentityFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.RegistrationUsernameAvailabilityCommand;
@@ -447,8 +480,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   @Test
   void registrationCompletionBusinessRejectionHasNoIncidentError() {
     scenarioExchange.respond(
-        HttpStatus.OK,
-        "{\"response\":{\"err-message\":\"err.tpa.member.not.found\",\"data\":[]}}");
+        HttpStatus.OK, "{\"response\":{\"err-message\":\"err.tpa.member.not.found\",\"data\":[]}}");
     int startIndex = applicationEvents.size();
 
     StepVerifier.create(
@@ -469,6 +501,160 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
             event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
         .singleElement()
         .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
+  }
+
+  @Test
+  void completionHttpPreDispatchFailureHasSingleOwnerAndReplayDoesNotResubmit() throws IOException {
+    String csrf = "completion-http-csrf-token";
+    String idempotencyKey = "completion-http-pre-dispatch-key";
+    String profileMarker = "completion-private-profile-failure-marker";
+    profileResolver.failProfile(new IllegalStateException(profileMarker));
+    CompletionHttpHarness harness = completionHttpHarness(csrf);
+    String requestId = "r2-connected-pre-dispatch";
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        completionRequest(harness.client(), requestId, idempotencyKey, csrf);
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    JsonNode body = objectMapper.readTree(response.getResponseBody());
+    assertThat(body.path("status").asText()).isEqualTo("SYSTEM_ERROR");
+    assertThat(body.path("errors")).hasSize(1);
+    assertThat(body.at("/errors/0/type").asText()).isEqualTo("SYSTEM");
+    assertThat(body.at("/errors/0/code").asText())
+        .isEqualTo(com.bct.ngtpa.apiservice.shared.error.ErrorCodes.SYSTEM_UNEXPECTED);
+    assertThat(body.at("/errors/0/targets")).isEmpty();
+    assertThat(
+            body.at("/errors/0/message").isMissingNode() || body.at("/errors/0/message").isNull())
+        .isTrue();
+    assertThat(body.has("requestId")).isFalse();
+    assertThat(response.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
+        .isEqualTo(requestId);
+    assertThat(response.getResponseCookies().getFirst("auth_flow_sid")).isNull();
+    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.FAILED);
+    assertThat(sessions.current().status()).isEqualTo(AuthFlowStatus.COMPLETING);
+    assertThat(scenarioExchange.calls()).isZero();
+    assertThat(errorEvents(requestEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName()).isEqualTo(ApiExceptionHandler.class.getName());
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertTerminalCallerCompletionWarnings(requestEvents, requestId);
+    assertHttpObservation(requestEvents, requestId, 500, Level.WARN);
+    assertNoSensitiveMarkers(
+        requestEvents,
+        profileMarker,
+        ACCOUNT_ENV_MARKER,
+        TRUST_CODE_MARKER,
+        USERNAME_MARKER,
+        TOKEN_MARKER,
+        API_KEY_MARKER,
+        CLIENT_SECRET_MARKER,
+        "completion-private-dob-marker",
+        "completion-private-contact-marker",
+        "completion-private-password-marker",
+        "completion-private-ciphertext-marker");
+
+    String replayRequestId = "r2-connected-pre-dispatch-replay";
+    int replayStartIndex = applicationEvents.size();
+    EntityExchangeResult<byte[]> replay =
+        completionRequest(harness.client(), replayRequestId, idempotencyKey, csrf);
+    List<ILoggingEvent> replayEvents = awaitRequestCompletion(replayRequestId, replayStartIndex);
+
+    assertThat(replay.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(replay.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
+        .isEqualTo(replayRequestId);
+    assertThat(replay.getResponseCookies().getFirst("auth_flow_sid").getValue())
+        .isEqualTo(SESSION_ID);
+    assertThat(errorEvents(replayEvents)).isEmpty();
+    assertHttpObservation(replayEvents, replayRequestId, 400, Level.WARN);
+    assertThat(scenarioExchange.calls()).isZero();
+    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.FAILED);
+    assertThat(harness.persistence().reserveCalls()).isOne();
+    assertNoSensitiveMarkers(replayEvents, profileMarker, USERNAME_MARKER, ACCOUNT_ENV_MARKER);
+  }
+
+  @Test
+  void completionHttpPostDispatchFailureHasSingleOwnerAndUnknownReplayDoesNotResubmit()
+      throws IOException {
+    String csrf = "completion-http-csrf-token";
+    String idempotencyKey = "completion-http-post-dispatch-key";
+    String responseMarker = "completion-private-downstream-response-marker";
+    scenarioExchange.respond(
+        HttpStatus.SERVICE_UNAVAILABLE, "{\"error\":\"" + responseMarker + "\"}");
+    CompletionHttpHarness harness = completionHttpHarness(csrf);
+    String requestId = "r2-connected-post-dispatch";
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        completionRequest(harness.client(), requestId, idempotencyKey, csrf);
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    JsonNode body = objectMapper.readTree(response.getResponseBody());
+    assertThat(body.path("status").asText()).isEqualTo("SYSTEM_ERROR");
+    assertThat(body.at("/errors/0/type").asText()).isEqualTo("SYSTEM");
+    assertThat(body.at("/errors/0/code").asText())
+        .isEqualTo(com.bct.ngtpa.apiservice.shared.error.ErrorCodes.APIM_SERVICE_UNAVAILABLE);
+    assertThat(body.at("/errors/0/targets")).isEmpty();
+    assertThat(
+            body.at("/errors/0/message").isMissingNode() || body.at("/errors/0/message").isNull())
+        .isTrue();
+    assertThat(body.has("requestId")).isFalse();
+    assertThat(response.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
+        .isEqualTo(requestId);
+    assertThat(response.getResponseCookies().getFirst("auth_flow_sid")).isNull();
+    assertThat(harness.persistence().record().status())
+        .isEqualTo(IdempotencyStatus.UNKNOWN_OUTCOME);
+    assertThat(sessions.current().status()).isEqualTo(AuthFlowStatus.COMPLETING);
+    assertThat(scenarioExchange.calls()).isOne();
+    assertThat(scenarioExchange.observations())
+        .singleElement()
+        .satisfies(observation -> assertThat(observation.path()).endsWith("/TRPRegMember"));
+    assertThat(errorEvents(requestEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName()).isEqualTo(ApiExceptionHandler.class.getName());
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertTerminalCallerCompletionWarnings(requestEvents, requestId);
+    assertHttpObservation(requestEvents, requestId, 502, Level.WARN);
+    assertNoSensitiveMarkers(
+        requestEvents,
+        responseMarker,
+        ACCOUNT_ENV_MARKER,
+        TRUST_CODE_MARKER,
+        USERNAME_MARKER,
+        TOKEN_MARKER,
+        API_KEY_MARKER,
+        CLIENT_SECRET_MARKER,
+        "completion-private-dob-marker",
+        "completion-private-contact-marker",
+        "completion-private-password-marker",
+        "completion-private-ciphertext-marker");
+
+    String replayRequestId = "r2-connected-post-dispatch-replay";
+    int replayStartIndex = applicationEvents.size();
+    EntityExchangeResult<byte[]> replay =
+        completionRequest(harness.client(), replayRequestId, idempotencyKey, csrf);
+    List<ILoggingEvent> replayEvents = awaitRequestCompletion(replayRequestId, replayStartIndex);
+
+    assertThat(replay.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(replay.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
+        .isEqualTo(replayRequestId);
+    assertThat(replay.getResponseCookies().getFirst("auth_flow_sid").getValue())
+        .isEqualTo(SESSION_ID);
+    assertThat(errorEvents(replayEvents)).isEmpty();
+    assertHttpObservation(replayEvents, replayRequestId, 400, Level.WARN);
+    assertThat(scenarioExchange.calls()).isOne();
+    assertThat(harness.persistence().record().status())
+        .isEqualTo(IdempotencyStatus.UNKNOWN_OUTCOME);
+    assertThat(harness.persistence().reserveCalls()).isOne();
+    assertNoSensitiveMarkers(replayEvents, responseMarker, USERNAME_MARKER, ACCOUNT_ENV_MARKER);
   }
 
   @Test
@@ -1077,11 +1263,12 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         .filteredOn(
             event ->
                 (event.getLoggerName().equals(ApimWebClientFacade.class.getName())
-                        || event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName())
-                        || event.getLoggerName().equals(ApiExceptionHandler.class.getName())
-                        || (event.getLoggerName().equals(ExecutionLoggingAspect.class.getName())
-                            && event.getFormattedMessage()
-                                .contains("\"event\":\"method.execution.error\""))))
+                    || event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName())
+                    || event.getLoggerName().equals(ApiExceptionHandler.class.getName())
+                    || (event.getLoggerName().equals(ExecutionLoggingAspect.class.getName())
+                        && event
+                            .getFormattedMessage()
+                            .contains("\"event\":\"method.execution.error\""))))
         .extracting(ILoggingEvent::getLoggerName)
         .containsExactly(
             ApimWebClientFacade.class.getName(),
@@ -1118,6 +1305,143 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
               assertThat(event.getThrowableProxy()).isNull();
             });
   }
+
+  private CompletionHttpHarness completionHttpHarness(String csrfToken) {
+    assertThat(AopUtils.isAopProxy(completionAdapter)).isTrue();
+    sessions.seedCompletionSession(csrfToken);
+    var registrationContext =
+        new RegistrationAuthFlowContext(
+            MemberIdentityType.GPN,
+            "completion-private-identity-marker",
+            "completion-private-dob-marker",
+            RegistrationContactType.EMAIL,
+            "completion-private-contact-marker@example.test");
+    RegistrationProtectedAuthFlowContextLoader contexts =
+        command -> {
+          AuthFlowSession session = sessions.current();
+          if (session == null
+              || !session.authFlowSessionId().equals(command.authFlowSessionId())
+              || !session.csrfTokenHash().equals(sha256(command.csrfToken()))
+              || !command.acceptedStatuses().contains(session.status())) {
+            return Mono.just(
+                RegistrationProtectedAuthFlowContextResult.invalid(
+                    RegistrationProtectedAuthFlowContextStatus.CSRF_INVALID));
+          }
+          return Mono.just(
+              RegistrationProtectedAuthFlowContextResult.valid(
+                  session, "completion-challenge", "m***@example.test", registrationContext));
+        };
+    AuthFlowSessionExpiryRefreshPort expiry =
+        new AuthFlowSessionExpiryRefreshPort() {
+          @Override
+          public Mono<AuthFlowSession> refresh(AuthFlowSessionId sessionId, Instant interactionAt) {
+            return Mono.justOrEmpty(sessions.current());
+          }
+
+          @Override
+          public Mono<AuthFlowSession> refreshUsernameVerified(
+              AuthFlowSessionId sessionId, Instant interactionAt) {
+            return Mono.justOrEmpty(sessions.current());
+          }
+        };
+    RegistrationUsernameCheckContextLoader usernames =
+        mock(RegistrationUsernameCheckContextLoader.class);
+    var now = Instant.parse("2026-07-10T00:00:00Z");
+    when(usernames.load(any()))
+        .thenReturn(
+            new UsernameCheckState(
+                new SelectedTrust(ACCOUNT_ENV_MARKER, TRUST_CODE_MARKER),
+                "completion-private-username-marker",
+                now,
+                now.plusSeconds(600)));
+    RegistrationPasswordValidator passwords = mock(RegistrationPasswordValidator.class);
+    when(passwords.validate(any(), any(), any()))
+        .thenReturn(RegistrationPasswordValidationResult.success());
+
+    AuthFlowSessionCompletionLockPort locks = mock(AuthFlowSessionCompletionLockPort.class);
+    when(locks.acquire(any(), any()))
+        .thenReturn(Mono.just(new SessionLockHandle(true, "completion-lock", "completion-owner")));
+    when(locks.release(any())).thenReturn(Mono.just(true));
+    var operation =
+        new RegistrationCompleteProtectedOperation(
+            sessions,
+            locks,
+            completionAdapter,
+            mock(RegistrationLookupPort.class),
+            mock(AuthFlowSessionCancellationPort.class),
+            Duration.ofSeconds(30),
+            Clock.fixed(now, ZoneOffset.UTC));
+
+    ConnectedIdempotencyPort persistence = new ConnectedIdempotencyPort();
+    var idempotencyExecutor =
+        new DefaultIdempotencyExecutor(
+            persistence,
+            () -> new IdempotencyReservationToken("reservationToken0123456789abcdefgh"),
+            Clock.fixed(now, ZoneOffset.UTC));
+    var service =
+        new SharedCompleteRegistrationService(
+            contexts,
+            expiry,
+            usernames,
+            passwords,
+            idempotencyExecutor,
+            operation,
+            new RegistrationCompleteSharedExecutionBridge(new RegistrationCompleteReplayCodec()),
+            new RegistrationSharedIdempotencyIdentityFactory(),
+            new RegistrationSharedFingerprintFactory(),
+            Clock.fixed(now, ZoneOffset.UTC));
+    var mapper =
+        new CompleteRegistrationWebMapper(
+            Duration.ofMinutes(5), new RegistrationSuccessPageMapper(new BffPagesProperties()));
+    var controller =
+        new RegistrationController(
+            null,
+            null,
+            AuthFlowCookieWriter.defaultWriter(),
+            service,
+            mapper,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+    WebTestClient client =
+        WebTestClient.bindToController(controller)
+            .controllerAdvice(apiExceptionHandler)
+            .webFilter(requestLoggingWebFilter)
+            .configureClient()
+            .responseTimeout(Duration.ofSeconds(30))
+            .build();
+    return new CompletionHttpHarness(client, persistence);
+  }
+
+  private EntityExchangeResult<byte[]> completionRequest(
+      WebTestClient client, String requestId, String idempotencyKey, String csrfToken) {
+    return client
+        .post()
+        .uri("/api/v1/auth/registration/complete")
+        .cookie("auth_flow_sid", SESSION_ID)
+        .header("X-XSRF-TOKEN", csrfToken)
+        .header("Idempotency-Key", idempotencyKey)
+        .header(RequestCorrelation.REQUEST_ID_HEADER, requestId)
+        .header("Accept-Language", "en")
+        .header("Origin", "https://portal.example")
+        .header("Referer", "https://portal.example/registration/complete")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            new CompleteRegistrationRequest(
+                "completion-private-password-marker", "completion-private-password-marker"))
+        .exchange()
+        .expectBody()
+        .returnResult();
+  }
+
+  private record CompletionHttpHarness(
+      WebTestClient client, ConnectedIdempotencyPort persistence) {}
 
   private static RegistrationCompletionCommand completionCommand(String requestId) {
     return new RegistrationCompletionCommand(
@@ -1571,6 +1895,107 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     }
   }
 
+  private static final class ConnectedIdempotencyPort implements IdempotencyPort {
+    private IdempotencyRecord record;
+    private int reserveCalls;
+
+    @Override
+    public Mono<IdempotencyReservation> reserve(IdempotencyCommands.Reserve command) {
+      reserveCalls++;
+      if (record != null) {
+        if (!record.operationId().equals(command.operationId())
+            || !record.fingerprint().equals(command.fingerprint())) {
+          return Mono.just(
+              new IdempotencyReservation(
+                  IdempotencyReservationOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST,
+                  record.status(),
+                  null,
+                  null));
+        }
+        IdempotencyReservationOutcome outcome =
+            switch (record.status()) {
+              case PROCESSING -> IdempotencyReservationOutcome.DUPLICATE_IN_PROGRESS;
+              case COMPLETED -> IdempotencyReservationOutcome.COMPLETED_REPLAY;
+              case FAILED -> IdempotencyReservationOutcome.FAILED_EXISTING;
+              case UNKNOWN_OUTCOME -> IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING;
+            };
+        return Mono.just(
+            new IdempotencyReservation(outcome, record.status(), record.terminalResponse(), null));
+      }
+      record =
+          new IdempotencyRecord(
+              command.operationId(),
+              command.fingerprint(),
+              command.reservationToken(),
+              IdempotencyStatus.PROCESSING,
+              null,
+              command.now(),
+              command.now(),
+              command.now().plus(command.ttl()));
+      return Mono.just(
+          new IdempotencyReservation(
+              IdempotencyReservationOutcome.ACQUIRED,
+              IdempotencyStatus.PROCESSING,
+              null,
+              command.reservationToken()));
+    }
+
+    @Override
+    public Mono<IdempotencyRecord> complete(IdempotencyCommands.Complete command) {
+      record =
+          new IdempotencyRecord(
+              command.operationId(),
+              command.fingerprint(),
+              command.reservationToken(),
+              IdempotencyStatus.COMPLETED,
+              command.terminalResponse(),
+              record.createdAt(),
+              command.now(),
+              command.now().plus(command.ttl()));
+      return Mono.just(record);
+    }
+
+    @Override
+    public Mono<IdempotencyRecord> fail(IdempotencyCommands.Fail command) {
+      record = updateStatus(IdempotencyStatus.FAILED, command.now(), command.ttl());
+      return Mono.just(record);
+    }
+
+    @Override
+    public Mono<IdempotencyRecord> markUnknown(IdempotencyCommands.MarkUnknown command) {
+      record = updateStatus(IdempotencyStatus.UNKNOWN_OUTCOME, command.now(), command.ttl());
+      return Mono.just(record);
+    }
+
+    @Override
+    public Mono<Optional<IdempotencyRecord>> load(IdempotencyOperationId operationId) {
+      return Mono.just(
+          Optional.ofNullable(record)
+              .filter(existing -> existing.operationId().equals(operationId)));
+    }
+
+    IdempotencyRecord record() {
+      return record;
+    }
+
+    int reserveCalls() {
+      return reserveCalls;
+    }
+
+    private IdempotencyRecord updateStatus(
+        IdempotencyStatus status, Instant updatedAt, Duration ttl) {
+      return new IdempotencyRecord(
+          record.operationId(),
+          record.fingerprint(),
+          record.reservationToken(),
+          status,
+          null,
+          record.createdAt(),
+          updatedAt,
+          updatedAt.plus(ttl));
+    }
+  }
+
   static final class StatefulSessions implements AuthFlowSessionPort {
     private AuthFlowSession session;
     private long revision;
@@ -1578,6 +2003,23 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
     synchronized void reset() {
       session = null;
+      revision = 0;
+      updateFailure = null;
+    }
+
+    synchronized void seedCompletionSession(String csrfToken) {
+      Instant now = Instant.parse("2026-07-10T00:00:00Z");
+      session =
+          new AuthFlowSession(
+              new AuthFlowSessionId(SESSION_ID),
+              AuthFlowScenario.REGISTRATION,
+              AuthFlowStatus.USERNAME_VERIFIED,
+              sha256(csrfToken),
+              "completion-challenge",
+              new AuthFlowSessionData("EMAIL", "completion-masked-destination", Map.of()),
+              now.minusSeconds(300),
+              now.minusSeconds(60),
+              now.plusSeconds(1800));
       revision = 0;
       updateFailure = null;
     }
