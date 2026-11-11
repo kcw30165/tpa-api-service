@@ -5,8 +5,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIde
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowMessageDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.service.auth.registration.context
-    .RegistrationProtectedAuthFlowContextStatus;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextStatus;
 import java.util.List;
 import java.util.Objects;
 

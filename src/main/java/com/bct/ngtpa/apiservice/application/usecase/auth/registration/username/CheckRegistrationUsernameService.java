@@ -17,6 +17,7 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
@@ -24,7 +25,6 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.DownstreamErrorClassificationPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameAvailabilityPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameCheckProtectorPort;
-import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

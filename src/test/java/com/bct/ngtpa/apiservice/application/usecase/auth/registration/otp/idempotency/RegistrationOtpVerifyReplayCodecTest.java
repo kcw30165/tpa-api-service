@@ -12,8 +12,7 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowMessageType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentCapturedResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalResponseSnapshot;
-import com.bct.ngtpa.apiservice.application.service.auth.registration.context
-    .RegistrationProtectedAuthFlowContextStatus;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationUnregisteredTrust;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResultStatus;

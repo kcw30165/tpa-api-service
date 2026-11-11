@@ -25,11 +25,12 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
-import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
-import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
+import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase;
@@ -37,14 +38,11 @@ import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
-import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
-import com.bct.ngtpa.apiservice.application.service.auth.registration.context
-    .RegistrationProtectedAuthFlowContextStatus;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpCommand;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameCommand;
 import lombok.RequiredArgsConstructor;
@@ -404,8 +402,7 @@ public final class RegistrationController {
   }
 
   private ResponseEntity<
-          MutationResponse<
-              RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>>>
+          MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>>>
       otpVerifyRejection(
           MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>>
               mutationResponse,
@@ -414,8 +411,7 @@ public final class RegistrationController {
           boolean technical) {
     var response = RegistrationHttpResponses.toResponse(mutationResponse);
     if (response.getStatusCode().value() == 400) {
-      logOtpVerifyRejection(
-          requestId, reason, response.getStatusCode().value(), technical);
+      logOtpVerifyRejection(requestId, reason, response.getStatusCode().value(), technical);
     }
     return response;
   }
@@ -439,8 +435,7 @@ public final class RegistrationController {
   private boolean isTechnicalContextFailure(
       RegistrationProtectedAuthFlowContextStatus contextStatus) {
     return contextStatus == RegistrationProtectedAuthFlowContextStatus.MISSING_CONTEXT
-        || contextStatus
-            == RegistrationProtectedAuthFlowContextStatus.CONTEXT_DECRYPTION_FAILED;
+        || contextStatus == RegistrationProtectedAuthFlowContextStatus.CONTEXT_DECRYPTION_FAILED;
   }
 
   @PostMapping(
