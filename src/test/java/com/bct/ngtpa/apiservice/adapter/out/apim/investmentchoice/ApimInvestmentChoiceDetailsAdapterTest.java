@@ -511,68 +511,53 @@ class ApimInvestmentChoiceDetailsAdapterTest {
   @Test
   void rejectsMalformedSwitchSourcesAndDuplicateCodes() {
     var valid = validItem();
-    assertMalformed(envelope("", List.of(item(valid, Arrays.asList((SwitchSrc) null), valid))));
+    assertMalformed(envelope("", List.of(itemWithSources(valid, Arrays.asList((SwitchSrc) null)))));
     assertMalformed(
         envelope(
-            "", List.of(item(valid, List.of(new SwitchSrc(" ", null, null, 1, true)), valid))));
+            "", List.of(itemWithSources(valid, List.of(new SwitchSrc(" ", null, null, 1, true))))));
     assertMalformed(
         envelope(
-            "", List.of(item(valid, List.of(new SwitchSrc("EE", null, null, null, true)), valid))));
+            "",
+            List.of(itemWithSources(valid, List.of(new SwitchSrc("EE", null, null, null, true))))));
     assertMalformed(
         envelope(
-            "", List.of(item(valid, List.of(new SwitchSrc("EE", null, null, 1, null)), valid))));
+            "",
+            List.of(itemWithSources(valid, List.of(new SwitchSrc("EE", null, null, 1, null))))));
     assertMalformed(
         envelope(
             "",
             List.of(
-                item(
-                    valid,
-                    List.of(valid.switchSrc().getFirst(), valid.switchSrc().getFirst()),
-                    valid))));
+                itemWithSources(
+                    valid, List.of(valid.switchSrc().getFirst(), valid.switchSrc().getFirst())))));
   }
 
   @Test
   void rejectsMalformedFundsAndDuplicateCodes() {
     var valid = validItem();
-    assertMalformed(
-        envelope(
-            "", List.of(item(valid, valid.switchSrc(), Arrays.asList((SwitchFund) null), valid))));
-    assertMalformed(
-        envelope(
-            "",
-            List.of(
-                item(
-                    valid,
-                    valid.switchSrc(),
-                    List.of(new SwitchFund(" ", "Name", null, null, null, true)),
-                    valid))));
-    assertMalformed(
-        envelope(
-            "",
-            List.of(
-                item(
-                    valid,
-                    valid.switchSrc(),
-                    List.of(new SwitchFund("F", " ", null, null, null, true)),
-                    valid))));
-    assertMalformed(
-        envelope(
-            "",
-            List.of(
-                item(
-                    valid,
-                    valid.switchSrc(),
-                    List.of(new SwitchFund(FUND_CODE, "Name", null, null, null, null)),
-                    valid))));
-    assertMalformed(
-        envelope(
-            "",
-            List.of(
-                item(
-                    valid,
-                    valid.switchSrc(),
-                    List.of(valid.switchFund().getFirst(), valid.switchFund().getFirst()),
-                    valid))));
+    var nullFund =
+        itemWithSourcesAndFunds(valid, valid.switchSrc(), Arrays.asList((SwitchFund) null));
+    var blankCode =
+        itemWithSourcesAndFunds(
+            valid, valid.switchSrc(), List.of(new SwitchFund(" ", "Name", null, null, null, true)));
+    var blankName =
+        itemWithSourcesAndFunds(
+            valid, valid.switchSrc(), List.of(new SwitchFund("F", " ", null, null, null, true)));
+    var missingAvailability =
+        itemWithSourcesAndFunds(
+            valid,
+            valid.switchSrc(),
+            List.of(new SwitchFund(FUND_CODE, "Name", null, null, null, null)));
+    var duplicateCodes =
+        itemWithSourcesAndFunds(
+            valid,
+            valid.switchSrc(),
+            List.of(valid.switchFund().getFirst(), valid.switchFund().getFirst()));
+
+    assertMalformed(envelope("", List.of(nullFund)));
+    assertMalformed(envelope("", List.of(blankCode)));
+    assertMalformed(envelope("", List.of(blankName)));
+    assertMalformed(envelope("", List.of(missingAvailability)));
+    assertMalformed(envelope("", List.of(duplicateCodes)));
   }
 
   @Test
@@ -1022,8 +1007,8 @@ class ApimInvestmentChoiceDetailsAdapterTest {
     return item(valid.intervalPcnt(), sources, funds, mandates, pending, details);
   }
 
-  private static TrpGetCIMDtlApimDataItem item(
-      TrpGetCIMDtlApimDataItem valid, List<SwitchSrc> sources, TrpGetCIMDtlApimDataItem ignored) {
+  private static TrpGetCIMDtlApimDataItem itemWithSources(
+      TrpGetCIMDtlApimDataItem valid, List<SwitchSrc> sources) {
     return item(
         valid,
         sources,
@@ -1033,11 +1018,8 @@ class ApimInvestmentChoiceDetailsAdapterTest {
         valid.pendingReqDtl());
   }
 
-  private static TrpGetCIMDtlApimDataItem item(
-      TrpGetCIMDtlApimDataItem valid,
-      List<SwitchSrc> sources,
-      List<SwitchFund> funds,
-      TrpGetCIMDtlApimDataItem ignored) {
+  private static TrpGetCIMDtlApimDataItem itemWithSourcesAndFunds(
+      TrpGetCIMDtlApimDataItem valid, List<SwitchSrc> sources, List<SwitchFund> funds) {
     return item(
         valid, sources, funds, valid.investMandate(), valid.pendingReq(), valid.pendingReqDtl());
   }
