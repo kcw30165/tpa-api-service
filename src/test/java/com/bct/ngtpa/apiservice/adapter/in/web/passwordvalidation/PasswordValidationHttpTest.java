@@ -14,6 +14,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.filter.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.ReactorCurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayloadCanonicalizer;
 import com.bct.ngtpa.apiservice.application.dto.*;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.*;
 import com.bct.ngtpa.apiservice.application.dto.security.ratelimit.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
@@ -34,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
@@ -59,8 +62,16 @@ class PasswordValidationHttpTest {
   private static final String SID = "sid_abcdefghijklmnopqrstuvwx";
   private static final String REF = "acc_abcdefghijklmnopqrstuvwx";
   private static final String PURPOSE = "PERSONAL_INFORMATION_UPDATE";
+  private static final String CIM_PURPOSE = "CHANGE_INVESTMENT_CHOICE";
+  private static final String CANCEL_PURPOSE = "CANCEL_INVESTMENT_CHOICE";
+  private static final String REFERENCE_NO_FIELD = "referenceNo";
+  private static final String CANCEL_REFERENCE_NO = "260001449";
+  private static final String INVALID_REQUEST_CODE = "err.password-validation.request.invalid";
   private static final String PAYLOAD =
       "{\"formVersion\":\"v1\",\"applyToAllAccounts\":false,\"fields\":{\"mailingAddress\":\"reviewed-marker\"}}";
+  private static final String CIM_PAYLOAD =
+      "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":[{\"fundCode\":\"DBLF\",\"percentage\":60},{\"fundCode\":\"DHKM\",\"percentage\":40}]}";
+  private static final String CANCEL_PAYLOAD = quotedCancelReferenceNoPayload(CANCEL_REFERENCE_NO);
   private static final ObjectMapper JSON = new ObjectMapper();
   private AnnotationConfigApplicationContext context;
   private DisposableServer server;
@@ -172,6 +183,96 @@ class PasswordValidationHttpTest {
             "requestId",
             "DOWNSTREAM");
     assertSafeLogs(token, consumed.binding().sha256());
+  }
+
+  @Test
+  void validCimPurposePayloadProceedsThroughPasswordCheckAndIssuesToken() throws Exception {
+    var result =
+        post(body("x", CIM_PURPOSE, CIM_PAYLOAD)).expectStatus().isOk().expectBody().returnResult();
+    var json = JSON.readTree(result.getResponseBody());
+
+    assertThat(json.path("success").asBoolean()).isTrue();
+    assertThat(json.path("status").asText()).isEqualTo("SUCCESS");
+    assertThat(json.at("/result/data/token").asText()).matches("[A-Za-z0-9_-]{43}");
+    assertThat(backend.passwordCalls).hasValue(1);
+    assertThat(backend.lastCheck.get().password()).isEqualTo("x");
+    assertSafeLogs();
+  }
+
+  @Test
+  void validCancelPurposePayloadProceedsThroughPasswordCheckAndIssuesToken() throws Exception {
+    var result =
+        post(body("x", CANCEL_PURPOSE, CANCEL_PAYLOAD))
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .returnResult();
+    var json = JSON.readTree(result.getResponseBody());
+    String token = json.at("/result/data/token").asText();
+
+    assertThat(json.path("success").asBoolean()).isTrue();
+    assertThat(json.path("status").asText()).isEqualTo("SUCCESS");
+    assertThat(token).matches("[A-Za-z0-9_-]{43}");
+    assertThat(backend.passwordCalls).hasValue(1);
+    assertThat(backend.limiterCalls).hasValue(1);
+    var consumed =
+        context
+            .getBean(PasswordValidationGrantService.class)
+            .consume(
+                new AuthenticatedSessionId(SID),
+                new AuthenticatedAccountRef(REF),
+                PasswordValidationPurpose.parse(CANCEL_PURPOSE),
+                token,
+                "test")
+            .block();
+    assertThat(consumed.binding())
+        .isEqualTo(new JsonOperationPayloadCanonicalizer().digest(CANCEL_PAYLOAD));
+    assertSafeLogs();
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("cimPrecheckViolations")
+  void cimPrecheckViolationsReturnDetailed422BeforeThrottlePasswordAndGrant(
+      String rule, String operation, String kind, String code, String target) throws Exception {
+    detailedPrecheckFailure(rule, CIM_PURPOSE, operation, kind, code, target);
+  }
+
+  @Test
+  void cimSubmitAggregatesVAndSnapshotViolationsBeforeIssuanceDependencies() throws Exception {
+    var response =
+        failure(
+            post(
+                body(
+                    "x",
+                    CIM_PURPOSE,
+                    cimPayload(
+                        "[\"XX\"]",
+                        "[{\"fundCode\":\"DBLF\",\"percentage\":60},"
+                            + "{\"fundCode\":\"DHKM\",\"percentage\":30}]"))),
+            422,
+            "VALIDATION_FAILED",
+            "err.investment-choice.percentage.total-invalid");
+    var errors = JSON.readTree(response.getResponseBody()).path("errors");
+
+    assertThat(errors).hasSize(3);
+    assertThat(errors.get(0).path("type").asText()).isEqualTo("CROSS_FIELD");
+    assertThat(errors.get(0).path("code").asText())
+        .isEqualTo("err.investment-choice.percentage.total-invalid");
+    assertThat(errors.get(0).path("targets").get(0).asText()).isEqualTo("allocations");
+    assertThat(errors.get(1).path("type").asText()).isEqualTo("FIELD");
+    assertThat(errors.get(1).path("code").asText())
+        .isEqualTo("err.investment-choice.percentage.interval-invalid");
+    assertThat(errors.get(1).path("targets").get(0).asText())
+        .isEqualTo("allocations[1].percentage");
+    assertThat(errors.get(2).path("type").asText()).isEqualTo("FIELD");
+    assertThat(errors.get(2).path("code").asText())
+        .isEqualTo("err.investment-choice.switch-source.unavailable");
+    assertThat(errors.get(2).path("targets").get(0).asText()).isEqualTo("switchSources[0]");
+    assertThat(backend.limiterCalls).hasValue(0);
+    assertThat(backend.passwordCalls).hasValue(0);
+    assertThat(backend.grantAttempts).hasValue(0);
+    assertThat(failureEventCount).isZero();
+    assertSafeLogs();
   }
 
   @ParameterizedTest
@@ -356,6 +457,142 @@ class PasswordValidationHttpTest {
     assertThat(backend.limiterCalls).hasValue(0);
     assertThat(backend.passwordCalls).hasValue(0);
     assertSafeLogs();
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidCancelPayloads")
+  void cancelPrecheckViolationsReturnDetailed422BeforeThrottlePasswordAndGrant(
+      String name, String operation, String kind, String code, String target) throws Exception {
+    detailedPrecheckFailure(name, CANCEL_PURPOSE, operation, kind, code, target);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {CIM_PURPOSE, CANCEL_PURPOSE})
+  void strictDuplicateMembersAreRejectedBeforeCimPrecheck(String purpose) {
+    String operation =
+        purpose.equals(CIM_PURPOSE)
+            ? "{\"switchSources\":[\"BO\"],\"switchSources\":[\"EE\"],\"allocations\":[{\"fundCode\":\"DBLF\",\"percentage\":100}]}"
+            : "{\"referenceNo\":\"260001449\",\"referenceNo\":\"260001450\"}";
+    failure(post(body("x", purpose, operation)), 400, "VALIDATION_FAILED", INVALID_REQUEST_CODE);
+    assertThat(backend.limiterCalls).hasValue(0);
+    assertThat(backend.passwordCalls).hasValue(0);
+    assertThat(backend.grantAttempts).hasValue(0);
+    assertThat(failureEventCount).isZero();
+    assertSafeLogs();
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("purposeMismatchCases")
+  void payloadValidationIsSelectedByPurpose(
+      String name, String purpose, String operation, int status, String code) {
+    failure(post(body("x", purpose, operation)), status, "VALIDATION_FAILED", code);
+    assertThat(backend.limiterCalls).as(name).hasValue(0);
+    assertThat(backend.passwordCalls).as(name).hasValue(0);
+    assertThat(backend.grantAttempts).as(name).hasValue(0);
+    assertSafeLogs();
+  }
+
+  private static Stream<Arguments> purposeMismatchCases() {
+    return Stream.of(
+        Arguments.of(
+            "CIM purpose with PI body",
+            CIM_PURPOSE,
+            PAYLOAD,
+            422,
+            "err.investment-choice.request.invalid"),
+        Arguments.of(
+            "PI purpose with submit body", PURPOSE, CIM_PAYLOAD, 400, INVALID_REQUEST_CODE),
+        Arguments.of(
+            "cancel purpose with submit body",
+            CANCEL_PURPOSE,
+            CIM_PAYLOAD,
+            422,
+            "err.investment-choice.request.invalid"),
+        Arguments.of(
+            "submit purpose with cancel body",
+            CIM_PURPOSE,
+            CANCEL_PAYLOAD,
+            422,
+            "err.investment-choice.request.invalid"),
+        Arguments.of(
+            "PI purpose with cancel body", PURPOSE, CANCEL_PAYLOAD, 400, INVALID_REQUEST_CODE));
+  }
+
+  private static Stream<Arguments> invalidCancelPayloads() {
+    return Stream.of(
+        Arguments.of("CV1 root kind", "[]", "FORM", "err.investment-choice.request.invalid", null),
+        Arguments.of(
+            "CV1 unknown member",
+            unknownCancelPayload(),
+            "FORM",
+            "err.investment-choice.request.invalid",
+            null),
+        Arguments.of(
+            "CV1 legacy refNo",
+            "{\"refNo\":\"260001449\"}",
+            "FORM",
+            "err.investment-choice.request.invalid",
+            null),
+        Arguments.of(
+            "CV1 both public names",
+            "{\"referenceNo\":\"260001449\",\"refNo\":\"260001450\"}",
+            "FORM",
+            "err.investment-choice.request.invalid",
+            null),
+        Arguments.of(
+            "CV1 null referenceNo",
+            cancelReferenceNoPayload("null"),
+            "FORM",
+            "err.investment-choice.request.invalid",
+            null),
+        Arguments.of(
+            "CV1 number referenceNo",
+            cancelReferenceNoPayload(CANCEL_REFERENCE_NO),
+            "FORM",
+            "err.investment-choice.request.invalid",
+            null),
+        Arguments.of(
+            "CV2 missing referenceNo",
+            "{}",
+            "FIELD",
+            "err.investment-choice.cancel.ref-required",
+            REFERENCE_NO_FIELD),
+        Arguments.of(
+            "CV2 blank referenceNo",
+            cancelReferenceNoPayload("\" \\t \""),
+            "FIELD",
+            "err.investment-choice.cancel.ref-required",
+            REFERENCE_NO_FIELD),
+        Arguments.of(
+            "CS1 referenceNo not pending",
+            quotedCancelReferenceNoPayload("000000000"),
+            "FIELD",
+            "err.investment-choice.cancel.ref-invalid",
+            REFERENCE_NO_FIELD));
+  }
+
+  private static String cancelReferenceNoPayload(String serializedValue) {
+    return """
+        {"%s":%s}
+        """
+        .formatted(REFERENCE_NO_FIELD, serializedValue)
+        .strip();
+  }
+
+  private static String quotedCancelReferenceNoPayload(String value) {
+    return """
+        {"%s":"%s"}
+        """
+        .formatted(REFERENCE_NO_FIELD, value)
+        .strip();
+  }
+
+  private static String unknownCancelPayload() {
+    return """
+        {"%s":"%s","extra":true}
+        """
+        .formatted(REFERENCE_NO_FIELD, CANCEL_REFERENCE_NO)
+        .strip();
   }
 
   @ParameterizedTest
@@ -678,6 +915,31 @@ class PasswordValidationHttpTest {
         .returnResult();
   }
 
+  private org.springframework.test.web.reactive.server.EntityExchangeResult<byte[]>
+      detailedPrecheckFailure(
+          String scenario,
+          String purpose,
+          String operation,
+          String kind,
+          String code,
+          String target)
+          throws Exception {
+    var response = failure(post(body("x", purpose, operation)), 422, "VALIDATION_FAILED", code);
+    var json = JSON.readTree(response.getResponseBody());
+    assertThat(json.at("/errors/0/type").asText()).as(scenario).isEqualTo(kind);
+    if (target == null) {
+      assertThat(json.at("/errors/0/targets").size()).as(scenario).isZero();
+    } else {
+      assertThat(json.at("/errors/0/targets/0").asText()).as(scenario).isEqualTo(target);
+    }
+    assertThat(backend.limiterCalls).hasValue(0);
+    assertThat(backend.passwordCalls).hasValue(0);
+    assertThat(backend.grantAttempts).hasValue(0);
+    assertThat(failureEventCount).isZero();
+    assertSafeLogs();
+    return response;
+  }
+
   private void assertSafeLogs(String... additional) {
     String text =
         logs.snapshot().stream()
@@ -789,13 +1051,95 @@ class PasswordValidationHttpTest {
   }
 
   private static String body(String password) {
+    return body(password, PURPOSE, PAYLOAD);
+  }
+
+  private static String body(String password, String purpose, String operation) {
     return "{\"password\":\""
         + password
         + "\",\"purpose\":\""
-        + PURPOSE
+        + purpose
         + "\",\"operationPayload\":"
-        + PAYLOAD
+        + operation
         + "}";
+  }
+
+  private static Stream<Arguments> cimPrecheckViolations() {
+    return Stream.of(
+        Arguments.of(
+            "V1 malformed structure", "[]", "FORM", "err.investment-choice.request.invalid", null),
+        Arguments.of(
+            "V2 missing switch source",
+            "{\"allocations\":[{\"fundCode\":\"DBLF\",\"percentage\":100}]}",
+            "FIELD",
+            "err.investment-choice.switch-source.required",
+            "switchSources"),
+        Arguments.of(
+            "V3 duplicate switch source",
+            cimPayload("[\"BO\",\"BO\"]", "[{\"fundCode\":\"DBLF\",\"percentage\":100}]"),
+            "FIELD",
+            "err.investment-choice.switch-source.duplicate",
+            "switchSources[1]"),
+        Arguments.of(
+            "V4 empty allocations",
+            cimPayload("[\"BO\"]", "[]"),
+            "FIELD",
+            "err.investment-choice.allocation.required",
+            "allocations"),
+        Arguments.of(
+            "V5 missing fund",
+            cimPayload("[\"BO\"]", "[{\"percentage\":100}]"),
+            "FIELD",
+            "err.investment-choice.fund.required",
+            "allocations[0].fundCode"),
+        Arguments.of(
+            "V6 duplicate fund",
+            cimPayload(
+                "[\"BO\"]",
+                "[{\"fundCode\":\"DBLF\",\"percentage\":50},{\"fundCode\":\"DBLF\",\"percentage\":50}]"),
+            "FIELD",
+            "err.investment-choice.fund.duplicate",
+            "allocations[1].fundCode"),
+        Arguments.of(
+            "V7 invalid percentage",
+            cimPayload(
+                "[\"BO\"]",
+                "[{\"fundCode\":\"DBLF\",\"percentage\":60.0},{\"fundCode\":\"DHKM\",\"percentage\":40}]"),
+            "FIELD",
+            "err.investment-choice.percentage.invalid",
+            "allocations[0].percentage"),
+        Arguments.of(
+            "V8 percentage total",
+            cimPayload(
+                "[\"BO\"]",
+                "[{\"fundCode\":\"DBLF\",\"percentage\":60},{\"fundCode\":\"DHKM\",\"percentage\":39}]"),
+            "CROSS_FIELD",
+            "err.investment-choice.percentage.total-invalid",
+            "allocations"),
+        Arguments.of(
+            "S1 percentage interval",
+            cimPayload(
+                "[\"BO\"]",
+                "[{\"fundCode\":\"DBLF\",\"percentage\":65},{\"fundCode\":\"DHKM\",\"percentage\":35}]"),
+            "FIELD",
+            "err.investment-choice.percentage.interval-invalid",
+            "allocations[0].percentage"),
+        Arguments.of(
+            "S2 unavailable switch source",
+            cimPayload("[\"XX\"]", "[{\"fundCode\":\"DBLF\",\"percentage\":100}]"),
+            "FIELD",
+            "err.investment-choice.switch-source.unavailable",
+            "switchSources[0]"),
+        Arguments.of(
+            "S3 unavailable fund",
+            cimPayload("[\"BO\"]", "[{\"fundCode\":\"XX\",\"percentage\":100}]"),
+            "FIELD",
+            "err.investment-choice.fund.unavailable",
+            "allocations[0].fundCode"));
+  }
+
+  private static String cimPayload(String sources, String allocations) {
+    return "{\"switchSources\":" + sources + ",\"allocations\":" + allocations + "}";
   }
 
   private static String grantKey() {
@@ -907,6 +1251,31 @@ class PasswordValidationHttpTest {
     @Bean
     Clock clock() {
       return Clock.systemUTC();
+    }
+
+    @Bean
+    com.bct.ngtpa.apiservice.application.usecase.investmentchoice
+            .InvestmentChoiceSnapshotCacheService
+        investmentChoiceSnapshotCache() {
+      var cache =
+          mock(
+              com.bct.ngtpa.apiservice.application.usecase.investmentchoice
+                  .InvestmentChoiceSnapshotCacheService.class);
+      var snapshot =
+          new InvestmentChoiceSnapshot(
+              REF,
+              "fixture-policy",
+              20,
+              List.of(
+                  new InvestmentChoiceSnapshot.SwitchSource("BO", true),
+                  new InvestmentChoiceSnapshot.SwitchSource("EE", true)),
+              List.of(
+                  new InvestmentChoiceSnapshot.Fund("DBLF", true),
+                  new InvestmentChoiceSnapshot.Fund("DHKM", true)),
+              List.of(CANCEL_REFERENCE_NO));
+      when(cache.readState(any(), any(), any(), any()))
+          .thenReturn(Mono.just(Optional.of(InvestmentChoiceSnapshotState.normal(snapshot))));
+      return cache;
     }
 
     @Bean

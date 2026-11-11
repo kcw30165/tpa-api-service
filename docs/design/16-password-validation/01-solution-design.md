@@ -1,7 +1,7 @@
 # 01 Solution design
 
 ## 1. Approved scope
-One POST /api/v1/password-validation endpoint. Initially the only supported purpose is PERSONAL_INFORMATION_UPDATE. Change of Investment and Switch Fund are future consumers, not implemented or accepted purposes now. Protect existing PUT /api/v1/personal-information. GET remains unchanged. Preserve existing update response and downstream update semantics.
+One POST /api/v1/password-validation endpoint. The M1 implementation initially supported only PERSONAL_INFORMATION_UPDATE; by M5, CIM submit and cancel are also supported purposes (see document 11). The approved M6 design in section 12 changes precheck ownership, ordering and execution behavior; it does not introduce CIM purposes for the first time. Protect existing PUT /api/v1/personal-information. GET remains unchanged. Preserve existing update response and downstream update semantics.
 
 Approved binding: authenticated session + selected Account-Ref + purpose + exact reviewed operation payload. A token expires after 300 seconds, is not renewable, and is consumed on the first authenticated submission, even if JSON is malformed, payload differs, or subsequent validation fails. One active token per session/account/purpose; successful replacement invalidates the previous token. Different scopes may coexist.
 
@@ -400,3 +400,132 @@ the unchanged M1 canonicalizer; M3's parser/composition and issuance endpoint
 are unchanged. No M1/M2 grant/session/CAS contract, Lua script, throttle, APIM
 adapter or downstream mapping changes. M5 is not started. Independent M4 review,
 not this implementation note, remains the approval gate.
+
+## M6 approved design checkpoint: purpose-owned prechecks (not implemented)
+
+This section records the approved future design; the M1-M5 implementation and
+evidence above remain the current behavior. No code change or runtime result is
+implied.
+
+### Purpose registration and payload representation
+
+The shared issuance envelope parser performs only common envelope/password
+checks and selects a registered purpose decoder. Each decoder returns a small,
+framework-free, purpose-specific input representation; an application policy
+owns that purpose's feature rules. Jackson stays in the web adapter. This is
+not a general-purpose JSON framework:
+
+- Personal Information retains the presence and JSON kind of `formVersion`,
+  `applyToAllAccounts` and `fields`, the non-empty `fields` member count, and
+  any operation-member names needed to preserve its existing issuance behavior.
+- CIM submit retains root-object validity/member names; the presence and JSON
+  kind of `switchSources` and `allocations`; each source element's JSON kind
+  and string value; and for each allocation its object validity, member names,
+  and the presence, JSON kind and scalar value of `fundCode` and `percentage`.
+- CIM cancel retains root-object validity/member names and the presence, JSON
+  kind and string value of `referenceNo`.
+
+The representation must preserve unknown member names, missing versus explicit
+null, and JSON kinds until the application policy runs. Values that are not
+needed for a rule need not be copied; the original operation payload is
+retained for binding. Numeric input retains enough information to distinguish
+an integer JSON token from a decimal token. Strict duplicate detection remains
+in the adapter decoder.
+
+`PasswordValidationPurposePayloadDecoder` registrations and
+`PasswordValidationPurposePrecheckPolicy` registrations are composed by
+purpose. Duplicate, missing or payload-type-mismatched registrations fail
+composition. Adding a purpose adds its enum/route registration, decoder and
+policy; it does not add a purpose branch to the shared parser or issuance
+algorithm. Application policies are framework-free.
+
+### Issuance
+
+The target order is authenticated transport/context -> generic envelope
+validation -> purpose decoder -> purpose precheck -> existing canonical
+payload-digest calculation -> throttle -> password verification -> existing
+grant issuance. A precheck rejection makes no throttle/password call and issues
+no token. There is no additional validation HTTP request. The grant's scope,
+lifetime, stored representation, and single-use lifecycle are unchanged; no
+legacy-token migration or versioning is introduced.
+
+Personal Information precheck failures keep the existing generic 400 issuance
+contract, and Personal Information PUT validation/update behavior is unchanged.
+CIM submit V1 structural failure returns the existing FORM violation without
+a snapshot read. For structurally safe submit input, retain V2-V8 violations
+and read the account-owned snapshot once. If available, append independent
+S1-S3 violations to V2-V8 in S1, S2, S3 order, using the original decoded
+payload and preserving array indexes. If the snapshot is missing or unreadable
+and V2-V8 violations are known, return those known 422 errors and publish no
+feature-owned 503 incident. With no V violations, snapshot unavailability
+retains the feature-specific HTTP 503 `SYSTEM_ERROR` and exactly one
+feature-owned `LOCAL_SYSTEM` `FailureEvent`. CIM cancel CV1-CV2 and
+pending-reference membership continue to run once at issuance and return
+detailed HTTP 422 errors; cancel snapshot misses retain their existing 503 and
+exactly one feature-owned event. Expected feature violations produce no
+technical incident. Shared issuance does not publish a duplicate event for a
+feature-owned snapshot miss. Wrong-password behavior is unchanged.
+
+### Scenario-aware CIM issuance state (implemented in M6-012; not runtime-verified against Progress)
+
+The approved CIM GET scenarios are `NORMAL`, `FUNCTION_UNAVAILABLE`, and
+`MEMBER_INELIGIBLE`, selected by Progress and stored with account ownership.
+The confirmed downstream field is `scenario` beside `interval-pcnt`, with
+exact mappings `normal` -> `NORMAL`, `scenario1` -> `FUNCTION_UNAVAILABLE`,
+and `scenario2` -> `MEMBER_INELIGIBLE`. Matching is exact and case-sensitive;
+no aliases, trimming, or configuration-based mapping are used. Until
+downstream rollout is confirmed, absence temporarily maps to NORMAL for
+compatibility. Present null, non-string, blank, or unknown values remain
+malformed. See design pack 17, documents 02, 03, and 06 for the complete GET
+contract and rollout detail.
+
+The confirmed wire mapping remains isolated in the APIM scenario mapper.
+
+Both `CHANGE_INVESTMENT_CHOICE` and `CANCEL_INVESTMENT_CHOICE` issuance
+policies inspect the stored scenario. `FUNCTION_UNAVAILABLE` returns HTTP 422
+`BUSINESS_REJECTED`, type `BUSINESS`, code
+`err.investment-choice.function-unavailable`; `MEMBER_INELIGIBLE` returns the
+same response status/type with code
+`err.investment-choice.member-ineligible`. Both use empty targets, null
+message, existing severity/source conventions, and produce no technical
+incident. These rejections precede throttle, password verification, and grant
+issuance. An ordinary missing/unreadable snapshot retains the existing
+feature-owned 503 and exactly-one-event behavior.
+
+The scenario is not rechecked during execution, and already-issued token
+semantics do not change. Submit reconciliation must apply scenario-aware
+snapshot replacement rather than fabricate NORMAL authorization data; cancel
+post-success cleanup must tolerate restricted state without blocking success.
+Neither path adds an execution-time business precheck. Snapshot storage and
+concurrency guarantees remain as currently designed, with no CAS redesign or
+GET fencing.
+
+### Execution handoff and validation boundary
+
+The existing token gate remains authoritative for single use, session/account/
+purpose scope, and exact-payload binding. Equality is defined by the existing
+strict canonicalizer: object member order is ignored; array order, JSON types,
+values, and member presence remain significant under its established numeric
+normalization. Do not describe this as raw-byte equality.
+
+Reuse `PasswordValidationTokenGateWebFilter.BINDING_ATTRIBUTE`. A
+`PayloadDigest` value by itself is **not** proof of authorization. Trust comes
+from the gate's successful scoped token consumption and canonical body-binding
+check before it dispatches to the controller. The CIM controller requires the
+attribute and carries it as a required component of the submit/cancel command;
+missing binding or any rejected gate check prevents downstream dispatch. No
+client-supplied authorization flag or new authorization object is introduced.
+
+Execution strictly decodes the replayed request and constructs its typed
+command, but does not rerun CIM feature prechecks. Submit expansion,
+downstream dispatch/error mapping and unknown-outcome reconciliation remain
+unchanged, with scenario-aware GET parsing and snapshot replacement applied
+during reconciliation as described above. Cancel performs no snapshot
+precheck or pending-reference membership revalidation at execution. Any
+snapshot access retained for post-success pending-reference cleanup is best
+effort: a missing/unreadable snapshot or cleanup failure cannot block
+cancellation or turn a successful downstream cancellation into failure. Do
+not redesign snapshot concurrency,
+CAS cleanup or GET fencing. Progress retains its existing current-state
+enforcement; this design does not assume it repeats every Java rule. A token
+does not reserve or freeze business state.

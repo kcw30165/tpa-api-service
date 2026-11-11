@@ -295,6 +295,13 @@ apim:
     path: ${APIM_ACCOUNT_GAIN_LOSS_PATH:/ws/NGTPA/v1/TRPGetInvestGL}
   fund-fact-sheet:
     path: ${APIM_FUND_FACT_SHEET_PATH:/ws/NGTPA/v1/TRPGetFundFactSheet}
+  investment-choice:
+    details:
+      path: ${APIM_INVESTMENT_CHOICE_DETAILS_PATH:/ws/NGTPA/v1/TRPGetCIMDtl}
+    instruction:
+      path: ${APIM_INVESTMENT_CHOICE_INSTRUCTION_PATH:/ws/NGTPA/v1/TRPCIMReq}
+    cancel:
+      path: ${APIM_INVESTMENT_CHOICE_CANCEL_PATH:/ws/NGTPA/v1/TRPCnclCIMReq}
   general-metadata:
     path: ${APIM_GENERAL_METADATA_PATH:/ws/NGTPA/v1/TRPGetGeneralMetaData}
   routing:

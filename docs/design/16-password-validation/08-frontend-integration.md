@@ -1,6 +1,6 @@
 # 08 Frontend integration
 
-Audience: the frontend team. Scope: Personal Information update, the only supported purpose in this release (`PERSONAL_INFORMATION_UPDATE`). Behaviour below is taken from the approved design and the tests listed in [10 As-built traceability](10-as-built-traceability.md). Nothing in this document has been exercised from a real browser yet; see the open items in [09 Release and operations](09-release-and-operations.md).
+Audience: the frontend team. Sections 1-5 describe the current Personal Information integration; CIM frontend contracts are in design pack 17. The M6 CIM issuance behavior in section 6 is an approved target, not yet implemented or runtime-verified. Existing tests are listed in [10 As-built traceability](10-as-built-traceability.md). Nothing in this document has been exercised from a real browser yet; see the open items in [09 Release and operations](09-release-and-operations.md).
 
 ## 1. Flow
 
@@ -56,7 +56,7 @@ Success (HTTP 200):
 | `formVersion`, `applyToAllAccounts` | Included; changing either needs a new confirmation |
 | Unknown members | Included; do not add, remove or rename anything between issuance and PUT |
 
-The server compares the raw JSON text, before any mapping, so a field the form ignores still counts.
+The M5 server compares the operation payload using its existing canonicalizer before lossy mapping, so a field the form ignores still counts. Object-member ordering is ignored; arrays, JSON kinds, values and member presence remain significant under the canonicalization rules. The approved M6 CIM design continues to use this canonicalizer, not raw-byte equality.
 
 ## 4. Statuses to handle
 
@@ -99,3 +99,32 @@ When the token is valid and the body matches, the response is exactly the existi
 
 - `X-Password-Validation-Token` must be allowed by CORS. The default list includes it. If a deployment overrides `CORS_ALLOWED_HEADERS`, that value must include it or the browser will block every update.
 - The service does not set `Access-Control-Expose-Headers`. For a cross-origin frontend, JavaScript cannot read `Retry-After` or `X-Request-Id`. Either serve the frontend same-origin, ask for those headers to be exposed, or use a fixed back-off of about 60 seconds for a 429.
+
+## 6. Approved M6 target (not implemented)
+
+The flow and error handling above describe the current Personal Information
+integration. CIM submit and cancel purposes already exist in M5; this target
+changes their precheck ownership and response contract, while preserving
+Personal Information behavior and its PUT-side validation.
+
+For CIM, a feature-payload or snapshot-rule violation is returned from
+`POST /api/v1/password-validation` as HTTP 422 `VALIDATION_FAILED`, with the
+existing detailed CIM code and targets. A CIM snapshot miss is a feature-
+specific HTTP 503 `SYSTEM_ERROR`; the feature policy owns exactly one
+`LOCAL_SYSTEM` event. Expected feature violations create no technical incident.
+The generic envelope continues to use its existing 400 contract, and
+wrong-password behavior is unchanged. The frontend must handle these CIM
+issuance errors before attempting the protected mutation.
+
+| CIM issuance result | Frontend handling |
+|---|---|
+| 422 `VALIDATION_FAILED` with an existing CIM code/target | Render the corresponding validation feedback and do not call the protected endpoint; no password verification or token issuance occurred |
+| Feature-specific 503 `SYSTEM_ERROR` for snapshot miss | Show a generic unavailable/reload path; do not call the protected endpoint or expose internal failure details |
+| Existing generic envelope 400 or wrong-password response | Preserve the current password-validation handling |
+
+These are password-issuance responses. Do not treat them as 422 responses from
+submit/cancel execution; the downstream `cancel.not-cancellable` business
+outcome remains an execution response.
+
+Do not treat this target as current runtime behavior until its implementation
+and release gates are separately verified.

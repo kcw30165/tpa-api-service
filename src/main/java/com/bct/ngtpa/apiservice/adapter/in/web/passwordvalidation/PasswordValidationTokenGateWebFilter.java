@@ -21,12 +21,12 @@ import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.codec.ServerCodecConfigurer;
 import org.springframework.http.server.reactive.ServerHttpRequestDecorator;
@@ -75,8 +75,8 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-    if (!HttpMethod.PUT.equals(exchange.getRequest().getMethod())
-        || !PasswordValidationRouteMatcher.matches(exchange.getRequest())) {
+    var purpose = PasswordValidationRouteMatcher.purposeForTokenGate(exchange.getRequest());
+    if (purpose.isEmpty()) {
       return chain.filter(exchange);
     }
     exchange.getResponse().getHeaders().setCacheControl("no-store");
@@ -95,7 +95,8 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
     if (tokenHeaderRejection != null) {
       return rejected(exchange, tokenHeaderRejection);
     }
-    return consumeAndDispatch(exchange, chain, context, sessionId.get(), tokens.getFirst());
+    return consumeAndDispatch(
+        exchange, chain, context, sessionId.get(), tokens.getFirst(), purpose.get());
   }
 
   private Mono<Void> missingAccountRef(ServerWebExchange exchange) {
@@ -149,7 +150,8 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
       WebFilterChain chain,
       PortalAccessContext context,
       AuthenticatedSessionId sessionId,
-      String token) {
+      String token,
+      PasswordValidationPurpose purpose) {
     String requestId = exchange.getAttribute(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY);
     // Keep technical conversion on consume only, never on controller/update work.
     return Mono.defer(
@@ -157,7 +159,7 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
                 grants.consume(
                     sessionId,
                     new AuthenticatedAccountRef(context.account().accountRef()),
-                    PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE,
+                    purpose,
                     token,
                     requestId))
         .defaultIfEmpty(UNAVAILABLE)
@@ -249,7 +251,7 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
       List<String> targets,
       String reason) {
     String requestId = exchange.getAttribute(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY);
-    publishFailure(requestId, reason, http.value(), code);
+    publishFailure(exchange, requestId, reason, http.value(), code);
     var response =
         renderer.render(
             http,
@@ -272,8 +274,31 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
     }
   }
 
-  private void publishFailure(String requestId, String reason, int httpStatus, String publicCode) {
+  private void publishFailure(
+      ServerWebExchange exchange,
+      String requestId,
+      String reason,
+      int httpStatus,
+      String publicCode) {
     try {
+      var request = exchange.getRequest();
+      var dimensions =
+          new LinkedHashMap<String, Object>(
+              Map.of(
+                  "stage",
+                  "token-gate",
+                  "reason",
+                  reason,
+                  "route",
+                  request.getPath().pathWithinApplication().value(),
+                  "method",
+                  request.getMethod().name()));
+      PasswordValidationRouteMatcher.purposeForTokenGate(request)
+          .filter(
+              purpose ->
+                  purpose == PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE
+                      || purpose == PasswordValidationPurpose.CANCEL_INVESTMENT_CHOICE)
+          .ifPresent(purpose -> dimensions.put("purpose", purpose.name()));
       failures.publish(
           new FailureEvent(
               "password-validation.authorization.rejected",
@@ -285,15 +310,7 @@ public final class PasswordValidationTokenGateWebFilter implements WebFilter {
               publicCode,
               httpStatus,
               false,
-              Map.of(
-                  "stage",
-                  "token-gate",
-                  "reason",
-                  reason,
-                  "route",
-                  PasswordValidationRouteMatcher.PERSONAL_INFORMATION_PATH,
-                  "method",
-                  HttpMethod.PUT.name())));
+              dimensions));
     } catch (RuntimeException ignored) {
       // Telemetry must not alter the token-gate response.
     }

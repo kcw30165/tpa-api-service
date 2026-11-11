@@ -49,6 +49,37 @@ Exit: protected mutation cannot dispatch without valid consumed authorization. N
 - Rollback must be coordinated: reverting enforcement can restore unprotected updates. Document that risk explicitly rather than calling rollback security-neutral.
 Exit: reviewed evidence, clean committed worktree, deployment compatibility and operational handling of uncertain mutations confirmed. Only then mark the feature complete.
 
+## M6: Purpose-owned prechecks (approved design; not implemented)
+
+This is a future implementation plan. The documentation checkpoint does not
+authorize starting these changes. Preserve all M1-M5 implementation and gate
+evidence above.
+
+1. **Shared decoder/policy composition and PI compatibility.** Add the minimal
+   purpose payload records, decoder registry, framework-free precheck policy
+   registry and Spring composition check. Remove purpose branches from the
+   shared parser/issuance algorithm. Keep PI issuance 400 and PI PUT behavior
+   unchanged. Prove missing, duplicate and mismatched registrations fail
+   composition and that prechecks precede throttle/password.
+2. **CIM issuance policies and event ownership.** Run submit V1-V8/S1-S3 and
+   cancel CV1-CV2/pending-reference membership once at issuance. Return detailed
+   422 errors, or feature-specific 503 for snapshot miss. Assert one
+   feature-owned `LOCAL_SYSTEM` event for snapshot miss and no shared duplicate;
+   expected violations create no technical incident.
+3. **Required existing gate binding at execution.** Reuse the existing
+   `BINDING_ATTRIBUTE`; require it at each CIM controller and in each command.
+   Strictly decode/construct commands without repeating business prechecks.
+   Preserve token scope/lifetime/consumption/canonicalization, submit
+   reconciliation, downstream behavior, and best-effort cancel cleanup.
+4. **Contract/documentation closure.** Run the M6 tests in document 05 and
+   update current-versus-target evidence only from executed results. No
+   snapshot concurrency/CAS/GET-fencing work and no token migration/versioning.
+
+Exit requires the approved tests, targeted/full gates and review for the
+implementation revision. Report failures/skips and do not claim runtime or
+Progress behavior beyond existing contracts. Implementation order and commit
+boundaries remain subject to a separate execution prompt.
+
 ## Script/evidence conventions
 Next generated script after investigation 001 uses 002, unless another artifact consumes that script sequence before execution. This document archive is not an executable script. Each script gets a unique filename; timestamped target/evidence directory; near-top EXIT trap that archives on success/failure as <seq>-<brief>.zip.txt and copies to the established api-service llm-scripts directory. Use python, not python3. Read-only scripts must not create commits.
 

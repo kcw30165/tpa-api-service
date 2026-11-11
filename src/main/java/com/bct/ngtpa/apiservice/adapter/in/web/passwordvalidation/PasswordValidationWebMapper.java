@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.*;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.PasswordValidationIssuanceResult;
+import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.PasswordValidationPrecheckViolation;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
 import org.springframework.http.*;
@@ -62,6 +63,45 @@ public final class PasswordValidationWebMapper {
       }
       case AUTHENTICATION_REQUIRED -> authenticationRequired();
       case UNAVAILABLE -> unavailable();
+      case REQUEST_INVALID ->
+          ResponseEntity.status(HttpStatus.BAD_REQUEST)
+              .body(
+                  MutationResponse.failure(
+                      ApiStatus.VALIDATION_FAILED,
+                      result.violations().stream()
+                          .map(PasswordValidationWebMapper::toApiError)
+                          .toList()));
+      case FEATURE_INVALID ->
+          ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
+              .body(
+                  MutationResponse.failure(
+                      ApiStatus.VALIDATION_FAILED,
+                      result.violations().stream()
+                          .map(PasswordValidationWebMapper::toApiError)
+                          .toList()));
+      case FEATURE_UNAVAILABLE ->
+          failure(
+              HttpStatus.SERVICE_UNAVAILABLE,
+              ApiStatus.SYSTEM_ERROR,
+              "SYSTEM",
+              result.errorCode(),
+              List.of("PAGE"));
+      case FEATURE_BUSINESS_REJECTED ->
+          failure(
+              HttpStatus.UNPROCESSABLE_CONTENT,
+              ApiStatus.BUSINESS_REJECTED,
+              BUSINESS,
+              result.errorCode(),
+              List.of());
+    };
+  }
+
+  private static ApiError toApiError(PasswordValidationPrecheckViolation violation) {
+    return switch (violation.kind()) {
+      case FIELD -> ApiError.field(violation.code(), null, violation.targets(), "SERVER");
+      case CROSS_FIELD ->
+          ApiError.crossField(violation.code(), null, violation.targets(), "SERVER");
+      case FORM -> ApiError.form(violation.code(), null, violation.targets(), "SERVER");
     };
   }
 

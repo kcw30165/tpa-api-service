@@ -6,11 +6,17 @@ import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedAccountRef;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelUnavailableException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.port.in.IssuePasswordValidationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.application.port.out.OperationPayloadBindingPort;
 import com.bct.ngtpa.apiservice.application.port.out.PasswordCheckPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.RevokeAuthenticatedSessionUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.RevokeActiveAuthenticatedSessionCommand;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
@@ -28,6 +34,8 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
   private final RevokeAuthenticatedSessionUseCase revocation;
   private final Clock clock;
   private final FailureEventPort failures;
+  private final OperationPayloadBindingPort bindings;
+  private final PasswordValidationPurposePrecheckPolicyRegistry prechecks;
   private final int ttlSeconds;
 
   public PasswordValidationIssuanceService(
@@ -36,8 +44,19 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
       PasswordValidationGrantService grants,
       RevokeAuthenticatedSessionUseCase revocation,
       Clock clock,
-      FailureEventPort failures) {
-    this(throttle, passwords, grants, revocation, clock, failures, DEFAULT_TTL_SECONDS);
+      FailureEventPort failures,
+      OperationPayloadBindingPort bindings,
+      PasswordValidationPurposePrecheckPolicyRegistry prechecks) {
+    this(
+        throttle,
+        passwords,
+        grants,
+        revocation,
+        clock,
+        failures,
+        bindings,
+        prechecks,
+        DEFAULT_TTL_SECONDS);
   }
 
   public PasswordValidationIssuanceService(
@@ -47,6 +66,8 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
       RevokeAuthenticatedSessionUseCase revocation,
       Clock clock,
       FailureEventPort failures,
+      OperationPayloadBindingPort bindings,
+      PasswordValidationPurposePrecheckPolicyRegistry prechecks,
       int ttlSeconds) {
     this.throttle = Objects.requireNonNull(throttle);
     this.passwords = Objects.requireNonNull(passwords);
@@ -54,6 +75,8 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
     this.revocation = Objects.requireNonNull(revocation);
     this.clock = Objects.requireNonNull(clock);
     this.failures = Objects.requireNonNull(failures);
+    this.bindings = Objects.requireNonNull(bindings);
+    this.prechecks = Objects.requireNonNull(prechecks);
     if (ttlSeconds < 30 || ttlSeconds > 900) {
       throw new IllegalArgumentException(
           "password-validation.grant.ttl-seconds must be between 30 and 900");
@@ -64,35 +87,79 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
   @Override
   public Mono<PasswordValidationIssuanceResult> issue(PasswordValidationIssuanceCommand command) {
     return Mono.defer(
-        () -> {
-          AtomicReference<String> reason = new AtomicReference<>(DOWNSTREAM_UNAVAILABLE);
-          return throttle
-              .check(command.context().actor(), command.correlationId())
-              .flatMap(
-                  decision ->
-                      switch (decision.status()) {
-                        case BLOCKED -> {
-                          reason.set("THROTTLED");
-                          yield Mono.just(
-                              new PasswordValidationIssuanceResult(
-                                  THROTTLED, null, 0, decision.retryAfterSeconds()));
-                        }
-                        case UNAVAILABLE ->
-                            Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
-                        case ADMITTED -> checkPassword(command, reason);
-                      })
-              .defaultIfEmpty(PasswordValidationIssuanceResult.of(UNAVAILABLE))
-              .onErrorResume(
-                  failure -> {
-                    reason.set(DOWNSTREAM_UNAVAILABLE);
-                    return Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
-                  })
-              .doOnNext(result -> publishFailure(command, reason.get(), result));
-        });
+            () ->
+                prechecks.precheck(
+                    command.purpose(),
+                    command.payload(),
+                    new PasswordValidationPrecheckContext(
+                        command.sessionId(), command.context(), command.correlationId())))
+        .flatMap(result -> afterPrecheck(command, result))
+        .onErrorResume(
+            InvestmentChoiceSubmissionUnavailableException.class,
+            ignored ->
+                Mono.just(
+                    PasswordValidationIssuanceResult.featureUnavailable(
+                        ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_UNAVAILABLE)))
+        .onErrorResume(
+            InvestmentChoiceCancelUnavailableException.class,
+            ignored ->
+                Mono.just(
+                    PasswordValidationIssuanceResult.featureUnavailable(
+                        ErrorCodes.INVESTMENT_CHOICE_CANCEL_UNAVAILABLE)));
+  }
+
+  private Mono<PasswordValidationIssuanceResult> afterPrecheck(
+      PasswordValidationIssuanceCommand command, PasswordValidationPrecheckResult precheck) {
+    if (precheck.isBusinessRejected()) {
+      return Mono.just(
+          PasswordValidationIssuanceResult.featureBusinessRejected(precheck.businessErrorCode()));
+    }
+    if (!precheck.isSuccess()) {
+      if (command.purpose() == PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE) {
+        publishPersonalInformationRequestInvalid(command, precheck);
+        return Mono.just(PasswordValidationIssuanceResult.requestInvalid(precheck.violations()));
+      }
+      return Mono.just(PasswordValidationIssuanceResult.featureInvalid(precheck.violations()));
+    }
+    return Mono.defer(
+        () -> issueAfterPrecheck(command, bindings.digest(command.operationPayloadJson())));
+  }
+
+  private Mono<PasswordValidationIssuanceResult> issueAfterPrecheck(
+      PasswordValidationIssuanceCommand command, PayloadDigest binding) {
+    AtomicReference<String> reason = new AtomicReference<>(DOWNSTREAM_UNAVAILABLE);
+    return throttle
+        .check(command.context().actor(), command.correlationId())
+        .flatMap(
+            decision ->
+                switch (decision.status()) {
+                  case BLOCKED -> {
+                    reason.set("THROTTLED");
+                    yield Mono.just(
+                        new PasswordValidationIssuanceResult(
+                            THROTTLED,
+                            null,
+                            0,
+                            decision.retryAfterSeconds(),
+                            java.util.List.of(),
+                            null));
+                  }
+                  case UNAVAILABLE -> Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
+                  case ADMITTED -> checkPassword(command, binding, reason);
+                })
+        .defaultIfEmpty(PasswordValidationIssuanceResult.of(UNAVAILABLE))
+        .onErrorResume(
+            failure -> {
+              reason.set(DOWNSTREAM_UNAVAILABLE);
+              return Mono.just(PasswordValidationIssuanceResult.of(UNAVAILABLE));
+            })
+        .doOnNext(result -> publishFailure(command, reason.get(), result));
   }
 
   private Mono<PasswordValidationIssuanceResult> checkPassword(
-      PasswordValidationIssuanceCommand command, AtomicReference<String> reason) {
+      PasswordValidationIssuanceCommand command,
+      PayloadDigest binding,
+      AtomicReference<String> reason) {
     var actor = command.context().actor();
     var account = command.context().account();
     if (account == null || account.accountEnv() == null || account.accountEnv().isBlank()) {
@@ -116,7 +183,7 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
                               command.sessionId(),
                               new AuthenticatedAccountRef(account.accountRef()),
                               command.purpose(),
-                              command.binding(),
+                              binding,
                               check,
                               command.correlationId())
                           .map(
@@ -161,7 +228,12 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
     long remaining = Duration.between(clock.instant(), result.expiresAt()).toSeconds();
     if (remaining <= 0) return PasswordValidationIssuanceResult.of(UNAVAILABLE);
     return new PasswordValidationIssuanceResult(
-        ISSUED, result.token(), (int) Math.min(ttlSeconds, remaining), 0);
+        ISSUED,
+        result.token(),
+        (int) Math.min(ttlSeconds, remaining),
+        0,
+        java.util.List.of(),
+        null);
   }
 
   private Mono<PasswordValidationIssuanceResult> invalidate(
@@ -235,6 +307,36 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
     }
   }
 
+  private void publishPersonalInformationRequestInvalid(
+      PasswordValidationIssuanceCommand command, PasswordValidationPrecheckResult precheck) {
+    String target =
+        precheck.violations().isEmpty() || precheck.violations().getFirst().targets().isEmpty()
+            ? null
+            : precheck.violations().getFirst().targets().getFirst();
+    var dimensions = new java.util.LinkedHashMap<String, Object>();
+    dimensions.put("stage", "issuance");
+    dimensions.put("reason", "REQUEST_INVALID");
+    if (target != null) {
+      dimensions.put("target", target);
+    }
+    try {
+      failures.publish(
+          new FailureEvent(
+              "password-validation.issue.rejected",
+              command.correlationId(),
+              "password-validation",
+              "issue",
+              FailureOrigin.LOCAL_VALIDATION,
+              "REQUEST_INVALID",
+              ErrorCodes.PASSWORD_VALIDATION_REQUEST_INVALID,
+              400,
+              false,
+              Map.copyOf(dimensions)));
+    } catch (RuntimeException ignored) {
+      // Telemetry must not change the issuance response.
+    }
+  }
+
   private static int httpStatus(PasswordValidationIssuanceResult.Status status) {
     return switch (status) {
       case INCORRECT -> 401;
@@ -242,7 +344,9 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
       case THROTTLED -> 429;
       case AUTHENTICATION_REQUIRED -> 401;
       case ISSUED -> 200;
-      case LOCK_CLEANUP_FAILED, UNAVAILABLE -> 503;
+      case LOCK_CLEANUP_FAILED, UNAVAILABLE, FEATURE_UNAVAILABLE -> 503;
+      case REQUEST_INVALID -> 400;
+      case FEATURE_INVALID, FEATURE_BUSINESS_REJECTED -> 422;
     };
   }
 }

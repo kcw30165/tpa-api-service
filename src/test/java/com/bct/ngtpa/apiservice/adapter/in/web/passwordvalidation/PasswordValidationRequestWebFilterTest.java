@@ -34,7 +34,13 @@ class PasswordValidationRequestWebFilterTest {
     "POST,/api/v1/%70assword-validation",
     "PUT,/api/v1/personal-information",
     "PUT,/api/v1/personal-information;x=1",
-    "PUT,/api/v1/%70ersonal-information"
+    "PUT,/api/v1/%70ersonal-information",
+    "POST,/api/v1/investment-choice/instructions",
+    "POST,/api/v1/investment-choice/instructions;x=1",
+    "POST,/api/v1/%69nvestment-choice/instructions",
+    "POST,/api/v1/investment-choice/instructions/cancel",
+    "POST,/api/v1/investment-choice/instructions/cancel;x=1",
+    "POST,/api/v1/investment-choice/instructions/%63ancel"
   })
   void routedVariantsHaveNoStoreAndSafeCsrfMapping(String method, String path) {
     var exchange =
@@ -66,7 +72,16 @@ class PasswordValidationRequestWebFilterTest {
     "POST,/api/v1/password-validation/",
     "POST,/api/v1/Password-validation",
     "PUT,/api/v1/personal-information/",
-    "PUT,/api/v1/Personal-information"
+    "PUT,/api/v1/Personal-information",
+    "GET,/api/v1/investment-choice",
+    "GET,/api/v1/investment-choice/instructions",
+    "PUT,/api/v1/investment-choice/instructions",
+    "POST,/api/v1/investment-choice/instructions/",
+    "POST,/api/v1/Investment-choice/instructions",
+    "GET,/api/v1/investment-choice/instructions/cancel",
+    "PUT,/api/v1/investment-choice/instructions/cancel",
+    "POST,/api/v1/investment-choice/instructions/cancel/",
+    "POST,/api/v1/investment-choice/instructions/Cancel"
   })
   void otherMethodsAndUnmatchedPathsPassThroughOnceWithoutChangingHeaders(
       String method, String path) {

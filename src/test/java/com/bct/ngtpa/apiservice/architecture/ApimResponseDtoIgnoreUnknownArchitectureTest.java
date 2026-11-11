@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.architecture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Modifier;
@@ -40,7 +41,7 @@ class ApimResponseDtoIgnoreUnknownArchitectureTest {
   private static final Path MAIN = Path.of("src/main/java");
   private static final Path APIM = MAIN.resolve("com/bct/ngtpa/apiservice/adapter/out/apim");
   private static final String APIM_PACKAGE = "com.bct.ngtpa.apiservice.adapter.out.apim";
-  private static final int MIN_CALL_SITES = 22;
+  private static final int MIN_CALL_SITES = 24;
   private static final Pattern EXCHANGE =
       Pattern.compile("new\\s+ApimExchangeRequest\\s*<[^>]*>\\s*\\(");
   private static final Pattern CLASS_LITERAL = Pattern.compile("\\b([A-Z]\\w*)\\.class\\b");
@@ -98,6 +99,10 @@ class ApimResponseDtoIgnoreUnknownArchitectureTest {
       if (!seen.add(type)) {
         continue;
       }
+      if (type == JsonNode.class) {
+        // A tree node retains arbitrary downstream fields instead of rejecting unknown ones.
+        continue;
+      }
       JsonIgnoreProperties annotation = type.getAnnotation(JsonIgnoreProperties.class);
       if (annotation == null || !annotation.ignoreUnknown()) {
         missing.add(type.getName());
@@ -112,6 +117,10 @@ class ApimResponseDtoIgnoreUnknownArchitectureTest {
 
   private static Class<?> resolve(
       String simple, String text, String pkgPath, Map<String, List<String>> fqnsBySimpleName) {
+    if (simple.equals(JsonNode.class.getSimpleName())
+        && text.contains("import " + JsonNode.class.getName() + ";")) {
+      return JsonNode.class;
+    }
     List<String> candidates = fqnsBySimpleName.getOrDefault(simple, List.of());
     String chosen = null;
     for (String fqn : candidates) {

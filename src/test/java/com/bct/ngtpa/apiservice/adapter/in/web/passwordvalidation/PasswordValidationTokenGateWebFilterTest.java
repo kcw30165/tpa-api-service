@@ -8,11 +8,14 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSession
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayloadCanonicalizer;
 import com.bct.ngtpa.apiservice.application.dto.*;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationGrantService;
+import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
 import com.bct.ngtpa.apiservice.shared.web.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +38,7 @@ class PasswordValidationTokenGateWebFilterTest {
   private final PasswordValidationGrantService grants = mock(PasswordValidationGrantService.class);
   private final AuthenticatedSessionCookieReader cookies =
       mock(AuthenticatedSessionCookieReader.class);
+  private FailureEventPort failures;
   private final JsonOperationPayloadCanonicalizer bindings =
       new JsonOperationPayloadCanonicalizer();
   private final ObjectMapper json = new ObjectMapper();
@@ -42,6 +46,7 @@ class PasswordValidationTokenGateWebFilterTest {
 
   @BeforeEach
   void setUp() {
+    failures = mock(FailureEventPort.class);
     gate =
         new PasswordValidationTokenGateWebFilter(
             grants,
@@ -50,7 +55,7 @@ class PasswordValidationTokenGateWebFilterTest {
             ServerCodecConfigurer.create(),
             new ErrorResponseRenderer(),
             json,
-            mock(FailureEventPort.class));
+            failures);
     when(cookies.read(any()))
         .thenReturn(Optional.of(new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx")));
     when(grants.consume(any(), any(), any(), any(), any()))
@@ -150,6 +155,125 @@ class PasswordValidationTokenGateWebFilterTest {
   }
 
   @Test
+  void cimInstructionConsumesWithItsMappedPurpose() {
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/investment-choice/instructions")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, REF)
+                .header(PasswordValidationTokenGateWebFilter.TOKEN_HEADER, TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}"));
+    exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "gate-unit");
+    authenticate(exchange);
+
+    AtomicInteger calls = new AtomicInteger();
+    gate.filter(
+            exchange,
+            actual -> {
+              calls.incrementAndGet();
+              return Mono.empty();
+            })
+        .block();
+
+    assertThat(calls).hasValue(1);
+    verify(grants)
+        .consume(
+            any(),
+            any(),
+            eq(PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE),
+            eq(TOKEN),
+            eq("gate-unit"));
+  }
+
+  @Test
+  void cancelInstructionConsumesWithItsMappedPurpose() {
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/investment-choice/instructions/cancel")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, REF)
+                .header(PasswordValidationTokenGateWebFilter.TOKEN_HEADER, TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}"));
+    exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "gate-unit");
+    authenticate(exchange);
+
+    AtomicInteger calls = new AtomicInteger();
+    gate.filter(
+            exchange,
+            actual -> {
+              calls.incrementAndGet();
+              return Mono.empty();
+            })
+        .block();
+
+    assertThat(calls).hasValue(1);
+    verify(grants)
+        .consume(
+            any(),
+            any(),
+            eq(PasswordValidationPurpose.parse("CANCEL_INVESTMENT_CHOICE")),
+            eq(TOKEN),
+            eq("gate-unit"));
+  }
+
+  @Test
+  void cimRejectionEventUsesMatchedRouteMethodAndPurposeWithoutSensitiveDimensions() {
+    var exchange =
+        unauthenticatedRequest(HttpMethod.POST, "/api/v1/investment-choice/instructions");
+    authenticate(exchange);
+
+    gate.filter(exchange, ignored -> Mono.error(new AssertionError("Dispatched"))).block();
+
+    var event = capturedFailureEvent();
+    assertThat(event.safeDimensions())
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(
+                "stage", "token-gate",
+                "reason", "TOKEN_HEADER_MISSING",
+                "route", "/api/v1/investment-choice/instructions",
+                "method", "POST",
+                "purpose", "CHANGE_INVESTMENT_CHOICE"));
+  }
+
+  @Test
+  void cancelRejectionEventUsesMatchedRouteMethodAndPurposeWithoutSensitiveDimensions() {
+    String cancelPath = "/api/v1/investment-choice/instructions/cancel";
+    var exchange = unauthenticatedRequest(HttpMethod.POST, cancelPath);
+    authenticate(exchange);
+
+    gate.filter(exchange, ignored -> Mono.error(new AssertionError("Dispatched"))).block();
+
+    var event = capturedFailureEvent();
+    assertThat(event.safeDimensions())
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(
+                "stage", "token-gate",
+                "reason", "TOKEN_HEADER_MISSING",
+                "route", cancelPath,
+                "method", "POST",
+                "purpose", "CANCEL_INVESTMENT_CHOICE"));
+  }
+
+  @Test
+  void personalInformationRejectionEventKeepsExistingDimensions() {
+    var exchange =
+        unauthenticatedRequest(
+            HttpMethod.PUT, PasswordValidationRouteMatcher.PERSONAL_INFORMATION_PATH);
+    authenticate(exchange);
+
+    gate.filter(exchange, ignored -> Mono.error(new AssertionError("Dispatched"))).block();
+
+    var event = capturedFailureEvent();
+    assertThat(event.safeDimensions())
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(
+                "stage", "token-gate",
+                "reason", "TOKEN_HEADER_MISSING",
+                "route", PasswordValidationRouteMatcher.PERSONAL_INFORMATION_PATH,
+                "method", "PUT"));
+  }
+
+  @Test
   void missingAccountHeaderIsRejectedBeforeToken() {
     var exchange =
         MockServerWebExchange.from(
@@ -215,6 +339,10 @@ class PasswordValidationTokenGateWebFilterTest {
     "POST,/api/v1/personal-information",
     "POST,/api/v1/password-validation",
     "PUT,/api/v1/other",
+    "GET,/api/v1/investment-choice",
+    "GET,/api/v1/investment-choice/instructions",
+    "PUT,/api/v1/investment-choice/instructions",
+    "DELETE,/api/v1/investment-choice/instructions",
     "PUT,/api/v1/personal-information/",
     "PUT,/api/v1/Personal-information"
   })
@@ -293,6 +421,23 @@ class PasswordValidationTokenGateWebFilterTest {
                 .body("{}"));
     exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "gate-unit");
     return exchange;
+  }
+
+  private MockServerWebExchange unauthenticatedRequest(HttpMethod method, String path) {
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.method(method, path)
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, REF)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}"));
+    exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "gate-unit");
+    return exchange;
+  }
+
+  private FailureEvent capturedFailureEvent() {
+    var captor = org.mockito.ArgumentCaptor.forClass(FailureEvent.class);
+    verify(failures).publish(captor.capture());
+    return captor.getValue();
   }
 
   private void authenticate(MockServerWebExchange exchange) {

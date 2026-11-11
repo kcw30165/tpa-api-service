@@ -95,3 +95,37 @@ D21 Nick decided that "apply to all accounts" does not need a frozen target set.
 D22 Nick decided that the token lifetime must be configurable. Implemented as F1 in commits fdc230b7 and 35f70a5b: setting `password-validation.grant.ttl-seconds` (environment variable `PASSWORD_VALIDATION_GRANT_TTL_SECONDS`), default 300, accepted range 30 to 900 (the range was proposed during review and used as implemented). It is read once at startup. A token keeps the lifetime it was issued with, so existing 300-second grants need no migration. A blank or non-numeric value stops startup with `password-validation.grant.ttl-seconds must be between 30 and 900`; the first F1 commit showed a generic conversion error for a blank value, which the second commit fixed. Open item O-4 is closed.
 
 These two decisions supersede the two open points at the end of the D20 addendum. D01 to D19 are unchanged. F1 was reviewed on its diff; its final gates are tracked as open item O-13 in document 09.
+
+## M6 purpose-owned prechecks (approved design; not implemented)
+
+The following target was approved on 2026-11-10. It does not revise the M1-M5
+as-built evidence above and has not been implemented or runtime-verified.
+
+- No additional feature-validation HTTP request. Registered purpose-specific
+  payload decoders and framework-free application precheck policies run in
+  shared issuance. Adding a purpose requires explicit registration but no
+  purpose branch in the shared parser or issuance algorithm.
+- Decoder/policy composition fails closed for missing, duplicate or mismatched
+  registrations. The minimal representation preserves member presence, JSON
+  kinds, unknown member names and values; it is not a general JSON framework.
+  Jackson remains in adapters.
+- CIM prechecks run once before throttle and password verification: submit
+  V1-V8/S1-S3; cancel CV1-CV2 and pending-reference membership. CIM feature
+  violations return 422 with detailed existing codes/targets. Snapshot miss
+  returns feature-specific 503 and exactly one feature-owned `LOCAL_SYSTEM`
+  event. Expected violations produce no technical incident, and shared
+  issuance does not duplicate a feature-owned event.
+- The existing gate binding attribute is required at the CIM controller
+  boundary and in the command. A digest alone is not authorization: trust comes
+  from successful gate scope/token consumption and canonicalized body-binding
+  checks before dispatch. The existing token scope, lifetime, consumption and
+  canonicalization remain unchanged.
+- CIM execution performs strict decoding and typed construction but does not
+  repeat feature prechecks. Cancel does not check snapshot membership at
+  execution; post-success cleanup is best effort and cannot negate downstream
+  success. Submit reconciliation remains unchanged. Progress retains existing
+  current-state enforcement; tokens do not reserve business state.
+- Generic envelope errors stay 400, wrong-password behavior is unchanged,
+  Personal Information issuance and PUT behavior remain unchanged. No legacy
+  token migration/versioning, rolling-deployment handling, snapshot
+  concurrency redesign, CAS refactor or GET fencing is included.

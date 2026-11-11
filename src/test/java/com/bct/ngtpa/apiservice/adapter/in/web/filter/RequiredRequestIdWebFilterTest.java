@@ -46,6 +46,27 @@ class RequiredRequestIdWebFilterTest {
   }
 
   @Test
+  void missingRequestIdRejectsInvestmentChoiceGetBeforeBusinessChain() {
+    AtomicBoolean invoked = new AtomicBoolean(false);
+    var exchange =
+        MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/investment-choice").build());
+
+    StepVerifier.create(
+            filter.filter(
+                exchange,
+                ignored -> {
+                  invoked.set(true);
+                  return Mono.empty();
+                }))
+        .verifyComplete();
+
+    assertThat(invoked).isFalse();
+    assertThat(exchange.getResponse().getStatusCode().value()).isEqualTo(400);
+    JsonNode body = responseBody(exchange);
+    assertThat(body.at("/errors/0/code").asText()).isEqualTo("err.request.id.missing");
+  }
+
+  @Test
   void blankRequestIdIsRejected() {
     var exchange =
         MockServerWebExchange.from(

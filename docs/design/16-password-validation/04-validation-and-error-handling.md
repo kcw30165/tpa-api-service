@@ -1,5 +1,10 @@
 # 04 Validation, security and error handling
 
+The existing sections below record M1-M5/current behavior and its evidence.
+The approved M6 target, which is not yet implemented or runtime-verified, is
+specified at the end of this document. The target does not rewrite historical
+M1-M5 results.
+
 ## Ordering and precedence
 Issuance: authenticated transport/account -> bounded JSON/structure/password/purpose -> username throttle -> downstream password check -> atomic grant issuance. Invalid request does not call downstream. Throttling counts admitted structurally valid password-check requests, including correct passwords and downstream technical failures; it does not count token consumption. This counting boundary is an authored technical specification.
 
@@ -114,3 +119,73 @@ responses. Other controller/business errors retain their existing handling.
 Logging/redaction: `RequestLoggingWebFilter` logs headers only when `request-logging.log-headers=true` and only for names present in `request-logging.header-allowlist` (default: `User-Agent`, `Accept`, `Content-Type`). **Correction (reviewer finding, major, second review).** Relying on "never add the token header to the allowlist" plus a config-scan test is insufficient for the same reason the earlier body-logging configuration reliance was insufficient: it is a configuration-absence guarantee, not a runtime one. The required design is a hard, code-level, case-insensitive exclusion inside `RequestLoggingWebFilter.buildAllowedHeaders` (or an equivalent check applied to its output) that unconditionally removes `X-Password-Validation-Token` from the headers actually logged, regardless of whether an operator has added it to `request-logging.header-allowlist` in any environment. The config-scan test asserting it is absent from the allowlist remains useful as secondary, defense-in-depth, but must not be the sole or primary protection. This requires an adversarial test that configures the header into the allowlist and asserts it is still never present in the logged headers map. Follow the existing `<redacted>`-style `toString()` convention demonstrated by `CaptchaChallengeResponse`/`CaptchaRefreshRequest`/`CaptchaRefreshResponse` for every new password-validation DTO/command (print field names but never values for `password`, `token`, `cust-id`, or the operation payload). Note: the package-private `SecurityAuditMetadataSanitizer` (`adapter.out.security.audit`) is a *different*, narrower mechanism for audit-event metadata maps (redacts by forbidden-key-name and value-pattern matching) and is not the same code path as `RequestLoggingWebFilter`'s `LoggingSanitizer`; do not assume the audit sanitizer's forbidden-key list alone covers HTTP request/response/header logging for this feature -- both paths must be independently tested.
 
 Source references: `RequestLoggingWebFilter.java`, `RequestLoggingProperties.java`, `PortalAccessContextWebFilter.java`, `PersonalInformationController.java` (confirms `@RequestBody Mono<T>` lazy-subscription timing), `SecurityAuditMetadataSanitizer.java`, `CaptchaChallengeResponse.java`/`CaptchaRefreshRequest.java`/`CaptchaRefreshResponse.java` (redaction convention precedent).
+
+## M6 approved precheck ordering and error ownership (not implemented)
+
+Target issuance order: authenticated transport/context -> generic envelope
+validation -> registered purpose decoder -> registered application policy ->
+existing canonical payload digest -> throttle -> password verification ->
+existing grant issuance. CIM policy violations and snapshot misses stop before
+throttle and password verification. There is no additional validation request.
+The shared parser and issuance algorithm contain no purpose-specific branches.
+
+| Invocation | Outcome | HTTP | Public status | Error/event ownership |
+|---|---|---:|---|---|
+| `POST /api/v1/password-validation` | Generic envelope invalid | 400 | `VALIDATION_FAILED` | Existing generic request-invalid response |
+| `POST /api/v1/password-validation` | Personal Information policy invalid | 400 | `VALIDATION_FAILED` | Existing generic request-invalid response; PI PUT unchanged |
+| `POST /api/v1/password-validation` | CIM submit V1 structural violation | 422 | `VALIDATION_FAILED` | Existing FORM code/target; no snapshot read or technical incident |
+| `POST /api/v1/password-validation` | CIM submit V2-V8 and/or S1-S3 violation with snapshot available | 422 | `VALIDATION_FAILED` | Existing detailed errors, V2-V8 first then S1-S3; no technical incident |
+| `POST /api/v1/password-validation` | CIM submit V2-V8 violations with snapshot unavailable | 422 | `VALIDATION_FAILED` | Known V errors; no feature-owned 503 snapshot-miss event |
+| `POST /api/v1/password-validation` | CIM cancel CV1-CV2 or pending-reference membership violation | 422 | `VALIDATION_FAILED` | Existing CIM type/code/targets; no technical incident |
+| `POST /api/v1/password-validation` | CIM submit or cancel sees `FUNCTION_UNAVAILABLE` in the account snapshot | 422 | `BUSINESS_REJECTED` | `BUSINESS` / `err.investment-choice.function-unavailable`, targets `[]`, message `null`, severity `ERROR`, source `SERVER`; expected business outcome, no technical incident |
+| `POST /api/v1/password-validation` | CIM submit or cancel sees `MEMBER_INELIGIBLE` in the account snapshot | 422 | `BUSINESS_REJECTED` | `BUSINESS` / `err.investment-choice.member-ineligible`, targets `[]`, message `null`, severity `ERROR`, source `SERVER`; expected business outcome, no technical incident |
+| `POST /api/v1/password-validation` | CIM submit snapshot miss with no V violations | 503 | `SYSTEM_ERROR` | `err.investment-choice.submission.unavailable`; one feature-owned `LOCAL_SYSTEM` event |
+| `POST /api/v1/password-validation` | CIM cancel snapshot miss | 503 | `SYSTEM_ERROR` | `err.investment-choice.cancel.unavailable`; one feature-owned `LOCAL_SYSTEM` event |
+| `POST /api/v1/password-validation` | Wrong password | 401 | `BUSINESS_REJECTED` | Existing response unchanged |
+
+For submit, V1 structural failure returns immediately without reading the
+snapshot. Structurally safe input retains V2-V8 errors and reads the
+account-owned snapshot exactly once. With an available snapshot, independent
+S1-S3 checks run against the original decoded payload; results follow the V
+errors in S1, S2, S3 order and preserve original array indexes. S1 reuses the
+V7 integer/range predicate, and S2/S3 skip missing or blank operands already
+invalid under V2/V5. If the snapshot is missing or unreadable and V errors are
+known, the known 422 errors win and no feature-owned 503 event is published.
+If there are no V errors, submit snapshot unavailability retains the existing
+503. Cancel snapshot misses also retain the existing 503. For either 503
+snapshot-miss result, the feature policy owns the single
+`investment-choice.*.snapshot.missing` event (`operation=SNAPSHOT`,
+`origin=LOCAL_SYSTEM`, safe reason dimensions); shared issuance suppresses its
+generic `password-validation.issue.rejected` event for that outcome. Expected
+feature violations do not publish technical incidents.
+
+For both CIM purposes, a restricted scenario in the account-owned snapshot is
+an expected business rejection before throttle admission, password
+verification, and grant issuance. It does not publish a snapshot-miss or
+technical incident. Ordinary missing/unreadable snapshots retain the
+feature-owned 503 and exactly-one-event behavior. The scenario is not
+rechecked during execution, and already-issued token semantics are unchanged.
+
+Submit precedence is explicit: V1 structural errors return immediately without
+a snapshot read. Structurally safe input retains V2-V8 violations; if any exist,
+return them even when the snapshot is restricted and do not evaluate normal-only
+S rules. With no V violations, restricted state returns the approved business
+rejection. NORMAL retains existing V/S aggregation and snapshot-miss precedence.
+Cancel CV1/CV2 remain early errors; a valid cancel payload with restricted state
+returns the approved business rejection before pending-reference membership.
+
+At protected execution, the gate remains the authority for successful
+single-use token consumption, session/account/purpose scope and canonical
+payload binding. Its existing binding attribute is required by the CIM
+controller and command. `PayloadDigest` alone is not proof: authorization
+derives from the gate completing those checks before dispatch. CIM execution
+strictly decodes and constructs typed commands but does not rerun V1-V8,
+S1-S3, CV1-CV2 or pending-reference membership.
+
+Submit reconciliation is unchanged. Cancel performs no snapshot precheck or
+membership revalidation at execution. Any snapshot access for successful
+post-cancel cleanup is best effort; a missing/unreadable snapshot or cleanup
+failure cannot block the downstream cancel or change downstream success into
+failure. No snapshot concurrency/CAS/GET-fencing redesign is included.
+Progress retains its existing current-state enforcement; the design does not
+assume Progress repeats every Java rule or that the token freezes state.

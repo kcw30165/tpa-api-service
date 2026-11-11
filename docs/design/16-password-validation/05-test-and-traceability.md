@@ -160,3 +160,26 @@ source is otherwise identical to the tested/scanned revision. No second Sonar
 analysis, full suite or startup was run, respecting the requested one-run
 closure limit. The failed Sonar result is retained, not relabeled green;
 the comment-only follow-up is not a verified green quality gate.
+
+## M6 purpose-owned prechecks (approved tests; not implemented)
+
+The following are acceptance criteria for a separately authorized
+implementation. They are not test results:
+
+| Requirement | Acceptance cases | Layer |
+|---|---|---|
+| R21 Registered extensibility | Duplicate/missing decoder, duplicate/missing policy, and decoder/policy payload-type mismatch fail composition; every supported purpose has exactly one matching pair | application + Spring composition |
+| R22 Precheck ordering | Each precheck runs once before throttle/password; rejection calls neither throttle nor password and creates no grant | issuance HTTP + use case |
+| R23 CIM issuance contract | V1-V8/S1-S3 and CV1-CV2/pending-reference violations return detailed 422; snapshot miss returns the appropriate feature 503 and exactly one feature-owned event | HTTP + policy |
+| R24 Event ownership | Expected feature violations create no technical incident; snapshot miss has one `LOCAL_SYSTEM` feature event and no shared duplicate | use case + event assertions |
+| R25 Trusted execution handoff | Missing gate binding, rejected gate, wrong purpose/account/session/body, replay and expiry produce zero downstream dispatch; CIM command requires the gate binding attribute | real HTTP + controller/use case |
+| R26 No repeated prechecks | After a successful issuance precheck, protected submit/cancel does not invoke body, snapshot-rule or membership validation again | use case + HTTP |
+| R27 Cancel cleanup | Missing/unreadable snapshot or cleanup failure after issue cannot block cancel dispatch or turn downstream success into failure; existing best-effort cleanup behavior is retained | cancel use case |
+| R28 Personal Information compatibility | Existing PI issuance 400 behavior and PI PUT validation, update dispatch, response bytes and error mapping remain unchanged | issuance + PI regression |
+| R29 Confidentiality | Logging-enabled expected failures contain no submitted values, passwords, tokens or account identifiers in response, logs, event dimensions or exception text | HTTP + logging |
+| R30 Current-state boundary | Token does not freeze state; downstream current-state handling and submit reconciliation remain unchanged | integration/contract |
+
+Use the existing token-gate and canonicalizer tests as regression coverage.
+Do not add legacy-token migration/versioning tests: no token-format migration is
+part of this approved design. No snapshot concurrency redesign, CAS refactor or
+GET fencing is in scope.

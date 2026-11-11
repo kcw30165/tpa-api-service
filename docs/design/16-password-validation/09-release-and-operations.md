@@ -98,7 +98,7 @@ Run it against a **local build** that talks to the dev downstream systems, not a
 
 | Id | Item | Owner | Blocks release |
 |---|---|---|---|
-| O-12 | Decide how strictly each purpose validates its payload at issuance when a second purpose is built (see 11) | Nick | No |
+| O-12 | Documented current behavior; M6 implementation/verification pending (see document 11) | Nick | No |
 | O-13 | Final gates at the final HEAD after F1: full suite with the isolated Redis tests, formatting check, startup and Sonar. Read the coverage of the F1 classes from that run | Nick | Yes |
 
 ## 8. Merge request text

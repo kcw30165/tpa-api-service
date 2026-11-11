@@ -76,7 +76,8 @@ public final class PasswordValidationController {
                                     context,
                                     parsed.password(),
                                     parsed.purpose(),
-                                    parsed.binding(),
+                                    parsed.operationPayloadJson(),
+                                    parsed.payload(),
                                     correlationId))
                             .map(result -> mapper.toResponse(result, exchange.getResponse()));
                       });

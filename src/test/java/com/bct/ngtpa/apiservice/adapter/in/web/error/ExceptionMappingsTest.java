@@ -16,9 +16,14 @@ import com.bct.ngtpa.apiservice.application.exception.FundPriceRetrievalExceptio
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelNotCancellableException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelUnavailableException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionPreDispatchException;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException;
@@ -471,6 +476,78 @@ class ExceptionMappingsTest {
   }
 
   @Test
+  void investmentChoiceRetrievalMapping() {
+    var mapping = InvestmentChoiceExceptionMappings.retrievalUnavailable();
+    var exception = InvestmentChoiceDetailsRetrievalException.systemFailure();
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals(ErrorCodes.INVESTMENT_CHOICE_RETRIEVAL_UNAVAILABLE, entry.code());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+  }
+
+  @Test
+  void investmentChoiceSubmissionMapping() {
+    var mapping = InvestmentChoiceExceptionMappings.submissionUnavailable();
+    var exception = new InvestmentChoiceSubmissionUnavailableException();
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals(ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_UNAVAILABLE, entry.code());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+  }
+
+  @Test
+  void investmentChoiceCancelUnavailableMapping() {
+    ErrorDescriptor descriptor =
+        new ExceptionMappingRegistryConfig()
+            .exceptionMappingRegistry()
+            .resolve(new InvestmentChoiceCancelUnavailableException(), CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals("err.investment-choice.cancel.unavailable", entry.code());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+  }
+
+  @Test
+  void investmentChoiceCancelNotCancellableMapping() {
+    ErrorDescriptor descriptor =
+        new ExceptionMappingRegistryConfig()
+            .exceptionMappingRegistry()
+            .resolve(new InvestmentChoiceCancelNotCancellableException(), CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.UNPROCESSABLE_CONTENT, descriptor.httpStatus());
+    assertEquals(ApiStatus.BUSINESS_REJECTED, descriptor.apiStatus());
+    assertEquals("BUSINESS", entry.type());
+    assertEquals("err.investment-choice.cancel.not-cancellable", entry.code());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+  }
+
+  @Test
   void webExchangeBindMappingProducesOneEntryPerFieldErrorInOrder() throws Exception {
     var mapping = WebExchangeBindExceptionMappings.validationFailed();
     var exception = bindExceptionWithTwoFieldErrors("notificationId", "status");
@@ -527,11 +604,34 @@ class ExceptionMappingsTest {
   // ───────────────────────── registry assembly ─────────────────────────
 
   @Test
-  void configAssemblesExactlyTwentyFourMappingsPlusCatchAll() {
+  void registrationCompletionPreDispatchResolvesToSafeSystemDescriptor() {
+    ExceptionMappingRegistry registry =
+        new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
+    var exception = new RegistrationCompletionPreDispatchException(new IllegalStateException());
+
+    ErrorDescriptor descriptor = registry.resolve(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, entry.code());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(MessagePolicy.RESOLVE, entry.policy());
+    assertEquals("http.api.error", descriptor.logEventName());
+    assertEquals(LogLevel.ERROR, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+    assertEquals(
+        "Registration completion failed before downstream dispatch",
+        registry.diagnosticMessage(exception));
+  }
+
+  @Test
+  void configAssemblesExactlyTwentyEightMappingsPlusCatchAll() {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(24, registry.mappingCount());
+    assertEquals(28, registry.mappingCount());
 
     ErrorDescriptor updateUnavailable =
         registry.resolve(
@@ -543,6 +643,17 @@ class ExceptionMappingsTest {
         ErrorCodes.PERSONAL_INFORMATION_UPDATE_UNAVAILABLE,
         updateUnavailable.errors().getFirst().code());
     assertEquals(MessagePolicy.NONE, updateUnavailable.errors().getFirst().policy());
+
+    ErrorDescriptor submissionUnavailable =
+        registry.resolve(
+            new InvestmentChoiceSubmissionUnavailableException(),
+            new ErrorContext("POST", "/api/v1/investment-choice/instructions", "req-submit"));
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, submissionUnavailable.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, submissionUnavailable.apiStatus());
+    assertEquals(
+        ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_UNAVAILABLE,
+        submissionUnavailable.errors().getFirst().code());
+    assertEquals(MessagePolicy.NONE, submissionUnavailable.errors().getFirst().policy());
 
     ErrorDescriptor fundComparison =
         registry.resolve(
