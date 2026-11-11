@@ -182,6 +182,8 @@ constructs the typed execution command without rerunning business validation.
 | CIM V1 structural violation | 422 `VALIDATION_FAILED`, existing detailed FORM code and target | Expected violation; no snapshot read or technical incident |
 | CIM submit V2-V8 violations with an available snapshot | 422 `VALIDATION_FAILED`, V2-V8 violations followed by independently evaluable S1-S3 violations | Expected violations; no technical incident |
 | CIM submit V2-V8 violations with a missing/unreadable snapshot | 422 `VALIDATION_FAILED`, known V2-V8 violations only | No feature-owned 503 snapshot-miss incident |
+| CIM submit or cancel sees `FUNCTION_UNAVAILABLE` in the account snapshot | 422 `BUSINESS_REJECTED` | `BUSINESS` / `err.investment-choice.function-unavailable`, targets `[]`, message `null`, severity `ERROR`, source `SERVER`; expected business outcome, no technical incident |
+| CIM submit or cancel sees `MEMBER_INELIGIBLE` in the account snapshot | 422 `BUSINESS_REJECTED` | `BUSINESS` / `err.investment-choice.member-ineligible`, targets `[]`, message `null`, severity `ERROR`, source `SERVER`; expected business outcome, no technical incident |
 | CIM submit with no V violations and a missing/unreadable snapshot | Feature-specific 503 `SYSTEM_ERROR` (`submission.unavailable`) | Exactly one feature-owned `LOCAL_SYSTEM` `FailureEvent`; shared issuance must not publish a duplicate |
 | CIM cancel payload or membership violation | 422 `VALIDATION_FAILED`, existing detailed CIM code and target | Expected violation; no technical incident |
 | CIM cancel snapshot miss/unavailable | Feature-specific 503 `SYSTEM_ERROR` (`cancel.unavailable`) | Exactly one feature-owned `LOCAL_SYSTEM` `FailureEvent`; shared issuance must not publish a duplicate |
@@ -190,8 +192,17 @@ constructs the typed execution command without rerunning business validation.
 
 The feature policy owns snapshot-failure publication and classification. Shared
 issuance must propagate this feature-owned failure without adding its own
-incident. Existing downstream adapter events and post-success submit
-reconciliation remain unchanged.
+incident. Existing downstream adapter event ownership remains unchanged.
+Submit reconciliation retains its existing algorithm while applying
+scenario-aware GET parsing and snapshot replacement as described in document
+01.
+
+Both CIM purpose policies inspect the scenario in the account-owned snapshot.
+Restricted scenarios reject before throttle admission, password verification,
+or grant issuance. These are expected business outcomes, not snapshot misses;
+ordinary missing/unreadable snapshots retain their existing feature-owned 503
+and exactly-one-event behavior. Execution does not recheck the scenario, and
+already-issued token semantics remain unchanged.
 
 ### 9.3 CIM execution after issuance authorization
 

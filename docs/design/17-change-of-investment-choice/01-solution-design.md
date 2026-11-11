@@ -252,3 +252,34 @@ GET fencing is part of this design.
 The existing token scope, lifetime, consumption and canonicalization do not
 change. No legacy-token migration, grant versioning, rolling-deployment
 handling, or token expiry wait is required for this local-development design.
+
+### Scenario-aware GET and account snapshot (approved M6 target; not implemented)
+
+Progress owns selection of `NORMAL`, `FUNCTION_UNAVAILABLE`, or
+`MEMBER_INELIGIBLE`. The scenario-aware GET contract and provisional APIM
+mapping are specified in documents 02 and 03. The M5 implementation above
+remains the current behavior; this target is not runtime-verified.
+
+The account-owned snapshot stores the resolved scenario. `NORMAL` retains the
+existing interval, editable sources, funds, pending references, and ownership
+invariants. A restricted GET replaces that account's snapshot with restricted
+state containing the scenario and ownership data only; it must not fabricate
+an interval, editable sources, funds, or pending references. Submit and cancel
+issuance inspect this stored scenario and reject restricted states as specified
+in document 04.
+
+Use the existing account-scoped storage and update mechanism. Do not add CAS
+redesign, GET fencing, or stronger consistency guarantees. A restricted write
+that is applied replaces the prior NORMAL snapshot. As with the existing
+best-effort snapshot behavior, a failed or superseded write may leave an older
+snapshot; authorization reflects the stored state and this design does not
+claim linearizability or guarantee that a concurrent/failed GET immediately
+revokes an earlier NORMAL snapshot.
+
+Scenario-aware GET parsing and snapshot replacement also apply when submit
+unknown-outcome reconciliation refreshes state: do not turn a restricted
+response into fabricated NORMAL authorization data. Cancel's post-success
+cleanup must tolerate restricted state without creating editable data or
+blocking downstream success. Neither reconciliation nor cleanup adds an
+execution-time scenario/business precheck; already-issued token semantics are
+unchanged.

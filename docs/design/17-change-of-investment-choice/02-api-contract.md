@@ -116,6 +116,29 @@ No query parameters.
 
 A failed snapshot write does not change the GET result (D-31).
 
+### Approved M6 scenario-aware GET target (not implemented or runtime-verified)
+
+The response above records the M5 NORMAL shape. The approved M6 target adds a normalized `scenario` property to `result.data`. NORMAL returns the current GET fields plus `"scenario": "NORMAL"`. For the two restricted scenarios, `result.data` contains only `accountNumber`, `scenario`, and `history`:
+
+```json
+{
+  "accountNumber": "<formatted-account-number>",
+  "scenario": "FUNCTION_UNAVAILABLE",
+  "history": []
+}
+```
+
+`MEMBER_INELIGIBLE` uses the same restricted shape with `"scenario": "MEMBER_INELIGIBLE"`. Restricted responses omit `intervalPercentage`, `switchSources`, `funds`, and `pendingInstructions`; omitted properties are absent from JSON, never `null` or empty arrays. This applies even when Progress supplies those fields.
+
+The normalized internal scenarios are `NORMAL`, `FUNCTION_UNAVAILABLE`, and `MEMBER_INELIGIBLE`; Progress owns the scenario decision. These public values are the normalized scenarios, not a statement of the downstream wire values.
+
+| Internal scenario | Required downstream data | Public `result.data` |
+|---|---|---|
+| `NORMAL` | Existing mandatory `interval-pcnt`, `SwitchSrc`, `SwitchFund`, and `InvestMandate`; preserve current validation and pending-array omission handling | Existing fields plus `scenario: NORMAL` |
+| `FUNCTION_UNAVAILABLE` / `MEMBER_INELIGIBLE` | Mandatory `SwitchFund` metadata and `InvestMandate`; `interval-pcnt` and `SwitchSrc` are optional | `accountNumber`, `scenario`, `history` only |
+
+`InvestMandate` remains the required history source. `SwitchFund` is mandatory in every scenario and is used internally for history names and the existing fund ordering; an unknown history fund retains the existing `fundName: null` behavior. When `SwitchSrc` is absent, history uses the existing deterministic source-code fallback. No new nonempty-list requirement is introduced.
+
 ## 2. POST /api/v1/investment-choice/instructions
 
 Additional headers: the existing password-validation token header, `Content-Type: application/json`.

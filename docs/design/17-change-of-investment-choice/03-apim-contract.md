@@ -62,6 +62,23 @@ strict. Pending records remain subject to all listed row and reference validatio
 A history or pending row whose `fund-code` is absent from `SwitchFund` is returned with
 `fundName: null` (O-5), not treated as malformed.
 
+### Approved scenario-aware GET contract (not implemented or runtime-verified)
+
+The requiredness in the preceding table applies to `NORMAL`. The approved internal enum is `NORMAL`, `FUNCTION_UNAVAILABLE`, or `MEMBER_INELIGIBLE`; Progress owns the scenario decision.
+
+The provisional downstream field is `scenario`, beside `interval-pcnt`. Its actual field name and wire values remain **UNCONFIRMED**. Do not document guessed wire values as confirmed or add configuration-based field/value mappings. Keep eventual field extraction and wire-value translation localized to the APIM DTO and adapter mapper.
+
+For current downstream compatibility only, an absent `scenario` field temporarily resolves to internal `NORMAL`. A present unknown value must fail as a malformed downstream response; it must never fall back to `NORMAL`. Remove the missing-field fallback after the mandatory downstream contract is confirmed and rolled out.
+
+| Internal scenario | Required fields and validation |
+|---|---|
+| `NORMAL` | `interval-pcnt`, `SwitchSrc`, `SwitchFund`, and `InvestMandate` remain mandatory and retain existing strict validation. Preserve the existing omission-to-empty handling for `PendingReq` and `PendingReqDtl`. |
+| `FUNCTION_UNAVAILABLE` / `MEMBER_INELIGIBLE` | `SwitchFund` metadata and `InvestMandate` remain mandatory and strictly validated. `interval-pcnt` and `SwitchSrc` are optional. No new nonempty-list requirement is introduced. |
+
+`InvestMandate` remains the required history input. `SwitchFund` is mandatory in both restricted scenarios and is used internally for history names and the existing fund ordering, but restricted GET responses do not expose `funds`. Preserve the existing `fundName: null` behavior for a history fund absent from `SwitchFund`. If `SwitchSrc` is absent, use the existing deterministic source-code fallback for history ordering. Restricted responses do not expose `switchSources` or pending instructions, whether or not Progress supplies those arrays.
+
+If restricted responses include `SwitchSrc`, it may enrich history internally using the existing source ordering; it is still omitted from the public response.
+
 ### err-message (all 503, origin `DOWNSTREAM_CONTRACT`, D-34)
 
 | Value | Meaning (Progress) |

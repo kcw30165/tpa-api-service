@@ -58,8 +58,8 @@ construction for execution without rerunning business or snapshot rules.
 | Purpose | Issuance precheck | Protected execution |
 |---|---|---|
 | `PERSONAL_INFORMATION_UPDATE` | Existing generic structure check and existing 400 behavior remain unchanged | Existing PUT YAML/access/business validation and update behavior remain unchanged |
-| `CHANGE_INVESTMENT_CHOICE` | Submit V1-V8 and S1-S3 before throttle and password verification | Require trusted gate binding; strict body decoding and typed construction; no feature precheck rerun |
-| `CANCEL_INVESTMENT_CHOICE` | CV1-CV2 and pending-reference membership before throttle and password verification | Require trusted gate binding; strict body decoding and typed construction; no snapshot precheck or membership revalidation |
+| `CHANGE_INVESTMENT_CHOICE` | Submit V1-V8 and S1-S3 before throttle and password verification; inspect stored scenario and reject restricted states with their approved business code | Require trusted gate binding; strict body decoding and typed construction; no feature or scenario precheck rerun |
+| `CANCEL_INVESTMENT_CHOICE` | CV1-CV2 and pending-reference membership before throttle and password verification; inspect stored scenario and reject restricted states with their approved business code | Require trusted gate binding; strict body decoding and typed construction; no snapshot, membership, or scenario precheck |
 
 For submit, V1 structural failure returns the existing FORM violation without
 a snapshot read. Structurally safe input retains V2-V8 violations and reads
@@ -75,6 +75,15 @@ technical incident, and shared issuance must not publish a duplicate event.
 Generic envelope errors retain their existing 400 contract.
 Wrong-password behavior is unchanged.
 
+For either CIM purpose, a stored `FUNCTION_UNAVAILABLE` scenario returns HTTP
+422 `BUSINESS_REJECTED`, type `BUSINESS`, code
+`err.investment-choice.function-unavailable`; `MEMBER_INELIGIBLE` returns the
+same status/type with code `err.investment-choice.member-ineligible`. Both
+responses use empty targets, null message, existing severity/source
+conventions, and no technical incident. These expected rejections precede
+throttle, password verification, and grant issuance. Ordinary snapshot misses
+retain the existing feature-owned 503 and exactly-one-event behavior.
+
 The existing token gate binding attribute is the trusted handoff. A
 `PayloadDigest` alone is not proof of authorization: trust comes from the
 gate's successful scope/token consumption and payload-binding checks before
@@ -82,13 +91,14 @@ controller dispatch. Payload equality uses the existing canonicalizer, not raw
 byte equality. The CIM controller boundary and command must require the
 attribute; a missing binding or rejected gate check prevents dispatch.
 
-Submit execution retains existing downstream dispatch, reconciliation and
-post-success snapshot updates. Cancel execution does not read a snapshot before
-dispatch. Any snapshot access for post-success cleanup is best effort; missing
-or unreadable state or cleanup failure cannot block cancellation or turn
-downstream success into failure. Progress retains its existing current-state
-enforcement; do not assume it repeats every Java validation rule. Tokens do not
-reserve or freeze business state.
+Submit execution retains existing downstream dispatch and reconciliation
+behavior, applying scenario-aware GET parsing and snapshot replacement rather
+than fabricating NORMAL authorization data. Cancel execution does not read a
+snapshot before dispatch. Any snapshot access for post-success cleanup is best
+effort; missing or unreadable state or cleanup failure cannot block
+cancellation or turn downstream success into failure. Progress retains its
+existing current-state enforcement; do not assume it repeats every Java
+validation rule. Tokens do not reserve or freeze business state.
 
 The accepted design does not change token scope, lifetime, consumption or
 canonicalization. It requires no legacy-token migration, grant versioning, or

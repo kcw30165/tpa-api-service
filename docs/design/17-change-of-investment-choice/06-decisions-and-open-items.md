@@ -47,12 +47,16 @@
 | D-41 | Cancel outcomes: `err.request.cannot.be.cancelled` -> 422 `BUSINESS_REJECTED` `...cancel.not-cancellable` (WARN, `DOWNSTREAM_BUSINESS`); every other `err-message` and every throwable -> 503 `...cancel.unavailable` (`DOWNSTREAM_CONTRACT` or classified); no reconciliation |
 | D-42 | Cancel success returns the validated requested reference in `result.data.referenceNo`; any `ref-no` in the downstream response is ignored |
 | D-43 | Progress enforces that the reference belongs to the member; Java does not call `TRPGetCIMDtl` before cancelling. The snapshot membership check is an additional Java-side guard |
+| D-44 | Progress owns scenario selection. The internal scenarios are `NORMAL`, `FUNCTION_UNAVAILABLE`, and `MEMBER_INELIGIBLE`. The provisional downstream field is `scenario` beside `interval-pcnt`; its actual name and wire values are unconfirmed. No configuration mapping; absent temporarily means NORMAL, but a present unknown value fails as a malformed downstream response. Remove the missing-field fallback after the mandatory contract is confirmed and rolled out |
+| D-45 | NORMAL retains existing mandatory fields and response behavior, adding `scenario`. Restricted scenarios require `SwitchFund` metadata and `InvestMandate`, permit absent `interval-pcnt`/`SwitchSrc`, and expose only `scenario`, `accountNumber`, and `history`; the other GET properties are absent, even if supplied downstream. Preserve history enrichment, ordering, unknown-fund behavior, and no new nonempty-list requirements |
+| D-46 | Store scenario with account ownership. NORMAL retains existing authorization data; restricted state replaces the prior account snapshot without fabricated editable data. Keep existing storage/concurrency behavior; no CAS redesign or GET fencing, and no stronger consistency claim |
+| D-47 | Submit and cancel issuance inspect stored scenario and reject restricted scenarios before throttle/password/grant: `FUNCTION_UNAVAILABLE` -> 422 `BUSINESS_REJECTED`, type `BUSINESS`, `err.investment-choice.function-unavailable`; `MEMBER_INELIGIBLE` -> corresponding `err.investment-choice.member-ineligible`. Empty targets, null message, existing severity/source; no technical incident. Ordinary snapshot misses retain the existing feature-owned 503. No execution-time scenario check or change to issued-token semantics |
 
 ## Open items
 
 | Id | Item | Owner | Blocks |
 |---|---|---|---|
-| O-2 | Eligibility `err-message` codes for terminated, Scenario 1/2, function off, maintenance | Progress / BA | No (slot reserved) |
+| O-2 | Progress scenario-selection contract: actual downstream field name and wire values, including any `err-message` mapping | Progress / BA | No |
 | O-4 | BRD vs Config Matrix 6.5.14: BRD blocks F01/F13/F17/F22, matrix defaults F01 not blocking and only F17 always blocks. BFF unaffected | BA / Progress | No |
 | O-5 | History or pending fund code absent from `SwitchFund` -> `fundName: null`. Confirm Progress always includes closed funds | Progress | No |
 | O-6 | Progress sample dates still ISO | Progress | M2 live test |
@@ -62,6 +66,7 @@
 | O-11 | A non-empty body with a missing or `text/plain` Content-Type is rejected before the use case and rendered as HTTP 500 (same behaviour as Personal Information). Shared web behaviour | Nick / shared web | No |
 | O-12 | At controller level, duplicate JSON member names collapse to the last member; the token gate (strict canonicalizer, 400 `err.request.invalid`) is the authority on body integrity, so production requests never reach the controller with duplicates | Nick | No |
 | O-13 | A reference created by a definite submit success is not in the snapshot until the next GET (only a reconciled success refreshes it), so cancelling it needs a GET first. Decide whether a definite submit success should also refresh the snapshot | Nick | No |
+| O-14 | Confirm the provisional downstream scenario field name and wire values before removing the missing-field-to-NORMAL compatibility fallback | Progress / BA | No |
 
 ## M6 purpose-owned prechecks (approved design; not implemented)
 

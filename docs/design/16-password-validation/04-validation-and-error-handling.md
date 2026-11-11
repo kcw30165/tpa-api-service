@@ -137,6 +137,8 @@ The shared parser and issuance algorithm contain no purpose-specific branches.
 | `POST /api/v1/password-validation` | CIM submit V2-V8 and/or S1-S3 violation with snapshot available | 422 | `VALIDATION_FAILED` | Existing detailed errors, V2-V8 first then S1-S3; no technical incident |
 | `POST /api/v1/password-validation` | CIM submit V2-V8 violations with snapshot unavailable | 422 | `VALIDATION_FAILED` | Known V errors; no feature-owned 503 snapshot-miss event |
 | `POST /api/v1/password-validation` | CIM cancel CV1-CV2 or pending-reference membership violation | 422 | `VALIDATION_FAILED` | Existing CIM type/code/targets; no technical incident |
+| `POST /api/v1/password-validation` | CIM submit or cancel sees `FUNCTION_UNAVAILABLE` in the account snapshot | 422 | `BUSINESS_REJECTED` | `BUSINESS` / `err.investment-choice.function-unavailable`, targets `[]`, message `null`, severity `ERROR`, source `SERVER`; expected business outcome, no technical incident |
+| `POST /api/v1/password-validation` | CIM submit or cancel sees `MEMBER_INELIGIBLE` in the account snapshot | 422 | `BUSINESS_REJECTED` | `BUSINESS` / `err.investment-choice.member-ineligible`, targets `[]`, message `null`, severity `ERROR`, source `SERVER`; expected business outcome, no technical incident |
 | `POST /api/v1/password-validation` | CIM submit snapshot miss with no V violations | 503 | `SYSTEM_ERROR` | `err.investment-choice.submission.unavailable`; one feature-owned `LOCAL_SYSTEM` event |
 | `POST /api/v1/password-validation` | CIM cancel snapshot miss | 503 | `SYSTEM_ERROR` | `err.investment-choice.cancel.unavailable`; one feature-owned `LOCAL_SYSTEM` event |
 | `POST /api/v1/password-validation` | Wrong password | 401 | `BUSINESS_REJECTED` | Existing response unchanged |
@@ -156,6 +158,13 @@ snapshot-miss result, the feature policy owns the single
 `origin=LOCAL_SYSTEM`, safe reason dimensions); shared issuance suppresses its
 generic `password-validation.issue.rejected` event for that outcome. Expected
 feature violations do not publish technical incidents.
+
+For both CIM purposes, a restricted scenario in the account-owned snapshot is
+an expected business rejection before throttle admission, password
+verification, and grant issuance. It does not publish a snapshot-miss or
+technical incident. Ordinary missing/unreadable snapshots retain the
+feature-owned 503 and exactly-one-event behavior. The scenario is not
+rechecked during execution, and already-issued token semantics are unchanged.
 
 At protected execution, the gate remains the authority for successful
 single-use token consumption, session/account/purpose scope and canonical

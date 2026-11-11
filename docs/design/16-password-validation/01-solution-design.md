@@ -466,6 +466,36 @@ exactly one feature-owned event. Expected feature violations produce no
 technical incident. Shared issuance does not publish a duplicate event for a
 feature-owned snapshot miss. Wrong-password behavior is unchanged.
 
+### Scenario-aware CIM issuance state (approved M6 target; not implemented)
+
+The approved CIM GET scenarios are `NORMAL`, `FUNCTION_UNAVAILABLE`, and
+`MEMBER_INELIGIBLE`, selected by Progress and stored with account ownership.
+The provisional downstream field is `scenario` beside `interval-pcnt`; its
+actual field name and wire values remain unconfirmed. Absence temporarily maps
+to NORMAL for compatibility, but a present unknown value must not default to
+NORMAL. No configuration-based mapping is introduced. See design pack 17,
+documents 02, 03, and 06 for the complete GET contract and outstanding
+downstream details.
+
+Both `CHANGE_INVESTMENT_CHOICE` and `CANCEL_INVESTMENT_CHOICE` issuance
+policies inspect the stored scenario. `FUNCTION_UNAVAILABLE` returns HTTP 422
+`BUSINESS_REJECTED`, type `BUSINESS`, code
+`err.investment-choice.function-unavailable`; `MEMBER_INELIGIBLE` returns the
+same response status/type with code
+`err.investment-choice.member-ineligible`. Both use empty targets, null
+message, existing severity/source conventions, and produce no technical
+incident. These rejections precede throttle, password verification, and grant
+issuance. An ordinary missing/unreadable snapshot retains the existing
+feature-owned 503 and exactly-one-event behavior.
+
+The scenario is not rechecked during execution, and already-issued token
+semantics do not change. Submit reconciliation must apply scenario-aware
+snapshot replacement rather than fabricate NORMAL authorization data; cancel
+post-success cleanup must tolerate restricted state without blocking success.
+Neither path adds an execution-time business precheck. Snapshot storage and
+concurrency guarantees remain as currently designed, with no CAS redesign or
+GET fencing.
+
 ### Execution handoff and validation boundary
 
 The existing token gate remains authoritative for single use, session/account/
@@ -485,11 +515,13 @@ client-supplied authorization flag or new authorization object is introduced.
 Execution strictly decodes the replayed request and constructs its typed
 command, but does not rerun CIM feature prechecks. Submit expansion,
 downstream dispatch/error mapping and unknown-outcome reconciliation remain
-unchanged. Cancel performs no snapshot precheck or pending-reference
-membership revalidation at execution. Any snapshot access retained for
-post-success pending-reference cleanup is best effort: a missing/unreadable
-snapshot or cleanup failure cannot block cancellation or turn a successful
-downstream cancellation into failure. Do not redesign snapshot concurrency,
+unchanged, with scenario-aware GET parsing and snapshot replacement applied
+during reconciliation as described above. Cancel performs no snapshot
+precheck or pending-reference membership revalidation at execution. Any
+snapshot access retained for post-success pending-reference cleanup is best
+effort: a missing/unreadable snapshot or cleanup failure cannot block
+cancellation or turn a successful downstream cancellation into failure. Do
+not redesign snapshot concurrency,
 CAS cleanup or GET fencing. Progress retains its existing current-state
 enforcement; this design does not assume it repeats every Java rule. A token
 does not reserve or freeze business state.
