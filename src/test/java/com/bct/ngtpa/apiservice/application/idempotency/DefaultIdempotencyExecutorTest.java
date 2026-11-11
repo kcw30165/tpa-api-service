@@ -7,6 +7,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,234 @@ class DefaultIdempotencyExecutorTest {
             .block();
     assertThat(result.lifecycleOutcome()).isEqualTo(IdempotencyReservationOutcome.COMPLETED_REPLAY);
     assertThat(calls).hasValue(0);
+  }
+
+  @Test
+  void unknownOutcomeExistingDoesNotExecuteOrMutatePersistence() {
+    FakePort port = new FakePort(IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING);
+    AtomicInteger protectedCalls = new AtomicInteger();
+    AtomicInteger classifierCalls = new AtomicInteger();
+
+    IdempotentExecutionResult result =
+        executor(port)
+            .execute(
+                command(
+                    () -> {
+                      protectedCalls.incrementAndGet();
+                      return Mono.just(response());
+                    },
+                    failure -> {
+                      classifierCalls.incrementAndGet();
+                      return IdempotencyFailureClassification.POSSIBLE_SIDE_EFFECT;
+                    }))
+            .block();
+
+    assertThat(result.lifecycleOutcome())
+        .isEqualTo(IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING);
+    assertThat(protectedCalls).hasValue(0);
+    assertThat(classifierCalls).hasValue(0);
+    assertThat(port.reserveCalls).isOne();
+    assertThat(port.completed).isZero();
+    assertThat(port.failed).isZero();
+    assertThat(port.unknown).isZero();
+  }
+
+  @Test
+  void replayCompletedLoadsAndHydratesMatchingRecordWithoutReserving() {
+    FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    port.loadedRecord =
+        record(
+            operation(),
+            fingerprint(),
+            IdempotencyStatus.COMPLETED,
+            snapshot(),
+            NOW.plusSeconds(300));
+    AtomicInteger hydrationCalls = new AtomicInteger();
+
+    Optional<IdempotentExecutionResult> result =
+        executor(port)
+            .replayCompleted(
+                operation(),
+                fingerprint(),
+                terminal -> {
+                  hydrationCalls.incrementAndGet();
+                  assertThat(terminal).isEqualTo(snapshot());
+                  return Mono.just(response());
+                })
+            .block();
+
+    assertThat(result).isPresent();
+    assertThat(result.orElseThrow().lifecycleOutcome())
+        .isEqualTo(IdempotencyReservationOutcome.COMPLETED_REPLAY);
+    assertThat(result.orElseThrow().terminalResponse()).isEqualTo(response());
+    assertThat(port.loadCalls).isOne();
+    assertThat(hydrationCalls).hasValue(1);
+    assertNoLifecycleMutation(port);
+  }
+
+  @Test
+  void replayCompletedDoesNotReserveWhenRecordIsMissingOrExpired() {
+    FakePort missing = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    assertThat(
+            executor(missing)
+                .replayCompleted(operation(), fingerprint(), terminal -> Mono.just(response()))
+                .block())
+        .isEmpty();
+    assertNoLifecycleMutation(missing);
+
+    FakePort expired = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    expired.loadedRecord =
+        record(operation(), fingerprint(), IdempotencyStatus.COMPLETED, snapshot(), NOW);
+    assertThat(
+            executor(expired)
+                .replayCompleted(operation(), fingerprint(), terminal -> Mono.just(response()))
+                .block())
+        .isEmpty();
+    assertNoLifecycleMutation(expired);
+  }
+
+  @Test
+  void replayCompletedRejectsProcessingFailedAndUnknownOutcomeRecords() {
+    for (IdempotencyStatus status :
+        List.of(
+            IdempotencyStatus.PROCESSING,
+            IdempotencyStatus.FAILED,
+            IdempotencyStatus.UNKNOWN_OUTCOME)) {
+      FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+      port.loadedRecord = record(operation(), fingerprint(), status, null, NOW.plusSeconds(300));
+
+      assertThat(
+              executor(port)
+                  .replayCompleted(
+                      operation(),
+                      fingerprint(),
+                      terminal -> {
+                        throw new AssertionError("ineligible record must not be hydrated");
+                      })
+                  .block())
+          .as("status %s", status)
+          .isEmpty();
+      assertNoLifecycleMutation(port);
+    }
+  }
+
+  @Test
+  void replayCompletedRejectsOperationIdentityAndFingerprintMismatch() {
+    FakePort differentOperation = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    differentOperation.loadedRecord =
+        record(
+            new IdempotencyOperationId(
+                operation().capability(),
+                operation().action(),
+                new IdempotencyOperationScope("otherScope01"),
+                operation().key()),
+            fingerprint(),
+            IdempotencyStatus.COMPLETED,
+            snapshot(),
+            NOW.plusSeconds(300));
+    assertThat(
+            executor(differentOperation)
+                .replayCompleted(
+                    operation(),
+                    fingerprint(),
+                    terminal -> {
+                      throw new AssertionError("mismatched operation must not be hydrated");
+                    })
+                .block())
+        .isEmpty();
+    assertNoLifecycleMutation(differentOperation);
+
+    FakePort differentFingerprint = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    differentFingerprint.loadedRecord =
+        record(
+            operation(),
+            new IdempotencyFingerprint(1, "b".repeat(64)),
+            IdempotencyStatus.COMPLETED,
+            snapshot(),
+            NOW.plusSeconds(300));
+    assertThat(
+            executor(differentFingerprint)
+                .replayCompleted(
+                    operation(),
+                    fingerprint(),
+                    terminal -> {
+                      throw new AssertionError("mismatched fingerprint must not be hydrated");
+                    })
+                .block())
+        .isEmpty();
+    assertNoLifecycleMutation(differentFingerprint);
+  }
+
+  @Test
+  void replayCompletedPropagatesStorageFailureWithoutMutation() {
+    FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    IllegalStateException failure = new IllegalStateException("storage failure");
+    port.loadFailure = failure;
+
+    assertThatThrownBy(
+            () ->
+                executor(port)
+                    .replayCompleted(operation(), fingerprint(), terminal -> Mono.just(response()))
+                    .block())
+        .isSameAs(failure);
+    assertNoLifecycleMutation(port);
+  }
+
+  @Test
+  void replayCompletedPropagatesHydrationFailureWithoutMutation() {
+    FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    port.loadedRecord =
+        record(
+            operation(),
+            fingerprint(),
+            IdempotencyStatus.COMPLETED,
+            snapshot(),
+            NOW.plusSeconds(300));
+    IllegalArgumentException failure = new IllegalArgumentException("decode failure");
+
+    assertThatThrownBy(
+            () ->
+                executor(port)
+                    .replayCompleted(operation(), fingerprint(), terminal -> Mono.error(failure))
+                    .block())
+        .isSameAs(failure);
+    assertNoLifecycleMutation(port);
+  }
+
+  @Test
+  void replayCompletedTreatsEmptyHydrationAsCodecFailure() {
+    FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    port.loadedRecord =
+        record(
+            operation(),
+            fingerprint(),
+            IdempotencyStatus.COMPLETED,
+            snapshot(),
+            NOW.plusSeconds(300));
+
+    assertThatThrownBy(
+            () ->
+                executor(port)
+                    .replayCompleted(operation(), fingerprint(), terminal -> Mono.empty())
+                    .block())
+        .isInstanceOf(IdempotencyExecutionException.class)
+        .hasMessage("Shared idempotency replay hydration failed");
+    assertNoLifecycleMutation(port);
+  }
+
+  @Test
+  void replayCompletedRejectsEmptyLoadPublisher() {
+    FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    port.emptyLoadPublisher = true;
+
+    assertThatThrownBy(
+            () ->
+                executor(port)
+                    .replayCompleted(operation(), fingerprint(), terminal -> Mono.just(response()))
+                    .block())
+        .isInstanceOf(IdempotencyExecutionException.class)
+        .hasMessage("Shared idempotency load returned no result");
+    assertNoLifecycleMutation(port);
   }
 
   @Test
@@ -238,20 +467,50 @@ class DefaultIdempotencyExecutorTest {
     return new IdempotencyFingerprint(1, "a".repeat(64));
   }
 
+  private static IdempotencyRecord record(
+      IdempotencyOperationId operationId,
+      IdempotencyFingerprint fingerprint,
+      IdempotencyStatus status,
+      IdempotentTerminalResponseSnapshot terminal,
+      Instant expiresAt) {
+    return new IdempotencyRecord(
+        operationId,
+        fingerprint,
+        new IdempotencyReservationToken("reservationToken0123456789abcdefgh"),
+        status,
+        terminal,
+        NOW.minusSeconds(60),
+        NOW.minusSeconds(30),
+        expiresAt);
+  }
+
+  private static void assertNoLifecycleMutation(FakePort port) {
+    assertThat(port.reserveCalls).isZero();
+    assertThat(port.completed).isZero();
+    assertThat(port.failed).isZero();
+    assertThat(port.unknown).isZero();
+  }
+
   static final class FakePort implements IdempotencyPort {
     final IdempotencyReservationOutcome outcome;
     int completed;
     int failed;
     int unknown;
     int classifierInvocations;
+    int loadCalls;
+    int reserveCalls;
     boolean failComplete;
     boolean failMarkUnknown;
+    boolean emptyLoadPublisher;
+    Throwable loadFailure;
+    IdempotencyRecord loadedRecord;
 
     FakePort(IdempotencyReservationOutcome outcome) {
       this.outcome = outcome;
     }
 
     public Mono<IdempotencyReservation> reserve(IdempotencyCommands.Reserve c) {
+      reserveCalls++;
       return Mono.just(
           switch (outcome) {
             case ACQUIRED ->
@@ -291,7 +550,10 @@ class DefaultIdempotencyExecutorTest {
     }
 
     public Mono<Optional<IdempotencyRecord>> load(IdempotencyOperationId o) {
-      return Mono.just(Optional.empty());
+      loadCalls++;
+      if (loadFailure != null) return Mono.error(loadFailure);
+      if (emptyLoadPublisher) return Mono.empty();
+      return Mono.just(Optional.ofNullable(loadedRecord));
     }
 
     private IdempotencyRecord record(

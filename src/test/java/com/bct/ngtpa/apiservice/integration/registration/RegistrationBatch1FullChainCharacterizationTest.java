@@ -22,6 +22,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationCompletionAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationLookupAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimDataItem;
@@ -36,7 +38,10 @@ import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -93,7 +98,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
-import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -177,7 +181,8 @@ class RegistrationBatch1FullChainCharacterizationTest {
                 "req-captcha-enabled-001",
                 "en",
                 null,
-                new MockServerHttpResponse())
+                MockServerWebExchange.from(
+                    MockServerHttpRequest.post("/api/v1/auth/registration/start")))
             .block();
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -220,7 +225,8 @@ class RegistrationBatch1FullChainCharacterizationTest {
                 "req-captcha-disabled-001",
                 "en",
                 null,
-                new MockServerHttpResponse())
+                MockServerWebExchange.from(
+                    MockServerHttpRequest.post("/api/v1/auth/registration/start")))
             .block();
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -259,13 +265,15 @@ class RegistrationBatch1FullChainCharacterizationTest {
    */
   @Test
   void registrationCompletion_profileResolutionFailure_realChainReachesCatchAllCentralHandler() {
+    AtomicReference<ApimExchangeRequest<?, ?>> capturedRequest = new AtomicReference<>();
     ApimExchangeExecutor executor =
         new ApimExchangeExecutor() {
           @Override
           public <R, D> Mono<ApimResponseEnvelope<D>> postEnvelope(
               ApimExchangeRequest<R, D> request) {
+            capturedRequest.set(request);
             return Mono.error(
-                new ApimProfileResolutionException("no mapping for accountEnv DB-pre-dispatch"));
+                new ApimProfileResolutionException("pre-dispatch-private-marker-726a"));
           }
         };
     var completionAdapter = new ApimRegistrationCompletionAdapter(executor);
@@ -279,6 +287,7 @@ class RegistrationBatch1FullChainCharacterizationTest {
             completionAdapter,
             neverCalledLookupPort(),
             neverCalledCancellationPort(),
+            noopFailureEventPort(),
             Duration.ofSeconds(10),
             CLOCK);
 
@@ -312,6 +321,10 @@ class RegistrationBatch1FullChainCharacterizationTest {
     Throwable failure = captured.get();
     assertThat(failure).isInstanceOf(RegistrationCompletionPreDispatchException.class);
     assertThat(failure.getMessage()).doesNotContain("accountEnv", "no mapping", "profile");
+    assertThat(capturedRequest.get().incidentOwnership())
+        .isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
+    assertThat(capturedRequest.get().resubmissionPolicy())
+        .isEqualTo(ApimResubmissionPolicy.ALLOW_RECOVERY);
 
     ApiExceptionHandler handler =
         new ApiExceptionHandler(
@@ -349,7 +362,8 @@ class RegistrationBatch1FullChainCharacterizationTest {
     assertThat(listAppender.list).hasSize(1);
     ILoggingEvent event = listAppender.list.getFirst();
     assertThat(event.getLevel()).isEqualTo(Level.ERROR);
-    assertThat(event.getThrowableProxy()).isNotNull();
+    assertThat(event.getThrowableProxy()).isNull();
+    assertThat(event.getFormattedMessage()).doesNotContain("pre-dispatch-private-marker-726a");
   }
 
   // ───────────────────────── shared fixtures ─────────────────────────
@@ -607,8 +621,18 @@ class RegistrationBatch1FullChainCharacterizationTest {
   }
 
   private static RegistrationLookupPort neverCalledLookupPort() {
-    return command ->
-        Mono.error(new AssertionError("lookup must not be called before the pre-dispatch failure"));
+    return new RegistrationLookupPort() {
+      @Override
+      public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
+        return Mono.error(
+            new AssertionError("lookup must not be called before the pre-dispatch failure"));
+      }
+
+      @Override
+      public FailureOrigin classifySearchMemberFailure(Throwable failure) {
+        return FailureOrigin.LOCAL_SYSTEM;
+      }
+    };
   }
 
   private static AuthFlowSessionCancellationPort neverCalledCancellationPort() {

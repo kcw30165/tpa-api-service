@@ -1,10 +1,13 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 
+import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureClassifier;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchMemberApimMapper;
@@ -66,6 +69,13 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
   public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
     Objects.requireNonNull(command, "command must not be null");
     TrpSearchMemberApimRequest body = requestMapper.toApimRequest(command);
+    boolean terminalCaller =
+        command.invocationIntent() == RegistrationLookupInvocationIntent.START
+            || command.invocationIntent() == RegistrationLookupInvocationIntent.CONTINUATION;
+    ApimIncidentOwnership incidentOwnership =
+        terminalCaller
+            ? ApimIncidentOwnership.TERMINAL_CALLER
+            : ApimIncidentOwnership.APIM_OBSERVER;
     var request =
         new ApimExchangeRequest<>(
             API_NAME,
@@ -74,9 +84,24 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
             TrpSearchMemberApimDataItem.class,
             ApimDatabaseScope.NON_ACCOUNT,
             new ApimCredentialResolutionContext(command.actorUserRole(), null),
-            ApimRetryEligibility.SAFE_BUSINESS_CALL);
+            ApimRetryEligibility.SAFE_BUSINESS_CALL,
+            ApimResubmissionPolicy.ALLOW_RECOVERY,
+            incidentOwnership);
     return withFailureLogging(
         executor.postEnvelope(request).map(envelope -> toResult(envelope, command)), command);
+  }
+
+  @Override
+  public FailureOrigin classifySearchMemberFailure(Throwable failure) {
+    if (failure instanceof RegistrationLookupDownstreamException) {
+      return FailureOrigin.DOWNSTREAM_CONTRACT;
+    }
+    return switch (ApimFailureClassifier.classify(failure)) {
+      case DOWNSTREAM_CONTRACT -> FailureOrigin.DOWNSTREAM_CONTRACT;
+      case DOWNSTREAM_INVALID_RESPONSE -> FailureOrigin.DOWNSTREAM_INVALID_RESPONSE;
+      case DOWNSTREAM_TRANSPORT -> FailureOrigin.DOWNSTREAM_TRANSPORT;
+      case LOCAL_SYSTEM -> FailureOrigin.LOCAL_SYSTEM;
+    };
   }
 
   private RegistrationLookupResult toResult(
@@ -112,14 +137,26 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
               signal.getContextView().getOrDefault(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, null);
           var dimensions = safeDimensions(command);
           dimensions.put("reason", exception.reason().name());
+          String internalCode =
+              command.invocationIntent() == RegistrationLookupInvocationIntent.START
+                      || command.invocationIntent()
+                          == RegistrationLookupInvocationIntent.CONTINUATION
+                  ? exception.reason().name()
+                  : exception.downstreamErrorCode();
+          FailureOrigin failureOrigin =
+              command.invocationIntent() == RegistrationLookupInvocationIntent.START
+                      || command.invocationIntent()
+                          == RegistrationLookupInvocationIntent.CONTINUATION
+                  ? FailureOrigin.DOWNSTREAM_TECHNICAL
+                  : FailureOrigin.DOWNSTREAM_CONTRACT;
           failureEventPort.publish(
               new FailureEvent(
                   "registration.lookup.downstream_contract_failure",
                   requestId,
                   "REGISTRATION",
                   "TRPSearchMember",
-                  FailureOrigin.DOWNSTREAM_CONTRACT,
-                  exception.downstreamErrorCode(),
+                  failureOrigin,
+                  internalCode,
                   SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value(),
                   503,
                   true,

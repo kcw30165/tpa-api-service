@@ -19,6 +19,7 @@ class AuthFlowSessionRevisionMutationsSubtask006001a3FailFirstTest {
     assertThat(names)
         .contains(
             "updateRevisioned",
+            "updateRevisionedStrict",
             "touchRevisioned",
             "completeRevisioned",
             "cancelRevisioned",

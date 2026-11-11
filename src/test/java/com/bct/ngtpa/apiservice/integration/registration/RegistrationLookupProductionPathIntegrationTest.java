@@ -140,7 +140,13 @@ class RegistrationLookupProductionPathIntegrationTest {
   private static RegistrationLookupCommand command(
       MemberIdentityType type, RegistrationContactType contactType, String contactValue) {
     return new RegistrationLookupCommand(
-        type, "1234567890", "31/01/1980", contactType, contactValue, ActorUserRole.ROLE_USER_MBR);
+        type,
+        "1234567890",
+        "31/01/1980",
+        contactType,
+        contactValue,
+        ActorUserRole.ROLE_USER_MBR,
+        RegistrationLookupInvocationIntent.DEFAULT);
   }
 
   private static RegistrationLookupCommand command(MemberIdentityType type) {
@@ -150,7 +156,8 @@ class RegistrationLookupProductionPathIntegrationTest {
         "31/01/1980",
         RegistrationContactType.EMAIL,
         "member@example.com",
-        ActorUserRole.ROLE_USER_MBR);
+        ActorUserRole.ROLE_USER_MBR,
+        RegistrationLookupInvocationIntent.DEFAULT);
   }
 
   private static TrpSearchMemberApimDataItem item(String env, String trust) {

@@ -3,6 +3,8 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.dto.workflow.*;
@@ -11,6 +13,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.*
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
@@ -26,6 +29,7 @@ public final class RegistrationCompleteProtectedOperation {
   private final RegistrationCompletionPort completion;
   private final RegistrationLookupPort lookup;
   private final AuthFlowSessionCancellationPort cancellation;
+  private final FailureEventPort failureEventPort;
   private final RegistrationCompletionSessionService sessionTransitions;
   private final Duration completionLockLease;
   private final Clock clock;
@@ -36,6 +40,7 @@ public final class RegistrationCompleteProtectedOperation {
       RegistrationCompletionPort completion,
       RegistrationLookupPort lookup,
       AuthFlowSessionCancellationPort cancellation,
+      FailureEventPort failureEventPort,
       Duration completionLockLease,
       Clock clock) {
     this.sessions = Objects.requireNonNull(sessions, "sessions must not be null");
@@ -43,6 +48,8 @@ public final class RegistrationCompleteProtectedOperation {
     this.completion = Objects.requireNonNull(completion, "completion must not be null");
     this.lookup = Objects.requireNonNull(lookup, "lookup must not be null");
     this.cancellation = Objects.requireNonNull(cancellation, "cancellation must not be null");
+    this.failureEventPort =
+        Objects.requireNonNull(failureEventPort, "failureEventPort must not be null");
     this.completionLockLease = positiveLease(completionLockLease);
     this.clock = Objects.requireNonNull(clock, "clock must not be null");
     this.sessionTransitions = new RegistrationCompletionSessionService(sessions);
@@ -151,46 +158,97 @@ public final class RegistrationCompleteProtectedOperation {
             context.dateOfBirth(),
             context.contactType(),
             context.contactValue(),
-            ActorUserRole.ROLE_USER_MBR);
+            ActorUserRole.ROLE_USER_MBR,
+            RegistrationLookupInvocationIntent.CONTINUATION);
     return lookup
         .searchMember(command)
+        .materialize()
         .flatMap(
-            result -> {
-              List<RegistrationLookupAccount> remainingUnregisteredTrusts =
-                  result.accounts().stream()
-                      .filter(account -> Boolean.FALSE.equals(account.registered()))
-                      .toList();
+            signal -> {
+              if (signal.isOnError()) {
+                return continuationFailure(
+                    input,
+                    "TRPSearchMember",
+                    lookup.classifySearchMemberFailure(signal.getThrowable()));
+              }
+              if (!signal.hasValue()) return Mono.empty();
+              return continueAfterLookup(input, session, signal.get());
+            });
+  }
+
+  private Mono<CompleteRegistrationResult> continueAfterLookup(
+      RegistrationCompleteProtectedOperationInput input,
+      AuthFlowSession session,
+      RegistrationLookupResult result) {
+    return Mono.fromCallable(
+            () ->
+                result.accounts().stream()
+                    .filter(account -> Boolean.FALSE.equals(account.registered()))
+                    .toList())
+        .flatMap(
+            remainingUnregisteredTrusts -> {
               if (result.status() == RegistrationLookupStatus.ELIGIBLE
                   && !remainingUnregisteredTrusts.isEmpty()) {
-                return sessionTransitions
-                    .transition(
-                        session, AuthFlowStatus.TRUST_SELECTION_READY, clock.instant(), true)
-                    .thenReturn(
-                        result(
-                            CompleteRegistrationResultStatus.REGISTERED_WITH_REMAINING_TRUSTS,
-                            WorkflowNextStep.SELECT_TRUST,
-                            true,
-                            false,
-                            remainingUnregisteredTrusts));
+                return transitionAfterLookup(
+                    input,
+                    session,
+                    AuthFlowStatus.TRUST_SELECTION_READY,
+                    result(
+                        CompleteRegistrationResultStatus.REGISTERED_WITH_REMAINING_TRUSTS,
+                        WorkflowNextStep.SELECT_TRUST,
+                        true,
+                        false,
+                        remainingUnregisteredTrusts));
               }
-              return sessionTransitions
-                  .transition(session, AuthFlowStatus.COMPLETED, clock.instant(), true)
-                  .thenReturn(
-                      result(
-                          CompleteRegistrationResultStatus.REGISTERED,
-                          WorkflowNextStep.RETURN_TO_LOGIN,
-                          true,
-                          true,
-                          List.of()));
+              return transitionAfterLookup(
+                  input,
+                  session,
+                  AuthFlowStatus.COMPLETED,
+                  result(
+                      CompleteRegistrationResultStatus.REGISTERED,
+                      WorkflowNextStep.RETURN_TO_LOGIN,
+                      true,
+                      true,
+                      List.of()));
             })
         .onErrorResume(
-            ignored ->
-                Mono.just(
-                    failure(
-                        CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED,
-                        WorkflowNextStep.RETURN_TO_LOGIN,
-                        RegistrationErrorKey.REGISTRATION_COMPLETE_CONTINUATIONUNAVAILABLE
-                            .value())));
+            localFailure ->
+                continuationFailure(
+                    input, "RegistrationComplete.continuation", FailureOrigin.LOCAL_SYSTEM));
+  }
+
+  private Mono<CompleteRegistrationResult> transitionAfterLookup(
+      RegistrationCompleteProtectedOperationInput input,
+      AuthFlowSession session,
+      AuthFlowStatus status,
+      CompleteRegistrationResult success) {
+    return Mono.defer(() -> sessionTransitions.transition(session, status, clock.instant(), true))
+        .thenReturn(success)
+        .onErrorResume(
+            transitionFailure ->
+                continuationFailure(
+                    input, "AuthFlowSession.transition", FailureOrigin.LOCAL_SYSTEM));
+  }
+
+  private Mono<CompleteRegistrationResult> continuationFailure(
+      RegistrationCompleteProtectedOperationInput input, String operation, FailureOrigin origin) {
+    failureEventPort.publish(
+        new FailureEvent(
+            "registration.complete.continuation_failure",
+            input.command().correlationId(),
+            "REGISTRATION",
+            operation,
+            origin,
+            "CONTINUATION_LOOKUP_FAILED",
+            RegistrationErrorKey.REGISTRATION_COMPLETE_CONTINUATIONUNAVAILABLE.value(),
+            502,
+            false,
+            Map.of("stage", "POST_COMPLETION_CONTINUATION")));
+    return Mono.just(
+        failure(
+            CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED,
+            WorkflowNextStep.RETURN_TO_LOGIN,
+            RegistrationErrorKey.REGISTRATION_COMPLETE_CONTINUATIONUNAVAILABLE.value()));
   }
 
   private Mono<CompleteRegistrationResult> reject(

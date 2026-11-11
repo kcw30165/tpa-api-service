@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.ConsumeCaptchaChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupInvocationIntent;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartCommand;
@@ -166,7 +167,8 @@ public final class RegistrationStartProtectedOperation {
             validated.dateOfBirth(),
             validated.contactType(),
             validated.contactValue(),
-            com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
+            com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
+            RegistrationLookupInvocationIntent.START);
     return lookup
         .searchMember(lookupCommand)
         .flatMap(result -> handleLookup(command, validated, result));

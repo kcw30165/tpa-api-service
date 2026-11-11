@@ -20,6 +20,7 @@ class VerifyRegistrationOtpResultTest {
             List.of(),
             List.of(),
             RegistrationIdempotencyStartOutcome.STARTED,
+            null,
             null);
 
     assertThat(result.toString())

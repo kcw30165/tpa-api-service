@@ -61,6 +61,12 @@ public interface AuthFlowSessionPort {
                             .SessionRevision("11111111111111111111111111111111"))));
   }
 
+  default Mono<AuthFlowSessionMutationResult> updateRevisionedStrict(
+      RevisionedAuthFlowSessionMutationCommand command) {
+    return Mono.error(
+        new UnsupportedOperationException("Reliable revision-aware update is not implemented"));
+  }
+
   default Mono<AuthFlowSessionMutationResult> touchRevisioned(
       AuthFlowSessionSnapshot expected, Instant now) {
     return touch(expected.session().authFlowSessionId(), now)

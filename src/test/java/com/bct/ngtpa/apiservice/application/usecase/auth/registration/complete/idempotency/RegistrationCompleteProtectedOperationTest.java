@@ -8,9 +8,12 @@ import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.*;
@@ -33,6 +36,7 @@ class RegistrationCompleteProtectedOperationTest {
   private final RegistrationLookupPort lookup = mock(RegistrationLookupPort.class);
   private final AuthFlowSessionCancellationPort cancellation =
       mock(AuthFlowSessionCancellationPort.class);
+  private final FailureEventPort failureEvents = mock(FailureEventPort.class);
   private RegistrationCompleteProtectedOperation operation;
   private AuthFlowSession state;
 
@@ -80,6 +84,7 @@ class RegistrationCompleteProtectedOperationTest {
             completion,
             lookup,
             cancellation,
+            failureEvents,
             Duration.ofSeconds(30),
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
@@ -98,6 +103,7 @@ class RegistrationCompleteProtectedOperationTest {
     assertThat(result.registered()).isTrue();
     assertThat(result.clearAuthFlowCookie()).isTrue();
     assertThat(state.status()).isEqualTo(AuthFlowStatus.COMPLETED);
+    verify(failureEvents, never()).publish(any(FailureEvent.class));
     verify(completion).complete(any());
     verify(locks).release(any());
   }
@@ -122,6 +128,14 @@ class RegistrationCompleteProtectedOperationTest {
     assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.SELECT_TRUST);
     assertThat(state.status()).isEqualTo(AuthFlowStatus.TRUST_SELECTION_READY);
     assertThat(result.clearAuthFlowCookie()).isFalse();
+    ArgumentCaptor<RegistrationLookupCommand> lookupCommand =
+        ArgumentCaptor.forClass(RegistrationLookupCommand.class);
+    verify(lookup).searchMember(lookupCommand.capture());
+    assertThat(lookupCommand.getValue().invocationIntent())
+        .extracting(Enum::name)
+        .isEqualTo("CONTINUATION");
+    assertThat(lookupCommand.getValue().warningOnlyOnFailure()).isTrue();
+    verify(failureEvents, never()).publish(any(FailureEvent.class));
   }
 
   @Test
@@ -225,14 +239,75 @@ class RegistrationCompleteProtectedOperationTest {
 
   @Test
   void continuationLookupFailureIsDeterministicAfterConfirmedRegistration() {
-    when(lookup.searchMember(any()))
-        .thenReturn(Mono.error(new IllegalStateException("lookup detail")));
+    var lookupFailure = new IllegalStateException("lookup detail");
+    when(lookup.searchMember(any())).thenReturn(Mono.error(lookupFailure));
+    when(lookup.classifySearchMemberFailure(same(lookupFailure)))
+        .thenReturn(FailureOrigin.LOCAL_SYSTEM);
     CompleteRegistrationResult result = operation.execute(input()).block();
     assertThat(result.status())
         .isEqualTo(CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED);
+    assertThat(result.registered()).isFalse();
     assertThat(result.nextStep().name()).isEqualTo("RETURN_TO_LOGIN");
     assertThat(result.toString()).doesNotContain("lookup detail");
+    org.mockito.ArgumentCaptor<FailureEvent> eventCaptor =
+        org.mockito.ArgumentCaptor.forClass(FailureEvent.class);
+    verify(failureEvents).publish(eventCaptor.capture());
+    FailureEvent event = eventCaptor.getValue();
+    assertThat(event.event()).isEqualTo("registration.complete.continuation_failure");
+    assertThat(event.requestId()).isEqualTo("req");
+    assertThat(event.capability()).isEqualTo("REGISTRATION");
+    assertThat(event.operation()).isEqualTo("TRPSearchMember");
+    assertThat(event.origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(event.internalCode()).isEqualTo("CONTINUATION_LOOKUP_FAILED");
+    assertThat(event.publicCode())
+        .isEqualTo(RegistrationErrorKey.REGISTRATION_COMPLETE_CONTINUATIONUNAVAILABLE.value());
+    assertThat(event.httpStatus()).isEqualTo(502);
+    assertThat(event.retryable()).isFalse();
+    assertThat(event.safeDimensions())
+        .containsExactlyEntriesOf(java.util.Map.of("stage", "POST_COMPLETION_CONTINUATION"));
+    assertThat(event.toString()).doesNotContain("lookup detail");
+    verify(lookup).classifySearchMemberFailure(same(lookupFailure));
+    verify(failureEvents, never()).publish(any(FailureEvent.class), any(Throwable.class));
     verify(completion, times(1)).complete(any());
+  }
+
+  @Test
+  void localSessionTransitionFailureIsNotClassifiedAsLookupFailure() {
+    var sessionFailure = new IllegalStateException("completion session transition marker");
+    when(lookup.searchMember(any()))
+        .thenReturn(
+            Mono.just(
+                new RegistrationLookupResult(
+                    RegistrationLookupStatus.NOT_ELIGIBLE, List.of(), null)));
+    doAnswer(
+            invocation -> {
+              RevisionedAuthFlowSessionMutationCommand mutation = invocation.getArgument(0);
+              if (mutation.updated().status() == AuthFlowStatus.COMPLETED) {
+                return Mono.error(sessionFailure);
+              }
+              state = mutation.updated();
+              return Mono.just(
+                  new AuthFlowSessionMutationResult(
+                      AuthFlowSessionMutationOutcome.APPLIED,
+                      new AuthFlowSessionSnapshot(
+                          state, new SessionRevision("44444444444444444444444444444444"))));
+            })
+        .when(sessions)
+        .updateRevisioned(any());
+
+    CompleteRegistrationResult result = operation.execute(input()).block();
+
+    assertThat(result.status())
+        .isEqualTo(CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED);
+    assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.RETURN_TO_LOGIN);
+    org.mockito.ArgumentCaptor<FailureEvent> eventCaptor =
+        org.mockito.ArgumentCaptor.forClass(FailureEvent.class);
+    verify(failureEvents).publish(eventCaptor.capture());
+    FailureEvent event = eventCaptor.getValue();
+    assertThat(event.origin().name()).isEqualTo("LOCAL_SYSTEM");
+    assertThat(event.operation()).isEqualTo("AuthFlowSession.transition");
+    assertThat(event.toString()).doesNotContain("completion session transition marker");
+    verify(lookup, never()).classifySearchMemberFailure(any());
   }
 
   @Test

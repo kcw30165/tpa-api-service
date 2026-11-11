@@ -155,7 +155,10 @@ class RegistrationStabilizationContractBaselineTest {
   }
 
   private boolean isOperationalEventLiteral(String literal) {
-    return "\"registration.lookup.downstream_contract_failure\"".equals(literal);
+    // This diagnostic name is emitted through FailureEventPort, not returned as a public error.
+    return "\"registration.lookup.downstream_contract_failure\"".equals(literal)
+        || "\"registration.complete.continuation_failure\"".equals(literal)
+        || "\"registration.otp_verify.rejected\"".equals(literal);
   }
 
   private List<ContractRow> contractRows() throws Exception {

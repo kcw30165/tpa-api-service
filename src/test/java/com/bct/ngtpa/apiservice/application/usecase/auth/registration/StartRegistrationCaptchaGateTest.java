@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLo
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
@@ -426,6 +427,11 @@ class StartRegistrationCaptchaGateTest {
                   new RegistrationLookupAccount(
                       "OI", "JPM", null, null, null, null, null, Boolean.FALSE, null)),
               null));
+    }
+
+    @Override
+    public FailureOrigin classifySearchMemberFailure(Throwable failure) {
+      return FailureOrigin.LOCAL_SYSTEM;
     }
 
     private void reset() {

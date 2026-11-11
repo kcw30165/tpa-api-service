@@ -3,14 +3,12 @@ package com.bct.ngtpa.apiservice.adapter.in.web.error;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionPreDispatchException;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 
-/**
- * Mapping for {@link RegistrationLookupDownstreamException}, including its reason-qualified
- * diagnostic message. Built via {@link ErrorDescriptor#single} (one {@link MessagePolicy#RESOLVE}
- * entry).
- */
+/** Exception mappings for registration lookup and completion failures. */
 public final class RegistrationExceptionMappings {
 
   private RegistrationExceptionMappings() {}
@@ -39,6 +37,35 @@ public final class RegistrationExceptionMappings {
       @Override
       public String diagnosticMessage(RegistrationLookupDownstreamException exception) {
         return "TRPSearchMember contract failure: " + exception.reason();
+      }
+    };
+  }
+
+  public static ExceptionMapping<RegistrationCompletionPreDispatchException>
+      completionPreDispatch() {
+    return new ExceptionMapping<>() {
+      @Override
+      public Class<RegistrationCompletionPreDispatchException> exceptionType() {
+        return RegistrationCompletionPreDispatchException.class;
+      }
+
+      @Override
+      public ErrorDescriptor describe(
+          RegistrationCompletionPreDispatchException exception, ErrorContext context) {
+        return ErrorDescriptor.single(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            ApiStatus.SYSTEM_ERROR,
+            "SYSTEM",
+            ErrorCodes.SYSTEM_UNEXPECTED,
+            List.of(),
+            "http.api.error",
+            LogLevel.ERROR,
+            false);
+      }
+
+      @Override
+      public String diagnosticMessage(RegistrationCompletionPreDispatchException exception) {
+        return "Registration completion failed before downstream dispatch";
       }
     };
   }

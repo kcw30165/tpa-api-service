@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +13,9 @@ class RedisAuthFlowSessionArchitectureGuardTest {
   @Test
   void redisAuthFlowSessionAdapterDoesNotDependOnWebCookieOrApim() {
     JavaClasses classes =
-        new ClassFileImporter().importPackages("com.bct.ngtpa.apiservice.adapter.out.redis.auth");
+        new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
+            .importPackages("com.bct.ngtpa.apiservice.adapter.out.redis.auth");
 
     ArchRuleDefinition.noClasses()
         .that()
@@ -31,6 +34,7 @@ class RedisAuthFlowSessionArchitectureGuardTest {
   void applicationAuthFlowSessionModelStillHasNoRedisOrSpringDependency() {
     JavaClasses classes =
         new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
             .importPackages(
                 "com.bct.ngtpa.apiservice.application.dto.session.authflow",
                 "com.bct.ngtpa.apiservice.application.port.out");

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 class M3R1aOwnershipActivationGuardTest {
   @Test
-  void onlyRegistrationUsernameOptsInAtR1bCheckpoint() throws Exception {
+  void onlyApprovedRegistrationOperationsAndFacadeInfrastructureOptInAtM3bR3() throws Exception {
     var root = Path.of("src/main/java");
     var hits =
         Files.walk(root)
@@ -22,6 +22,8 @@ class M3R1aOwnershipActivationGuardTest {
             List.of(
                     "com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacade.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/execution/ApimExchangeOutcomeLogger.java",
+                    "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationCompletionAdapter.java",
+                    "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationUsernameAvailabilityAdapter.java")
                 .stream()
                 .sorted()
@@ -31,12 +33,55 @@ class M3R1aOwnershipActivationGuardTest {
             root.resolve(
                 "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationUsernameAvailabilityAdapter.java"));
     assertThat(reg).contains("TERMINAL_CALLER").doesNotContain("@LogExecution");
+    String lookup =
+        read(
+            root.resolve(
+                "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java"));
+    assertThat(lookup)
+        .contains(
+            "ApimIncidentOwnership.TERMINAL_CALLER",
+            "@LogExecution",
+            "RegistrationLookupInvocationIntent.START",
+            "RegistrationLookupInvocationIntent.CONTINUATION",
+            "ApimIncidentOwnership.APIM_OBSERVER");
     String forgotPassword =
         read(
             root.resolve(
                 "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/"
                     + "ApimForgotPasswordUsernameLookupAdapter.java"));
     assertThat(forgotPassword).doesNotContain("TERMINAL_CALLER");
+  }
+
+  @Test
+  void registrationStartCompletionAndOtpUseTheirApprovedLookupIntents() throws Exception {
+    String start =
+        read(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/idempotency/RegistrationStartProtectedOperation.java"));
+    String completion =
+        read(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/idempotency/RegistrationCompleteProtectedOperation.java"));
+    String otp =
+        read(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/otp/idempotency/RegistrationOtpVerifyProtectedOperation.java"));
+
+    assertThat(start).contains("RegistrationLookupInvocationIntent.START");
+    assertThat(start)
+        .doesNotContain(
+            "RegistrationLookupInvocationIntent.CONTINUATION",
+            "RegistrationLookupInvocationIntent.DEFAULT");
+    assertThat(completion)
+        .contains("RegistrationLookupInvocationIntent.CONTINUATION")
+        .doesNotContain(
+            "RegistrationLookupInvocationIntent.START",
+            "RegistrationLookupInvocationIntent.DEFAULT");
+    assertThat(otp)
+        .contains("RegistrationLookupInvocationIntent.DEFAULT")
+        .doesNotContain(
+            "RegistrationLookupInvocationIntent.START",
+            "RegistrationLookupInvocationIntent.CONTINUATION");
   }
 
   private static String read(Path p) {

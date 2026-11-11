@@ -23,15 +23,22 @@ class ExecutionLoggingAspectInvocationContextToStringTest {
 
     Constructor<?> constructor =
         invocationContextClass.getDeclaredConstructor(
-            String.class, String.class, String.class, boolean.class, boolean.class, Object[].class);
+            String.class,
+            String.class,
+            String.class,
+            boolean.class,
+            boolean.class,
+            boolean.class,
+            Object[].class);
     constructor.setAccessible(true);
 
     Object context =
         constructor.newInstance(
-            "SomeClass", "someMethod", "label", true, true, new Object[] {"alpha", 42});
+            "SomeClass", "someMethod", "label", true, true, false, new Object[] {"alpha", 42});
 
     String rendered = context.toString();
 
+    assertThat(rendered).contains("warningOnlyOnFailure=false");
     assertThat(rendered).doesNotContain("[Ljava.lang.Object;@");
     assertThat(rendered).contains("alpha");
     assertThat(rendered).contains("42");

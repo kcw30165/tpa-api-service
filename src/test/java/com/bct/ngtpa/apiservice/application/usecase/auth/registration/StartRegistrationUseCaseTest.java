@@ -6,8 +6,10 @@ import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIde
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupInvocationIntent;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
@@ -57,6 +59,8 @@ class StartRegistrationUseCaseTest {
         .verifyComplete();
     assertThat(fixture.executor.protectedCalls).isEqualTo(1);
     assertThat(fixture.lookup.calls).isEqualTo(1);
+    assertThat(fixture.lookup.command.invocationIntent())
+        .isEqualTo(RegistrationLookupInvocationIntent.START);
     assertThat(fixture.session.created).isEqualTo(1);
     assertThat(fixture.otp.calls).isEqualTo(1);
     assertThat(fixture.message.calls).isEqualTo(1);
@@ -75,6 +79,10 @@ class StartRegistrationUseCaseTest {
               assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.STARTED);
               assertThat(result.csrfToken()).isEqualTo("csrf_token_safe");
               assertThat(result.authFlowSessionId()).isEqualTo("afs_session_for_cookie");
+              assertThat(result.idempotencyOutcome())
+                  .isEqualTo(
+                      com.bct.ngtpa.apiservice.application.dto.auth.idempotency
+                          .RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY);
             })
         .verifyComplete();
     assertThat(fixture.executor.protectedCalls).isZero();
@@ -242,6 +250,14 @@ class StartRegistrationUseCaseTest {
       }
       return Mono.just(new IdempotentExecutionResult(outcome, null));
     }
+
+    @Override
+    public Mono<java.util.Optional<IdempotentExecutionResult>> replayCompleted(
+        com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId operationId,
+        com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint fingerprint,
+        com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayResolver replayResolver) {
+      return Mono.error(new AssertionError("Unexpected replay-only lookup"));
+    }
   }
 
   private static final class ProtectedReplay implements RegistrationStartProtectedReplayPort {
@@ -290,10 +306,12 @@ class StartRegistrationUseCaseTest {
   private static final class Lookup implements RegistrationLookupPort {
     int calls;
     boolean eligible = true;
+    RegistrationLookupCommand command;
 
     @Override
     public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
       calls++;
+      this.command = command;
       return Mono.just(
           eligible
               ? new RegistrationLookupResult(
@@ -304,6 +322,11 @@ class StartRegistrationUseCaseTest {
                   null)
               : new RegistrationLookupResult(
                   RegistrationLookupStatus.NOT_ELIGIBLE, List.of(), "not-found"));
+    }
+
+    @Override
+    public FailureOrigin classifySearchMemberFailure(Throwable failure) {
+      return FailureOrigin.LOCAL_SYSTEM;
     }
   }
 

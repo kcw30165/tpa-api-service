@@ -130,6 +130,7 @@ public final class RegistrationOtpVerifyReplayCodec {
         messages,
         errors,
         RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY,
+        null,
         null);
   }
 

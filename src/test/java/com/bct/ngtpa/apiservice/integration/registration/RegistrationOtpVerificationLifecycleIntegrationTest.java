@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.idempotency.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
@@ -217,6 +218,31 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
     assertNoEffects();
   }
 
+  @Test
+  void invalidProtectedContextStatusSurvivesOtpResultWithoutStartingIdempotency() {
+    List<RegistrationProtectedAuthFlowContextStatus> statuses =
+        List.of(
+            RegistrationProtectedAuthFlowContextStatus.MISSING_SESSION,
+            RegistrationProtectedAuthFlowContextStatus.EXPIRED_OR_TERMINAL_SESSION,
+            RegistrationProtectedAuthFlowContextStatus.WRONG_SCENARIO,
+            RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS,
+            RegistrationProtectedAuthFlowContextStatus.MISSING_ACTIVE_OTP,
+            RegistrationProtectedAuthFlowContextStatus.MISSING_CONTEXT,
+            RegistrationProtectedAuthFlowContextStatus.CONTEXT_DECRYPTION_FAILED);
+
+    for (RegistrationProtectedAuthFlowContextStatus status : statuses) {
+      context.result = RegistrationProtectedAuthFlowContextResult.invalid(status);
+
+      VerifyRegistrationOtpResult result =
+          service.verify(command("context-" + status.name(), "123456")).block();
+
+      assertThat(result.status()).isEqualTo(VerifyRegistrationOtpResultStatus.INVALID_AUTH_FLOW);
+      assertThat(result.protectedContextStatus()).isEqualTo(status);
+      assertThat(idempotency.calls).isZero();
+      assertNoEffects();
+    }
+  }
+
   private VerifyRegistrationOtpCommand command(String key, String code) {
     return command(key, code, "https://portal.test");
   }
@@ -279,6 +305,14 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
       records.clear();
       calls = 0;
       completed = 0;
+    }
+
+    @Override
+    public Mono<java.util.Optional<IdempotentExecutionResult>> replayCompleted(
+        com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId operationId,
+        com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint fingerprint,
+        com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayResolver replayResolver) {
+      return Mono.error(new AssertionError("Unexpected replay-only lookup"));
     }
   }
 
@@ -370,6 +404,11 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
     public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
       calls++;
       return Mono.just(new RegistrationLookupResult(status, accounts, null));
+    }
+
+    @Override
+    public FailureOrigin classifySearchMemberFailure(Throwable failure) {
+      return FailureOrigin.LOCAL_SYSTEM;
     }
   }
 

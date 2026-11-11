@@ -21,6 +21,7 @@ import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryResult;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryStatus;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
 import com.bct.ngtpa.apiservice.application.dto.message.NoticeTemplateDefinition;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.idempotency.DefaultIdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyCommands;
@@ -361,6 +362,11 @@ class RegistrationMissingDefinitionStartResendIntegrationTest {
                   new RegistrationLookupAccount(
                       "OI", "JPM", null, null, null, null, null, Boolean.FALSE, null)),
               null));
+    }
+
+    @Override
+    public FailureOrigin classifySearchMemberFailure(Throwable failure) {
+      return FailureOrigin.LOCAL_SYSTEM;
     }
   }
 

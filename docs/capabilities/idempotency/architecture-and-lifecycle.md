@@ -185,6 +185,22 @@ A replay returns the same business meaning and safe public data as the original 
 - Create another session
 - Reapply a mutation
 
+#### Registration completion after entering `COMPLETING`
+
+Registration completion may use the shared executor's replay-only lookup after
+the current Registration session, CSRF, protected context, username, and
+password/confirmation have been validated. It derives the existing operation
+identity and fingerprint, then calls `replayCompleted`; that path loads only
+and never reserves or invokes the protected operation.
+
+Only a matching, unexpired `COMPLETED` record with a terminal snapshot is
+hydrated. Missing, expired, mismatched, `PROCESSING`, `FAILED`, and
+`UNKNOWN_OUTCOME` records retain the existing `INVALID_AUTH_FLOW` response for
+this `COMPLETING` retry. `USERNAME_VERIFIED` continues through ordinary
+reservation and completion. A replay must not repeat `TRPRegMember` or the
+continuation lookup, and an unknown outcome must never become automatic
+resubmission.
+
 ## 8. Failure versus unknown outcome
 
 ### Known failure

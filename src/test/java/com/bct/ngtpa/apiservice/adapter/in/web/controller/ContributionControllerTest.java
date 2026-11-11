@@ -46,6 +46,7 @@ import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -546,6 +547,9 @@ class ContributionControllerTest {
     ExportContributionSummaryUseCase exportUseCase = command -> Mono.just(localizedSampleResult());
 
     filteredWebClient(unusedGetUseCase(), exportUseCase)
+        .mutate()
+        .responseTimeout(Duration.ofSeconds(15))
+        .build()
         .get()
         .uri(
             uriBuilder ->
@@ -566,6 +570,9 @@ class ContributionControllerTest {
     ExportContributionSummaryUseCase exportUseCase = command -> Mono.just(localizedSampleResult());
 
     filteredWebClient(unusedGetUseCase(), exportUseCase)
+        .mutate()
+        .responseTimeout(Duration.ofSeconds(15))
+        .build()
         .get()
         .uri(
             uriBuilder ->

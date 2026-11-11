@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupInvocationIntent;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -69,7 +70,8 @@ class TrpSearchMemberApimResultMapperTest {
         "01/01/1970",
         RegistrationContactType.EMAIL,
         "member@example.com",
-        com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
+        com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
+        RegistrationLookupInvocationIntent.DEFAULT);
   }
 
   private static RegistrationLookupCommand mobileCommand() {
@@ -79,7 +81,8 @@ class TrpSearchMemberApimResultMapperTest {
         "01/01/1970",
         RegistrationContactType.MOBILE,
         "91234567",
-        com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
+        com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
+        RegistrationLookupInvocationIntent.DEFAULT);
   }
 
   private static TrpSearchMemberApimDataItem memberItem(String env, String trustCode) {

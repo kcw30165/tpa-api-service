@@ -52,6 +52,48 @@ class StructuredFailureEventLoggerTest {
     assertThat(appender.list).isEmpty();
   }
 
+  @Test
+  void omitsNullOrBlankRequestIdFromStructuredEvent() {
+    events.publish(
+        new FailureEvent(
+            "registration.otp_verify.rejected",
+            " ",
+            "registration",
+            "otp_verify",
+            FailureOrigin.LOCAL_BUSINESS,
+            "MISSING_SESSION",
+            null,
+            400,
+            false,
+            Map.of("reason", "MISSING_SESSION")));
+
+    verify(sanitizer)
+        .toSafeString(
+            org.mockito.ArgumentMatchers.argThat(
+                value -> value instanceof Map<?, ?> event && !event.containsKey("requestId")));
+  }
+
+  @Test
+  void omitsNullRequestIdFromStructuredEvent() {
+    events.publish(
+        new FailureEvent(
+            "registration.otp_verify.rejected",
+            null,
+            "registration",
+            "otp_verify",
+            FailureOrigin.LOCAL_BUSINESS,
+            "MISSING_SESSION",
+            null,
+            400,
+            false,
+            Map.of("reason", "MISSING_SESSION")));
+
+    verify(sanitizer)
+        .toSafeString(
+            org.mockito.ArgumentMatchers.argThat(
+                value -> value instanceof Map<?, ?> event && !event.containsKey("requestId")));
+  }
+
   @ParameterizedTest
   @MethodSource("originsAndLevels")
   void selectsLevelByFailureOrigin(FailureOrigin origin, Level expectedLevel) {
@@ -141,6 +183,7 @@ class StructuredFailureEventLoggerTest {
         Arguments.of(FailureOrigin.LOCAL_VALIDATION, Level.WARN),
         Arguments.of(FailureOrigin.LOCAL_BUSINESS, Level.WARN),
         Arguments.of(FailureOrigin.DOWNSTREAM_BUSINESS, Level.WARN),
+        Arguments.of(FailureOrigin.DOWNSTREAM_TECHNICAL, Level.WARN),
         Arguments.of(FailureOrigin.DOWNSTREAM_CONTRACT, Level.ERROR),
         Arguments.of(FailureOrigin.DOWNSTREAM_INVALID_RESPONSE, Level.ERROR),
         Arguments.of(FailureOrigin.DOWNSTREAM_TRANSPORT, Level.ERROR),

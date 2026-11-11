@@ -47,6 +47,12 @@ truncated), exception class, root cause class, first stack-trace-max-lines frame
 - offer to the bounded queue. On a full queue, increment a dropped counter; the next email reports
 it. append never throws and never blocks the logging thread.
 
+For central technical `http.api.error` events logged at ERROR, future alerting must consume only the
+approved structured metadata and must not reconstruct or reintroduce a diagnostic message,
+exception message, root-cause message, Throwable, or stack trace. The central event may provide
+`exceptionType` as fixed metadata; root-cause and stack fields are absent. This rule does not alter
+the existing alert policy for other logger sources or WARN events.
+
 ### 4. Deduplication (D3)
   
 ErrorAlertFingerprint = level + logger + event name + root exception class. The event name comes
@@ -89,6 +95,9 @@ window.
 - Body (plain text): environment, pod (HOSTNAME), application name, time (ISO-8601 with offset),
 level, logger, thread, request id, fingerprint, suppressed/dropped counts, sanitized message,
 exception and root cause, truncated stack trace.
+- For central technical `http.api.error` ERRORs, omit the sanitized diagnostic, exception/root-cause
+  details beyond the structured `exceptionType`, and stack trace; do not infer them from the log
+  event or another source.
 - Never included: request or response bodies, cookies, tokens, OTPs, unmasked identifiers. Messages
 are already sanitized at source and are sanitized again before sending.
 - Recipients are the configured operations addresses. The member destination override in

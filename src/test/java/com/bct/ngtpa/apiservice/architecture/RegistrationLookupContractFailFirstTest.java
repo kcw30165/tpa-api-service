@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchMe
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupInvocationIntent;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -134,7 +135,8 @@ class RegistrationLookupContractFailFirstTest {
                 "01/01/1970",
                 RegistrationContactType.EMAIL,
                 "member@example.com",
-                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
+                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
+                RegistrationLookupInvocationIntent.DEFAULT));
     assertThat(request.searchBy()).isEqualTo(expected);
   }
 

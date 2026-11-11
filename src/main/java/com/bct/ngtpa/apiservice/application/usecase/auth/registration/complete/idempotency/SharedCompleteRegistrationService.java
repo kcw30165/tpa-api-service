@@ -10,10 +10,12 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutionException;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFailureClassification;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOutcome;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionResult;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextCommand;
@@ -36,6 +38,7 @@ import java.time.Clock;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import reactor.core.publisher.Mono;
 
@@ -87,7 +90,7 @@ public final class SharedCompleteRegistrationService implements CompleteRegistra
                 command.origin(),
                 command.referer(),
                 command.correlationId(),
-                Set.of(AuthFlowStatus.USERNAME_VERIFIED)))
+                Set.of(AuthFlowStatus.USERNAME_VERIFIED, AuthFlowStatus.COMPLETING)))
         .flatMap(context -> authorize(command, context));
   }
 
@@ -102,22 +105,34 @@ public final class SharedCompleteRegistrationService implements CompleteRegistra
               WorkflowNextStep.NONE,
               RegistrationErrorKey.AUTH_FLOW_INVALID.value()));
     }
-    return expiry
-        .refresh(command.authFlowSessionId(), clock.instant())
-        .flatMap(session -> prepare(command, context, session));
+    AuthFlowSession session = context.authFlowSession();
+    if (session == null) {
+      return Mono.just(
+          failure(
+              CompleteRegistrationResultStatus.INVALID_AUTH_FLOW,
+              WorkflowNextStep.NONE,
+              RegistrationErrorKey.AUTH_FLOW_INVALID.value()));
+    }
+    return switch (session.status()) {
+      case USERNAME_VERIFIED ->
+          expiry
+              .refreshUsernameVerified(command.authFlowSessionId(), clock.instant())
+              .flatMap(refreshed -> prepare(command, context, refreshed, false));
+      case COMPLETING -> prepare(command, context, session, true);
+      default ->
+          Mono.just(
+              failure(
+                  CompleteRegistrationResultStatus.INVALID_STATE,
+                  WorkflowNextStep.PASSWORD_SETUP,
+                  RegistrationErrorKey.STATE_INVALID.value()));
+    };
   }
 
   private Mono<CompleteRegistrationResult> prepare(
       CompleteRegistrationCommand command,
       RegistrationProtectedAuthFlowContextResult context,
-      AuthFlowSession session) {
-    if (session.status() != AuthFlowStatus.USERNAME_VERIFIED) {
-      return Mono.just(
-          failure(
-              CompleteRegistrationResultStatus.INVALID_STATE,
-              WorkflowNextStep.PASSWORD_SETUP,
-              RegistrationErrorKey.STATE_INVALID.value()));
-    }
+      AuthFlowSession session,
+      boolean replayOnly) {
     UsernameCheckState username;
     try {
       username = usernames.load(session);
@@ -140,35 +155,62 @@ public final class SharedCompleteRegistrationService implements CompleteRegistra
               List.of(),
               validation.errors()));
     }
-    return execute(
-        command,
+    RegistrationCompleteProtectedOperationInput input =
         new RegistrationCompleteProtectedOperationInput(
-            command, context.registrationContext(), username, session));
+            command, context.registrationContext(), username, session);
+    return replayOnly ? replay(command, input) : execute(command, input);
   }
 
   private Mono<CompleteRegistrationResult> execute(
       CompleteRegistrationCommand command, RegistrationCompleteProtectedOperationInput input) {
-    String sessionScope = command.authFlowSessionId().value();
-    var execution =
-        new IdempotentExecutionCommand(
-            identities.create(
-                RegistrationSharedIdempotencyAction.COMPLETE,
-                command.idempotencyKey().value(),
-                sessionScope),
-            fingerprints.create(
-                RegistrationSharedIdempotencyAction.COMPLETE,
-                List.of(sessionScope, sha256(command.password()))),
-            command.idempotencyTtl(),
-            () -> operation.execute(input).map(responses::toTransientResponse),
-            failure ->
-                failure instanceof RegistrationCompletionPreDispatchException
-                    ? IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT
-                    : IdempotencyFailureClassification.POSSIBLE_SIDE_EFFECT,
-            responses::capture,
-            responses::hydrate);
     return executor
-        .execute(execution)
+        .execute(execution(command, input))
         .map(result -> route(result.lifecycleOutcome(), result.terminalResponse()));
+  }
+
+  private Mono<CompleteRegistrationResult> replay(
+      CompleteRegistrationCommand command, RegistrationCompleteProtectedOperationInput input) {
+    IdempotentExecutionCommand execution = execution(command, input);
+    return executor
+        .replayCompleted(
+            execution.operationId(), execution.fingerprint(), execution.replayResolver())
+        .map(this::routeReplay);
+  }
+
+  private IdempotentExecutionCommand execution(
+      CompleteRegistrationCommand command, RegistrationCompleteProtectedOperationInput input) {
+    String sessionScope = command.authFlowSessionId().value();
+    return new IdempotentExecutionCommand(
+        identities.create(
+            RegistrationSharedIdempotencyAction.COMPLETE,
+            command.idempotencyKey().value(),
+            sessionScope),
+        fingerprints.create(
+            RegistrationSharedIdempotencyAction.COMPLETE,
+            List.of(sessionScope, sha256(command.password()))),
+        command.idempotencyTtl(),
+        () -> operation.execute(input).map(responses::toTransientResponse),
+        failure ->
+            failure instanceof RegistrationCompletionPreDispatchException
+                ? IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT
+                : IdempotencyFailureClassification.POSSIBLE_SIDE_EFFECT,
+        responses::capture,
+        responses::hydrate);
+  }
+
+  private CompleteRegistrationResult routeReplay(Optional<IdempotentExecutionResult> replay) {
+    if (replay.isEmpty()) {
+      return failure(
+          CompleteRegistrationResultStatus.INVALID_AUTH_FLOW,
+          WorkflowNextStep.NONE,
+          RegistrationErrorKey.AUTH_FLOW_INVALID.value());
+    }
+    IdempotentExecutionResult result = replay.orElseThrow();
+    if (result.lifecycleOutcome() != IdempotencyReservationOutcome.COMPLETED_REPLAY) {
+      throw new IdempotencyExecutionException(
+          "Registration completion replay returned an invalid lifecycle outcome");
+    }
+    return responses.fromTransientResponse(result.terminalResponse());
   }
 
   private CompleteRegistrationResult route(

@@ -32,6 +32,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
 
     String json = objectMapper.writeValueAsString(response);
@@ -71,6 +72,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
 
     String json = objectMapper.writeValueAsString(response);
@@ -92,6 +94,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
 
     String json = objectMapper.writeValueAsString(response);
@@ -111,6 +114,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.DUPLICATE_IN_PROGRESS,
+                null,
                 null));
 
     assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.WAIT);
@@ -129,6 +133,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
 
     String json = objectMapper.writeValueAsString(response);
@@ -151,6 +156,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
@@ -174,6 +180,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
@@ -198,6 +205,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
@@ -221,6 +229,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
@@ -253,6 +262,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
@@ -270,6 +280,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
@@ -293,6 +304,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
     assertThat(response.errors())
         .singleElement()
@@ -314,6 +326,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
     assertThat(response.errors())
         .singleElement()
@@ -343,6 +356,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 List.of(),
                 List.of(suppliedError),
                 RegistrationIdempotencyStartOutcome.STARTED,
+                null,
                 null));
     assertThat(response.errors())
         .singleElement()

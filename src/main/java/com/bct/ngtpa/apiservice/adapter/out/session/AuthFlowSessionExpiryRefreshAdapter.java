@@ -19,6 +19,20 @@ public class AuthFlowSessionExpiryRefreshAdapter implements AuthFlowSessionExpir
 
   @Override
   public Mono<AuthFlowSession> refresh(AuthFlowSessionId sessionId, Instant interactionAt) {
+    return refresh(sessionId, interactionAt, null, false);
+  }
+
+  @Override
+  public Mono<AuthFlowSession> refreshUsernameVerified(
+      AuthFlowSessionId sessionId, Instant interactionAt) {
+    return refresh(sessionId, interactionAt, AuthFlowStatus.USERNAME_VERIFIED, true);
+  }
+
+  private Mono<AuthFlowSession> refresh(
+      AuthFlowSessionId sessionId,
+      Instant interactionAt,
+      AuthFlowStatus requiredStatus,
+      boolean requireRevisionCas) {
     Objects.requireNonNull(sessionId, "sessionId must not be null");
     Objects.requireNonNull(interactionAt, "interactionAt must not be null");
 
@@ -36,6 +50,10 @@ public class AuthFlowSessionExpiryRefreshAdapter implements AuthFlowSessionExpir
                 return Mono.<AuthFlowSession>error(
                     new IllegalStateException("Auth flow session is not usable"));
               }
+              if (requiredStatus != null && session.status() != requiredStatus) {
+                return Mono.<AuthFlowSession>error(
+                    new IllegalStateException("Auth flow session status is not refreshable"));
+              }
 
               int ttlSeconds = ttl(session.scenario());
               AuthFlowSession updated =
@@ -49,9 +67,12 @@ public class AuthFlowSessionExpiryRefreshAdapter implements AuthFlowSessionExpir
                       session.createdAt(),
                       interactionAt,
                       interactionAt.plusSeconds(ttlSeconds));
-              return new com.bct.ngtpa.apiservice.application.usecase.session.authflow
-                      .RevisionAwareAuthFlowSessionWriter(sessions)
-                  .updateExpected(session, updated);
+              var writer =
+                  new com.bct.ngtpa.apiservice.application.usecase.session.authflow
+                      .RevisionAwareAuthFlowSessionWriter(sessions);
+              return requireRevisionCas
+                  ? writer.updateExpectedStrict(session, updated)
+                  : writer.updateExpected(session, updated);
             });
   }
 

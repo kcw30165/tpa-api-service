@@ -124,6 +124,7 @@ public class DefaultRegistrationProtectedAuthFlowContextLoader
           contextProtector.unprotect(
               new RegistrationAuthFlowEncryptedContext(ciphertext, keyVersion, algorithm));
       return RegistrationProtectedAuthFlowContextResult.valid(
+          session,
           session.activeOtpChallengeId(),
           session.data() == null ? null : session.data().maskedDestination(),
           context);

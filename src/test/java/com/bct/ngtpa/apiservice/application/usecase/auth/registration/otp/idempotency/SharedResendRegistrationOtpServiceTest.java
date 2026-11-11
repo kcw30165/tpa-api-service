@@ -31,9 +31,25 @@ class SharedResendRegistrationOtpServiceTest {
                 Mono.just(
                     RegistrationProtectedAuthFlowContextResult.invalid(
                         RegistrationProtectedAuthFlowContextStatus.CSRF_INVALID)),
-            sharedCommand -> {
-              executions.incrementAndGet();
-              return Mono.error(new AssertionError("executor must not be called"));
+            new IdempotencyExecutor() {
+              @Override
+              public Mono<IdempotentExecutionResult> execute(
+                  com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand
+                      sharedCommand) {
+                executions.incrementAndGet();
+                return Mono.error(new AssertionError("executor must not be called"));
+              }
+
+              @Override
+              public Mono<java.util.Optional<IdempotentExecutionResult>> replayCompleted(
+                  com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId
+                      operationId,
+                  com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint
+                      fingerprint,
+                  com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayResolver
+                      replayResolver) {
+                return Mono.error(new AssertionError("replay-only lookup must not be called"));
+              }
             });
     assertThat(service.resend(command()).block().status())
         .isEqualTo(ResendRegistrationOtpResultStatus.CSRF_INVALID);
@@ -44,10 +60,25 @@ class SharedResendRegistrationOtpServiceTest {
   void duplicateDoesNotInvokeProtectedOperation() {
     AtomicInteger protectedCalls = new AtomicInteger();
     IdempotencyExecutor executor =
-        sharedCommand ->
-            Mono.just(
+        new IdempotencyExecutor() {
+          @Override
+          public Mono<IdempotentExecutionResult> execute(
+              com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand
+                  sharedCommand) {
+            return Mono.just(
                 new IdempotentExecutionResult(
                     IdempotencyReservationOutcome.DUPLICATE_IN_PROGRESS, null));
+          }
+
+          @Override
+          public Mono<java.util.Optional<IdempotentExecutionResult>> replayCompleted(
+              com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId operationId,
+              com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint fingerprint,
+              com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayResolver
+                  replayResolver) {
+            return Mono.error(new AssertionError("replay-only lookup must not be called"));
+          }
+        };
     var service = service(validContext(), executor, protectedCalls);
     assertThat(service.resend(command()).block().status())
         .isEqualTo(ResendRegistrationOtpResultStatus.DUPLICATE_IN_PROGRESS);

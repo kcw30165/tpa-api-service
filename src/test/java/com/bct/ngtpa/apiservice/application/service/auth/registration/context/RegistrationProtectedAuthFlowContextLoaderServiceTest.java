@@ -57,6 +57,7 @@ class RegistrationProtectedAuthFlowContextLoaderServiceTest {
                   .isEqualTo(RegistrationProtectedAuthFlowContextStatus.VALID);
               assertThat(result.activeOtpChallengeId()).isEqualTo("otp_abc");
               assertThat(result.maskedDestination()).isEqualTo("m****r@example.com");
+              assertThat(result.authFlowSession().status()).isEqualTo(AuthFlowStatus.OTP_SENT);
               assertThat(result.registrationContext().identityType())
                   .isEqualTo(MemberIdentityType.ID);
               assertThat(result.toString())

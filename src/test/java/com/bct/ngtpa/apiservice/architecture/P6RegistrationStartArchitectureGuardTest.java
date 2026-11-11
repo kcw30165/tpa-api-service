@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.architecture;
 
 import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
 import org.junit.jupiter.api.Test;
 
@@ -9,6 +10,7 @@ class P6RegistrationStartArchitectureGuardTest {
   void p6ApplicationUseCaseRemainsFrameworkFree() {
     var classes =
         new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
             .importPackages("com.bct.ngtpa.apiservice.application.usecase.auth.registration");
     ArchRuleDefinition.noClasses()
         .that()
@@ -30,6 +32,7 @@ class P6RegistrationStartArchitectureGuardTest {
   void p6ControllerDoesNotDependOnOutboundAdapters() {
     var classes =
         new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
             .importPackages("com.bct.ngtpa.apiservice.adapter.in.web.auth.registration");
     ArchRuleDefinition.noClasses()
         .that()

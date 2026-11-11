@@ -16,8 +16,9 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegis
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -33,7 +34,7 @@ class AuthRegistrationControllerWorkflowContractTest {
             String.class,
             String.class,
             String.class,
-            ServerHttpResponse.class);
+            ServerWebExchange.class);
 
     assertThat(method.getGenericReturnType().getTypeName()).contains("MutationResponse");
     assertThat(method.getGenericReturnType().getTypeName())
@@ -74,7 +75,7 @@ class AuthRegistrationControllerWorkflowContractTest {
                 "corr",
                 "en",
                 null,
-                new MockServerHttpResponse()))
+                startExchange()))
         .assertNext(
             response -> {
               assertThat(response).isInstanceOf(org.springframework.http.ResponseEntity.class);
@@ -116,7 +117,7 @@ class AuthRegistrationControllerWorkflowContractTest {
             null,
             null,
             null);
-    var response = new MockServerHttpResponse();
+    var exchange = startExchange();
 
     StepVerifier.create(
             controller.startRegistration(
@@ -126,7 +127,7 @@ class AuthRegistrationControllerWorkflowContractTest {
                 "corr",
                 "en",
                 null,
-                response))
+                exchange))
         .assertNext(
             body -> {
               assertThat(java.util.Objects.requireNonNull(body.getBody()).success()).isTrue();
@@ -138,8 +139,14 @@ class AuthRegistrationControllerWorkflowContractTest {
             })
         .verifyComplete();
 
-    assertThat(response.getCookies()).containsKey("auth_flow_sid");
-    assertThat(response.getCookies().getFirst("auth_flow_sid").getValue()).isEqualTo("afs_secret");
+    assertThat(exchange.getResponse().getCookies()).containsKey("auth_flow_sid");
+    assertThat(exchange.getResponse().getCookies().getFirst("auth_flow_sid").getValue())
+        .isEqualTo("afs_secret");
+  }
+
+  private static ServerWebExchange startExchange() {
+    return MockServerWebExchange.from(
+        MockServerHttpRequest.post("/api/v1/auth/registration/start"));
   }
 
   private static final class RecordingUseCase implements StartRegistrationUseCase {

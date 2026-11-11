@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -14,6 +15,9 @@ import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
@@ -26,11 +30,14 @@ import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -119,18 +126,48 @@ class ApiExceptionHandlerLoggingTest {
   }
 
   @Test
-  void unexpectedExceptionsIncludeStackTraceOnce() throws Exception {
-    handler.handle(
-        new IllegalStateException("apiKey=secret exploded"),
-        exchangeWithRequestId("unexpected-req-id"));
+  void technicalErrorsAreMetadataOnlyAndDoNotReadExceptionMessage() throws Exception {
+    String marker = "central-private-error-marker";
+    String requestId = "unexpected-req-id";
+    var exception = new TrackingIllegalStateException(marker);
 
-    assertEquals(1, listAppender.list.size());
+    var response = handler.handle(exception, exchangeWithRequestId(requestId));
+
+    assertEquals(0, exception.messageReads());
+    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+    assertEquals(MediaType.APPLICATION_JSON, response.getHeaders().getContentType());
+    assertEquals(requestId, response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
+    MutationResponse<Void> body = response.getBody();
+    assertNotNull(body);
+    assertFalse(body.success());
+    assertEquals(ApiStatus.SYSTEM_ERROR, body.status());
+    assertNull(body.result());
+    assertTrue(body.messages().isEmpty());
+    assertEquals(1, body.errors().size());
+    ApiError error = body.errors().getFirst();
+    assertEquals("SYSTEM", error.type());
+    assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, error.code());
+    assertEquals(List.of(), error.targets());
+    assertEquals("ERROR", error.severity());
+    assertEquals("SERVER", error.source());
+    assertEquals(
+        "Sorry, this service might be interrupted. Please try again later.", error.message());
+
     ILoggingEvent event = singleEvent();
     assertEquals(Level.ERROR, event.getLevel());
     JsonNode payload = parse(event);
+    assertEquals("http.api.error", payload.get("event").asText());
+    assertEquals(requestId, payload.get("requestId").asText());
+    assertEquals("GET", payload.get("httpMethod").asText());
+    assertEquals("/api/v1/test", payload.get("path").asText());
+    assertEquals(500, payload.get("httpStatus").asInt());
     assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, payload.get("errorCode").asText());
-    assertEquals("apiKey=*** exploded", payload.get("sanitizedMessage").asText());
-    assertNotNull(event.getThrowableProxy());
+    assertEquals("TrackingIllegalStateException", payload.get("exceptionType").asText());
+    assertFalse(payload.has("sanitizedMessage"));
+    assertNull(event.getThrowableProxy());
+    assertFalse(event.getFormattedMessage().contains(marker));
+    assertFalse(Arrays.deepToString(event.getArgumentArray()).contains(marker));
+    assertFalse(event.getMDCPropertyMap().toString().contains(marker));
   }
 
   // ── CacheException ───────────────────────────────────────────────────────────────
@@ -147,7 +184,7 @@ class ApiExceptionHandlerLoggingTest {
     assertEquals(Level.ERROR, event.getLevel());
     JsonNode payload = parse(event);
     assertEquals("CacheException", payload.get("exceptionType").asText());
-    assertEquals("Cache get operation failed", payload.get("sanitizedMessage").asText());
+    assertFalse(payload.has("sanitizedMessage"));
     assertNull(
         event.getThrowableProxy(),
         "Stack trace must not be logged for CacheException to prevent raw Redis error leakage");
@@ -212,5 +249,25 @@ class ApiExceptionHandlerLoggingTest {
         return Mono.empty();
       }
     };
+  }
+
+  private static final class TrackingIllegalStateException extends IllegalStateException {
+    private final String marker;
+    private int messageReads;
+
+    private TrackingIllegalStateException(String marker) {
+      super((String) null);
+      this.marker = marker;
+    }
+
+    @Override
+    public String getMessage() {
+      messageReads++;
+      return marker;
+    }
+
+    private int messageReads() {
+      return messageReads;
+    }
   }
 }

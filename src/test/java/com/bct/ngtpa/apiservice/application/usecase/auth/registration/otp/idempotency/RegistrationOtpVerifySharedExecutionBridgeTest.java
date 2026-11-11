@@ -15,6 +15,7 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentCapturedResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalResponseSnapshot;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationUnregisteredTrust;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResultStatus;
@@ -54,6 +55,7 @@ class RegistrationOtpVerifySharedExecutionBridgeTest {
                 WorkflowErrorSeverity.ERROR,
                 "SERVER")),
         RegistrationIdempotencyStartOutcome.STARTED,
+        null,
         null);
   }
 
@@ -80,6 +82,28 @@ class RegistrationOtpVerifySharedExecutionBridgeTest {
   }
 
   @Test
+  void protectedContextDiagnosticStatusIsNotSerializedInTransientResponse() {
+    VerifyRegistrationOtpResult invalidContext =
+        new VerifyRegistrationOtpResult(
+            VerifyRegistrationOtpResultStatus.INVALID_AUTH_FLOW,
+            WorkflowNextStep.NONE,
+            List.of(),
+            null,
+            List.of(),
+            List.of(),
+            RegistrationIdempotencyStartOutcome.STARTED,
+            null,
+            RegistrationProtectedAuthFlowContextStatus.MISSING_CONTEXT);
+
+    HydratedIdempotentResponse response = newBridge().toTransientResponse(invalidContext);
+    VerifyRegistrationOtpResult roundTripped = newBridge().fromTransientResponse(response);
+
+    assertThat(response.serializedBody())
+        .doesNotContain("protectedContextStatus", "MISSING_CONTEXT");
+    assertThat(roundTripped.protectedContextStatus()).isNull();
+  }
+
+  @Test
   void toTransientResponseThrowsForLifecycleOnlyStatus() {
     VerifyRegistrationOtpResult lifecycleOnly =
         new VerifyRegistrationOtpResult(
@@ -89,6 +113,7 @@ class RegistrationOtpVerifySharedExecutionBridgeTest {
             null,
             List.of(),
             List.of(),
+            null,
             null,
             null);
     assertThatThrownBy(() -> newBridge().toTransientResponse(lifecycleOnly))
@@ -122,6 +147,7 @@ class RegistrationOtpVerifySharedExecutionBridgeTest {
             null,
             List.of(),
             List.of(),
+            null,
             null,
             null);
     HydratedIdempotentResponse response = bridge.toTransientResponse(minimal);

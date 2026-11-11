@@ -185,6 +185,14 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
       }
       return Mono.just(new IdempotentExecutionResult(outcome, null));
     }
+
+    @Override
+    public Mono<java.util.Optional<IdempotentExecutionResult>> replayCompleted(
+        com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId operationId,
+        com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint fingerprint,
+        com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayResolver replayResolver) {
+      return Mono.error(new AssertionError("Unexpected replay-only lookup"));
+    }
   }
 
   private static final class Fixture {

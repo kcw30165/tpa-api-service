@@ -12,10 +12,10 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 
 /**
- * Builds and emits the single {@code http.api.error} log event for a handled exception: field
- * shape, field order, sanitization, and the ERROR/WARN plus with/without-stack-trace branching. The
- * caller's own SLF4J {@link Logger} is passed in (rather than this class owning a logger) so
- * emitted events keep the exact logger category of the calling handler.
+ * Builds and emits the single {@code http.api.error} log event for a handled exception. Technical
+ * ERROR events contain metadata only; WARN events retain diagnostic sanitization and optional
+ * stack-trace behavior. The caller's own SLF4J {@link Logger} is passed in (rather than this class
+ * owning a logger) so emitted events keep the exact logger category of the calling handler.
  *
  * <p>{@link LoggingSanitizer} is injected via the constructor. {@link ErrorLogDirective} carries
  * {@code status}, {@code errorCode}, {@code logAtError}, {@code includeStackTrace} and {@code
@@ -61,20 +61,18 @@ public final class ErrorEventLogger {
     event.put("errorCode", directive.errorCode());
     event.putAll(directive.extraFields());
     event.put("exceptionType", exception.getClass().getSimpleName());
+    if (directive.logAtError()) {
+      String payload = loggingSanitizer.toSafeString(event);
+      logger.error("{}", payload);
+      return;
+    }
+
     String sanitizedMessage =
         loggingSanitizer.sanitizeText(firstNonBlank(diagnosticMessage, exception.getMessage()));
     if (StringUtils.hasText(sanitizedMessage)) {
       event.put("sanitizedMessage", sanitizedMessage);
     }
     String payload = loggingSanitizer.toSafeString(event);
-    if (directive.logAtError()) {
-      if (directive.includeStackTrace()) {
-        logger.error("{}", payload, exception);
-      } else {
-        logger.error("{}", payload);
-      }
-      return;
-    }
     if (directive.includeStackTrace()) {
       logger.warn("{}", payload, exception);
       return;

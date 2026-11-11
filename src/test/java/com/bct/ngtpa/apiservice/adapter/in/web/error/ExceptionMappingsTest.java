@@ -527,11 +527,11 @@ class ExceptionMappingsTest {
   // ───────────────────────── registry assembly ─────────────────────────
 
   @Test
-  void configAssemblesExactlyTwentyThreeMappingsPlusCatchAll() {
+  void configAssemblesExactlyTwentyFourMappingsPlusCatchAll() {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(23, registry.mappingCount());
+    assertEquals(24, registry.mappingCount());
 
     ErrorDescriptor updateUnavailable =
         registry.resolve(

@@ -9,13 +9,17 @@ class M3R1bUsernameTerminalOwnershipArchitectureTest {
   private static final Path MAIN = Path.of("src/main/java");
 
   @Test
-  void registrationUsernameAdapterAloneActivatesOwnershipAndDropsAspect() throws Exception {
+  void registrationStartAndUsernameAdaptersKeepInvocationSpecificOwnership() throws Exception {
     String adapter =
         read(
             "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationUsernameAvailabilityAdapter.java");
     assertThat(adapter)
         .contains("ApimIncidentOwnership.TERMINAL_CALLER")
         .doesNotContain("@LogExecution");
+    String lookup =
+        read(
+            "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java");
+    assertThat(lookup).contains("ApimIncidentOwnership.TERMINAL_CALLER", "@LogExecution");
     var opted =
         Files.walk(MAIN)
             .filter(p -> p.toString().endsWith(".java"))
@@ -24,7 +28,8 @@ class M3R1bUsernameTerminalOwnershipArchitectureTest {
             .toList();
     assertThat(opted)
         .contains(
-            "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationUsernameAvailabilityAdapter.java");
+            "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationUsernameAvailabilityAdapter.java",
+            "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java");
     assertThat(
             read(
                 "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/ApimForgotPasswordUsernameLookupAdapter.java"))

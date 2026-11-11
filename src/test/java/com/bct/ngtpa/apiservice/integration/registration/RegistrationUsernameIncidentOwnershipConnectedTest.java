@@ -1,26 +1,36 @@
 package com.bct.ngtpa.apiservice.integration.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.AppenderBase;
+import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.RegistrationIdempotencyProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CancelRegistrationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorEventLogger;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequiredRequestIdWebFilter;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationSuccessPageMapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimAppCertificateService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimCertificateService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
@@ -40,16 +50,27 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeOutcomeLo
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.DefaultApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.ApimForgotPasswordUsernameLookupAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationCompletionAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationLookupAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationUsernameAvailabilityAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.SharedApimTrpChkCustIdTransport;
 import com.bct.ngtpa.apiservice.adapter.out.config.ConfigBackedDownstreamErrorClassificationAdapter;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.auth.CaptchaPolicy;
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
+import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengePolicy;
+import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengeType;
 import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.UsernamePolicy;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationEligibleTrustSet;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassification;
 import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassificationRequest;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
+import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCreateCommand;
@@ -61,24 +82,60 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.RegistrationUsernameCheckEncryptedState;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SelectedTrust;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState;
+import com.bct.ngtpa.apiservice.application.idempotency.DefaultIdempotencyExecutor;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyCommands;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyPort;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyRecord;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservation;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOutcome;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationToken;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyStatus;
 import com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCancellationPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCompletionLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameCheckProtectorPort;
+import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextLoader;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextResult;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordUsernameLookupCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationPasswordValidationResult;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationPasswordValidator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationUsernameCheckContextLoader;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.idempotency.RegistrationCompleteProtectedOperation;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.idempotency.RegistrationCompleteReplayCodec;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.idempotency.RegistrationCompleteSharedExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.idempotency.SharedCompleteRegistrationService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationSharedFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationSharedIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.RegistrationUsernameAvailabilityCommand;
 import com.bct.ngtpa.apiservice.infrastructure.logging.ExecutionLoggingAspect;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.StructuredFailureEventLogger;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
 import com.bct.ngtpa.apiservice.infrastructure.security.SecurityConfig;
+import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
@@ -95,6 +152,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
@@ -111,6 +169,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.AfterEach;
@@ -127,7 +186,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
@@ -136,8 +197,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.test.web.reactive.server.EntityExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.config.EnableWebFlux;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
@@ -171,8 +235,11 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   private static final String API_KEY_MARKER = "r1c-api-key-marker";
   private static final String CLIENT_SECRET_MARKER = "r1c-client-secret-marker";
   private static final String CYPHER_MARKER = "r1c-csrf-marker";
+  private static final String TRP_REG_MEMBER_SUCCESS_RESPONSE =
+      "{\"response\":{\"err-message\":\"\",\"data\":[{\"success\":true,\"create-date\":\"20260710\",\"create-time\":\"120000\"}]}}";
   private static final String APIM_PATH = SharedApimTrpChkCustIdTransport.API_NAME;
   private static final String REQUEST_PATH = "/api/v1/auth/registration/username/check";
+  private static final String START_PATH = "/api/v1/auth/registration/start";
 
   @Autowired WebTestClient webTestClient;
   @Autowired ConfigurableApplicationContext applicationContext;
@@ -180,9 +247,13 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   @Autowired ObjectMapper objectMapper;
   @Autowired ApimProperties apimProperties;
   @Autowired RequestLoggingWebFilter requestLoggingWebFilter;
+  @Autowired ApiExceptionHandler apiExceptionHandler;
   @Autowired RegistrationController registrationController;
   @Autowired CheckRegistrationUsernameService usernameService;
   @Autowired ApimRegistrationUsernameAvailabilityAdapter usernameAdapter;
+  @Autowired ApimRegistrationCompletionAdapter completionAdapter;
+  @Autowired ApimRegistrationLookupAdapter registrationLookupAdapter;
+  @Autowired FailureEventPort failureEventPort;
   @Autowired ConfigBackedDownstreamErrorClassificationAdapter classificationAdapter;
   @Autowired SharedApimTrpChkCustIdTransport sharedTransport;
   @Autowired DefaultApimExchangeExecutor executor;
@@ -195,9 +266,13 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   @Autowired ScenarioExchange scenarioExchange;
   @Autowired ExecutionProbe executionProbe;
   @Autowired TestProtector protector;
+  @Autowired StartTestPolicy startTestPolicy;
+  @Autowired RegistrationStartWorkflowIntegrationTest.InMemoryCaptchaPort startCaptchaPort;
 
   private Logger rootLogger;
   private ThreadSafeAppender applicationEvents;
+  private final List<AnnotationConfigApplicationContext> completionWebContexts =
+      new CopyOnWriteArrayList<>();
 
   @BeforeEach
   void captureApplicationEvents() {
@@ -207,6 +282,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     rootLogger.addAppender(applicationEvents);
     sessions.reset();
     protector.reset();
+    startTestPolicy.setCaptchaEnabled(false);
+    startCaptchaPort.clear();
     scenarioExchange.reset();
     profileResolver.useSuccessfulProfile();
     tokenService.useSuccessfulToken();
@@ -214,6 +291,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
   @AfterEach
   void detachApplicationEventCapture() {
+    completionWebContexts.forEach(AnnotationConfigApplicationContext::close);
+    completionWebContexts.clear();
     rootLogger.detachAppender(applicationEvents);
     applicationEvents.stop();
   }
@@ -221,6 +300,677 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   @Test
   void springContextLoads() {
     assertThat(webTestClient).isNotNull();
+  }
+
+  @Test
+  void registrationStartTechnicalFailureCaptchaDisabledHasSingleCentralErrorOwner()
+      throws IOException {
+    String requestId = "r1c-start-technical-disabled";
+    String downstreamMarker = "r1c-start-downstream-private-8a71";
+    String responseMarker = "r1c-start-http-private-32c4";
+    scenarioExchange.respondThen(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "{\"error\":\"" + responseMarker + "\"}",
+        HttpStatus.OK,
+        "{\"response\":{\"err-message\":\"" + downstreamMarker + "\",\"data\":[]}}");
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        startRegistrationRequest(requestId, "r1c-start-disabled-key", null)
+            .expectBody()
+            .returnResult();
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    JsonNode body = objectMapper.readTree(response.getResponseBody());
+    assertThat(body.path("status").asText()).isEqualTo("SYSTEM_ERROR");
+    assertThat(body.path("errors").path(0).path("code").asText())
+        .isEqualTo("err.workflow.downstream.unavailable");
+    assertThat(errorEvents(requestEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName()).isEqualTo(ApiExceptionHandler.class.getName());
+              assertThat(event.getFormattedMessage()).contains("\"event\":\"http.api.error\"");
+            });
+    assertObserverWarnings(requestEvents, requestId, 503);
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+    assertNoSensitiveMarkers(requestEvents, downstreamMarker, responseMarker);
+  }
+
+  @Test
+  void registrationStartTechnicalFailureCaptchaEnabledHasSingleMapperErrorOwner()
+      throws IOException {
+    String requestId = "r1c-start-technical-enabled";
+    String downstreamMarker = "r1c-start-enabled-downstream-private-6e15";
+    String responseMarker = "r1c-start-enabled-http-private-19db";
+    scenarioExchange.respondThen(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "{\"error\":\"" + responseMarker + "\"}",
+        HttpStatus.OK,
+        "{\"response\":{\"err-message\":\"" + downstreamMarker + "\",\"data\":[]}}");
+    startTestPolicy.setCaptchaEnabled(true);
+    String captchaChallengeId = startCaptchaPort.seed(CaptchaStatus.VERIFIED, false);
+    int startIndex = applicationEvents.size();
+    WebTestClient startClient =
+        webTestClient.mutate().responseTimeout(Duration.ofSeconds(30)).build();
+
+    EntityExchangeResult<byte[]> response =
+        startRegistrationRequest(
+                startClient, requestId, "r1c-start-enabled-key", captchaChallengeId)
+            .expectBody()
+            .returnResult();
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    JsonNode body = objectMapper.readTree(response.getResponseBody());
+    assertThat(body.path("status").asText()).isEqualTo("SYSTEM_ERROR");
+    assertThat(body.path("errors").path(0).path("code").asText())
+        .isEqualTo("err.workflow.system.unavailable");
+    assertThat(errorEvents(requestEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName())
+                  .isEqualTo(RegistrationStartWebMapper.class.getName());
+              assertThat(event.getFormattedMessage()).contains("event=registration.start.failure");
+            });
+    assertObserverWarnings(requestEvents, requestId, 502);
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+    assertNoSensitiveMarkers(requestEvents, downstreamMarker, responseMarker);
+  }
+
+  @Test
+  void registrationStartMemberNotFoundProducesNoIncidentError() throws IOException {
+    String requestId = "r1c-start-member-not-found";
+    scenarioExchange.respond(
+        HttpStatus.OK, "{\"response\":{\"err-message\":\"err.tpa.member.not.found\",\"data\":[]}}");
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        startRegistrationRequest(requestId, "r1c-start-member-not-found-key", null)
+            .expectBody()
+            .returnResult();
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus().value()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY.value());
+    JsonNode body = objectMapper.readTree(response.getResponseBody());
+    assertThat(body.path("status").asText()).isEqualTo("BUSINESS_REJECTED");
+    assertThat(body.path("errors").path(0).path("type").asText()).isEqualTo("FIELD");
+    assertThat(body.path("errors").path(0).path("code").asText())
+        .isEqualTo("err.registration.start.verificationFailed");
+    assertThat(body.path("errors").path(0).path("targets").path(0).asText())
+        .isEqualTo("identityValue");
+    assertThat(errorEvents(requestEvents)).isEmpty();
+    assertThat(requestEvents)
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLoggerName())
+                  .isEqualTo(StructuredFailureEventLogger.class.getName());
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains("\"failureOrigin\":\"DOWNSTREAM_BUSINESS\"");
+            });
+    assertHttpObservation(requestEvents, requestId, 422, Level.WARN);
+    assertThat(scenarioExchange.calls()).isEqualTo(1);
+  }
+
+  @Test
+  void registrationCompletionProfileFailureUsesTerminalDiagnosticsWithoutDispatch() {
+    String requestId = "r2-completion-profile-failure";
+    String downstreamMarker = "r2-private-profile-marker-not-for-logs";
+    profileResolver.failProfile(new IllegalStateException(downstreamMarker));
+    int startIndex = applicationEvents.size();
+    AtomicReference<Throwable> failure = new AtomicReference<>();
+
+    StepVerifier.create(
+            completionAdapter
+                .complete(completionCommand(requestId))
+                .contextWrite(Context.of(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId)))
+        .expectErrorSatisfies(failure::set)
+        .verify();
+
+    assertThat(failure.get()).isInstanceOf(Exception.class);
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/registration/complete")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, requestId));
+    var response = apiExceptionHandler.handle((Exception) failure.get(), exchange);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().errors().getFirst().code())
+        .isEqualTo(com.bct.ngtpa.apiservice.shared.error.ErrorCodes.SYSTEM_UNEXPECTED);
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isTrue();
+
+    List<ILoggingEvent> requestEvents = applicationEvents.eventsFrom(startIndex);
+    assertThat(scenarioExchange.calls()).isZero();
+    assertTerminalCallerCompletionWarnings(requestEvents, requestId);
+    assertThat(errorEvents(requestEvents).getFirst().getThrowableProxy()).isNull();
+    assertNoSensitiveMarkers(requestEvents, downstreamMarker, USERNAME_MARKER, TRUST_CODE_MARKER);
+  }
+
+  @Test
+  void registrationCompletionHttpFailureUsesTerminalDiagnosticsWithoutResubmission() {
+    String requestId = "r2-completion-http-failure";
+    String responseMarker = "r2-private-http-response-marker";
+    scenarioExchange.respond(
+        HttpStatus.SERVICE_UNAVAILABLE, "{\"error\":\"" + responseMarker + "\"}");
+    int startIndex = applicationEvents.size();
+    AtomicReference<Throwable> failure = new AtomicReference<>();
+
+    StepVerifier.create(
+            completionAdapter
+                .complete(completionCommand(requestId))
+                .contextWrite(Context.of(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId)))
+        .expectErrorSatisfies(failure::set)
+        .verify();
+
+    assertThat(failure.get()).isInstanceOf(Exception.class);
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/registration/complete")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, requestId));
+    var response = apiExceptionHandler.handle((Exception) failure.get(), exchange);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    assertThat(response.getBody().errors().getFirst().code())
+        .isEqualTo(com.bct.ngtpa.apiservice.shared.error.ErrorCodes.APIM_SERVICE_UNAVAILABLE);
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isTrue();
+
+    List<ILoggingEvent> requestEvents = applicationEvents.eventsFrom(startIndex);
+    assertThat(scenarioExchange.calls()).isOne();
+    assertThat(scenarioExchange.observations())
+        .singleElement()
+        .satisfies(observation -> assertThat(observation.path()).endsWith("/TRPRegMember"));
+    assertTerminalCallerCompletionWarnings(requestEvents, requestId);
+    assertNoSensitiveMarkers(
+        requestEvents,
+        responseMarker,
+        USERNAME_MARKER,
+        TRUST_CODE_MARKER,
+        ACCOUNT_ENV_MARKER,
+        TOKEN_MARKER,
+        API_KEY_MARKER,
+        CLIENT_SECRET_MARKER);
+  }
+
+  @Test
+  void registrationCompletionBusinessRejectionHasNoIncidentError() {
+    scenarioExchange.respond(
+        HttpStatus.OK, "{\"response\":{\"err-message\":\"err.tpa.member.not.found\",\"data\":[]}}");
+    int startIndex = applicationEvents.size();
+
+    StepVerifier.create(
+            completionAdapter
+                .complete(completionCommand("r2-completion-business-rejection"))
+                .contextWrite(
+                    Context.of(
+                        RequestCorrelation.REQUEST_ID_CONTEXT_KEY,
+                        "r2-completion-business-rejection")))
+        .expectNextMatches(result -> result.status().name().equals("REJECTED"))
+        .verifyComplete();
+
+    List<ILoggingEvent> requestEvents = applicationEvents.eventsFrom(startIndex);
+    assertThat(scenarioExchange.calls()).isOne();
+    assertThat(errorEvents(requestEvents)).isEmpty();
+    assertThat(requestEvents)
+        .filteredOn(
+            event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
+  }
+
+  @Test
+  void completedContinuationFailureMarksItsHttpObservationAsOwned() throws IOException {
+    scenarioExchange.respond(HttpStatus.OK, TRP_REG_MEMBER_SUCCESS_RESPONSE);
+    CompletionHttpHarness harness = completionHttpHarness("completion-http-csrf-token");
+    String requestId = "r3-connected-continuation-marker";
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        completionRequest(
+            harness.client(),
+            requestId,
+            "r3-continuation-marker-key",
+            "completion-http-csrf-token");
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    assertHttpObservation(requestEvents, requestId, 502, Level.WARN);
+  }
+
+  @Test
+  void continuationTransportFailureHasOneIncidentAndCompletedReplayIsReadOnly() throws IOException {
+    String csrf = "completion-http-csrf-token";
+    String idempotencyKey = "r3-continuation-transport-key";
+    String downstreamMarker = "r3-private-search-http-marker";
+    scenarioExchange.respondThen(
+        HttpStatus.OK,
+        TRP_REG_MEMBER_SUCCESS_RESPONSE,
+        HttpStatus.BAD_REQUEST,
+        "{\"error\":\"" + downstreamMarker + "\"}");
+    CompletionHttpHarness harness = completionHttpHarness(csrf, registrationLookupAdapter);
+    String requestId = "r3-connected-continuation-transport";
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> first =
+        completionRequest(harness.client(), requestId, idempotencyKey, csrf);
+    List<ILoggingEvent> firstEvents = awaitRequestCompletion(requestId, startIndex);
+    JsonNode firstBody = objectMapper.readTree(first.getResponseBody());
+
+    assertThat(first.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    assertThat(firstBody.path("status").asText()).isEqualTo("SYSTEM_ERROR");
+    assertThat(firstBody.path("success").asBoolean()).isFalse();
+    assertThat(firstBody.at("/errors/0/type").asText()).isEqualTo("BUSINESS");
+    assertThat(firstBody.at("/errors/0/code").asText())
+        .isEqualTo(
+            com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey
+                .REGISTRATION_COMPLETE_CONTINUATIONUNAVAILABLE
+                .value());
+    assertThat(firstBody.at("/errors/0/targets/0").asText()).isEqualTo("PAGE");
+    assertThat(firstBody.at("/errors/0/message").isMissingNode()).isTrue();
+    assertThat(firstBody.at("/result/nextStep").asText()).isEqualTo("RETURN_TO_LOGIN");
+    assertThat(firstBody.has("requestId")).isFalse();
+    assertThat(first.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
+        .isEqualTo(requestId);
+    assertThat(first.getResponseCookies().getFirst("auth_flow_sid").getValue())
+        .isEqualTo(SESSION_ID);
+    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.COMPLETED);
+    assertThat(sessions.current().status()).isEqualTo(AuthFlowStatus.COMPLETING);
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+    assertThat(scenarioExchange.observations())
+        .satisfiesExactly(
+            registration -> assertThat(registration.path()).endsWith("/TRPRegMember"),
+            continuation -> assertThat(continuation.path()).endsWith("/TRPSearchMember"));
+    assertThat(errorEvents(firstEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName())
+                  .isEqualTo(StructuredFailureEventLogger.class.getName());
+              assertThat(event.getFormattedMessage())
+                  .contains(
+                      "\"event\":\"registration.complete.continuation_failure\"",
+                      "\"requestId\":\"" + requestId + "\"",
+                      "\"failureOrigin\":\"DOWNSTREAM_TRANSPORT\"",
+                      "\"internalCode\":\"CONTINUATION_LOOKUP_FAILED\"");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertThat(firstEvents)
+        .filteredOn(event -> event.getLoggerName().equals(ApimWebClientFacade.class.getName()))
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage()).contains("statusClass=HTTP_ERROR");
+            });
+    assertThat(firstEvents)
+        .filteredOn(
+            event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains("\"event\":\"apim.exchange.failed\"");
+            });
+    assertThat(firstEvents)
+        .filteredOn(
+            event ->
+                event.getLoggerName().equals(ExecutionLoggingAspect.class.getName())
+                    && event.getFormattedMessage().contains("\"event\":\"method.execution.error\""))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage()).contains(requestId);
+              assertThat(event.getFormattedMessage()).doesNotContain("\"errorMessage\"");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertHttpObservation(firstEvents, requestId, 502, Level.WARN);
+    assertNoSensitiveMarkers(
+        firstEvents,
+        downstreamMarker,
+        ACCOUNT_ENV_MARKER,
+        TRUST_CODE_MARKER,
+        USERNAME_MARKER,
+        TOKEN_MARKER,
+        API_KEY_MARKER,
+        CLIENT_SECRET_MARKER,
+        "completion-private-dob-marker",
+        "completion-private-contact-marker",
+        "completion-private-password-marker",
+        "completion-private-ciphertext-marker");
+
+    String replayRequestId = "r3-connected-continuation-replay";
+    int replayStartIndex = applicationEvents.size();
+    EntityExchangeResult<byte[]> replay =
+        completionRequest(harness.client(), replayRequestId, idempotencyKey, csrf);
+    List<ILoggingEvent> replayEvents = awaitRequestCompletion(replayRequestId, replayStartIndex);
+
+    assertThat(replay.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    assertThat(replay.getResponseBody()).isEqualTo(first.getResponseBody());
+    assertThat(replay.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
+        .isEqualTo(replayRequestId);
+    assertThat(replay.getResponseCookies().getFirst("auth_flow_sid").getValue())
+        .isEqualTo(SESSION_ID);
+    assertThat(errorEvents(replayEvents)).isEmpty();
+    assertThat(replayEvents)
+        .noneMatch(
+            event ->
+                event.getLoggerName().equals(ApimWebClientFacade.class.getName())
+                    || event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName())
+                    || event.getLoggerName().equals(StructuredFailureEventLogger.class.getName())
+                    || event.getLoggerName().equals(ExecutionLoggingAspect.class.getName()));
+    assertHttpObservation(replayEvents, replayRequestId, 502, Level.WARN);
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.COMPLETED);
+    assertThat(harness.persistence().reserveCalls()).isOne();
+    assertThat(harness.persistence().loadCalls()).isOne();
+    assertNoSensitiveMarkers(replayEvents, downstreamMarker, ACCOUNT_ENV_MARKER, TRUST_CODE_MARKER);
+  }
+
+  @Test
+  void continuationContractDiagnosticIsWarningAndBusinessNotFoundHasNoIncidentError()
+      throws IOException {
+    String csrf = "completion-http-csrf-token";
+    String idempotencyKey = "r3-continuation-contract-key";
+    String downstreamMarker = "r3-private-search-contract-marker";
+    scenarioExchange.respondThen(
+        HttpStatus.OK,
+        TRP_REG_MEMBER_SUCCESS_RESPONSE,
+        HttpStatus.OK,
+        "{\"response\":{\"err-message\":\"" + downstreamMarker + "\",\"data\":[]}}");
+    CompletionHttpHarness harness = completionHttpHarness(csrf, registrationLookupAdapter);
+    String requestId = "r3-connected-continuation-contract";
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        completionRequest(harness.client(), requestId, idempotencyKey, csrf);
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    assertThat(errorEvents(requestEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName())
+                  .isEqualTo(StructuredFailureEventLogger.class.getName());
+              assertThat(event.getFormattedMessage())
+                  .contains("\"failureOrigin\":\"DOWNSTREAM_CONTRACT\"");
+            });
+    assertThat(requestEvents)
+        .filteredOn(
+            event ->
+                event.getLoggerName().equals(StructuredFailureEventLogger.class.getName())
+                    && event.getLevel() == Level.WARN)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getFormattedMessage())
+                  .contains(
+                      "\"event\":\"registration.lookup.downstream_contract_failure\"",
+                      "\"failureOrigin\":\"DOWNSTREAM_TECHNICAL\"",
+                      "\"internalCode\":\"UNEXPECTED_ERROR\"");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertThat(requestEvents)
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getLoggerName())
+                  .isEqualTo(ApimExchangeOutcomeLogger.class.getName());
+              assertThat(event.getFormattedMessage())
+                  .contains("\"event\":\"apim.business.rejected\"");
+            });
+    assertThat(requestEvents)
+        .filteredOn(
+            event ->
+                event.getLoggerName().equals(ExecutionLoggingAspect.class.getName())
+                    && event.getFormattedMessage().contains("\"event\":\"method.execution.error\""))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getThrowableProxy()).isNull();
+              assertThat(event.getFormattedMessage()).doesNotContain("\"errorMessage\"");
+            });
+    assertHttpObservation(requestEvents, requestId, 502, Level.WARN);
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+    assertNoSensitiveMarkers(
+        requestEvents, downstreamMarker, ACCOUNT_ENV_MARKER, TRUST_CODE_MARKER);
+
+    scenarioExchange.reset();
+    scenarioExchange.respondThen(
+        HttpStatus.OK,
+        TRP_REG_MEMBER_SUCCESS_RESPONSE,
+        HttpStatus.OK,
+        "{\"response\":{\"err-message\":\"err.tpa.member.not.found\",\"data\":[]}}");
+    CompletionHttpHarness businessHarness = completionHttpHarness(csrf, registrationLookupAdapter);
+    String businessRequestId = "r3-connected-continuation-business";
+    int businessStartIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> business =
+        completionRequest(
+            businessHarness.client(), businessRequestId, "r3-continuation-business-key", csrf);
+    List<ILoggingEvent> businessEvents =
+        awaitRequestCompletion(businessRequestId, businessStartIndex);
+
+    assertThat(business.getStatus()).isEqualTo(HttpStatus.OK);
+    assertThat(objectMapper.readTree(business.getResponseBody()).path("success").asBoolean())
+        .isTrue();
+    assertThat(errorEvents(businessEvents)).isEmpty();
+    assertThat(businessEvents)
+        .filteredOn(
+            event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains("\"event\":\"event.registration.lookup.downstream_rejection\"");
+            });
+    assertThat(businessEvents)
+        .noneMatch(
+            event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""));
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+  }
+
+  @Test
+  void replayStorageFailureHasItsOwnCentralIncidentWithoutRepeatingProtectedWork()
+      throws IOException {
+    String csrf = "completion-http-csrf-token";
+    String idempotencyKey = "r3-continuation-replay-storage-key";
+    scenarioExchange.respondThen(
+        HttpStatus.OK,
+        TRP_REG_MEMBER_SUCCESS_RESPONSE,
+        HttpStatus.BAD_REQUEST,
+        "{\"error\":\"continuation unavailable\"}");
+    CompletionHttpHarness harness = completionHttpHarness(csrf, registrationLookupAdapter);
+    String originalRequestId = "r3-connected-storage-original";
+    int originalStartIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> original =
+        completionRequest(harness.client(), originalRequestId, idempotencyKey, csrf);
+    awaitRequestCompletion(originalRequestId, originalStartIndex);
+    assertThat(original.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+
+    String storageMarker = "r3-private-replay-storage-marker";
+    harness.persistence().failNextLoad(new IllegalStateException(storageMarker));
+    String replayRequestId = "r3-connected-storage-failure";
+    int replayStartIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> replay =
+        completionRequest(harness.client(), replayRequestId, idempotencyKey, csrf);
+    List<ILoggingEvent> replayEvents = awaitRequestCompletion(replayRequestId, replayStartIndex);
+
+    assertThat(replay.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(errorEvents(replayEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName()).isEqualTo(ApiExceptionHandler.class.getName());
+              assertThat(event.getFormattedMessage()).contains("\"event\":\"http.api.error\"");
+              assertThat(event.getFormattedMessage()).doesNotContain(storageMarker);
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertThat(replayEvents)
+        .noneMatch(
+            event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()));
+    assertHttpObservation(replayEvents, replayRequestId, 500, Level.WARN);
+    assertThat(scenarioExchange.calls()).isEqualTo(2);
+    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.COMPLETED);
+    assertThat(harness.persistence().reserveCalls()).isOne();
+    assertThat(harness.persistence().loadCalls()).isOne();
+  }
+
+  @Test
+  void completionHttpPreDispatchFailureHasSingleOwnerAndReplayDoesNotResubmit() throws IOException {
+    String csrf = "completion-http-csrf-token";
+    String idempotencyKey = "completion-http-pre-dispatch-key";
+    String profileMarker = "completion-private-profile-failure-marker";
+    profileResolver.failProfile(new IllegalStateException(profileMarker));
+    CompletionHttpHarness harness = completionHttpHarness(csrf);
+    String requestId = "r2-connected-pre-dispatch";
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        completionRequest(harness.client(), requestId, idempotencyKey, csrf);
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    JsonNode body = objectMapper.readTree(response.getResponseBody());
+    assertThat(body.path("status").asText()).isEqualTo("SYSTEM_ERROR");
+    assertThat(body.path("errors")).hasSize(1);
+    assertThat(body.at("/errors/0/type").asText()).isEqualTo("SYSTEM");
+    assertThat(body.at("/errors/0/code").asText())
+        .isEqualTo(com.bct.ngtpa.apiservice.shared.error.ErrorCodes.SYSTEM_UNEXPECTED);
+    assertThat(body.at("/errors/0/targets")).isEmpty();
+    assertThat(
+            body.at("/errors/0/message").isMissingNode() || body.at("/errors/0/message").isNull())
+        .isTrue();
+    assertThat(body.has("requestId")).isFalse();
+    assertThat(response.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
+        .isEqualTo(requestId);
+    assertThat(response.getResponseCookies().getFirst("auth_flow_sid")).isNull();
+    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.FAILED);
+    assertThat(sessions.current().status()).isEqualTo(AuthFlowStatus.COMPLETING);
+    assertThat(scenarioExchange.calls()).isZero();
+    assertThat(errorEvents(requestEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName()).isEqualTo(ApiExceptionHandler.class.getName());
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertTerminalCallerCompletionWarnings(requestEvents, requestId);
+    assertHttpObservation(requestEvents, requestId, 500, Level.WARN);
+    assertNoSensitiveMarkers(
+        requestEvents,
+        profileMarker,
+        ACCOUNT_ENV_MARKER,
+        TRUST_CODE_MARKER,
+        USERNAME_MARKER,
+        TOKEN_MARKER,
+        API_KEY_MARKER,
+        CLIENT_SECRET_MARKER,
+        "completion-private-dob-marker",
+        "completion-private-contact-marker",
+        "completion-private-password-marker",
+        "completion-private-ciphertext-marker");
+
+    String replayRequestId = "r2-connected-pre-dispatch-replay";
+    int replayStartIndex = applicationEvents.size();
+    EntityExchangeResult<byte[]> replay =
+        completionRequest(harness.client(), replayRequestId, idempotencyKey, csrf);
+    List<ILoggingEvent> replayEvents = awaitRequestCompletion(replayRequestId, replayStartIndex);
+
+    assertThat(replay.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(replay.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
+        .isEqualTo(replayRequestId);
+    assertThat(replay.getResponseCookies().getFirst("auth_flow_sid").getValue())
+        .isEqualTo(SESSION_ID);
+    assertThat(errorEvents(replayEvents)).isEmpty();
+    assertHttpObservation(replayEvents, replayRequestId, 400, Level.WARN);
+    assertThat(scenarioExchange.calls()).isZero();
+    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.FAILED);
+    assertThat(harness.persistence().reserveCalls()).isOne();
+    assertNoSensitiveMarkers(replayEvents, profileMarker, USERNAME_MARKER, ACCOUNT_ENV_MARKER);
+  }
+
+  @Test
+  void completionHttpPostDispatchFailureHasSingleOwnerAndUnknownReplayDoesNotResubmit()
+      throws IOException {
+    String csrf = "completion-http-csrf-token";
+    String idempotencyKey = "completion-http-post-dispatch-key";
+    String responseMarker = "completion-private-downstream-response-marker";
+    scenarioExchange.respond(
+        HttpStatus.SERVICE_UNAVAILABLE, "{\"error\":\"" + responseMarker + "\"}");
+    CompletionHttpHarness harness = completionHttpHarness(csrf);
+    String requestId = "r2-connected-post-dispatch";
+    int startIndex = applicationEvents.size();
+
+    EntityExchangeResult<byte[]> response =
+        completionRequest(harness.client(), requestId, idempotencyKey, csrf);
+    List<ILoggingEvent> requestEvents = awaitRequestCompletion(requestId, startIndex);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    JsonNode body = objectMapper.readTree(response.getResponseBody());
+    assertThat(body.path("status").asText()).isEqualTo("SYSTEM_ERROR");
+    assertThat(body.at("/errors/0/type").asText()).isEqualTo("SYSTEM");
+    assertThat(body.at("/errors/0/code").asText())
+        .isEqualTo(com.bct.ngtpa.apiservice.shared.error.ErrorCodes.APIM_SERVICE_UNAVAILABLE);
+    assertThat(body.at("/errors/0/targets")).isEmpty();
+    assertThat(
+            body.at("/errors/0/message").isMissingNode() || body.at("/errors/0/message").isNull())
+        .isTrue();
+    assertThat(body.has("requestId")).isFalse();
+    assertThat(response.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
+        .isEqualTo(requestId);
+    assertThat(response.getResponseCookies().getFirst("auth_flow_sid")).isNull();
+    assertThat(harness.persistence().record().status())
+        .isEqualTo(IdempotencyStatus.UNKNOWN_OUTCOME);
+    assertThat(sessions.current().status()).isEqualTo(AuthFlowStatus.COMPLETING);
+    assertThat(scenarioExchange.calls()).isOne();
+    assertThat(scenarioExchange.observations())
+        .singleElement()
+        .satisfies(observation -> assertThat(observation.path()).endsWith("/TRPRegMember"));
+    assertThat(errorEvents(requestEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName()).isEqualTo(ApiExceptionHandler.class.getName());
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertTerminalCallerCompletionWarnings(requestEvents, requestId);
+    assertHttpObservation(requestEvents, requestId, 502, Level.WARN);
+    assertNoSensitiveMarkers(
+        requestEvents,
+        responseMarker,
+        ACCOUNT_ENV_MARKER,
+        TRUST_CODE_MARKER,
+        USERNAME_MARKER,
+        TOKEN_MARKER,
+        API_KEY_MARKER,
+        CLIENT_SECRET_MARKER,
+        "completion-private-dob-marker",
+        "completion-private-contact-marker",
+        "completion-private-password-marker",
+        "completion-private-ciphertext-marker");
+
+    String replayRequestId = "r2-connected-post-dispatch-replay";
+    int replayStartIndex = applicationEvents.size();
+    EntityExchangeResult<byte[]> replay =
+        completionRequest(harness.client(), replayRequestId, idempotencyKey, csrf);
+    List<ILoggingEvent> replayEvents = awaitRequestCompletion(replayRequestId, replayStartIndex);
+
+    assertThat(replay.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(replay.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
+        .isEqualTo(replayRequestId);
+    assertThat(replay.getResponseCookies().getFirst("auth_flow_sid").getValue())
+        .isEqualTo(SESSION_ID);
+    assertThat(errorEvents(replayEvents)).isEmpty();
+    assertHttpObservation(replayEvents, replayRequestId, 400, Level.WARN);
+    assertThat(scenarioExchange.calls()).isOne();
+    assertThat(harness.persistence().record().status())
+        .isEqualTo(IdempotencyStatus.UNKNOWN_OUTCOME);
+    assertThat(harness.persistence().reserveCalls()).isOne();
+    assertNoSensitiveMarkers(replayEvents, responseMarker, USERNAME_MARKER, ACCOUNT_ENV_MARKER);
   }
 
   @Test
@@ -757,6 +1507,293 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     return usernameRequest(csrf, requestId, USERNAME_MARKER);
   }
 
+  private WebTestClient.ResponseSpec startRegistrationRequest(
+      String requestId, String idempotencyKey, String captchaChallengeId) {
+    return startRegistrationRequest(webTestClient, requestId, idempotencyKey, captchaChallengeId);
+  }
+
+  private WebTestClient.ResponseSpec startRegistrationRequest(
+      WebTestClient client, String requestId, String idempotencyKey, String captchaChallengeId) {
+    Map<String, Object> body = new java.util.LinkedHashMap<>();
+    body.put("identityType", "GPFS");
+    body.put("identityValue", "1234567890");
+    body.put("dateOfBirth", "31/01/1980");
+    body.put("email", "member@example.com");
+    body.put("mobile", null);
+    body.put("captchaChallengeId", captchaChallengeId);
+    return client
+        .post()
+        .uri(START_PATH)
+        .header("X-Request-Id", requestId)
+        .header("Idempotency-Key", idempotencyKey)
+        .header("Accept-Language", "en")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchange();
+  }
+
+  private void assertObserverWarnings(
+      List<ILoggingEvent> requestEvents, String requestId, int status) {
+    assertThat(requestEvents)
+        .filteredOn(event -> event.getLoggerName().equals(ApimWebClientFacade.class.getName()))
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains("APIM request failed statusClass=HTTP_ERROR");
+            });
+    assertThat(requestEvents)
+        .filteredOn(
+            event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains("\"event\":\"apim.business.rejected\"");
+            });
+    assertThat(requestEvents)
+        .filteredOn(
+            event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains(
+                      "\"event\":\"registration.lookup.downstream_contract_failure\"",
+                      "\"internalCode\":\"UNEXPECTED_ERROR\"");
+            });
+    assertThat(requestEvents)
+        .filteredOn(
+            event ->
+                event.getLoggerName().equals(ExecutionLoggingAspect.class.getName())
+                    && event.getFormattedMessage().contains("\"event\":\"method.execution.error\""))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getThrowableProxy()).isNull();
+              assertThat(event.getFormattedMessage()).doesNotContain("\"errorMessage\"");
+            });
+    assertHttpObservation(requestEvents, requestId, status, Level.WARN);
+  }
+
+  private void assertTerminalCallerCompletionWarnings(
+      List<ILoggingEvent> requestEvents, String requestId) {
+    assertThat(requestEvents)
+        .filteredOn(
+            event ->
+                (event.getLoggerName().equals(ApimWebClientFacade.class.getName())
+                    || event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName())
+                    || event.getLoggerName().equals(ApiExceptionHandler.class.getName())
+                    || (event.getLoggerName().equals(ExecutionLoggingAspect.class.getName())
+                        && event
+                            .getFormattedMessage()
+                            .contains("\"event\":\"method.execution.error\""))))
+        .extracting(ILoggingEvent::getLoggerName)
+        .containsExactly(
+            ApimWebClientFacade.class.getName(),
+            ApimExchangeOutcomeLogger.class.getName(),
+            ExecutionLoggingAspect.class.getName(),
+            ApiExceptionHandler.class.getName());
+    assertThat(errorEvents(requestEvents))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName()).isEqualTo(ApiExceptionHandler.class.getName());
+              assertThat(event.getFormattedMessage()).contains("\"event\":\"http.api.error\"");
+            });
+    assertThat(requestEvents)
+        .filteredOn(event -> event.getLoggerName().equals(ApimWebClientFacade.class.getName()))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
+    assertThat(requestEvents)
+        .filteredOn(
+            event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
+    assertThat(requestEvents)
+        .filteredOn(
+            event ->
+                event.getLoggerName().equals(ExecutionLoggingAspect.class.getName())
+                    && event.getFormattedMessage().contains("\"event\":\"method.execution.error\""))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage()).contains(requestId);
+              assertThat(event.getFormattedMessage()).doesNotContain("\"errorMessage\"");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+  }
+
+  private CompletionHttpHarness completionHttpHarness(String csrfToken) {
+    RegistrationLookupPort lookup = mock(RegistrationLookupPort.class);
+    when(lookup.searchMember(any()))
+        .thenReturn(Mono.error(new IllegalStateException("continuation unavailable")));
+    when(lookup.classifySearchMemberFailure(any())).thenReturn(FailureOrigin.LOCAL_SYSTEM);
+    return completionHttpHarness(csrfToken, lookup);
+  }
+
+  private CompletionHttpHarness completionHttpHarness(
+      String csrfToken, RegistrationLookupPort lookup) {
+    assertThat(AopUtils.isAopProxy(completionAdapter)).isTrue();
+    sessions.seedCompletionSession(csrfToken);
+    var registrationContext =
+        new RegistrationAuthFlowContext(
+            MemberIdentityType.GPN,
+            "completion-private-identity-marker",
+            "completion-private-dob-marker",
+            RegistrationContactType.EMAIL,
+            "completion-private-contact-marker@example.test");
+    RegistrationProtectedAuthFlowContextLoader contexts =
+        command -> {
+          AuthFlowSession session = sessions.current();
+          if (session == null
+              || !session.authFlowSessionId().equals(command.authFlowSessionId())
+              || !session.csrfTokenHash().equals(sha256(command.csrfToken()))
+              || !command.acceptedStatuses().contains(session.status())) {
+            return Mono.just(
+                RegistrationProtectedAuthFlowContextResult.invalid(
+                    RegistrationProtectedAuthFlowContextStatus.CSRF_INVALID));
+          }
+          return Mono.just(
+              RegistrationProtectedAuthFlowContextResult.valid(
+                  session, "completion-challenge", "m***@example.test", registrationContext));
+        };
+    AuthFlowSessionExpiryRefreshPort expiry =
+        new AuthFlowSessionExpiryRefreshPort() {
+          @Override
+          public Mono<AuthFlowSession> refresh(AuthFlowSessionId sessionId, Instant interactionAt) {
+            return Mono.justOrEmpty(sessions.current());
+          }
+
+          @Override
+          public Mono<AuthFlowSession> refreshUsernameVerified(
+              AuthFlowSessionId sessionId, Instant interactionAt) {
+            return Mono.justOrEmpty(sessions.current());
+          }
+        };
+    RegistrationUsernameCheckContextLoader usernames =
+        mock(RegistrationUsernameCheckContextLoader.class);
+    var now = Instant.parse("2026-07-10T00:00:00Z");
+    when(usernames.load(any()))
+        .thenReturn(
+            new UsernameCheckState(
+                new SelectedTrust(ACCOUNT_ENV_MARKER, TRUST_CODE_MARKER),
+                "completion-private-username-marker",
+                now,
+                now.plusSeconds(600)));
+    RegistrationPasswordValidator passwords = mock(RegistrationPasswordValidator.class);
+    when(passwords.validate(any(), any(), any()))
+        .thenReturn(RegistrationPasswordValidationResult.success());
+
+    AuthFlowSessionCompletionLockPort locks = mock(AuthFlowSessionCompletionLockPort.class);
+    when(locks.acquire(any(), any()))
+        .thenReturn(Mono.just(new SessionLockHandle(true, "completion-lock", "completion-owner")));
+    when(locks.release(any())).thenReturn(Mono.just(true));
+    var operation =
+        new RegistrationCompleteProtectedOperation(
+            sessions,
+            locks,
+            completionAdapter,
+            lookup,
+            mock(AuthFlowSessionCancellationPort.class),
+            failureEventPort,
+            Duration.ofSeconds(30),
+            Clock.fixed(now, ZoneOffset.UTC));
+
+    ConnectedIdempotencyPort persistence = new ConnectedIdempotencyPort();
+    var idempotencyExecutor =
+        new DefaultIdempotencyExecutor(
+            persistence,
+            () -> new IdempotencyReservationToken("reservationToken0123456789abcdefgh"),
+            Clock.fixed(now, ZoneOffset.UTC));
+    var service =
+        new SharedCompleteRegistrationService(
+            contexts,
+            expiry,
+            usernames,
+            passwords,
+            idempotencyExecutor,
+            operation,
+            new RegistrationCompleteSharedExecutionBridge(new RegistrationCompleteReplayCodec()),
+            new RegistrationSharedIdempotencyIdentityFactory(),
+            new RegistrationSharedFingerprintFactory(),
+            Clock.fixed(now, ZoneOffset.UTC));
+    var mapper =
+        new CompleteRegistrationWebMapper(
+            Duration.ofMinutes(5), new RegistrationSuccessPageMapper(new BffPagesProperties()));
+    var controller =
+        new RegistrationController(
+            null,
+            null,
+            AuthFlowCookieWriter.defaultWriter(),
+            service,
+            mapper,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+    var clientContext = new AnnotationConfigApplicationContext();
+    clientContext.register(CompletionWebConfiguration.class);
+    clientContext.registerBean(FailureEventPort.class, () -> failureEventPort);
+    clientContext.registerBean(RegistrationController.class, () -> controller);
+    clientContext.registerBean(ApiExceptionHandler.class, () -> apiExceptionHandler);
+    clientContext.registerBean(RequestLoggingWebFilter.class, () -> requestLoggingWebFilter);
+    clientContext.refresh();
+    completionWebContexts.add(clientContext);
+    WebTestClient client =
+        WebTestClient.bindToApplicationContext(clientContext)
+            .configureClient()
+            .responseTimeout(Duration.ofSeconds(30))
+            .build();
+    return new CompletionHttpHarness(client, persistence);
+  }
+
+  private EntityExchangeResult<byte[]> completionRequest(
+      WebTestClient client, String requestId, String idempotencyKey, String csrfToken) {
+    return client
+        .post()
+        .uri("/api/v1/auth/registration/complete")
+        .cookie("auth_flow_sid", SESSION_ID)
+        .header("X-XSRF-TOKEN", csrfToken)
+        .header("Idempotency-Key", idempotencyKey)
+        .header(RequestCorrelation.REQUEST_ID_HEADER, requestId)
+        .header("Accept-Language", "en")
+        .header("Origin", "https://portal.example")
+        .header("Referer", "https://portal.example/registration/complete")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            new CompleteRegistrationRequest(
+                "completion-private-password-marker", "completion-private-password-marker"))
+        .exchange()
+        .expectBody()
+        .returnResult();
+  }
+
+  private record CompletionHttpHarness(
+      WebTestClient client, ConnectedIdempotencyPort persistence) {}
+
+  private static RegistrationCompletionCommand completionCommand(String requestId) {
+    return new RegistrationCompletionCommand(
+        "DB",
+        "DBA",
+        "db02",
+        "3011825",
+        "Password1!",
+        "15/07/1969",
+        "66290597",
+        "",
+        requestId,
+        ActorUserRole.ROLE_USER_MBR);
+  }
+
   private WebTestClient.ResponseSpec usernameRequest(
       String csrf, String requestId, String username) {
     return webTestClient
@@ -1096,23 +2133,33 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     private final AtomicInteger calls = new AtomicInteger();
     private final CopyOnWriteArrayList<RequestObservation> observations =
         new CopyOnWriteArrayList<>();
-    private final AtomicReference<Supplier<ClientResponse>> responseFactory =
-        new AtomicReference<>(() -> ClientResponse.create(HttpStatus.OK).body("{}").build());
+    private final AtomicReference<IntFunction<ClientResponse>> responseFactory =
+        new AtomicReference<>(ignored -> ClientResponse.create(HttpStatus.OK).body("{}").build());
     private final AtomicReference<Throwable> failure = new AtomicReference<>();
 
     void reset() {
       calls.set(0);
       observations.clear();
       failure.set(null);
-      responseFactory.set(() -> ClientResponse.create(HttpStatus.OK).body("{}").build());
+      responseFactory.set(ignored -> ClientResponse.create(HttpStatus.OK).body("{}").build());
     }
 
     void respond(HttpStatus status, String body) {
       responseFactory.set(
-          () ->
+          ignored ->
               ClientResponse.create(status)
                   .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                   .body(body)
+                  .build());
+    }
+
+    void respondThen(
+        HttpStatus firstStatus, String firstBody, HttpStatus secondStatus, String secondBody) {
+      responseFactory.set(
+          call ->
+              ClientResponse.create(call == 0 ? firstStatus : secondStatus)
+                  .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                  .body(call == 0 ? firstBody : secondBody)
                   .build());
     }
 
@@ -1130,7 +2177,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
     @Override
     public Mono<ClientResponse> exchange(ClientRequest request) {
-      calls.incrementAndGet();
+      int callNumber = calls.getAndIncrement();
       observations.add(
           new RequestObservation(
               request.url().getPath(), Set.copyOf(request.headers().headerNames())));
@@ -1138,7 +2185,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
       if (configuredFailure != null) {
         return Mono.error(configuredFailure);
       }
-      return Mono.just(responseFactory.get().get());
+      return Mono.just(responseFactory.get().apply(callNumber));
     }
   }
 
@@ -1185,6 +2232,123 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     }
   }
 
+  private static final class ConnectedIdempotencyPort implements IdempotencyPort {
+    private IdempotencyRecord record;
+    private int reserveCalls;
+    private int loadCalls;
+    private RuntimeException nextLoadFailure;
+
+    @Override
+    public Mono<IdempotencyReservation> reserve(IdempotencyCommands.Reserve command) {
+      reserveCalls++;
+      if (record != null) {
+        if (!record.operationId().equals(command.operationId())
+            || !record.fingerprint().equals(command.fingerprint())) {
+          return Mono.just(
+              new IdempotencyReservation(
+                  IdempotencyReservationOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST,
+                  record.status(),
+                  null,
+                  null));
+        }
+        IdempotencyReservationOutcome outcome =
+            switch (record.status()) {
+              case PROCESSING -> IdempotencyReservationOutcome.DUPLICATE_IN_PROGRESS;
+              case COMPLETED -> IdempotencyReservationOutcome.COMPLETED_REPLAY;
+              case FAILED -> IdempotencyReservationOutcome.FAILED_EXISTING;
+              case UNKNOWN_OUTCOME -> IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING;
+            };
+        return Mono.just(
+            new IdempotencyReservation(outcome, record.status(), record.terminalResponse(), null));
+      }
+      record =
+          new IdempotencyRecord(
+              command.operationId(),
+              command.fingerprint(),
+              command.reservationToken(),
+              IdempotencyStatus.PROCESSING,
+              null,
+              command.now(),
+              command.now(),
+              command.now().plus(command.ttl()));
+      return Mono.just(
+          new IdempotencyReservation(
+              IdempotencyReservationOutcome.ACQUIRED,
+              IdempotencyStatus.PROCESSING,
+              null,
+              command.reservationToken()));
+    }
+
+    @Override
+    public Mono<IdempotencyRecord> complete(IdempotencyCommands.Complete command) {
+      record =
+          new IdempotencyRecord(
+              command.operationId(),
+              command.fingerprint(),
+              command.reservationToken(),
+              IdempotencyStatus.COMPLETED,
+              command.terminalResponse(),
+              record.createdAt(),
+              command.now(),
+              command.now().plus(command.ttl()));
+      return Mono.just(record);
+    }
+
+    @Override
+    public Mono<IdempotencyRecord> fail(IdempotencyCommands.Fail command) {
+      record = updateStatus(IdempotencyStatus.FAILED, command.now(), command.ttl());
+      return Mono.just(record);
+    }
+
+    @Override
+    public Mono<IdempotencyRecord> markUnknown(IdempotencyCommands.MarkUnknown command) {
+      record = updateStatus(IdempotencyStatus.UNKNOWN_OUTCOME, command.now(), command.ttl());
+      return Mono.just(record);
+    }
+
+    @Override
+    public Mono<Optional<IdempotencyRecord>> load(IdempotencyOperationId operationId) {
+      loadCalls++;
+      RuntimeException failure = nextLoadFailure;
+      nextLoadFailure = null;
+      if (failure != null) {
+        return Mono.error(failure);
+      }
+      return Mono.just(
+          Optional.ofNullable(record)
+              .filter(existing -> existing.operationId().equals(operationId)));
+    }
+
+    void failNextLoad(RuntimeException failure) {
+      nextLoadFailure = failure;
+    }
+
+    IdempotencyRecord record() {
+      return record;
+    }
+
+    int reserveCalls() {
+      return reserveCalls;
+    }
+
+    int loadCalls() {
+      return loadCalls;
+    }
+
+    private IdempotencyRecord updateStatus(
+        IdempotencyStatus status, Instant updatedAt, Duration ttl) {
+      return new IdempotencyRecord(
+          record.operationId(),
+          record.fingerprint(),
+          record.reservationToken(),
+          status,
+          null,
+          record.createdAt(),
+          updatedAt,
+          updatedAt.plus(ttl));
+    }
+  }
+
   static final class StatefulSessions implements AuthFlowSessionPort {
     private AuthFlowSession session;
     private long revision;
@@ -1192,6 +2356,23 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
     synchronized void reset() {
       session = null;
+      revision = 0;
+      updateFailure = null;
+    }
+
+    synchronized void seedCompletionSession(String csrfToken) {
+      Instant now = Instant.parse("2026-07-10T00:00:00Z");
+      session =
+          new AuthFlowSession(
+              new AuthFlowSessionId(SESSION_ID),
+              AuthFlowScenario.REGISTRATION,
+              AuthFlowStatus.USERNAME_VERIFIED,
+              sha256(csrfToken),
+              "completion-challenge",
+              new AuthFlowSessionData("EMAIL", "completion-masked-destination", Map.of()),
+              now.minusSeconds(300),
+              now.minusSeconds(60),
+              now.plusSeconds(1800));
       revision = 0;
       updateFailure = null;
     }
@@ -1302,6 +2483,29 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     }
   }
 
+  static final class StartTestPolicy implements AuthWorkflowPolicyPort {
+    private final AtomicReference<Boolean> captchaEnabled = new AtomicReference<>(false);
+
+    void setCaptchaEnabled(boolean enabled) {
+      captchaEnabled.set(enabled);
+    }
+
+    @Override
+    public RegistrationAuthWorkflowPolicy registrationPolicy() {
+      return new RegistrationAuthWorkflowPolicy(
+          new PreStartChallengePolicy(captchaEnabled.get(), PreStartChallengeType.CAPTCHA),
+          new CaptchaPolicy(8, "ABC123", false, 300, 5),
+          null,
+          null,
+          null);
+    }
+
+    @Override
+    public Optional<String> resolveIdentityTypeSearchScope(String identityType) {
+      return Optional.empty();
+    }
+  }
+
   static final class TestProtector implements RegistrationUsernameCheckProtectorPort {
     private final AtomicInteger sequence = new AtomicInteger();
     private final AtomicInteger unprotectCalls = new AtomicInteger();
@@ -1387,6 +2591,21 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     @Bean
     LoggingSanitizer loggingSanitizer(ObjectMapper mapper, MaskingService maskingService) {
       return new LoggingSanitizer(mapper, maskingService);
+    }
+
+    @Bean
+    ErrorMessageResolver errorMessageResolver() {
+      return (code, language, accountEnv, trustCode, schemeType) -> code;
+    }
+
+    @Bean
+    ApiExceptionHandler apiExceptionHandler(
+        LoggingSanitizer sanitizer, ErrorMessageResolver resolver) {
+      return new ApiExceptionHandler(
+          new ExceptionMappingRegistryConfig().exceptionMappingRegistry(),
+          new PublicMessageResolver(resolver),
+          new ErrorEventLogger(sanitizer),
+          new ErrorResponseRenderer());
     }
 
     @Bean
@@ -1547,6 +2766,25 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     }
 
     @Bean
+    StructuredFailureEventLogger structuredFailureEventLogger(LoggingSanitizer sanitizer) {
+      return new StructuredFailureEventLogger(sanitizer);
+    }
+
+    @Bean
+    ApimRegistrationLookupAdapter registrationLookupAdapter(
+        DefaultApimExchangeExecutor executor,
+        FailureEventPort failureEventPort,
+        MaskingService maskingService) {
+      return new ApimRegistrationLookupAdapter(executor, failureEventPort, maskingService);
+    }
+
+    @Bean
+    ApimRegistrationCompletionAdapter registrationCompletionAdapter(
+        DefaultApimExchangeExecutor executor) {
+      return new ApimRegistrationCompletionAdapter(executor);
+    }
+
+    @Bean
     SharedApimTrpChkCustIdTransport sharedTransport(DefaultApimExchangeExecutor executor) {
       return new SharedApimTrpChkCustIdTransport(executor);
     }
@@ -1573,6 +2811,22 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     }
 
     @Bean
+    StartTestPolicy startTestPolicy() {
+      return new StartTestPolicy();
+    }
+
+    @Bean
+    RegistrationStartWorkflowIntegrationTest.InMemoryCaptchaPort startCaptchaPort() {
+      return new RegistrationStartWorkflowIntegrationTest.InMemoryCaptchaPort();
+    }
+
+    @Bean
+    RegistrationCaptchaGateService startCaptchaGate(
+        RegistrationStartWorkflowIntegrationTest.InMemoryCaptchaPort port, Clock clock) {
+      return new RegistrationCaptchaGateService(port, clock);
+    }
+
+    @Bean
     TestProtector protector() {
       return new TestProtector();
     }
@@ -1596,6 +2850,64 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     }
 
     @Bean
+    RegistrationStartProtectedOperation registrationStartProtectedOperation(
+        ApimRegistrationLookupAdapter lookup,
+        StartTestPolicy policy,
+        RegistrationCaptchaGateService captcha,
+        Clock clock,
+        MaskingService maskingService) {
+      RegistrationSessionPort sessions =
+          new RegistrationSessionPort() {
+            @Override
+            public Mono<String> createRegistrationSession(
+                String maskedDestination,
+                com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType
+                    contactType) {
+              return Mono.error(new AssertionError("Start failure must not create a session"));
+            }
+
+            @Override
+            public Mono<Void> updateOtpChallenge(
+                String authFlowSessionId,
+                String activeOtpChallengeId,
+                com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType
+                    contactType,
+                String maskedDestination) {
+              return Mono.error(new AssertionError("Start failure must not update an OTP"));
+            }
+          };
+      RegistrationCsrPort csrf =
+          sessionId -> Mono.error(new AssertionError("Start failure must not bind CSRF"));
+      RegistrationOtpPort otp =
+          (contactType, destination) ->
+              Mono.error(new AssertionError("Start failure must not create an OTP"));
+      RegistrationMessagePort message =
+          (contactType, recipient, otpCode, ttlSeconds, language, correlationId) ->
+              Mono.error(new AssertionError("Start failure must not deliver a message"));
+      return new RegistrationStartProtectedOperation(
+          new RegistrationStartValidator(maskingService),
+          lookup,
+          sessions,
+          csrf,
+          otp,
+          message,
+          policy,
+          captcha,
+          clock);
+    }
+
+    @Bean
+    StartRegistrationUseCase startRegistrationUseCase(
+        RegistrationStartProtectedOperation operation) {
+      return operation::execute;
+    }
+
+    @Bean
+    RegistrationStartWebMapper registrationStartWebMapper() {
+      return new RegistrationStartWebMapper(Duration.ofMinutes(5));
+    }
+
+    @Bean
     AuthFlowCookieWriter cookieWriter() {
       return AuthFlowCookieWriter.defaultWriter();
     }
@@ -1607,12 +2919,14 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
     @Bean
     RegistrationController controller(
+        StartRegistrationUseCase startRegistrationUseCase,
+        RegistrationStartWebMapper startMapper,
         CheckRegistrationUsernameService usernameService,
         RegistrationUsernameCheckWebMapper usernameMapper,
         AuthFlowCookieWriter cookieWriter) {
       return new RegistrationController(
-          mock(StartRegistrationUseCase.class),
-          mock(RegistrationStartWebMapper.class),
+          startRegistrationUseCase,
+          startMapper,
           cookieWriter,
           mock(CompleteRegistrationUseCase.class),
           mock(CompleteRegistrationWebMapper.class),
@@ -1627,4 +2941,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
           usernameMapper);
     }
   }
+
+  @Configuration
+  @EnableWebFlux
+  static class CompletionWebConfiguration {}
 }

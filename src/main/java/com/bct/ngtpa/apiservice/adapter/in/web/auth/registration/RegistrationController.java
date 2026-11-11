@@ -20,23 +20,33 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.Registra
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
+import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
+import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameCommand;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -62,6 +72,13 @@ public final class RegistrationController {
   private final RegistrationIdempotencyProperties idempotencyProperties;
   private final CheckRegistrationUsernameUseCase checkRegistrationUsernameUseCase;
   private final RegistrationUsernameCheckWebMapper registrationUsernameCheckWebMapper;
+  // Directly constructed controller tests bypass Spring's required injection.
+  private FailureEventPort failureEvents = event -> {};
+
+  @Autowired
+  public void setFailureEventPort(FailureEventPort failureEvents) {
+    this.failureEvents = failureEvents;
+  }
 
   @PostMapping(path = "/start")
   public Mono<
@@ -74,7 +91,8 @@ public final class RegistrationController {
           @RequestHeader(name = "X-Request-Id", required = false) String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage,
           @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionIdCookie,
-          ServerHttpResponse response) {
+          ServerWebExchange exchange) {
+    ServerHttpResponse response = exchange.getResponse();
     if (idempotencyKey == null || idempotencyKey.isBlank())
       return Mono.just(
           RegistrationHttpResponses.toResponse(
@@ -87,8 +105,14 @@ public final class RegistrationController {
             result -> {
               if (result.status() == StartRegistrationResultStatus.STARTED)
                 cookieWriter.writeAuthFlowCookie(response, result.authFlowSessionId());
-              return RegistrationHttpResponses.toResponse(
-                  mapper.toMutationResponse(result, acceptLanguage));
+              var mapped = mapper.toMutationResponse(result, acceptLanguage);
+              if (mapped.status() == ApiStatus.SYSTEM_ERROR
+                  && (result.status() == StartRegistrationResultStatus.SYSTEM_FAILED
+                      || result.status()
+                          == StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED)) {
+                TerminalIncidentHttpObservation.markOwned(exchange);
+              }
+              return RegistrationHttpResponses.toResponse(mapped);
             });
   }
 
@@ -108,6 +132,7 @@ public final class RegistrationController {
           @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage,
           @RequestHeader(name = "Origin", required = false) String origin,
           @RequestHeader(name = "Referer", required = false) String referer,
+          ServerWebExchange exchange,
           ServerHttpResponse response) {
     if (!hasText(authFlowSessionId)) {
       return Mono.just(
@@ -152,8 +177,13 @@ public final class RegistrationController {
                 } else {
                   cookieWriter.writeAuthFlowCookie(response, authFlowSessionId);
                 }
-                return RegistrationHttpResponses.toResponse(
-                    completeRegistrationWebMapper.toResponse(result, acceptLanguage));
+                var mapped = completeRegistrationWebMapper.toResponse(result, acceptLanguage);
+                var httpResponse = RegistrationHttpResponses.toResponse(mapped);
+                if (result.status() == CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED
+                    && mapped.status() == ApiStatus.SYSTEM_ERROR) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return httpResponse;
               });
     } catch (RuntimeException exception) {
       return Mono.just(
@@ -287,20 +317,30 @@ public final class RegistrationController {
           ServerHttpResponse response) {
     if (!hasText(authFlowSessionId)) {
       return Mono.just(
-          RegistrationHttpResponses.toResponse(
-              registrationOtpVerifyMapper.missingAuthFlowCookieResponse()));
+          otpVerifyRejection(
+              registrationOtpVerifyMapper.missingAuthFlowCookieResponse(),
+              requestId,
+              VerifyRegistrationOtpResultStatus.INVALID_AUTH_FLOW.name(),
+              false));
     }
     if (!hasText(csrfToken)) {
       return CsrfHttpResponses.missingToken();
     }
     if (!hasText(idempotencyKey)) {
       return Mono.just(
-          RegistrationHttpResponses.toResponse(
-              registrationOtpVerifyMapper.missingIdempotencyKeyResponse()));
+          otpVerifyRejection(
+              registrationOtpVerifyMapper.missingIdempotencyKeyResponse(),
+              requestId,
+              SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.name(),
+              false));
     }
     if (request == null || !hasText(request.code())) {
       return Mono.just(
-          RegistrationHttpResponses.toResponse(registrationOtpVerifyMapper.missingCodeResponse()));
+          otpVerifyRejection(
+              registrationOtpVerifyMapper.missingCodeResponse(),
+              requestId,
+              VerifyRegistrationOtpResultStatus.VALIDATION_FAILED.name(),
+              false));
     }
 
     VerifyRegistrationOtpCommand command;
@@ -316,10 +356,20 @@ public final class RegistrationController {
               trimToNull(acceptLanguage),
               trimToNull(requestId),
               idempotencyProperties.otpVerifyTtl());
+    } catch (IllegalArgumentException exception) {
+      return Mono.just(
+          otpVerifyRejection(
+              registrationOtpVerifyMapper.missingAuthFlowCookieResponse(),
+              requestId,
+              VerifyRegistrationOtpResultStatus.INVALID_AUTH_FLOW.name(),
+              false));
     } catch (RuntimeException exception) {
       return Mono.just(
-          RegistrationHttpResponses.toResponse(
-              registrationOtpVerifyMapper.missingAuthFlowCookieResponse()));
+          otpVerifyRejection(
+              registrationOtpVerifyMapper.missingAuthFlowCookieResponse(),
+              requestId,
+              VerifyRegistrationOtpResultStatus.SYSTEM_FAILED.name(),
+              true));
     }
 
     return verifyRegistrationOtpUseCase
@@ -334,9 +384,58 @@ public final class RegistrationController {
                           .VerifyRegistrationOtpResultStatus.CSRF_INVALID) {
                 cookieWriter.writeAuthFlowCookie(response, authFlowSessionId);
               }
-              return RegistrationHttpResponses.toResponse(
-                  registrationOtpVerifyMapper.toMutationResponse(result));
+              var mapped = registrationOtpVerifyMapper.toMutationResponse(result);
+              var httpResponse = RegistrationHttpResponses.toResponse(mapped);
+              if (httpResponse.getStatusCode().value() == 400
+                  && result.idempotencyOutcome()
+                      != RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY) {
+                RegistrationProtectedAuthFlowContextStatus contextStatus =
+                    result.protectedContextStatus();
+                logOtpVerifyRejection(
+                    requestId,
+                    contextStatus == null ? result.status().name() : contextStatus.name(),
+                    httpResponse.getStatusCode().value(),
+                    isTechnicalContextFailure(contextStatus));
+              }
+              return httpResponse;
             });
+  }
+
+  private ResponseEntity<
+          MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>>>
+      otpVerifyRejection(
+          MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>>
+              mutationResponse,
+          String requestId,
+          String reason,
+          boolean technical) {
+    var response = RegistrationHttpResponses.toResponse(mutationResponse);
+    if (response.getStatusCode().value() == 400) {
+      logOtpVerifyRejection(requestId, reason, response.getStatusCode().value(), technical);
+    }
+    return response;
+  }
+
+  private void logOtpVerifyRejection(
+      String requestId, String reason, int httpStatus, boolean technical) {
+    failureEvents.publish(
+        new FailureEvent(
+            "registration.otp_verify.rejected",
+            RequestIdLogSanitizer.sanitize(requestId),
+            "registration",
+            "otp_verify",
+            technical ? FailureOrigin.LOCAL_SYSTEM : FailureOrigin.LOCAL_VALIDATION,
+            reason,
+            null,
+            httpStatus,
+            false,
+            java.util.Map.of("reason", reason)));
+  }
+
+  private boolean isTechnicalContextFailure(
+      RegistrationProtectedAuthFlowContextStatus contextStatus) {
+    return contextStatus == RegistrationProtectedAuthFlowContextStatus.MISSING_CONTEXT
+        || contextStatus == RegistrationProtectedAuthFlowContextStatus.CONTEXT_DECRYPTION_FAILED;
   }
 
   @PostMapping(

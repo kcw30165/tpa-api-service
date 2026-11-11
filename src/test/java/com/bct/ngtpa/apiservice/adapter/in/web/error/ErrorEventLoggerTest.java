@@ -100,11 +100,11 @@ class ErrorEventLoggerTest {
     assertEquals(503, payload.get("httpStatus").asInt());
     assertEquals("err.system.unavailable", payload.get("errorCode").asText());
     assertEquals("IllegalStateException", payload.get("exceptionType").asText());
-    assertEquals("diagnostic message", payload.get("sanitizedMessage").asText());
+    assertFalse(payload.has("sanitizedMessage"));
   }
 
   @Test
-  void logsAtErrorWithStackTraceWhenIncludeStackTraceTrue() {
+  void logsAtErrorWithoutStackTraceWhenIncludeStackTraceTrue() {
     var exception = new IllegalStateException("unexpected");
 
     eventLogger.log(
@@ -117,7 +117,8 @@ class ErrorEventLoggerTest {
     assertEquals(1, listAppender.list.size());
     ILoggingEvent event = listAppender.list.getFirst();
     assertEquals(Level.ERROR, event.getLevel());
-    assertEquals(IllegalStateException.class.getName(), event.getThrowableProxy().getClassName());
+    assertNull(event.getThrowableProxy());
+    assertFalse(parse(event).has("sanitizedMessage"));
   }
 
   @Test
@@ -223,6 +224,7 @@ class ErrorEventLoggerTest {
     assertEquals(3, payload.get("rowIndex").asInt());
     assertEquals("fund-code", payload.get("field").asText());
     assertEquals("EMPTY", payload.get("reason").asText());
+    assertFalse(payload.has("sanitizedMessage"));
   }
 
   @Test
@@ -274,7 +276,7 @@ class ErrorEventLoggerTest {
     assertEquals(503, payload.get("httpStatus").asInt());
     assertEquals("err.system.unavailable", payload.get("errorCode").asText());
     assertEquals("IllegalStateException", payload.get("exceptionType").asText());
-    assertEquals("diagnostic message", payload.get("sanitizedMessage").asText());
+    assertFalse(payload.has("sanitizedMessage"));
   }
 
   @Test
@@ -318,6 +320,7 @@ class ErrorEventLoggerTest {
     assertEquals(3, payload.get("rowIndex").asInt());
     assertEquals("fund-code", payload.get("field").asText());
     assertEquals("EMPTY", payload.get("reason").asText());
+    assertFalse(payload.has("sanitizedMessage"));
   }
 
   @Test

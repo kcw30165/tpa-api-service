@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCompletionLo
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCompletionPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameCheckProtectorPort;
@@ -56,12 +57,13 @@ public class RegistrationCompleteUseCaseConfig {
       RegistrationCompletionPort completion,
       RegistrationLookupPort lookup,
       AuthFlowSessionCancellationPort cancellation,
+      FailureEventPort failureEventPort,
       AuthFlowSessionProperties properties,
       Clock clock) {
     Duration lease = Duration.ofSeconds(properties.getCompletionLock().getLeaseSeconds());
     var protectedOperation =
         new RegistrationCompleteProtectedOperation(
-            sessions, locks, completion, lookup, cancellation, lease, clock);
+            sessions, locks, completion, lookup, cancellation, failureEventPort, lease, clock);
     var replayCodec = new RegistrationCompleteReplayCodec();
     var responseBridge = new RegistrationCompleteSharedExecutionBridge(replayCodec);
     return new SharedCompleteRegistrationService(

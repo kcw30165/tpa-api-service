@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.idempotency.*;
@@ -29,6 +30,9 @@ class VerifyRegistrationOtpUseCaseTest {
     assertThat(f.otp.calls).isEqualTo(1);
     assertThat(f.session.transitions).isEqualTo(1);
     assertThat(f.lookup.calls).isEqualTo(1);
+    assertThat(f.lookup.command.invocationIntent())
+        .isEqualTo(RegistrationLookupInvocationIntent.DEFAULT);
+    assertThat(f.lookup.command.warningOnlyOnFailure()).isFalse();
     assertThat(f.eligible.stores).isEqualTo(1);
     assertThat(f.executor.snapshot.serializedSafeBody())
         .contains("otp-verify", "accountEnv", "trustCode")
@@ -169,6 +173,14 @@ class VerifyRegistrationOtpUseCaseTest {
       }
       return Mono.just(new IdempotentExecutionResult(outcome, null));
     }
+
+    @Override
+    public Mono<java.util.Optional<IdempotentExecutionResult>> replayCompleted(
+        com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId operationId,
+        com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint fingerprint,
+        com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayResolver replayResolver) {
+      return Mono.error(new AssertionError("Unexpected replay-only lookup"));
+    }
   }
 
   private static final class Context implements RegistrationProtectedAuthFlowContextLoader {
@@ -224,6 +236,7 @@ class VerifyRegistrationOtpUseCaseTest {
 
   private static final class Lookup implements RegistrationLookupPort {
     int calls;
+    RegistrationLookupCommand command;
     RegistrationLookupStatus status = RegistrationLookupStatus.ELIGIBLE;
     List<RegistrationLookupAccount> accounts =
         List.of(
@@ -232,7 +245,13 @@ class VerifyRegistrationOtpUseCaseTest {
 
     public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
       calls++;
+      this.command = command;
       return Mono.just(new RegistrationLookupResult(status, accounts, null));
+    }
+
+    @Override
+    public FailureOrigin classifySearchMemberFailure(Throwable failure) {
+      return FailureOrigin.LOCAL_SYSTEM;
     }
   }
 

@@ -36,19 +36,22 @@ class ExecutionLoggingAspectInvocationContextTest {
             String.class,
             boolean.class,
             boolean.class,
+            boolean.class,
             Object[].class);
     return lookup.findConstructor(invocationContextClass(), type);
   }
 
-  private static Object newContext(String methodName, Object[] args) throws Throwable {
+  private static Object newContext(String methodName, Object[] args, boolean warningOnlyOnFailure)
+      throws Throwable {
     return canonicalConstructor()
-        .invokeWithArguments("C", methodName, "C." + methodName, true, false, args);
+        .invokeWithArguments(
+            "C", methodName, "C." + methodName, true, false, warningOnlyOnFailure, args);
   }
 
   @Test
   void equalsAndHashCode_contentAware_simpleArgs() throws Throwable {
-    Object first = newContext("m", new Object[] {"x", 123});
-    Object second = newContext("m", new Object[] {"x", 123});
+    Object first = newContext("m", new Object[] {"x", 123}, false);
+    Object second = newContext("m", new Object[] {"x", 123}, false);
 
     assertEquals(first, second);
     assertEquals(second, first);
@@ -57,8 +60,8 @@ class ExecutionLoggingAspectInvocationContextTest {
 
   @Test
   void equalsAndHashCode_contentAware_nestedPrimitiveArray() throws Throwable {
-    Object first = newContext("m", new Object[] {new int[] {1, 2}});
-    Object second = newContext("m", new Object[] {new int[] {1, 2}});
+    Object first = newContext("m", new Object[] {new int[] {1, 2}}, false);
+    Object second = newContext("m", new Object[] {new int[] {1, 2}}, false);
 
     assertEquals(first, second);
     assertEquals(first.hashCode(), second.hashCode());
@@ -66,25 +69,33 @@ class ExecutionLoggingAspectInvocationContextTest {
 
   @Test
   void equalsFalse_whenScalarDiffers() throws Throwable {
-    Object first = newContext("m", new Object[] {"x"});
-    Object second = newContext("m2", new Object[] {"x"});
+    Object first = newContext("m", new Object[] {"x"}, false);
+    Object second = newContext("m2", new Object[] {"x"}, false);
 
     assertNotEquals(first, second);
   }
 
   @Test
   void equalsFalse_whenNestedArrayDiffers() throws Throwable {
-    Object first = newContext("m", new Object[] {new int[] {1, 2}});
-    Object second = newContext("m", new Object[] {new int[] {2, 3}});
+    Object first = newContext("m", new Object[] {new int[] {1, 2}}, false);
+    Object second = newContext("m", new Object[] {new int[] {2, 3}}, false);
 
     assertNotEquals(first, second);
   }
 
   @Test
   void equalsFalse_withNullOrOtherType() throws Throwable {
-    Object context = newContext("m", new Object[] {"x"});
+    Object context = newContext("m", new Object[] {"x"}, false);
 
     assertNotEquals(context, null);
     assertNotEquals(context, "some string");
+  }
+
+  @Test
+  void equalsFalse_whenWarningOnlyOnFailureDiffers() throws Throwable {
+    Object legacy = newContext("m", new Object[] {"x"}, false);
+    Object warningOnly = newContext("m", new Object[] {"x"}, true);
+
+    assertNotEquals(legacy, warningOnly);
   }
 }

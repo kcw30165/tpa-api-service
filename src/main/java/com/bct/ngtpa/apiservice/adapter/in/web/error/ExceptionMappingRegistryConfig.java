@@ -26,6 +26,7 @@ public class ExceptionMappingRegistryConfig {
   public ExceptionMappingRegistry exceptionMappingRegistry() {
     List<ExceptionMapping<? extends Throwable>> mappings =
         List.of(
+            RegistrationExceptionMappings.completionPreDispatch(),
             RegistrationExceptionMappings.lookupDownstream(),
             ApimExceptionMappings.profileResolution(),
             ApimExceptionMappings.upstream(),

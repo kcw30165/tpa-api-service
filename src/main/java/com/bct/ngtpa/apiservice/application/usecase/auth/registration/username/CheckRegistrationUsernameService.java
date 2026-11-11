@@ -17,6 +17,7 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
@@ -311,7 +312,7 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
   }
 
   private CheckRegistrationUsernameResult downstreamFailed(String origin, String correlationId) {
-    String requestId = sanitizeRequestId(correlationId);
+    String requestId = RequestIdLogSanitizer.sanitize(correlationId);
     log.error(
         "event=registration.usernameCheck.failure severity=FATAL status=TECHNICAL_FAILURE origin={}{}",
         origin,
@@ -321,38 +322,6 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
         WorkflowNextStep.USERNAME_CHECK,
         WorkflowErrorType.DOWNSTREAM_SYSTEM,
         ERROR_DOWNSTREAM_UNAVAILABLE);
-  }
-
-  // The filter does not validate X-Request-Id; this plain key=value event cannot allow spaces or
-  // '='.
-  private static String sanitizeRequestId(String requestId) {
-    if (requestId == null || requestId.isBlank()) {
-      return null;
-    }
-
-    int codePointCount = requestId.codePointCount(0, requestId.length());
-    int boundedCodePointCount = Math.min(codePointCount, 128);
-    StringBuilder sanitized = new StringBuilder(boundedCodePointCount + 3);
-    int offset = 0;
-    for (int index = 0; index < boundedCodePointCount; index++) {
-      int codePoint = requestId.codePointAt(offset);
-      if ((codePoint >= 'A' && codePoint <= 'Z')
-          || (codePoint >= 'a' && codePoint <= 'z')
-          || (codePoint >= '0' && codePoint <= '9')
-          || codePoint == '.'
-          || codePoint == '_'
-          || codePoint == ':'
-          || codePoint == '-') {
-        sanitized.appendCodePoint(codePoint);
-      } else {
-        sanitized.append('?');
-      }
-      offset += Character.charCount(codePoint);
-    }
-    if (codePointCount > boundedCodePointCount) {
-      sanitized.append("...");
-    }
-    return sanitized.toString();
   }
 
   private static final class LocalUsernameStateFailure extends RuntimeException {

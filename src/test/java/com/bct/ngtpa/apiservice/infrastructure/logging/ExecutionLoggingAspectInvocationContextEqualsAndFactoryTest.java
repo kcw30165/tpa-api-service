@@ -34,14 +34,22 @@ class ExecutionLoggingAspectInvocationContextEqualsAndFactoryTest {
       String label,
       boolean logArgs,
       boolean logResult,
+      boolean warningOnlyOnFailure,
       Object[] args)
       throws Exception {
     Class<?> cls = invocationContextClass();
     Constructor<?> constructor =
         cls.getDeclaredConstructor(
-            String.class, String.class, String.class, boolean.class, boolean.class, Object[].class);
+            String.class,
+            String.class,
+            String.class,
+            boolean.class,
+            boolean.class,
+            boolean.class,
+            Object[].class);
     constructor.setAccessible(true);
-    return constructor.newInstance(className, methodName, label, logArgs, logResult, args);
+    return constructor.newInstance(
+        className, methodName, label, logArgs, logResult, warningOnlyOnFailure, args);
   }
 
   private static class TestService {}
@@ -66,6 +74,7 @@ class ExecutionLoggingAspectInvocationContextEqualsAndFactoryTest {
     Method labelMethod = cls.getDeclaredMethod("label");
     Method logArgsMethod = cls.getDeclaredMethod("logArgs");
     Method logResultMethod = cls.getDeclaredMethod("logResult");
+    Method warningOnlyOnFailureMethod = cls.getDeclaredMethod("warningOnlyOnFailure");
     Method argsMethod = cls.getDeclaredMethod("args");
 
     assertThat(classNameMethod.invoke(context)).isEqualTo("TestService");
@@ -73,59 +82,69 @@ class ExecutionLoggingAspectInvocationContextEqualsAndFactoryTest {
     assertThat(labelMethod.invoke(context)).isEqualTo("TestService.execute");
     assertThat(logArgsMethod.invoke(context)).isEqualTo(true);
     assertThat(logResultMethod.invoke(context)).isEqualTo(false);
+    assertThat(warningOnlyOnFailureMethod.invoke(context)).isEqualTo(false);
     assertThat((Object[]) argsMethod.invoke(context)).isEqualTo(args);
   }
 
   @Test
   void equalsReturnsTrueForSameInstance() throws Exception {
-    Object context = newContext("C", "m", "lbl", true, false, new Object[] {"x"});
+    Object context = newContext("C", "m", "lbl", true, false, false, new Object[] {"x"});
     assertThat(context.equals(context)).isTrue();
   }
 
   @Test
   void equalsReturnsFalseForNull() throws Exception {
-    Object context = newContext("C", "m", "lbl", true, false, new Object[] {"x"});
+    Object context = newContext("C", "m", "lbl", true, false, false, new Object[] {"x"});
     assertThat(context.equals(null)).isFalse();
   }
 
   @Test
   void equalsReturnsFalseForDifferentClass() throws Exception {
-    Object context = newContext("C", "m", "lbl", true, false, new Object[] {"x"});
+    Object context = newContext("C", "m", "lbl", true, false, false, new Object[] {"x"});
     assertThat(context.equals("not a context")).isFalse();
   }
 
   @Test
   void equalsReturnsFalseWhenFieldsDiffer() throws Exception {
-    Object a = newContext("C", "m", "lbl", true, false, new Object[] {"x"});
-    Object b = newContext("C", "m", "different-label", true, false, new Object[] {"x"});
+    Object a = newContext("C", "m", "lbl", true, false, false, new Object[] {"x"});
+    Object b = newContext("C", "m", "different-label", true, false, false, new Object[] {"x"});
     assertThat(a.equals(b)).isFalse();
   }
 
   @Test
   void equalsReturnsTrueWhenAllFieldsMatchIncludingArgsContent() throws Exception {
-    Object a = newContext("C", "m", "lbl", true, false, new Object[] {"x", 1});
-    Object b = newContext("C", "m", "lbl", true, false, new Object[] {"x", 1});
+    Object a = newContext("C", "m", "lbl", true, false, false, new Object[] {"x", 1});
+    Object b = newContext("C", "m", "lbl", true, false, false, new Object[] {"x", 1});
     assertThat(a.equals(b)).isTrue();
   }
 
   @Test
   void equalsReturnsFalseWhenClassNameDiffers() throws Exception {
-    Object a = newContext("C1", "m", "lbl", true, false, new Object[] {"x"});
-    Object b = newContext("C2", "m", "lbl", true, false, new Object[] {"x"});
+    Object a = newContext("C1", "m", "lbl", true, false, false, new Object[] {"x"});
+    Object b = newContext("C2", "m", "lbl", true, false, false, new Object[] {"x"});
     assertThat(a.equals(b)).isFalse();
   }
 
   @Test
   void equalsReturnsFalseWhenLogArgsDiffers() throws Exception {
-    Object a = newContext("C", "m", "lbl", true, false, new Object[] {"x"});
-    Object b = newContext("C", "m", "lbl", false, false, new Object[] {"x"});
+    Object a = newContext("C", "m", "lbl", true, false, false, new Object[] {"x"});
+    Object b = newContext("C", "m", "lbl", false, false, false, new Object[] {"x"});
     assertThat(a.equals(b)).isFalse();
   }
 
   @Test
   void equalsReturnsFalseWhenLogResultDiffers() throws Exception {
-    Object a = newContext("C", "m", "lbl", true, false, new Object[] {"x"});
-    Object b = newContext("C", "m", "lbl", true, true, new Object[] {"x"});
+    Object a = newContext("C", "m", "lbl", true, false, false, new Object[] {"x"});
+    Object b = newContext("C", "m", "lbl", true, true, false, new Object[] {"x"});
     assertThat(a.equals(b)).isFalse();
+  }
+
+  @Test
+  void equalsReturnsFalseWhenWarningOnlyOnFailureDiffers() throws Exception {
+    Object legacy = newContext("C", "m", "lbl", true, false, false, new Object[] {"x"});
+    Object warningOnly = newContext("C", "m", "lbl", true, false, true, new Object[] {"x"});
+
+    assertThat(legacy.equals(warningOnly)).isFalse();
+    assertThat(warningOnly.equals(legacy)).isFalse();
   }
 }

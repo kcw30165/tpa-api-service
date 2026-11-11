@@ -472,6 +472,7 @@ class P7RegistrationOtpIntegrationTest {
               List.of(),
               List.of(),
               RegistrationIdempotencyStartOutcome.STARTED,
+              null,
               null));
     }
   }
