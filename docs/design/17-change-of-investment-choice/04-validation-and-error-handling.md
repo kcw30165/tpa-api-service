@@ -147,9 +147,22 @@ Never log: `refNo`, any pending reference number, the request or response body, 
 
 ### 9.1 Issuance ordering and validation ownership
 
-For `CHANGE_INVESTMENT_CHOICE`, the registered application policy runs V1-V8
-and then S1-S3. For `CANCEL_INVESTMENT_CHOICE`, it runs CV1-CV2 and
-pending-reference membership. These prechecks run during
+For `CHANGE_INVESTMENT_CHOICE`, the registered application policy runs V1
+structural validation first. A V1 failure returns the existing FORM violation
+without reading the snapshot. For structurally safe input, it retains V2-V8
+violations and reads the account-owned snapshot exactly once. When the snapshot
+is available, it evaluates independent S1-S3 rules against the original
+decoded payload and appends their violations after V1-V8, in V1-V8 then S1,
+S2, S3 order. S1 checks only percentages passing the V7 integer/range rule;
+S2/S3 skip missing or blank operands already invalid under V2/V5. Original
+array indexes are preserved.
+
+If a snapshot is missing or unreadable while V2-V8 violations are already
+known, issuance returns those known 422 violations and does not publish the
+feature-owned 503 snapshot-miss event. If there are no V violations, snapshot
+unavailability retains the existing feature-specific 503 and exactly one
+feature-owned event. For `CANCEL_INVESTMENT_CHOICE`, the registered policy runs
+CV1-CV2 and pending-reference membership as before. These prechecks run during
 `POST /api/v1/password-validation`, before throttle admission and password
 verification. Each rule has one implementation in the policy; submit/cancel
 execution does not rerun it. Generic envelope parsing/validation remains its
@@ -166,8 +179,12 @@ constructs the typed execution command without rerunning business validation.
 
 | Issuance outcome | HTTP / response | Incident ownership |
 |---|---|---|
-| CIM feature payload or snapshot-rule violation | 422 `VALIDATION_FAILED`, existing detailed CIM code and target | Expected violation; no technical incident |
-| CIM snapshot miss/unavailable | Feature-specific 503 `SYSTEM_ERROR` (`submission.unavailable` or `cancel.unavailable`) | Exactly one feature-owned `LOCAL_SYSTEM` `FailureEvent`; shared issuance must not publish a duplicate |
+| CIM V1 structural violation | 422 `VALIDATION_FAILED`, existing detailed FORM code and target | Expected violation; no snapshot read or technical incident |
+| CIM submit V2-V8 violations with an available snapshot | 422 `VALIDATION_FAILED`, V2-V8 violations followed by independently evaluable S1-S3 violations | Expected violations; no technical incident |
+| CIM submit V2-V8 violations with a missing/unreadable snapshot | 422 `VALIDATION_FAILED`, known V2-V8 violations only | No feature-owned 503 snapshot-miss incident |
+| CIM submit with no V violations and a missing/unreadable snapshot | Feature-specific 503 `SYSTEM_ERROR` (`submission.unavailable`) | Exactly one feature-owned `LOCAL_SYSTEM` `FailureEvent`; shared issuance must not publish a duplicate |
+| CIM cancel payload or membership violation | 422 `VALIDATION_FAILED`, existing detailed CIM code and target | Expected violation; no technical incident |
+| CIM cancel snapshot miss/unavailable | Feature-specific 503 `SYSTEM_ERROR` (`cancel.unavailable`) | Exactly one feature-owned `LOCAL_SYSTEM` `FailureEvent`; shared issuance must not publish a duplicate |
 | Generic issuance envelope error | Existing 400 contract | Existing shared behavior |
 | Wrong password | Existing response unchanged | Existing password-validation behavior |
 

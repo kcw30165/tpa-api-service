@@ -4,12 +4,18 @@ import java.util.List;
 import java.util.Objects;
 
 public record InvestmentChoiceInstructionValidationResult(
-    InvestmentChoiceInstructionRequest request, List<InvestmentChoiceViolation> violations) {
+    InvestmentChoiceInstructionRequest request,
+    List<InvestmentChoiceViolation> violations,
+    boolean structurallyValid) {
 
   public InvestmentChoiceInstructionValidationResult {
     violations = List.copyOf(Objects.requireNonNull(violations, "violations must not be null"));
-    if ((request == null) == violations.isEmpty()) {
+    if (request == null && violations.isEmpty()) {
       throw new IllegalArgumentException("result must contain either a request or violations");
+    }
+    if (request != null && (!violations.isEmpty() || !structurallyValid)) {
+      throw new IllegalArgumentException(
+          "a request requires structurally valid input without violations");
     }
   }
 

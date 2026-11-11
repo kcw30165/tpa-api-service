@@ -47,6 +47,7 @@ class InvestmentChoiceInstructionPrecheckValidatorTest {
         .containsExactly(
             violation(
                 InvestmentChoiceViolation.Kind.FORM, ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID));
+    assertThat(result.structurallyValid()).isFalse();
   }
 
   @Test
@@ -65,6 +66,7 @@ class InvestmentChoiceInstructionPrecheckValidatorTest {
                 InvestmentChoiceViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_INVALID,
                 "allocations[0].percentage"));
+    assertThat(result.structurallyValid()).isTrue();
   }
 
   @Test
@@ -78,6 +80,7 @@ class InvestmentChoiceInstructionPrecheckValidatorTest {
                         + "{\"fundCode\":\"DHKM\",\"percentage\":40}]}")));
 
     assertThat(result.isValid()).isTrue();
+    assertThat(result.structurallyValid()).isTrue();
     assertThat(result.violations()).isEmpty();
     assertThat(result.request())
         .isEqualTo(

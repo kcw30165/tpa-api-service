@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.ChangeInvestmentChoicePasswordValidationPayloadDecoder;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceInstructionRequest;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
@@ -21,6 +22,8 @@ class InvestmentChoiceInstructionBodyValidatorTest {
   private static final String ALLOCATION = "{\"fundCode\":\"DBLF\",\"percentage\":100}";
 
   private final ObjectMapper json = new ObjectMapper();
+  private final ChangeInvestmentChoicePasswordValidationPayloadDecoder payloadDecoder =
+      new ChangeInvestmentChoicePasswordValidationPayloadDecoder();
   private final InvestmentChoiceInstructionBodyValidator validator =
       new InvestmentChoiceInstructionBodyValidator();
 
@@ -324,12 +327,12 @@ class InvestmentChoiceInstructionBodyValidatorTest {
   }
 
   @Test
-  void validRequestIsTypedAndPassesSnapshotValidation() {
-    var body =
-        validate(
-            "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":["
-                + "{\"fundCode\":\"DBLF\",\"percentage\":60},"
-                + "{\"fundCode\":\"DHKM\",\"percentage\":40}]}");
+  void validRequestIsTypedAndPassesSnapshotValidation() throws JsonProcessingException {
+    String rawBody =
+        "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":["
+            + "{\"fundCode\":\"DBLF\",\"percentage\":60},"
+            + "{\"fundCode\":\"DHKM\",\"percentage\":40}]}";
+    var body = validate(rawBody);
     var snapshot =
         new InvestmentChoiceSnapshot(
             "acc_validvaluevalidvaluevalidvalue",
@@ -352,7 +355,9 @@ class InvestmentChoiceInstructionBodyValidatorTest {
                     new InvestmentChoiceInstructionRequest.Allocation("DBLF", 60),
                     new InvestmentChoiceInstructionRequest.Allocation("DHKM", 40))));
     assertThat(body.violations()).isEmpty();
-    assertThat(new InvestmentChoiceSnapshotValidator().validate(body.request(), snapshot))
+    assertThat(
+            new InvestmentChoiceSnapshotValidator()
+                .validate(payloadDecoder.decode(json.readTree(rawBody)), snapshot))
         .isEmpty();
   }
 }

@@ -61,12 +61,19 @@ construction for execution without rerunning business or snapshot rules.
 | `CHANGE_INVESTMENT_CHOICE` | Submit V1-V8 and S1-S3 before throttle and password verification | Require trusted gate binding; strict body decoding and typed construction; no feature precheck rerun |
 | `CANCEL_INVESTMENT_CHOICE` | CV1-CV2 and pending-reference membership before throttle and password verification | Require trusted gate binding; strict body decoding and typed construction; no snapshot precheck or membership revalidation |
 
-For CIM, feature violations return HTTP 422 `VALIDATION_FAILED` with existing
-detailed CIM codes and targets. A CIM snapshot miss returns a feature-specific
-HTTP 503 `SYSTEM_ERROR` and exactly one feature-owned `LOCAL_SYSTEM`
-`FailureEvent`; expected violations produce no technical incident, and shared
-issuance must not publish a duplicate event. Generic envelope errors retain
-their existing 400 contract. Wrong-password behavior is unchanged.
+For submit, V1 structural failure returns the existing FORM violation without
+a snapshot read. Structurally safe input retains V2-V8 violations and reads
+the account-owned snapshot once. When available, independent S1-S3 violations
+are appended after V1-V8 in S1, S2, S3 order, preserving original array
+indexes and skipping missing/blank operands already invalid under V2/V5. If
+the snapshot is missing or unreadable while V errors are known, return those
+422 errors and do not publish the feature-owned 503 incident. With no V
+violations, submit snapshot unavailability returns the feature-specific HTTP
+503 `SYSTEM_ERROR` and exactly one feature-owned `LOCAL_SYSTEM` `FailureEvent`.
+Cancel snapshot-miss behavior is unchanged. Expected violations produce no
+technical incident, and shared issuance must not publish a duplicate event.
+Generic envelope errors retain their existing 400 contract.
+Wrong-password behavior is unchanged.
 
 The existing token gate binding attribute is the trusted handoff. A
 `PayloadDigest` alone is not proof of authorization: trust comes from the

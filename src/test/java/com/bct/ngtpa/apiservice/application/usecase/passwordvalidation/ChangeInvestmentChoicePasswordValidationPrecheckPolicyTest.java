@@ -95,13 +95,30 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("invalidVRuleBodies")
-  void v1ToV8RejectionsDoNotReadSnapshotOrPublishEvents(
+  void structurallySafeVRuleRejectionsReadSnapshotOnceWithoutPublishingEvents(
       String caseName, String body, List<PasswordValidationPrecheckViolation> expected)
       throws JsonProcessingException {
+    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(Mono.just(Optional.of(availableSnapshot(1))));
+
     var result = precheck(body);
 
     assertThat(result.isSuccess()).as(caseName).isFalse();
     assertThat(result.violations()).as(caseName).containsExactlyElementsOf(expected);
+    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
+    assertNoSensitiveLogValues();
+  }
+
+  @Test
+  void structuralV1FailureDoesNotReadSnapshotOrPublishEvents() throws JsonProcessingException {
+    var result = precheck("{\"switchSources\":\"BO\",\"allocations\":[]}");
+
+    assertThat(result.violations())
+        .containsExactly(
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FORM,
+                ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID));
     verifyNoInteractions(snapshotCache, failures);
     assertNoSensitiveLogValues();
   }
@@ -109,6 +126,9 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
   @Test
   void preservesCombinedVRuleOrderingAndSuppressesTotalAfterInvalidPercentages()
       throws JsonProcessingException {
+    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(Mono.just(Optional.of(availableSnapshot(1))));
+
     var result =
         precheck(
             """
@@ -144,7 +164,253 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
                 PasswordValidationPrecheckViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_INVALID,
                 "allocations[2].percentage"));
-    verifyNoInteractions(snapshotCache, failures);
+    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
+  }
+
+  @Test
+  void aggregatesTotalViolationBeforeUnavailableSource() throws JsonProcessingException {
+    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    snapshot(
+                        1,
+                        List.of(new InvestmentChoiceSnapshot.SwitchSource("XX", false)),
+                        List.of(
+                            new InvestmentChoiceSnapshot.Fund("DBLF", true),
+                            new InvestmentChoiceSnapshot.Fund("DHKM", true))))));
+
+    var result =
+        precheck(
+            "{\"switchSources\":[\"XX\"],\"allocations\":["
+                + "{\"fundCode\":\"DBLF\",\"percentage\":60},"
+                + "{\"fundCode\":\"DHKM\",\"percentage\":30}]}");
+
+    assertThat(result.violations())
+        .containsExactly(
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.CROSS_FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_TOTAL_INVALID,
+                "allocations"),
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_UNAVAILABLE,
+                "switchSources[0]"));
+    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
+  }
+
+  @Test
+  void aggregatesTotalViolationBeforeUnavailableFund() throws JsonProcessingException {
+    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    snapshot(
+                        1,
+                        List.of(new InvestmentChoiceSnapshot.SwitchSource("BO", true)),
+                        List.of(
+                            new InvestmentChoiceSnapshot.Fund("DBLF", false),
+                            new InvestmentChoiceSnapshot.Fund("DHKM", true))))));
+
+    var result =
+        precheck(
+            "{\"switchSources\":[\"BO\"],\"allocations\":["
+                + "{\"fundCode\":\"DBLF\",\"percentage\":60},"
+                + "{\"fundCode\":\"DHKM\",\"percentage\":30}]}");
+
+    assertThat(result.violations())
+        .containsExactly(
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.CROSS_FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_TOTAL_INVALID,
+                "allocations"),
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
+                "allocations[0].fundCode"));
+    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
+  }
+
+  @Test
+  void invalidPercentageSkipsItsIntervalCheckButOtherValidPercentageAndSourceAreChecked()
+      throws JsonProcessingException {
+    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    snapshot(
+                        25,
+                        List.of(new InvestmentChoiceSnapshot.SwitchSource("XX", false)),
+                        List.of(
+                            new InvestmentChoiceSnapshot.Fund("DBLF", true),
+                            new InvestmentChoiceSnapshot.Fund("DHKM", true))))));
+
+    var result =
+        precheck(
+            "{\"switchSources\":[\"XX\"],\"allocations\":["
+                + "{\"fundCode\":\"DBLF\",\"percentage\":\"60\"},"
+                + "{\"fundCode\":\"DHKM\",\"percentage\":40}]}");
+
+    assertThat(result.violations())
+        .containsExactly(
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_INVALID,
+                "allocations[0].percentage"),
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_INTERVAL_INVALID,
+                "allocations[1].percentage"),
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_UNAVAILABLE,
+                "switchSources[0]"));
+    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
+  }
+
+  @Test
+  void blankAndMissingOperandsAreSkippedWithoutReindexingReadableOperands()
+      throws JsonProcessingException {
+    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    snapshot(
+                        1,
+                        List.of(new InvestmentChoiceSnapshot.SwitchSource("XX", false)),
+                        List.of(new InvestmentChoiceSnapshot.Fund("FUND_X", false))))));
+
+    var result =
+        precheck(
+            "{\"switchSources\":[\" \",\"XX\"],\"allocations\":["
+                + "{\"percentage\":50},"
+                + "{\"fundCode\":\"FUND_X\",\"percentage\":50}]}");
+
+    assertThat(result.violations())
+        .containsExactly(
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_REQUIRED,
+                "switchSources"),
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_FUND_REQUIRED,
+                "allocations[0].fundCode"),
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_UNAVAILABLE,
+                "switchSources[1]"),
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
+                "allocations[1].fundCode"));
+    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
+  }
+
+  @Test
+  void blankFundIsSkippedWhileLaterReadableFundIsChecked() throws JsonProcessingException {
+    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    snapshot(
+                        1,
+                        List.of(new InvestmentChoiceSnapshot.SwitchSource("BO", true)),
+                        List.of(new InvestmentChoiceSnapshot.Fund("FUND_X", false))))));
+
+    var result =
+        precheck(
+            "{\"switchSources\":[\"BO\"],\"allocations\":["
+                + "{\"fundCode\":\" \",\"percentage\":50},"
+                + "{\"fundCode\":\"FUND_X\",\"percentage\":50}]}");
+
+    assertThat(result.violations())
+        .containsExactly(
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_FUND_REQUIRED,
+                "allocations[0].fundCode"),
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
+                "allocations[1].fundCode"));
+    assertThat(result.violations()).doesNotHaveDuplicates();
+    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
+  }
+
+  @Test
+  void missingSourceArrayDoesNotCreateSourceSnapshotViolation() throws JsonProcessingException {
+    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    snapshot(
+                        1, List.of(), List.of(new InvestmentChoiceSnapshot.Fund("DBLF", false))))));
+
+    var result = precheck("{\"allocations\":[{\"fundCode\":\"DBLF\",\"percentage\":100}]}");
+
+    assertThat(result.violations())
+        .containsExactly(
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_REQUIRED,
+                "switchSources"),
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
+                "allocations[0].fundCode"));
+    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
+  }
+
+  @Test
+  void knownVViolationsWinOverSnapshotMissWithoutPublishingIncident()
+      throws JsonProcessingException {
+    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(Mono.just(Optional.empty()));
+
+    var result =
+        precheck(
+            "{\"switchSources\":[\"BO\"],\"allocations\":["
+                + "{\"fundCode\":\"DBLF\",\"percentage\":60},"
+                + "{\"fundCode\":\"DHKM\",\"percentage\":30}]}");
+
+    assertThat(result.violations())
+        .containsExactly(
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.CROSS_FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_TOTAL_INVALID,
+                "allocations"));
+    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
+  }
+
+  @Test
+  void knownVViolationsWinOverSnapshotReadFailureWithoutPublishingIncident()
+      throws JsonProcessingException {
+    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(Mono.error(new IllegalStateException(SENSITIVE_POLICY_ERROR)));
+
+    var result =
+        precheck(
+            "{\"switchSources\":[\"BO\"],\"allocations\":["
+                + "{\"fundCode\":\"DBLF\",\"percentage\":60},"
+                + "{\"fundCode\":\"DHKM\",\"percentage\":30}]}");
+
+    assertThat(result.violations())
+        .containsExactly(
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.CROSS_FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_TOTAL_INVALID,
+                "allocations"));
+    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
   }
 
   @Test
@@ -280,10 +546,14 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
   }
 
   private static InvestmentChoiceSnapshot availableSnapshot() {
+    return availableSnapshot(20);
+  }
+
+  private static InvestmentChoiceSnapshot availableSnapshot(int intervalPcnt) {
     return new InvestmentChoiceSnapshot(
         ACCOUNT_REF,
         POLICY_NO,
-        20,
+        intervalPcnt,
         List.of(
             new InvestmentChoiceSnapshot.SwitchSource("BO", true),
             new InvestmentChoiceSnapshot.SwitchSource("EE", true)),
@@ -293,15 +563,16 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
         List.of());
   }
 
+  private static InvestmentChoiceSnapshot snapshot(
+      int intervalPcnt,
+      List<InvestmentChoiceSnapshot.SwitchSource> sources,
+      List<InvestmentChoiceSnapshot.Fund> funds) {
+    return new InvestmentChoiceSnapshot(
+        ACCOUNT_REF, POLICY_NO, intervalPcnt, sources, funds, List.of());
+  }
+
   private static Stream<Arguments> invalidVRuleBodies() {
     return Stream.of(
-        Arguments.of(
-            "V1 malformed structure",
-            "{\"switchSources\":\"BO\"}",
-            List.of(
-                precheckViolation(
-                    PasswordValidationPrecheckViolation.Kind.FORM,
-                    ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID))),
         Arguments.of(
             "V2 missing switch source",
             "{\"allocations\":[" + VALID_ALLOCATION + "]}",

@@ -133,17 +133,29 @@ The shared parser and issuance algorithm contain no purpose-specific branches.
 |---|---|---:|---|---|
 | `POST /api/v1/password-validation` | Generic envelope invalid | 400 | `VALIDATION_FAILED` | Existing generic request-invalid response |
 | `POST /api/v1/password-validation` | Personal Information policy invalid | 400 | `VALIDATION_FAILED` | Existing generic request-invalid response; PI PUT unchanged |
-| `POST /api/v1/password-validation` | CIM submit V1-V8 or S1-S3 violation | 422 | `VALIDATION_FAILED` | Existing CIM type/code/targets; no technical incident |
+| `POST /api/v1/password-validation` | CIM submit V1 structural violation | 422 | `VALIDATION_FAILED` | Existing FORM code/target; no snapshot read or technical incident |
+| `POST /api/v1/password-validation` | CIM submit V2-V8 and/or S1-S3 violation with snapshot available | 422 | `VALIDATION_FAILED` | Existing detailed errors, V2-V8 first then S1-S3; no technical incident |
+| `POST /api/v1/password-validation` | CIM submit V2-V8 violations with snapshot unavailable | 422 | `VALIDATION_FAILED` | Known V errors; no feature-owned 503 snapshot-miss event |
 | `POST /api/v1/password-validation` | CIM cancel CV1-CV2 or pending-reference membership violation | 422 | `VALIDATION_FAILED` | Existing CIM type/code/targets; no technical incident |
-| `POST /api/v1/password-validation` | CIM submit snapshot miss | 503 | `SYSTEM_ERROR` | `err.investment-choice.submission.unavailable`; one feature-owned `LOCAL_SYSTEM` event |
+| `POST /api/v1/password-validation` | CIM submit snapshot miss with no V violations | 503 | `SYSTEM_ERROR` | `err.investment-choice.submission.unavailable`; one feature-owned `LOCAL_SYSTEM` event |
 | `POST /api/v1/password-validation` | CIM cancel snapshot miss | 503 | `SYSTEM_ERROR` | `err.investment-choice.cancel.unavailable`; one feature-owned `LOCAL_SYSTEM` event |
 | `POST /api/v1/password-validation` | Wrong password | 401 | `BUSINESS_REJECTED` | Existing response unchanged |
 
-Expected feature violations do not publish technical incidents. For either CIM
+For submit, V1 structural failure returns immediately without reading the
+snapshot. Structurally safe input retains V2-V8 errors and reads the
+account-owned snapshot exactly once. With an available snapshot, independent
+S1-S3 checks run against the original decoded payload; results follow the V
+errors in S1, S2, S3 order and preserve original array indexes. S1 reuses the
+V7 integer/range predicate, and S2/S3 skip missing or blank operands already
+invalid under V2/V5. If the snapshot is missing or unreadable and V errors are
+known, the known 422 errors win and no feature-owned 503 event is published.
+If there are no V errors, submit snapshot unavailability retains the existing
+503. Cancel snapshot misses also retain the existing 503. For either 503
 snapshot-miss result, the feature policy owns the single
 `investment-choice.*.snapshot.missing` event (`operation=SNAPSHOT`,
 `origin=LOCAL_SYSTEM`, safe reason dimensions); shared issuance suppresses its
-generic `password-validation.issue.rejected` event for that outcome.
+generic `password-validation.issue.rejected` event for that outcome. Expected
+feature violations do not publish technical incidents.
 
 At protected execution, the gate remains the authority for successful
 single-use token consumption, session/account/purpose scope and canonical

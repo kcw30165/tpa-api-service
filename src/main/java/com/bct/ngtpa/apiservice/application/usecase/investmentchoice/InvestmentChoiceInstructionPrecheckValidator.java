@@ -33,14 +33,15 @@ public final class InvestmentChoiceInstructionPrecheckValidator {
               new InvestmentChoiceViolation(
                   InvestmentChoiceViolation.Kind.FORM,
                   ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
-                  List.of())));
+                  List.of())),
+          false);
     }
 
     List<InvestmentChoiceViolation> violations = new ArrayList<>();
     appendSwitchSourceViolations(payload, violations);
     appendAllocationViolations(payload.allocationsKind(), payload.allocations(), violations);
     if (!violations.isEmpty()) {
-      return invalid(violations);
+      return invalid(violations, true);
     }
     return valid(toRequest(payload));
   }
@@ -172,7 +173,7 @@ public final class InvestmentChoiceInstructionPrecheckValidator {
     }
   }
 
-  private boolean validPercentage(JsonScalar percentage) {
+  static boolean validPercentage(JsonScalar percentage) {
     return percentage.kind() == JsonKind.NUMBER
         && percentage.integralNumber()
         && percentage.integerValue() != null
@@ -202,11 +203,11 @@ public final class InvestmentChoiceInstructionPrecheckValidator {
 
   private static InvestmentChoiceInstructionValidationResult valid(
       InvestmentChoiceInstructionRequest request) {
-    return new InvestmentChoiceInstructionValidationResult(request, List.of());
+    return new InvestmentChoiceInstructionValidationResult(request, List.of(), true);
   }
 
   private static InvestmentChoiceInstructionValidationResult invalid(
-      List<InvestmentChoiceViolation> violations) {
-    return new InvestmentChoiceInstructionValidationResult(null, violations);
+      List<InvestmentChoiceViolation> violations, boolean structurallyValid) {
+    return new InvestmentChoiceInstructionValidationResult(null, violations, structurallyValid);
   }
 }

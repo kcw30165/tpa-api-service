@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.usecase.passwordvalidation;
 
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceInstructionValidationResult;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
@@ -16,6 +17,7 @@ import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.InvestmentC
 import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.InvestmentChoiceSnapshotValidator;
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -62,7 +64,7 @@ public final class ChangeInvestmentChoicePasswordValidationPrecheckPolicy
 
     InvestmentChoiceInstructionValidationResult instruction =
         instructionValidator.validate(payload);
-    if (!instruction.isValid()) {
+    if (!instruction.structurallyValid()) {
       return Mono.just(rejected(instruction.violations()));
     }
 
@@ -76,19 +78,22 @@ public final class ChangeInvestmentChoicePasswordValidationPrecheckPolicy
                     context.correlationId()))
         .defaultIfEmpty(Optional.empty())
         .onErrorResume(error -> Mono.just(Optional.empty()))
-        .flatMap(snapshot -> precheckSnapshot(instruction, snapshot, context));
+        .flatMap(snapshot -> precheckSnapshot(payload, instruction, snapshot, context));
   }
 
   private Mono<PasswordValidationPrecheckResult> precheckSnapshot(
+      ChangeInvestmentChoicePasswordValidationPayload payload,
       InvestmentChoiceInstructionValidationResult instruction,
-      Optional<com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot>
-          snapshot,
+      Optional<InvestmentChoiceSnapshot> snapshot,
       PasswordValidationPrecheckContext context) {
     if (snapshot.isEmpty()) {
+      if (!instruction.violations().isEmpty()) {
+        return Mono.just(rejected(instruction.violations()));
+      }
       return snapshotMissing(context);
     }
-    List<InvestmentChoiceViolation> violations =
-        snapshotValidator.validate(instruction.request(), snapshot.get());
+    List<InvestmentChoiceViolation> violations = new ArrayList<>(instruction.violations());
+    violations.addAll(snapshotValidator.validate(payload, snapshot.get()));
     return Mono.just(
         violations.isEmpty() ? PasswordValidationPrecheckResult.success() : rejected(violations));
   }

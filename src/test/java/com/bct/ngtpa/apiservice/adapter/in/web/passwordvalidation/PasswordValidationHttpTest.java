@@ -235,6 +235,44 @@ class PasswordValidationHttpTest {
     detailedPrecheckFailure(rule, CIM_PURPOSE, operation, kind, code, target);
   }
 
+  @Test
+  void cimSubmitAggregatesVAndSnapshotViolationsBeforeIssuanceDependencies() throws Exception {
+    var response =
+        failure(
+            post(
+                body(
+                    "x",
+                    CIM_PURPOSE,
+                    cimPayload(
+                        "[\"XX\"]",
+                        "[{\"fundCode\":\"DBLF\",\"percentage\":60},"
+                            + "{\"fundCode\":\"DHKM\",\"percentage\":30}]"))),
+            422,
+            "VALIDATION_FAILED",
+            "err.investment-choice.percentage.total-invalid");
+    var errors = JSON.readTree(response.getResponseBody()).path("errors");
+
+    assertThat(errors).hasSize(3);
+    assertThat(errors.get(0).path("type").asText()).isEqualTo("CROSS_FIELD");
+    assertThat(errors.get(0).path("code").asText())
+        .isEqualTo("err.investment-choice.percentage.total-invalid");
+    assertThat(errors.get(0).path("targets").get(0).asText()).isEqualTo("allocations");
+    assertThat(errors.get(1).path("type").asText()).isEqualTo("FIELD");
+    assertThat(errors.get(1).path("code").asText())
+        .isEqualTo("err.investment-choice.percentage.interval-invalid");
+    assertThat(errors.get(1).path("targets").get(0).asText())
+        .isEqualTo("allocations[1].percentage");
+    assertThat(errors.get(2).path("type").asText()).isEqualTo("FIELD");
+    assertThat(errors.get(2).path("code").asText())
+        .isEqualTo("err.investment-choice.switch-source.unavailable");
+    assertThat(errors.get(2).path("targets").get(0).asText()).isEqualTo("switchSources[0]");
+    assertThat(backend.limiterCalls).hasValue(0);
+    assertThat(backend.passwordCalls).hasValue(0);
+    assertThat(backend.grantAttempts).hasValue(0);
+    assertThat(failureEventCount).isZero();
+    assertSafeLogs();
+  }
+
   @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = {" ", "\t\r\n"})

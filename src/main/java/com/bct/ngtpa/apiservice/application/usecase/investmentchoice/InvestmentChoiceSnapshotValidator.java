@@ -1,8 +1,11 @@
 package com.bct.ngtpa.apiservice.application.usecase.investmentchoice;
 
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceInstructionRequest;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
+import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.ChangeInvestmentChoicePasswordValidationPayload;
+import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.ChangeInvestmentChoicePasswordValidationPayload.Allocation;
+import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.ChangeInvestmentChoicePasswordValidationPayload.JsonKind;
+import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.ChangeInvestmentChoicePasswordValidationPayload.JsonScalar;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,14 +14,19 @@ import java.util.Objects;
 public final class InvestmentChoiceSnapshotValidator {
 
   public List<InvestmentChoiceViolation> validate(
-      InvestmentChoiceInstructionRequest request, InvestmentChoiceSnapshot snapshot) {
-    Objects.requireNonNull(request, "request must not be null");
+      ChangeInvestmentChoicePasswordValidationPayload payload, InvestmentChoiceSnapshot snapshot) {
+    Objects.requireNonNull(payload, "payload must not be null");
     Objects.requireNonNull(snapshot, "snapshot must not be null");
 
     List<InvestmentChoiceViolation> violations = new ArrayList<>();
-    for (int index = 0; index < request.allocations().size(); index++) {
-      var allocation = request.allocations().get(index);
-      if (allocation.percentage() % snapshot.intervalPcnt() != 0) {
+    for (int index = 0; index < payload.allocations().size(); index++) {
+      Allocation allocation = payload.allocations().get(index);
+      if (allocation.kind() != JsonKind.OBJECT) {
+        continue;
+      }
+      JsonScalar percentage = allocation.percentage();
+      if (InvestmentChoiceInstructionPrecheckValidator.validPercentage(percentage)
+          && percentage.integerValue() % snapshot.intervalPcnt() != 0) {
         violations.add(
             violation(
                 ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_INTERVAL_INVALID,
@@ -26,8 +34,14 @@ public final class InvestmentChoiceSnapshotValidator {
       }
     }
 
-    for (int index = 0; index < request.switchSources().size(); index++) {
-      String requestedSource = request.switchSources().get(index);
+    for (int index = 0; index < payload.switchSources().size(); index++) {
+      JsonScalar sourceValue = payload.switchSources().get(index);
+      if (sourceValue.kind() != JsonKind.STRING
+          || sourceValue.scalarValue() == null
+          || sourceValue.scalarValue().isBlank()) {
+        continue;
+      }
+      String requestedSource = sourceValue.scalarValue();
       boolean available =
           snapshot.sources().stream()
               .anyMatch(
@@ -41,8 +55,16 @@ public final class InvestmentChoiceSnapshotValidator {
       }
     }
 
-    for (int index = 0; index < request.allocations().size(); index++) {
-      String requestedFund = request.allocations().get(index).fundCode();
+    for (int index = 0; index < payload.allocations().size(); index++) {
+      Allocation allocation = payload.allocations().get(index);
+      JsonScalar fundCode = allocation.fundCode();
+      if (allocation.kind() != JsonKind.OBJECT
+          || fundCode.kind() != JsonKind.STRING
+          || fundCode.scalarValue() == null
+          || fundCode.scalarValue().isBlank()) {
+        continue;
+      }
+      String requestedFund = fundCode.scalarValue();
       boolean available =
           snapshot.funds().stream()
               .anyMatch(fund -> Objects.equals(fund.fundCode(), requestedFund) && fund.available());

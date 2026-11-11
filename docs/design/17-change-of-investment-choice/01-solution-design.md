@@ -195,20 +195,33 @@ Typed construction is not a business-rule precheck.
 ### 11.2 Issuance order and ownership
 
 For CIM, decoding and the registered feature policy run before username
-throttle and password verification. Submit prechecks V1-V8, then S1-S3 using
-the current snapshot. Cancel prechecks CV1-CV2 and pending-reference membership.
-Each rule has one implementation in the purpose policy; execution does not
-repeat it. A token does not reserve or freeze business state. Progress retains
-its existing current-state enforcement; do not assume it repeats every Java
+throttle and password verification. Submit runs V1 structural validation
+first; V1 failure returns the existing FORM violation without a snapshot read.
+For structurally safe input, it retains V2-V8 violations and reads the
+account-owned snapshot exactly once. With an available snapshot, independent
+S1-S3 violations are appended after V1-V8 in S1, S2, S3 order, using the
+original decoded payload and preserving array indexes. S1 reuses the V7
+integer/range predicate; S2/S3 skip missing or blank operands already invalid
+under V2/V5. Cancel prechecks CV1-CV2 and pending-reference membership. Each
+rule has one implementation in the purpose policy; execution does not repeat
+it. A token does not reserve or freeze business state. Progress retains its
+existing current-state enforcement; do not assume it repeats every Java
 validation rule.
 
 Generic envelope errors retain the current HTTP 400 contract. CIM feature
 payload and snapshot-rule violations return HTTP 422 `VALIDATION_FAILED`, with
 the detailed codes and targets already defined in section 2 of document 04.
-A CIM snapshot miss returns a feature-specific HTTP 503 `SYSTEM_ERROR`; the
-feature policy publishes exactly one `LOCAL_SYSTEM` `FailureEvent`. Expected
-feature violations produce no technical incident, and shared issuance must not
-publish a duplicate event. Wrong-password behavior remains unchanged.
+For submit, known V2-V8 violations take precedence over a missing or unreadable
+snapshot: return the known 422 errors and publish no feature-owned 503 incident.
+If there are no V violations, snapshot unavailability retains the
+feature-specific HTTP 503 `SYSTEM_ERROR` and exactly one feature-owned
+`LOCAL_SYSTEM` `FailureEvent`. A V1 structural failure remains an immediate
+422 without a snapshot read. Snapshot availability permits aggregation of
+known V errors followed by safely evaluable S1-S3 errors. Cancel snapshot
+misses retain their existing feature-specific 503 and exactly one event.
+Expected feature violations produce no technical incident, and shared
+issuance must not publish a duplicate event. Wrong-password behavior remains
+unchanged.
 
 Personal Information issuance and PUT behavior remain unchanged, including its
 existing issuance 400 behavior and PUT-side validation. Progress's existing

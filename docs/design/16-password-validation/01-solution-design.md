@@ -451,11 +451,18 @@ legacy-token migration or versioning is introduced.
 
 Personal Information precheck failures keep the existing generic 400 issuance
 contract, and Personal Information PUT validation/update behavior is unchanged.
-CIM submit V1-V8/S1-S3 and cancel CV1-CV2/pending-reference membership run once
-at issuance and return detailed HTTP 422 `VALIDATION_FAILED` errors using
-existing feature codes and targets. A CIM snapshot miss returns the relevant
-feature-specific HTTP 503 `SYSTEM_ERROR` and exactly one feature-owned
-`LOCAL_SYSTEM` `FailureEvent`. Expected feature violations produce no
+CIM submit V1 structural failure returns the existing FORM violation without
+a snapshot read. For structurally safe submit input, retain V2-V8 violations
+and read the account-owned snapshot once. If available, append independent
+S1-S3 violations to V2-V8 in S1, S2, S3 order, using the original decoded
+payload and preserving array indexes. If the snapshot is missing or unreadable
+and V2-V8 violations are known, return those known 422 errors and publish no
+feature-owned 503 incident. With no V violations, snapshot unavailability
+retains the feature-specific HTTP 503 `SYSTEM_ERROR` and exactly one
+feature-owned `LOCAL_SYSTEM` `FailureEvent`. CIM cancel CV1-CV2 and
+pending-reference membership continue to run once at issuance and return
+detailed HTTP 422 errors; cancel snapshot misses retain their existing 503 and
+exactly one feature-owned event. Expected feature violations produce no
 technical incident. Shared issuance does not publish a duplicate event for a
 feature-owned snapshot miss. Wrong-password behavior is unchanged.
 
