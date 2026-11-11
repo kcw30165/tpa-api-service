@@ -30,8 +30,6 @@ import reactor.core.publisher.Mono;
 
 public final class SubmitInvestmentChoiceService implements SubmitInvestmentChoiceUseCase {
 
-  private static final String SUBMISSION_UNAVAILABLE =
-      "err.investment-choice.submission.unavailable";
   private static final ZoneId HONG_KONG_ZONE = ZoneId.of("Asia/Hong_Kong");
   private static final Logger LOG = LoggerFactory.getLogger(SubmitInvestmentChoiceService.class);
 

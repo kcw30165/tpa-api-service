@@ -14,7 +14,7 @@ public record InvestmentChoiceSnapshotState(
     Objects.requireNonNull(scenario, "scenario must not be null");
     requireText(accountRef, "accountRef");
     requireText(policyNo, "policyNo");
-    normalSnapshot = Objects.requireNonNull(normalSnapshot, "normalSnapshot must not be null");
+    Objects.requireNonNull(normalSnapshot, "normalSnapshot must not be null");
     if (scenario == InvestmentChoiceScenario.NORMAL) {
       if (normalSnapshot.isEmpty() || !normalSnapshot.get().belongsTo(accountRef, policyNo)) {
         throw new IllegalArgumentException("NORMAL state requires its matching snapshot");
