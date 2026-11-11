@@ -36,14 +36,14 @@ class PasswordValidationPurposePayloadDecoderRegistryTest {
             policyPayloadTypes);
 
     for (var purpose : PasswordValidationPurpose.values()) {
-      var first = registry.require(purpose);
-      var second = registry.require(purpose);
+      var first = registry.decode(purpose, JsonNodeFactory.instance.objectNode().putNull("field"));
+      var second = registry.decode(purpose, JsonNodeFactory.instance.objectNode().putNull("field"));
       assertThat(first)
-          .isSameAs(second)
-          .extracting(PasswordValidationPurposePayloadDecoder::purpose)
-          .isEqualTo(purpose);
-      assertThat(first.decode(JsonNodeFactory.instance.objectNode().putNull("field")))
-          .isInstanceOf(TestPayload.class);
+          .isInstanceOfSatisfying(
+              TestPayload.class, payload -> assertThat(payload.purpose()).isEqualTo(purpose));
+      assertThat(second)
+          .isInstanceOfSatisfying(
+              TestPayload.class, payload -> assertThat(payload.purpose()).isEqualTo(purpose));
     }
   }
 
@@ -124,7 +124,11 @@ class PasswordValidationPurposePayloadDecoderRegistryTest {
             supported,
             policyRegistry(supported).payloadTypes());
 
-    assertThatThrownBy(() -> registry.require(PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE))
+    assertThatThrownBy(
+            () ->
+                registry.decode(
+                    PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE,
+                    JsonNodeFactory.instance.objectNode()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported password-validation payload decoder purpose");
   }
@@ -158,6 +162,16 @@ class PasswordValidationPurposePayloadDecoderRegistryTest {
   }
 
   private static final class TestPayload implements PasswordValidationPurposePayload {
+    private final PasswordValidationPurpose purpose;
+
+    private TestPayload(PasswordValidationPurpose purpose) {
+      this.purpose = purpose;
+    }
+
+    private PasswordValidationPurpose purpose() {
+      return purpose;
+    }
+
     @Override
     public String toString() {
       return "TestPayload[<redacted>]";
@@ -186,7 +200,7 @@ class PasswordValidationPurposePayloadDecoderRegistryTest {
 
     @Override
     public TestPayload decode(JsonNode operationPayload) {
-      return new TestPayload();
+      return new TestPayload(purpose);
     }
 
     @Override

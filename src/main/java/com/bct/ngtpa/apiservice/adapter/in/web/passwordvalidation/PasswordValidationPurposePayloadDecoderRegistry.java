@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation;
 
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.PasswordValidationPurposePayload;
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -67,14 +68,14 @@ public final class PasswordValidationPurposePayloadDecoderRegistry {
     this.decoders = Collections.unmodifiableMap(registrations);
   }
 
-  public PasswordValidationPurposePayloadDecoder<? extends PasswordValidationPurposePayload>
-      require(PasswordValidationPurpose purpose) {
+  public PasswordValidationPurposePayload decode(
+      PasswordValidationPurpose purpose, JsonNode operationPayload) {
     Objects.requireNonNull(purpose, "purpose must not be null");
     var decoder = decoders.get(purpose);
     if (decoder == null) {
       throw new IllegalArgumentException(UNSUPPORTED_PURPOSE);
     }
-    return decoder;
+    return decodeTyped(decoder, operationPayload);
   }
 
   @Override
@@ -89,5 +90,11 @@ public final class PasswordValidationPurposePayloadDecoderRegistry {
       throw new IllegalArgumentException("At least one password-validation purpose is required");
     }
     return Collections.unmodifiableSet(EnumSet.copyOf(purposes));
+  }
+
+  private static <T extends PasswordValidationPurposePayload>
+      PasswordValidationPurposePayload decodeTyped(
+          PasswordValidationPurposePayloadDecoder<T> decoder, JsonNode operationPayload) {
+    return decoder.decode(operationPayload);
   }
 }

@@ -93,7 +93,7 @@ public final class PasswordValidationRequestParser {
       var parsedPurpose = PasswordValidationPurpose.parse(purpose);
       require(operation != null, OPERATION_PAYLOAD);
       JsonNode operationNode = objectMapper.readTree(operation);
-      var payload = decoders.require(parsedPurpose).decode(operationNode);
+      var payload = decoders.decode(parsedPurpose, operationNode);
       return new Parsed(password, parsedPurpose, operation, payload);
     } catch (IOException | IllegalArgumentException exception) {
       // Do not retain parser diagnostics or causes containing request values.

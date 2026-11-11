@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 @Component
 public final class PasswordValidationWebMapper {
   private static final String BUSINESS = "BUSINESS";
+  private static final String SOURCE_SERVER = "SERVER";
   private final AuthenticatedSessionCookieWriter cookies;
 
   public PasswordValidationWebMapper(AuthenticatedSessionCookieWriter cookies) {
@@ -98,10 +99,10 @@ public final class PasswordValidationWebMapper {
 
   private static ApiError toApiError(PasswordValidationPrecheckViolation violation) {
     return switch (violation.kind()) {
-      case FIELD -> ApiError.field(violation.code(), null, violation.targets(), "SERVER");
+      case FIELD -> ApiError.field(violation.code(), null, violation.targets(), SOURCE_SERVER);
       case CROSS_FIELD ->
-          ApiError.crossField(violation.code(), null, violation.targets(), "SERVER");
-      case FORM -> ApiError.form(violation.code(), null, violation.targets(), "SERVER");
+          ApiError.crossField(violation.code(), null, violation.targets(), SOURCE_SERVER);
+      case FORM -> ApiError.form(violation.code(), null, violation.targets(), SOURCE_SERVER);
     };
   }
 
@@ -155,6 +156,6 @@ public final class PasswordValidationWebMapper {
     return ResponseEntity.status(http)
         .body(
             MutationResponse.failure(
-                status, List.of(new ApiError(type, code, null, targets, "ERROR", "SERVER"))));
+                status, List.of(new ApiError(type, code, null, targets, "ERROR", SOURCE_SERVER))));
   }
 }
