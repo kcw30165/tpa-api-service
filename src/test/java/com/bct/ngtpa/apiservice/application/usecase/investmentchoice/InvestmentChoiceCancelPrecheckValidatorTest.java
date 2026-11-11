@@ -15,7 +15,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class InvestmentChoiceCancelPrecheckValidatorTest {
 
   private static final String REFERENCE_NO = " 000123 ";
-  private static final String REF_NO = "refNo";
+  private static final String REFERENCE_NO_FIELD = "referenceNo";
 
   private final InvestmentChoiceCancelPrecheckValidator validator =
       new InvestmentChoiceCancelPrecheckValidator();
@@ -49,14 +49,15 @@ class InvestmentChoiceCancelPrecheckValidatorTest {
             violation(
                 InvestmentChoiceViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_REQUIRED,
-                REF_NO));
+                REFERENCE_NO_FIELD));
   }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("acceptedReferences")
   void acceptsAndPreservesReferenceWithoutNormalization(String name, String referenceNo) {
     var result =
-        validator.validate(payload(JsonKind.OBJECT, List.of(REF_NO), JsonKind.STRING, referenceNo));
+        validator.validate(
+            payload(JsonKind.OBJECT, List.of(REFERENCE_NO_FIELD), JsonKind.STRING, referenceNo));
 
     assertThat(result.isValid()).as(name).isTrue();
     assertThat(result.referenceNo()).as(name).isEqualTo(referenceNo);
@@ -76,17 +77,28 @@ class InvestmentChoiceCancelPrecheckValidatorTest {
             payload(JsonKind.OBJECT, List.of("other"), JsonKind.MISSING, null)),
         Arguments.of(
             "unknown member precedes blank reference",
-            payload(JsonKind.OBJECT, List.of(REF_NO, "other"), JsonKind.STRING, "")),
+            payload(JsonKind.OBJECT, List.of(REFERENCE_NO_FIELD, "other"), JsonKind.STRING, "")),
         Arguments.of(
-            "null reference", payload(JsonKind.OBJECT, List.of(REF_NO), JsonKind.NULL, null)),
+            "legacy refNo", payload(JsonKind.OBJECT, List.of("refNo"), JsonKind.STRING, "000123")),
         Arguments.of(
-            "number reference", payload(JsonKind.OBJECT, List.of(REF_NO), JsonKind.NUMBER, null)),
+            "both public names",
+            payload(
+                JsonKind.OBJECT, List.of(REFERENCE_NO_FIELD, "refNo"), JsonKind.STRING, "000123")),
         Arguments.of(
-            "boolean reference", payload(JsonKind.OBJECT, List.of(REF_NO), JsonKind.BOOLEAN, null)),
+            "null reference",
+            payload(JsonKind.OBJECT, List.of(REFERENCE_NO_FIELD), JsonKind.NULL, null)),
         Arguments.of(
-            "array reference", payload(JsonKind.OBJECT, List.of(REF_NO), JsonKind.ARRAY, null)),
+            "number reference",
+            payload(JsonKind.OBJECT, List.of(REFERENCE_NO_FIELD), JsonKind.NUMBER, null)),
         Arguments.of(
-            "object reference", payload(JsonKind.OBJECT, List.of(REF_NO), JsonKind.OBJECT, null)));
+            "boolean reference",
+            payload(JsonKind.OBJECT, List.of(REFERENCE_NO_FIELD), JsonKind.BOOLEAN, null)),
+        Arguments.of(
+            "array reference",
+            payload(JsonKind.OBJECT, List.of(REFERENCE_NO_FIELD), JsonKind.ARRAY, null)),
+        Arguments.of(
+            "object reference",
+            payload(JsonKind.OBJECT, List.of(REFERENCE_NO_FIELD), JsonKind.OBJECT, null)));
   }
 
   static Stream<Arguments> cv2Payloads() {
@@ -94,10 +106,11 @@ class InvestmentChoiceCancelPrecheckValidatorTest {
         Arguments.of(
             "missing reference", payload(JsonKind.OBJECT, List.of(), JsonKind.MISSING, null)),
         Arguments.of(
-            "empty reference", payload(JsonKind.OBJECT, List.of(REF_NO), JsonKind.STRING, "")),
+            "empty reference",
+            payload(JsonKind.OBJECT, List.of(REFERENCE_NO_FIELD), JsonKind.STRING, "")),
         Arguments.of(
             "whitespace-only reference",
-            payload(JsonKind.OBJECT, List.of(REF_NO), JsonKind.STRING, " \t ")));
+            payload(JsonKind.OBJECT, List.of(REFERENCE_NO_FIELD), JsonKind.STRING, " \t ")));
   }
 
   static Stream<Arguments> acceptedReferences() {
@@ -107,13 +120,13 @@ class InvestmentChoiceCancelPrecheckValidatorTest {
   }
 
   private static CancelInvestmentChoicePasswordValidationPayload payload(
-      JsonKind rootKind, List<String> rootMembers, JsonKind refNoKind, String referenceNo) {
-    String refNoValue =
-        refNoKind == JsonKind.MISSING || refNoKind == JsonKind.NULL
+      JsonKind rootKind, List<String> rootMembers, JsonKind referenceNoKind, String referenceNo) {
+    String referenceNoValue =
+        referenceNoKind == JsonKind.MISSING || referenceNoKind == JsonKind.NULL
             ? null
             : referenceNo == null ? "non-string value" : referenceNo;
     return new CancelInvestmentChoicePasswordValidationPayload(
-        rootKind, rootMembers, refNoKind, refNoValue);
+        rootKind, rootMembers, referenceNoKind, referenceNoValue);
   }
 
   private static InvestmentChoiceViolation violation(

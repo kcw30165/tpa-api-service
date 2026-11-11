@@ -64,14 +64,14 @@ class PasswordValidationHttpTest {
   private static final String PURPOSE = "PERSONAL_INFORMATION_UPDATE";
   private static final String CIM_PURPOSE = "CHANGE_INVESTMENT_CHOICE";
   private static final String CANCEL_PURPOSE = "CANCEL_INVESTMENT_CHOICE";
-  private static final String REF_NO_FIELD = "refNo";
+  private static final String REFERENCE_NO_FIELD = "referenceNo";
   private static final String CANCEL_REFERENCE_NO = "260001449";
   private static final String INVALID_REQUEST_CODE = "err.password-validation.request.invalid";
   private static final String PAYLOAD =
       "{\"formVersion\":\"v1\",\"applyToAllAccounts\":false,\"fields\":{\"mailingAddress\":\"reviewed-marker\"}}";
   private static final String CIM_PAYLOAD =
       "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":[{\"fundCode\":\"DBLF\",\"percentage\":60},{\"fundCode\":\"DHKM\",\"percentage\":40}]}";
-  private static final String CANCEL_PAYLOAD = quotedCancelRefNoPayload(CANCEL_REFERENCE_NO);
+  private static final String CANCEL_PAYLOAD = quotedCancelReferenceNoPayload(CANCEL_REFERENCE_NO);
   private static final ObjectMapper JSON = new ObjectMapper();
   private AnnotationConfigApplicationContext context;
   private DisposableServer server;
@@ -472,7 +472,7 @@ class PasswordValidationHttpTest {
     String operation =
         purpose.equals(CIM_PURPOSE)
             ? "{\"switchSources\":[\"BO\"],\"switchSources\":[\"EE\"],\"allocations\":[{\"fundCode\":\"DBLF\",\"percentage\":100}]}"
-            : "{\"refNo\":\"260001449\",\"refNo\":\"260001450\"}";
+            : "{\"referenceNo\":\"260001449\",\"referenceNo\":\"260001450\"}";
     failure(post(body("x", purpose, operation)), 400, "VALIDATION_FAILED", INVALID_REQUEST_CODE);
     assertThat(backend.limiterCalls).hasValue(0);
     assertThat(backend.passwordCalls).hasValue(0);
@@ -528,50 +528,62 @@ class PasswordValidationHttpTest {
             "err.investment-choice.request.invalid",
             null),
         Arguments.of(
-            "CV1 null refNo",
-            cancelRefNoPayload("null"),
+            "CV1 legacy refNo",
+            "{\"refNo\":\"260001449\"}",
             "FORM",
             "err.investment-choice.request.invalid",
             null),
         Arguments.of(
-            "CV1 number refNo",
-            cancelRefNoPayload(CANCEL_REFERENCE_NO),
+            "CV1 both public names",
+            "{\"referenceNo\":\"260001449\",\"refNo\":\"260001450\"}",
             "FORM",
             "err.investment-choice.request.invalid",
             null),
         Arguments.of(
-            "CV2 missing refNo",
+            "CV1 null referenceNo",
+            cancelReferenceNoPayload("null"),
+            "FORM",
+            "err.investment-choice.request.invalid",
+            null),
+        Arguments.of(
+            "CV1 number referenceNo",
+            cancelReferenceNoPayload(CANCEL_REFERENCE_NO),
+            "FORM",
+            "err.investment-choice.request.invalid",
+            null),
+        Arguments.of(
+            "CV2 missing referenceNo",
             "{}",
             "FIELD",
             "err.investment-choice.cancel.ref-required",
-            REF_NO_FIELD),
+            REFERENCE_NO_FIELD),
         Arguments.of(
-            "CV2 blank refNo",
-            cancelRefNoPayload("\" \\t \""),
+            "CV2 blank referenceNo",
+            cancelReferenceNoPayload("\" \\t \""),
             "FIELD",
             "err.investment-choice.cancel.ref-required",
-            REF_NO_FIELD),
+            REFERENCE_NO_FIELD),
         Arguments.of(
-            "CS1 refNo not pending",
-            quotedCancelRefNoPayload("000000000"),
+            "CS1 referenceNo not pending",
+            quotedCancelReferenceNoPayload("000000000"),
             "FIELD",
             "err.investment-choice.cancel.ref-invalid",
-            REF_NO_FIELD));
+            REFERENCE_NO_FIELD));
   }
 
-  private static String cancelRefNoPayload(String serializedValue) {
+  private static String cancelReferenceNoPayload(String serializedValue) {
     return """
         {"%s":%s}
         """
-        .formatted(REF_NO_FIELD, serializedValue)
+        .formatted(REFERENCE_NO_FIELD, serializedValue)
         .strip();
   }
 
-  private static String quotedCancelRefNoPayload(String value) {
+  private static String quotedCancelReferenceNoPayload(String value) {
     return """
         {"%s":"%s"}
         """
-        .formatted(REF_NO_FIELD, value)
+        .formatted(REFERENCE_NO_FIELD, value)
         .strip();
   }
 
@@ -579,7 +591,7 @@ class PasswordValidationHttpTest {
     return """
         {"%s":"%s","extra":true}
         """
-        .formatted(REF_NO_FIELD, CANCEL_REFERENCE_NO)
+        .formatted(REFERENCE_NO_FIELD, CANCEL_REFERENCE_NO)
         .strip();
   }
 

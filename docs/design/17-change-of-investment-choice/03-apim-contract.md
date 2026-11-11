@@ -136,7 +136,7 @@ If restricted responses include `SwitchSrc`, it may enrich history internally us
   "login-user-role": "role_user_mbr",
   "policy-no": "<account.policyNo>",
   "cert-no": "<account.certNo>",
-  "ref-no": "<validated refNo>"
+  "ref-no": "<validated referenceNo>"
 }
 ```
 

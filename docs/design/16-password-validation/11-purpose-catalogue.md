@@ -18,7 +18,7 @@ How `operationPayload` is defined for each purpose, and what it takes to add one
 |---|---|---|
 | `PERSONAL_INFORMATION_UPDATE` | `PUT /api/v1/personal-information` | The PUT body: `formVersion`, `applyToAllAccounts`, `fields` |
 | `CHANGE_INVESTMENT_CHOICE` | `POST /api/v1/investment-choice/instructions` | The complete submit body: `switchSources`, `allocations` |
-| `CANCEL_INVESTMENT_CHOICE` | `POST /api/v1/investment-choice/instructions/cancel` | The complete cancel body: `refNo` |
+| `CANCEL_INVESTMENT_CHOICE` | `POST /api/v1/investment-choice/instructions/cancel` | The complete cancel body: `referenceNo` |
 
 Current M5 issuance checks the Personal Information structure (`formVersion`
 non-blank string, `applyToAllAccounts` boolean and `fields` non-empty object),

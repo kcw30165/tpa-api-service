@@ -193,10 +193,10 @@ Cancels a pending instruction. Password-confirmed (D-39): additional header is t
 ### Request
 
 ```json
-{ "refNo": "260001449" }
+{ "referenceNo": "260001449" }
 ```
 
-The same body must have been sent as `operationPayload` to `POST /api/v1/password-validation` with purpose `CANCEL_INVESTMENT_CHOICE`; the gate compares it with the existing strict canonicalizer. Unknown members are rejected at both places. `refNo` is a string with no format rule (C6); it is validated by membership in the session snapshot's pending references (D-40).
+The same body must have been sent as `operationPayload` to `POST /api/v1/password-validation` with purpose `CANCEL_INVESTMENT_CHOICE`; the gate compares it with the existing strict canonicalizer. Unknown members are rejected at both places; the former `refNo` member is not an alias. `referenceNo` is a string with no format rule (C6); it is validated by membership in the session snapshot's pending references (D-40).
 
 ### 200 SUCCESS
 

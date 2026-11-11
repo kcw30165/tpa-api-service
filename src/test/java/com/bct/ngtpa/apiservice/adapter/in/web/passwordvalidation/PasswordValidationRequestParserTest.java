@@ -12,11 +12,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class PasswordValidationRequestParserTest {
   private static final String CANCEL_PURPOSE = "CANCEL_INVESTMENT_CHOICE";
-  private static final String REF_NO_FIELD = "refNo";
+  private static final String REFERENCE_NO_FIELD = "referenceNo";
   private static final String CANCEL_REFERENCE_NO = "260001449";
   private static final String OTHER_REFERENCE_NO = "260001450";
-  private static final String CANCEL_OPERATION = quotedRefNoOperation(CANCEL_REFERENCE_NO);
-  private static final String DIFFERENT_CANCEL_OPERATION = quotedRefNoOperation(OTHER_REFERENCE_NO);
+  private static final String CANCEL_OPERATION = quotedReferenceNoOperation(CANCEL_REFERENCE_NO);
+  private static final String DIFFERENT_CANCEL_OPERATION =
+      quotedReferenceNoOperation(OTHER_REFERENCE_NO);
   private static final String OPERATION =
       "{\"formVersion\":\"v1\",\"applyToAllAccounts\":true,\"fields\":{\"unknown\":null},\"extra\":[1.000]}";
   private static final String CIM_OPERATION =
@@ -97,29 +98,32 @@ class PasswordValidationRequestParserTest {
     return Stream.of(
         Arguments.of("root-not-object", "[]"),
         Arguments.of("unknown-member", unknownMemberOperation()),
-        Arguments.of("missing-refNo", "{}"),
-        Arguments.of("null-refNo", refNoOperation("null")),
-        Arguments.of("number-refNo", refNoOperation(CANCEL_REFERENCE_NO)),
-        Arguments.of("boolean-refNo", refNoOperation("true")),
-        Arguments.of("array-refNo", refNoOperation("[]")),
-        Arguments.of("object-refNo", refNoOperation("{}")),
-        Arguments.of("blank-refNo", refNoOperation("\" \\t \"")),
+        Arguments.of("missing-referenceNo", "{}"),
+        Arguments.of("null-referenceNo", referenceNoOperation("null")),
+        Arguments.of("number-referenceNo", referenceNoOperation(CANCEL_REFERENCE_NO)),
+        Arguments.of("boolean-referenceNo", referenceNoOperation("true")),
+        Arguments.of("array-referenceNo", referenceNoOperation("[]")),
+        Arguments.of("object-referenceNo", referenceNoOperation("{}")),
+        Arguments.of("blank-referenceNo", referenceNoOperation("\" \\t \"")),
+        Arguments.of("legacy-refNo", "{\"refNo\":\"260001449\"}"),
+        Arguments.of(
+            "both-public-names", "{\"referenceNo\":\"260001449\",\"refNo\":\"260001450\"}"),
         Arguments.of("unknown-member", unknownMemberOperation()));
   }
 
-  private static String quotedRefNoOperation(String value) {
+  private static String quotedReferenceNoOperation(String value) {
     return """
         {"%s":"%s"}
         """
-        .formatted(REF_NO_FIELD, value)
+        .formatted(REFERENCE_NO_FIELD, value)
         .strip();
   }
 
-  private static String refNoOperation(String value) {
+  private static String referenceNoOperation(String value) {
     return """
         {"%s":%s}
         """
-        .formatted(REF_NO_FIELD, value)
+        .formatted(REFERENCE_NO_FIELD, value)
         .strip();
   }
 
@@ -127,15 +131,15 @@ class PasswordValidationRequestParserTest {
     return """
         {"%s":"%s","extra":true}
         """
-        .formatted(REF_NO_FIELD, CANCEL_REFERENCE_NO)
+        .formatted(REFERENCE_NO_FIELD, CANCEL_REFERENCE_NO)
         .strip();
   }
 
-  private static String duplicateRefNoOperation() {
+  private static String duplicateReferenceNoOperation() {
     return """
         {"%s":"%s","%s":"%s"}
         """
-        .formatted(REF_NO_FIELD, CANCEL_REFERENCE_NO, REF_NO_FIELD, OTHER_REFERENCE_NO)
+        .formatted(REFERENCE_NO_FIELD, CANCEL_REFERENCE_NO, REFERENCE_NO_FIELD, OTHER_REFERENCE_NO)
         .strip();
   }
 
@@ -161,7 +165,8 @@ class PasswordValidationRequestParserTest {
 
   @Test
   void strictRawParsingStillRejectsDuplicateMembers() {
-    assertThatThrownBy(() -> parser.parse(body("abc", CANCEL_PURPOSE, duplicateRefNoOperation())))
+    assertThatThrownBy(
+            () -> parser.parse(body("abc", CANCEL_PURPOSE, duplicateReferenceNoOperation())))
         .isInstanceOf(PasswordValidationRequestInvalidException.class)
         .hasMessage("Invalid password-validation request")
         .hasNoCause();

@@ -382,24 +382,24 @@ request POST "$SUBMIT_PATH" yes none present
 assert_result S6 403 err.password-validation.authorization.invalid
 
 SCENARIO=S7
-REQUEST_BODY='{"refNo":"000000000"}'
+REQUEST_BODY='{"referenceNo":"000000000"}'
 request POST "$CANCEL_PATH" yes none present
 assert_result S7 403 err.password-validation.authorization.invalid
 
 SCENARIO=S8
-REQUEST_BODY='{"refNo":"000000000"}'
+REQUEST_BODY='{"referenceNo":"000000000"}'
 request POST "$CANCEL_PATH" yes 'invalid-cim-token' present
 assert_result S8 403 err.password-validation.authorization.invalid
 
 SCENARIO=S9-extra
-MALFORMED_CANCEL='{"refNo":"000000000","extra":"member"}'
+MALFORMED_CANCEL='{"referenceNo":"000000000","extra":"member"}'
 password_json CANCEL_INVESTMENT_CHOICE "$MALFORMED_CANCEL" 'not-a-real-password'
 REQUEST_BODY="$ISSUANCE_BODY"
 request POST "$ISSUE_PATH" yes none present
 assert_result S9-extra 400 err.password-validation.request.invalid
 
 SCENARIO=S9-blank
-MALFORMED_CANCEL='{"refNo":" "}'
+MALFORMED_CANCEL='{"referenceNo":" "}'
 password_json CANCEL_INVESTMENT_CHOICE "$MALFORMED_CANCEL" 'not-a-real-password'
 REQUEST_BODY="$ISSUANCE_BODY"
 request POST "$ISSUE_PATH" yes none present
@@ -422,14 +422,14 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     assert_result P1-reuse 403 err.password-validation.authorization.invalid
   fi
 
-  P2_BODY='{"refNo":"000000000"}'
+  P2_BODY='{"referenceNo":"000000000"}'
   SCENARIO=P2-issue
   issue_token CANCEL_INVESTMENT_CHOICE "$P2_BODY" "$CIM_PASSWORD" P2-issue
   P2_TOKEN="$TOKEN_VALUE"
   REQUEST_BODY="$P2_BODY"
   request POST "$CANCEL_PATH" yes "$P2_TOKEN" present
   assert_result P2-submit 422 err.investment-choice.cancel.ref-invalid
-  assert_error_target refNo
+  assert_error_target referenceNo
   REQUEST_BODY="$P2_BODY"
   request POST "$CANCEL_PATH" yes "$P2_TOKEN" present
   assert_result P2-reuse 403 err.password-validation.authorization.invalid
@@ -437,7 +437,7 @@ if [[ "$USE_PASSWORD" == yes ]]; then
   SCENARIO=P3-issue
   issue_token CANCEL_INVESTMENT_CHOICE "$P2_BODY" "$CIM_PASSWORD" P3-issue
   P3_TOKEN="$TOKEN_VALUE"
-  REQUEST_BODY='{"refNo":"000000001"}'
+  REQUEST_BODY='{"referenceNo":"000000001"}'
   request POST "$CANCEL_PATH" yes "$P3_TOKEN" present
   assert_result P3-body-binding 403 err.password-validation.authorization.invalid
 
@@ -483,7 +483,7 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     ERROR_CODE=''
     pass_scenario L2-get
 
-    LIVE_CANCEL_BODY="$(jq -cn --arg ref "$LIVE_REFERENCE" '{refNo:$ref}')"
+    LIVE_CANCEL_BODY="$(jq -cn --arg ref "$LIVE_REFERENCE" '{referenceNo:$ref}')"
     SCENARIO=L3-issue
     issue_token CANCEL_INVESTMENT_CHOICE "$LIVE_CANCEL_BODY" "$CIM_PASSWORD" L3-issue
     LIVE_CANCEL_TOKEN="$TOKEN_VALUE"
@@ -514,7 +514,7 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     REQUEST_BODY="$LIVE_CANCEL_BODY"
     request POST "$CANCEL_PATH" yes "$TOKEN_VALUE" present
     assert_result L4-repeat-cancel 422 err.investment-choice.cancel.ref-invalid
-    assert_error_target refNo
+    assert_error_target referenceNo
   fi
 fi
 

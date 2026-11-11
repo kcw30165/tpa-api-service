@@ -11,7 +11,7 @@ public final class CancelInvestmentChoicePasswordValidationPayloadDecoder
     implements PasswordValidationPurposePayloadDecoder<
         CancelInvestmentChoicePasswordValidationPayload> {
 
-  private static final String REF_NO = "refNo";
+  private static final String REFERENCE_NO = "referenceNo";
 
   @Override
   public PasswordValidationPurpose purpose() {
@@ -25,17 +25,17 @@ public final class CancelInvestmentChoicePasswordValidationPayloadDecoder
 
   @Override
   public CancelInvestmentChoicePasswordValidationPayload decode(JsonNode operationPayload) {
-    JsonNode reference = member(operationPayload);
-    JsonKind referenceKind = kind(reference);
+    JsonNode referenceNo = member(operationPayload);
+    JsonKind referenceNoKind = kind(referenceNo);
     return new CancelInvestmentChoicePasswordValidationPayload(
         kind(operationPayload),
         memberNames(operationPayload),
-        referenceKind,
-        value(reference, referenceKind));
+        referenceNoKind,
+        value(referenceNo, referenceNoKind));
   }
 
   private static JsonNode member(JsonNode node) {
-    return node == null ? null : node.get(REF_NO);
+    return node == null ? null : node.get(REFERENCE_NO);
   }
 
   private static JsonKind kind(JsonNode node) {

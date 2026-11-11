@@ -147,16 +147,16 @@ already published the incident `FailureEvent` for that exchange.
 ## 10. Flow - cancel (M4b, D-38 to D-43)
 
 ```text
-FE: POST /api/v1/password-validation {password, purpose: CANCEL_INVESTMENT_CHOICE, operationPayload: {"refNo": "<ref>"}}
+FE: POST /api/v1/password-validation {password, purpose: CANCEL_INVESTMENT_CHOICE, operationPayload: {"referenceNo": "<ref>"}}
     -> 200 result.data {token, expiresInSeconds}
-FE: POST /api/v1/investment-choice/instructions/cancel  (password-validation token header, body {"refNo": "<ref>"})
+FE: POST /api/v1/investment-choice/instructions/cancel  (password-validation token header, body {"referenceNo": "<ref>"})
 BFF:
  1. token gate consumes the token, binds session + Account-Ref + purpose + exact body (403 on mismatch)
- 2. body validation: object with only refNo, a nonblank string (422)
+ 2. body validation: object with only referenceNo, a nonblank string (422)
  3. read snapshot (miss -> 503, one FailureEvent)
- 4. refNo must be in the snapshot's pendingRefNos (else 422 ref-invalid; no downstream call, no event)
+ 4. referenceNo must be in the snapshot's pendingRefNos (else 422 ref-invalid; no downstream call, no event)
  5. TRPCnclCIMReq (NON_RETRYABLE, never resubmitted)
- 6. success -> 200 SUCCESS result.data {referenceNo = the validated refNo}; remove refNo from the snapshot (best effort)
+ 6. success -> 200 SUCCESS result.data {referenceNo = the validated value}; remove the matching pending reference from the snapshot (best effort)
     err.request.cannot.be.cancelled -> 422 BUSINESS_REJECTED not-cancellable
     any other err-message, or any throwable -> 503 cancel.unavailable (no reconciliation)
 ```

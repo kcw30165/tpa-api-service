@@ -110,11 +110,11 @@ Rendered like the submit validation (controller override, D-30). Every error: `m
 
 | # | Rule | type | code | targets |
 |---|---|---|---|---|
-| CV1 | body is a JSON object with only `refNo`; `refNo` is a JSON string | `FORM` | `err.investment-choice.request.invalid` | `[]` |
-| CV2 | `refNo` missing or blank | `FIELD` | `err.investment-choice.cancel.ref-required` | `["refNo"]` |
-| CS1 | `refNo` not among the snapshot's pending references | `FIELD` | `err.investment-choice.cancel.ref-invalid` | `["refNo"]` |
+| CV1 | body is a JSON object with only `referenceNo`; `referenceNo` is a JSON string | `FORM` | `err.investment-choice.request.invalid` | `[]` |
+| CV2 | `referenceNo` missing or blank | `FIELD` | `err.investment-choice.cancel.ref-required` | `["referenceNo"]` |
+| CS1 | `referenceNo` not among the snapshot's pending references | `FIELD` | `err.investment-choice.cancel.ref-invalid` | `["referenceNo"]` |
 
-CV1 takes precedence over CV2. `refNo` has no format rule (C6). CV1 and CV2 also run at password-validation issuance for `CANCEL_INVESTMENT_CHOICE` (strict, same renderer as the other purposes), and a parity test pins that issuance and the controller agree on every body.
+CV1 takes precedence over CV2. `referenceNo` has no format rule (C6). CV1 and CV2 also run at password-validation issuance for `CANCEL_INVESTMENT_CHOICE` (strict, same renderer as the other purposes), and a parity test pins that issuance and the controller agree on every body.
 
 ### 8.2 Error matrix
 
@@ -137,7 +137,7 @@ Cancel adapter events: capability `INVESTMENT_CHOICE`, operation `TRPCnclCIMReq`
 
 ### 8.4 Logging and privacy
 
-Never log: `refNo`, any pending reference number, the request or response body, the token, policy, certificate, user id, account ref, session id. Register `POST /api/v1/investment-choice/instructions/cancel` as a confidential route, with the same logging tests as the submit route.
+Never log: `referenceNo`, any pending reference number, the request or response body, the token, policy, certificate, user id, account ref, session id. Register `POST /api/v1/investment-choice/instructions/cancel` as a confidential route, with the same logging tests as the submit route.
 
 ### 8.5 New `ErrorCodes` constants
 

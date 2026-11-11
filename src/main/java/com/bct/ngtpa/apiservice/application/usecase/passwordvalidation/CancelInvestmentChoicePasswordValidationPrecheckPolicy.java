@@ -97,7 +97,7 @@ public final class CancelInvestmentChoicePasswordValidationPrecheckPolicy
                   new InvestmentChoiceViolation(
                       InvestmentChoiceViolation.Kind.FIELD,
                       ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID,
-                      List.of("refNo")))));
+                      List.of("referenceNo")))));
     }
     return Mono.just(PasswordValidationPrecheckResult.success());
   }

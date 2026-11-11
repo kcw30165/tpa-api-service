@@ -8,12 +8,14 @@ import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.CancelInvestmentChoicePasswordValidationPayload.JsonKind;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.PasswordValidationPrecheckContext;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.InvestmentChoiceCancelPrecheckValidator;
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.CancelInvestmentChoicePasswordValidationPrecheckPolicy;
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +30,7 @@ class CancelInvestmentChoicePasswordValidationCompatibilityTest {
   private static final String SENSITIVE_REFERENCE = "private-reference-marker";
   private static final String CANCEL_PURPOSE = "CANCEL_INVESTMENT_CHOICE";
   private static final String SAFE_SESSION_ID = "sid_abcdefghijklmnopqrstuvwx";
-  private static final String VALID_BODY = "{\"refNo\":\"valid-reference\"}";
+  private static final String VALID_BODY = "{\"referenceNo\":\"valid-reference\"}";
   private static final ObjectMapper JSON = new ObjectMapper();
 
   private final CancelInvestmentChoicePasswordValidationPayloadDecoder decoder =
@@ -58,28 +60,53 @@ class CancelInvestmentChoicePasswordValidationCompatibilityTest {
       throws JsonProcessingException {
     var payload =
         decoder.decode(
-            JSON.readTree("{\"refNo\":\"" + SENSITIVE_REFERENCE + "\",\"unrecognized\":true}"));
+            JSON.readTree(
+                "{\"referenceNo\":\"" + SENSITIVE_REFERENCE + "\",\"unrecognized\":true}"));
     var missingReference = decoder.decode(JSON.readTree("{}"));
-    var nullReference = decoder.decode(JSON.readTree("{\"refNo\":null}"));
+    var nullReference = decoder.decode(JSON.readTree("{\"referenceNo\":null}"));
 
     assertThat(payload.rootKind()).isEqualTo(JsonKind.OBJECT);
-    assertThat(payload.rootMembers()).containsExactly("refNo", "unrecognized");
-    assertThat(payload.refNoKind()).isEqualTo(JsonKind.STRING);
-    assertThat(payload.refNoValue()).isEqualTo(SENSITIVE_REFERENCE);
-    assertThat(missingReference.refNoKind()).isEqualTo(JsonKind.MISSING);
-    assertThat(missingReference.refNoValue()).isNull();
-    assertThat(nullReference.refNoKind()).isEqualTo(JsonKind.NULL);
-    assertThat(nullReference.refNoValue()).isNull();
-    assertThat(decoder.decode(JSON.readTree("{\"refNo\":123}")).refNoValue()).isEqualTo("123");
-    assertThat(decoder.decode(JSON.readTree("{\"refNo\":true}")).refNoValue()).isEqualTo("true");
-    assertThat(decoder.decode(JSON.readTree("{\"refNo\":[]}")).refNoValue()).isEqualTo("[]");
-    assertThat(decoder.decode(JSON.readTree("{\"refNo\":{}}")).refNoValue()).isEqualTo("{}");
+    assertThat(payload.rootMembers()).containsExactly("referenceNo", "unrecognized");
+    assertThat(payload.referenceNoKind()).isEqualTo(JsonKind.STRING);
+    assertThat(payload.referenceNoValue()).isEqualTo(SENSITIVE_REFERENCE);
+    assertThat(missingReference.referenceNoKind()).isEqualTo(JsonKind.MISSING);
+    assertThat(missingReference.referenceNoValue()).isNull();
+    assertThat(nullReference.referenceNoKind()).isEqualTo(JsonKind.NULL);
+    assertThat(nullReference.referenceNoValue()).isNull();
+    assertThat(decoder.decode(JSON.readTree("{\"referenceNo\":123}")).referenceNoValue())
+        .isEqualTo("123");
+    assertThat(decoder.decode(JSON.readTree("{\"referenceNo\":true}")).referenceNoValue())
+        .isEqualTo("true");
+    assertThat(decoder.decode(JSON.readTree("{\"referenceNo\":[]}")).referenceNoValue())
+        .isEqualTo("[]");
+    assertThat(decoder.decode(JSON.readTree("{\"referenceNo\":{}}")).referenceNoValue())
+        .isEqualTo("{}");
+  }
+
+  @Test
+  void legacyRefNoAndBothNamesAreRejectedAsUnknownMembers() throws JsonProcessingException {
+    for (String body :
+        Stream.of(
+                "{\"refNo\":\"valid-reference\"}",
+                "{\"referenceNo\":\"valid-reference\",\"refNo\":\"other-reference\"}")
+            .toList()) {
+      var result = validator.validate(decoder.decode(JSON.readTree(body)));
+
+      assertThat(result.violations())
+          .containsExactly(
+              new InvestmentChoiceViolation(
+                  InvestmentChoiceViolation.Kind.FORM,
+                  ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID,
+                  java.util.List.of()));
+    }
   }
 
   @Test
   void rawIssuanceParserRejectsDuplicateCancelMemberAndTrailingContent() {
     assertThatThrownBy(
-            () -> parser.parse(issuanceRequest("{\"refNo\":\"first\",\"refNo\":\"second\"}")))
+            () ->
+                parser.parse(
+                    issuanceRequest("{\"referenceNo\":\"first\",\"referenceNo\":\"second\"}")))
         .isInstanceOf(PasswordValidationRequestInvalidException.class);
     assertThatThrownBy(() -> parser.parse(issuanceRequest(VALID_BODY) + " trailing"))
         .isInstanceOf(PasswordValidationRequestInvalidException.class);
@@ -103,7 +130,7 @@ class CancelInvestmentChoicePasswordValidationCompatibilityTest {
   @Test
   void payloadValidatorFacadeAndContextStringFormsDoNotExposeReference()
       throws JsonProcessingException {
-    JsonNode operationPayload = JSON.readTree("{\"refNo\":\"" + SENSITIVE_REFERENCE + "\"}");
+    JsonNode operationPayload = JSON.readTree("{\"referenceNo\":\"" + SENSITIVE_REFERENCE + "\"}");
     var payload = decoder.decode(operationPayload);
     var result = validator.validate(payload);
     var facadeResult = executionFacade.validate(operationPayload);
@@ -142,9 +169,9 @@ class CancelInvestmentChoicePasswordValidationCompatibilityTest {
     return Stream.concat(
         existing,
         Stream.of(
-            Arguments.of("leading zeroes preserved", "{\"refNo\":\"0000123\"}"),
+            Arguments.of("leading zeroes preserved", "{\"referenceNo\":\"0000123\"}"),
             Arguments.of(
-                "nonblank surrounding whitespace preserved", "{\"refNo\":\" 0000123 \"}")));
+                "nonblank surrounding whitespace preserved", "{\"referenceNo\":\" 0000123 \"}")));
   }
 
   private static String issuanceRequest(String operationPayload) {

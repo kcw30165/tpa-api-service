@@ -28,8 +28,8 @@ class InvestmentChoiceCancelBodyValidatorTest {
         validator.validate(
             JSON.readTree(
                 """
-            {"refNo":"260001449"}
-            """));
+                {"referenceNo":"260001449"}
+                """));
 
     assertThat(result.isValid()).isTrue();
     assertThat(result.referenceNo()).isEqualTo(VALID_REFERENCE_NO);
@@ -73,22 +73,27 @@ class InvestmentChoiceCancelBodyValidatorTest {
         Arguments.of("null root", "null", violation),
         Arguments.of("array root", "[]", violation),
         Arguments.of("string root", "\"body\"", violation),
-        Arguments.of("unknown member", "{\"refNo\":\"260001449\",\"extra\":true}", violation),
+        Arguments.of("unknown member", "{\"referenceNo\":\"260001449\",\"extra\":true}", violation),
+        Arguments.of("legacy refNo is unknown", "{\"refNo\":\"260001449\"}", violation),
+        Arguments.of(
+            "both public names are unknown-member input",
+            "{\"referenceNo\":\"260001449\",\"refNo\":\"260001450\"}",
+            violation),
         Arguments.of("unknown member takes precedence", "{\"extra\":true}", violation),
-        Arguments.of("null reference", "{\"refNo\":null}", violation),
-        Arguments.of("numeric reference", "{\"refNo\":260001449}", violation),
-        Arguments.of("boolean reference", "{\"refNo\":false}", violation),
-        Arguments.of("array reference", "{\"refNo\":[]}", violation),
-        Arguments.of("object reference", "{\"refNo\":{}}", violation));
+        Arguments.of("null reference", "{\"referenceNo\":null}", violation),
+        Arguments.of("numeric reference", "{\"referenceNo\":260001449}", violation),
+        Arguments.of("boolean reference", "{\"referenceNo\":false}", violation),
+        Arguments.of("array reference", "{\"referenceNo\":[]}", violation),
+        Arguments.of("object reference", "{\"referenceNo\":{}}", violation));
   }
 
   private static Stream<Arguments> requiredReferenceViolations() {
     InvestmentChoiceViolation violation =
         new InvestmentChoiceViolation(
-            InvestmentChoiceViolation.Kind.FIELD, REF_REQUIRED, List.of("refNo"));
+            InvestmentChoiceViolation.Kind.FIELD, REF_REQUIRED, List.of("referenceNo"));
     return Stream.of(
         Arguments.of("missing reference", "{}", violation),
-        Arguments.of("empty reference", "{\"refNo\":\"\"}", violation),
-        Arguments.of("whitespace reference", "{\"refNo\":\"   \"}", violation));
+        Arguments.of("empty reference", "{\"referenceNo\":\"\"}", violation),
+        Arguments.of("whitespace reference", "{\"referenceNo\":\"   \"}", violation));
   }
 }

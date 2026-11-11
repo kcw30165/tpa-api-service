@@ -22,7 +22,7 @@ class InvestmentChoiceInstructionPasswordValidationParityTest {
       "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":["
           + "{\"fundCode\":\"DBLF\",\"percentage\":60},"
           + "{\"fundCode\":\"DHKM\",\"percentage\":40}]}";
-  private static final String VALID_CANCEL = "{\"refNo\":\"260001449\"}";
+  private static final String VALID_CANCEL = "{\"referenceNo\":\"260001449\"}";
   private final ObjectMapper json = new ObjectMapper();
   private final ChangeInvestmentChoicePasswordValidationPayloadDecoder submitDecoder =
       new ChangeInvestmentChoicePasswordValidationPayloadDecoder();
@@ -190,15 +190,18 @@ class InvestmentChoiceInstructionPasswordValidationParityTest {
   static Stream<Arguments> cancelParityCases() {
     return Stream.of(
         cancelCase("valid", VALID_CANCEL, true),
-        cancelCase("extra member", "{\"refNo\":\"260001449\",\"extra\":true}", false),
-        cancelCase("missing refNo", "{}", false),
-        cancelCase("null refNo", "{\"refNo\":null}", false),
-        cancelCase("numeric refNo", "{\"refNo\":260001449}", false),
-        cancelCase("boolean refNo", "{\"refNo\":false}", false),
-        cancelCase("array refNo", "{\"refNo\":[]}", false),
-        cancelCase("object refNo", "{\"refNo\":{}}", false),
-        cancelCase("empty refNo", "{\"refNo\":\"\"}", false),
-        cancelCase("whitespace refNo", "{\"refNo\":\"   \"}", false),
+        cancelCase("extra member", "{\"referenceNo\":\"260001449\",\"extra\":true}", false),
+        cancelCase("legacy refNo", "{\"refNo\":\"260001449\"}", false),
+        cancelCase(
+            "both public names", "{\"referenceNo\":\"260001449\",\"refNo\":\"260001450\"}", false),
+        cancelCase("missing referenceNo", "{}", false),
+        cancelCase("null referenceNo", "{\"referenceNo\":null}", false),
+        cancelCase("numeric referenceNo", "{\"referenceNo\":260001449}", false),
+        cancelCase("boolean referenceNo", "{\"referenceNo\":false}", false),
+        cancelCase("array referenceNo", "{\"referenceNo\":[]}", false),
+        cancelCase("object referenceNo", "{\"referenceNo\":{}}", false),
+        cancelCase("empty referenceNo", "{\"referenceNo\":\"\"}", false),
+        cancelCase("whitespace referenceNo", "{\"referenceNo\":\"   \"}", false),
         cancelCase("array root", "[]", false),
         cancelCase("string root", "\"body\"", false),
         cancelCase("empty object", "{}", false));

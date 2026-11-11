@@ -179,12 +179,12 @@ class PasswordValidationIssuanceServiceTest {
             ErrorCodes.INVESTMENT_CHOICE_MEMBER_INELIGIBLE),
         Arguments.of(
             PasswordValidationPurpose.CANCEL_INVESTMENT_CHOICE,
-            "{\"refNo\":\"000000000\"}",
+            "{\"referenceNo\":\"000000000\"}",
             InvestmentChoiceScenario.FUNCTION_UNAVAILABLE,
             ErrorCodes.INVESTMENT_CHOICE_FUNCTION_UNAVAILABLE),
         Arguments.of(
             PasswordValidationPurpose.CANCEL_INVESTMENT_CHOICE,
-            "{\"refNo\":\"000000000\"}",
+            "{\"referenceNo\":\"000000000\"}",
             InvestmentChoiceScenario.MEMBER_INELIGIBLE,
             ErrorCodes.INVESTMENT_CHOICE_MEMBER_INELIGIBLE));
   }

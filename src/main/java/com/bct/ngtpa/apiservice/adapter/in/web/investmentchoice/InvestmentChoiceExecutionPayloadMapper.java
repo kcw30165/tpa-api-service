@@ -57,11 +57,12 @@ public final class InvestmentChoiceExecutionPayloadMapper {
   public String toReferenceNo(CancelInvestmentChoicePasswordValidationPayload payload) {
     Objects.requireNonNull(payload, "payload must not be null");
     if (payload.rootKind() != CancelInvestmentChoicePasswordValidationPayload.JsonKind.OBJECT
-        || payload.refNoKind() != CancelInvestmentChoicePasswordValidationPayload.JsonKind.STRING
-        || payload.refNoValue() == null) {
+        || payload.referenceNoKind()
+            != CancelInvestmentChoicePasswordValidationPayload.JsonKind.STRING
+        || payload.referenceNoValue() == null) {
       throw invalidPayload();
     }
-    return payload.refNoValue();
+    return payload.referenceNoValue();
   }
 
   private static IllegalArgumentException invalidPayload() {

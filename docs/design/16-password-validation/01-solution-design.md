@@ -423,7 +423,7 @@ not a general-purpose JSON framework:
   and string value; and for each allocation its object validity, member names,
   and the presence, JSON kind and scalar value of `fundCode` and `percentage`.
 - CIM cancel retains root-object validity/member names and the presence, JSON
-  kind and string value of `refNo`.
+  kind and string value of `referenceNo`.
 
 The representation must preserve unknown member names, missing versus explicit
 null, and JSON kinds until the application policy runs. Values that are not

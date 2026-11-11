@@ -58,7 +58,7 @@ class CancelInvestmentChoicePasswordValidationPrecheckPolicyTest {
   private static final String POLICY_NO = "policy-sensitive-marker";
   private static final String REQUEST_ID = "request-safe";
   private static final String SNAPSHOT_MISSING_EVENT = "investment-choice.cancel.snapshot.missing";
-  private static final String VALID_BODY = "{\"refNo\":\"" + REFERENCE_NO + "\"}";
+  private static final String VALID_BODY = "{\"referenceNo\":\"" + REFERENCE_NO + "\"}";
   private static final ObjectMapper JSON = new ObjectMapper();
   private static final AuthenticatedSessionId SESSION_ID =
       new AuthenticatedSessionId(SESSION_ID_VALUE);
@@ -143,7 +143,7 @@ class CancelInvestmentChoicePasswordValidationPrecheckPolicyTest {
             precheckViolation(
                 PasswordValidationPrecheckViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID,
-                "refNo"));
+                "referenceNo"));
     verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
     assertNoSensitiveLogValues();
@@ -323,27 +323,27 @@ class CancelInvestmentChoicePasswordValidationPrecheckPolicyTest {
             ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID),
         invalid(
             "null reference",
-            "{\"refNo\":null}",
+            "{\"referenceNo\":null}",
             PasswordValidationPrecheckViolation.Kind.FORM,
             ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID),
         invalid(
             "numeric reference",
-            "{\"refNo\":1}",
+            "{\"referenceNo\":1}",
             PasswordValidationPrecheckViolation.Kind.FORM,
             ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID),
         invalid(
             "boolean reference",
-            "{\"refNo\":true}",
+            "{\"referenceNo\":true}",
             PasswordValidationPrecheckViolation.Kind.FORM,
             ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID),
         invalid(
             "array reference",
-            "{\"refNo\":[]}",
+            "{\"referenceNo\":[]}",
             PasswordValidationPrecheckViolation.Kind.FORM,
             ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID),
         invalid(
             "object reference",
-            "{\"refNo\":{}}",
+            "{\"referenceNo\":{}}",
             PasswordValidationPrecheckViolation.Kind.FORM,
             ErrorCodes.INVESTMENT_CHOICE_REQUEST_INVALID),
         invalid(
@@ -351,13 +351,13 @@ class CancelInvestmentChoicePasswordValidationPrecheckPolicyTest {
             "{}",
             PasswordValidationPrecheckViolation.Kind.FIELD,
             ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_REQUIRED,
-            "refNo"),
+            "referenceNo"),
         invalid(
             "blank reference",
-            "{\"refNo\":\" \\t \"}",
+            "{\"referenceNo\":\" \\t \"}",
             PasswordValidationPrecheckViolation.Kind.FIELD,
             ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_REQUIRED,
-            "refNo"));
+            "referenceNo"));
   }
 
   private static Arguments invalid(

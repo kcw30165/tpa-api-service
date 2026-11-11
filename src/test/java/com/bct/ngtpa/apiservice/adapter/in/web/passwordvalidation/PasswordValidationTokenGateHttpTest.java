@@ -81,9 +81,9 @@ class PasswordValidationTokenGateHttpTest {
   private static final String CANCEL_REFERENCE_NO = "260001449";
   private static final String OTHER_CANCEL_REFERENCE_NO = "260001450";
   private static final String CANCEL_ERROR_TEXT = "cancel-error-marker";
-  private static final String CANCEL_EMPTY_REFERENCE_PAYLOAD = "{\"refNo\":\"\"}";
+  private static final String CANCEL_EMPTY_REFERENCE_PAYLOAD = "{\"referenceNo\":\"\"}";
   private static final String CANCEL_EXTRA_MEMBER_PAYLOAD =
-      "{\"refNo\":\"260001449\",\"extra\":true}";
+      "{\"referenceNo\":\"260001449\",\"extra\":true}";
   private static final String TOKEN = "X-Password-Validation-Token";
   private static final String SID = "sid_abcdefghijklmnopqrstuvwx";
   private static final String REF = "acc_abcdefghijklmnopqrstuvwx";
@@ -100,6 +100,7 @@ class PasswordValidationTokenGateHttpTest {
   private static final String CIM_PAYLOAD =
       "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":[{\"fundCode\":\"DBLF\",\"percentage\":60},{\"fundCode\":\"DHKM\",\"percentage\":40}]}";
   private static final String CANCEL_PAYLOAD = quotedCancelPayload(CANCEL_REFERENCE_NO);
+  private static final String OTHER_CANCEL_PAYLOAD = quotedCancelPayload(OTHER_CANCEL_REFERENCE_NO);
   private static final ObjectMapper JSON = new ObjectMapper();
   private final JsonOperationPayloadCanonicalizer bindings =
       new JsonOperationPayloadCanonicalizer();
@@ -385,6 +386,21 @@ class PasswordValidationTokenGateHttpTest {
     assertThat(logText()).doesNotContain(token, CANCEL_REFERENCE_NO);
   }
 
+  @Test
+  void cancelIssuanceTokenRejectsChangedReferenceBody() throws Exception {
+    String token =
+        issueThroughHttp(CANCEL_PAYLOAD, PasswordValidationPurpose.parse(CANCEL_PURPOSE));
+
+    reject(
+        post(CANCEL_PATH, SID, REF, "csrf-fixture", OTHER_CANCEL_PAYLOAD, token),
+        403,
+        "BUSINESS_REJECTED",
+        authorizationCode());
+
+    assertThat(cancelStub.dispatches).hasValue(0);
+    assertThat(cancelStub.downstream).hasValue(0);
+  }
+
   @ParameterizedTest
   @MethodSource("cancelBodiesRejectedByGate")
   void cancelGateRejectsMalformedNonObjectAndDuplicateMemberBodies(String body) {
@@ -404,8 +420,8 @@ class PasswordValidationTokenGateHttpTest {
     return Stream.of(
         Arguments.of("[]"),
         Arguments.of("\"body\""),
-        Arguments.of("{\"refNo\":"),
-        Arguments.of("{\"refNo\":\"260001449\",\"refNo\":\"260001450\"}"));
+        Arguments.of("{\"referenceNo\":"),
+        Arguments.of("{\"referenceNo\":\"260001449\",\"referenceNo\":\"260001450\"}"));
   }
 
   @ParameterizedTest
@@ -1506,7 +1522,7 @@ class PasswordValidationTokenGateHttpTest {
 
   private static String quotedCancelPayload(String referenceNo) {
     return """
-        {"refNo":"%s"}
+        {"referenceNo":"%s"}
         """
         .formatted(referenceNo)
         .strip();

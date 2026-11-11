@@ -10,14 +10,15 @@ import java.util.Objects;
 
 public final class InvestmentChoiceCancelPrecheckValidator {
 
-  private static final String REF_NO = "refNo";
+  private static final String REFERENCE_NO = "referenceNo";
 
   public InvestmentChoiceCancelValidationResult validate(
       CancelInvestmentChoicePasswordValidationPayload payload) {
     Objects.requireNonNull(payload, "payload must not be null");
     if (payload.rootKind() != JsonKind.OBJECT
         || hasUnknownMember(payload.rootMembers())
-        || (payload.refNoKind() != JsonKind.MISSING && payload.refNoKind() != JsonKind.STRING)) {
+        || (payload.referenceNoKind() != JsonKind.MISSING
+            && payload.referenceNoKind() != JsonKind.STRING)) {
       return invalid(
           new InvestmentChoiceViolation(
               InvestmentChoiceViolation.Kind.FORM,
@@ -25,18 +26,18 @@ public final class InvestmentChoiceCancelPrecheckValidator {
               List.of()));
     }
 
-    if (payload.refNoKind() == JsonKind.MISSING || payload.refNoValue().isBlank()) {
+    if (payload.referenceNoKind() == JsonKind.MISSING || payload.referenceNoValue().isBlank()) {
       return invalid(
           new InvestmentChoiceViolation(
               InvestmentChoiceViolation.Kind.FIELD,
               ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_REQUIRED,
-              List.of(REF_NO)));
+              List.of(REFERENCE_NO)));
     }
-    return valid(payload.refNoValue());
+    return valid(payload.referenceNoValue());
   }
 
   private static boolean hasUnknownMember(List<String> rootMembers) {
-    return rootMembers.stream().anyMatch(member -> !REF_NO.equals(member));
+    return rootMembers.stream().anyMatch(member -> !REFERENCE_NO.equals(member));
   }
 
   private static InvestmentChoiceCancelValidationResult valid(String referenceNo) {

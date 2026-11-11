@@ -84,13 +84,13 @@ class InvestmentChoiceControllerTest {
   private static final String PRESERVED_REFERENCE_NO = "0260001449";
   private static final String CANCEL_BODY =
       """
-      {"refNo":"%s"}
+      {"referenceNo":"%s"}
       """
           .formatted(CANCEL_REFERENCE_NO)
           .strip();
   private static final String BODY_WITH_PRESERVED_REFERENCE =
       """
-      {"refNo":"%s"}
+      {"referenceNo":"%s"}
       """
           .formatted(PRESERVED_REFERENCE_NO)
           .strip();
@@ -982,7 +982,7 @@ class InvestmentChoiceControllerTest {
             exchange -> Optional.of(SESSION_ID));
 
     submitPost(submitClient, "[]").expectStatus().isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-    cancelPost(cancelClient, "{\"refNo\":1}")
+    cancelPost(cancelClient, "{\"referenceNo\":1}")
         .expectStatus()
         .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
 
