@@ -43,6 +43,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegis
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameCommand;
 import lombok.RequiredArgsConstructor;
@@ -374,31 +375,32 @@ public final class RegistrationController {
 
     return verifyRegistrationOtpUseCase
         .verify(command)
-        .map(
-            result -> {
-              if (result.status()
-                      != com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp
-                          .VerifyRegistrationOtpResultStatus.INVALID_AUTH_FLOW
-                  && result.status()
-                      != com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp
-                          .VerifyRegistrationOtpResultStatus.CSRF_INVALID) {
-                cookieWriter.writeAuthFlowCookie(response, authFlowSessionId);
-              }
-              var mapped = registrationOtpVerifyMapper.toMutationResponse(result);
-              var httpResponse = RegistrationHttpResponses.toResponse(mapped);
-              if (httpResponse.getStatusCode().value() == 400
-                  && result.idempotencyOutcome()
-                      != RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY) {
-                RegistrationProtectedAuthFlowContextStatus contextStatus =
-                    result.protectedContextStatus();
-                logOtpVerifyRejection(
-                    requestId,
-                    contextStatus == null ? result.status().name() : contextStatus.name(),
-                    httpResponse.getStatusCode().value(),
-                    isTechnicalContextFailure(contextStatus));
-              }
-              return httpResponse;
-            });
+        .map(result -> toVerifyOtpHttpResponse(result, authFlowSessionId, requestId, response));
+  }
+
+  private ResponseEntity<
+          MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>>>
+      toVerifyOtpHttpResponse(
+          VerifyRegistrationOtpResult result,
+          String authFlowSessionId,
+          String requestId,
+          ServerHttpResponse response) {
+    if (result.status() != VerifyRegistrationOtpResultStatus.INVALID_AUTH_FLOW
+        && result.status() != VerifyRegistrationOtpResultStatus.CSRF_INVALID) {
+      cookieWriter.writeAuthFlowCookie(response, authFlowSessionId);
+    }
+    var mapped = registrationOtpVerifyMapper.toMutationResponse(result);
+    var httpResponse = RegistrationHttpResponses.toResponse(mapped);
+    if (httpResponse.getStatusCode().value() == 400
+        && result.idempotencyOutcome() != RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY) {
+      RegistrationProtectedAuthFlowContextStatus contextStatus = result.protectedContextStatus();
+      logOtpVerifyRejection(
+          requestId,
+          contextStatus == null ? result.status().name() : contextStatus.name(),
+          httpResponse.getStatusCode().value(),
+          isTechnicalContextFailure(contextStatus));
+    }
+    return httpResponse;
   }
 
   private ResponseEntity<

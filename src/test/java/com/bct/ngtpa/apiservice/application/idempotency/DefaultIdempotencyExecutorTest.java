@@ -147,8 +147,7 @@ class DefaultIdempotencyExecutorTest {
             IdempotencyStatus.UNKNOWN_OUTCOME)) {
       FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
       port.loadedRecord =
-          idempotencyRecord(
-              operation(), fingerprint(), status, null, NOW.plusSeconds(300));
+          idempotencyRecord(operation(), fingerprint(), status, null, NOW.plusSeconds(300));
 
       assertThat(
               executor(port)
