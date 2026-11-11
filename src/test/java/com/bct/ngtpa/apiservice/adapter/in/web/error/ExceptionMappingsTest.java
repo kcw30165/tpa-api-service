@@ -23,6 +23,7 @@ import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmission
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionPreDispatchException;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException;
@@ -603,11 +604,34 @@ class ExceptionMappingsTest {
   // ───────────────────────── registry assembly ─────────────────────────
 
   @Test
-  void configAssemblesExactlyTwentySevenMappingsPlusCatchAll() {
+  void registrationCompletionPreDispatchResolvesToSafeSystemDescriptor() {
+    ExceptionMappingRegistry registry =
+        new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
+    var exception = new RegistrationCompletionPreDispatchException(new IllegalStateException());
+
+    ErrorDescriptor descriptor = registry.resolve(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, entry.code());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(MessagePolicy.RESOLVE, entry.policy());
+    assertEquals("http.api.error", descriptor.logEventName());
+    assertEquals(LogLevel.ERROR, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+    assertEquals(
+        "Registration completion failed before downstream dispatch",
+        registry.diagnosticMessage(exception));
+  }
+
+  @Test
+  void configAssemblesExactlyTwentyEightMappingsPlusCatchAll() {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(27, registry.mappingCount());
+    assertEquals(28, registry.mappingCount());
 
     ErrorDescriptor updateUnavailable =
         registry.resolve(
