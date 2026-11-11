@@ -54,6 +54,7 @@ class P7RegistrationOtpSecurityBoundaryGuardTest {
                         List.of(),
                         List.of(),
                         RegistrationIdempotencyStartOutcome.STARTED,
+                        null,
                         null)));
 
     assertThat(resendJson + verifyJson)

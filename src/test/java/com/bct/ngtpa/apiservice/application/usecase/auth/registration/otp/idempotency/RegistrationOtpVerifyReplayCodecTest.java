@@ -45,6 +45,7 @@ class RegistrationOtpVerifyReplayCodecTest {
         messages,
         errors,
         RegistrationIdempotencyStartOutcome.STARTED,
+        null,
         null);
   }
 

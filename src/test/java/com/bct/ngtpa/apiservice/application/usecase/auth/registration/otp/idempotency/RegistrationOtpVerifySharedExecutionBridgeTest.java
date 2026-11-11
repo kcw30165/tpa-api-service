@@ -55,6 +55,7 @@ class RegistrationOtpVerifySharedExecutionBridgeTest {
                 WorkflowErrorSeverity.ERROR,
                 "SERVER")),
         RegistrationIdempotencyStartOutcome.STARTED,
+        null,
         null);
   }
 
@@ -113,6 +114,7 @@ class RegistrationOtpVerifySharedExecutionBridgeTest {
             List.of(),
             List.of(),
             null,
+            null,
             null);
     assertThatThrownBy(() -> newBridge().toTransientResponse(lifecycleOnly))
         .isInstanceOf(IllegalArgumentException.class);
@@ -145,6 +147,7 @@ class RegistrationOtpVerifySharedExecutionBridgeTest {
             null,
             List.of(),
             List.of(),
+            null,
             null,
             null);
     HydratedIdempotentResponse response = bridge.toTransientResponse(minimal);

@@ -138,6 +138,7 @@ public final class RegistrationOtpVerifyProtectedOperation {
                       List.of(),
                       List.of(),
                       RegistrationIdempotencyStartOutcome.STARTED,
+                      null,
                       null);
               return eligibleTrusts
                   .store(command.authFlowSessionId(), unregisteredAccounts, clock.instant())
@@ -173,6 +174,7 @@ public final class RegistrationOtpVerifyProtectedOperation {
                 WorkflowErrorSeverity.ERROR,
                 SOURCE_SERVER)),
         RegistrationIdempotencyStartOutcome.STARTED,
+        null,
         null);
   }
 }

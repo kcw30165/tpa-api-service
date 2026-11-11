@@ -85,7 +85,8 @@ public final class RegistrationOtpVerifySharedExecutionBridge {
           readList(wire, "messages", WorkflowMessageDescriptor[].class),
           readList(wire, "errors", WorkflowErrorDescriptor[].class),
           nullableEnum(wire, FIELD_IDEMPOTENCY_OUTCOME, RegistrationIdempotencyStartOutcome.class),
-          nullableValue(wire, "replaySnapshot", RegistrationIdempotencyResponseSnapshot.class));
+          nullableValue(wire, "replaySnapshot", RegistrationIdempotencyResponseSnapshot.class),
+          null);
     } catch (JsonProcessingException | IllegalArgumentException exception) {
       throw new IllegalArgumentException(
           "Registration OTP Verify transient decoding failed", exception);

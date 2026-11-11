@@ -19,27 +19,6 @@ public record VerifyRegistrationOtpResult(
     RegistrationIdempotencyStartOutcome idempotencyOutcome,
     RegistrationIdempotencyResponseSnapshot replaySnapshot,
     RegistrationProtectedAuthFlowContextStatus protectedContextStatus) {
-  public VerifyRegistrationOtpResult(
-      VerifyRegistrationOtpResultStatus status,
-      WorkflowNextStep nextStep,
-      List<RegistrationUnregisteredTrust> unregisteredTrusts,
-      Integer remainingVerifyAttempts,
-      List<WorkflowMessageDescriptor> messages,
-      List<WorkflowErrorDescriptor> errors,
-      RegistrationIdempotencyStartOutcome idempotencyOutcome,
-      RegistrationIdempotencyResponseSnapshot replaySnapshot) {
-    this(
-        status,
-        nextStep,
-        unregisteredTrusts,
-        remainingVerifyAttempts,
-        messages,
-        errors,
-        idempotencyOutcome,
-        replaySnapshot,
-        null);
-  }
-
   public VerifyRegistrationOtpResult {
     Objects.requireNonNull(status, "status must not be null");
     nextStep = nextStep == null ? WorkflowNextStep.NONE : nextStep;

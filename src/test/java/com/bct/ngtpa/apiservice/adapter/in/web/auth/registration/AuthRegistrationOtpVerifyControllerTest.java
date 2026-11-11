@@ -402,6 +402,7 @@ class AuthRegistrationOtpVerifyControllerTest {
             List.of(),
             List.of(),
             RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY,
+            null,
             null);
 
     try {
@@ -766,6 +767,7 @@ class AuthRegistrationOtpVerifyControllerTest {
               List.of(),
               List.of(),
               RegistrationIdempotencyStartOutcome.STARTED,
+              null,
               null));
     }
   }
