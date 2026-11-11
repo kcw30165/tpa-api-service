@@ -57,15 +57,15 @@ public final class DefaultIdempotencyExecutor implements IdempotencyExecutor {
               .flatMap(
                   found -> {
                     if (found.isEmpty()) return Mono.just(Optional.empty());
-                    IdempotencyRecord record = found.orElseThrow();
-                    if (!record.operationId().equals(operationId)
-                        || !record.fingerprint().equals(fingerprint)
-                        || !record.expiresAt().isAfter(now)
-                        || record.status() != IdempotencyStatus.COMPLETED
-                        || record.terminalResponse() == null) {
+                    IdempotencyRecord completedRecord = found.orElseThrow();
+                    if (!completedRecord.operationId().equals(operationId)
+                        || !completedRecord.fingerprint().equals(fingerprint)
+                        || !completedRecord.expiresAt().isAfter(now)
+                        || completedRecord.status() != IdempotencyStatus.COMPLETED
+                        || completedRecord.terminalResponse() == null) {
                       return Mono.just(Optional.empty());
                     }
-                    return hydrateCompleted(record.terminalResponse(), replayResolver)
+                    return hydrateCompleted(completedRecord.terminalResponse(), replayResolver)
                         .map(Optional::of);
                   });
         });

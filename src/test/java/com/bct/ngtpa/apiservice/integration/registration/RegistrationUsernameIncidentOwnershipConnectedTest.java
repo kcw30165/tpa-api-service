@@ -573,7 +573,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         .isEqualTo(requestId);
     assertThat(first.getResponseCookies().getFirst("auth_flow_sid").getValue())
         .isEqualTo(SESSION_ID);
-    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.COMPLETED);
+    assertThat(harness.persistence().currentRecord().status())
+        .isEqualTo(IdempotencyStatus.COMPLETED);
     assertThat(sessions.current().status()).isEqualTo(AuthFlowStatus.COMPLETING);
     assertThat(scenarioExchange.calls()).isEqualTo(2);
     assertThat(scenarioExchange.observations())
@@ -660,7 +661,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
                     || event.getLoggerName().equals(ExecutionLoggingAspect.class.getName()));
     assertHttpObservation(replayEvents, replayRequestId, 502, Level.WARN);
     assertThat(scenarioExchange.calls()).isEqualTo(2);
-    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.COMPLETED);
+    assertThat(harness.persistence().currentRecord().status())
+        .isEqualTo(IdempotencyStatus.COMPLETED);
     assertThat(harness.persistence().reserveCalls()).isOne();
     assertThat(harness.persistence().loadCalls()).isOne();
     assertNoSensitiveMarkers(replayEvents, downstreamMarker, ACCOUNT_ENV_MARKER, TRUST_CODE_MARKER);
@@ -814,7 +816,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
             event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()));
     assertHttpObservation(replayEvents, replayRequestId, 500, Level.WARN);
     assertThat(scenarioExchange.calls()).isEqualTo(2);
-    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.COMPLETED);
+    assertThat(harness.persistence().currentRecord().status())
+        .isEqualTo(IdempotencyStatus.COMPLETED);
     assertThat(harness.persistence().reserveCalls()).isOne();
     assertThat(harness.persistence().loadCalls()).isOne();
   }
@@ -848,7 +851,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     assertThat(response.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
         .isEqualTo(requestId);
     assertThat(response.getResponseCookies().getFirst("auth_flow_sid")).isNull();
-    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.FAILED);
+    assertThat(harness.persistence().currentRecord().status()).isEqualTo(IdempotencyStatus.FAILED);
     assertThat(sessions.current().status()).isEqualTo(AuthFlowStatus.COMPLETING);
     assertThat(scenarioExchange.calls()).isZero();
     assertThat(errorEvents(requestEvents))
@@ -888,7 +891,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     assertThat(errorEvents(replayEvents)).isEmpty();
     assertHttpObservation(replayEvents, replayRequestId, 400, Level.WARN);
     assertThat(scenarioExchange.calls()).isZero();
-    assertThat(harness.persistence().record().status()).isEqualTo(IdempotencyStatus.FAILED);
+    assertThat(harness.persistence().currentRecord().status()).isEqualTo(IdempotencyStatus.FAILED);
     assertThat(harness.persistence().reserveCalls()).isOne();
     assertNoSensitiveMarkers(replayEvents, profileMarker, USERNAME_MARKER, ACCOUNT_ENV_MARKER);
   }
@@ -923,7 +926,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     assertThat(response.getResponseHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER))
         .isEqualTo(requestId);
     assertThat(response.getResponseCookies().getFirst("auth_flow_sid")).isNull();
-    assertThat(harness.persistence().record().status())
+    assertThat(harness.persistence().currentRecord().status())
         .isEqualTo(IdempotencyStatus.UNKNOWN_OUTCOME);
     assertThat(sessions.current().status()).isEqualTo(AuthFlowStatus.COMPLETING);
     assertThat(scenarioExchange.calls()).isOne();
@@ -967,7 +970,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     assertThat(errorEvents(replayEvents)).isEmpty();
     assertHttpObservation(replayEvents, replayRequestId, 400, Level.WARN);
     assertThat(scenarioExchange.calls()).isOne();
-    assertThat(harness.persistence().record().status())
+    assertThat(harness.persistence().currentRecord().status())
         .isEqualTo(IdempotencyStatus.UNKNOWN_OUTCOME);
     assertThat(harness.persistence().reserveCalls()).isOne();
     assertNoSensitiveMarkers(replayEvents, responseMarker, USERNAME_MARKER, ACCOUNT_ENV_MARKER);
@@ -2233,7 +2236,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   }
 
   private static final class ConnectedIdempotencyPort implements IdempotencyPort {
-    private IdempotencyRecord record;
+    private IdempotencyRecord storedRecord;
     private int reserveCalls;
     private int loadCalls;
     private RuntimeException nextLoadFailure;
@@ -2241,27 +2244,28 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     @Override
     public Mono<IdempotencyReservation> reserve(IdempotencyCommands.Reserve command) {
       reserveCalls++;
-      if (record != null) {
-        if (!record.operationId().equals(command.operationId())
-            || !record.fingerprint().equals(command.fingerprint())) {
+      if (storedRecord != null) {
+        if (!storedRecord.operationId().equals(command.operationId())
+            || !storedRecord.fingerprint().equals(command.fingerprint())) {
           return Mono.just(
               new IdempotencyReservation(
                   IdempotencyReservationOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST,
-                  record.status(),
+                  storedRecord.status(),
                   null,
                   null));
         }
         IdempotencyReservationOutcome outcome =
-            switch (record.status()) {
+            switch (storedRecord.status()) {
               case PROCESSING -> IdempotencyReservationOutcome.DUPLICATE_IN_PROGRESS;
               case COMPLETED -> IdempotencyReservationOutcome.COMPLETED_REPLAY;
               case FAILED -> IdempotencyReservationOutcome.FAILED_EXISTING;
               case UNKNOWN_OUTCOME -> IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING;
             };
         return Mono.just(
-            new IdempotencyReservation(outcome, record.status(), record.terminalResponse(), null));
+            new IdempotencyReservation(
+                outcome, storedRecord.status(), storedRecord.terminalResponse(), null));
       }
-      record =
+      storedRecord =
           new IdempotencyRecord(
               command.operationId(),
               command.fingerprint(),
@@ -2281,29 +2285,29 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
     @Override
     public Mono<IdempotencyRecord> complete(IdempotencyCommands.Complete command) {
-      record =
+      storedRecord =
           new IdempotencyRecord(
               command.operationId(),
               command.fingerprint(),
               command.reservationToken(),
               IdempotencyStatus.COMPLETED,
               command.terminalResponse(),
-              record.createdAt(),
+              storedRecord.createdAt(),
               command.now(),
               command.now().plus(command.ttl()));
-      return Mono.just(record);
+      return Mono.just(storedRecord);
     }
 
     @Override
     public Mono<IdempotencyRecord> fail(IdempotencyCommands.Fail command) {
-      record = updateStatus(IdempotencyStatus.FAILED, command.now(), command.ttl());
-      return Mono.just(record);
+      storedRecord = updateStatus(IdempotencyStatus.FAILED, command.now(), command.ttl());
+      return Mono.just(storedRecord);
     }
 
     @Override
     public Mono<IdempotencyRecord> markUnknown(IdempotencyCommands.MarkUnknown command) {
-      record = updateStatus(IdempotencyStatus.UNKNOWN_OUTCOME, command.now(), command.ttl());
-      return Mono.just(record);
+      storedRecord = updateStatus(IdempotencyStatus.UNKNOWN_OUTCOME, command.now(), command.ttl());
+      return Mono.just(storedRecord);
     }
 
     @Override
@@ -2315,7 +2319,7 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
         return Mono.error(failure);
       }
       return Mono.just(
-          Optional.ofNullable(record)
+          Optional.ofNullable(storedRecord)
               .filter(existing -> existing.operationId().equals(operationId)));
     }
 
@@ -2323,8 +2327,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
       nextLoadFailure = failure;
     }
 
-    IdempotencyRecord record() {
-      return record;
+    IdempotencyRecord currentRecord() {
+      return storedRecord;
     }
 
     int reserveCalls() {
@@ -2338,12 +2342,12 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     private IdempotencyRecord updateStatus(
         IdempotencyStatus status, Instant updatedAt, Duration ttl) {
       return new IdempotencyRecord(
-          record.operationId(),
-          record.fingerprint(),
-          record.reservationToken(),
+          storedRecord.operationId(),
+          storedRecord.fingerprint(),
+          storedRecord.reservationToken(),
           status,
           null,
-          record.createdAt(),
+          storedRecord.createdAt(),
           updatedAt,
           updatedAt.plus(ttl));
     }

@@ -88,7 +88,7 @@ class DefaultIdempotencyExecutorTest {
   void replayCompletedLoadsAndHydratesMatchingRecordWithoutReserving() {
     FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
     port.loadedRecord =
-        record(
+        idempotencyRecord(
             operation(),
             fingerprint(),
             IdempotencyStatus.COMPLETED,
@@ -129,7 +129,7 @@ class DefaultIdempotencyExecutorTest {
 
     FakePort expired = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
     expired.loadedRecord =
-        record(operation(), fingerprint(), IdempotencyStatus.COMPLETED, snapshot(), NOW);
+        idempotencyRecord(operation(), fingerprint(), IdempotencyStatus.COMPLETED, snapshot(), NOW);
     assertThat(
             executor(expired)
                 .replayCompleted(operation(), fingerprint(), terminal -> Mono.just(response()))
@@ -146,7 +146,8 @@ class DefaultIdempotencyExecutorTest {
             IdempotencyStatus.FAILED,
             IdempotencyStatus.UNKNOWN_OUTCOME)) {
       FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
-      port.loadedRecord = record(operation(), fingerprint(), status, null, NOW.plusSeconds(300));
+      port.loadedRecord =
+          idempotencyRecord(operation(), fingerprint(), status, null, NOW.plusSeconds(300));
 
       assertThat(
               executor(port)
@@ -167,7 +168,7 @@ class DefaultIdempotencyExecutorTest {
   void replayCompletedRejectsOperationIdentityAndFingerprintMismatch() {
     FakePort differentOperation = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
     differentOperation.loadedRecord =
-        record(
+        idempotencyRecord(
             new IdempotencyOperationId(
                 operation().capability(),
                 operation().action(),
@@ -191,7 +192,7 @@ class DefaultIdempotencyExecutorTest {
 
     FakePort differentFingerprint = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
     differentFingerprint.loadedRecord =
-        record(
+        idempotencyRecord(
             operation(),
             new IdempotencyFingerprint(1, "b".repeat(64)),
             IdempotencyStatus.COMPLETED,
@@ -229,7 +230,7 @@ class DefaultIdempotencyExecutorTest {
   void replayCompletedPropagatesHydrationFailureWithoutMutation() {
     FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
     port.loadedRecord =
-        record(
+        idempotencyRecord(
             operation(),
             fingerprint(),
             IdempotencyStatus.COMPLETED,
@@ -250,7 +251,7 @@ class DefaultIdempotencyExecutorTest {
   void replayCompletedTreatsEmptyHydrationAsCodecFailure() {
     FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
     port.loadedRecord =
-        record(
+        idempotencyRecord(
             operation(),
             fingerprint(),
             IdempotencyStatus.COMPLETED,
@@ -467,7 +468,7 @@ class DefaultIdempotencyExecutorTest {
     return new IdempotencyFingerprint(1, "a".repeat(64));
   }
 
-  private static IdempotencyRecord record(
+  private static IdempotencyRecord idempotencyRecord(
       IdempotencyOperationId operationId,
       IdempotencyFingerprint fingerprint,
       IdempotencyStatus status,
