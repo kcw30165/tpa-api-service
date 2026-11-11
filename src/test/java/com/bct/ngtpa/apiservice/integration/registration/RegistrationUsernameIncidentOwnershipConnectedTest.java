@@ -186,7 +186,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
@@ -199,6 +201,7 @@ import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.test.web.reactive.server.EntityExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.config.EnableWebFlux;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
@@ -268,6 +271,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
   private Logger rootLogger;
   private ThreadSafeAppender applicationEvents;
+  private final List<AnnotationConfigApplicationContext> completionWebContexts =
+      new CopyOnWriteArrayList<>();
 
   @BeforeEach
   void captureApplicationEvents() {
@@ -286,6 +291,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
 
   @AfterEach
   void detachApplicationEventCapture() {
+    completionWebContexts.forEach(AnnotationConfigApplicationContext::close);
+    completionWebContexts.clear();
     rootLogger.detachAppender(applicationEvents);
     applicationEvents.stop();
   }
@@ -1733,10 +1740,16 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
             null,
             null,
             null);
+    var clientContext = new AnnotationConfigApplicationContext();
+    clientContext.register(CompletionWebConfiguration.class);
+    clientContext.registerBean(FailureEventPort.class, () -> failureEventPort);
+    clientContext.registerBean(RegistrationController.class, () -> controller);
+    clientContext.registerBean(ApiExceptionHandler.class, () -> apiExceptionHandler);
+    clientContext.registerBean(RequestLoggingWebFilter.class, () -> requestLoggingWebFilter);
+    clientContext.refresh();
+    completionWebContexts.add(clientContext);
     WebTestClient client =
-        WebTestClient.bindToController(controller)
-            .controllerAdvice(apiExceptionHandler)
-            .webFilter(requestLoggingWebFilter)
+        WebTestClient.bindToApplicationContext(clientContext)
             .configureClient()
             .responseTimeout(Duration.ofSeconds(30))
             .build();
@@ -2758,11 +2771,6 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
     }
 
     @Bean
-    FailureEventPort failureEventPort(StructuredFailureEventLogger logger) {
-      return logger;
-    }
-
-    @Bean
     ApimRegistrationLookupAdapter registrationLookupAdapter(
         DefaultApimExchangeExecutor executor,
         FailureEventPort failureEventPort,
@@ -2933,4 +2941,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
           usernameMapper);
     }
   }
+
+  @Configuration
+  @EnableWebFlux
+  static class CompletionWebConfiguration {}
 }

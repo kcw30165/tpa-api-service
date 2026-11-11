@@ -3,23 +3,39 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.RegistrationIdempotencyProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
 import java.time.Duration;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.config.EnableWebFlux;
 import reactor.core.publisher.Mono;
 
 class AuthRegistrationControllerCaptchaGateTest {
+  private AnnotationConfigApplicationContext context;
+
+  @AfterEach
+  void closeContext() {
+    if (context != null) {
+      context.close();
+    }
+  }
 
   @Test
   void registrationStartCaptchaFailureDoesNotSetAuthFlowCookieOrReturnCsrf() {
@@ -169,7 +185,12 @@ class AuthRegistrationControllerCaptchaGateTest {
   }
 
   private WebTestClient client(StartRegistrationUseCase useCase) {
-    return WebTestClient.bindToController(
+    context = new AnnotationConfigApplicationContext();
+    context.register(WebConfiguration.class);
+    context.registerBean(FailureEventPort.class, () -> event -> {});
+    context.registerBean(
+        RegistrationController.class,
+        () ->
             new RegistrationController(
                 useCase,
                 new RegistrationStartWebMapper(Duration.ofMinutes(5)),
@@ -188,9 +209,14 @@ class AuthRegistrationControllerCaptchaGateTest {
                 null,
                 null,
                 null,
-                null,
-                null,
-                null))
-        .build();
+                new RegistrationIdempotencyProperties(),
+                org.mockito.Mockito.mock(CheckRegistrationUsernameUseCase.class),
+                new RegistrationUsernameCheckWebMapper()));
+    context.refresh();
+    return WebTestClient.bindToApplicationContext(context).build();
   }
+
+  @Configuration
+  @EnableWebFlux
+  static class WebConfiguration {}
 }

@@ -658,6 +658,11 @@ class RegistrationStartWorkflowIntegrationTest {
     }
 
     @Bean
+    FailureEventPort failureEventPort() {
+      return event -> {};
+    }
+
+    @Bean
     RequestLoggingProperties requestLoggingProperties() {
       RequestLoggingProperties properties = new RequestLoggingProperties();
       properties.setEnabled(true);
