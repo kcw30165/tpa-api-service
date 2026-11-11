@@ -6,8 +6,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.Investm
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceFundResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceHistoryResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceNormalDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoicePendingAllocationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoicePendingInstructionResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceRestrictedDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceSubmissionDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceSubmissionResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceSwitchSourceResponse;
@@ -20,6 +22,7 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePending;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePendingDetail;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceResult;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSource;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
 import java.time.LocalDate;
@@ -52,14 +55,14 @@ public final class InvestmentChoiceWebMapper {
     boolean chinese = RequestLanguageResolver.isZhHk(language);
 
     List<InvestmentChoiceSource> sources =
-        details.sources().stream()
+        details.historySources().stream()
             .sorted(
                 Comparator.comparingInt(InvestmentChoiceSource::seq)
                     .thenComparing(
                         InvestmentChoiceSource::code,
                         Comparator.nullsLast(Comparator.naturalOrder())))
             .toList();
-    List<InvestmentChoiceFund> allFunds = orderedFunds(details.funds(), chinese);
+    List<InvestmentChoiceFund> allFunds = orderedFunds(details.historyFunds(), chinese);
     Map<String, String> fundNames = fundNames(allFunds, chinese);
     Map<String, Integer> sourceSequence = sourceSequence(sources);
     Map<String, Integer> fundOrder = fundOrder(allFunds);
@@ -87,24 +90,34 @@ public final class InvestmentChoiceWebMapper {
                 InvestmentChoicePendingDetail::fundCode,
                 Comparator.nullsLast(Comparator.naturalOrder()));
 
-    return new InvestmentChoiceDataResponse(
-        result.accountNumber(),
-        details.intervalPcnt(),
-        sources.stream()
-            .map(
-                source ->
-                    new InvestmentChoiceSwitchSourceResponse(
-                        source.code(), source.description(), source.seq(), source.avail()))
-            .toList(),
-        allFunds.stream()
-            .filter(InvestmentChoiceFund::avail)
-            .map(
-                fund ->
-                    new InvestmentChoiceFundResponse(
-                        fund.code(), displayName(fund, chinese), fund.sequence(), fund.riskLevel()))
-            .toList(),
-        history(details, fundNames, mandateOrder),
-        pending(details, fundNames, pendingDetailOrder));
+    List<InvestmentChoiceHistoryResponse> history =
+        history(details.mandates(), fundNames, mandateOrder);
+    if (details instanceof InvestmentChoiceDetails.Normal normal) {
+      return new InvestmentChoiceNormalDataResponse(
+          result.accountNumber(),
+          InvestmentChoiceScenario.NORMAL,
+          normal.intervalPcnt(),
+          sources.stream()
+              .map(
+                  source ->
+                      new InvestmentChoiceSwitchSourceResponse(
+                          source.code(), source.description(), source.seq(), source.avail()))
+              .toList(),
+          allFunds.stream()
+              .filter(InvestmentChoiceFund::avail)
+              .map(
+                  fund ->
+                      new InvestmentChoiceFundResponse(
+                          fund.code(),
+                          displayName(fund, chinese),
+                          fund.sequence(),
+                          fund.riskLevel()))
+              .toList(),
+          history,
+          pending(normal, fundNames, pendingDetailOrder));
+    }
+    return new InvestmentChoiceRestrictedDataResponse(
+        result.accountNumber(), details.scenario(), history);
   }
 
   public InvestmentChoiceSubmissionResultResponse toSubmissionResultResponse(
@@ -125,17 +138,15 @@ public final class InvestmentChoiceWebMapper {
   }
 
   private static List<InvestmentChoiceHistoryResponse> history(
-      InvestmentChoiceDetails details,
+      List<InvestmentChoiceMandate> mandates,
       Map<String, String> fundNames,
       Comparator<InvestmentChoiceMandate> allocationOrder) {
     Map<LocalDate, List<InvestmentChoiceMandate>> byDate = new TreeMap<>(Comparator.reverseOrder());
-    details
-        .mandates()
-        .forEach(
-            mandate ->
-                byDate
-                    .computeIfAbsent(mandate.effectiveDate(), ignored -> new ArrayList<>())
-                    .add(mandate));
+    mandates.forEach(
+        mandate ->
+            byDate
+                .computeIfAbsent(mandate.effectiveDate(), ignored -> new ArrayList<>())
+                .add(mandate));
     return byDate.entrySet().stream()
         .map(
             entry ->
@@ -155,7 +166,7 @@ public final class InvestmentChoiceWebMapper {
   }
 
   private static List<InvestmentChoicePendingInstructionResponse> pending(
-      InvestmentChoiceDetails details,
+      InvestmentChoiceDetails.Normal details,
       Map<String, String> fundNames,
       Comparator<InvestmentChoicePendingDetail> allocationOrder) {
     return details.pending().stream()

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -43,7 +44,9 @@ import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -166,7 +169,7 @@ class ApimInvestmentChoiceDetailsAdapterTest {
             result ->
                 assertThat(result)
                     .isEqualTo(
-                        new InvestmentChoiceDetails(
+                        new InvestmentChoiceDetails.Normal(
                             5,
                             List.of(new InvestmentChoiceSource("EE", 10, true)),
                             List.of(
@@ -194,7 +197,7 @@ class ApimInvestmentChoiceDetailsAdapterTest {
     assertThat(request.request())
         .isEqualTo(new TrpGetCIMDtlApimRequest(POLICY_NO, CERT_NO, "05/11/2026"));
     assertThat(request.requestType()).isEqualTo(TrpGetCIMDtlApimRequest.class);
-    assertThat(request.responseDataType()).isEqualTo(TrpGetCIMDtlApimDataItem.class);
+    assertThat(request.responseDataType()).isEqualTo(com.fasterxml.jackson.databind.JsonNode.class);
     assertThat(request.databaseScope()).isEqualTo(ApimDatabaseScope.ACCOUNT_ENV);
     assertThat(request.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_INPUT);
     assertThat(request.credentialContext().accountEnv()).isEqualTo("JP");
@@ -232,9 +235,10 @@ class ApimInvestmentChoiceDetailsAdapterTest {
     StepVerifier.create(adapter().load(command()))
         .assertNext(
             details -> {
-              assertThat(details.sources().getFirst().description())
+              var normal = (InvestmentChoiceDetails.Normal) details;
+              assertThat(normal.sources().getFirst().description())
                   .isEqualTo("Employer and Member Voluntary Contributions");
-              assertThat(details.funds())
+              assertThat(normal.funds())
                   .extracting(InvestmentChoiceFund::sequence)
                   .containsExactly(60, 20);
             })
@@ -346,7 +350,8 @@ class ApimInvestmentChoiceDetailsAdapterTest {
       respond(envelope("", List.of(item)));
 
       StepVerifier.create(adapter().load(command()))
-          .expectNextMatches(details -> details.pending().isEmpty())
+          .expectNextMatches(
+              details -> ((InvestmentChoiceDetails.Normal) details).pending().isEmpty())
           .verifyComplete();
     }
 
@@ -368,19 +373,91 @@ class ApimInvestmentChoiceDetailsAdapterTest {
     StepVerifier.create(adapter().load(command()))
         .assertNext(
             details -> {
-              assertThat(details.intervalPcnt()).isEqualTo(5);
-              assertThat(details.sources())
+              var normal = (InvestmentChoiceDetails.Normal) details;
+              assertThat(normal.intervalPcnt()).isEqualTo(5);
+              assertThat(normal.sources())
                   .containsExactly(new InvestmentChoiceSource("EE", 10, true));
-              assertThat(details.funds())
+              assertThat(normal.funds())
                   .hasSize(2)
                   .allSatisfy(fund -> assertThat(fund.avail()).isTrue());
               assertThat(details.mandates()).hasSize(4);
-              assertThat(details.pending()).isEmpty();
+              assertThat(normal.pending()).isEmpty();
             })
         .verifyComplete();
 
     assertThat(events).isEmpty();
     verifyNoInteractions(failureEventPort);
+  }
+
+  @Test
+  void absentScenarioUsesTheTemporaryNormalFallback() throws Exception {
+    respondRaw(liveResponseItem());
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(details -> assertThat(details.scenario().name()).isEqualTo("NORMAL"))
+        .verifyComplete();
+
+    verifyNoInteractions(failureEventPort);
+  }
+
+  @Test
+  void restrictedScenarioIsResolvedBeforeIrrelevantNormalFieldsAreDecoded() throws Exception {
+    for (String scenario : List.of("FUNCTION_UNAVAILABLE", "MEMBER_INELIGIBLE")) {
+      ObjectNode item = (ObjectNode) liveResponseItem();
+      item.put("scenario", scenario);
+      item.put("interval-pcnt", "not-an-integer");
+      item.put("PendingReq", "not-an-array");
+      item.put("PendingReqDtl", "not-an-array");
+      respondRaw(item);
+
+      StepVerifier.create(adapter().load(command()))
+          .assertNext(details -> assertThat(details.scenario().name()).isEqualTo(scenario))
+          .verifyComplete();
+    }
+
+    verifyNoInteractions(failureEventPort);
+  }
+
+  @Test
+  void presentUnknownScenarioIsOneMalformedDownstreamResponse() throws Exception {
+    ObjectNode item = (ObjectNode) liveResponseItem();
+    item.put("scenario", "FUTURE_SCENARIO");
+    assertMalformedRaw(item);
+  }
+
+  @Test
+  void presentNullScenarioIsMalformed() throws Exception {
+    ObjectNode item = (ObjectNode) liveResponseItem();
+    item.putNull("scenario");
+
+    assertMalformedRaw(item);
+  }
+
+  @Test
+  void presentNonStringScenarioIsMalformed() throws Exception {
+    ObjectNode item = (ObjectNode) liveResponseItem();
+    item.put("scenario", 1);
+
+    assertMalformedRaw(item);
+  }
+
+  @Test
+  void presentBlankScenarioIsMalformed() throws Exception {
+    ObjectNode item = (ObjectNode) liveResponseItem();
+    item.put("scenario", " ");
+
+    assertMalformedRaw(item);
+  }
+
+  @Test
+  void restrictedScenarioStillRequiresFundsAndHistory() throws Exception {
+    ObjectNode item = restrictedResponseItem("MEMBER_INELIGIBLE");
+    item.remove("SwitchFund");
+    assertMalformedRaw(item);
+
+    item = restrictedResponseItem("MEMBER_INELIGIBLE");
+    item.remove("InvestMandate");
+    assertMalformedRaw(item);
   }
 
   @Test
@@ -742,8 +819,17 @@ class ApimInvestmentChoiceDetailsAdapterTest {
   private void assertMalformed(ApimResponseEnvelope<TrpGetCIMDtlApimDataItem> response) {
     clearInvocations(executor, failureEventPort);
     events.clear();
-    when(executor.<TrpGetCIMDtlApimRequest, TrpGetCIMDtlApimDataItem>postEnvelope(any()))
-        .thenReturn(Mono.just(response));
+    respond(response);
+
+    expectRetrievalFailure(adapter().load(command()));
+
+    assertSingleEvent(FailureOrigin.DOWNSTREAM_INVALID_RESPONSE, null);
+  }
+
+  private void assertMalformedRaw(JsonNode item) {
+    clearInvocations(executor, failureEventPort);
+    events.clear();
+    respondRaw(item);
 
     expectRetrievalFailure(adapter().load(command()));
 
@@ -766,8 +852,55 @@ class ApimInvestmentChoiceDetailsAdapterTest {
   }
 
   private void respond(ApimResponseEnvelope<TrpGetCIMDtlApimDataItem> response) {
-    when(executor.<TrpGetCIMDtlApimRequest, TrpGetCIMDtlApimDataItem>postEnvelope(any()))
-        .thenReturn(Mono.just(response));
+    var rawBody = new ApimResponseBody<JsonNode>();
+    rawBody.setErrMessage(response.getResponse().getErrMessage());
+    List<TrpGetCIMDtlApimDataItem> data = response.getResponse().getData();
+    rawBody.setData(
+        data == null
+            ? null
+            : data.stream()
+                .map(item -> item == null ? null : (JsonNode) new ObjectMapper().valueToTree(item))
+                .toList());
+    var rawEnvelope = new ApimResponseEnvelope<JsonNode>();
+    rawEnvelope.setResponse(rawBody);
+    doReturn(Mono.just(rawEnvelope)).when(executor).postEnvelope(any());
+  }
+
+  private void respondRaw(JsonNode item) {
+    var response = new ApimResponseBody<JsonNode>();
+    response.setErrMessage("");
+    response.setData(List.of(item));
+    var envelope = new ApimResponseEnvelope<JsonNode>();
+    envelope.setResponse(response);
+    doReturn(Mono.just(envelope)).when(executor).postEnvelope(any());
+  }
+
+  private static JsonNode liveResponseItem() throws Exception {
+    return new ObjectMapper()
+        .readTree(LIVE_RESPONSE_WITHOUT_PENDING)
+        .path("response")
+        .path("data")
+        .get(0);
+  }
+
+  private static ObjectNode restrictedResponseItem(String scenario) throws Exception {
+    ObjectNode item = new ObjectMapper().createObjectNode();
+    item.put("scenario", scenario);
+    item.set(
+        "SwitchFund",
+        new ObjectMapper()
+            .readTree(
+                """
+                [{"fund-code":"FUND_A","fund-name":"Fund A","avail-sw":true}]
+                """));
+    item.set(
+        "InvestMandate",
+        new ObjectMapper()
+            .readTree(
+                """
+                [{"effect-date":"05/11/2026","switch-src":"EE","fund-code":"FUND_A","pcnt":"100"}]
+                """));
+    return item;
   }
 
   private ApimInvestmentChoiceDetailsAdapter adapter() {

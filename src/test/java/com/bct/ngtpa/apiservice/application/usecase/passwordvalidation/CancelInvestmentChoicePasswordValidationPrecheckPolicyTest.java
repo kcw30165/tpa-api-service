@@ -15,7 +15,9 @@ import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.CancelInvestmentChoicePasswordValidationPayload;
@@ -41,6 +43,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -115,14 +118,14 @@ class CancelInvestmentChoicePasswordValidationPrecheckPolicyTest {
   @Test
   void validReferenceReadsOwnedSnapshotOnceAndPreservesExactReference()
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.of(snapshot(List.of(REFERENCE_NO)))));
 
     var result = precheck(VALID_BODY);
 
     assertThat(result.isSuccess()).isTrue();
     assertThat(result.violations()).isEmpty();
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
     assertNoSensitiveLogValues();
   }
@@ -130,7 +133,7 @@ class CancelInvestmentChoicePasswordValidationPrecheckPolicyTest {
   @Test
   void referenceMissingFromSnapshotReturnsDetailedViolationWithoutIncident()
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.of(snapshot(List.of()))));
 
     var result = precheck(VALID_BODY);
@@ -141,7 +144,31 @@ class CancelInvestmentChoicePasswordValidationPrecheckPolicyTest {
                 PasswordValidationPrecheckViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID,
                 "refNo"));
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
+    assertNoSensitiveLogValues();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"FUNCTION_UNAVAILABLE", "MEMBER_INELIGIBLE"})
+  void restrictedScenarioRejectsValidCancelBeforePendingMembership(String scenario)
+      throws JsonProcessingException {
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    InvestmentChoiceSnapshotState.restricted(
+                        ACCOUNT_REF, POLICY_NO, InvestmentChoiceScenario.valueOf(scenario)))));
+
+    var result = precheck(VALID_BODY);
+
+    assertThat(result.isBusinessRejected()).isTrue();
+    assertThat(result.businessErrorCode())
+        .isEqualTo(
+            scenario.equals("FUNCTION_UNAVAILABLE")
+                ? ErrorCodes.INVESTMENT_CHOICE_FUNCTION_UNAVAILABLE
+                : ErrorCodes.INVESTMENT_CHOICE_MEMBER_INELIGIBLE);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
     assertNoSensitiveLogValues();
   }
@@ -149,7 +176,7 @@ class CancelInvestmentChoicePasswordValidationPrecheckPolicyTest {
   @Test
   void snapshotMissPublishesExactlyOneSafeEventAndReturnsUnavailable()
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.empty()));
 
     StepVerifier.create(precheckMono(VALID_BODY))
@@ -157,14 +184,14 @@ class CancelInvestmentChoicePasswordValidationPrecheckPolicyTest {
         .verify();
 
     assertSnapshotMissEvent();
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     assertNoSensitiveLogValues();
   }
 
   @Test
   void snapshotReadFailureIsUnavailableAndPublishesExactlyOneSafeEvent()
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.error(new IllegalStateException(SNAPSHOT_ERROR)));
 
     var error = new AtomicReference<Throwable>();
@@ -173,13 +200,13 @@ class CancelInvestmentChoicePasswordValidationPrecheckPolicyTest {
     assertThat(error.get()).isInstanceOf(InvestmentChoiceCancelUnavailableException.class);
     assertThat(error.get().toString()).doesNotContain(SNAPSHOT_ERROR, REFERENCE_NO);
     assertSnapshotMissEvent();
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     assertNoSensitiveLogValues();
   }
 
   @Test
   void telemetryFailureDoesNotReplaceSnapshotUnavailableOutcome() throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.empty()));
     org.mockito.Mockito.doThrow(new IllegalStateException(SNAPSHOT_ERROR))
         .when(failures)
@@ -195,7 +222,7 @@ class CancelInvestmentChoicePasswordValidationPrecheckPolicyTest {
 
   @Test
   void resultAndEventStringsDoNotExposeSubmittedOrContextValues() throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.empty()));
 
     var error = new AtomicReference<Throwable>();
@@ -256,9 +283,10 @@ class CancelInvestmentChoicePasswordValidationPrecheckPolicyTest {
             INVALID_BODY_ERROR);
   }
 
-  private static InvestmentChoiceSnapshot snapshot(List<String> pendingRefNos) {
-    return new InvestmentChoiceSnapshot(
-        ACCOUNT_REF, POLICY_NO, 20, List.of(), List.of(), pendingRefNos);
+  private static InvestmentChoiceSnapshotState snapshot(List<String> pendingRefNos) {
+    return InvestmentChoiceSnapshotState.normal(
+        new InvestmentChoiceSnapshot(
+            ACCOUNT_REF, POLICY_NO, 20, List.of(), List.of(), pendingRefNos));
   }
 
   private static Stream<Arguments> invalidBodies() {

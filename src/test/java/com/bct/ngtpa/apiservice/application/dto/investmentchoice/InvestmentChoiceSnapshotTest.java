@@ -23,7 +23,7 @@ class InvestmentChoiceSnapshotTest {
   @Test
   void mapsEverySourceAndFundFromDetailsIncludingUnavailableEntries() {
     var details =
-        new InvestmentChoiceDetails(
+        new InvestmentChoiceDetails.Normal(
             5,
             List.of(
                 new InvestmentChoiceSource("BO", "Both source", 1, true),
@@ -53,7 +53,7 @@ class InvestmentChoiceSnapshotTest {
   @Test
   void fromDetailsCollectsDistinctPendingReferencesInFirstAppearanceOrder() {
     var details =
-        new InvestmentChoiceDetails(
+        new InvestmentChoiceDetails.Normal(
             5,
             List.of(),
             List.of(),

@@ -21,6 +21,7 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePending;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePendingDetail;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSource;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
@@ -174,7 +175,7 @@ class InvestmentChoiceApplicationConfigTest {
                 when(referenceDates.resolveReferenceDate(ACCOUNT_ENV))
                     .thenReturn(Mono.just(LocalDate.of(2026, 10, 15)));
                 when(detailsPort.load(any())).thenReturn(Mono.just(details()));
-                when(snapshotCache.write(any(), any(), any())).thenReturn(Mono.empty());
+                when(snapshotCache.writeState(any(), any(), any())).thenReturn(Mono.empty());
 
                 StepVerifier.create(getUseCase.get(command(POLICY_NO)))
                     .expectNextCount(1)
@@ -192,8 +193,11 @@ class InvestmentChoiceApplicationConfigTest {
                     .expectError(InvestmentChoiceDetailsRetrievalException.class)
                     .verify();
 
-                when(snapshotCache.read(any(), any(), any(), any()))
-                    .thenReturn(Mono.just(java.util.Optional.of(snapshot())));
+                when(snapshotCache.readState(any(), any(), any(), any()))
+                    .thenReturn(
+                        Mono.just(
+                            java.util.Optional.of(
+                                InvestmentChoiceSnapshotState.normal(snapshot()))));
                 when(instructionPort.submit(any()))
                     .thenReturn(
                         Mono.just(
@@ -224,13 +228,13 @@ class InvestmentChoiceApplicationConfigTest {
                     .expectError(InvestmentChoiceSubmissionUnavailableException.class)
                     .verify();
 
-                when(snapshotCache.read(any(), any(), any(), any()))
+                when(snapshotCache.readState(any(), any(), any(), any()))
                     .thenReturn(Mono.just(java.util.Optional.empty()));
                 StepVerifier.create(submitUseCase.submit(submitCommand(VALID_REQUEST)))
                     .expectError(InvestmentChoiceSubmissionUnavailableException.class)
                     .verify();
 
-                when(snapshotCache.read(any(), any(), any(), any()))
+                when(snapshotCache.readState(any(), any(), any(), any()))
                     .thenReturn(Mono.just(Optional.empty()));
                 when(instructionPort.submit(any()))
                     .thenReturn(
@@ -251,7 +255,7 @@ class InvestmentChoiceApplicationConfigTest {
                                             LocalTime.of(9, 15)))))
                     .verifyComplete();
                 org.mockito.Mockito.verify(snapshotCache, org.mockito.Mockito.never())
-                    .read(any(), any(), any(), any());
+                    .readState(any(), any(), any(), any());
               });
 
       List<String> messages =
@@ -339,25 +343,34 @@ class InvestmentChoiceApplicationConfigTest {
                 InvestmentChoiceCancelPort cancelPort =
                     context.getBean(InvestmentChoiceCancelPort.class);
 
-                when(cache.read(any(), any(), any(), any()))
+                when(cache.readState(any(), any(), any(), any()))
                     .thenReturn(
-                        Mono.just(Optional.of(cancelSnapshot(List.of(CANCEL_REFERENCE_NO)))));
+                        Mono.just(
+                            Optional.of(
+                                InvestmentChoiceSnapshotState.normal(
+                                    cancelSnapshot(List.of(CANCEL_REFERENCE_NO))))));
                 when(cancelPort.cancel(any()))
                     .thenReturn(Mono.just(new InvestmentChoiceCancellation(CANCEL_REFERENCE_NO)));
                 verifyCancelSuccess(cancelUseCase);
 
-                when(cache.read(any(), any(), any(), any()))
+                when(cache.readState(any(), any(), any(), any()))
                     .thenReturn(
-                        Mono.just(Optional.of(cancelSnapshot(List.of(OTHER_CANCEL_REFERENCE_NO)))));
+                        Mono.just(
+                            Optional.of(
+                                InvestmentChoiceSnapshotState.normal(
+                                    cancelSnapshot(List.of(OTHER_CANCEL_REFERENCE_NO))))));
                 verifyCancelSnapshotMembershipIsNotRevalidated(cancelUseCase);
 
-                when(cache.read(any(), any(), any(), any()))
+                when(cache.readState(any(), any(), any(), any()))
                     .thenReturn(Mono.just(Optional.empty()));
                 verifyCancelSuccess(cancelUseCase);
 
-                when(cache.read(any(), any(), any(), any()))
+                when(cache.readState(any(), any(), any(), any()))
                     .thenReturn(
-                        Mono.just(Optional.of(cancelSnapshot(List.of(CANCEL_REFERENCE_NO)))));
+                        Mono.just(
+                            Optional.of(
+                                InvestmentChoiceSnapshotState.normal(
+                                    cancelSnapshot(List.of(CANCEL_REFERENCE_NO))))));
                 when(cancelPort.cancel(any()))
                     .thenReturn(Mono.error(new InvestmentChoiceCancelNotCancellableException()));
                 verifyCancelNotCancellable(cancelUseCase);
@@ -493,7 +506,8 @@ class InvestmentChoiceApplicationConfigTest {
                 new InvestmentChoicePendingDetail("BO", OTHER_FUND_CODE, 40),
                 new InvestmentChoicePendingDetail("EE", FUND_CODE, 60),
                 new InvestmentChoicePendingDetail("EE", OTHER_FUND_CODE, 40)));
-    return new InvestmentChoiceDetails(20, List.of(), List.of(), List.of(), List.of(pending));
+    return new InvestmentChoiceDetails.Normal(
+        20, List.of(), List.of(), List.of(), List.of(pending));
   }
 
   private static GetInvestmentChoiceCommand command(String policyNo) {
@@ -508,7 +522,7 @@ class InvestmentChoiceApplicationConfigTest {
   }
 
   private static InvestmentChoiceDetails details() {
-    return new InvestmentChoiceDetails(
+    return new InvestmentChoiceDetails.Normal(
         25,
         List.of(new InvestmentChoiceSource("BO", 1, true)),
         List.of(new InvestmentChoiceFund(FUND_CODE, "Fund", "", "1", true)),

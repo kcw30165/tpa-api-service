@@ -253,12 +253,13 @@ The existing token scope, lifetime, consumption and canonicalization do not
 change. No legacy-token migration, grant versioning, rolling-deployment
 handling, or token expiry wait is required for this local-development design.
 
-### Scenario-aware GET and account snapshot (approved M6 target; not implemented)
+### Scenario-aware GET and account snapshot (implemented in M6-012; not runtime-verified against Progress)
 
 Progress owns selection of `NORMAL`, `FUNCTION_UNAVAILABLE`, or
 `MEMBER_INELIGIBLE`. The scenario-aware GET contract and provisional APIM
-mapping are specified in documents 02 and 03. The M5 implementation above
-remains the current behavior; this target is not runtime-verified.
+mapping are specified in documents 02 and 03. This implementation preserves the
+unconfirmed downstream contract as an isolated provisional mapper assumption;
+it has not been runtime-verified against Progress.
 
 The account-owned snapshot stores the resolved scenario. `NORMAL` retains the
 existing interval, editable sources, funds, pending references, and ownership

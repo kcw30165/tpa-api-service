@@ -110,6 +110,10 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
 
   private Mono<PasswordValidationIssuanceResult> afterPrecheck(
       PasswordValidationIssuanceCommand command, PasswordValidationPrecheckResult precheck) {
+    if (precheck.isBusinessRejected()) {
+      return Mono.just(
+          PasswordValidationIssuanceResult.featureBusinessRejected(precheck.businessErrorCode()));
+    }
     if (!precheck.isSuccess()) {
       if (command.purpose() == PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE) {
         publishPersonalInformationRequestInvalid(command, precheck);
@@ -342,7 +346,7 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
       case ISSUED -> 200;
       case LOCK_CLEANUP_FAILED, UNAVAILABLE, FEATURE_UNAVAILABLE -> 503;
       case REQUEST_INVALID -> 400;
-      case FEATURE_INVALID -> 422;
+      case FEATURE_INVALID, FEATURE_BUSINESS_REJECTED -> 422;
     };
   }
 }

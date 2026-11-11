@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceInstructionRow;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePending;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
@@ -113,10 +114,22 @@ public final class SubmitInvestmentChoiceService implements SubmitInvestmentChoi
       SubmitInvestmentChoiceCommand command,
       List<InvestmentChoiceInstructionRow> rows,
       InvestmentChoiceDetails details) {
+    if (!(details instanceof InvestmentChoiceDetails.Normal normal)) {
+      warn("investment-choice.submission.unreconciled", command.requestId());
+      return Mono.defer(
+              () ->
+                  snapshotCache.writeRestrictedState(
+                      command.sessionId(),
+                      InvestmentChoiceSnapshotState.fromDetails(
+                          command.snapshotAccountRef(), command.policyNo(), details),
+                      command.requestId()))
+          .onErrorResume(error -> Mono.empty())
+          .then(Mono.error(unavailable()));
+    }
     LocalDate today = LocalDate.now(clock.withZone(HONG_KONG_ZONE));
     Set<InstructionTuple> submittedRows = instructionTuples(rows);
     List<InvestmentChoicePending> candidates =
-        details.pending().stream()
+        normal.pending().stream()
             .filter(pending -> Objects.equals(pending.submitDate(), today))
             .filter(pending -> matchesRows(pending, rows.size(), submittedRows))
             .toList();
@@ -132,10 +145,11 @@ public final class SubmitInvestmentChoiceService implements SubmitInvestmentChoi
     warn("investment-choice.submission.reconciled", command.requestId());
     return Mono.defer(
             () ->
-                snapshotCache.write(
+                snapshotCache.writeState(
                     command.sessionId(),
-                    InvestmentChoiceSnapshot.fromDetails(
-                        command.snapshotAccountRef(), command.policyNo(), details),
+                    InvestmentChoiceSnapshotState.normal(
+                        InvestmentChoiceSnapshot.fromDetails(
+                            command.snapshotAccountRef(), command.policyNo(), normal)),
                     command.requestId()))
         .onErrorResume(error -> Mono.empty())
         .thenReturn(new InvestmentChoiceSubmitOutcome.Submitted(submission));

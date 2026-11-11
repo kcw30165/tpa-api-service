@@ -113,7 +113,7 @@ class InvestmentChoiceControllerTest {
                 Mono.just(
                     new InvestmentChoiceResult(
                         "00000008802-0230",
-                        new InvestmentChoiceDetails(
+                        new InvestmentChoiceDetails.Normal(
                             5, List.of(), List.of(), List.of(), List.of()))),
             context("ACC-1"),
             exchange -> Optional.of(SESSION_ID));
@@ -134,6 +134,7 @@ class InvestmentChoiceControllerTest {
               "result": {
                 "data": {
                   "accountNumber": "00000008802-0230",
+                  "scenario": "NORMAL",
                   "intervalPercentage": 5,
                   "switchSources": [],
                   "funds": [],
@@ -151,7 +152,7 @@ class InvestmentChoiceControllerTest {
   @Test
   void returnsSourceDescriptionAndFundSequenceInTheExactGetJsonContract() {
     InvestmentChoiceDetails details =
-        new InvestmentChoiceDetails(
+        new InvestmentChoiceDetails.Normal(
             5,
             List.of(
                 new InvestmentChoiceSource(
@@ -188,6 +189,7 @@ class InvestmentChoiceControllerTest {
               "result": {
                 "data": {
                   "accountNumber": "00000008802-0230",
+                  "scenario": "NORMAL",
                   "intervalPercentage": 5,
                   "switchSources": [{
                     "switchSourceCode": "BO",
@@ -215,7 +217,7 @@ class InvestmentChoiceControllerTest {
   @Test
   void serializesHistoryPercentagesAsStringsAndPendingPercentagesAsNumbers() {
     InvestmentChoiceDetails details =
-        new InvestmentChoiceDetails(
+        new InvestmentChoiceDetails.Normal(
             5,
             List.of(new InvestmentChoiceSource("BO", 1, true)),
             List.of(new InvestmentChoiceFund("F01", "Alpha", null, "1", true)),
@@ -265,7 +267,7 @@ class InvestmentChoiceControllerTest {
                 Mono.just(
                     new InvestmentChoiceResult(
                         "formatted-account",
-                        new InvestmentChoiceDetails(
+                        new InvestmentChoiceDetails.Normal(
                             5, List.of(), List.of(), List.of(), List.of()))),
             sensitiveContext,
             exchange -> Optional.of(SESSION_ID));
@@ -297,7 +299,8 @@ class InvestmentChoiceControllerTest {
               return Mono.just(
                   new InvestmentChoiceResult(
                       "00000008802-0230",
-                      new InvestmentChoiceDetails(5, List.of(), List.of(), List.of(), List.of())));
+                      new InvestmentChoiceDetails.Normal(
+                          5, List.of(), List.of(), List.of(), List.of())));
             },
             context("ACC-1"),
             exchange -> Optional.of(SESSION_ID));

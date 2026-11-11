@@ -14,6 +14,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.filter.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.ReactorCurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayloadCanonicalizer;
 import com.bct.ngtpa.apiservice.application.dto.*;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.*;
 import com.bct.ngtpa.apiservice.application.dto.security.ratelimit.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
@@ -1247,26 +1249,20 @@ class PasswordValidationHttpTest {
           mock(
               com.bct.ngtpa.apiservice.application.usecase.investmentchoice
                   .InvestmentChoiceSnapshotCacheService.class);
-      when(cache.read(any(), any(), any(), any()))
-          .thenReturn(
-              Mono.just(
-                  Optional.of(
-                      new com.bct.ngtpa.apiservice.application.dto.investmentchoice
-                          .InvestmentChoiceSnapshot(
-                          REF,
-                          "fixture-policy",
-                          20,
-                          List.of(
-                              new com.bct.ngtpa.apiservice.application.dto.investmentchoice
-                                  .InvestmentChoiceSnapshot.SwitchSource("BO", true),
-                              new com.bct.ngtpa.apiservice.application.dto.investmentchoice
-                                  .InvestmentChoiceSnapshot.SwitchSource("EE", true)),
-                          List.of(
-                              new com.bct.ngtpa.apiservice.application.dto.investmentchoice
-                                  .InvestmentChoiceSnapshot.Fund("DBLF", true),
-                              new com.bct.ngtpa.apiservice.application.dto.investmentchoice
-                                  .InvestmentChoiceSnapshot.Fund("DHKM", true)),
-                          List.of(CANCEL_REFERENCE_NO)))));
+      var snapshot =
+          new InvestmentChoiceSnapshot(
+              REF,
+              "fixture-policy",
+              20,
+              List.of(
+                  new InvestmentChoiceSnapshot.SwitchSource("BO", true),
+                  new InvestmentChoiceSnapshot.SwitchSource("EE", true)),
+              List.of(
+                  new InvestmentChoiceSnapshot.Fund("DBLF", true),
+                  new InvestmentChoiceSnapshot.Fund("DHKM", true)),
+              List.of(CANCEL_REFERENCE_NO));
+      when(cache.readState(any(), any(), any(), any()))
+          .thenReturn(Mono.just(Optional.of(InvestmentChoiceSnapshotState.normal(snapshot))));
       return cache;
     }
 

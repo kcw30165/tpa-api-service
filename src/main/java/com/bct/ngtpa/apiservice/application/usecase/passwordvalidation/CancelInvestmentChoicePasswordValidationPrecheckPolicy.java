@@ -2,7 +2,9 @@ package com.bct.ngtpa.apiservice.application.usecase.passwordvalidation;
 
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancelValidationResult;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
@@ -65,7 +67,7 @@ public final class CancelInvestmentChoicePasswordValidationPrecheckPolicy
     AccountContext account = Objects.requireNonNull(context.context().account());
     return Mono.defer(
             () ->
-                snapshotCache.read(
+                snapshotCache.readState(
                     context.sessionId(),
                     account.accountRef(),
                     account.policyNo(),
@@ -77,12 +79,18 @@ public final class CancelInvestmentChoicePasswordValidationPrecheckPolicy
 
   private Mono<PasswordValidationPrecheckResult> precheckSnapshot(
       String referenceNo,
-      Optional<InvestmentChoiceSnapshot> snapshot,
+      Optional<InvestmentChoiceSnapshotState> snapshot,
       PasswordValidationPrecheckContext context) {
     if (snapshot.isEmpty()) {
       return snapshotMissing(context);
     }
-    if (!snapshot.get().pendingRefNos().contains(referenceNo)) {
+    InvestmentChoiceSnapshotState state = snapshot.get();
+    if (state.scenario() != InvestmentChoiceScenario.NORMAL) {
+      return Mono.just(
+          PasswordValidationPrecheckResult.businessRejected(scenarioErrorCode(state.scenario())));
+    }
+    InvestmentChoiceSnapshot normalSnapshot = state.normalSnapshot().orElseThrow();
+    if (!normalSnapshot.pendingRefNos().contains(referenceNo)) {
       return Mono.just(
           rejected(
               List.of(
@@ -92,6 +100,14 @@ public final class CancelInvestmentChoicePasswordValidationPrecheckPolicy
                       List.of("refNo")))));
     }
     return Mono.just(PasswordValidationPrecheckResult.success());
+  }
+
+  private static String scenarioErrorCode(InvestmentChoiceScenario scenario) {
+    return switch (scenario) {
+      case FUNCTION_UNAVAILABLE -> ErrorCodes.INVESTMENT_CHOICE_FUNCTION_UNAVAILABLE;
+      case MEMBER_INELIGIBLE -> ErrorCodes.INVESTMENT_CHOICE_MEMBER_INELIGIBLE;
+      case NORMAL -> throw new IllegalArgumentException("NORMAL is not a restricted scenario");
+    };
   }
 
   private Mono<PasswordValidationPrecheckResult> snapshotMissing(

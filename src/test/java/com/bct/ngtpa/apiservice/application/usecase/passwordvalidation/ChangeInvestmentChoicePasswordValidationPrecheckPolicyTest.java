@@ -15,7 +15,9 @@ import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.ChangeInvestmentChoicePasswordValidationPayload;
@@ -40,6 +42,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -98,14 +101,14 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
   void structurallySafeVRuleRejectionsReadSnapshotOnceWithoutPublishingEvents(
       String caseName, String body, List<PasswordValidationPrecheckViolation> expected)
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.of(availableSnapshot(1))));
 
     var result = precheck(body);
 
     assertThat(result.isSuccess()).as(caseName).isFalse();
     assertThat(result.violations()).as(caseName).containsExactlyElementsOf(expected);
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
     assertNoSensitiveLogValues();
   }
@@ -123,10 +126,60 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
     assertNoSensitiveLogValues();
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"FUNCTION_UNAVAILABLE", "MEMBER_INELIGIBLE"})
+  void restrictedScenarioRejectsValidSubmitWithItsBusinessCodeWithoutPublishingEvents(
+      String scenario) throws JsonProcessingException {
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    InvestmentChoiceSnapshotState.restricted(
+                        ACCOUNT_REF, POLICY_NO, InvestmentChoiceScenario.valueOf(scenario)))));
+
+    var result = precheck(VALID_BODY);
+
+    assertThat(result.isBusinessRejected()).isTrue();
+    assertThat(result.businessErrorCode())
+        .isEqualTo(
+            scenario.equals("FUNCTION_UNAVAILABLE")
+                ? ErrorCodes.INVESTMENT_CHOICE_FUNCTION_UNAVAILABLE
+                : ErrorCodes.INVESTMENT_CHOICE_MEMBER_INELIGIBLE);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
+    assertNoSensitiveLogValues();
+  }
+
+  @Test
+  void restrictedSubmitReturnsVViolationsWithoutEvaluatingNormalSnapshotRules()
+      throws JsonProcessingException {
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    InvestmentChoiceSnapshotState.restricted(
+                        ACCOUNT_REF, POLICY_NO, InvestmentChoiceScenario.FUNCTION_UNAVAILABLE))));
+
+    var result =
+        precheck(
+            "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":["
+                + "{\"fundCode\":\"DBLF\",\"percentage\":60},"
+                + "{\"fundCode\":\"DHKM\",\"percentage\":39}]}");
+
+    assertThat(result.violations())
+        .containsExactly(
+            precheckViolation(
+                PasswordValidationPrecheckViolation.Kind.CROSS_FIELD,
+                ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_TOTAL_INVALID,
+                "allocations"));
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verifyNoInteractions(failures);
+  }
+
   @Test
   void preservesCombinedVRuleOrderingAndSuppressesTotalAfterInvalidPercentages()
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.of(availableSnapshot(1))));
 
     var result =
@@ -164,13 +217,13 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
                 PasswordValidationPrecheckViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_INVALID,
                 "allocations[2].percentage"));
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
   }
 
   @Test
   void aggregatesTotalViolationBeforeUnavailableSource() throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(
             Mono.just(
                 Optional.of(
@@ -197,13 +250,13 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
                 PasswordValidationPrecheckViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_UNAVAILABLE,
                 "switchSources[0]"));
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
   }
 
   @Test
   void aggregatesTotalViolationBeforeUnavailableFund() throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(
             Mono.just(
                 Optional.of(
@@ -230,14 +283,14 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
                 PasswordValidationPrecheckViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
                 "allocations[0].fundCode"));
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
   }
 
   @Test
   void invalidPercentageSkipsItsIntervalCheckButOtherValidPercentageAndSourceAreChecked()
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(
             Mono.just(
                 Optional.of(
@@ -268,14 +321,14 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
                 PasswordValidationPrecheckViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_SWITCH_SOURCE_UNAVAILABLE,
                 "switchSources[0]"));
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
   }
 
   @Test
   void blankAndMissingOperandsAreSkippedWithoutReindexingReadableOperands()
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(
             Mono.just(
                 Optional.of(
@@ -308,13 +361,13 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
                 PasswordValidationPrecheckViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
                 "allocations[1].fundCode"));
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
   }
 
   @Test
   void blankFundIsSkippedWhileLaterReadableFundIsChecked() throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(
             Mono.just(
                 Optional.of(
@@ -340,13 +393,13 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
                 ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
                 "allocations[1].fundCode"));
     assertThat(result.violations()).doesNotHaveDuplicates();
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
   }
 
   @Test
   void missingSourceArrayDoesNotCreateSourceSnapshotViolation() throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(
             Mono.just(
                 Optional.of(
@@ -365,14 +418,14 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
                 PasswordValidationPrecheckViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
                 "allocations[0].fundCode"));
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
   }
 
   @Test
   void knownVViolationsWinOverSnapshotMissWithoutPublishingIncident()
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.empty()));
 
     var result =
@@ -387,14 +440,14 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
                 PasswordValidationPrecheckViolation.Kind.CROSS_FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_TOTAL_INVALID,
                 "allocations"));
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
   }
 
   @Test
   void knownVViolationsWinOverSnapshotReadFailureWithoutPublishingIncident()
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.error(new IllegalStateException(SENSITIVE_POLICY_ERROR)));
 
     var result =
@@ -409,20 +462,20 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
                 PasswordValidationPrecheckViolation.Kind.CROSS_FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_PERCENTAGE_TOTAL_INVALID,
                 "allocations"));
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
   }
 
   @Test
   void validVRulesReadSnapshotExactlyOnceWithSessionAccountPolicyAndRequestContext()
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.of(availableSnapshot())));
 
     var result = precheck(VALID_BODY);
 
     assertThat(result.isSuccess()).isTrue();
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
   }
 
@@ -436,8 +489,9 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
             List.of(new InvestmentChoiceSnapshot.SwitchSource("BO", false)),
             List.of(new InvestmentChoiceSnapshot.Fund("DBLF", false)),
             List.of());
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
-        .thenReturn(Mono.just(Optional.of(unavailableSnapshot)));
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(Optional.of(InvestmentChoiceSnapshotState.normal(unavailableSnapshot))));
 
     var result = precheck(VALID_BODY);
 
@@ -467,14 +521,14 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
                 PasswordValidationPrecheckViolation.Kind.FIELD,
                 ErrorCodes.INVESTMENT_CHOICE_FUND_UNAVAILABLE,
                 "allocations[1].fundCode"));
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verifyNoInteractions(failures);
   }
 
   @Test
   void snapshotMissPublishesExactlyOneSafeFeatureEventAndReturnsUnavailable()
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.empty()));
 
     StepVerifier.create(precheckMono(VALID_BODY))
@@ -498,14 +552,14 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
     assertThat(event.getValue()).isEqualTo(expectedEvent);
     assertThat(event.getValue().toString())
         .doesNotContain(ACCOUNT_REF, POLICY_NO, SESSION_ID_VALUE, SENSITIVE_SOURCE, SENSITIVE_FUND);
-    verify(snapshotCache, times(1)).read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1)).readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     assertNoSensitiveLogValues();
   }
 
   @Test
   void snapshotReadFailureIsAnUnavailableMissWithoutLeakingTheCause()
       throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.error(new IllegalStateException(SENSITIVE_POLICY_ERROR)));
 
     var error = new AtomicReference<Throwable>();
@@ -519,7 +573,7 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
 
   @Test
   void telemetryFailureDoesNotChangeSnapshotUnavailableOutcome() throws JsonProcessingException {
-    when(snapshotCache.read(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.empty()));
     org.mockito.Mockito.doThrow(new IllegalStateException(SENSITIVE_POLICY_ERROR))
         .when(failures)
@@ -545,30 +599,32 @@ class ChangeInvestmentChoicePasswordValidationPrecheckPolicyTest {
     return policy.precheck(payload, CONTEXT);
   }
 
-  private static InvestmentChoiceSnapshot availableSnapshot() {
+  private static InvestmentChoiceSnapshotState availableSnapshot() {
     return availableSnapshot(20);
   }
 
-  private static InvestmentChoiceSnapshot availableSnapshot(int intervalPcnt) {
-    return new InvestmentChoiceSnapshot(
-        ACCOUNT_REF,
-        POLICY_NO,
-        intervalPcnt,
-        List.of(
-            new InvestmentChoiceSnapshot.SwitchSource("BO", true),
-            new InvestmentChoiceSnapshot.SwitchSource("EE", true)),
-        List.of(
-            new InvestmentChoiceSnapshot.Fund("DBLF", true),
-            new InvestmentChoiceSnapshot.Fund("DHKM", true)),
-        List.of());
+  private static InvestmentChoiceSnapshotState availableSnapshot(int intervalPcnt) {
+    return InvestmentChoiceSnapshotState.normal(
+        new InvestmentChoiceSnapshot(
+            ACCOUNT_REF,
+            POLICY_NO,
+            intervalPcnt,
+            List.of(
+                new InvestmentChoiceSnapshot.SwitchSource("BO", true),
+                new InvestmentChoiceSnapshot.SwitchSource("EE", true)),
+            List.of(
+                new InvestmentChoiceSnapshot.Fund("DBLF", true),
+                new InvestmentChoiceSnapshot.Fund("DHKM", true)),
+            List.of()));
   }
 
-  private static InvestmentChoiceSnapshot snapshot(
+  private static InvestmentChoiceSnapshotState snapshot(
       int intervalPcnt,
       List<InvestmentChoiceSnapshot.SwitchSource> sources,
       List<InvestmentChoiceSnapshot.Fund> funds) {
-    return new InvestmentChoiceSnapshot(
-        ACCOUNT_REF, POLICY_NO, intervalPcnt, sources, funds, List.of());
+    return InvestmentChoiceSnapshotState.normal(
+        new InvestmentChoiceSnapshot(
+            ACCOUNT_REF, POLICY_NO, intervalPcnt, sources, funds, List.of()));
   }
 
   private static Stream<Arguments> invalidVRuleBodies() {

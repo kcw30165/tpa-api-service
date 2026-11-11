@@ -1,19 +1,14 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response;
 
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
 import java.util.List;
 
-public record InvestmentChoiceDataResponse(
-    String accountNumber,
-    int intervalPercentage,
-    List<InvestmentChoiceSwitchSourceResponse> switchSources,
-    List<InvestmentChoiceFundResponse> funds,
-    List<InvestmentChoiceHistoryResponse> history,
-    List<InvestmentChoicePendingInstructionResponse> pendingInstructions) {
+public sealed interface InvestmentChoiceDataResponse
+    permits InvestmentChoiceNormalDataResponse, InvestmentChoiceRestrictedDataResponse {
 
-  public InvestmentChoiceDataResponse {
-    switchSources = List.copyOf(switchSources);
-    funds = List.copyOf(funds);
-    history = List.copyOf(history);
-    pendingInstructions = List.copyOf(pendingInstructions);
-  }
+  String accountNumber();
+
+  InvestmentChoiceScenario scenario();
+
+  List<InvestmentChoiceHistoryResponse> history();
 }

@@ -3,8 +3,12 @@ package com.bct.ngtpa.apiservice.application.usecase.passwordvalidation;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.CancelInvestmentChoicePasswordValidationPayloadDecoder;
+import com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.ChangeInvestmentChoicePasswordValidationPayloadDecoder;
 import com.bct.ngtpa.apiservice.adapter.out.passwordvalidation.JsonOperationPayloadCanonicalizer;
 import com.bct.ngtpa.apiservice.application.dto.*;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.passwordvalidation.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
@@ -12,13 +16,20 @@ import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.OperationPayloadBindingPort;
 import com.bct.ngtpa.apiservice.application.port.out.PasswordCheckPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.RevokeAuthenticatedSessionUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.investmentchoice.InvestmentChoiceSnapshotCacheService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.*;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.*;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import reactor.core.publisher.Mono;
@@ -90,6 +101,92 @@ class PasswordValidationIssuanceServiceTest {
     assertThat(capture.getValue().customerId()).isEqualTo(command.context().actor().actorUserId());
     assertThat(capture.getValue().password()).isEqualTo(command.password());
     assertThat(capture.getValue().accountEnv()).isEqualTo("TEST");
+  }
+
+  @ParameterizedTest
+  @MethodSource("restrictedScenarioIssuanceCases")
+  void restrictedCimIssuanceRejectsBeforeThrottlePasswordOrGrant(
+      PasswordValidationPurpose purpose,
+      String operationPayloadJson,
+      InvestmentChoiceScenario scenario,
+      String errorCode)
+      throws Exception {
+    var cache = mock(InvestmentChoiceSnapshotCacheService.class);
+    var state =
+        InvestmentChoiceSnapshotState.restricted(
+            command.context().account().accountRef(),
+            command.context().account().policyNo(),
+            scenario);
+    when(cache.readState(any(), any(), any(), any())).thenReturn(Mono.just(Optional.of(state)));
+    var restrictedPrechecks =
+        new PasswordValidationPurposePrecheckPolicyRegistry(
+            List.of(
+                new ChangeInvestmentChoicePasswordValidationPrecheckPolicy(cache, failures),
+                new CancelInvestmentChoicePasswordValidationPrecheckPolicy(cache, failures)),
+            Set.of(
+                PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE,
+                PasswordValidationPurpose.CANCEL_INVESTMENT_CHOICE));
+    var restrictedService =
+        new PasswordValidationIssuanceService(
+            throttle,
+            passwords,
+            grants,
+            revocation,
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            failures,
+            bindings,
+            restrictedPrechecks);
+    ObjectMapper json = new ObjectMapper();
+    PasswordValidationPurposePayload payload =
+        purpose == PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE
+            ? new ChangeInvestmentChoicePasswordValidationPayloadDecoder()
+                .decode(json.readTree(operationPayloadJson))
+            : new CancelInvestmentChoicePasswordValidationPayloadDecoder()
+                .decode(json.readTree(operationPayloadJson));
+    var issuanceCommand =
+        new PasswordValidationIssuanceCommand(
+            command.sessionId(),
+            command.context(),
+            command.password(),
+            purpose,
+            operationPayloadJson,
+            payload,
+            command.correlationId());
+
+    var result = restrictedService.issue(issuanceCommand).block();
+
+    assertThat(result.status())
+        .isEqualTo(PasswordValidationIssuanceResult.Status.FEATURE_BUSINESS_REJECTED);
+    assertThat(result.errorCode()).isEqualTo(errorCode);
+    verifyNoInteractions(throttle, passwords, grants, failures);
+  }
+
+  static Stream<Arguments> restrictedScenarioIssuanceCases() {
+    return Stream.of(
+        Arguments.of(
+            PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE,
+            "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":["
+                + "{\"fundCode\":\"DBLF\",\"percentage\":60},"
+                + "{\"fundCode\":\"DHKM\",\"percentage\":40}]}",
+            InvestmentChoiceScenario.FUNCTION_UNAVAILABLE,
+            ErrorCodes.INVESTMENT_CHOICE_FUNCTION_UNAVAILABLE),
+        Arguments.of(
+            PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE,
+            "{\"switchSources\":[\"BO\",\"EE\"],\"allocations\":["
+                + "{\"fundCode\":\"DBLF\",\"percentage\":60},"
+                + "{\"fundCode\":\"DHKM\",\"percentage\":40}]}",
+            InvestmentChoiceScenario.MEMBER_INELIGIBLE,
+            ErrorCodes.INVESTMENT_CHOICE_MEMBER_INELIGIBLE),
+        Arguments.of(
+            PasswordValidationPurpose.CANCEL_INVESTMENT_CHOICE,
+            "{\"refNo\":\"000000000\"}",
+            InvestmentChoiceScenario.FUNCTION_UNAVAILABLE,
+            ErrorCodes.INVESTMENT_CHOICE_FUNCTION_UNAVAILABLE),
+        Arguments.of(
+            PasswordValidationPurpose.CANCEL_INVESTMENT_CHOICE,
+            "{\"refNo\":\"000000000\"}",
+            InvestmentChoiceScenario.MEMBER_INELIGIBLE,
+            ErrorCodes.INVESTMENT_CHOICE_MEMBER_INELIGIBLE));
   }
 
   @ParameterizedTest

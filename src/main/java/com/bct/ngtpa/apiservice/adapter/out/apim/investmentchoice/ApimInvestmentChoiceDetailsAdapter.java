@@ -21,6 +21,7 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceMandate;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePending;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePendingDetail;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSource;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
@@ -28,6 +29,7 @@ import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRet
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceDetailsPort;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -50,6 +52,8 @@ public final class ApimInvestmentChoiceDetailsAdapter implements InvestmentChoic
   private final ApimExchangeExecutor executor;
   private final FailureEventPort failureEventPort;
   private final String path;
+  private final TrpGetCIMDtlApimScenarioMapper scenarioMapper =
+      new TrpGetCIMDtlApimScenarioMapper();
 
   @Autowired
   public ApimInvestmentChoiceDetailsAdapter(
@@ -85,13 +89,13 @@ public final class ApimInvestmentChoiceDetailsAdapter implements InvestmentChoic
                       path,
                       request,
                       TrpGetCIMDtlApimRequest.class,
-                      TrpGetCIMDtlApimDataItem.class,
+                      JsonNode.class,
                       ApimDatabaseScope.ACCOUNT_ENV,
                       new ApimCredentialResolutionContext(
                           command.actorUserRole(), command.accountEnv()),
                       ApimRetryEligibility.SAFE_BUSINESS_CALL);
               return executor
-                  .<TrpGetCIMDtlApimRequest, TrpGetCIMDtlApimDataItem>postEnvelope(exchange)
+                  .<TrpGetCIMDtlApimRequest, JsonNode>postEnvelope(exchange)
                   .map(this::toDetails);
             })
         .doOnEach(this::publishFailure)
@@ -102,8 +106,7 @@ public final class ApimInvestmentChoiceDetailsAdapter implements InvestmentChoic
                     : InvestmentChoiceDetailsRetrievalException.systemFailure());
   }
 
-  private InvestmentChoiceDetails toDetails(
-      ApimResponseEnvelope<TrpGetCIMDtlApimDataItem> envelope) {
+  private InvestmentChoiceDetails toDetails(ApimResponseEnvelope<JsonNode> envelope) {
     if (envelope == null || envelope.getResponse() == null) {
       throw new InvestmentChoiceMalformedResponseException();
     }
@@ -114,14 +117,19 @@ public final class ApimInvestmentChoiceDetailsAdapter implements InvestmentChoic
           InvestmentChoiceEligibilityCodes.featureCode(errMessage).orElse("UNMAPPED_ERROR_CODE");
       throw new DownstreamErrorMessageException(errMessage, reason);
     }
-    List<TrpGetCIMDtlApimDataItem> data = response.getData();
+    List<JsonNode> data = response.getData();
     if (data == null || data.size() != 1 || data.getFirst() == null) {
       throw new InvestmentChoiceMalformedResponseException();
     }
-    return mapItem(data.getFirst());
+    JsonNode item = data.getFirst();
+    InvestmentChoiceScenario scenario = scenarioMapper.scenario(item);
+    if (scenario == InvestmentChoiceScenario.NORMAL) {
+      return mapNormalItem(scenarioMapper.normalItem(item));
+    }
+    return mapRestrictedItem(scenario, scenarioMapper.restrictedRows(item));
   }
 
-  private InvestmentChoiceDetails mapItem(TrpGetCIMDtlApimDataItem item) {
+  private InvestmentChoiceDetails.Normal mapNormalItem(TrpGetCIMDtlApimDataItem item) {
     if (item.intervalPcnt() == null || item.intervalPcnt() < 1 || item.intervalPcnt() > 100) {
       throw new InvestmentChoiceMalformedResponseException();
     }
@@ -137,7 +145,16 @@ public final class ApimInvestmentChoiceDetailsAdapter implements InvestmentChoic
     List<InvestmentChoiceFund> funds = mapFunds(wireFunds);
     List<InvestmentChoiceMandate> mandates = mapMandates(wireMandates);
     List<InvestmentChoicePending> pending = mapPending(wirePending, wirePendingDetails);
-    return new InvestmentChoiceDetails(item.intervalPcnt(), sources, funds, mandates, pending);
+    return new InvestmentChoiceDetails.Normal(
+        item.intervalPcnt(), sources, funds, mandates, pending);
+  }
+
+  private InvestmentChoiceDetails.Restricted mapRestrictedItem(
+      InvestmentChoiceScenario scenario, TrpGetCIMDtlApimScenarioMapper.RestrictedRows rows) {
+    List<InvestmentChoiceSource> sources = mapSources(rows.sources());
+    List<InvestmentChoiceFund> funds = mapFunds(rows.funds());
+    List<InvestmentChoiceMandate> mandates = mapMandates(rows.mandates());
+    return new InvestmentChoiceDetails.Restricted(scenario, sources, funds, mandates);
   }
 
   private List<InvestmentChoiceSource> mapSources(List<SwitchSrc> rows) {

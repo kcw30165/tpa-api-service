@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.CancelInvestmen
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancelCommand;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancelOutcome;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancellation;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelUnavailableException;
@@ -56,7 +57,7 @@ public final class CancelInvestmentChoiceService implements CancelInvestmentChoi
   private Mono<Void> cleanupSnapshot(CancelInvestmentChoiceCommand command) {
     return Mono.defer(
             () ->
-                snapshotCache.read(
+                snapshotCache.readState(
                     command.authenticatedSessionId(),
                     command.snapshotAccountRef(),
                     command.policyNo(),
@@ -64,15 +65,16 @@ public final class CancelInvestmentChoiceService implements CancelInvestmentChoi
         .defaultIfEmpty(Optional.empty())
         .onErrorResume(error -> Mono.just(Optional.empty()))
         .flatMap(
-            snapshot ->
-                snapshot
+            state ->
+                state
+                    .flatMap(InvestmentChoiceSnapshotState::normalSnapshot)
                     .map(
-                        value ->
+                        snapshot ->
                             Mono.defer(
                                     () ->
                                         snapshotCache.write(
                                             command.authenticatedSessionId(),
-                                            value.withoutPendingRef(command.referenceNo()),
+                                            snapshot.withoutPendingRef(command.referenceNo()),
                                             command.requestId()))
                                 .onErrorResume(error -> Mono.empty()))
                     .orElseGet(Mono::empty));

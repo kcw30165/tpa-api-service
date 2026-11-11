@@ -466,7 +466,7 @@ exactly one feature-owned event. Expected feature violations produce no
 technical incident. Shared issuance does not publish a duplicate event for a
 feature-owned snapshot miss. Wrong-password behavior is unchanged.
 
-### Scenario-aware CIM issuance state (approved M6 target; not implemented)
+### Scenario-aware CIM issuance state (implemented in M6-012; not runtime-verified against Progress)
 
 The approved CIM GET scenarios are `NORMAL`, `FUNCTION_UNAVAILABLE`, and
 `MEMBER_INELIGIBLE`, selected by Progress and stored with account ownership.
@@ -476,6 +476,12 @@ to NORMAL for compatibility, but a present unknown value must not default to
 NORMAL. No configuration-based mapping is introduced. See design pack 17,
 documents 02, 03, and 06 for the complete GET contract and outstanding
 downstream details.
+
+The implementation currently accepts exact string literals matching the
+internal scenario names as synthetic provisional wire values; they are not
+confirmed Progress values. Present null, non-string, blank, or unknown values
+are malformed downstream responses. The mapping remains isolated in the APIM
+scenario mapper.
 
 Both `CHANGE_INVESTMENT_CHOICE` and `CANCEL_INVESTMENT_CHOICE` issuance
 policies inspect the stored scenario. `FUNCTION_UNAVAILABLE` returns HTTP 422

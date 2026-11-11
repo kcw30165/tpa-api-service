@@ -166,6 +166,14 @@ technical incident. Ordinary missing/unreadable snapshots retain the
 feature-owned 503 and exactly-one-event behavior. The scenario is not
 rechecked during execution, and already-issued token semantics are unchanged.
 
+Submit precedence is explicit: V1 structural errors return immediately without
+a snapshot read. Structurally safe input retains V2-V8 violations; if any exist,
+return them even when the snapshot is restricted and do not evaluate normal-only
+S rules. With no V violations, restricted state returns the approved business
+rejection. NORMAL retains existing V/S aggregation and snapshot-miss precedence.
+Cancel CV1/CV2 remain early errors; a valid cancel payload with restricted state
+returns the approved business rejection before pending-reference membership.
+
 At protected execution, the gate remains the authority for successful
 single-use token consumption, session/account/purpose scope and canonical
 payload binding. Its existing binding attribute is required by the CIM

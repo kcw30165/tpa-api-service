@@ -22,7 +22,7 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceInstructionRow;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePending;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePendingDetail;
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
@@ -131,7 +131,7 @@ class SubmitInvestmentChoiceServiceTest {
   }
 
   private static InvestmentChoiceDetails details(List<InvestmentChoicePending> pending) {
-    return new InvestmentChoiceDetails(20, List.of(), List.of(), List.of(), pending);
+    return new InvestmentChoiceDetails.Normal(20, List.of(), List.of(), List.of(), pending);
   }
 
   private static InvestmentChoicePending pending(
@@ -230,7 +230,7 @@ class SubmitInvestmentChoiceServiceTest {
     arrangeUnknownOutcomeWithDetails(
         details(List.of(pending(PENDING_REFERENCE_NO, HK_TODAY, matchingPendingRows()))));
     var refreshed = new AtomicBoolean();
-    when(snapshotCache.write(eq(SESSION_ID), any(), eq(REQUEST_ID)))
+    when(snapshotCache.writeState(eq(SESSION_ID), any(), eq(REQUEST_ID)))
         .thenReturn(Mono.fromRunnable(() -> refreshed.set(true)));
 
     StepVerifier.create(useCase().submit(command(VALID_REQUEST)))
@@ -245,10 +245,11 @@ class SubmitInvestmentChoiceServiceTest {
             })
         .verifyComplete();
 
-    var refreshedSnapshot = ArgumentCaptor.forClass(InvestmentChoiceSnapshot.class);
+    var refreshedSnapshot = ArgumentCaptor.forClass(InvestmentChoiceSnapshotState.class);
     verify(snapshotCache, times(1))
-        .write(eq(SESSION_ID), refreshedSnapshot.capture(), eq(REQUEST_ID));
-    assertThat(refreshedSnapshot.getValue().pendingRefNos()).containsExactly(PENDING_REFERENCE_NO);
+        .writeState(eq(SESSION_ID), refreshedSnapshot.capture(), eq(REQUEST_ID));
+    assertThat(refreshedSnapshot.getValue().normalSnapshot().orElseThrow().pendingRefNos())
+        .containsExactly(PENDING_REFERENCE_NO);
     verify(referenceDatePort).resolveReferenceDate(ACCOUNT_ENV);
     var detailsCommand = ArgumentCaptor.forClass(InvestmentChoiceDetailsCommand.class);
     verify(detailsPort).load(detailsCommand.capture());
@@ -266,7 +267,7 @@ class SubmitInvestmentChoiceServiceTest {
   void unknownOutcomeWithoutExactlyOneTodaysExactCandidateIsUnavailable(
       String scenario, List<InvestmentChoicePending> pending) {
     arrangeUnknownOutcomeWithDetails(details(pending));
-    when(snapshotCache.write(any(), any(), any())).thenReturn(Mono.empty());
+    when(snapshotCache.writeState(any(), any(), any())).thenReturn(Mono.empty());
 
     StepVerifier.create(useCase().submit(command(VALID_REQUEST)))
         .expectError(InvestmentChoiceSubmissionUnavailableException.class)
@@ -277,6 +278,32 @@ class SubmitInvestmentChoiceServiceTest {
     verify(detailsPort).load(any());
     assertThat(appender.list.stream().map(ILoggingEvent::getFormattedMessage).toList())
         .as(scenario)
+        .containsExactly("event=investment-choice.submission.unreconciled requestId=" + REQUEST_ID);
+    assertNoSensitiveLogValues();
+  }
+
+  @Test
+  void restrictedReconciliationCannotEstablishAPendingInstruction() {
+    when(instructionPort.submit(any()))
+        .thenReturn(Mono.error(new InvestmentChoiceSubmissionUnknownOutcomeException()));
+    when(referenceDatePort.resolveReferenceDate(ACCOUNT_ENV)).thenReturn(Mono.just(REFERENCE_DATE));
+    when(detailsPort.load(any()))
+        .thenReturn(
+            Mono.just(
+                new InvestmentChoiceDetails.Restricted(
+                    com.bct.ngtpa.apiservice.application.dto.investmentchoice
+                        .InvestmentChoiceScenario.MEMBER_INELIGIBLE,
+                    List.of(),
+                    List.of(),
+                    List.of())));
+
+    StepVerifier.create(useCase().submit(command(VALID_REQUEST)))
+        .expectError(InvestmentChoiceSubmissionUnavailableException.class)
+        .verify();
+
+    verify(snapshotCache).writeRestrictedState(any(), any(), any());
+    verify(snapshotCache, never()).writeState(any(), any(), any());
+    assertThat(appender.list.stream().map(ILoggingEvent::getFormattedMessage).toList())
         .containsExactly("event=investment-choice.submission.unreconciled requestId=" + REQUEST_ID);
     assertNoSensitiveLogValues();
   }
@@ -323,7 +350,7 @@ class SubmitInvestmentChoiceServiceTest {
     var yesterday = pending("pending-nov-five", LocalDate.of(2026, 11, 5), matchingPendingRows());
     var today = pending("pending-nov-six", LocalDate.of(2026, 11, 6), matchingPendingRows());
     arrangeUnknownOutcomeWithDetails(details(List.of(yesterday, today)));
-    when(snapshotCache.write(any(), any(), any())).thenReturn(Mono.empty());
+    when(snapshotCache.writeState(any(), any(), any())).thenReturn(Mono.empty());
 
     StepVerifier.create(useCase().submit(command(VALID_REQUEST)))
         .assertNext(
@@ -380,7 +407,7 @@ class SubmitInvestmentChoiceServiceTest {
   void failedOrSkippedRefreshDoesNotChangeReconciledSuccess(Mono<Void> writeResult) {
     arrangeUnknownOutcomeWithDetails(
         details(List.of(pending("pending-ref-sensitive", HK_TODAY, matchingPendingRows()))));
-    when(snapshotCache.write(any(), any(), any())).thenReturn(writeResult);
+    when(snapshotCache.writeState(any(), any(), any())).thenReturn(writeResult);
 
     StepVerifier.create(useCase().submit(command(VALID_REQUEST)))
         .expectNextMatches(
@@ -391,7 +418,7 @@ class SubmitInvestmentChoiceServiceTest {
                             "pending-ref-sensitive", HK_TODAY, LocalTime.of(9, 15)))))
         .verifyComplete();
 
-    verify(snapshotCache).write(eq(SESSION_ID), any(), eq(REQUEST_ID));
+    verify(snapshotCache).writeState(eq(SESSION_ID), any(), eq(REQUEST_ID));
     assertNoSensitiveLogValues();
   }
 
@@ -411,7 +438,7 @@ class SubmitInvestmentChoiceServiceTest {
             Mono.just(
                 details(
                     List.of(pending("pending-ref-sensitive", HK_TODAY, matchingPendingRows())))));
-    when(snapshotCache.write(any(), any(), any())).thenReturn(Mono.empty());
+    when(snapshotCache.writeState(any(), any(), any())).thenReturn(Mono.empty());
 
     StepVerifier.create(useCase().submit(command(VALID_REQUEST)))
         .expectNextCount(1)

@@ -20,7 +20,9 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetailsCommand;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceFund;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePending;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSource;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
@@ -94,7 +96,7 @@ class GetInvestmentChoiceServiceTest {
   }
 
   private static InvestmentChoiceDetails details() {
-    return new InvestmentChoiceDetails(
+    return new InvestmentChoiceDetails.Normal(
         25,
         List.of(
             new InvestmentChoiceSource("BO", 1, true), new InvestmentChoiceSource("EE", 2, false)),
@@ -106,11 +108,11 @@ class GetInvestmentChoiceServiceTest {
   }
 
   private static InvestmentChoiceDetails emptyDetails() {
-    return new InvestmentChoiceDetails(5, List.of(), List.of(), List.of(), List.of());
+    return new InvestmentChoiceDetails.Normal(5, List.of(), List.of(), List.of(), List.of());
   }
 
   private static InvestmentChoiceDetails detailsWithPendingReferences() {
-    return new InvestmentChoiceDetails(
+    return new InvestmentChoiceDetails.Normal(
         25,
         List.of(new InvestmentChoiceSource("BO", 1, true)),
         List.of(new InvestmentChoiceFund("FUN01", "Fund One", "基金一", "1", true)),
@@ -153,7 +155,7 @@ class GetInvestmentChoiceServiceTest {
     var details = details();
     arrangeDetails(details);
     var writeCompleted = new AtomicBoolean();
-    when(snapshotCache.write(any(), any(), any()))
+    when(snapshotCache.writeState(any(), any(), any()))
         .thenReturn(Mono.fromRunnable(() -> writeCompleted.set(true)));
 
     InOrder order = inOrder(referenceDatePort, detailsPort, snapshotCache);
@@ -173,21 +175,22 @@ class GetInvestmentChoiceServiceTest {
         .isEqualTo(
             new InvestmentChoiceDetailsCommand(
                 ROLE, ACCOUNT_ENV, SUCCESS_POLICY_NO, SUCCESS_CERT_NO, REFERENCE_DATE));
-    var snapshot = ArgumentCaptor.forClass(InvestmentChoiceSnapshot.class);
-    order.verify(snapshotCache).write(eq(SESSION_ID), snapshot.capture(), eq(REQUEST_ID));
-    assertThat(snapshot.getValue())
+    var state = ArgumentCaptor.forClass(InvestmentChoiceSnapshotState.class);
+    order.verify(snapshotCache).writeState(eq(SESSION_ID), state.capture(), eq(REQUEST_ID));
+    assertThat(state.getValue())
         .isEqualTo(
-            new InvestmentChoiceSnapshot(
-                ACCOUNT_REF,
-                SUCCESS_POLICY_NO,
-                25,
-                List.of(
-                    new InvestmentChoiceSnapshot.SwitchSource("BO", true),
-                    new InvestmentChoiceSnapshot.SwitchSource("EE", false)),
-                List.of(
-                    new InvestmentChoiceSnapshot.Fund("FUN01", true),
-                    new InvestmentChoiceSnapshot.Fund("FUN02", false)),
-                List.of()));
+            InvestmentChoiceSnapshotState.normal(
+                new InvestmentChoiceSnapshot(
+                    ACCOUNT_REF,
+                    SUCCESS_POLICY_NO,
+                    25,
+                    List.of(
+                        new InvestmentChoiceSnapshot.SwitchSource("BO", true),
+                        new InvestmentChoiceSnapshot.SwitchSource("EE", false)),
+                    List.of(
+                        new InvestmentChoiceSnapshot.Fund("FUN01", true),
+                        new InvestmentChoiceSnapshot.Fund("FUN02", false)),
+                    List.of())));
     verifyNoInteractions(failures);
     assertNoSensitiveLogValues();
   }
@@ -196,16 +199,56 @@ class GetInvestmentChoiceServiceTest {
   void writesDistinctPendingReferencesFromDetailsIntoTheSnapshot() {
     var details = detailsWithPendingReferences();
     arrangeDetails(details);
-    when(snapshotCache.write(any(), any(), any())).thenReturn(Mono.empty());
+    when(snapshotCache.writeState(any(), any(), any())).thenReturn(Mono.empty());
 
     StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
         .assertNext(result -> assertThat(result.details()).isEqualTo(details))
         .verifyComplete();
 
-    var snapshot = ArgumentCaptor.forClass(InvestmentChoiceSnapshot.class);
-    verify(snapshotCache).write(eq(SESSION_ID), snapshot.capture(), eq(REQUEST_ID));
-    assertThat(snapshot.getValue().pendingRefNos())
+    var state = ArgumentCaptor.forClass(InvestmentChoiceSnapshotState.class);
+    verify(snapshotCache).writeState(eq(SESSION_ID), state.capture(), eq(REQUEST_ID));
+    assertThat(state.getValue().normalSnapshot().orElseThrow().pendingRefNos())
         .containsExactly(PENDING_REF_ONE, PENDING_REF_TWO);
+    assertNoSensitiveLogValues();
+  }
+
+  @Test
+  void restrictedGetReplacesTheAccountSnapshotWithRestrictedState() {
+    var details =
+        new InvestmentChoiceDetails.Restricted(
+            InvestmentChoiceScenario.FUNCTION_UNAVAILABLE, List.of(), List.of(), List.of());
+    arrangeDetails(details);
+    when(snapshotCache.writeRestrictedState(any(), any(), any())).thenReturn(Mono.empty());
+
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+        .assertNext(result -> assertThat(result.details()).isEqualTo(details))
+        .verifyComplete();
+
+    verify(snapshotCache)
+        .writeRestrictedState(
+            eq(SESSION_ID),
+            eq(
+                InvestmentChoiceSnapshotState.restricted(
+                    ACCOUNT_REF, SUCCESS_POLICY_NO, InvestmentChoiceScenario.FUNCTION_UNAVAILABLE)),
+            eq(REQUEST_ID));
+    verify(snapshotCache, never()).writeState(any(), any(), any());
+    assertNoSensitiveLogValues();
+  }
+
+  @Test
+  void restrictedSnapshotWriteFailureFailsTheGetInsteadOfReturningStaleSuccess() {
+    var details =
+        new InvestmentChoiceDetails.Restricted(
+            InvestmentChoiceScenario.MEMBER_INELIGIBLE, List.of(), List.of(), List.of());
+    arrangeDetails(details);
+    when(snapshotCache.writeRestrictedState(any(), any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("restricted-snapshot-write-sensitive")));
+
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+        .expectError(InvestmentChoiceDetailsRetrievalException.class)
+        .verify();
+
+    verify(snapshotCache).writeRestrictedState(any(), any(), any());
     assertNoSensitiveLogValues();
   }
 
@@ -287,7 +330,7 @@ class GetInvestmentChoiceServiceTest {
   void skippedSnapshotWriteDoesNotChangeSuccessfulResult() {
     var details = details();
     arrangeDetails(details);
-    when(snapshotCache.write(any(), any(), any())).thenReturn(Mono.empty());
+    when(snapshotCache.writeState(any(), any(), any())).thenReturn(Mono.empty());
 
     StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
         .assertNext(
@@ -296,7 +339,7 @@ class GetInvestmentChoiceServiceTest {
               assertThat(result.details()).isEqualTo(details);
             })
         .verifyComplete();
-    verify(snapshotCache).write(eq(SESSION_ID), any(), eq(REQUEST_ID));
+    verify(snapshotCache).writeState(eq(SESSION_ID), any(), eq(REQUEST_ID));
     assertNoSensitiveLogValues();
   }
 
@@ -304,7 +347,7 @@ class GetInvestmentChoiceServiceTest {
   void failedSnapshotWriteDoesNotChangeSuccessfulResult() {
     var details = details();
     arrangeDetails(details);
-    when(snapshotCache.write(any(), any(), any()))
+    when(snapshotCache.writeState(any(), any(), any()))
         .thenReturn(Mono.error(new IllegalStateException("snapshot-write-sensitive")));
 
     StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
@@ -314,7 +357,7 @@ class GetInvestmentChoiceServiceTest {
               assertThat(result.details()).isEqualTo(details);
             })
         .verifyComplete();
-    verify(snapshotCache).write(eq(SESSION_ID), any(), eq(REQUEST_ID));
+    verify(snapshotCache).writeState(eq(SESSION_ID), any(), eq(REQUEST_ID));
     assertNoSensitiveLogValues();
   }
 
@@ -322,16 +365,16 @@ class GetInvestmentChoiceServiceTest {
   void emptyHistoryPendingSourcesAndFundsAreValidAndWritten() {
     var details = emptyDetails();
     arrangeDetails(details);
-    when(snapshotCache.write(any(), any(), any())).thenReturn(Mono.empty());
+    when(snapshotCache.writeState(any(), any(), any())).thenReturn(Mono.empty());
 
     StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
         .assertNext(result -> assertThat(result.details()).isEqualTo(details))
         .verifyComplete();
 
-    var snapshot = ArgumentCaptor.forClass(InvestmentChoiceSnapshot.class);
-    verify(snapshotCache).write(eq(SESSION_ID), snapshot.capture(), eq(REQUEST_ID));
-    assertThat(snapshot.getValue().sources()).isEmpty();
-    assertThat(snapshot.getValue().funds()).isEmpty();
+    var state = ArgumentCaptor.forClass(InvestmentChoiceSnapshotState.class);
+    verify(snapshotCache).writeState(eq(SESSION_ID), state.capture(), eq(REQUEST_ID));
+    assertThat(state.getValue().normalSnapshot().orElseThrow().sources()).isEmpty();
+    assertThat(state.getValue().normalSnapshot().orElseThrow().funds()).isEmpty();
     assertNoSensitiveLogValues();
   }
 }

@@ -26,7 +26,8 @@ public record PasswordValidationIssuanceResult(
     UNAVAILABLE,
     REQUEST_INVALID,
     FEATURE_INVALID,
-    FEATURE_UNAVAILABLE
+    FEATURE_UNAVAILABLE,
+    FEATURE_BUSINESS_REJECTED
   }
 
   public static PasswordValidationIssuanceResult of(Status status) {
@@ -48,6 +49,11 @@ public record PasswordValidationIssuanceResult(
   public static PasswordValidationIssuanceResult featureUnavailable(String errorCode) {
     return new PasswordValidationIssuanceResult(
         Status.FEATURE_UNAVAILABLE, null, 0, 0, List.of(), errorCode);
+  }
+
+  public static PasswordValidationIssuanceResult featureBusinessRejected(String errorCode) {
+    return new PasswordValidationIssuanceResult(
+        Status.FEATURE_BUSINESS_REJECTED, null, 0, 0, List.of(), errorCode);
   }
 
   @Override

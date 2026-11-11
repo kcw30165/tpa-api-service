@@ -47,10 +47,11 @@
 | D-41 | Cancel outcomes: `err.request.cannot.be.cancelled` -> 422 `BUSINESS_REJECTED` `...cancel.not-cancellable` (WARN, `DOWNSTREAM_BUSINESS`); every other `err-message` and every throwable -> 503 `...cancel.unavailable` (`DOWNSTREAM_CONTRACT` or classified); no reconciliation |
 | D-42 | Cancel success returns the validated requested reference in `result.data.referenceNo`; any `ref-no` in the downstream response is ignored |
 | D-43 | Progress enforces that the reference belongs to the member; Java does not call `TRPGetCIMDtl` before cancelling. The snapshot membership check is an additional Java-side guard |
-| D-44 | Progress owns scenario selection. The internal scenarios are `NORMAL`, `FUNCTION_UNAVAILABLE`, and `MEMBER_INELIGIBLE`. The provisional downstream field is `scenario` beside `interval-pcnt`; its actual name and wire values are unconfirmed. No configuration mapping; absent temporarily means NORMAL, but a present unknown value fails as a malformed downstream response. Remove the missing-field fallback after the mandatory contract is confirmed and rolled out |
+| D-44 | Progress owns scenario selection. The internal scenarios are `NORMAL`, `FUNCTION_UNAVAILABLE`, and `MEMBER_INELIGIBLE`. The provisional downstream field is `scenario` beside `interval-pcnt`; its actual name and wire values are unconfirmed. No configuration mapping; absent temporarily means NORMAL. The exact string literals accepted by the implementation are synthetic provisional values, not confirmed Progress values. Present null, non-string, blank, or unknown values fail as malformed; isolate translation in the APIM mapper and remove the missing-field fallback after the mandatory contract is confirmed and rolled out |
 | D-45 | NORMAL retains existing mandatory fields and response behavior, adding `scenario`. Restricted scenarios require `SwitchFund` metadata and `InvestMandate`, permit absent `interval-pcnt`/`SwitchSrc`, and expose only `scenario`, `accountNumber`, and `history`; the other GET properties are absent, even if supplied downstream. Preserve history enrichment, ordering, unknown-fund behavior, and no new nonempty-list requirements |
 | D-46 | Store scenario with account ownership. NORMAL retains existing authorization data; restricted state replaces the prior account snapshot without fabricated editable data. Keep existing storage/concurrency behavior; no CAS redesign or GET fencing, and no stronger consistency claim |
 | D-47 | Submit and cancel issuance inspect stored scenario and reject restricted scenarios before throttle/password/grant: `FUNCTION_UNAVAILABLE` -> 422 `BUSINESS_REJECTED`, type `BUSINESS`, `err.investment-choice.function-unavailable`; `MEMBER_INELIGIBLE` -> corresponding `err.investment-choice.member-ineligible`. Empty targets, null message, existing severity/source; no technical incident. Ordinary snapshot misses retain the existing feature-owned 503. No execution-time scenario check or change to issued-token semantics |
+| D-48 | Submit precedence: V1 remains immediate without snapshot read; structurally safe V violations win over a restricted scenario and suppress normal-only S rules. With no V violations, restricted state rejects; NORMAL retains V/S aggregation and snapshot-miss precedence. Cancel CV1/CV2 remain early; a valid cancel payload sees restricted-state rejection before pending-reference membership |
 
 ## Open items
 
@@ -68,7 +69,7 @@
 | O-13 | A reference created by a definite submit success is not in the snapshot until the next GET (only a reconciled success refreshes it), so cancelling it needs a GET first. Decide whether a definite submit success should also refresh the snapshot | Nick | No |
 | O-14 | Confirm the provisional downstream scenario field name and wire values before removing the missing-field-to-NORMAL compatibility fallback | Progress / BA | No |
 
-## M6 purpose-owned prechecks (approved design; not implemented)
+## M6 purpose-owned prechecks (approved design; implemented, not runtime-verified against Progress)
 
 The following decisions are approved target behavior. They do not rewrite the
 M5 implementation evidence or imply runtime verification.

@@ -19,6 +19,7 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancelOutcome;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceCancellation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
@@ -102,11 +103,13 @@ class CancelInvestmentChoiceServiceTest {
 
   @Test
   void dispatchesBeforeRewritingSnapshotAfterCompletion() {
-    when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(
             Mono.just(
                 Optional.of(
-                    snapshot(List.of(REFERENCE_NO, OTHER_REFERENCE_NO, ABSENT_REFERENCE_NO)))));
+                    InvestmentChoiceSnapshotState.normal(
+                        snapshot(
+                            List.of(REFERENCE_NO, OTHER_REFERENCE_NO, ABSENT_REFERENCE_NO))))));
     when(cancelPort.cancel(any()))
         .thenReturn(Mono.just(new InvestmentChoiceCancellation(REFERENCE_NO)));
     AtomicBoolean writeCompleted = new AtomicBoolean();
@@ -129,7 +132,7 @@ class CancelInvestmentChoiceServiceTest {
     ArgumentCaptor<InvestmentChoiceCancelCommand> cancelCommand =
         ArgumentCaptor.forClass(InvestmentChoiceCancelCommand.class);
     order.verify(cancelPort).cancel(cancelCommand.capture());
-    order.verify(snapshotCache).read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    order.verify(snapshotCache).readState(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     assertThat(cancelCommand.getValue())
         .isEqualTo(
             new InvestmentChoiceCancelCommand(
@@ -144,7 +147,8 @@ class CancelInvestmentChoiceServiceTest {
     order.verify(snapshotCache).write(eq(SESSION_ID), writtenSnapshot.capture(), eq(REQUEST_ID));
     assertThat(writtenSnapshot.getValue().pendingRefNos())
         .containsExactly(OTHER_REFERENCE_NO, ABSENT_REFERENCE_NO);
-    verify(snapshotCache, times(1)).read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, times(1))
+        .readState(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
     verify(snapshotCache, times(1)).write(eq(SESSION_ID), any(), eq(REQUEST_ID));
     verify(failureEvents, never()).publish(any());
   }
@@ -153,7 +157,7 @@ class CancelInvestmentChoiceServiceTest {
   void dispatchesBeforeBestEffortSnapshotCleanupAndSucceedsWhenSnapshotIsMissing() {
     when(cancelPort.cancel(any()))
         .thenReturn(Mono.just(new InvestmentChoiceCancellation(REFERENCE_NO)));
-    when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    when(snapshotCache.readState(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenReturn(Mono.just(Optional.empty()));
 
     StepVerifier.create(service().cancel(command(REFERENCE_NO)))
@@ -164,21 +168,49 @@ class CancelInvestmentChoiceServiceTest {
 
     InOrder order = inOrder(cancelPort, snapshotCache);
     order.verify(cancelPort).cancel(any());
-    order.verify(snapshotCache).read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    order.verify(snapshotCache).readState(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID);
+    verify(snapshotCache, never()).write(any(), any(), any());
+    verify(failureEvents, never()).publish(any());
+  }
+
+  @Test
+  void restrictedSnapshotDoesNotBlockSuccessfulCancellationDuringCleanup() {
+    when(cancelPort.cancel(any()))
+        .thenReturn(Mono.just(new InvestmentChoiceCancellation(REFERENCE_NO)));
+    when(snapshotCache.readState(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    InvestmentChoiceSnapshotState.restricted(
+                        SNAPSHOT_ACCOUNT_REF,
+                        POLICY_NO,
+                        com.bct.ngtpa.apiservice.application.dto.investmentchoice
+                            .InvestmentChoiceScenario.FUNCTION_UNAVAILABLE))));
+
+    StepVerifier.create(service().cancel(command(REFERENCE_NO)))
+        .expectNext(
+            new InvestmentChoiceCancelOutcome.Cancelled(
+                new InvestmentChoiceCancellation(REFERENCE_NO)))
+        .verifyComplete();
+
     verify(snapshotCache, never()).write(any(), any(), any());
     verify(failureEvents, never()).publish(any());
   }
 
   @Test
   void repeatedExecutionDoesNotRevalidateSnapshotMembership() {
-    AtomicReference<InvestmentChoiceSnapshot> storedSnapshot =
-        new AtomicReference<>(snapshot(List.of(REFERENCE_NO, OTHER_REFERENCE_NO)));
-    when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+    AtomicReference<InvestmentChoiceSnapshotState> storedSnapshot =
+        new AtomicReference<>(
+            InvestmentChoiceSnapshotState.normal(
+                snapshot(List.of(REFERENCE_NO, OTHER_REFERENCE_NO))));
+    when(snapshotCache.readState(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
         .thenAnswer(ignored -> Mono.just(Optional.of(storedSnapshot.get())));
     when(snapshotCache.write(eq(SESSION_ID), any(), eq(REQUEST_ID)))
         .thenAnswer(
             invocation -> {
-              storedSnapshot.set(invocation.getArgument(1, InvestmentChoiceSnapshot.class));
+              storedSnapshot.set(
+                  InvestmentChoiceSnapshotState.normal(
+                      invocation.getArgument(1, InvestmentChoiceSnapshot.class)));
               return Mono.empty();
             });
     when(cancelPort.cancel(any()))
@@ -207,8 +239,11 @@ class CancelInvestmentChoiceServiceTest {
   @ParameterizedTest
   @MethodSource("knownCancelFailures")
   void propagatesKnownFailuresWithoutPublishingOrWriting(RuntimeException failure) {
-    when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
-        .thenReturn(Mono.just(Optional.of(snapshot(List.of(REFERENCE_NO)))));
+    when(snapshotCache.readState(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    InvestmentChoiceSnapshotState.normal(snapshot(List.of(REFERENCE_NO))))));
     when(cancelPort.cancel(any())).thenReturn(Mono.error(failure));
 
     StepVerifier.create(service().cancel(command(REFERENCE_NO)))
@@ -226,8 +261,11 @@ class CancelInvestmentChoiceServiceTest {
   @Test
   void propagatesOtherFailureWithoutPublishingOrWriting() {
     RuntimeException failure = new IllegalStateException("unexpected failure");
-    when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
-        .thenReturn(Mono.just(Optional.of(snapshot(List.of(REFERENCE_NO)))));
+    when(snapshotCache.readState(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    InvestmentChoiceSnapshotState.normal(snapshot(List.of(REFERENCE_NO))))));
     when(cancelPort.cancel(any())).thenReturn(Mono.error(failure));
 
     StepVerifier.create(service().cancel(command(REFERENCE_NO)))
@@ -240,8 +278,11 @@ class CancelInvestmentChoiceServiceTest {
 
   @Test
   void emptyCancelResultPublishesSafeFailureAndDoesNotRewriteSnapshot() {
-    when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
-        .thenReturn(Mono.just(Optional.of(snapshot(List.of(REFERENCE_NO)))));
+    when(snapshotCache.readState(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    InvestmentChoiceSnapshotState.normal(snapshot(List.of(REFERENCE_NO))))));
     when(cancelPort.cancel(any())).thenReturn(Mono.empty());
 
     StepVerifier.create(service().cancel(command(REFERENCE_NO)))
@@ -279,8 +320,11 @@ class CancelInvestmentChoiceServiceTest {
   @ParameterizedTest
   @MethodSource("snapshotWriteResults")
   void snapshotWriteSkipOrFailureDoesNotChangeCancellationResult(Mono<Void> writeResult) {
-    when(snapshotCache.read(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
-        .thenReturn(Mono.just(Optional.of(snapshot(List.of(REFERENCE_NO)))));
+    when(snapshotCache.readState(SESSION_ID, SNAPSHOT_ACCOUNT_REF, POLICY_NO, REQUEST_ID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    InvestmentChoiceSnapshotState.normal(snapshot(List.of(REFERENCE_NO))))));
     when(cancelPort.cancel(any()))
         .thenReturn(Mono.just(new InvestmentChoiceCancellation(REFERENCE_NO)));
     when(snapshotCache.write(eq(SESSION_ID), any(), eq(REQUEST_ID))).thenReturn(writeResult);

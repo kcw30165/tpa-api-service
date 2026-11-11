@@ -11,7 +11,9 @@ import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionStatus;
@@ -148,6 +150,10 @@ class InvestmentChoiceSnapshotCacheServiceTest {
     return service().read(SID, accountRef, policyNo, "req-1").block();
   }
 
+  private Optional<InvestmentChoiceSnapshotState> readState(String accountRef, String policyNo) {
+    return service().readState(SID, accountRef, policyNo, "req-1").block();
+  }
+
   @Test
   void writesAndReadsEverySnapshotFieldIncludingUnavailableEntries() throws Exception {
     ArgumentCaptor<UnaryOperator<AuthenticatedSession>> mutator =
@@ -163,7 +169,13 @@ class InvestmentChoiceSnapshotCacheServiceTest {
     assertThat(wire.fieldNames())
         .toIterable()
         .containsExactlyInAnyOrder(
-            "accountRef", "policyNo", "intervalPcnt", "sources", "funds", "pendingRefNos");
+            "scenario",
+            "accountRef",
+            "policyNo",
+            "intervalPcnt",
+            "sources",
+            "funds",
+            "pendingRefNos");
     stored(updated);
 
     assertThat(read(ACCOUNT_REF, POLICY_NO)).contains(snapshot(ACCOUNT_REF));
@@ -220,6 +232,46 @@ class InvestmentChoiceSnapshotCacheServiceTest {
     stored(usableSession(Map.of(PERSONAL_INFORMATION_KEY, "keep")));
 
     assertThat(read(ACCOUNT_REF, POLICY_NO)).isEmpty();
+  }
+
+  @Test
+  void readsRestrictedAccountStateWithoutNormalOnlySnapshotFields() {
+    stored(
+        usableSession(
+            Map.of(
+                KEY,
+                """
+                {"scenario":"FUNCTION_UNAVAILABLE","accountRef":"%s","policyNo":"%s"}
+                """
+                    .formatted(ACCOUNT_REF, POLICY_NO))));
+
+    assertThat(readState(ACCOUNT_REF, POLICY_NO))
+        .contains(
+            InvestmentChoiceSnapshotState.restricted(
+                ACCOUNT_REF, POLICY_NO, InvestmentChoiceScenario.FUNCTION_UNAVAILABLE));
+  }
+
+  @Test
+  void restrictedWriteReplacesPriorNormalSnapshotWithoutEditableFields() throws Exception {
+    ArgumentCaptor<UnaryOperator<AuthenticatedSession>> mutator =
+        ArgumentCaptor.forClass(UnaryOperator.class);
+    when(concurrency.updateIfUsable(eq(SID), mutator.capture(), eq("req-1")))
+        .thenReturn(
+            Mono.just(AuthenticatedSessionConcurrencyResult.applied(usableSession(Map.of()))));
+    var restricted =
+        InvestmentChoiceSnapshotState.restricted(
+            ACCOUNT_REF, POLICY_NO, InvestmentChoiceScenario.MEMBER_INELIGIBLE);
+
+    StepVerifier.create(service().writeRestrictedState(SID, restricted, "req-1")).verifyComplete();
+
+    AuthenticatedSession previous = usableSession(Map.of(KEY, json.write(snapshot(ACCOUNT_REF))));
+    AuthenticatedSession updated = mutator.getValue().apply(previous);
+    JsonNode wire = new ObjectMapper().readTree(updated.featureState().get(KEY));
+    assertThat(wire.fieldNames())
+        .toIterable()
+        .containsExactlyInAnyOrder("scenario", "accountRef", "policyNo");
+    stored(updated);
+    assertThat(readState(ACCOUNT_REF, POLICY_NO)).contains(restricted);
   }
 
   @Test

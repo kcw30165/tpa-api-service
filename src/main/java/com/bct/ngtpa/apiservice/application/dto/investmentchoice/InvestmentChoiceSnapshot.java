@@ -28,7 +28,7 @@ public record InvestmentChoiceSnapshot(
   }
 
   public static InvestmentChoiceSnapshot fromDetails(
-      String accountRef, String policyNo, InvestmentChoiceDetails details) {
+      String accountRef, String policyNo, InvestmentChoiceDetails.Normal details) {
     Objects.requireNonNull(details, "details must not be null");
     return new InvestmentChoiceSnapshot(
         accountRef,

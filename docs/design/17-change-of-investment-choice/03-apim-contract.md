@@ -62,13 +62,13 @@ strict. Pending records remain subject to all listed row and reference validatio
 A history or pending row whose `fund-code` is absent from `SwitchFund` is returned with
 `fundName: null` (O-5), not treated as malformed.
 
-### Approved scenario-aware GET contract (not implemented or runtime-verified)
+### M6 scenario-aware GET contract (implemented; not runtime-verified against Progress)
 
 The requiredness in the preceding table applies to `NORMAL`. The approved internal enum is `NORMAL`, `FUNCTION_UNAVAILABLE`, or `MEMBER_INELIGIBLE`; Progress owns the scenario decision.
 
 The provisional downstream field is `scenario`, beside `interval-pcnt`. Its actual field name and wire values remain **UNCONFIRMED**. Do not document guessed wire values as confirmed or add configuration-based field/value mappings. Keep eventual field extraction and wire-value translation localized to the APIM DTO and adapter mapper.
 
-For current downstream compatibility only, an absent `scenario` field temporarily resolves to internal `NORMAL`. A present unknown value must fail as a malformed downstream response; it must never fall back to `NORMAL`. Remove the missing-field fallback after the mandatory downstream contract is confirmed and rolled out.
+For current downstream compatibility only, an absent `scenario` field temporarily resolves to internal `NORMAL`. The adapter mapper currently accepts the exact string literals `NORMAL`, `FUNCTION_UNAVAILABLE`, and `MEMBER_INELIGIBLE` as synthetic provisional values; these are implementation/test assumptions, not confirmed Progress wire values. Present null, non-string, blank, or unknown values fail as a malformed downstream response and never fall back to `NORMAL`. Keep field/value translation isolated in the APIM mapper. Remove the missing-field fallback after the mandatory downstream contract is confirmed and rolled out.
 
 | Internal scenario | Required fields and validation |
 |---|---|

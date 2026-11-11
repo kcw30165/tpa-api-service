@@ -86,6 +86,13 @@ public final class PasswordValidationWebMapper {
               "SYSTEM",
               result.errorCode(),
               List.of("PAGE"));
+      case FEATURE_BUSINESS_REJECTED ->
+          failure(
+              HttpStatus.UNPROCESSABLE_CONTENT,
+              ApiStatus.BUSINESS_REJECTED,
+              BUSINESS,
+              result.errorCode(),
+              List.of());
     };
   }
 

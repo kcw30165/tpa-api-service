@@ -4,7 +4,8 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.GetInvestmentCh
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetails;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetailsCommand;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceResult;
-import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
@@ -75,19 +76,18 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
       return Mono.error(InvestmentChoiceDetailsRetrievalException.systemFailure());
     }
 
-    InvestmentChoiceSnapshot snapshot =
-        InvestmentChoiceSnapshot.fromDetails(
+    InvestmentChoiceSnapshotState state =
+        InvestmentChoiceSnapshotState.fromDetails(
             command.snapshotAccountRef(), command.policyNo(), details);
-    return snapshotCache
-        .write(command.sessionId(), snapshot, command.requestId())
-        .onErrorResume(
-            error -> {
-              LOG.warn(
-                  "event=investment-choice.snapshot-cache.write.skipped reason=failed requestId={}",
-                  command.requestId());
-              return Mono.empty();
-            })
-        .thenReturn(new InvestmentChoiceResult(accountNumber, details));
+    Mono<Void> write =
+        state.scenario() == InvestmentChoiceScenario.NORMAL
+            ? snapshotCache
+                .writeState(command.sessionId(), state, command.requestId())
+                .onErrorResume(error -> Mono.empty())
+            : snapshotCache
+                .writeRestrictedState(command.sessionId(), state, command.requestId())
+                .onErrorMap(error -> InvestmentChoiceDetailsRetrievalException.systemFailure());
+    return write.thenReturn(new InvestmentChoiceResult(accountNumber, details));
   }
 
   private void publishIdentifierFailure(GetInvestmentChoiceCommand command) {

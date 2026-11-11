@@ -6,8 +6,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.Investm
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceFundResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceHistoryResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceNormalDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoicePendingAllocationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoicePendingInstructionResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceRestrictedDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response.InvestmentChoiceSwitchSourceResponse;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetails;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceFund;
@@ -15,7 +17,9 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePending;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePendingDetail;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceResult;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSource;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -29,10 +33,13 @@ class InvestmentChoiceWebMapperTest {
 
   @Test
   void mapsEveryFieldAndOrdersSourcesFundsHistoryAndPendingInstructions() {
-    InvestmentChoiceDataResponse response =
-        mapper.toDataResponse(new InvestmentChoiceResult("00000008802-0230", details()), "en");
+    InvestmentChoiceNormalDataResponse response =
+        (InvestmentChoiceNormalDataResponse)
+            mapper.toDataResponse(new InvestmentChoiceResult("00000008802-0230", details()), "en");
 
     assertThat(response.accountNumber()).isEqualTo("00000008802-0230");
+    assertThat(new ObjectMapper().valueToTree(response).path("scenario").asText())
+        .isEqualTo("NORMAL");
     assertThat(response.intervalPercentage()).isEqualTo(5);
     assertThat(response.switchSources())
         .containsExactly(
@@ -82,8 +89,9 @@ class InvestmentChoiceWebMapperTest {
 
   @Test
   void zhHkUsesChineseNameAndFallsBackToEnglishWhenChineseNameIsBlank() {
-    InvestmentChoiceDataResponse response =
-        mapper.toDataResponse(new InvestmentChoiceResult("account", details()), "zh_HK");
+    InvestmentChoiceNormalDataResponse response =
+        (InvestmentChoiceNormalDataResponse)
+            mapper.toDataResponse(new InvestmentChoiceResult("account", details()), "zh_HK");
 
     assertThat(response.funds())
         .filteredOn(fund -> fund.fundCode().equals("F02"))
@@ -99,24 +107,59 @@ class InvestmentChoiceWebMapperTest {
   @ParameterizedTest
   @ValueSource(strings = {"en", "", "unknown"})
   void nonChineseLanguagesUseEnglishNames(String language) {
-    InvestmentChoiceDataResponse response =
-        mapper.toDataResponse(new InvestmentChoiceResult("account", details()), language);
+    InvestmentChoiceNormalDataResponse response =
+        (InvestmentChoiceNormalDataResponse)
+            mapper.toDataResponse(new InvestmentChoiceResult("account", details()), language);
 
     assertThat(response.funds().getFirst().fundName()).isEqualTo("alpha");
   }
 
   @Test
   void emptyCollectionsRemainEmptyLists() {
-    var empty = new InvestmentChoiceDetails(1, List.of(), List.of(), List.of(), List.of());
+    var empty = new InvestmentChoiceDetails.Normal(1, List.of(), List.of(), List.of(), List.of());
 
     assertThat(mapper.toDataResponse(new InvestmentChoiceResult("account", empty), "en"))
         .isEqualTo(
-            new InvestmentChoiceDataResponse(
-                "account", 1, List.of(), List.of(), List.of(), List.of()));
+            new InvestmentChoiceNormalDataResponse(
+                "account",
+                InvestmentChoiceScenario.NORMAL,
+                1,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()));
+  }
+
+  @Test
+  void restrictedResponseContainsOnlyAccountScenarioAndHistoryWithDeterministicFallbackOrder() {
+    var details =
+        new InvestmentChoiceDetails.Restricted(
+            InvestmentChoiceScenario.FUNCTION_UNAVAILABLE,
+            List.of(),
+            List.of(
+                new InvestmentChoiceFund("FUND_B", "Beta", null, 2, "1", false),
+                new InvestmentChoiceFund("FUND_A", "Alpha", null, 1, "1", true)),
+            List.of(
+                new InvestmentChoiceMandate(LocalDate.of(2026, 10, 1), "ZZ", "UNKNOWN", "05"),
+                new InvestmentChoiceMandate(LocalDate.of(2026, 10, 1), "AA", "FUND_A", "95")));
+
+    InvestmentChoiceDataResponse response =
+        mapper.toDataResponse(new InvestmentChoiceResult("account", details), "en");
+    var json = new ObjectMapper().valueToTree(response);
+
+    assertThat(response).isInstanceOf(InvestmentChoiceRestrictedDataResponse.class);
+    assertThat(json.fieldNames())
+        .toIterable()
+        .containsExactlyInAnyOrder("accountNumber", "scenario", "history");
+    assertThat(json.path("scenario").asText()).isEqualTo("FUNCTION_UNAVAILABLE");
+    assertThat(response.history().getFirst().allocations())
+        .containsExactly(
+            new InvestmentChoiceAllocationResponse("AA", "FUND_A", "Alpha", "95"),
+            new InvestmentChoiceAllocationResponse("ZZ", "UNKNOWN", null, "05"));
   }
 
   private static InvestmentChoiceDetails details() {
-    return new InvestmentChoiceDetails(
+    return new InvestmentChoiceDetails.Normal(
         5,
         List.of(
             new InvestmentChoiceSource("BO", "Both source", 20, false),
