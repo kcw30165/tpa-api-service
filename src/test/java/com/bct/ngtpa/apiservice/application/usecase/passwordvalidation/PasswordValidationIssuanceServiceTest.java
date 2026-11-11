@@ -50,14 +50,7 @@ class PasswordValidationIssuanceServiceTest {
   private final OperationPayloadBindingPort bindings = new JsonOperationPayloadCanonicalizer();
   private final PasswordValidationIssuanceService service =
       new PasswordValidationIssuanceService(
-          throttle,
-          passwords,
-          grants,
-          revocation,
-          Clock.fixed(NOW, ZoneOffset.UTC),
-          failures,
-          bindings,
-          prechecks);
+          throttle, passwords, grants, revocation, failures, bindings, prechecks);
   private final PasswordValidationIssuanceCommand command =
       new PasswordValidationIssuanceCommand(
           new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
@@ -83,6 +76,11 @@ class PasswordValidationIssuanceServiceTest {
           "test");
 
   private void admit(PasswordCheckResult result) {
+    when(grants.remainingLifetimeSeconds(any()))
+        .thenAnswer(
+            invocation ->
+                Math.toIntExact(
+                    Duration.between(NOW, invocation.getArgument(0, Instant.class)).toSeconds()));
     when(throttle.check(any(), any()))
         .thenReturn(
             Mono.just(
@@ -128,14 +126,7 @@ class PasswordValidationIssuanceServiceTest {
                 PasswordValidationPurpose.CANCEL_INVESTMENT_CHOICE));
     var restrictedService =
         new PasswordValidationIssuanceService(
-            throttle,
-            passwords,
-            grants,
-            revocation,
-            Clock.fixed(NOW, ZoneOffset.UTC),
-            failures,
-            bindings,
-            restrictedPrechecks);
+            throttle, passwords, grants, revocation, failures, bindings, restrictedPrechecks);
     ObjectMapper json = new ObjectMapper();
     PasswordValidationPurposePayload payload =
         purpose == PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE
@@ -319,15 +310,8 @@ class PasswordValidationIssuanceServiceTest {
     admit(PasswordCheckResult.CORRECT);
     var configuredService =
         new PasswordValidationIssuanceService(
-            throttle,
-            passwords,
-            grants,
-            revocation,
-            Clock.fixed(NOW, ZoneOffset.UTC),
-            failures,
-            bindings,
-            prechecks,
-            150);
+            throttle, passwords, grants, revocation, failures, bindings, prechecks);
+    doReturn(150).when(grants).remainingLifetimeSeconds(any());
     when(grants.issue(any(), any(), any(), any(), any(), any()))
         .thenReturn(
             Mono.just(

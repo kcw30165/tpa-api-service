@@ -8,6 +8,8 @@ import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -54,16 +56,23 @@ public final class PasswordValidationGrantService {
   private static final int MIN_TTL_SECONDS = 30;
   private static final int MAX_TTL_SECONDS = 900;
   private final AuthenticatedSessionConcurrencyService concurrency;
+  private final Clock clock;
   private final int ttlSeconds;
   private final SecureRandom random = new SecureRandom();
 
   public PasswordValidationGrantService(AuthenticatedSessionConcurrencyService concurrency) {
-    this(concurrency, DEFAULT_TTL_SECONDS);
+    this(concurrency, Clock.systemUTC(), DEFAULT_TTL_SECONDS);
   }
 
   public PasswordValidationGrantService(
       AuthenticatedSessionConcurrencyService concurrency, int ttlSeconds) {
+    this(concurrency, Clock.systemUTC(), ttlSeconds);
+  }
+
+  public PasswordValidationGrantService(
+      AuthenticatedSessionConcurrencyService concurrency, Clock clock, int ttlSeconds) {
     this.concurrency = Objects.requireNonNull(concurrency);
+    this.clock = Objects.requireNonNull(clock);
     if (ttlSeconds < MIN_TTL_SECONDS || ttlSeconds > MAX_TTL_SECONDS) {
       throw new IllegalArgumentException(
           "password-validation.grant.ttl-seconds must be between 30 and 900");
@@ -73,6 +82,12 @@ public final class PasswordValidationGrantService {
 
   public int ttlSeconds() {
     return ttlSeconds;
+  }
+
+  public int remainingLifetimeSeconds(Instant expiresAt) {
+    long remaining =
+        Duration.between(clock.instant(), Objects.requireNonNull(expiresAt)).toSeconds();
+    return remaining <= 0 ? 0 : (int) Math.min(ttlSeconds, remaining);
   }
 
   public Mono<IssueResult> issue(

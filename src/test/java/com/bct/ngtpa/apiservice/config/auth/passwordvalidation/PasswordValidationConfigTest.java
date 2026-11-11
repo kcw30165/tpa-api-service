@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.security.ratelimit.*;
 import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyService;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -34,7 +35,8 @@ class PasswordValidationConfigTest {
                   })
           .withBean(
               AuthenticatedSessionConcurrencyService.class,
-              () -> mock(AuthenticatedSessionConcurrencyService.class));
+              () -> mock(AuthenticatedSessionConcurrencyService.class))
+          .withBean(Clock.class, Clock::systemUTC);
 
   @Test
   void absentSecretFailsClosedWithoutBreakingExistingStartup() {

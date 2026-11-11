@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordV
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationThrottleService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.infrastructure.security.passwordvalidation.HmacPasswordValidationBucketIdDeriver;
+import java.time.Clock;
 import java.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -15,8 +16,9 @@ public class PasswordValidationConfig {
   @Bean
   PasswordValidationGrantService passwordValidationGrantService(
       AuthenticatedSessionConcurrencyService concurrency,
+      Clock clock,
       @Value("${password-validation.grant.ttl-seconds:300}") String ttlSeconds) {
-    return new PasswordValidationGrantService(concurrency, parseTtlSeconds(ttlSeconds));
+    return new PasswordValidationGrantService(concurrency, clock, parseTtlSeconds(ttlSeconds));
   }
 
   private static int parseTtlSeconds(String value) {
