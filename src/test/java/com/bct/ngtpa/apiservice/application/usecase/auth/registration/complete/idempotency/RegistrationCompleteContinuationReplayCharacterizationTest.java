@@ -238,7 +238,7 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
     assertThat(replay.status())
         .isEqualTo(CompleteRegistrationResultStatus.CONTINUATION_LOOKUP_FAILED);
     assertThat(sessionState.get().status()).isEqualTo(AuthFlowStatus.COMPLETING);
-    assertThat(persistence.record.status()).isEqualTo(IdempotencyStatus.COMPLETED);
+    assertThat(persistence.storedRecord.status()).isEqualTo(IdempotencyStatus.COMPLETED);
     assertThat(persistence.completeCalls).isOne();
     assertThat(persistence.reserveCalls).isOne();
     assertThat(persistence.loadCalls).isEqualTo(2);
@@ -290,7 +290,7 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
     assertThatThrownBy(() -> service.complete(command()).block())
         .isInstanceOf(RegistrationCompletionPreDispatchException.class);
 
-    assertThat(persistence.record.status()).isEqualTo(IdempotencyStatus.FAILED);
+    assertThat(persistence.storedRecord.status()).isEqualTo(IdempotencyStatus.FAILED);
     assertThat(persistence.failCalls).isOne();
     assertThat(persistence.markUnknownCalls).isZero();
     CompleteRegistrationResult retry = service.complete(command()).block();
@@ -308,7 +308,7 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
     assertThatThrownBy(() -> service.complete(command()).block())
         .isInstanceOf(IllegalStateException.class);
 
-    assertThat(persistence.record.status()).isEqualTo(IdempotencyStatus.UNKNOWN_OUTCOME);
+    assertThat(persistence.storedRecord.status()).isEqualTo(IdempotencyStatus.UNKNOWN_OUTCOME);
     assertThat(persistence.markUnknownCalls).isOne();
     assertThat(persistence.failCalls).isZero();
     CompleteRegistrationResult retry = service.complete(command()).block();
@@ -465,7 +465,7 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
   }
 
   private static final class InMemoryIdempotencyPort implements IdempotencyPort {
-    private IdempotencyRecord record;
+    private IdempotencyRecord storedRecord;
     private int reserveCalls;
     private int completeCalls;
     private int loadCalls;
@@ -475,8 +475,8 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
     @Override
     public Mono<IdempotencyReservation> reserve(IdempotencyCommands.Reserve command) {
       reserveCalls++;
-      if (record == null) {
-        record =
+      if (storedRecord == null) {
+        storedRecord =
             new IdempotencyRecord(
                 command.operationId(),
                 command.fingerprint(),
@@ -493,11 +493,11 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
                 null,
                 command.reservationToken()));
       }
-      if (!record.fingerprint().equals(command.fingerprint())) {
+      if (!storedRecord.fingerprint().equals(command.fingerprint())) {
         return Mono.just(
             new IdempotencyReservation(
                 IdempotencyReservationOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST,
-                record.status(),
+                storedRecord.status(),
                 null,
                 null));
       }
@@ -505,62 +505,62 @@ class RegistrationCompleteContinuationReplayCharacterizationTest {
           new IdempotencyReservation(
               IdempotencyReservationOutcome.COMPLETED_REPLAY,
               IdempotencyStatus.COMPLETED,
-              record.terminalResponse(),
+              storedRecord.terminalResponse(),
               null));
     }
 
     @Override
     public Mono<IdempotencyRecord> complete(IdempotencyCommands.Complete command) {
       completeCalls++;
-      record =
+      storedRecord =
           new IdempotencyRecord(
               command.operationId(),
               command.fingerprint(),
               command.reservationToken(),
               IdempotencyStatus.COMPLETED,
               command.terminalResponse(),
-              record.createdAt(),
+              storedRecord.createdAt(),
               command.now(),
               command.now().plus(command.ttl()));
-      return Mono.just(record);
+      return Mono.just(storedRecord);
     }
 
     @Override
     public Mono<IdempotencyRecord> fail(IdempotencyCommands.Fail command) {
       failCalls++;
-      record =
+      storedRecord =
           new IdempotencyRecord(
               command.operationId(),
               command.fingerprint(),
               command.reservationToken(),
               IdempotencyStatus.FAILED,
               null,
-              record.createdAt(),
+              storedRecord.createdAt(),
               command.now(),
               command.now().plus(command.ttl()));
-      return Mono.just(record);
+      return Mono.just(storedRecord);
     }
 
     @Override
     public Mono<IdempotencyRecord> markUnknown(IdempotencyCommands.MarkUnknown command) {
       markUnknownCalls++;
-      record =
+      storedRecord =
           new IdempotencyRecord(
               command.operationId(),
               command.fingerprint(),
               command.reservationToken(),
               IdempotencyStatus.UNKNOWN_OUTCOME,
               null,
-              record.createdAt(),
+              storedRecord.createdAt(),
               command.now(),
               command.now().plus(command.ttl()));
-      return Mono.just(record);
+      return Mono.just(storedRecord);
     }
 
     @Override
     public Mono<Optional<IdempotencyRecord>> load(IdempotencyOperationId operationId) {
       loadCalls++;
-      return Mono.just(Optional.ofNullable(record));
+      return Mono.just(Optional.ofNullable(storedRecord));
     }
   }
 }
