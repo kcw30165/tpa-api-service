@@ -218,6 +218,31 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
     assertNoEffects();
   }
 
+  @Test
+  void invalidProtectedContextStatusSurvivesOtpResultWithoutStartingIdempotency() {
+    List<RegistrationProtectedAuthFlowContextStatus> statuses =
+        List.of(
+            RegistrationProtectedAuthFlowContextStatus.MISSING_SESSION,
+            RegistrationProtectedAuthFlowContextStatus.EXPIRED_OR_TERMINAL_SESSION,
+            RegistrationProtectedAuthFlowContextStatus.WRONG_SCENARIO,
+            RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS,
+            RegistrationProtectedAuthFlowContextStatus.MISSING_ACTIVE_OTP,
+            RegistrationProtectedAuthFlowContextStatus.MISSING_CONTEXT,
+            RegistrationProtectedAuthFlowContextStatus.CONTEXT_DECRYPTION_FAILED);
+
+    for (RegistrationProtectedAuthFlowContextStatus status : statuses) {
+      context.result = RegistrationProtectedAuthFlowContextResult.invalid(status);
+
+      VerifyRegistrationOtpResult result =
+          service.verify(command("context-" + status.name(), "123456")).block();
+
+      assertThat(result.status()).isEqualTo(VerifyRegistrationOtpResultStatus.INVALID_AUTH_FLOW);
+      assertThat(result.protectedContextStatus()).isEqualTo(status);
+      assertThat(idempotency.calls).isZero();
+      assertNoEffects();
+    }
+  }
+
   private VerifyRegistrationOtpCommand command(String key, String code) {
     return command(key, code, "https://portal.test");
   }

@@ -41,7 +41,9 @@ public class StructuredFailureEventLogger implements FailureEventPort {
     }
     var event = new LinkedHashMap<String, Object>();
     event.put("event", failure.event());
-    event.put("requestId", failure.requestId());
+    if (StringUtils.hasText(failure.requestId())) {
+      event.put("requestId", failure.requestId());
+    }
     event.put("capability", failure.capability());
     event.put("operation", failure.operation());
     event.put("failureOrigin", failure.origin());

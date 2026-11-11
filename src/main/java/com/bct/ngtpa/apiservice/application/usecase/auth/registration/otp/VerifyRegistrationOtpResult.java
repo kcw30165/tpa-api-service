@@ -5,6 +5,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIde
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowMessageDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context
+    .RegistrationProtectedAuthFlowContextStatus;
 import java.util.List;
 import java.util.Objects;
 
@@ -16,7 +18,29 @@ public record VerifyRegistrationOtpResult(
     List<WorkflowMessageDescriptor> messages,
     List<WorkflowErrorDescriptor> errors,
     RegistrationIdempotencyStartOutcome idempotencyOutcome,
-    RegistrationIdempotencyResponseSnapshot replaySnapshot) {
+    RegistrationIdempotencyResponseSnapshot replaySnapshot,
+    RegistrationProtectedAuthFlowContextStatus protectedContextStatus) {
+  public VerifyRegistrationOtpResult(
+      VerifyRegistrationOtpResultStatus status,
+      WorkflowNextStep nextStep,
+      List<RegistrationUnregisteredTrust> unregisteredTrusts,
+      Integer remainingVerifyAttempts,
+      List<WorkflowMessageDescriptor> messages,
+      List<WorkflowErrorDescriptor> errors,
+      RegistrationIdempotencyStartOutcome idempotencyOutcome,
+      RegistrationIdempotencyResponseSnapshot replaySnapshot) {
+    this(
+        status,
+        nextStep,
+        unregisteredTrusts,
+        remainingVerifyAttempts,
+        messages,
+        errors,
+        idempotencyOutcome,
+        replaySnapshot,
+        null);
+  }
+
   public VerifyRegistrationOtpResult {
     Objects.requireNonNull(status, "status must not be null");
     nextStep = nextStep == null ? WorkflowNextStep.NONE : nextStep;

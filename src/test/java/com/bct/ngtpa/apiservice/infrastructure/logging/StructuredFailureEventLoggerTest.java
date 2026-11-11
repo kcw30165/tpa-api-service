@@ -52,6 +52,48 @@ class StructuredFailureEventLoggerTest {
     assertThat(appender.list).isEmpty();
   }
 
+  @Test
+  void omitsNullOrBlankRequestIdFromStructuredEvent() {
+    events.publish(
+        new FailureEvent(
+            "registration.otp_verify.rejected",
+            " ",
+            "registration",
+            "otp_verify",
+            FailureOrigin.LOCAL_BUSINESS,
+            "MISSING_SESSION",
+            null,
+            400,
+            false,
+            Map.of("reason", "MISSING_SESSION")));
+
+    verify(sanitizer)
+        .toSafeString(
+            org.mockito.ArgumentMatchers.argThat(
+                value -> value instanceof Map<?, ?> event && !event.containsKey("requestId")));
+  }
+
+  @Test
+  void omitsNullRequestIdFromStructuredEvent() {
+    events.publish(
+        new FailureEvent(
+            "registration.otp_verify.rejected",
+            null,
+            "registration",
+            "otp_verify",
+            FailureOrigin.LOCAL_BUSINESS,
+            "MISSING_SESSION",
+            null,
+            400,
+            false,
+            Map.of("reason", "MISSING_SESSION")));
+
+    verify(sanitizer)
+        .toSafeString(
+            org.mockito.ArgumentMatchers.argThat(
+                value -> value instanceof Map<?, ?> event && !event.containsKey("requestId")));
+  }
+
   @ParameterizedTest
   @MethodSource("originsAndLevels")
   void selectsLevelByFailureOrigin(FailureOrigin origin, Level expectedLevel) {

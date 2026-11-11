@@ -88,7 +88,8 @@ public final class SharedVerifyRegistrationOtpService implements VerifyRegistrat
               WorkflowNextStep.NONE,
               RegistrationOtpVerifyErrorKeys.REGISTRATION_CSRF_INVALID,
               null,
-              RegistrationIdempotencyStartOutcome.STARTED));
+              RegistrationIdempotencyStartOutcome.STARTED,
+              context.status()));
     }
     if (!context.isValid()) {
       return Mono.just(
@@ -97,7 +98,8 @@ public final class SharedVerifyRegistrationOtpService implements VerifyRegistrat
               WorkflowNextStep.NONE,
               RegistrationOtpVerifyErrorKeys.REGISTRATION_AUTH_FLOW_INVALID,
               null,
-              RegistrationIdempotencyStartOutcome.STARTED));
+              RegistrationIdempotencyStartOutcome.STARTED,
+              context.status()));
     }
     String sessionScope = command.authFlowSessionId().value();
     var execution =
@@ -158,6 +160,16 @@ public final class SharedVerifyRegistrationOtpService implements VerifyRegistrat
       String code,
       Integer remaining,
       RegistrationIdempotencyStartOutcome outcome) {
+    return failure(status, nextStep, code, remaining, outcome, null);
+  }
+
+  private VerifyRegistrationOtpResult failure(
+      VerifyRegistrationOtpResultStatus status,
+      WorkflowNextStep nextStep,
+      String code,
+      Integer remaining,
+      RegistrationIdempotencyStartOutcome outcome,
+      RegistrationProtectedAuthFlowContextStatus protectedContextStatus) {
     return new VerifyRegistrationOtpResult(
         status,
         nextStep,
@@ -173,7 +185,8 @@ public final class SharedVerifyRegistrationOtpService implements VerifyRegistrat
                 WorkflowErrorSeverity.ERROR,
                 SOURCE_SERVER)),
         outcome,
-        null);
+        null,
+        protectedContextStatus);
   }
 
   private boolean validOtp(String otp) {

@@ -350,7 +350,7 @@ class CheckRegistrationUsernameServiceTest {
     String message = terminalErrorMessage(correlationId);
 
     assertThat(message)
-        .contains("requestId=" + "x".repeat(128) + "...")
+        .contains("requestId=" + "x".repeat(125) + "...")
         .doesNotContain("x".repeat(129));
   }
 
