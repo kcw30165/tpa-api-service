@@ -46,6 +46,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
@@ -268,12 +269,14 @@ class RegistrationStartWorkflowIntegrationTest {
     Logger mapperLogger = (Logger) LoggerFactory.getLogger(RegistrationStartWebMapper.class);
     Logger requestLogger = (Logger) LoggerFactory.getLogger(RequestLoggingWebFilter.class);
     ListAppender<ILoggingEvent> mapperAppender = new ListAppender<>();
-    ListAppender<ILoggingEvent> requestAppender = new ListAppender<>();
+    RequestIdCapturingAppender requestAppender = new RequestIdCapturingAppender();
     mapperAppender.start();
     requestAppender.start();
     mapperLogger.addAppender(mapperAppender);
     requestLogger.addAppender(requestAppender);
     try {
+      requestAppender.watchRequestId("r1-replay-first");
+      requestAppender.watchRequestId("r1-replay-second");
       String challenge = verifiedCaptcha();
       Map<String, Object> request =
           body("GPFS", "1234567890", "member@example.com", null, challenge);
@@ -316,8 +319,8 @@ class RegistrationStartWorkflowIntegrationTest {
                   .path("code")
                   .asText())
           .isEqualTo("err.workflow.system.unavailable");
-      assertOwnedWarningObservation(requestAppender.list, "r1-replay-first", 502);
-      assertOwnedWarningObservation(requestAppender.list, "r1-replay-second", 502);
+      assertOwnedWarningObservation(requestAppender, "r1-replay-first", 502);
+      assertOwnedWarningObservation(requestAppender, "r1-replay-second", 502);
       assertThat(lookup.calls).isEqualTo(1);
       assertThat(sessions.created).isZero();
       assertThat(otp.destinations).isEmpty();
@@ -339,12 +342,13 @@ class RegistrationStartWorkflowIntegrationTest {
     Logger apiExceptionHandlerLogger = (Logger) LoggerFactory.getLogger(ApiExceptionHandler.class);
     Logger requestLogger = (Logger) LoggerFactory.getLogger(RequestLoggingWebFilter.class);
     ListAppender<ILoggingEvent> apiAppender = new ListAppender<>();
-    ListAppender<ILoggingEvent> requestAppender = new ListAppender<>();
+    RequestIdCapturingAppender requestAppender = new RequestIdCapturingAppender();
     apiAppender.start();
     requestAppender.start();
     apiExceptionHandlerLogger.addAppender(apiAppender);
     requestLogger.addAppender(requestAppender);
     try {
+      requestAppender.watchRequestId("r1-codec-replay");
       Map<String, Object> request =
           body("GPFS", "1234567890", "member@example.com", null, verifiedCaptcha());
       lookup.failure = new IllegalStateException("synthetic original lookup failure");
@@ -365,7 +369,7 @@ class RegistrationStartWorkflowIntegrationTest {
               event ->
                   assertThat(event.getFormattedMessage())
                       .contains("\"event\":\"http.api.error\"", "\"httpStatus\":500"));
-      assertOwnedWarningObservation(requestAppender.list, "r1-codec-replay", 500);
+      assertOwnedWarningObservation(requestAppender, "r1-codec-replay", 500);
       assertThat(lookup.calls).isEqualTo(1);
       assertThat(idempotency.completed).isEqualTo(1);
     } finally {
@@ -383,7 +387,7 @@ class RegistrationStartWorkflowIntegrationTest {
     Logger requestLogger = (Logger) LoggerFactory.getLogger(RequestLoggingWebFilter.class);
     ListAppender<ILoggingEvent> apiAppender = new ListAppender<>();
     ListAppender<ILoggingEvent> mapperAppender = new ListAppender<>();
-    ListAppender<ILoggingEvent> requestAppender = new ListAppender<>();
+    RequestIdCapturingAppender requestAppender = new RequestIdCapturingAppender();
     apiAppender.start();
     mapperAppender.start();
     requestAppender.start();
@@ -391,6 +395,7 @@ class RegistrationStartWorkflowIntegrationTest {
     mapperLogger.addAppender(mapperAppender);
     requestLogger.addAppender(requestAppender);
     try {
+      requestAppender.watchRequestId("r1-unrelated-later");
       String challenge = verifiedCaptcha();
       Map<String, Object> request =
           body("GPFS", "1234567890", "member@example.com", null, challenge);
@@ -417,7 +422,7 @@ class RegistrationStartWorkflowIntegrationTest {
               event ->
                   assertThat(event.getFormattedMessage())
                       .contains("\"event\":\"http.api.error\"", "\"httpStatus\":500"));
-      assertOwnedWarningObservation(requestAppender.list, "r1-unrelated-later", 500);
+      assertOwnedWarningObservation(requestAppender, "r1-unrelated-later", 500);
       assertThat(mapperAppender.list)
           .filteredOn(event -> event.getLevel() == Level.ERROR)
           .hasSize(1);
@@ -562,18 +567,16 @@ class RegistrationStartWorkflowIntegrationTest {
   }
 
   private static void assertOwnedWarningObservation(
-      List<ILoggingEvent> events, String requestId, int status) {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-    while (events.stream().noneMatch(event -> matchesRequestFailure(event, requestId))
-        && System.nanoTime() < deadline) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException interrupted) {
-        Thread.currentThread().interrupt();
-        throw new AssertionError("Interrupted while awaiting the request log event", interrupted);
-      }
+      RequestIdCapturingAppender appender, String requestId, int status) {
+    try {
+      assertThat(appender.awaitRequestId(requestId))
+          .as("request failure event for request ID %s", requestId)
+          .isTrue();
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError("Interrupted while awaiting the request log event", interrupted);
     }
-    assertThat(events)
+    assertThat(appender.list)
         .filteredOn(event -> matchesRequestFailure(event, requestId))
         .singleElement()
         .satisfies(
@@ -581,6 +584,33 @@ class RegistrationStartWorkflowIntegrationTest {
               assertThat(event.getLevel()).isEqualTo(Level.WARN);
               assertThat(event.getFormattedMessage()).contains("\"status\":" + status);
             });
+  }
+
+  private static final class RequestIdCapturingAppender extends ListAppender<ILoggingEvent> {
+    private final Map<String, CountDownLatch> requestLatches = new ConcurrentHashMap<>();
+
+    void watchRequestId(String requestId) {
+      requestLatches.put(requestId, new CountDownLatch(1));
+    }
+
+    boolean awaitRequestId(String requestId) throws InterruptedException {
+      CountDownLatch latch = requestLatches.get(requestId);
+      if (latch == null) {
+        throw new IllegalStateException("Request ID was not registered for observation");
+      }
+      return latch.await(5, TimeUnit.SECONDS);
+    }
+
+    @Override
+    protected void append(ILoggingEvent event) {
+      super.append(event);
+      requestLatches.forEach(
+          (requestId, latch) -> {
+            if (matchesRequestFailure(event, requestId)) {
+              latch.countDown();
+            }
+          });
+    }
   }
 
   private static boolean matchesRequestFailure(ILoggingEvent event, String requestId) {
