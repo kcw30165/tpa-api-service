@@ -256,10 +256,10 @@ handling, or token expiry wait is required for this local-development design.
 ### Scenario-aware GET and account snapshot (implemented in M6-012; not runtime-verified against Progress)
 
 Progress owns selection of `NORMAL`, `FUNCTION_UNAVAILABLE`, or
-`MEMBER_INELIGIBLE`. The scenario-aware GET contract and provisional APIM
-mapping are specified in documents 02 and 03. This implementation preserves the
-unconfirmed downstream contract as an isolated provisional mapper assumption;
-it has not been runtime-verified against Progress.
+`MEMBER_INELIGIBLE`. Documents 02 and 03 record the confirmed `scenario` field
+and exact wire mappings. Downstream rollout is not yet confirmed, so the
+temporary missing-field-to-NORMAL compatibility fallback remains. Runtime
+behavior has not been verified against Progress.
 
 The account-owned snapshot stores the resolved scenario. `NORMAL` retains the
 existing interval, editable sources, funds, pending references, and ownership

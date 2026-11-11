@@ -130,15 +130,12 @@ The response above records the M5 NORMAL shape. The approved M6 target adds a no
 
 `MEMBER_INELIGIBLE` uses the same restricted shape with `"scenario": "MEMBER_INELIGIBLE"`. Restricted responses omit `intervalPercentage`, `switchSources`, `funds`, and `pendingInstructions`; omitted properties are absent from JSON, never `null` or empty arrays. This applies even when Progress supplies those fields.
 
-The normalized internal scenarios are `NORMAL`, `FUNCTION_UNAVAILABLE`, and `MEMBER_INELIGIBLE`; Progress owns the scenario decision. These public values are the normalized scenarios, not a statement of the downstream wire values.
+The normalized internal and FE scenarios are `NORMAL`, `FUNCTION_UNAVAILABLE`, and `MEMBER_INELIGIBLE`; Progress owns the scenario decision. The confirmed APIM wire mappings are `normal` -> `NORMAL`, `scenario1` -> `FUNCTION_UNAVAILABLE`, and `scenario2` -> `MEMBER_INELIGIBLE`. Wire matching is exact and case-sensitive; no trimming or aliases are accepted.
 
-The implementation temporarily accepts exact string literals `NORMAL`,
-`FUNCTION_UNAVAILABLE`, and `MEMBER_INELIGIBLE` as synthetic wire values.
-These literals are not confirmed Progress values; translation is isolated in
-the APIM scenario mapper. A missing field maps temporarily to `NORMAL`, while
-present null, non-string, blank, or unknown values fail as malformed downstream
-responses. Remove the missing-field fallback after Progress confirms and rolls
-out the mandatory contract.
+Downstream rollout is not yet confirmed, so a missing field still maps
+temporarily to `NORMAL`. Present null, non-string, blank, uppercase aliases, or
+unknown values fail as malformed downstream responses. Remove the missing-field
+fallback once the confirmed mandatory contract has been rolled out.
 
 | Internal scenario | Required downstream data | Public `result.data` |
 |---|---|---|

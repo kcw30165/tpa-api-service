@@ -35,6 +35,7 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceMandate;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePending;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePendingDetail;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSource;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
@@ -52,6 +53,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -394,28 +396,63 @@ class ApimInvestmentChoiceDetailsAdapterTest {
     respondRaw(liveResponseItem());
 
     StepVerifier.create(adapter().load(command()))
-        .assertNext(details -> assertThat(details.scenario().name()).isEqualTo("NORMAL"))
+        .assertNext(
+            details -> assertThat(details.scenario()).isEqualTo(InvestmentChoiceScenario.NORMAL))
         .verifyComplete();
 
     verifyNoInteractions(failureEventPort);
   }
 
   @Test
-  void restrictedScenarioIsResolvedBeforeIrrelevantNormalFieldsAreDecoded() throws Exception {
-    for (String scenario : List.of("FUNCTION_UNAVAILABLE", "MEMBER_INELIGIBLE")) {
+  void confirmedScenarioWireValuesMapToInternalScenarios() throws Exception {
+    Map<String, InvestmentChoiceScenario> scenarios =
+        Map.of(
+            "normal", InvestmentChoiceScenario.NORMAL,
+            "scenario1", InvestmentChoiceScenario.FUNCTION_UNAVAILABLE,
+            "scenario2", InvestmentChoiceScenario.MEMBER_INELIGIBLE);
+    for (var entry : scenarios.entrySet()) {
       ObjectNode item = (ObjectNode) liveResponseItem();
-      item.put("scenario", scenario);
+      item.put("scenario", entry.getKey());
+      respondRaw(item);
+
+      StepVerifier.create(adapter().load(command()))
+          .assertNext(details -> assertThat(details.scenario()).isEqualTo(entry.getValue()))
+          .verifyComplete();
+    }
+
+    verifyNoInteractions(failureEventPort);
+  }
+
+  @Test
+  void restrictedScenarioIsResolvedBeforeIrrelevantNormalFieldsAreDecoded() throws Exception {
+    Map<String, InvestmentChoiceScenario> scenarios =
+        Map.of(
+            "scenario1", InvestmentChoiceScenario.FUNCTION_UNAVAILABLE,
+            "scenario2", InvestmentChoiceScenario.MEMBER_INELIGIBLE);
+    for (var entry : scenarios.entrySet()) {
+      ObjectNode item = (ObjectNode) liveResponseItem();
+      item.put("scenario", entry.getKey());
       item.put("interval-pcnt", "not-an-integer");
       item.put("PendingReq", "not-an-array");
       item.put("PendingReqDtl", "not-an-array");
       respondRaw(item);
 
       StepVerifier.create(adapter().load(command()))
-          .assertNext(details -> assertThat(details.scenario().name()).isEqualTo(scenario))
+          .assertNext(details -> assertThat(details.scenario()).isEqualTo(entry.getValue()))
           .verifyComplete();
     }
 
     verifyNoInteractions(failureEventPort);
+  }
+
+  @Test
+  void rejectsUppercaseAliasesAndWhitespaceVariants() throws Exception {
+    for (String scenario :
+        List.of("NORMAL", "FUNCTION_UNAVAILABLE", "MEMBER_INELIGIBLE", " normal", "normal ")) {
+      ObjectNode item = (ObjectNode) liveResponseItem();
+      item.put("scenario", scenario);
+      assertMalformedRaw(item);
+    }
   }
 
   @Test
@@ -451,11 +488,22 @@ class ApimInvestmentChoiceDetailsAdapterTest {
 
   @Test
   void restrictedScenarioStillRequiresFundsAndHistory() throws Exception {
-    ObjectNode item = restrictedResponseItem("MEMBER_INELIGIBLE");
+    ObjectNode item = restrictedResponseItem("scenario2");
+    respondRaw(item);
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(
+            details ->
+                assertThat(details.scenario())
+                    .isEqualTo(InvestmentChoiceScenario.MEMBER_INELIGIBLE))
+        .verifyComplete();
+
+    verifyNoInteractions(failureEventPort);
+
     item.remove("SwitchFund");
     assertMalformedRaw(item);
 
-    item = restrictedResponseItem("MEMBER_INELIGIBLE");
+    item = restrictedResponseItem("scenario2");
     item.remove("InvestMandate");
     assertMalformedRaw(item);
   }

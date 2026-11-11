@@ -470,18 +470,16 @@ feature-owned snapshot miss. Wrong-password behavior is unchanged.
 
 The approved CIM GET scenarios are `NORMAL`, `FUNCTION_UNAVAILABLE`, and
 `MEMBER_INELIGIBLE`, selected by Progress and stored with account ownership.
-The provisional downstream field is `scenario` beside `interval-pcnt`; its
-actual field name and wire values remain unconfirmed. Absence temporarily maps
-to NORMAL for compatibility, but a present unknown value must not default to
-NORMAL. No configuration-based mapping is introduced. See design pack 17,
-documents 02, 03, and 06 for the complete GET contract and outstanding
-downstream details.
+The confirmed downstream field is `scenario` beside `interval-pcnt`, with
+exact mappings `normal` -> `NORMAL`, `scenario1` -> `FUNCTION_UNAVAILABLE`,
+and `scenario2` -> `MEMBER_INELIGIBLE`. Matching is exact and case-sensitive;
+no aliases, trimming, or configuration-based mapping are used. Until
+downstream rollout is confirmed, absence temporarily maps to NORMAL for
+compatibility. Present null, non-string, blank, or unknown values remain
+malformed. See design pack 17, documents 02, 03, and 06 for the complete GET
+contract and rollout detail.
 
-The implementation currently accepts exact string literals matching the
-internal scenario names as synthetic provisional wire values; they are not
-confirmed Progress values. Present null, non-string, blank, or unknown values
-are malformed downstream responses. The mapping remains isolated in the APIM
-scenario mapper.
+The confirmed wire mapping remains isolated in the APIM scenario mapper.
 
 Both `CHANGE_INVESTMENT_CHOICE` and `CANCEL_INVESTMENT_CHOICE` issuance
 policies inspect the stored scenario. `FUNCTION_UNAVAILABLE` returns HTTP 422

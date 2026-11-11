@@ -14,7 +14,7 @@ final class TrpGetCIMDtlApimScenarioMapper {
 
   private static final ObjectMapper JSON = new ObjectMapper();
 
-  // Synthetic exact-string mappings are temporary; the Progress wire contract is unconfirmed.
+  // The wire mappings are confirmed; rollout is pending, so the missing-field fallback remains.
   InvestmentChoiceScenario scenario(JsonNode item) {
     JsonNode value = item.get("scenario");
     if (value == null) {
@@ -24,9 +24,9 @@ final class TrpGetCIMDtlApimScenarioMapper {
       throw new InvestmentChoiceMalformedResponseException();
     }
     return switch (value.textValue()) {
-      case "NORMAL" -> InvestmentChoiceScenario.NORMAL;
-      case "FUNCTION_UNAVAILABLE" -> InvestmentChoiceScenario.FUNCTION_UNAVAILABLE;
-      case "MEMBER_INELIGIBLE" -> InvestmentChoiceScenario.MEMBER_INELIGIBLE;
+      case "normal" -> InvestmentChoiceScenario.NORMAL;
+      case "scenario1" -> InvestmentChoiceScenario.FUNCTION_UNAVAILABLE;
+      case "scenario2" -> InvestmentChoiceScenario.MEMBER_INELIGIBLE;
       default -> throw new InvestmentChoiceMalformedResponseException();
     };
   }

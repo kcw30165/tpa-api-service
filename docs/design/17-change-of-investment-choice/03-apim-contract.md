@@ -66,9 +66,9 @@ A history or pending row whose `fund-code` is absent from `SwitchFund` is return
 
 The requiredness in the preceding table applies to `NORMAL`. The approved internal enum is `NORMAL`, `FUNCTION_UNAVAILABLE`, or `MEMBER_INELIGIBLE`; Progress owns the scenario decision.
 
-The provisional downstream field is `scenario`, beside `interval-pcnt`. Its actual field name and wire values remain **UNCONFIRMED**. Do not document guessed wire values as confirmed or add configuration-based field/value mappings. Keep eventual field extraction and wire-value translation localized to the APIM DTO and adapter mapper.
+The confirmed downstream field is `scenario`, beside `interval-pcnt`, with exact string mappings: `normal` -> `NORMAL`, `scenario1` -> `FUNCTION_UNAVAILABLE`, and `scenario2` -> `MEMBER_INELIGIBLE`. Matching is exact and case-sensitive; do not trim values or accept aliases. No configuration-based mapping is used. Keep field extraction and wire-value translation localized to the APIM DTO and adapter mapper.
 
-For current downstream compatibility only, an absent `scenario` field temporarily resolves to internal `NORMAL`. The adapter mapper currently accepts the exact string literals `NORMAL`, `FUNCTION_UNAVAILABLE`, and `MEMBER_INELIGIBLE` as synthetic provisional values; these are implementation/test assumptions, not confirmed Progress wire values. Present null, non-string, blank, or unknown values fail as a malformed downstream response and never fall back to `NORMAL`. Keep field/value translation isolated in the APIM mapper. Remove the missing-field fallback after the mandatory downstream contract is confirmed and rolled out.
+Downstream rollout is not yet confirmed. Until rollout is confirmed, an absent `scenario` field temporarily resolves to internal `NORMAL`. Present null, non-string, blank, uppercase aliases, or unknown values fail as malformed downstream responses and never fall back to `NORMAL`. Remove the missing-field fallback after the confirmed mandatory contract is rolled out.
 
 | Internal scenario | Required fields and validation |
 |---|---|
