@@ -80,6 +80,15 @@ authenticated_login_journey() {
   printf 'login_start_attempts=1\notp_send_attempts=1\notp_verify_attempts=1\nautomatic_retries=0\n' >"$E2E_RUN_EVIDENCE_DIR/018-external-effect-summary.txt"
 }
 
+validate_logout_contract() {
+  local curl_rc="$1" http_status="$2" headers="$3" body="$4" rc=0
+  [[ "$curl_rc" -eq 0 ]] || rc=1
+  [[ "$http_status" == 200 ]] || rc=1
+  [[ "$(jq -r '.status // empty' "$body")" == SUCCESS ]] || rc=1
+  sed -n -E '/^[Ss]et-[Cc]ookie:[[:space:]]*portal_sid=/p' "$headers" | grep -Eq '([Mm]ax-[Aa]ge=0|[Ee]xpires=Thu, 01 Jan 1970)' || rc=1
+  return "$rc"
+}
+
 authenticated_logout_journey() {
   local portal_cookie csrf headers body metrics rc=0 request_id curl_rc cleared=no
   portal_cookie="$(read_private_value portal_cookie)"; csrf="$(read_private_value authenticated_csrf)"; headers="$E2E_PRIVATE_STATE_DIR/logout.headers"; body="$E2E_PRIVATE_STATE_DIR/logout.json"; request_id="${REQUEST_ID_PREFIX}-logout-$(date +%s)-$$"

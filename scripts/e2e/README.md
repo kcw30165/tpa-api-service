@@ -33,3 +33,17 @@ The default scenarios are S1–S9: details contract/authentication, missing and 
 `CIM_LIVE_SUBMIT=yes` additionally requires `CIM_USE_PASSWORD=yes` and `CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA`. It adds **3 more password verifications** (up to 6 total, or 5 if P1 is skipped) and performs a real submit followed by a cancel. The script refuses to start that block if the initial details response has no editable source or already has a pending instruction. If cancellation is rejected because processing has begun, the reference number and manual-handling warning are printed; any later failure after submission also prints a cleanup hint. No live block is run unless both opt-in settings are exact.
 
 P1 uses a snapshot-dependent validation failure: interval-invalid when the snapshot has the required interval/source/funds, otherwise an unavailable source when 100% is interval-valid. It skips if neither case can be formed from S1. A token cannot be issued for bodies failing V1–V8 because password-validation issuance rejects them first; only snapshot-dependent rules can be tested with a real token. The 99%-total malformed case is covered by S5/S6.
+
+## Authenticated post-login orchestration
+
+Run an allow-listed set of post-login feature packs through one login and one logout:
+
+```bash
+BFF_BASE_URL=https://host LOGIN_TEST_USERNAME=user LOGIN_TEST_PASSWORD=password E2E_ALLOW_EXTERNAL_EFFECTS=true E2E_ALLOW_OTP_VERIFICATION=true E2E_FEATURE_PACKS="investment-choice" bash scripts/e2e/run-post-login.sh
+```
+
+The registry initially supports `investment-choice`. The complete ordered list is validated before login; empty, duplicate, or unknown names fail preflight. Login selects the first email OTP destination and fails without SMS fallback when no email is available. OTP is currently entered silently through `/dev/tty`; `acquire_login_otp` is the replacement boundary for future real-email retrieval. After OTP verification, the first account in API response order is selected. The run-scoped private state supplies the portal cookie, CSRF token, and Account-Ref to each feature pack.
+
+All selected packs run in order even after a pack fails. Logout then runs once and verifies HTTP 200, public `SUCCESS`, and clearing of `portal_sid`; logout failure fails the overall run. The final summary includes login, every feature, logout, overall status, and evidence location without secret values. Defensive traps remove private state after interruption; the runner never automatically re-authenticates after HTTP 401 or 403.
+
+Pre-login scenarios remain under `scripts/e2e/run.sh`. Standalone provided-session execution, including `investment-choice-scenarios.sh`, remains supported. Runtime credentials, cookies, CSRF values, OTPs, and account references must never be committed or written into evidence.
