@@ -1,4 +1,27 @@
 #!/usr/bin/env bash
+select_first_email_destination_id() {
+  local response_file="$1" destination_id
+  destination_id="$(jq -er '[.result.data.destinations[]? | select((.type // .destinationType // "") | ascii_downcase == "email")][0].destinationId // empty' "$response_file")" || true
+  [[ -n "$destination_id" ]] || { printf 'FAIL no email OTP destination is available\n' >&2; return 1; }
+  printf '%s\n' "$destination_id"
+}
+
+select_first_account_ref() {
+  local response_file="$1" account_ref
+  account_ref="$(jq -er '.result.data.accounts[0].accountRef // empty' "$response_file")" || true
+  [[ -n "$account_ref" ]] || { printf 'FAIL no account is available after OTP verification\n' >&2; return 1; }
+  printf '%s\n' "$account_ref"
+}
+
+acquire_login_otp() {
+  local otp_code
+  printf 'Login OTP: ' >/dev/tty
+  IFS= read -r -s otp_code </dev/tty
+  printf '\n' >/dev/tty
+  [[ -n "$otp_code" ]] || { printf 'FAIL OTP is required\n' >&2; return 1; }
+  printf '%s\n' "$otp_code"
+}
+
 authenticated_login_journey() {
   local rc=0 cookie csrf destination_id otp_code request_body metrics curl_rc
   local raw_headers raw_body request_id idempotency_key portal_cookie authenticated_csrf account_count account_index account_ref
@@ -16,7 +39,12 @@ authenticated_login_journey() {
   assert_eq 0 "$curl_rc" otp_send_curl_exit || rc=1; assert_eq 200 "${metrics%% *}" otp_send_http_status || rc=1
   assert_json_scalar_eq "$E2E_RUN_EVIDENCE_DIR/013-otp-send-response-body-redacted.json" '.status' SUCCESS otp_send_api_status || rc=1
   [[ "$rc" -eq 0 ]] || return "$rc"
-  if [[ -n "${E2E_TEST_OTP_CODE_FILE:-}" ]]; then [[ "${E2E_OFFLINE_TEST_MODE:-false}" == true ]] || return 1; otp_code="$(cat "$E2E_TEST_OTP_CODE_FILE")"; else printf 'Login OTP: ' >/dev/tty; IFS= read -r -s otp_code </dev/tty; printf '\n' >/dev/tty; fi
+  if [[ -n "${E2E_TEST_OTP_CODE_FILE:-}" ]]; then
+    [[ "${E2E_OFFLINE_TEST_MODE:-false}" == true ]] || return 1
+    otp_code="$(cat "$E2E_TEST_OTP_CODE_FILE")"
+  else
+    otp_code="$(acquire_login_otp)" || return 1
+  fi
   [[ -n "$otp_code" ]] || { printf 'FAIL OTP is required\n'; return 1; }
   raw_headers="$E2E_PRIVATE_STATE_DIR/otp-verify.headers"; raw_body="$E2E_PRIVATE_STATE_DIR/otp-verify.json"
   request_id="${REQUEST_ID_PREFIX}-otp-verify-$(date +%s)-$$"; idempotency_key="login-otp-verify-$(date +%s)-$$"; request_body="$(jq -cn --arg code "$otp_code" '{code:$code}')"; otp_code=''
@@ -27,8 +55,8 @@ authenticated_login_journey() {
   assert_json_scalar_eq "$E2E_RUN_EVIDENCE_DIR/016-otp-verify-response-body-redacted.json" '.result.nextStep' SELECT_ACCOUNT otp_verify_next_step || rc=1
   [[ "$rc" -eq 0 ]] || return "$rc"
   portal_cookie="$(sed -n -E 's/^[Ss]et-[Cc]ookie:[[:space:]]*portal_sid=([^;]+).*/\1/p' "$raw_headers" | tail -n 1)"; authenticated_csrf="$(jq -er '.result.data.csrfToken' "$raw_body")"; account_count="$(jq -r '.result.data.accounts|length' "$raw_body")"
-  account_index="${AUTHENTICATED_ACCOUNT_INDEX:-0}"; [[ "$account_index" =~ ^[0-9]+$ && "$account_index" -lt "$account_count" ]] || { printf 'FAIL authenticated account index is invalid\n'; return 1; }
-  account_ref="$(jq -er --argjson index "$account_index" '.result.data.accounts[$index].accountRef' "$raw_body")"
+  account_index=0
+  account_ref="$(select_first_account_ref "$raw_body")" || return 1
   [[ -n "$portal_cookie" && -n "$authenticated_csrf" && -n "$account_ref" ]] || return 1
   write_private_value portal_cookie "$portal_cookie"; write_private_value authenticated_csrf "$authenticated_csrf"; write_private_value selected_account_ref "$account_ref"
   printf 'next_step=SELECT_ACCOUNT\naccount_count=%s\nselected_account_index=%s\nportal_cookie_issued=yes\n' "$account_count" "$account_index" >"$E2E_RUN_EVIDENCE_DIR/017-authenticated-transition-summary.txt"

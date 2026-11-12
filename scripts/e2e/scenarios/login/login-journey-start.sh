@@ -23,14 +23,11 @@ login_journey_start() {
   redact_json_file "$raw_body" "$out/007-response-body-redacted.json"
   [[ "$rc" -eq 0 && "$LOGIN_START_HTTP_STATUS" == 200 ]] || return 1
   jq -e '.status == "SUCCESS" and .result.nextStep == "SELECT_OTP_DESTINATION"' "$raw_body" >/dev/null || return 1
-  local cookie csrf destination_count index destination_id
+  local cookie csrf destination_count index=0 destination_id
   cookie="$(sed -n -E 's/^[Ss]et-[Cc]ookie:[[:space:]]*auth_flow_sid=([^;]+).*/\1/p' "$raw_headers" | tail -n 1)"
   csrf="$(jq -er '.result.data.csrfToken' "$raw_body")"
-  destination_count="$(jq -r '.result.data.destinations | length' "$raw_body")"
-  [[ "$destination_count" -gt 0 ]] || return 1
-  index="${LOGIN_OTP_DESTINATION_INDEX:-0}"
-  [[ "$index" =~ ^[0-9]+$ && "$index" -lt "$destination_count" ]] || return 1
-  destination_id="$(jq -er --argjson index "$index" '.result.data.destinations[$index].destinationId' "$raw_body")"
+  destination_count="$(jq -r '[.result.data.destinations[]? | select((.type // .destinationType // "") | ascii_downcase == "email")] | length' "$raw_body")"
+  destination_id="$(select_first_email_destination_id "$raw_body")" || return 1
   [[ -n "$cookie" && -n "$csrf" && -n "$destination_id" ]] || return 1
   write_private_value auth_flow_cookie "$cookie"
   write_private_value csrf_token "$csrf"
