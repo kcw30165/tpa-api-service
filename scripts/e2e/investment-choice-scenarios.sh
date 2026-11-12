@@ -396,14 +396,14 @@ MALFORMED_CANCEL='{"referenceNo":"000000000","extra":"member"}'
 password_json CANCEL_INVESTMENT_CHOICE "$MALFORMED_CANCEL" 'not-a-real-password'
 REQUEST_BODY="$ISSUANCE_BODY"
 request POST "$ISSUE_PATH" yes none present
-assert_result S9-extra 400 err.password-validation.request.invalid
+assert_result S9-extra 422 err.investment-choice.request.invalid
 
 SCENARIO=S9-blank
 MALFORMED_CANCEL='{"referenceNo":" "}'
 password_json CANCEL_INVESTMENT_CHOICE "$MALFORMED_CANCEL" 'not-a-real-password'
 REQUEST_BODY="$ISSUANCE_BODY"
 request POST "$ISSUE_PATH" yes none present
-assert_result S9-blank 400 err.password-validation.request.invalid
+assert_result S9-blank 422 err.investment-choice.cancel.ref-required
 
 if [[ "$USE_PASSWORD" == yes ]]; then
   if [[ -n "$P1_SKIP_REASON" ]]; then
