@@ -43,7 +43,9 @@ authenticated_login_journey() {
   local raw_headers raw_body request_id idempotency_key portal_cookie authenticated_csrf account_count account_index account_ref
   [[ "${E2E_ALLOW_EXTERNAL_EFFECTS:-false}" == true ]] || { printf 'BLOCKED authenticated journey requires E2E_ALLOW_EXTERNAL_EFFECTS=true\n'; return 3; }
   [[ "${E2E_ALLOW_OTP_VERIFICATION:-false}" == true ]] || { printf 'BLOCKED OTP verification requires E2E_ALLOW_OTP_VERIFICATION=true\n'; return 4; }
-  create_private_runtime_state
+  if [[ -z "${E2E_PRIVATE_STATE_DIR:-}" || ! -d "$E2E_PRIVATE_STATE_DIR" ]]; then
+    create_private_runtime_state
+  fi
   login_journey_start || return 1
   cookie="$(read_private_value auth_flow_cookie)"; csrf="$(read_private_value csrf_token)"; destination_id="$(read_private_value destination_id)"
   raw_headers="$E2E_PRIVATE_STATE_DIR/otp-send.headers"; raw_body="$E2E_PRIVATE_STATE_DIR/otp-send.json"

@@ -374,7 +374,7 @@ MALFORMED_SUBMIT='{"switchSources":["CIM-SOURCE"],"allocations":[{"fundCode":"CI
 password_json CHANGE_INVESTMENT_CHOICE "$MALFORMED_SUBMIT" 'not-a-real-password'
 REQUEST_BODY="$ISSUANCE_BODY"
 request POST "$ISSUE_PATH" yes none present
-assert_result S5 400 err.password-validation.request.invalid
+assert_result S5 422 err.investment-choice.request.invalid
 
 SCENARIO=S6
 REQUEST_BODY="$MALFORMED_SUBMIT"
