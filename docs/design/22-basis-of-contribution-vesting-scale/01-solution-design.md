@@ -11,7 +11,7 @@ Out of scope:
 - Company Name, Company Code, Member Name, Member Account No. (not part of this endpoint; no source exists yet).
 - Print button (FE only). Static field labels / section headers (FE owns; BRD wording table).
 - "No plan" message text (FE renders when `planTypes` is `[]`).
-- Role-based access control: **all roles may call**; access control is owned by DS.
+- Feature-level role gate: none. Java adds no Vesting Scale role check; DS controls data access. APIM credential-profile resolution (DefaultApimCredentialProfileResolver) is shared platform behaviour and applies unchanged; broadening its supported roles is out of scope.
 - Real login→feature→logout e2e orchestrator scenario (M5, after the orchestrator branch lands).
 - `env` from the APIM response (DS testing only; never mapped).
 

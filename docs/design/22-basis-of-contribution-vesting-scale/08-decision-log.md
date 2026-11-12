@@ -22,6 +22,7 @@
 | Q19 | `planNo` exposed as plan key. |
 | Q20 | `GET /api/v1/vesting-scale`, all plans in one call. |
 | Q21 | All roles may access; DS controls access. |
+| Q21a | No feature role gate; shared APIM credential resolver applies unchanged (resolver role support is platform scope). |
 | Q22 | 3 identity codes → 503 public, internal ACCOUNT_CONTEXT_MISMATCH, ERROR; other codes generic path. |
 | Q23 | No cross-language fallback. |
 | Q24 | Print is FE only. |
