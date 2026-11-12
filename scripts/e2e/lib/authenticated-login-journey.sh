@@ -43,7 +43,7 @@ authenticated_login_journey() {
   local raw_headers raw_body request_id idempotency_key portal_cookie authenticated_csrf account_count account_index account_ref
   [[ "${E2E_ALLOW_EXTERNAL_EFFECTS:-false}" == true ]] || { printf 'BLOCKED authenticated journey requires E2E_ALLOW_EXTERNAL_EFFECTS=true\n'; return 3; }
   [[ "${E2E_ALLOW_OTP_VERIFICATION:-false}" == true ]] || { printf 'BLOCKED OTP verification requires E2E_ALLOW_OTP_VERIFICATION=true\n'; return 4; }
-  if [[ -z "${E2E_PRIVATE_STATE_DIR:-}" || ! -d "$E2E_PRIVATE_STATE_DIR" ]]; then
+  if ! private_runtime_state_is_owned; then
     create_private_runtime_state
   fi
   login_journey_start || return 1

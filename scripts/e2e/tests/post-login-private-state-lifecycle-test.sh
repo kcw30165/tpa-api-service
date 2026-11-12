@@ -4,7 +4,12 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 tmp="$(mktemp -d)"
 trap 'rm -rf -- "$tmp"' EXIT
-mkdir -p "$tmp/private-root" "$tmp/evidence"
+mkdir -p "$tmp/private-root" "$tmp/evidence" "$tmp/unrelated"
+chmod 755 "$tmp/unrelated"
+printf 'unrelated-test-data\n' >"$tmp/unrelated/keep.txt"
+chmod 644 "$tmp/unrelated/keep.txt"
+export E2E_PRIVATE_STATE_DIR="$tmp/unrelated"
+export E2E_PRIVATE_STATE_OWNED_DIR="$tmp/unrelated"
 export TMPDIR="$tmp/private-root"
 export E2E_REPOSITORY_ROOT="$ROOT"
 export E2E_EVIDENCE_ROOT="$tmp/evidence"
@@ -63,6 +68,41 @@ assert_equal() {
     fail=1
   fi
 }
+assert_not_equal() {
+  local actual="$1" unexpected="$2" message="$3"
+  if [[ "$actual" == "$unexpected" ]]; then
+    printf 'FAIL %s\n' "$message"
+    fail=1
+  fi
+}
+assert_owned_directory() {
+  local expected="$1" declaration
+  assert_equal "${E2E_PRIVATE_STATE_OWNED_DIR:-}" "$expected" \
+    'private directory ownership was not recorded for this invocation'
+  declaration="$(declare -p E2E_PRIVATE_STATE_OWNED_DIR 2>/dev/null || true)"
+  [[ "$declaration" == 'declare -- E2E_PRIVATE_STATE_OWNED_DIR='* ]] || {
+    printf 'FAIL private-state ownership marker is exported or invalid\n'
+    fail=1
+  }
+}
+assert_private_modes() {
+  local directory="$1" file mode
+  mode="$(stat -c '%a' "$directory")"
+  assert_equal "$mode" 700 'private runtime directory mode is not 0700'
+  while IFS= read -r file; do
+    mode="$(stat -c '%a' "$file")"
+    assert_equal "$mode" 600 'private runtime file mode is not 0600'
+  done < <(find "$directory" -type f -print)
+}
+assert_unrelated_directory_unchanged() {
+  [[ -d "$tmp/unrelated" ]] || { printf 'FAIL unowned directory was deleted\n'; fail=1; return; }
+  [[ -f "$tmp/unrelated/keep.txt" ]] || { printf 'FAIL unowned file was deleted\n'; fail=1; return; }
+  assert_equal "$(cat "$tmp/unrelated/keep.txt")" unrelated-test-data \
+    'unowned file contents changed'
+  assert_equal "$(stat -c '%a' "$tmp/unrelated")" 755 'unowned directory permissions changed'
+  assert_equal "$(stat -c '%a' "$tmp/unrelated/keep.txt")" 644 \
+    'unowned file permissions changed'
+}
 assert_no_authentication_values_in_output_or_evidence() {
   local value
   for value in \
@@ -73,7 +113,8 @@ assert_no_authentication_values_in_output_or_evidence() {
     login-csrf-sentinel \
     portal-cookie-sentinel \
     authenticated-csrf-sentinel \
-    account-ref-sentinel; do
+    account-ref-sentinel \
+    authentication-token-sentinel; do
     if grep -R -F -q -- "$value" "$tmp/journey.out" "$E2E_RUN_EVIDENCE_DIR"; then
       printf 'FAIL authentication value appeared in output or evidence\n'
       fail=1
@@ -85,8 +126,12 @@ assert_no_authentication_values_in_output_or_evidence() {
 initialize_post_login_runtime
 orchestrator_state_dir="$E2E_PRIVATE_STATE_DIR"
 [[ -d "$orchestrator_state_dir" ]] || { printf 'FAIL orchestrator private state was not initialized\n'; fail=1; }
+assert_not_equal "$orchestrator_state_dir" "$tmp/unrelated" \
+  'orchestrator reused an inherited unowned directory'
+assert_owned_directory "$orchestrator_state_dir"
 assert_equal "$(find "$TMPDIR" -mindepth 1 -maxdepth 1 -type d | wc -l)" 1 \
   'orchestrator initialization did not create exactly one private directory'
+assert_unrelated_directory_unchanged
 authenticated_login_journey >"$tmp/journey.out" 2>&1 || {
   printf 'FAIL fake-network authenticated login journey failed\n'
   fail=1
@@ -97,33 +142,61 @@ assert_equal "$(find "$TMPDIR" -mindepth 1 -maxdepth 1 -type d | wc -l)" 1 \
   'authenticated login journey created more than one private directory'
 assert_equal "$(wc -l <"$tmp/fake-network-calls.txt")" 3 \
   'fake login did not make exactly the three expected network operations'
+assert_private_modes "$orchestrator_state_dir"
+assert_unrelated_directory_unchanged
 assert_no_authentication_values_in_output_or_evidence
 orchestrator_cleanup
 [[ ! -e "$orchestrator_state_dir" ]] || { printf 'FAIL orchestrator cleanup left private state behind\n'; fail=1; }
 assert_equal "$(find "$TMPDIR" -mindepth 1 -maxdepth 1 -type d | wc -l)" 0 \
   'private directory remained after orchestrator cleanup'
+[[ -z "${E2E_PRIVATE_STATE_OWNED_DIR:-}" ]] || {
+  printf 'FAIL ownership was not cleared after orchestrator cleanup\n'
+  fail=1
+}
 [[ -z "${PORTAL_SESSION_COOKIE_VALUE:-}${XSRF_TOKEN:-}${ACCOUNT_REF:-}" ]] || {
   printf 'FAIL authenticated state remained exported after cleanup\n'
   fail=1
 }
+assert_unrelated_directory_unchanged
+destroy_private_runtime_state
+assert_unrelated_directory_unchanged
+if [[ ! -d "$tmp/unrelated" ]]; then
+  mkdir -m 755 "$tmp/unrelated"
+  printf 'unrelated-test-data\n' >"$tmp/unrelated/keep.txt"
+  chmod 644 "$tmp/unrelated/keep.txt"
+fi
 
 E2E_SCENARIO_PACK=standalone-login
 E2E_SCENARIO_ID=private-state-lifecycle
 export E2E_SCENARIO_PACK E2E_SCENARIO_ID
 create_evidence_dir
+export E2E_PRIVATE_STATE_DIR="$tmp/unrelated"
+export E2E_PRIVATE_STATE_OWNED_DIR="$tmp/unrelated"
 authenticated_login_journey >"$tmp/journey.out" 2>&1 || {
   printf 'FAIL fake-network standalone login journey failed\n'
   fail=1
 }
 standalone_state_dir="$E2E_PRIVATE_STATE_DIR"
 [[ -d "$standalone_state_dir" ]] || { printf 'FAIL standalone login journey did not create private state\n'; fail=1; }
+assert_not_equal "$standalone_state_dir" "$tmp/unrelated" \
+  'standalone login reused inherited unowned directory'
+assert_owned_directory "$standalone_state_dir"
 assert_equal "$(find "$TMPDIR" -mindepth 1 -maxdepth 1 -type d | wc -l)" 1 \
   'standalone login journey did not create exactly one private directory'
+assert_private_modes "$standalone_state_dir"
+assert_unrelated_directory_unchanged
 assert_no_authentication_values_in_output_or_evidence
 destroy_private_runtime_state
 [[ ! -e "$standalone_state_dir" ]] || { printf 'FAIL standalone cleanup left private state behind\n'; fail=1; }
 assert_equal "$(find "$TMPDIR" -mindepth 1 -maxdepth 1 -type d | wc -l)" 0 \
   'standalone private directory remained after cleanup'
+[[ -z "${E2E_PRIVATE_STATE_OWNED_DIR:-}" ]] || {
+  printf 'FAIL ownership was not cleared after standalone cleanup\n'
+  fail=1
+}
+assert_unrelated_directory_unchanged
+destroy_private_runtime_state
+assert_unrelated_directory_unchanged
 
 [[ "$fail" -eq 0 ]] || exit 1
 printf 'PASS post-login private-state lifecycle and cleanup\n'
