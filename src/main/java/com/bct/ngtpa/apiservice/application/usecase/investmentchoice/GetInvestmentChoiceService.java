@@ -21,6 +21,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -153,6 +154,15 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
   }
 
   private static MetadataIntegrityCounts metadataIntegrityCounts(InvestmentChoiceDetails details) {
+    MetadataReferenceIndex metadata = metadataReferenceIndex(details);
+    MetadataIntegrityCounts counts = countMandates(details.mandates(), metadata);
+    if (details instanceof InvestmentChoiceDetails.Normal normal) {
+      counts = counts.plus(countPending(normal.pending(), metadata));
+    }
+    return counts;
+  }
+
+  private static MetadataReferenceIndex metadataReferenceIndex(InvestmentChoiceDetails details) {
     Map<String, String> sourceDescriptions = new HashMap<>();
     for (InvestmentChoiceSource source : details.historySources()) {
       sourceDescriptions.putIfAbsent(source.code(), source.description());
@@ -165,33 +175,57 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
         fundsWithoutName.add(fund.code());
       }
     }
+    return new MetadataReferenceIndex(sourceDescriptions, fundCodes, fundsWithoutName);
+  }
 
+  private static MetadataIntegrityCounts countMandates(
+      List<InvestmentChoiceMandate> mandates, MetadataReferenceIndex metadata) {
     int missingSources = 0;
     int missingFunds = 0;
-    for (InvestmentChoiceMandate mandate : details.mandates()) {
-      if (sourceDescriptions.get(mandate.switchSource()) == null) {
-        missingSources++;
-      }
-      if (!fundCodes.contains(mandate.fundCode())
-          || fundsWithoutName.contains(mandate.fundCode())) {
-        missingFunds++;
-      }
+    for (InvestmentChoiceMandate mandate : mandates) {
+      missingSources += missingSourceReference(mandate.switchSource(), metadata);
+      missingFunds += missingFundReference(mandate.fundCode(), metadata);
     }
-    if (details instanceof InvestmentChoiceDetails.Normal normal) {
-      for (InvestmentChoicePending pending : normal.pending()) {
-        for (InvestmentChoicePendingDetail allocation : pending.details()) {
-          if (sourceDescriptions.get(allocation.switchSource()) == null) {
-            missingSources++;
-          }
-          if (!fundCodes.contains(allocation.fundCode())
-              || fundsWithoutName.contains(allocation.fundCode())) {
-            missingFunds++;
-          }
-        }
+    return new MetadataIntegrityCounts(missingSources, missingFunds);
+  }
+
+  private static MetadataIntegrityCounts countPending(
+      List<InvestmentChoicePending> pendingInstructions, MetadataReferenceIndex metadata) {
+    int missingSources = 0;
+    int missingFunds = 0;
+    for (InvestmentChoicePending pending : pendingInstructions) {
+      for (InvestmentChoicePendingDetail allocation : pending.details()) {
+        missingSources += missingSourceReference(allocation.switchSource(), metadata);
+        missingFunds += missingFundReference(allocation.fundCode(), metadata);
       }
     }
     return new MetadataIntegrityCounts(missingSources, missingFunds);
   }
 
-  private record MetadataIntegrityCounts(int missingSourceReferences, int missingFundReferences) {}
+  private static int missingSourceReference(String sourceCode, MetadataReferenceIndex metadata) {
+    return metadata.hasSourceDescription(sourceCode) ? 0 : 1;
+  }
+
+  private static int missingFundReference(String fundCode, MetadataReferenceIndex metadata) {
+    return metadata.hasFundName(fundCode) ? 0 : 1;
+  }
+
+  private record MetadataReferenceIndex(
+      Map<String, String> sourceDescriptions, Set<String> fundCodes, Set<String> fundsWithoutName) {
+    private boolean hasSourceDescription(String sourceCode) {
+      return sourceDescriptions.get(sourceCode) != null;
+    }
+
+    private boolean hasFundName(String fundCode) {
+      return fundCodes.contains(fundCode) && !fundsWithoutName.contains(fundCode);
+    }
+  }
+
+  private record MetadataIntegrityCounts(int missingSourceReferences, int missingFundReferences) {
+    private MetadataIntegrityCounts plus(MetadataIntegrityCounts other) {
+      return new MetadataIntegrityCounts(
+          missingSourceReferences + other.missingSourceReferences,
+          missingFundReferences + other.missingFundReferences);
+    }
+  }
 }
