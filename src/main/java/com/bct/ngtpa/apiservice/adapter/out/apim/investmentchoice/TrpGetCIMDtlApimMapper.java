@@ -13,6 +13,8 @@ final class TrpGetCIMDtlApimMapper {
   private static final DateTimeFormatter TIME_FORMATTER =
       DateTimeFormatter.ofPattern("HH:mm:ss").withResolverStyle(ResolverStyle.STRICT);
 
+  private TrpGetCIMDtlApimMapper() {}
+
   static String formatDate(LocalDate value) {
     return DATE_FORMATTER.format(value);
   }

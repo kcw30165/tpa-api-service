@@ -9,7 +9,9 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
 class PasswordValidationGrantServiceTest {
+  private static final Instant NOW = Instant.parse("2026-10-28T07:00:00Z");
   private static final AuthenticatedSessionId ID =
       new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
   private static final AuthenticatedAccountRef ACCOUNT =
@@ -29,6 +32,16 @@ class PasswordValidationGrantServiceTest {
   private final AuthenticatedSessionConcurrencyService writer =
       mock(AuthenticatedSessionConcurrencyService.class);
   private final PasswordValidationGrantService grants = new PasswordValidationGrantService(writer);
+
+  @Test
+  void remainingLifetimeUsesTheConfiguredTtlAndCurrentClock() {
+    var configuredGrants =
+        new PasswordValidationGrantService(writer, Clock.fixed(NOW, ZoneOffset.UTC), 150);
+
+    assertThat(configuredGrants.remainingLifetimeSeconds(NOW.plusSeconds(300))).isEqualTo(150);
+    assertThat(configuredGrants.remainingLifetimeSeconds(NOW.plusSeconds(149))).isEqualTo(149);
+    assertThat(configuredGrants.remainingLifetimeSeconds(NOW)).isZero();
+  }
 
   @Test
   void invalidInputsAreRejectedWithoutAccessingStorage() {

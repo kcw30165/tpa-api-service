@@ -54,22 +54,16 @@ public final class PasswordValidationPurposePrecheckPolicyRegistry {
     this.policies = Collections.unmodifiableMap(registrations);
   }
 
-  public PasswordValidationPurposePrecheckPolicy<? extends PasswordValidationPurposePayload>
-      require(PasswordValidationPurpose purpose) {
-    Objects.requireNonNull(purpose, "purpose must not be null");
-    var policy = policies.get(purpose);
-    if (policy == null) {
-      throw new IllegalArgumentException(UNSUPPORTED_PURPOSE);
-    }
-    return policy;
-  }
-
   public Mono<PasswordValidationPrecheckResult> precheck(
       PasswordValidationPurpose purpose,
       PasswordValidationPurposePayload payload,
       PasswordValidationPrecheckContext context) {
     Objects.requireNonNull(payload, "payload must not be null");
-    var policy = require(purpose);
+    Objects.requireNonNull(purpose, "purpose must not be null");
+    var policy = policies.get(purpose);
+    if (policy == null) {
+      throw new IllegalArgumentException(UNSUPPORTED_PURPOSE);
+    }
     if (!policy.payloadType().isInstance(payload)) {
       throw new IllegalArgumentException("Password-validation policy payload type mismatch");
     }

@@ -915,17 +915,13 @@ class PasswordValidationHttpTest {
         .returnResult();
   }
 
-  private org.springframework.test.web.reactive.server.EntityExchangeResult<byte[]>
-      detailedPrecheckFailure(
-          String scenario,
-          String purpose,
-          String operation,
-          String kind,
-          String code,
-          String target)
-          throws Exception {
-    var response = failure(post(body("x", purpose, operation)), 422, "VALIDATION_FAILED", code);
-    var json = JSON.readTree(response.getResponseBody());
+  private void detailedPrecheckFailure(
+      String scenario, String purpose, String operation, String kind, String code, String target)
+      throws Exception {
+    var json =
+        JSON.readTree(
+            failure(post(body("x", purpose, operation)), 422, "VALIDATION_FAILED", code)
+                .getResponseBody());
     assertThat(json.at("/errors/0/type").asText()).as(scenario).isEqualTo(kind);
     if (target == null) {
       assertThat(json.at("/errors/0/targets").size()).as(scenario).isZero();
@@ -937,7 +933,6 @@ class PasswordValidationHttpTest {
     assertThat(backend.grantAttempts).hasValue(0);
     assertThat(failureEventCount).isZero();
     assertSafeLogs();
-    return response;
   }
 
   private void assertSafeLogs(String... additional) {

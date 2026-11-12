@@ -185,10 +185,10 @@ public final class ApimInvestmentChoiceDetailsAdapter implements InvestmentChoic
           || !codes.add(row.fundCode())) {
         throw new InvestmentChoiceMalformedResponseException();
       }
-      String chineseName =
-          row.chinFundName() == null
-              ? null
-              : row.chinFundName().isBlank() ? row.fundName() : row.chinFundName();
+      String chineseName = row.chinFundName();
+      if (chineseName != null && chineseName.isBlank()) {
+        chineseName = row.fundName();
+      }
       result.add(
           new InvestmentChoiceFund(
               row.fundCode(),

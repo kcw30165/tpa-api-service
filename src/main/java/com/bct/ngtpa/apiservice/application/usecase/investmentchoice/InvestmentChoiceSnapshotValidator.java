@@ -19,6 +19,16 @@ public final class InvestmentChoiceSnapshotValidator {
     Objects.requireNonNull(snapshot, "snapshot must not be null");
 
     List<InvestmentChoiceViolation> violations = new ArrayList<>();
+    appendPercentageViolations(payload, snapshot, violations);
+    appendSourceViolations(payload, snapshot, violations);
+    appendFundViolations(payload, snapshot, violations);
+    return List.copyOf(violations);
+  }
+
+  private static void appendPercentageViolations(
+      ChangeInvestmentChoicePasswordValidationPayload payload,
+      InvestmentChoiceSnapshot snapshot,
+      List<InvestmentChoiceViolation> violations) {
     for (int index = 0; index < payload.allocations().size(); index++) {
       Allocation allocation = payload.allocations().get(index);
       if (allocation.kind() != JsonKind.OBJECT) {
@@ -33,7 +43,12 @@ public final class InvestmentChoiceSnapshotValidator {
                 "allocations[" + index + "].percentage"));
       }
     }
+  }
 
+  private static void appendSourceViolations(
+      ChangeInvestmentChoicePasswordValidationPayload payload,
+      InvestmentChoiceSnapshot snapshot,
+      List<InvestmentChoiceViolation> violations) {
     for (int index = 0; index < payload.switchSources().size(); index++) {
       JsonScalar sourceValue = payload.switchSources().get(index);
       if (sourceValue.kind() != JsonKind.STRING
@@ -54,7 +69,12 @@ public final class InvestmentChoiceSnapshotValidator {
                 "switchSources[" + index + "]"));
       }
     }
+  }
 
+  private static void appendFundViolations(
+      ChangeInvestmentChoicePasswordValidationPayload payload,
+      InvestmentChoiceSnapshot snapshot,
+      List<InvestmentChoiceViolation> violations) {
     for (int index = 0; index < payload.allocations().size(); index++) {
       Allocation allocation = payload.allocations().get(index);
       JsonScalar fundCode = allocation.fundCode();
@@ -75,7 +95,6 @@ public final class InvestmentChoiceSnapshotValidator {
                 "allocations[" + index + "].fundCode"));
       }
     }
-    return List.copyOf(violations);
   }
 
   private static InvestmentChoiceViolation violation(String code, String target) {

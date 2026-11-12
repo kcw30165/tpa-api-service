@@ -38,12 +38,9 @@ class PasswordValidationPurposePrecheckPolicyRegistryTest {
             ALL_PURPOSES);
 
     for (var purpose : PasswordValidationPurpose.values()) {
-      var first = registry.require(purpose);
-      var second = registry.require(purpose);
-      assertThat(first)
-          .isSameAs(second)
-          .extracting(PasswordValidationPurposePrecheckPolicy::purpose)
-          .isEqualTo(purpose);
+      assertThat(registry.payloadTypes()).containsEntry(purpose, TestPayload.class);
+      assertThat(registry.precheck(purpose, new TestPayload(SENSITIVE_MARKER), null).block())
+          .isEqualTo(PasswordValidationPrecheckResult.success());
     }
     assertThat(registry.supportedPurposes())
         .containsExactlyInAnyOrder(PasswordValidationPurpose.values());
@@ -92,7 +89,12 @@ class PasswordValidationPurposePrecheckPolicyRegistryTest {
                     PasswordValidationPurpose.PERSONAL_INFORMATION_UPDATE, TestPayload.class)),
             supported);
 
-    assertThatThrownBy(() -> registry.require(PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE))
+    assertThatThrownBy(
+            () ->
+                registry.precheck(
+                    PasswordValidationPurpose.CHANGE_INVESTMENT_CHOICE,
+                    new TestPayload(SENSITIVE_MARKER),
+                    null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported password-validation precheck purpose");
   }

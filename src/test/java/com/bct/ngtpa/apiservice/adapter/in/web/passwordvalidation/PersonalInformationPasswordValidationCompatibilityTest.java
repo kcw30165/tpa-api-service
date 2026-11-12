@@ -263,9 +263,9 @@ class PersonalInformationPasswordValidationCompatibilityTest {
   }
 
   private PrecheckDecision strictDecoderAndPolicyDecision(String request) {
-    try (JsonParser parser = STRICT_JSON_FACTORY.createParser(request)) {
-      JsonNode envelope = JSON.readTree(parser);
-      if (envelope == null || parser.nextToken() != null) {
+    try (JsonParser strictParser = STRICT_JSON_FACTORY.createParser(request)) {
+      JsonNode envelope = JSON.readTree(strictParser);
+      if (envelope == null || strictParser.nextToken() != null) {
         return new PrecheckDecision(false, null);
       }
       var payload = decoder.decode(envelope.get(OPERATION_PAYLOAD));

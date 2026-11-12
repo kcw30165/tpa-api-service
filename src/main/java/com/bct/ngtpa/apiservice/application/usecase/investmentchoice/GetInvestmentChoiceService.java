@@ -16,15 +16,12 @@ import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
 import java.util.Map;
 import java.util.Objects;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseCase {
 
   private static final String RETRIEVAL_PUBLIC_CODE = "err.investment-choice.retrieval.unavailable";
   private static final String IDENTIFIER_INVALID = "ACCOUNT_IDENTIFIER_INVALID";
-  private static final Logger LOG = LoggerFactory.getLogger(GetInvestmentChoiceService.class);
 
   private final ReferenceDatePort referenceDatePort;
   private final InvestmentChoiceDetailsPort detailsPort;

@@ -17,8 +17,6 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.Revoke
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.PasswordValidationPurpose;
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
-import java.time.Clock;
-import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -27,61 +25,29 @@ import reactor.core.publisher.Mono;
 public final class PasswordValidationIssuanceService implements IssuePasswordValidationUseCase {
   private static final String DOWNSTREAM_UNAVAILABLE = "DOWNSTREAM_UNAVAILABLE";
   private static final String REVOCATION_FAILED = "REVOCATION_FAILED";
-  private static final int DEFAULT_TTL_SECONDS = PasswordValidationGrantService.DEFAULT_TTL_SECONDS;
   private final PasswordValidationThrottleService throttle;
   private final PasswordCheckPort passwords;
   private final PasswordValidationGrantService grants;
   private final RevokeAuthenticatedSessionUseCase revocation;
-  private final Clock clock;
   private final FailureEventPort failures;
   private final OperationPayloadBindingPort bindings;
   private final PasswordValidationPurposePrecheckPolicyRegistry prechecks;
-  private final int ttlSeconds;
 
   public PasswordValidationIssuanceService(
       PasswordValidationThrottleService throttle,
       PasswordCheckPort passwords,
       PasswordValidationGrantService grants,
       RevokeAuthenticatedSessionUseCase revocation,
-      Clock clock,
       FailureEventPort failures,
       OperationPayloadBindingPort bindings,
       PasswordValidationPurposePrecheckPolicyRegistry prechecks) {
-    this(
-        throttle,
-        passwords,
-        grants,
-        revocation,
-        clock,
-        failures,
-        bindings,
-        prechecks,
-        DEFAULT_TTL_SECONDS);
-  }
-
-  public PasswordValidationIssuanceService(
-      PasswordValidationThrottleService throttle,
-      PasswordCheckPort passwords,
-      PasswordValidationGrantService grants,
-      RevokeAuthenticatedSessionUseCase revocation,
-      Clock clock,
-      FailureEventPort failures,
-      OperationPayloadBindingPort bindings,
-      PasswordValidationPurposePrecheckPolicyRegistry prechecks,
-      int ttlSeconds) {
     this.throttle = Objects.requireNonNull(throttle);
     this.passwords = Objects.requireNonNull(passwords);
     this.grants = Objects.requireNonNull(grants);
     this.revocation = Objects.requireNonNull(revocation);
-    this.clock = Objects.requireNonNull(clock);
     this.failures = Objects.requireNonNull(failures);
     this.bindings = Objects.requireNonNull(bindings);
     this.prechecks = Objects.requireNonNull(prechecks);
-    if (ttlSeconds < 30 || ttlSeconds > 900) {
-      throw new IllegalArgumentException(
-          "password-validation.grant.ttl-seconds must be between 30 and 900");
-    }
-    this.ttlSeconds = ttlSeconds;
   }
 
   @Override
@@ -225,15 +191,10 @@ public final class PasswordValidationIssuanceService implements IssuePasswordVal
     if (result.status() != PasswordValidationGrantService.Status.ISSUED) {
       return PasswordValidationIssuanceResult.of(UNAVAILABLE);
     }
-    long remaining = Duration.between(clock.instant(), result.expiresAt()).toSeconds();
+    int remaining = grants.remainingLifetimeSeconds(result.expiresAt());
     if (remaining <= 0) return PasswordValidationIssuanceResult.of(UNAVAILABLE);
     return new PasswordValidationIssuanceResult(
-        ISSUED,
-        result.token(),
-        (int) Math.min(ttlSeconds, remaining),
-        0,
-        java.util.List.of(),
-        null);
+        ISSUED, result.token(), remaining, 0, java.util.List.of(), null);
   }
 
   private Mono<PasswordValidationIssuanceResult> invalidate(

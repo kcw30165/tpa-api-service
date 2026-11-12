@@ -24,7 +24,6 @@ import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordV
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PasswordValidationPurposePrecheckPolicyRegistry;
 import com.bct.ngtpa.apiservice.application.usecase.passwordvalidation.PersonalInformationPasswordValidationPrecheckPolicy;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Clock;
 import java.util.List;
 import java.util.Set;
 import org.springframework.context.annotation.*;
@@ -117,19 +116,10 @@ public class PasswordValidationIssuanceConfig {
       PasswordCheckPort passwords,
       PasswordValidationGrantService grants,
       RevokeAuthenticatedSessionUseCase revocation,
-      Clock clock,
       FailureEventPort failures,
       OperationPayloadBindingPort bindings,
       PasswordValidationPurposePrecheckPolicyRegistry prechecks) {
     return new PasswordValidationIssuanceService(
-        throttle,
-        passwords,
-        grants,
-        revocation,
-        clock,
-        failures,
-        bindings,
-        prechecks,
-        grants.ttlSeconds());
+        throttle, passwords, grants, revocation, failures, bindings, prechecks);
   }
 }
