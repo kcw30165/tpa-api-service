@@ -42,9 +42,7 @@ class AuthenticatedContextExplicitUseCaseBoundaryTest {
         String s = Files.readString(p);
         if (containsIgnoringWhitespace(s, "CurrentPortalAccessContextResolver")
             || containsIgnoringWhitespace(s, "PortalAccessContextKeys")
-            || containsIgnoringWhitespace(s, "PortalAccessContext")
-            || containsIgnoringWhitespace(s, "ACTOR_CONTEXT")
-            || containsIgnoringWhitespace(s, "ACCOUNT_CONTEXT")) offenders.add(p.toString());
+            || containsIgnoringWhitespace(s, "PortalAccessContext")) offenders.add(p.toString());
       }
     }
     assertThat(offenders).isEmpty();

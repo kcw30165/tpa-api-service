@@ -11,7 +11,7 @@
 | Q8 | Visible + null → returned as `null`. |
 | Q9/N1 | Key present + no config entry → visible. Key absent → omitted (DS may remove hidden fields). Unknown item-id → ignore + WARN. Unknown config-value / duplicate item-id → contract violation (existing practice). |
 | Q10 | `sch-type`, `function`, `item-type` not used. |
-| Q11 | Envelope/data cardinality via existing APIM generic handling; data may be absent when err-message non-empty. |
+| Q11 | ApimExchangeExecutor supplies the typed transport/JSON envelope; the feature adapter checks missing envelope/response, non-blank err-message before data, and exactly one non-null data item. |
 | Q12 | `member` always present (`{}` if all hidden); dates may be null; `member-category` may be `""`; `plans: []` is success → FE "no plan" message. Missing key = hidden; `[]` = no data; null = N/A. |
 | Q13 | DS plan order; FE selects first. |
 | N3/Q14 | Config list in the contract is the current full list; member-category is an opaque string. |

@@ -42,7 +42,7 @@ Names above are binding unless the implementor proves a conflicting origin/dev c
 - Session cookie + `X-XSRF-TOKEN` + `Account-Ref` validated by existing `PortalAccessContextWebFilter`; controller requires resolved Account-Ref and session ID exactly like `InvestmentChoiceController`.
 - No Java role gate. No reference-date lookup (APIM request has no ref-date).
 - APIM routing/credentials: same as CIM GET (`ACCOUNT_ENV` routing, credential context `actorUserRole` + `accountEnv`, `SAFE_BUSINESS_CALL`).
-- YAML: `apim.vesting-scale.path: /ws/NGTPA/v1/TRPGetVestingScale` (same shape as `apim.investment-choice.details.path`).
+- YAML: `apim.vesting-scale.path: ${APIM_VESTING_SCALE_PATH:/ws/NGTPA/v1/TRPGetVestingScale}` (same shape as `apim.investment-choice.details.path`).
 
 ## 5. Layering of rules
 | Rule | Layer |
