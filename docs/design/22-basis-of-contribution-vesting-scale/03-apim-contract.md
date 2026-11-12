@@ -11,7 +11,7 @@
 Implementor MUST first grep origin/dev for any existing APIM request serializing `login-user-id` / `login-user-role` and reuse that exact conversion. If none exists, serialize the role as the lowercase enum name and add a contract test asserting `role_user_mbr` for the member role.
 
 ## Response envelope
-`response.err-message` (string) + `response.data[]`. Envelope/err-message/data-cardinality handling uses the existing APIM generic handling (as CIM). When err-message is non-empty, `data` may be absent — err-message is evaluated before any data parsing.
+The typed envelope comes from ApimExchangeExecutor (transport/JSON syntax only). As in CIM (ApimInvestmentChoiceDetailsAdapter), ApimVestingScaleAdapter itself checks missing envelope/response, then non-blank err-message BEFORE reading data, then requires exactly one non-null data item; otherwise malformed.
 
 ## data[0] parsing rules (strict)
 | Path | Rule | Violation → |
