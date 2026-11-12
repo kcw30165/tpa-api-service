@@ -12,7 +12,9 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
@@ -53,7 +55,9 @@ class ApimForgotPasswordCompletionExecutorBehaviorTest {
     assertThat(request.databaseScope()).isEqualTo(ApimDatabaseScope.NON_ACCOUNT);
     assertThat(request.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
     assertThat(request.credentialContext().accountEnv()).isNull();
-    assertThat(request.retryEligibility()).isEqualTo(ApimRetryEligibility.IDEMPOTENT_MUTATION);
+    assertThat(request.retryEligibility()).isEqualTo(ApimRetryEligibility.NON_RETRYABLE);
+    assertThat(request.resubmissionPolicy()).isEqualTo(ApimResubmissionPolicy.NEVER);
+    assertThat(request.incidentOwnership()).isEqualTo(ApimIncidentOwnership.APIM_OBSERVER);
   }
 
   @Test

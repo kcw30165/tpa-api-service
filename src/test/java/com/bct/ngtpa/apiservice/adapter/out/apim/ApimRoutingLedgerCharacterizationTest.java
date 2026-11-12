@@ -117,7 +117,7 @@ class ApimRoutingLedgerCharacterizationTest {
               "NON_ACCOUNT",
               "command.actorUserRole()",
               "null",
-              "IDEMPOTENT_MUTATION",
+              "NON_RETRYABLE",
               "EXECUTOR",
               "NON_ACCOUNT"),
           e(
@@ -356,7 +356,11 @@ class ApimRoutingLedgerCharacterizationTest {
     org.assertj.core.api.Assertions.assertThat(outboundCommand)
         .contains("ActorUserRole actorUserRole");
     org.assertj.core.api.Assertions.assertThat(adapter)
-        .contains("command.actorUserRole()", "IDEMPOTENT_MUTATION", "ApimDatabaseScope.NON_ACCOUNT")
+        .contains(
+            "command.actorUserRole()",
+            "NON_RETRYABLE",
+            "ApimResubmissionPolicy.NEVER",
+            "ApimDatabaseScope.NON_ACCOUNT")
         .doesNotContain("ActorUserRole.ROLE_USER_MBR");
   }
 }

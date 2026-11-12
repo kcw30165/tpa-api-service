@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper.TrpResetPasswordApimMapper;
@@ -48,7 +49,8 @@ public class ApimForgotPasswordCompletionAdapter implements ForgotPasswordComple
             TrpResetPasswordApimDataItem.class,
             ApimDatabaseScope.NON_ACCOUNT,
             new ApimCredentialResolutionContext(command.actorUserRole(), null),
-            ApimRetryEligibility.IDEMPOTENT_MUTATION);
+            ApimRetryEligibility.NON_RETRYABLE,
+            ApimResubmissionPolicy.NEVER);
     return executor
         .postEnvelope(exchange)
         .map(this::toEnvelope)
