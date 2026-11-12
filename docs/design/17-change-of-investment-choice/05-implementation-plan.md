@@ -41,13 +41,25 @@ unreachable until 4.4 because no controller exists before it.
 
 ## Release
 
-Frontend and BFF release together. No new configuration expected.
+Frontend and BFF release together. CIM introduces three APIM path
+configuration properties for details, instruction submission and cancellation.
 
-## M6 purpose-owned prechecks (approved target; not implemented)
+### M6 Purpose-owned prechecks (implemented)
 
-This design checkpoint does not authorize implementation. M0-M5 and their
-evidence remain the recorded implementation history. Implementation must be
-separately authorized and must preserve Personal Information behavior.
+M6 implements extensible purpose-owned password-validation prechecks
+for Personal Information compatibility, CIM submission and CIM cancellation.
+
+The registered policies execute feature prechecks before password
+verification and throttle consumption. CIM execution relies on the
+existing trusted token-gate binding and does not repeat business prechecks.
+
+Personal Information's existing issuance and PUT behavior is preserved.
+
+Implementation and regression evidence is recorded under
+target/evidence/gc-cim-m6-*/.
+
+See the as-built commits and validation evidence for the final
+implementation state.
 
 | Slice | Scope | Required evidence |
 |---|---|---|
@@ -59,6 +71,8 @@ separately authorized and must preserve Personal Information behavior.
 
 Use the test requirements in design 16 document 05 and CIM contract tables in
 documents 02 and 04. No token migration/versioning, rolling-deployment work,
-snapshot concurrency redesign, CAS refactor or GET fencing is authorized. Do
-not claim the approved target is implemented or runtime-verified until its
-separate implementation gates pass.
+snapshot concurrency redesign, CAS refactor or GET fencing is authorized. M6 
+implementation is complete. Its implementation, regression and 
+runtime-verification evidence is recorded under target/evidence/gc-cim-m6-*/. 
+No token migration/versioning, rolling-deployment work, snapshot concurrency 
+redesign, CAS refactor or GET fencing was included in M6. 
