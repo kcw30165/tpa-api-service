@@ -4,6 +4,8 @@ set -Eeuo pipefail
 umask 077
 # shellcheck source=scripts/e2e/lib/cim-password.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/lib/cim-password.sh"
+# shellcheck source=scripts/e2e/lib/cim-valid-payload.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/lib/cim-valid-payload.sh"
 
 # CIM curl scenarios. Configuration is environment-only:
 #   BASE_URL                    BFF base URL, e.g. https://host (no trailing slash)
@@ -12,11 +14,11 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/lib/cim-password.sh"
 #   ACCOUNT_REF                 selected member Account-Ref
 #   CIM_PASSWORD                test member's password (required only for CIM_USE_PASSWORD=yes)
 #   LOGIN_TEST_PASSWORD         fallback when CIM_PASSWORD is not provided
-#   Test member                  must have an editable switch source and at least two available funds
+#   CIM_RANDOM_SEED             optional integer 0..32767 for reproducible payload selection
 # Optional:
 #   ACCEPT_LANGUAGE             defaults to en
-#   CIM_USE_PASSWORD=yes        enable token-binding/replay scenarios (up to 3 verifications)
-#   CIM_LIVE_SUBMIT=yes         enable the live submit/cancel scenario (3 more verifications)
+#   CIM_USE_PASSWORD=yes        enable password-validation scenarios using the S1 snapshot
+#   CIM_LIVE_SUBMIT=yes         enable live submit/cancel using the P0 token and a live cancel token
 #   CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA
 #   CIM_DRY_RUN=yes             list planned scenarios/commands without network access
 #
@@ -41,6 +43,11 @@ CIM_PASSWORD="${CIM_PASSWORD:-}"
 USE_PASSWORD="${CIM_USE_PASSWORD:-no}"
 LIVE_SUBMIT="${CIM_LIVE_SUBMIT:-no}"
 DRY_RUN="${CIM_DRY_RUN:-no}"
+
+if [[ -n "${CIM_RANDOM_SEED:-}" ]] && ! cim_resolve_random_seed "$CIM_RANDOM_SEED"; then
+  printf 'ERROR CIM_RANDOM_SEED must be an integer from 0 through 32767\n' >&2
+  exit 2
+fi
 
 if [[ "$LIVE_SUBMIT" == yes && "$USE_PASSWORD" != yes ]]; then
   printf 'ERROR CIM_LIVE_SUBMIT=yes requires CIM_USE_PASSWORD=yes\n' >&2
@@ -75,15 +82,13 @@ skip_scenario() {
 }
 
 dry_run() {
-  local password_issuances=0
-  [[ "$USE_PASSWORD" == yes ]] && password_issuances=3
-  [[ "$LIVE_SUBMIT" == yes ]] && password_issuances=$((password_issuances + 3))
   printf 'DRY RUN — no network calls; values and request bodies are masked.\n'
   printf 'Scenarios: S1 S2 S3 S4 S5 S6 S7 S8 S9'
-  [[ "$USE_PASSWORD" == yes ]] && printf ' P1 P2 P3'
+  [[ "$USE_PASSWORD" == yes ]] && printf ' P0 P1 P2 P3'
   [[ "$LIVE_SUBMIT" == yes ]] && printf ' L1 L2 L3 L4'
-  printf '\nPassword verifications if P1 is available: %s\n' "$password_issuances"
-  [[ "$USE_PASSWORD" != yes ]] || printf 'P1 may be skipped if the S1 snapshot cannot form an isolated validation failure.\n'
+  printf '\nPassword verification count depends on the snapshot and enabled live path.\n'
+  [[ "$USE_PASSWORD" != yes ]] || printf 'CIM_RANDOM_SEED=%s\n' "${CIM_RANDOM_SEED:-<generated>}"
+  [[ "$USE_PASSWORD" != yes ]] || printf 'P0 requires a normal snapshot with an eligible source, at least two eligible funds, no pending instruction, and a feasible interval.\n'
   printf 'Planned curl commands:\n'
   dry_request GET "$DETAILS_PATH" yes none no
   dry_request GET "$DETAILS_PATH" no none no yes yes
@@ -97,23 +102,17 @@ dry_run() {
   dry_request POST "$ISSUE_PATH" yes none yes
   if [[ "$USE_PASSWORD" == yes ]]; then
     dry_request POST "$ISSUE_PATH" yes none yes
-    dry_request POST "$SUBMIT_PATH" yes '<issued-token>' yes
-    dry_request POST "$SUBMIT_PATH" yes '<same-consumed-token>' yes
     dry_request POST "$ISSUE_PATH" yes none yes
-    dry_request POST "$CANCEL_PATH" yes '<issued-token>' yes
-    dry_request POST "$CANCEL_PATH" yes '<same-consumed-token>' yes
     dry_request POST "$ISSUE_PATH" yes none yes
-    dry_request POST "$CANCEL_PATH" yes '<issued-token>' yes
+    dry_request POST "$CANCEL_PATH" yes '<issued-token-bound-to-pending-reference>' yes
   fi
   if [[ "$LIVE_SUBMIT" == yes ]]; then
-    dry_request POST "$ISSUE_PATH" yes none yes
-    dry_request POST "$SUBMIT_PATH" yes '<issued-token>' yes
+    dry_request POST "$SUBMIT_PATH" yes '<P0-token-bound-to-snapshot-payload>' yes
     dry_request GET "$DETAILS_PATH" yes none no
     dry_request POST "$ISSUE_PATH" yes none yes
     dry_request POST "$CANCEL_PATH" yes '<issued-token>' yes
     dry_request GET "$DETAILS_PATH" yes none no
     dry_request POST "$ISSUE_PATH" yes none yes
-    dry_request POST "$CANCEL_PATH" yes '<issued-token>' yes
   fi
   printf 'DRY RUN complete; no requests were sent.\n'
 }
@@ -290,59 +289,82 @@ jq -e '
   .success == true and .status == "SUCCESS"
   and (keys | sort) == ["errors","messages","result","status","success"]
   and (.result.data.accountNumber | type == "string")
-  and (.result.data.intervalPercentage | type == "number" and floor == . and . >= 1 and . <= 100)
-  and (.result.data.switchSources | type == "array" and all(.[]; has("switchSource") and has("sequence") and has("available")))
-  and (.result.data.funds | type == "array")
+  and (.result.data.scenario == "NORMAL"
+    or .result.data.scenario == "FUNCTION_UNAVAILABLE"
+    or .result.data.scenario == "MEMBER_INELIGIBLE")
   and (.result.data.history | type == "array")
-  and (.result.data.pendingInstructions | type == "array")
+  and (if .result.data.scenario == "NORMAL" then
+    (.result.data.intervalPercentage | type == "number" and floor == . and . >= 1 and . <= 100)
+    and (.result.data.switchSources | type == "array" and all(.[]; has("switchSourceCode") and has("switchSource") and has("sequence") and has("available")))
+    and (.result.data.funds | type == "array" and all(.[]; has("fundCode")))
+    and (.result.data.pendingInstructions | type == "array")
+  else
+    ((.result.data | has("intervalPercentage")) | not)
+    and ((.result.data | has("switchSources")) | not)
+    and ((.result.data | has("funds")) | not)
+    and ((.result.data | has("pendingInstructions")) | not)
+  end)
 ' <<<"$RESPONSE_BODY" >/dev/null 2>&1 || fail_scenario S1 '200/SUCCESS contract' "$HTTP_STATUS" "$ERROR_CODE"
 GET_DATA="$(jq -c '.result.data' <<<"$RESPONSE_BODY")"
-editable_source="$(jq -r '[.switchSources[] | select(.available == true) | .switchSource][0] // empty' <<<"$GET_DATA")"
-fund_count="$(jq -r '.funds | length' <<<"$GET_DATA")"
-first_fund="$(jq -r '.funds[0].fundCode // empty' <<<"$GET_DATA")"
-second_fund="$(jq -r '.funds[1].fundCode // empty' <<<"$GET_DATA")"
-interval="$(jq -r '.intervalPercentage' <<<"$GET_DATA")"
-
+SNAPSHOT_SCENARIO="$(jq -r '.scenario' <<<"$GET_DATA")"
+interval=''
+editable_source=''
+fund_count=0
+pending_count=0
+pending_reference=''
+VALID_BODY=''
+VALID_SKIP_REASON=''
 P1_SKIP_REASON=''
 P1_BODY=''
 P1_CODE=''
 P1_TARGET=''
-if [[ "$USE_PASSWORD" == yes ]]; then
-  if [[ -z "$first_fund" ]]; then
-    P1_SKIP_REASON='S1 has no available fund for an isolated snapshot validation'
-  elif [[ "$interval" -gt 1 && -n "$editable_source" && "$fund_count" -ge 2 \
-    && -n "$second_fund" && "$first_fund" != "$second_fund" ]]; then
-    P1_BODY="$(jq -cn --arg source "$editable_source" --arg first "$first_fund" --arg second "$second_fund" \
-      '{switchSources:[$source],allocations:[{fundCode:$first,percentage:1},{fundCode:$second,percentage:99}]}')"
-    P1_CODE=err.investment-choice.percentage.interval-invalid
-    P1_TARGET='allocations[0].percentage'
-  elif [[ "$interval" -gt 1 && -n "$editable_source" && $((100 % interval)) -ne 0 ]]; then
-    P1_BODY="$(jq -cn --arg source "$editable_source" --arg fund "$first_fund" \
-      '{switchSources:[$source],allocations:[{fundCode:$fund,percentage:100}]}')"
-    P1_CODE=err.investment-choice.percentage.interval-invalid
-    P1_TARGET='allocations[0].percentage'
-  elif [[ $((100 % interval)) -eq 0 ]]; then
-    unavailable_source=CIM-UNAVAILABLE-SOURCE
-    source_suffix=0
-    while jq -e --arg source "$unavailable_source" \
-      '.switchSources | any(.[]; .switchSource == $source)' <<<"$GET_DATA" >/dev/null 2>&1; do
-      source_suffix=$((source_suffix + 1))
-      unavailable_source="CIM-UNAVAILABLE-SOURCE-$source_suffix"
-    done
-    P1_BODY="$(jq -cn --arg source "$unavailable_source" --arg fund "$first_fund" \
-      '{switchSources:[$source],allocations:[{fundCode:$fund,percentage:100}]}')"
-    P1_CODE=err.investment-choice.switch-source.unavailable
-    P1_TARGET='switchSources[0]'
+P2_SKIP_REASON=''
+P3_SKIP_REASON=''
+P0_TOKEN=''
+
+if [[ "$SNAPSHOT_SCENARIO" == NORMAL ]]; then
+  interval="$(jq -r '.intervalPercentage' <<<"$GET_DATA")"
+  editable_source="$(jq -r '[.switchSources[] | select(.available == true) | .switchSourceCode][0] // empty' <<<"$GET_DATA")"
+  fund_count="$(jq -r '[.funds[].fundCode | select(type == "string" and length > 0)] | unique | length' <<<"$GET_DATA")"
+  pending_count="$(jq -r '.pendingInstructions | length' <<<"$GET_DATA")"
+  pending_reference="$(jq -r '[.pendingInstructions[].referenceNo | select(type == "string" and length > 0)][0] // empty' <<<"$GET_DATA")"
+else
+  VALID_SKIP_REASON="snapshot scenario=$SNAPSHOT_SCENARIO does not support a normal submission"
+  P1_SKIP_REASON="$VALID_SKIP_REASON"
+fi
+
+if [[ "$USE_PASSWORD" == yes && "$SNAPSHOT_SCENARIO" == NORMAL ]]; then
+  if cim_generate_valid_payload "$GET_DATA" "${CIM_RANDOM_SEED:-}"; then
+    VALID_BODY="$CIM_GENERATED_PAYLOAD"
+    printf 'CIM snapshot selection: seed=%s interval=%s funds=%s percentages=%s\n' \
+      "$CIM_GENERATED_SEED" "$CIM_GENERATED_INTERVAL" "$CIM_GENERATED_FUND_COUNT" "$CIM_GENERATED_PERCENTAGES"
   else
-    P1_SKIP_REASON='S1 has no editable source for interval-invalid, and 100 is not interval-valid for unavailable-source validation'
+    generation_result=$?
+    VALID_SKIP_REASON="$CIM_GENERATION_REASON"
+    if [[ "$generation_result" -ne 2 ]]; then
+      fail_scenario P0-preflight 'valid CIM_RANDOM_SEED from 0 through 32767' 'invalid seed' ''
+    fi
+  fi
+  if cim_build_snapshot_negative_payload "$VALID_BODY" "$interval" "$GET_DATA" "${CIM_RANDOM_SEED:-}"; then
+    P1_BODY="$CIM_NEGATIVE_PAYLOAD"
+    P1_CODE="$CIM_NEGATIVE_CODE"
+    P1_TARGET="$CIM_NEGATIVE_TARGET"
+    if [[ -z "$VALID_BODY" ]]; then
+      printf 'CIM negative selection: seed=%s interval=%s funds=%s percentages=%s\n' \
+        "$CIM_NEGATIVE_SEED" "$interval" \
+        "$(jq -r '.allocations | length' <<<"$P1_BODY")" \
+        "$(jq -r '[.allocations[].percentage] | join(",")' <<<"$P1_BODY")"
+    fi
+  else
+    P1_SKIP_REASON='no eligible fund/source combination for an isolated snapshot precheck'
   fi
 fi
 
 if [[ "$LIVE_SUBMIT" == yes ]]; then
+  [[ "$SNAPSHOT_SCENARIO" == NORMAL ]] || fail_scenario LIVE-preflight 'NORMAL snapshot scenario' "$SNAPSHOT_SCENARIO" ''
+  [[ -n "$VALID_BODY" ]] || fail_scenario LIVE-preflight 'submission-safe generated payload' "$VALID_SKIP_REASON" ''
   [[ -n "$editable_source" ]] || fail_scenario LIVE-preflight 'editable switch source' 'none' ''
-  [[ "$fund_count" -ge 2 && -n "$first_fund" && -n "$second_fund" ]] \
-    || fail_scenario LIVE-preflight 'at least two available funds' 'not available' ''
-  pending_count="$(jq -r '.pendingInstructions | length' <<<"$GET_DATA")"
+  [[ "$fund_count" -ge 2 ]] || fail_scenario LIVE-preflight 'at least two available funds' "$fund_count" ''
   [[ "$pending_count" == 0 ]] || fail_scenario LIVE-preflight 'no pending instruction' 'pending instruction exists' ''
 fi
 ERROR_CODE=''
@@ -350,12 +372,13 @@ pass_scenario S1
 
 PASSWORD_ISSUANCES=0
 if [[ "$USE_PASSWORD" == yes ]]; then
-  PASSWORD_ISSUANCES=2
-  [[ -n "$P1_SKIP_REASON" ]] || PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
-  [[ "$LIVE_SUBMIT" == yes ]] && PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 3))
+  [[ -z "$VALID_SKIP_REASON" ]] && PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
+  [[ "$SNAPSHOT_SCENARIO" != NORMAL || -z "$pending_reference" ]] \
+    || PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
+  [[ "$LIVE_SUBMIT" != yes ]] || PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
   printf 'WARNING: every token issuance verifies the password and counts toward the member password-validation throttle.\n'
-  printf 'Password verifications this run: %s\n' "$PASSWORD_ISSUANCES"
-  [[ -z "$P1_SKIP_REASON" ]] || printf 'P1 will be skipped if reached: %s\n' "$P1_SKIP_REASON"
+  printf 'Password verifications this run (snapshot rejections excluded): %s\n' "$PASSWORD_ISSUANCES"
+  [[ -z "$VALID_SKIP_REASON" ]] || printf 'P0 will be skipped if reached: %s\n' "$VALID_SKIP_REASON"
 fi
 
 SCENARIO=S2
@@ -409,59 +432,62 @@ request POST "$ISSUE_PATH" yes none present
 assert_result S9-blank 422 err.investment-choice.cancel.ref-required
 
 if [[ "$USE_PASSWORD" == yes ]]; then
+  if [[ -z "$VALID_SKIP_REASON" ]]; then
+    SCENARIO=P0-issue
+    issue_token CHANGE_INVESTMENT_CHOICE "$VALID_BODY" "$CIM_PASSWORD" P0-issue
+    P0_TOKEN="$TOKEN_VALUE"
+  else
+    skip_scenario P0 "$VALID_SKIP_REASON"
+  fi
+
   if [[ -n "$P1_SKIP_REASON" ]]; then
     skip_scenario P1 "$P1_SKIP_REASON"
   else
     SCENARIO=P1-issue
-    issue_token CHANGE_INVESTMENT_CHOICE "$P1_BODY" "$CIM_PASSWORD" P1-issue
-    P1_TOKEN="$TOKEN_VALUE"
-    REQUEST_BODY="$P1_BODY"
-    SCENARIO=P1-submit
-    request POST "$SUBMIT_PATH" yes "$P1_TOKEN" present
-    assert_result P1-submit 422 "$P1_CODE"
+    password_json CHANGE_INVESTMENT_CHOICE "$P1_BODY" "$CIM_PASSWORD"
+    REQUEST_BODY="$ISSUANCE_BODY"
+    request POST "$ISSUE_PATH" yes none present
+    assert_result P1-issue 422 "$P1_CODE"
     assert_error_target "$P1_TARGET"
-    REQUEST_BODY="$P1_BODY"
-    request POST "$SUBMIT_PATH" yes "$P1_TOKEN" present
-    assert_result P1-reuse 403 err.password-validation.authorization.invalid
   fi
 
-  P2_BODY='{"referenceNo":"000000000"}'
-  SCENARIO=P2-issue
-  issue_token CANCEL_INVESTMENT_CHOICE "$P2_BODY" "$CIM_PASSWORD" P2-issue
-  P2_TOKEN="$TOKEN_VALUE"
-  REQUEST_BODY="$P2_BODY"
-  request POST "$CANCEL_PATH" yes "$P2_TOKEN" present
-  assert_result P2-submit 422 err.investment-choice.cancel.ref-invalid
-  assert_error_target referenceNo
-  REQUEST_BODY="$P2_BODY"
-  request POST "$CANCEL_PATH" yes "$P2_TOKEN" present
-  assert_result P2-reuse 403 err.password-validation.authorization.invalid
+  if [[ "$SNAPSHOT_SCENARIO" != NORMAL ]]; then
+    P2_SKIP_REASON="snapshot scenario=$SNAPSHOT_SCENARIO does not support a normal cancel precheck"
+  fi
+  if [[ -n "$P2_SKIP_REASON" ]]; then
+    skip_scenario P2 "$P2_SKIP_REASON"
+  else
+    P2_REFERENCE="$(cim_unavailable_reference "$GET_DATA")"
+    P2_BODY="$(jq -cn --arg reference "$P2_REFERENCE" '{referenceNo:$reference}')"
+    SCENARIO=P2-issue
+    password_json CANCEL_INVESTMENT_CHOICE "$P2_BODY" "$CIM_PASSWORD"
+    REQUEST_BODY="$ISSUANCE_BODY"
+    request POST "$ISSUE_PATH" yes none present
+    assert_result P2-issue 422 err.investment-choice.cancel.ref-invalid
+    assert_error_target referenceNo
+  fi
 
-  SCENARIO=P3-issue
-  issue_token CANCEL_INVESTMENT_CHOICE "$P2_BODY" "$CIM_PASSWORD" P3-issue
-  P3_TOKEN="$TOKEN_VALUE"
-  REQUEST_BODY='{"referenceNo":"000000001"}'
-  request POST "$CANCEL_PATH" yes "$P3_TOKEN" present
-  assert_result P3-body-binding 403 err.password-validation.authorization.invalid
+  if [[ "$SNAPSHOT_SCENARIO" != NORMAL || -z "$pending_reference" ]]; then
+    P3_SKIP_REASON='no existing pending instruction is available for a valid cancellation-token binding test'
+  fi
+  if [[ -n "$P3_SKIP_REASON" ]]; then
+    skip_scenario P3 "$P3_SKIP_REASON"
+  else
+    P3_BODY="$(jq -cn --arg reference "$pending_reference" '{referenceNo:$reference}')"
+    SCENARIO=P3-issue
+    issue_token CANCEL_INVESTMENT_CHOICE "$P3_BODY" "$CIM_PASSWORD" P3-issue
+    P3_TOKEN="$TOKEN_VALUE"
+    P3_WRONG_REFERENCE="$(cim_unavailable_reference "$GET_DATA")"
+    REQUEST_BODY="$(jq -cn --arg reference "$P3_WRONG_REFERENCE" '{referenceNo:$reference}')"
+    request POST "$CANCEL_PATH" yes "$P3_TOKEN" present
+    assert_result P3-body-binding 403 err.password-validation.authorization.invalid
+  fi
 
   if [[ "$LIVE_SUBMIT" == yes ]]; then
-    [[ "$interval" =~ ^[0-9]+$ && "$interval" -gt 0 ]] || fail_scenario LIVE-preflight 'valid interval percentage' 'invalid' ''
-    [[ $((100 % interval)) -eq 0 ]] || fail_scenario LIVE-preflight '100 divisible by interval percentage' 'not divisible' ''
-
-    if (( interval <= 50 )); then
-      live_first="$interval"
-      live_second=$((100 - interval))
-      LIVE_BODY="$(jq -cn --arg source "$editable_source" --arg first "$first_fund" --arg second "$second_fund" \
-        --argjson firstPercentage "$live_first" --argjson secondPercentage "$live_second" \
-        '{switchSources:[$source],allocations:[{fundCode:$first,percentage:$firstPercentage},{fundCode:$second,percentage:$secondPercentage}]}')"
-    else
-      LIVE_BODY="$(jq -cn --arg source "$editable_source" --arg fund "$first_fund" \
-        '{switchSources:[$source],allocations:[{fundCode:$fund,percentage:100}]}')"
-    fi
-
-    SCENARIO=L1-issue
-    issue_token CHANGE_INVESTMENT_CHOICE "$LIVE_BODY" "$CIM_PASSWORD" L1-issue
-    LIVE_TOKEN="$TOKEN_VALUE"
+    LIVE_BODY="$VALID_BODY"
+    LIVE_TOKEN="$P0_TOKEN"
+    [[ -n "$LIVE_TOKEN" ]] || fail_scenario LIVE-preflight 'positive P0 token' 'missing' ''
+    SCENARIO=L1-submit
     REQUEST_BODY="$LIVE_BODY"
     request POST "$SUBMIT_PATH" yes "$LIVE_TOKEN" present
     [[ "$HTTP_STATUS" == 200 ]] || fail_scenario L1-submit '200/SUBMITTED' "$HTTP_STATUS" "$ERROR_CODE"
@@ -513,10 +539,10 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     pass_scenario L4-get
 
     SCENARIO=L4-issue
-    issue_token CANCEL_INVESTMENT_CHOICE "$LIVE_CANCEL_BODY" "$CIM_PASSWORD" L4-issue
-    REQUEST_BODY="$LIVE_CANCEL_BODY"
-    request POST "$CANCEL_PATH" yes "$TOKEN_VALUE" present
-    assert_result L4-repeat-cancel 422 err.investment-choice.cancel.ref-invalid
+    password_json CANCEL_INVESTMENT_CHOICE "$LIVE_CANCEL_BODY" "$CIM_PASSWORD"
+    REQUEST_BODY="$ISSUANCE_BODY"
+    request POST "$ISSUE_PATH" yes none present
+    assert_result L4-issue 422 err.investment-choice.cancel.ref-invalid
     assert_error_target referenceNo
   fi
 fi
