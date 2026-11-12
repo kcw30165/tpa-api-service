@@ -9,6 +9,10 @@ cat >"$tmp/destinations.json" <<'JSON'
 {"result":{"data":{"destinations":[{"destinationId":"sms-first","type":"SMS"},{"destinationId":"email-first","type":"EMAIL"},{"destinationId":"email-second","type":"EMAIL"}]}}}
 JSON
 expect_eq "$(select_first_email_destination_id "$tmp/destinations.json")" email-first first_email
+cat >"$tmp/channel-destinations.json" <<'JSON'
+{"result":{"data":{"destinations":[{"destinationId":"sms-channel","channel":"SMS"},{"destinationId":"email-channel","channel":"EMAIL"}]}}}
+JSON
+expect_eq "$(select_first_email_destination_id "$tmp/channel-destinations.json")" email-channel first_email_channel_contract
 cat >"$tmp/no-email.json" <<'JSON'
 {"result":{"data":{"destinations":[{"destinationId":"sms-only","type":"SMS"}]}}}
 JSON

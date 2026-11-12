@@ -26,7 +26,7 @@ login_journey_start() {
   local cookie csrf destination_count index=0 destination_id
   cookie="$(sed -n -E 's/^[Ss]et-[Cc]ookie:[[:space:]]*auth_flow_sid=([^;]+).*/\1/p' "$raw_headers" | tail -n 1)"
   csrf="$(jq -er '.result.data.csrfToken' "$raw_body")"
-  destination_count="$(jq -r '[.result.data.destinations[]? | select((.type // .destinationType // "") | ascii_downcase == "email")] | length' "$raw_body")"
+  destination_count="$(jq -r '[.result.data.destinations[]? | select((.channel // .type // .destinationType // "") | ascii_downcase == "email")] | length' "$raw_body")"
   destination_id="$(select_first_email_destination_id "$raw_body")" || return 1
   [[ -n "$cookie" && -n "$csrf" && -n "$destination_id" ]] || return 1
   write_private_value auth_flow_cookie "$cookie"

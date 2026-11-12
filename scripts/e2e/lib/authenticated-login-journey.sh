@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 select_first_email_destination_id() {
   local response_file="$1" destination_id
-  destination_id="$(jq -er '[.result.data.destinations[]? | select((.type // .destinationType // "") | ascii_downcase == "email")][0].destinationId // empty' "$response_file")" || true
+  destination_id="$(jq -er '[.result.data.destinations[]? | select((.channel // .type // .destinationType // "") | ascii_downcase == "email")][0].destinationId // empty' "$response_file")" || true
   [[ -n "$destination_id" ]] || { printf 'FAIL no email OTP destination is available\n' >&2; return 1; }
   printf '%s\n' "$destination_id"
 }
