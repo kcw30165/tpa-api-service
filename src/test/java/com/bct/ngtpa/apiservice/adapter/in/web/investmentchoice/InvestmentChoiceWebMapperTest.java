@@ -43,9 +43,7 @@ class InvestmentChoiceWebMapperTest {
     assertThat(response.intervalPercentage()).isEqualTo(5);
     assertThat(response.switchSources())
         .containsExactly(
-            new InvestmentChoiceSwitchSourceResponse("AA", "Alpha source", 10, false),
-            new InvestmentChoiceSwitchSourceResponse("EE", "Employee source", 10, true),
-            new InvestmentChoiceSwitchSourceResponse("BO", "Both source", 20, false));
+            new InvestmentChoiceSwitchSourceResponse("EE", "Employee source", 10, true));
     assertThat(response.funds())
         .containsExactly(
             new InvestmentChoiceFundResponse("F02", "alpha", 20, "1"),
@@ -60,14 +58,21 @@ class InvestmentChoiceWebMapperTest {
             new InvestmentChoiceHistoryResponse(
                 "01/10/2026",
                 List.of(
-                    new InvestmentChoiceAllocationResponse("EE", "F02", "alpha", "05"),
-                    new InvestmentChoiceAllocationResponse("EE", "F07", "Closed Fund", "04"),
-                    new InvestmentChoiceAllocationResponse("EE", "F06", "Zero", "90"),
-                    new InvestmentChoiceAllocationResponse("EE", "UNKNOWN", null, "03"),
-                    new InvestmentChoiceAllocationResponse("BO", "F01", "Zulu", "99"))),
+                    new InvestmentChoiceAllocationResponse(
+                        "EE", "Employee source", "F02", "alpha", "05"),
+                    new InvestmentChoiceAllocationResponse(
+                        "EE", "Employee source", "F07", "Closed Fund", "04"),
+                    new InvestmentChoiceAllocationResponse(
+                        "EE", "Employee source", "F06", "Zero", "90"),
+                    new InvestmentChoiceAllocationResponse(
+                        "EE", "Employee source", "UNKNOWN", null, "03"),
+                    new InvestmentChoiceAllocationResponse(
+                        "BO", "Both source", "F01", "Zulu", "99"))),
             new InvestmentChoiceHistoryResponse(
                 "02/01/2025",
-                List.of(new InvestmentChoiceAllocationResponse("EE", "MISSING", null, "12"))));
+                List.of(
+                    new InvestmentChoiceAllocationResponse(
+                        "EE", "Employee source", "MISSING", null, "12"))));
 
     assertThat(response.pendingInstructions())
         .containsExactly(
@@ -76,15 +81,19 @@ class InvestmentChoiceWebMapperTest {
                 "02/10/2026",
                 "14:30:05",
                 List.of(
-                    new InvestmentChoicePendingAllocationResponse("EE", "F02", "alpha", 8),
-                    new InvestmentChoicePendingAllocationResponse("EE", "F07", "Closed Fund", 7),
-                    new InvestmentChoicePendingAllocationResponse("BO", "F01", "Zulu", 6))),
+                    new InvestmentChoicePendingAllocationResponse(
+                        "EE", "Employee source", "F02", "alpha", 8),
+                    new InvestmentChoicePendingAllocationResponse(
+                        "EE", "Employee source", "F07", "Closed Fund", 7),
+                    new InvestmentChoicePendingAllocationResponse(
+                        "BO", "Both source", "F01", "Zulu", 6))),
             new InvestmentChoicePendingInstructionResponse(
                 "REF-OLD",
                 "03/08/2026",
                 "09:00:00",
                 List.of(
-                    new InvestmentChoicePendingAllocationResponse("EE", "MISSING", null, 100))));
+                    new InvestmentChoicePendingAllocationResponse(
+                        "EE", "Employee source", "MISSING", null, 100))));
   }
 
   @Test
@@ -102,6 +111,80 @@ class InvestmentChoiceWebMapperTest {
         .extracting(InvestmentChoiceFundResponse::fundName)
         .containsExactly("Alpha");
     assertThat(response.history().getFirst().allocations().get(0).fundName()).isEqualTo("阿爾法");
+  }
+
+  @Test
+  void allocationRowsKeepSourceCodesAndDescriptionsWhileUnavailableSourcesStayInternal()
+      throws Exception {
+    var details =
+        new InvestmentChoiceDetails.Normal(
+            5,
+            List.of(
+                new InvestmentChoiceSource("SRC-LOCKED", "Locked source", 20, false),
+                new InvestmentChoiceSource("SRC-READY", "Ready source", 10, true)),
+            List.of(new InvestmentChoiceFund("FUND-KNOWN", "Known fund", null, "1", false)),
+            List.of(
+                new InvestmentChoiceMandate(
+                    LocalDate.of(2026, 10, 1), "SRC-LOCKED", "FUND-KNOWN", "70"),
+                new InvestmentChoiceMandate(
+                    LocalDate.of(2026, 10, 1), "SRC-MISSING", "FUND-MISSING", "30")),
+            List.of(
+                new InvestmentChoicePending(
+                    "REF-1",
+                    LocalDate.of(2026, 10, 2),
+                    LocalTime.of(14, 30),
+                    List.of(
+                        new InvestmentChoicePendingDetail("SRC-LOCKED", "FUND-KNOWN", 70),
+                        new InvestmentChoicePendingDetail("SRC-MISSING", "FUND-MISSING", 30)))));
+
+    var json =
+        new ObjectMapper()
+            .valueToTree(
+                mapper.toDataResponse(new InvestmentChoiceResult("account", details), "en"));
+
+    assertThat(json.path("switchSources").size()).isEqualTo(1);
+    assertThat(json.path("switchSources").get(0).path("switchSourceCode").asText())
+        .isEqualTo("SRC-READY");
+    assertThat(
+            json.path("history")
+                .get(0)
+                .path("allocations")
+                .get(0)
+                .path("switchSourceCode")
+                .asText())
+        .isEqualTo("SRC-LOCKED");
+    assertThat(json.path("history").get(0).path("allocations").get(0).path("switchSource").asText())
+        .isEqualTo("Locked source");
+    assertThat(
+            json.path("history")
+                .get(0)
+                .path("allocations")
+                .get(1)
+                .path("switchSourceCode")
+                .asText())
+        .isEqualTo("SRC-MISSING");
+    assertThat(json.path("history").get(0).path("allocations").get(1).path("switchSource").isNull())
+        .isTrue();
+    assertThat(json.path("history").get(0).path("allocations").get(1).path("fundCode").asText())
+        .isEqualTo("FUND-MISSING");
+    assertThat(json.path("history").get(0).path("allocations").get(1).path("fundName").isNull())
+        .isTrue();
+    assertThat(
+            json.path("pendingInstructions")
+                .get(0)
+                .path("allocations")
+                .get(0)
+                .path("switchSource")
+                .asText())
+        .isEqualTo("Locked source");
+    assertThat(
+            json.path("pendingInstructions")
+                .get(0)
+                .path("allocations")
+                .get(1)
+                .path("switchSourceCode")
+                .asText())
+        .isEqualTo("SRC-MISSING");
   }
 
   @ParameterizedTest
@@ -154,8 +237,8 @@ class InvestmentChoiceWebMapperTest {
     assertThat(json.path("scenario").asText()).isEqualTo("FUNCTION_UNAVAILABLE");
     assertThat(response.history().getFirst().allocations())
         .containsExactly(
-            new InvestmentChoiceAllocationResponse("AA", "FUND_A", "Alpha", "95"),
-            new InvestmentChoiceAllocationResponse("ZZ", "UNKNOWN", null, "05"));
+            new InvestmentChoiceAllocationResponse("AA", null, "FUND_A", "Alpha", "95"),
+            new InvestmentChoiceAllocationResponse("ZZ", null, "UNKNOWN", null, "05"));
   }
 
   private static InvestmentChoiceDetails details() {

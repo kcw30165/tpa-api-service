@@ -19,7 +19,9 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.GetInvestmentCh
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetails;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetailsCommand;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceFund;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceMandate;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePending;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePendingDetail;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
@@ -376,5 +378,144 @@ class GetInvestmentChoiceServiceTest {
     assertThat(state.getValue().normalSnapshot().orElseThrow().sources()).isEmpty();
     assertThat(state.getValue().normalSnapshot().orElseThrow().funds()).isEmpty();
     assertNoSensitiveLogValues();
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("metadataIntegrityCases")
+  void missingAllocationMetadataPublishesOneAggregatedSafeIncidentAndPreservesDetails(
+      String scenario,
+      InvestmentChoiceDetails.Normal details,
+      int missingSources,
+      int missingFunds) {
+    arrangeDetails(details);
+    when(snapshotCache.writeState(any(), any(), any())).thenReturn(Mono.empty());
+
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+        .assertNext(result -> assertThat(result.details()).isSameAs(details))
+        .verifyComplete();
+
+    var captured = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(failures, times(1)).publish(captured.capture());
+    FailureEvent event = captured.getValue();
+    assertThat(event.event()).isEqualTo("investment-choice.retrieval.metadata_integrity");
+    assertThat(event.requestId()).isEqualTo(REQUEST_ID);
+    assertThat(event.capability()).isEqualTo("INVESTMENT_CHOICE");
+    assertThat(event.operation()).isEqualTo("GetInvestmentChoice");
+    assertThat(event.origin()).isEqualTo(FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
+    assertThat(event.internalCode()).isEqualTo("ALLOCATION_METADATA_MISSING");
+    assertThat(event.publicCode()).isNull();
+    assertThat(event.httpStatus()).isEqualTo(200);
+    assertThat(event.retryable()).isFalse();
+    assertThat(event.safeDimensions())
+        .containsOnlyKeys("reason", "missingSourceReferences", "missingFundReferences")
+        .containsEntry("reason", "ALLOCATION_METADATA_MISSING")
+        .containsEntry("missingSourceReferences", missingSources)
+        .containsEntry("missingFundReferences", missingFunds);
+    assertThat(event.toString())
+        .doesNotContain(
+            ACCOUNT_REF,
+            SESSION_ID.value(),
+            "SOURCE-MISSING-1",
+            "SOURCE-MISSING-2",
+            "SOURCE-NO-DESCRIPTION",
+            "FUND-MISSING-1",
+            "FUND-MISSING-2",
+            PENDING_REF_ONE);
+    assertNoSensitiveLogValues();
+  }
+
+  private static Stream<Arguments> metadataIntegrityCases() {
+    return Stream.of(
+        Arguments.of(
+            "missing source",
+            allocationDetails(
+                List.of(
+                    new InvestmentChoiceMandate(
+                        REFERENCE_DATE, "SOURCE-MISSING-1", "FUND-KNOWN", "100")),
+                List.of()),
+            1,
+            0),
+        Arguments.of(
+            "missing source description",
+            allocationDetails(
+                List.of(
+                    new InvestmentChoiceMandate(
+                        REFERENCE_DATE, "SOURCE-NO-DESCRIPTION", "FUND-KNOWN", "100")),
+                List.of()),
+            1,
+            0),
+        Arguments.of(
+            "missing fund",
+            allocationDetails(
+                List.of(
+                    new InvestmentChoiceMandate(
+                        REFERENCE_DATE, "SOURCE-KNOWN", "FUND-MISSING-1", "100")),
+                List.of()),
+            0,
+            1),
+        Arguments.of(
+            "source and fund missing",
+            allocationDetails(
+                List.of(
+                    new InvestmentChoiceMandate(
+                        REFERENCE_DATE, "SOURCE-MISSING-1", "FUND-MISSING-1", "100")),
+                List.of()),
+            1,
+            1),
+        Arguments.of(
+            "multiple missing references aggregate in one event",
+            allocationDetails(
+                List.of(
+                    new InvestmentChoiceMandate(
+                        REFERENCE_DATE, "SOURCE-MISSING-1", "FUND-MISSING-1", "50"),
+                    new InvestmentChoiceMandate(
+                        REFERENCE_DATE, "SOURCE-MISSING-2", "FUND-KNOWN", "25"),
+                    new InvestmentChoiceMandate(
+                        REFERENCE_DATE, "SOURCE-KNOWN", "FUND-KNOWN", "25")),
+                List.of(
+                    new InvestmentChoicePending(
+                        PENDING_REF_ONE,
+                        REFERENCE_DATE,
+                        LocalTime.of(9, 15),
+                        List.of(
+                            new InvestmentChoicePendingDetail(
+                                "SOURCE-NO-DESCRIPTION", "FUND-MISSING-2", 100))))),
+            3,
+            2));
+  }
+
+  @Test
+  void completeAllocationMetadataDoesNotPublishAnIncident() {
+    var details =
+        allocationDetails(
+            List.of(
+                new InvestmentChoiceMandate(REFERENCE_DATE, "SOURCE-KNOWN", "FUND-KNOWN", "100")),
+            List.of(
+                new InvestmentChoicePending(
+                    PENDING_REF_ONE,
+                    REFERENCE_DATE,
+                    LocalTime.of(9, 15),
+                    List.of(
+                        new InvestmentChoicePendingDetail("SOURCE-KNOWN", "FUND-KNOWN", 100)))));
+    arrangeDetails(details);
+    when(snapshotCache.writeState(any(), any(), any())).thenReturn(Mono.empty());
+
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+        .assertNext(result -> assertThat(result.details()).isSameAs(details))
+        .verifyComplete();
+
+    verifyNoInteractions(failures);
+  }
+
+  private static InvestmentChoiceDetails.Normal allocationDetails(
+      List<InvestmentChoiceMandate> mandates, List<InvestmentChoicePending> pending) {
+    return new InvestmentChoiceDetails.Normal(
+        25,
+        List.of(
+            new InvestmentChoiceSource("SOURCE-KNOWN", "Known source", 1, true),
+            new InvestmentChoiceSource("SOURCE-NO-DESCRIPTION", null, 2, false)),
+        List.of(new InvestmentChoiceFund("FUND-KNOWN", "Known fund", null, "1", true)),
+        mandates,
+        pending);
   }
 }

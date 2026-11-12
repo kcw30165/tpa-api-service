@@ -1,4 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.investmentchoice.response;
 
 public record InvestmentChoiceAllocationResponse(
-    String switchSource, String fundCode, String fundName, String percentage) {}
+    String switchSourceCode,
+    String switchSource,
+    String fundCode,
+    String fundName,
+    String percentage) {}

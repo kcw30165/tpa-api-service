@@ -28,7 +28,7 @@ credential context `(actorUserRole, accountEnv)` as Fund Fact Sheet.
 | `interval-pcnt` | integer | yes | 1..100 |
 | `SwitchSrc[]` | array | yes, may be empty | |
 | `.switch-src` | string | yes, nonblank, unique | code |
-| `.src-desc`, `.src-chin-desc` | string | no | `.src-desc` -> `switchSources[].switchSource`; `.src-chin-desc` ignored |
+| `.src-desc`, `.src-chin-desc` | string | no | `.src-desc` -> available `switchSources[].switchSource` and history/pending allocation `switchSource` matched by `switch-src`; `.src-chin-desc` ignored |
 | `.seq` | integer | yes | sort key |
 | `.avail-sw` | boolean | yes | passed through; true = editable, false = read-only (D-37) |
 | `SwitchFund[]` | array | yes, may be empty | |
@@ -61,6 +61,16 @@ strict. Pending records remain subject to all listed row and reference validatio
 
 A history or pending row whose `fund-code` is absent from `SwitchFund` is returned with
 `fundName: null` (O-5), not treated as malformed.
+
+History and pending allocations retain their original `switch-src` and `fund-code` as
+`switchSourceCode` and `fundCode`. A missing matching `SwitchSrc` description or
+`SwitchFund` name is returned as `null`; it does not drop the allocation or fail the GET.
+The application publishes one aggregated `investment-choice.retrieval.metadata_integrity`
+event for a GET with missing referenced allocation metadata. Its safe dimensions contain
+only the reason and missing-source/missing-fund counts; source codes, fund codes, account
+identifiers, and references are never included. The shared `FailureEventPort` logger
+records this `DOWNSTREAM_INVALID_RESPONSE` event at ERROR without a throwable. The endpoint
+still returns HTTP 200 `SUCCESS`.
 
 ### M6 scenario-aware GET contract (implemented; not runtime-verified against Progress)
 

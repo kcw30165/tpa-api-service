@@ -48,6 +48,16 @@ Rule: exactly one ERROR-level incident record per CIM incident, owned by CIM cod
 contains **no** direct `log.error(` / `atError(` call, so `ErrorLogCallSiteRatchetArchitectureTest`
 `KNOWN_REMAINING` is unchanged.
 
+For a successful GET whose history or pending allocation references source/fund metadata
+that is missing or has no display name, `GetInvestmentChoiceService` publishes exactly one
+non-fatal `DOWNSTREAM_INVALID_RESPONSE` `FailureEvent` named
+`investment-choice.retrieval.metadata_integrity`. It records the actual HTTP status (200),
+no public error code, and `retryable=false`; dimensions are only the fixed reason
+`ALLOCATION_METADATA_MISSING` and integer `missingSourceReferences` /
+`missingFundReferences` counts. `StructuredFailureEventLogger` emits this event once at
+ERROR without a throwable. The mapper preserves allocation rows and codes with null names,
+and no API exception handler ERROR is produced because the response remains successful.
+
 | Who | Does |
 |---|---|
 | CIM APIM adapters | On any failure of their exchange: classify with `ApimFailureClassifier.classify(throwable)`, map `ApimFailureCategory` -> `FailureOrigin` 1:1 (same names), publish one `FailureEvent`, then map to the feature exception. On nonblank `err-message`: publish origin `DOWNSTREAM_CONTRACT` with `internalCode` = the `err-message` code (D-34). On malformed data detected by the adapter: origin `DOWNSTREAM_INVALID_RESPONSE` |
@@ -61,6 +71,7 @@ the GET, false for submit; `safeDimensions` only counts and reasons - never poli
 user id, account ref, fund codes or percentages.
 
 Event names: `investment-choice.retrieval.downstream_failure`,
+`investment-choice.retrieval.metadata_integrity`,
 `investment-choice.submission.downstream_failure`, `investment-choice.submission.snapshot.missing`.
 
 ## 4. Error matrix
@@ -70,6 +81,7 @@ Event names: `investment-choice.retrieval.downstream_failure`,
 | GET: transport / timeout / 5xx / crypto | 503 | `SYSTEM_ERROR` | `SYSTEM` / `err.investment-choice.retrieval.unavailable` | details adapter, classified origin | executor ERROR (O-9) |
 | GET: nonblank `err-message` | 503 | `SYSTEM_ERROR` | same | details adapter, `DOWNSTREAM_CONTRACT` | executor WARN |
 | GET: malformed (empty data, >1 item, missing required, integrity, strict date) | 503 | `SYSTEM_ERROR` | same | details adapter, `DOWNSTREAM_INVALID_RESPONSE` | - |
+| GET: missing referenced source description or fund name in allocation metadata | 200 | `SUCCESS` | - | Get use case, one `DOWNSTREAM_INVALID_RESPONSE` metadata-integrity event | one structured ERROR, no throwable; response retains allocation and original codes with null missing names |
 | GET: `AccountIdentifierFormatter` rejects policy/cert | 503 | `SYSTEM_ERROR` | same | use case, `LOCAL_SYSTEM` | - |
 | GET: snapshot write skipped/failed | 200 | `SUCCESS` | - | none | WARN from cache service (D-31) |
 | Submit: token problem | 403 | `BUSINESS_REJECTED` | existing gate | existing | existing |
