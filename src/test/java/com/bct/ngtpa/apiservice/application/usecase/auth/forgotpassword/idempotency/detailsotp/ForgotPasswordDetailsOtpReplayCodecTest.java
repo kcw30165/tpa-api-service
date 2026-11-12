@@ -83,6 +83,21 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
   }
 
   @Test
+  void captureSystemUnavailableWithoutProtectedReplaySucceeds() {
+    ForgotPasswordDetailsOtpResult result =
+        new ForgotPasswordDetailsOtpResult(
+            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE, null, 0, 0, List.of());
+    when(envelope.encode(any(), any())).thenReturn("{}");
+    StepVerifier.create(newCodec().capture(result, response(503, Map.of()), null))
+        .assertNext(
+            captured -> {
+              assertThat(captured.snapshot().httpStatus()).isEqualTo(503);
+              assertThat(captured.snapshot().protectedReplayReference()).isNull();
+            })
+        .verifyComplete();
+  }
+
+  @Test
   void captureReferencePresenceMismatchErrors() {
     ForgotPasswordDetailsOtpResult result =
         new ForgotPasswordDetailsOtpResult(
@@ -193,6 +208,21 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
             r ->
                 assertThat(r.status())
                     .isEqualTo(ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED))
+        .verifyComplete();
+  }
+
+  @Test
+  void hydrateSystemUnavailableWithoutProtectedReplaySucceeds() {
+    when(envelope.decodePayload(
+            any(), any(), eq(ForgotPasswordDetailsOtpReplayCodec.SafePayload.class)))
+        .thenReturn(
+            new ForgotPasswordDetailsOtpReplayCodec.SafePayload(
+                ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE.name(), List.of()));
+    StepVerifier.create(newCodec().hydrate(snapshot(503, Map.of(), null)))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE))
         .verifyComplete();
   }
 

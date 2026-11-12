@@ -13,6 +13,7 @@ public record ForgotPasswordDetailsOtpResult(
     EXPIRED,
     VALIDATION_FAILED,
     BUSINESS_REJECTED,
+    SYSTEM_UNAVAILABLE,
     SYSTEM_ERROR,
     IN_PROGRESS,
     KEY_REUSED

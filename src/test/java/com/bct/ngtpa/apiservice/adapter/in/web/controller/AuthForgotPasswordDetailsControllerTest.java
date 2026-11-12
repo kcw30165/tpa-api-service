@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.Forgot
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.port.in.ProcessForgotPasswordDetailsOtpUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpResult;
@@ -17,7 +18,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import org.springframework.web.bind.annotation.PostMapping;
 import reactor.core.publisher.Mono;
@@ -106,6 +109,115 @@ class AuthForgotPasswordDetailsControllerTest {
             "csrf_abc",
             "Account-Ref",
             "auth_flow_sid");
+  }
+
+  @Test
+  void systemUnavailableResultUsesExistingPublicErrorAndDoesNotMutateCookies() {
+    var useCase =
+        (ProcessForgotPasswordDetailsOtpUseCase)
+            command ->
+                Mono.just(
+                    new ForgotPasswordDetailsOtpResult(
+                        ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE,
+                        null,
+                        0,
+                        0,
+                        List.of()));
+    var response = new MockServerHttpResponse();
+
+    var publicResponse =
+        controller(useCase)
+            .details(
+                new ForgotPasswordDetailsRequest("31/01/1980", "member@example.com", null),
+                "afs_abc",
+                "csrf_abc",
+                "https://portal.example",
+                "https://portal.example/page",
+                "req-1",
+                "en",
+                "idem-1",
+                response)
+            .block();
+
+    assertThat(publicResponse.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    assertThat(publicResponse.getBody().status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+    assertThat(publicResponse.getBody().errors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.code()).isEqualTo("err.system.unavailable");
+              assertThat(error.type()).isEqualTo("SYSTEM");
+              assertThat(error.targets()).isEmpty();
+              assertThat(error.message()).isNull();
+            });
+    assertThat(response.getCookies()).isEmpty();
+    assertThat(response.getHeaders().getFirst("X-Request-Id")).isEqualTo("req-1");
+  }
+
+  @Test
+  void memberMismatchKeepsExistingBusinessRejectedContract() {
+    var useCase =
+        (ProcessForgotPasswordDetailsOtpUseCase)
+            command ->
+                Mono.just(
+                    new ForgotPasswordDetailsOtpResult(
+                        ForgotPasswordDetailsOtpResult.Status.BUSINESS_REJECTED,
+                        null,
+                        0,
+                        0,
+                        List.of("PAGE")));
+    var response = new MockServerHttpResponse();
+
+    var publicResponse =
+        controller(useCase)
+            .details(
+                new ForgotPasswordDetailsRequest("31/01/1980", "member@example.com", null),
+                "afs_abc",
+                "csrf_abc",
+                "https://portal.example",
+                "https://portal.example/page",
+                "req-1",
+                "en",
+                "idem-1",
+                response)
+            .block();
+
+    assertThat(publicResponse.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    assertThat(publicResponse.getBody().status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
+    assertThat(publicResponse.getBody().errors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.code()).isEqualTo("err.forgot-password.member.notFound");
+              assertThat(error.type()).isEqualTo("BUSINESS");
+              assertThat(error.targets()).isEmpty();
+              assertThat(error.message()).isNull();
+            });
+    assertThat(response.getCookies()).isEmpty();
+  }
+
+  @Test
+  void missingXsrfTokenShortCircuitsDetailsUseCase() {
+    var useCase = new RecordingUseCase();
+    var response = new MockServerHttpResponse();
+
+    var publicResponse =
+        controller(useCase)
+            .details(
+                new ForgotPasswordDetailsRequest("31/01/1980", "member@example.com", null),
+                "afs_abc",
+                null,
+                "https://portal.example",
+                "https://portal.example/page",
+                "req-1",
+                "en",
+                "idem-1",
+                response)
+            .block();
+
+    assertThat(useCase.called).isFalse();
+    assertThat(publicResponse.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    assertThat(response.getCookies()).isEmpty();
   }
 
   @Test

@@ -143,27 +143,42 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                           command.mobile(),
                           command.requestId())
                       .flatMap(
-                          result ->
-                              result.status() == ForgotPasswordDetailsStatus.DETAILS_VERIFIED
-                                  ? issue(
-                                      command,
-                                      reference,
-                                      handle,
-                                      budget,
-                                      context.withLookupFields(
-                                          result.trustCode(),
-                                          result.schemeName(),
-                                          result.schemeNameChi()))
-                                  : Mono.just(
-                                      new ForgotPasswordDetailsOtpProtectedExecutionResult(
-                                          new ForgotPasswordDetailsOtpResult(
-                                              ForgotPasswordDetailsOtpResult.Status
-                                                  .BUSINESS_REJECTED,
-                                              null,
-                                              0,
-                                              0,
-                                              List.of("PAGE")),
-                                          null)));
+                          result -> {
+                            if (result.status() == ForgotPasswordDetailsStatus.DETAILS_VERIFIED) {
+                              return issue(
+                                  command,
+                                  reference,
+                                  handle,
+                                  budget,
+                                  context.withLookupFields(
+                                      result.trustCode(),
+                                      result.schemeName(),
+                                      result.schemeNameChi()));
+                            }
+                            if (result.status() == ForgotPasswordDetailsStatus.BUSINESS_REJECTED) {
+                              return Mono.just(
+                                  new ForgotPasswordDetailsOtpProtectedExecutionResult(
+                                      new ForgotPasswordDetailsOtpResult(
+                                          ForgotPasswordDetailsOtpResult.Status.BUSINESS_REJECTED,
+                                          null,
+                                          0,
+                                          0,
+                                          List.of("PAGE")),
+                                      null));
+                            }
+                            if (result.status() == ForgotPasswordDetailsStatus.SYSTEM_UNAVAILABLE) {
+                              return Mono.just(
+                                  new ForgotPasswordDetailsOtpProtectedExecutionResult(
+                                      new ForgotPasswordDetailsOtpResult(
+                                          ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE,
+                                          null,
+                                          0,
+                                          0,
+                                          List.of()),
+                                      null));
+                            }
+                            return failure();
+                          });
                 });
     return Mono.usingWhen(
         Mono.just(handle),

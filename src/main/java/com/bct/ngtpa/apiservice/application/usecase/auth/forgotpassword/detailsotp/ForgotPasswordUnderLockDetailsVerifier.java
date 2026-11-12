@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordDetailsLookupPort;
@@ -53,9 +54,13 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
                     : ForgotPasswordUnderLockDetailsVerification.of(
                         ForgotPasswordDetailsStatus.BUSINESS_REJECTED))
         .doOnError(cause -> logFailure(requestId, cause))
-        .onErrorReturn(
-            ForgotPasswordUnderLockDetailsVerification.of(
-                ForgotPasswordDetailsStatus.SYSTEM_FAILED));
+        .onErrorResume(
+            cause ->
+                Mono.just(
+                    ForgotPasswordUnderLockDetailsVerification.of(
+                        lookup.classifyFailure(cause) == FailureOrigin.DOWNSTREAM_TRANSPORT
+                            ? ForgotPasswordDetailsStatus.SYSTEM_UNAVAILABLE
+                            : ForgotPasswordDetailsStatus.SYSTEM_FAILED)));
   }
 
   private static void logFailure(String requestId, Throwable cause) {

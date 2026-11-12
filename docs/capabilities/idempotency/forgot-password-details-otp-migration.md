@@ -87,3 +87,10 @@ Intermediate implementation scripts must run `mvn -DskipTests compile` and `mvn 
 
 - Revalidated the committed DETAILS_AND_OTP shared-executor composition with compile, test compilation, focused parity and architecture tests, and static boundary audits.
 - Confirmed the legacy DETAILS_AND_OTP orchestration remains absent and non-selected resend, verify, complete, and cancel composition remains intact.
+
+### R0a technical lookup routing
+
+- A recognized member/details mismatch remains a captured `BUSINESS_REJECTED` response.
+- APIM connection, timeout, HTTP 503, and HTTP 504 lookup failures return the existing system-unavailable public response and are captured as a completed 503 for same-key replay. Replay does not repeat the lookup or enter OTP creation/delivery.
+- Other lookup failures remain technical `SYSTEM_ERROR` outcomes and keep the existing unknown-outcome behavior; post-lookup OTP challenge and delivery failure handling is unchanged.
+- The operation identity, request fingerprint, and protected OTP replay payload are unchanged.
