@@ -463,6 +463,26 @@ class GetInvestmentChoiceServiceTest {
             1,
             1),
         Arguments.of(
+            "repeated missing references count per history and pending allocation",
+            allocationDetails(
+                List.of(
+                    new InvestmentChoiceMandate(
+                        REFERENCE_DATE, "SOURCE-MISSING-1", "FUND-MISSING-1", "50"),
+                    new InvestmentChoiceMandate(
+                        REFERENCE_DATE, "SOURCE-MISSING-1", "FUND-MISSING-1", "50")),
+                List.of(
+                    new InvestmentChoicePending(
+                        PENDING_REF_ONE,
+                        REFERENCE_DATE,
+                        LocalTime.of(9, 15),
+                        List.of(
+                            new InvestmentChoicePendingDetail(
+                                "SOURCE-MISSING-1", "FUND-MISSING-1", 50),
+                            new InvestmentChoicePendingDetail(
+                                "SOURCE-MISSING-1", "FUND-MISSING-1", 50))))),
+            4,
+            4),
+        Arguments.of(
             "multiple missing references aggregate in one event",
             allocationDetails(
                 List.of(
