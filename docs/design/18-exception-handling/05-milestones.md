@@ -714,6 +714,14 @@ checks its evidence. All rows below are pending until separately implemented and
 | M3g | Account and fund features | Pending |
 | M3h | Swallowed-failure audit, duplicate-observer cleanup, ERROR ratchet | Pending |
 
+**Approved 2026-11-12 deferral:** R0b.2 reset dispatch certainty and cross-key safety are deferred
+to the separate Forgot Password Reset Safety workstream recorded as O-19 in `06-open-items.md`.
+M3c continues with its planned Forgot Password classification and incident-ownership migration;
+it does not resolve or implement this reset-safety risk. Reset-safety work requires a separate
+branch and independent review. M3c deployment remains gated on either explicit risk acceptance by
+Nick / application security or completion and review of the reset-safety correction. M3c remains
+pending; do not claim it complete.
+
 - Each feature milestone uses one branch, one MR, and one independent review.
 - Within a milestone, each operation has one reviewed checkpoint: fail-first tests, compile,
   test-compile, targeted tests, and a passing commit before proceeding.

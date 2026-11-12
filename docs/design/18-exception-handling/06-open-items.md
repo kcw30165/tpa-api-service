@@ -345,6 +345,27 @@ Nick / security authority
 Open; not in scope of M3-R1.
 </td>
 </tr>
+<tr>
+<td>
+O-19
+</td>
+<td>
+Forgot Password reset uncertain-outcome and cross-key resubmission safety. TRPResetPassword uses
+NON_RETRYABLE + NEVER, preventing automatic APIM resubmission within one execution. However, a
+possibly dispatched reset with an unconfirmed outcome may leave the session eligible for another
+completion using a different idempotency key. A failed UNKNOWN_OUTCOME_BLOCKED persistence update
+may also leave the session eligible. Dispatch certainty and a durable pre-dispatch session fence
+remain unimplemented.
+</td>
+<td>
+Nick / application security and backend architecture
+</td>
+<td>
+OPEN — separate Forgot Password Reset Safety workstream. Required future work: invocation-scoped
+dispatch certainty; durable revision-CAS session fence; safe same-key/different-key handling; crash
+and persistence-failure recovery; security and replay validation.
+</td>
+</tr>
 </table>
 
 ### Deferred after reduced-scope M2b completion (approved 2026-11-04)
