@@ -35,14 +35,15 @@ assert_valid() {
       "$expected_count" "$CIM_GENERATION_STATUS" "$CIM_GENERATED_FUND_COUNT" "$CIM_GENERATION_REASON"
     exit 1
   }
-  jq -e --argjson interval "$CIM_GENERATED_INTERVAL" --argjson count "$expected_count" '
+  jq -e --argjson interval "$CIM_GENERATED_INTERVAL" --argjson count "$expected_count" \
+    --argjson snapshot "$snapshot" '
     (.switchSources | length) == 1
     and (.allocations | length) == $count
     and ([.allocations[].fundCode] | unique | length) == $count
     and ([.allocations[].percentage] | all(. > 0 and (. % $interval == 0)))
     and ([.allocations[].percentage] | add) == 100
     and .switchSources[0] == "SRC-A"
-    and all(.allocations[]; (.fundCode | startswith("FUND-")))
+    and all(.allocations[]; .fundCode as $code | any($snapshot.funds[]; .fundCode == $code))
   ' <<<"$CIM_GENERATED_PAYLOAD" >/dev/null || {
     printf 'FAIL generated operationPayload violates snapshot allocation contract\n'
     exit 1
@@ -158,6 +159,35 @@ jq -e '[.allocations[].percentage] == [1,99]' <<<"$CIM_NEGATIVE_PAYLOAD" >/dev/n
   printf 'FAIL P1 fallback did not preserve the interval-negative case\n'
   exit 1
 }
+
+snapshot="$(make_snapshot 60 "$one_fund")"
+if cim_generate_valid_payload "$snapshot" 444 >"$tmp/one-fund-impossible.log"; then
+  printf 'FAIL one-fund interval-60 snapshot unexpectedly generated a valid payload\n'
+  exit 1
+fi
+cim_build_snapshot_negative_payload '' 60 "$snapshot" 444
+[[ "$CIM_NEGATIVE_CODE" == err.investment-choice.percentage.interval-invalid \
+  && "$CIM_NEGATIVE_TARGET" == 'allocations[0].percentage' ]] || {
+  printf 'FAIL one-fund interval-60 P1 did not isolate the interval precheck\n'
+  exit 1
+}
+jq -e '.switchSources == ["SRC-A"] and .allocations == [{fundCode:"FUND-A",percentage:100}]' \
+  <<<"$CIM_NEGATIVE_PAYLOAD" >/dev/null || {
+  printf 'FAIL one-fund interval-60 P1 did not use a valid source and exact-total allocation\n'
+  exit 1
+}
+
+no_eligible_sources='[{"switchSourceCode":"SRC-X","switchSource":"Unavailable","sequence":1,"available":false}]'
+snapshot="$(make_snapshot 60 "$funds2" '[]' NORMAL "$no_eligible_sources")"
+if cim_build_snapshot_negative_payload '' 60 "$snapshot" 444; then
+  printf 'FAIL P1 generated a multi-rule negative when interval and source cannot be isolated\n'
+  exit 1
+else
+  [[ "$?" -eq 1 ]] || {
+    printf 'FAIL P1 isolation failure did not return a clear skip status\n'
+    exit 1
+  }
+fi
 
 duplicate_funds="$(make_funds FUND-A FUND-A FUND-B)"
 snapshot="$(make_snapshot 20 "$duplicate_funds")"

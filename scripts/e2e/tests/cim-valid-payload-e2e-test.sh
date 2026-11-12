@@ -37,12 +37,13 @@ if [[ "$body_arg" == @/dev/fd/* ]]; then
     exit 97
   }
 else
-  request_body=''
+  request_body="$body_arg"
 fi
 token=''
 if [[ "$headers" =~ X-Password-Validation-Token:\ ([^$'\r\n']+) ]]; then
   token="${BASH_REMATCH[1]}"
 fi
+eligible_funds='["FUND-A","FUND-B","FUND-C"]'
 
 status=200
 response=''
@@ -63,15 +64,11 @@ case "$method $path" in
     else
       pending='[]'
       [[ ! -s "$FAKE_PENDING" ]] || pending="$(cat "$FAKE_PENDING")"
-      response="$(jq -cn --argjson pending "$pending" '{
+      response="$(jq -cn --argjson pending "$pending" --argjson funds "$eligible_funds" '{
         success:true,status:"SUCCESS",result:{data:{
           accountNumber:"TEST-ACCOUNT",scenario:"NORMAL",intervalPercentage:20,
           switchSources:[{switchSourceCode:"SRC-A",switchSource:"Display A",sequence:1,available:true}],
-          funds:[
-            {fundCode:"FUND-A",fundName:"Fund A",sequence:1,riskLevel:"1"},
-            {fundCode:"FUND-B",fundName:"Fund B",sequence:2,riskLevel:"2"},
-            {fundCode:"FUND-C",fundName:"Fund C",sequence:3,riskLevel:"3"}
-          ],
+          funds:[$funds | to_entries[] | {fundCode:.value,fundName:("Fund "+.value),sequence:(.key+1),riskLevel:"1"}],
           history:[],pendingInstructions:$pending
         }},messages:[],errors:[]
       }')"
@@ -95,6 +92,11 @@ case "$method $path" in
       if ((invalid > 0)); then
         status=422
         response='{"success":false,"status":"VALIDATION_FAILED","result":null,"messages":[],"errors":[{"code":"err.investment-choice.percentage.interval-invalid","targets":["allocations[0].percentage"]}]}'
+      elif jq -e --argjson eligible_funds "$eligible_funds" '
+        [.allocations[].fundCode] | any(.[]; . as $fund | ($eligible_funds | index($fund)) == null)
+      ' <<<"$operation" >/dev/null; then
+        status=422
+        response='{"success":false,"status":"VALIDATION_FAILED","result":null,"messages":[],"errors":[{"code":"err.investment-choice.fund.unavailable","targets":["allocations[0].fundCode"]}]}'
       else
         jq -c '.' <<<"$operation" >"$FAKE_VALID_PAYLOAD"
         response='{"success":true,"status":"SUCCESS","result":{"data":{"token":"fake-cim-token"}},"messages":[],"errors":[]}'
@@ -300,6 +302,42 @@ grep -Fq 'PASS S1 status=200' "$tmp/restricted.log" || {
 }
 grep -Fq 'SKIP P0 reason=snapshot scenario=FUNCTION_UNAVAILABLE' "$tmp/restricted.log" || {
   printf 'FAIL restricted scenario did not produce an explicit P0 SKIP\n'
+  exit 1
+}
+
+mkdir -p "$tmp/fund-unavailable"
+: >"$tmp/fund-unavailable/get-count"
+: >"$tmp/fund-unavailable/valid-payload"
+: >"$tmp/fund-unavailable/valid-cancel-payload"
+: >"$tmp/fund-unavailable/reuse"
+: >"$tmp/fund-unavailable/mutations"
+: >"$tmp/fund-unavailable/diagnostic"
+printf '[]' >"$tmp/fund-unavailable/pending"
+fund_request='{"password":"fake-password-sentinel","purpose":"CHANGE_INVESTMENT_CHOICE","operationPayload":{"switchSources":["SRC-A"],"allocations":[{"fundCode":"FUND-NOT-IN-GET","percentage":40},{"fundCode":"FUND-B","percentage":60}]}}'
+fund_response="$(
+  PATH="$tmp/bin:$PATH" \
+  FAKE_GET_COUNT="$tmp/fund-unavailable/get-count" \
+  FAKE_VALID_PAYLOAD="$tmp/fund-unavailable/valid-payload" \
+  FAKE_VALID_CANCEL_PAYLOAD="$tmp/fund-unavailable/valid-cancel-payload" \
+  FAKE_PENDING="$tmp/fund-unavailable/pending" \
+  FAKE_REUSE="$tmp/fund-unavailable/reuse" \
+  FAKE_MUTATIONS="$tmp/fund-unavailable/mutations" \
+  FAKE_DIAGNOSTIC="$tmp/fund-unavailable/diagnostic" \
+  FAKE_LIVE=no \
+  FAKE_SCENARIO=NORMAL \
+    curl -X POST --data-binary "$fund_request" http://fake.invalid/api/v1/password-validation
+)"
+fund_status="${fund_response##*$'\n'}"
+fund_body="${fund_response%$'\n'*}"
+if [[ "$fund_status" != 422 ]] || ! jq -e '
+    .errors[0].code == "err.investment-choice.fund.unavailable"
+    and .errors[0].targets == ["allocations[0].fundCode"]
+  ' <<<"$fund_body" >/dev/null; then
+  printf 'FAIL fake issuance validator did not reject a fund absent from the GET fixture with HTTP 422\n'
+  exit 1
+fi
+[[ ! -s "$tmp/fund-unavailable/mutations" ]] || {
+  printf 'FAIL unavailable-fund issuance test caused a mutation\n'
   exit 1
 }
 

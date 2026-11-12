@@ -182,7 +182,7 @@ cim_generate_valid_payload() {
 
 cim_build_snapshot_negative_payload() {
   local valid_payload="$1" interval="$2" snapshot="$3" seed="${4:-${CIM_RANDOM_SEED:-}}"
-  local source fund first second unavailable suffix source_json fund_json source_index
+  local source fund first second unavailable suffix source_json fund_json
   local -a valid_funds=() sources=() funds=() remaining_funds=()
 
   CIM_NEGATIVE_PAYLOAD=''
@@ -212,15 +212,11 @@ cim_build_snapshot_negative_payload() {
     mapfile -t funds < <(jq -r '.[]' <<<"$fund_json")
     ((${#funds[@]} > 0)) || return 1
 
-    if ((interval > 1 && ${#funds[@]} >= 2)); then
+    if ((interval > 1 && ${#sources[@]} > 0 && ${#funds[@]} >= 2)); then
       cim_resolve_random_seed "$seed" || return 1
       CIM_NEGATIVE_SEED="$CIM_GENERATED_SEED"
-      if ((${#sources[@]} > 0)); then
-        cim_random_index "${#sources[@]}"
-        source="${sources[$CIM_RANDOM_INDEX]}"
-      else
-        source=CIM-UNAVAILABLE-SOURCE
-      fi
+      cim_random_index "${#sources[@]}"
+      source="${sources[$CIM_RANDOM_INDEX]}"
       remaining_funds=("${funds[@]}")
       for ((index = 0; index < 2; index++)); do
         cim_random_index "${#remaining_funds[@]}"
@@ -232,36 +228,31 @@ cim_build_snapshot_negative_payload() {
         done
         remaining_funds=("${next_funds[@]}")
       done
-    elif ((interval > 1 && 100 % interval != 0)); then
+      first="${valid_funds[0]}"
+      second="${valid_funds[1]}"
+      CIM_NEGATIVE_PAYLOAD="$(
+        jq -cn --arg source "$source" --arg first "$first" --arg second "$second" \
+          '{switchSources:[$source],allocations:[{fundCode:$first,percentage:1},{fundCode:$second,percentage:99}]}'
+      )"
+      CIM_NEGATIVE_CODE=err.investment-choice.percentage.interval-invalid
+      CIM_NEGATIVE_TARGET='allocations[0].percentage'
+      return 0
+    fi
+
+    if ((interval > 1 && 100 % interval != 0)); then
+      ((${#sources[@]} > 0)) || return 1
       cim_resolve_random_seed "$seed" || return 1
       CIM_NEGATIVE_SEED="$CIM_GENERATED_SEED"
-      cim_random_index "${#funds[@]}"
-      valid_funds=("${funds[$CIM_RANDOM_INDEX]}")
-      if ((${#sources[@]} > 0)); then
-        cim_random_index "${#sources[@]}"
-        source="${sources[$CIM_RANDOM_INDEX]}"
-      else
-        source=CIM-UNAVAILABLE-SOURCE
-      fi
-    else
-      cim_resolve_random_seed "$seed" || return 1
-      CIM_NEGATIVE_SEED="$CIM_GENERATED_SEED"
+      cim_random_index "${#sources[@]}"
+      source="${sources[$CIM_RANDOM_INDEX]}"
       cim_random_index "${#funds[@]}"
       fund="${funds[$CIM_RANDOM_INDEX]}"
-      valid_funds=("$fund")
-      unavailable=CIM-UNAVAILABLE-SOURCE
-      suffix=0
-      while jq -e --arg candidate "$unavailable" \
-        '.switchSources | any(.[]; .switchSourceCode == $candidate)' <<<"$snapshot" >/dev/null 2>&1; do
-        suffix=$((suffix + 1))
-        unavailable="CIM-UNAVAILABLE-SOURCE-$suffix"
-      done
       CIM_NEGATIVE_PAYLOAD="$(
-        jq -cn --arg source "$unavailable" --arg fund "$fund" \
+        jq -cn --arg source "$source" --arg fund "$fund" \
           '{switchSources:[$source],allocations:[{fundCode:$fund,percentage:100}]}'
       )"
-      CIM_NEGATIVE_CODE=err.investment-choice.switch-source.unavailable
-      CIM_NEGATIVE_TARGET='switchSources[0]'
+      CIM_NEGATIVE_CODE=err.investment-choice.percentage.interval-invalid
+      CIM_NEGATIVE_TARGET='allocations[0].percentage'
       return 0
     fi
   fi
@@ -279,7 +270,25 @@ cim_build_snapshot_negative_payload() {
     return 0
   fi
 
-  fund="${valid_funds[0]}"
+  if [[ -z "$valid_payload" ]]; then
+    ((100 % interval == 0)) || return 1
+    cim_resolve_random_seed "$seed" || return 1
+    CIM_NEGATIVE_SEED="$CIM_GENERATED_SEED"
+    cim_random_index "${#funds[@]}"
+    fund="${funds[$CIM_RANDOM_INDEX]}"
+  else
+    fund="${valid_funds[0]}"
+    ((100 % interval == 0)) || {
+      CIM_NEGATIVE_PAYLOAD="$(
+        jq -cn --arg source "$source" --arg fund "$fund" \
+          '{switchSources:[$source],allocations:[{fundCode:$fund,percentage:100}]}'
+      )"
+      CIM_NEGATIVE_CODE=err.investment-choice.percentage.interval-invalid
+      CIM_NEGATIVE_TARGET='allocations[0].percentage'
+      return 0
+    }
+  fi
+
   unavailable=CIM-UNAVAILABLE-SOURCE
   suffix=0
   while jq -e --arg candidate "$unavailable" \
