@@ -105,6 +105,48 @@ class StructuredFailureEventLoggerTest {
     verify(sanitizer).toSafeString(any());
   }
 
+  @Test
+  void metadataIntegrityIncidentLogsOneErrorWithoutThrowableOrUnsafeDimensions() {
+    events.publish(
+        new FailureEvent(
+            "investment-choice.retrieval.metadata_integrity",
+            "req-safe",
+            "INVESTMENT_CHOICE",
+            "GetInvestmentChoice",
+            FailureOrigin.DOWNSTREAM_INVALID_RESPONSE,
+            "ALLOCATION_METADATA_MISSING",
+            null,
+            200,
+            false,
+            Map.of(
+                "reason",
+                "ALLOCATION_METADATA_MISSING",
+                "missingSourceReferences",
+                2,
+                "missingFundReferences",
+                1)));
+
+    ILoggingEvent logged = singleEvent();
+    assertThat(logged.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(logged.getThrowableProxy()).isNull();
+    assertThat(logged.getFormattedMessage()).doesNotContain("SOURCE-", "FUND-", "account-ref");
+    verify(sanitizer)
+        .toSafeString(
+            org.mockito.ArgumentMatchers.argThat(
+                value -> {
+                  if (!(value instanceof Map<?, ?> event)) return false;
+                  return "investment-choice.retrieval.metadata_integrity".equals(event.get("event"))
+                      && Map.of(
+                              "reason",
+                              "ALLOCATION_METADATA_MISSING",
+                              "missingSourceReferences",
+                              2,
+                              "missingFundReferences",
+                              1)
+                          .equals(event.get("dimensions"));
+                }));
+  }
+
   @ParameterizedTest
   @MethodSource("originsAndLevels")
   void causeOverloadAddsSanitizedMetadataAndAttachesTraceOnlyAtError(

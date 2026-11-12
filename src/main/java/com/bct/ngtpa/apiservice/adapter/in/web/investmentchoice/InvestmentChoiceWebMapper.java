@@ -64,6 +64,7 @@ public final class InvestmentChoiceWebMapper {
             .toList();
     List<InvestmentChoiceFund> allFunds = orderedFunds(details.historyFunds(), chinese);
     Map<String, String> fundNames = fundNames(allFunds, chinese);
+    Map<String, String> sourceDescriptions = sourceDescriptions(sources);
     Map<String, Integer> sourceSequence = sourceSequence(sources);
     Map<String, Integer> fundOrder = fundOrder(allFunds);
     Comparator<InvestmentChoiceMandate> mandateOrder =
@@ -91,13 +92,14 @@ public final class InvestmentChoiceWebMapper {
                 Comparator.nullsLast(Comparator.naturalOrder()));
 
     List<InvestmentChoiceHistoryResponse> history =
-        history(details.mandates(), fundNames, mandateOrder);
+        history(details.mandates(), fundNames, sourceDescriptions, mandateOrder);
     if (details instanceof InvestmentChoiceDetails.Normal normal) {
       return new InvestmentChoiceNormalDataResponse(
           result.accountNumber(),
           InvestmentChoiceScenario.NORMAL,
           normal.intervalPcnt(),
           sources.stream()
+              .filter(InvestmentChoiceSource::avail)
               .map(
                   source ->
                       new InvestmentChoiceSwitchSourceResponse(
@@ -114,7 +116,7 @@ public final class InvestmentChoiceWebMapper {
                           fund.riskLevel()))
               .toList(),
           history,
-          pending(normal, fundNames, pendingDetailOrder));
+          pending(normal, fundNames, sourceDescriptions, pendingDetailOrder));
     }
     return new InvestmentChoiceRestrictedDataResponse(
         result.accountNumber(), details.scenario(), history);
@@ -140,6 +142,7 @@ public final class InvestmentChoiceWebMapper {
   private static List<InvestmentChoiceHistoryResponse> history(
       List<InvestmentChoiceMandate> mandates,
       Map<String, String> fundNames,
+      Map<String, String> sourceDescriptions,
       Comparator<InvestmentChoiceMandate> allocationOrder) {
     Map<LocalDate, List<InvestmentChoiceMandate>> byDate = new TreeMap<>(Comparator.reverseOrder());
     mandates.forEach(
@@ -158,6 +161,7 @@ public final class InvestmentChoiceWebMapper {
                             mandate ->
                                 new InvestmentChoiceAllocationResponse(
                                     mandate.switchSource(),
+                                    sourceDescriptions.get(mandate.switchSource()),
                                     mandate.fundCode(),
                                     fundNames.get(mandate.fundCode()),
                                     mandate.percentage()))
@@ -168,6 +172,7 @@ public final class InvestmentChoiceWebMapper {
   private static List<InvestmentChoicePendingInstructionResponse> pending(
       InvestmentChoiceDetails.Normal details,
       Map<String, String> fundNames,
+      Map<String, String> sourceDescriptions,
       Comparator<InvestmentChoicePendingDetail> allocationOrder) {
     return details.pending().stream()
         .sorted(
@@ -186,6 +191,7 @@ public final class InvestmentChoiceWebMapper {
                             detail ->
                                 new InvestmentChoicePendingAllocationResponse(
                                     detail.switchSource(),
+                                    sourceDescriptions.get(detail.switchSource()),
                                     detail.fundCode(),
                                     fundNames.get(detail.fundCode()),
                                     detail.percentage()))
@@ -209,6 +215,12 @@ public final class InvestmentChoiceWebMapper {
     Map<String, String> names = new HashMap<>();
     funds.forEach(fund -> names.putIfAbsent(fund.code(), displayName(fund, chinese)));
     return names;
+  }
+
+  private static Map<String, String> sourceDescriptions(List<InvestmentChoiceSource> sources) {
+    Map<String, String> descriptions = new HashMap<>();
+    sources.forEach(source -> descriptions.putIfAbsent(source.code(), source.description()));
+    return descriptions;
   }
 
   private static Map<String, Integer> sourceSequence(List<InvestmentChoiceSource> sources) {

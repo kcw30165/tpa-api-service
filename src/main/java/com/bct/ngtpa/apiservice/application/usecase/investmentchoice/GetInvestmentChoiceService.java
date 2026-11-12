@@ -3,9 +3,14 @@ package com.bct.ngtpa.apiservice.application.usecase.investmentchoice;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.GetInvestmentChoiceCommand;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetails;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceDetailsCommand;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceFund;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceMandate;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePending;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoicePendingDetail;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceResult;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceScenario;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSnapshotState;
+import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSource;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
@@ -14,14 +19,20 @@ import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceDetailsPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.service.account.AccountIdentifierFormatter;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import reactor.core.publisher.Mono;
 
 public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseCase {
 
   private static final String RETRIEVAL_PUBLIC_CODE = "err.investment-choice.retrieval.unavailable";
   private static final String IDENTIFIER_INVALID = "ACCOUNT_IDENTIFIER_INVALID";
+  private static final String METADATA_INTEGRITY_EVENT =
+      "investment-choice.retrieval.metadata_integrity";
+  private static final String ALLOCATION_METADATA_MISSING = "ALLOCATION_METADATA_MISSING";
 
   private final ReferenceDatePort referenceDatePort;
   private final InvestmentChoiceDetailsPort detailsPort;
@@ -84,7 +95,12 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
             : snapshotCache
                 .writeRestrictedState(command.sessionId(), state, command.requestId())
                 .onErrorMap(error -> InvestmentChoiceDetailsRetrievalException.systemFailure());
-    return write.thenReturn(new InvestmentChoiceResult(accountNumber, details));
+    return write.then(
+        Mono.fromSupplier(
+            () -> {
+              publishMetadataIntegrityFailure(command, details);
+              return new InvestmentChoiceResult(accountNumber, details);
+            }));
   }
 
   private void publishIdentifierFailure(GetInvestmentChoiceCommand command) {
@@ -105,4 +121,77 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
       // Telemetry must not change the retrieval outcome.
     }
   }
+
+  private void publishMetadataIntegrityFailure(
+      GetInvestmentChoiceCommand command, InvestmentChoiceDetails details) {
+    MetadataIntegrityCounts counts = metadataIntegrityCounts(details);
+    if (counts.missingSourceReferences() == 0 && counts.missingFundReferences() == 0) {
+      return;
+    }
+    try {
+      failures.publish(
+          new FailureEvent(
+              METADATA_INTEGRITY_EVENT,
+              command.requestId(),
+              "INVESTMENT_CHOICE",
+              "GetInvestmentChoice",
+              FailureOrigin.DOWNSTREAM_INVALID_RESPONSE,
+              ALLOCATION_METADATA_MISSING,
+              null,
+              200,
+              false,
+              Map.of(
+                  "reason",
+                  ALLOCATION_METADATA_MISSING,
+                  "missingSourceReferences",
+                  counts.missingSourceReferences(),
+                  "missingFundReferences",
+                  counts.missingFundReferences())));
+    } catch (RuntimeException ignored) {
+      // Telemetry must not change the successful retrieval outcome.
+    }
+  }
+
+  private static MetadataIntegrityCounts metadataIntegrityCounts(InvestmentChoiceDetails details) {
+    Map<String, String> sourceDescriptions = new HashMap<>();
+    for (InvestmentChoiceSource source : details.historySources()) {
+      sourceDescriptions.putIfAbsent(source.code(), source.description());
+    }
+    Set<String> fundCodes = new HashSet<>();
+    Set<String> fundsWithoutName = new HashSet<>();
+    for (InvestmentChoiceFund fund : details.historyFunds()) {
+      fundCodes.add(fund.code());
+      if (fund.name() == null) {
+        fundsWithoutName.add(fund.code());
+      }
+    }
+
+    int missingSources = 0;
+    int missingFunds = 0;
+    for (InvestmentChoiceMandate mandate : details.mandates()) {
+      if (sourceDescriptions.get(mandate.switchSource()) == null) {
+        missingSources++;
+      }
+      if (!fundCodes.contains(mandate.fundCode())
+          || fundsWithoutName.contains(mandate.fundCode())) {
+        missingFunds++;
+      }
+    }
+    if (details instanceof InvestmentChoiceDetails.Normal normal) {
+      for (InvestmentChoicePending pending : normal.pending()) {
+        for (InvestmentChoicePendingDetail allocation : pending.details()) {
+          if (sourceDescriptions.get(allocation.switchSource()) == null) {
+            missingSources++;
+          }
+          if (!fundCodes.contains(allocation.fundCode())
+              || fundsWithoutName.contains(allocation.fundCode())) {
+            missingFunds++;
+          }
+        }
+      }
+    }
+    return new MetadataIntegrityCounts(missingSources, missingFunds);
+  }
+
+  private record MetadataIntegrityCounts(int missingSourceReferences, int missingFundReferences) {}
 }

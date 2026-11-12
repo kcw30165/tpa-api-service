@@ -73,7 +73,7 @@ No query parameters.
         {
           "effectiveDate": "01/02/2019",
           "allocations": [
-            { "switchSource": "BO", "fundCode": "DGLE", "fundName": "BlackRock Global Equity Fund", "percentage": "100" }
+            { "switchSourceCode": "BO", "switchSource": "Employer and Member Voluntary Contributions", "fundCode": "DGLE", "fundName": "BlackRock Global Equity Fund", "percentage": "100" }
           ]
         }
       ],
@@ -83,7 +83,7 @@ No query parameters.
           "submitDate": "05/11/2026",
           "submitTime": "17:04:21",
           "allocations": [
-            { "switchSource": "BO", "fundCode": "DGLE", "fundName": "BlackRock Global Equity Fund", "percentage": 100 }
+            { "switchSourceCode": "BO", "switchSource": "Employer and Member Voluntary Contributions", "fundCode": "DGLE", "fundName": "BlackRock Global Equity Fund", "percentage": 100 }
           ]
         }
       ]
@@ -98,12 +98,13 @@ No query parameters.
 |---|---|
 | `accountNumber` | `AccountIdentifierFormatter.format(policyNo, certNo)` |
 | `intervalPercentage` | `interval-pcnt` verbatim, integer 1..100. Frontend decides dropdown vs manual entry |
-| `switchSources` | every `SwitchSrc` (Progress omits HIDDEN), sorted by `seq` ascending then code. `switchSourceCode` = `switch-src`; `switchSource` = `src-desc`; `sequence` = `seq`; `available` = `avail-sw` verbatim (true = editable, false = read-only; D-37) |
+| `switchSources` | available `SwitchSrc` entries only (Progress omits HIDDEN), sorted by `seq` ascending then code. `switchSourceCode` = `switch-src`; `switchSource` = `src-desc`; `sequence` = `seq`; `available` = `avail-sw` verbatim (true = editable; false = omitted; D-37). The complete source metadata remains available internally for history and pending allocation enrichment |
 | `funds` | `SwitchFund` with `avail-sw = true` only, ordered per 01 section 7. `sequence` = `fund-seq`; `riskLevel` raw downstream string, null when absent |
-| `history` | `InvestMandate` grouped by `effect-date`, groups latest first; rows ordered by switch-source `seq`, then fund order. `percentage` is the downstream **string**, verbatim |
+| `history` | `InvestMandate` grouped by `effect-date`, groups latest first; rows ordered by switch-source `seq`, then fund order. Each allocation returns `switchSourceCode` from `switch-src`, `switchSource` from matching `SwitchSrc.src-desc`, original `fundCode`, resolved `fundName`, and `percentage` as the downstream **string**, verbatim |
 | `history[].allocations[].fundName` | resolved from the **full** `SwitchFund` list including `avail-sw = false` |
-| `pendingInstructions` | `PendingReq` joined to `PendingReqDtl` by `ref-no`, latest `submitDate`+`submitTime` first; `percentage` is an **integer** |
-| switch-source description | `src-desc` is returned as `switchSource`; `src-chin-desc` is not returned |
+| `pendingInstructions` | `PendingReq` joined to `PendingReqDtl` by `ref-no`, latest `submitDate`+`submitTime` first; each allocation uses the same source-code/description and fund-code/name mapping as history; `percentage` is an **integer** |
+| Missing allocation metadata | Preserve each allocation and its original source/fund codes; missing source description or fund name is `null`. Missing referenced source descriptions and fund names are aggregated into one `investment-choice.retrieval.metadata_integrity` incident per GET (`DOWNSTREAM_INVALID_RESPONSE`, ERROR level); dimensions contain only fixed reason labels and missing-reference counts. The incident is non-fatal and the GET remains HTTP 200 `SUCCESS` |
+| switch-source description | `src-desc` is returned as top-level `switchSource` and enriches history/pending `switchSource`; `src-chin-desc` is not returned |
 
 `history` and `pendingInstructions` may be empty arrays.
 

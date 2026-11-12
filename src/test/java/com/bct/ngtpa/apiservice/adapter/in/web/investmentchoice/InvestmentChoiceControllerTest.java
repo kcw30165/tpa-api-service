@@ -248,6 +248,79 @@ class InvestmentChoiceControllerTest {
   }
 
   @Test
+  void missingAllocationMetadataReturnsSuccessfulGetWithCodesAndNullNames() {
+    InvestmentChoiceDetails details =
+        new InvestmentChoiceDetails.Normal(
+            5,
+            List.of(new InvestmentChoiceSource("SRC-LOCKED", "Locked source", 1, false)),
+            List.of(),
+            List.of(
+                new InvestmentChoiceMandate(
+                    LocalDate.of(2026, 10, 1), "SRC-MISSING", "FUND-MISSING", "100")),
+            List.of(
+                new InvestmentChoicePending(
+                    "REF-1",
+                    LocalDate.of(2026, 10, 2),
+                    LocalTime.of(14, 30, 5),
+                    List.of(
+                        new InvestmentChoicePendingDetail("SRC-LOCKED", "FUND-MISSING", 100)))));
+    WebTestClient client =
+        client(
+            command -> Mono.just(new InvestmentChoiceResult("formatted-account", details)),
+            context("ACC-1"),
+            exchange -> Optional.of(SESSION_ID));
+
+    client
+        .get()
+        .uri(ROUTE)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .json(
+            """
+            {
+              "success": true,
+              "status": "SUCCESS",
+              "result": {
+                "data": {
+                  "accountNumber": "formatted-account",
+                  "scenario": "NORMAL",
+                  "intervalPercentage": 5,
+                  "switchSources": [],
+                  "funds": [],
+                  "history": [{
+                    "effectiveDate": "01/10/2026",
+                    "allocations": [{
+                      "switchSourceCode": "SRC-MISSING",
+                      "switchSource": null,
+                      "fundCode": "FUND-MISSING",
+                      "fundName": null,
+                      "percentage": "100"
+                    }]
+                  }],
+                  "pendingInstructions": [{
+                    "referenceNo": "REF-1",
+                    "submitDate": "02/10/2026",
+                    "submitTime": "14:30:05",
+                    "allocations": [{
+                      "switchSourceCode": "SRC-LOCKED",
+                      "switchSource": "Locked source",
+                      "fundCode": "FUND-MISSING",
+                      "fundName": null,
+                      "percentage": 100
+                    }]
+                  }]
+                }
+              },
+              "messages": [],
+              "errors": []
+            }
+            """,
+            JsonCompareMode.STRICT);
+  }
+
+  @Test
   void responseDoesNotContainRawContextIdentifiers() {
     PortalAccessContext sensitiveContext =
         new PortalAccessContext(
