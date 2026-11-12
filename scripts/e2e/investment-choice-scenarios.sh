@@ -2,6 +2,8 @@
 set +x
 set -Eeuo pipefail
 umask 077
+# shellcheck source=scripts/e2e/lib/cim-password.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/lib/cim-password.sh"
 
 # CIM curl scenarios. Configuration is environment-only:
 #   BASE_URL                    BFF base URL, e.g. https://host (no trailing slash)
@@ -9,6 +11,7 @@ umask 077
 #   CSRF_TOKEN                  authenticated X-XSRF-TOKEN value
 #   ACCOUNT_REF                 selected member Account-Ref
 #   CIM_PASSWORD                test member's password (required only for CIM_USE_PASSWORD=yes)
+#   LOGIN_TEST_PASSWORD         fallback when CIM_PASSWORD is not provided
 #   Test member                  must have an editable switch source and at least two available funds
 # Optional:
 #   ACCEPT_LANGUAGE             defaults to en
@@ -147,7 +150,7 @@ read_secret_if_missing SESSION_COOKIE 'Authenticated portal_sid cookie: '
 read_secret_if_missing CSRF_TOKEN 'Authenticated X-XSRF-TOKEN: '
 read_secret_if_missing ACCOUNT_REF 'Selected Account-Ref: '
 if [[ "$USE_PASSWORD" == yes ]]; then
-  read_secret_if_missing CIM_PASSWORD 'Test member password: '
+  acquire_cim_password
 fi
 
 for value in "$SESSION_COOKIE" "$CSRF_TOKEN" "$ACCOUNT_REF" "$CIM_PASSWORD" "$ACCEPT_LANGUAGE"; do
