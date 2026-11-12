@@ -20,7 +20,7 @@ run_post_login_orchestrator() {
     for feature_name in "${feature_names[@]}"; do feature_statuses+=(NOT_RUN); done
   fi
 
-  orchestrator_cleanup
+  if ! orchestrator_cleanup; then overall_rc=1; fi
   printf 'LOGIN: %s\n' "$login_status"
   for feature_name in "${!feature_names[@]}"; do
     printf 'FEATURE %s: %s\n' "${feature_names[$feature_name]}" "${feature_statuses[$feature_name]}"

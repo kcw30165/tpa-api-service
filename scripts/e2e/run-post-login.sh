@@ -11,7 +11,12 @@ source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/feature-pack-registry.sh"
 source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/post-login-orchestrator.sh"
 orchestrator_login(){ authenticated_login_journey; }
 orchestrator_logout(){ authenticated_logout_journey; }
-orchestrator_cleanup(){ destroy_private_runtime_state; unset PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF; }
+orchestrator_cleanup(){
+ local cleanup_rc=0
+ destroy_private_runtime_state || cleanup_rc=$?
+ unset PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF
+ return "$cleanup_rc"
+}
 defensive_post_login_cleanup(){ orchestrator_cleanup; }
 collect_feature_names(){
  local configured="$1" resolved name
@@ -45,7 +50,7 @@ post_login_main(){
  trap defensive_post_login_cleanup EXIT INT TERM
  run_post_login_orchestrator "${names[@]}"
  local rc=$?
- trap - EXIT INT TERM
+ [[ -z "${E2E_PRIVATE_STATE_DIR:-}" ]] && trap - EXIT INT TERM
  return "$rc"
 }
 [[ "${1:-}" == --library-only ]]||post_login_main
