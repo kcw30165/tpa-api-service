@@ -22,6 +22,22 @@ acquire_login_otp() {
   printf '%s\n' "$otp_code"
 }
 
+publish_authenticated_http_state() {
+  local portal_cookie authenticated_csrf account_ref
+  portal_cookie="$(read_private_value portal_cookie 2>/dev/null)" || return 1
+  authenticated_csrf="$(read_private_value authenticated_csrf 2>/dev/null)" || return 1
+  account_ref="$(read_private_value selected_account_ref 2>/dev/null)" || return 1
+  [[ -n "$portal_cookie" && -n "$authenticated_csrf" && -n "$account_ref" ]] || {
+    printf 'FAIL authenticated state is incomplete\n' >&2
+    return 1
+  }
+  PORTAL_SESSION_COOKIE_VALUE="$portal_cookie"
+  XSRF_TOKEN="$authenticated_csrf"
+  ACCOUNT_REF="$account_ref"
+  unset AUTH_FLOW_COOKIE_VALUE
+  export PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF
+}
+
 authenticated_login_journey() {
   local rc=0 cookie csrf destination_id otp_code request_body metrics curl_rc
   local raw_headers raw_body request_id idempotency_key portal_cookie authenticated_csrf account_count account_index account_ref
@@ -59,6 +75,7 @@ authenticated_login_journey() {
   account_ref="$(select_first_account_ref "$raw_body")" || return 1
   [[ -n "$portal_cookie" && -n "$authenticated_csrf" && -n "$account_ref" ]] || return 1
   write_private_value portal_cookie "$portal_cookie"; write_private_value authenticated_csrf "$authenticated_csrf"; write_private_value selected_account_ref "$account_ref"
+  publish_authenticated_http_state || return 1
   printf 'next_step=SELECT_ACCOUNT\naccount_count=%s\nselected_account_index=%s\nportal_cookie_issued=yes\n' "$account_count" "$account_index" >"$E2E_RUN_EVIDENCE_DIR/017-authenticated-transition-summary.txt"
   printf 'login_start_attempts=1\notp_send_attempts=1\notp_verify_attempts=1\nautomatic_retries=0\n' >"$E2E_RUN_EVIDENCE_DIR/018-external-effect-summary.txt"
 }
