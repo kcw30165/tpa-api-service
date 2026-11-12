@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContextAttributeNames;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
@@ -13,6 +14,7 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
+import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CreateAuthFlowSessionCsrfCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFlowSessionWithConcurrencyCommand;
@@ -86,25 +88,29 @@ public final class ForgotPasswordStartProtectedOperation {
   public Mono<StartForgotPasswordResult> execute(StartForgotPasswordCommand command) {
     Objects.requireNonNull(command, "command must not be null");
     String normalizedUsername = normalizeUsername(command.username());
-    return lookupPort
-        .lookup(
-            new StartForgotPasswordUsernameLookupCommand(
-                normalizedUsername, command.correlationId(), command.actorUserRole()))
+    return Mono.defer(
+            () ->
+                lookupPort.lookup(
+                    new StartForgotPasswordUsernameLookupCommand(
+                        normalizedUsername, command.correlationId(), command.actorUserRole())))
         .flatMap(
             result ->
                 switch (result.status()) {
                   case CONFIRMED -> createStartedResult(command, normalizedUsername, result);
                   case NOT_FOUND -> Mono.just(notFound());
-                  case SYSTEM_FAILED -> Mono.just(systemFailed());
+                  case SYSTEM_FAILED ->
+                      Mono.just(
+                          technicalFailure(
+                              command,
+                              result.failureOrigin(),
+                              "username-lookup"));
                 })
         .onErrorResume(
+            Exception.class,
             error -> {
-              LOGGER.error(
-                  "event=forgot-password.start.failed requestId={} stage=username-lookup exceptionType={}",
-                  command.correlationId(),
-                  error.getClass().getName(),
-                  error);
-              return Mono.just(systemFailed());
+              return Mono.just(
+                  technicalFailure(
+                      command, FailureOrigin.DOWNSTREAM_TECHNICAL, "username-lookup"));
             });
   }
 
@@ -123,64 +129,77 @@ public final class ForgotPasswordStartProtectedOperation {
       StartForgotPasswordCommand command,
       String normalizedUsername,
       ForgotPasswordUsernameLookupResult lookupResult) {
-    String publicIdentityType = publicIdentityType(lookupResult.identityType());
-    var protectedContext =
-        contextProtector.protect(
-            ForgotPasswordAuthFlowContext.started(
-                lookupResult.customerId(),
-                lookupResult.userId(),
-                publicIdentityType,
-                WORKFLOW_VERSION));
-    Map<String, String> attributes = new LinkedHashMap<>();
-    attributes.put(
-        ForgotPasswordAuthFlowContextAttributeNames.CONTEXT_CIPHERTEXT,
-        protectedContext.ciphertext());
-    attributes.put(
-        ForgotPasswordAuthFlowContextAttributeNames.CONTEXT_KEY_VERSION,
-        protectedContext.keyVersion());
-    attributes.put(
-        ForgotPasswordAuthFlowContextAttributeNames.CONTEXT_ALGORITHM,
-        protectedContext.algorithm());
-    var sessionCommand =
-        new StartAuthFlowSessionWithConcurrencyCommand(
-            AuthFlowScenario.FORGOT_PASSWORD,
-            AuthFlowStatus.STARTED,
-            sessionTtlPolicy,
-            sessionIdPrefix,
-            sessionIdEntropyBytes,
-            new AuthFlowSessionData(null, null, attributes),
-            null,
-            null,
-            authFlowSessionId(command.existingAuthFlowSessionId()),
-            concurrencyPolicy,
-            command.correlationId());
-    return concurrencyService
-        .start(sessionCommand)
-        .flatMap(
-            started ->
-                csrfUseCase
-                    .createForSession(
-                        new CreateAuthFlowSessionCsrfCommand(
-                            started.session().authFlowSessionId(),
-                            Instant.now(clock),
-                            started.expiresInSeconds(),
-                            command.correlationId()))
-                    .map(
-                        csrf ->
-                            success(
-                                publicIdentityType,
-                                started.session().authFlowSessionId().value(),
-                                csrf.rawToken())))
+    return Mono.defer(
+            () -> {
+              String publicIdentityType = publicIdentityType(lookupResult.identityType());
+              var protectedContext =
+                  contextProtector.protect(
+                      ForgotPasswordAuthFlowContext.started(
+                          lookupResult.customerId(),
+                          lookupResult.userId(),
+                          publicIdentityType,
+                          WORKFLOW_VERSION));
+              Map<String, String> attributes = new LinkedHashMap<>();
+              attributes.put(
+                  ForgotPasswordAuthFlowContextAttributeNames.CONTEXT_CIPHERTEXT,
+                  protectedContext.ciphertext());
+              attributes.put(
+                  ForgotPasswordAuthFlowContextAttributeNames.CONTEXT_KEY_VERSION,
+                  protectedContext.keyVersion());
+              attributes.put(
+                  ForgotPasswordAuthFlowContextAttributeNames.CONTEXT_ALGORITHM,
+                  protectedContext.algorithm());
+              var sessionCommand =
+                  new StartAuthFlowSessionWithConcurrencyCommand(
+                      AuthFlowScenario.FORGOT_PASSWORD,
+                      AuthFlowStatus.STARTED,
+                      sessionTtlPolicy,
+                      sessionIdPrefix,
+                      sessionIdEntropyBytes,
+                      new AuthFlowSessionData(null, null, attributes),
+                      null,
+                      null,
+                      authFlowSessionId(command.existingAuthFlowSessionId()),
+                      concurrencyPolicy,
+                      command.correlationId());
+              return concurrencyService
+                  .start(sessionCommand)
+                  .flatMap(
+                      started ->
+                          csrfUseCase
+                              .createForSession(
+                                  new CreateAuthFlowSessionCsrfCommand(
+                                      started.session().authFlowSessionId(),
+                                      Instant.now(clock),
+                                      started.expiresInSeconds(),
+                                      command.correlationId()))
+                              .map(
+                                  csrf ->
+                                      success(
+                                          publicIdentityType,
+                                          started.session().authFlowSessionId().value(),
+                                          csrf.rawToken())));
+            })
         .onErrorResume(
-            error -> {
-              LOGGER.error(
-                  "event=forgot-password.start.failed requestId={} stage=session-replacement-or-csrf exceptionType={}",
-                  command.correlationId(),
-                  error.getClass().getName(),
-                  error);
-              return Mono.just(
-                  isSessionReplacementConflict(error) ? authFlowInvalid() : systemFailed());
-            });
+            Exception.class,
+            error ->
+                Mono.just(
+                    isSessionReplacementConflict(error)
+                        ? authFlowInvalid()
+                        : technicalFailure(
+                            command,
+                            FailureOrigin.LOCAL_SYSTEM,
+                            "session-replacement-or-csrf")));
+  }
+
+  private StartForgotPasswordResult technicalFailure(
+      StartForgotPasswordCommand command, FailureOrigin origin, String stage) {
+    LOGGER.error(
+        "event=forgot-password.start.failed classification={} stage={} requestId={}",
+        origin == null ? FailureOrigin.DOWNSTREAM_TECHNICAL : origin,
+        stage,
+        RequestIdLogSanitizer.sanitize(command.correlationId()));
+    return systemFailed();
   }
 
   private StartForgotPasswordResult success(

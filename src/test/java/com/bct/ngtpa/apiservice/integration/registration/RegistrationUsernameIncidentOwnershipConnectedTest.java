@@ -1393,7 +1393,8 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
   }
 
   @Test
-  void legacyForgotPasswordCallerRetainsApimObserverErrorOwnership() throws IOException {
+  void forgotPasswordStartLookupUsesTerminalCallerAndLowerObserversRemainWarnings()
+      throws IOException {
     String requestId = "r1c-legacy-forgot-password-request";
     String username = "r1c-legacy-user1!";
     String marker = "r1c-legacy-response-private-marker";
@@ -1408,46 +1409,47 @@ class RegistrationUsernameIncidentOwnershipConnectedTest {
                     new StartForgotPasswordUsernameLookupCommand(
                         username, requestId, ActorUserRole.ROLE_USER_MBR))
                 .contextWrite(Context.of(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId)))
-        .expectError()
-        .verify();
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(
+                        com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start
+                            .ForgotPasswordUsernameLookupStatus.SYSTEM_FAILED))
+        .verifyComplete();
 
     List<ILoggingEvent> requestEvents = applicationEvents.eventsFrom(startIndex);
     if (Boolean.getBoolean("r1c.evidence")) {
       writeEventTable("legacy-forgot-password", requestEvents);
     }
-    // The seven-argument request constructor defaults to ALLOW_RECOVERY/APIM_OBSERVER; this
-    // caller sets SAFE_BUSINESS_CALL and the facade allows three attempts (ApimProperties).
+    // The Start lookup keeps its retry policy; terminal ownership only lowers observer severity.
     assertThat(scenarioExchange.calls()).isEqualTo(3);
     List<ILoggingEvent> errors = errorEvents(requestEvents);
-    assertThat(errors).hasSize(5);
-    assertThat(errors)
+    assertThat(errors).isEmpty();
+    assertThat(requestEvents)
         .filteredOn(event -> event.getLoggerName().equals(ApimWebClientFacade.class.getName()))
-        .hasSize(3);
-    assertThat(errors)
+        .filteredOn(event -> event.getLevel() == Level.WARN)
+        .hasSize(5);
+    assertThat(requestEvents)
         .filteredOn(
             event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+        .filteredOn(event -> event.getLevel() == Level.WARN)
         .singleElement()
         .satisfies(
             event ->
                 assertThat(event.getFormattedMessage())
                     .contains("\"event\":\"apim.exchange.failed\""));
-    assertThat(errors)
+    assertThat(requestEvents)
         .filteredOn(
             event ->
                 event
                     .getLoggerName()
                     .equals(ApimForgotPasswordUsernameLookupAdapter.class.getName()))
+        .filteredOn(event -> event.getLevel() == Level.WARN)
         .singleElement()
         .satisfies(
             event ->
                 assertThat(event.getFormattedMessage())
                     .contains("event=forgot-password.username-lookup.failed"));
-    assertThat(requestEvents)
-        .filteredOn(
-            event ->
-                event.getLoggerName().equals(ApimWebClientFacade.class.getName())
-                    && event.getLevel() == Level.WARN)
-        .hasSize(2);
     assertThat(requestEvents)
         .noneMatch(
             event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""));

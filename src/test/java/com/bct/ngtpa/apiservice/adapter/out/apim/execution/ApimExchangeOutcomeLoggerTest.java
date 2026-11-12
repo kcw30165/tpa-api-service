@@ -178,13 +178,18 @@ class ApimExchangeOutcomeLoggerTest {
   @Test
   void terminalOwnedExchangeFailureLogsWarnWithoutThrowableOrMessage() {
     String marker = "R1A-TERMINAL-THROWABLE-MARKER";
-    outcomeLogger.logExchangeFailure(terminalRequest(), new IllegalStateException(marker), "req-t");
+    outcomeLogger.logExchangeFailure(
+        terminalRequest(), new IllegalStateException(marker), "req-t\nprivate");
     assertThat(appender.list).hasSize(1);
     ILoggingEvent event = appender.list.get(0);
     assertThat(event.getLevel()).isEqualTo(Level.WARN);
     assertThat(event.getFormattedMessage())
-        .contains("apim.exchange.failed")
-        .doesNotContain(marker, "errorMessage");
+        .contains(
+            "apim.exchange.failed",
+            "req-t?private",
+            "IllegalStateException",
+            PATH)
+        .doesNotContain(marker, "errorMessage", "req-t\nprivate");
     assertThat(event.getThrowableProxy()).isNull();
   }
 
@@ -193,7 +198,7 @@ class ApimExchangeOutcomeLoggerTest {
     outcomeLogger.logSuccessOutcome(terminalRequest(), envelope("", null), "req-t");
     assertThat(appender.list).hasSize(1);
     assertThat(appender.list.get(0).getLevel()).isEqualTo(Level.WARN);
-    assertThat(appender.list.get(0).getFormattedMessage()).contains("apim.contract.invalid");
+    assertThat(appender.list.get(0).getFormattedMessage()).contains("apim.contract.invalid", PATH);
   }
 
   @Test
@@ -202,7 +207,10 @@ class ApimExchangeOutcomeLoggerTest {
         terminalRequest(), envelope("err.tpa.wrong.password", List.of()), "req-t");
     assertThat(appender.list).hasSize(1);
     assertThat(appender.list.get(0).getLevel()).isEqualTo(Level.WARN);
-    assertThat(appender.list.get(0).getFormattedMessage()).contains("apim.business.rejected");
+    assertThat(appender.list.get(0).getFormattedMessage())
+        .contains("apim.business.rejected")
+        .contains(PATH)
+        .doesNotContain("err.tpa.wrong.password");
   }
 
   private ApimExchangeRequest<String, String> terminalRequest() {

@@ -61,9 +61,7 @@ public final class IdempotentStartForgotPasswordService implements StartForgotPa
         .flatMap(
             result ->
                 result.status() == StartForgotPasswordResultStatus.SYSTEM_FAILED
-                    ? Mono.error(
-                        new IllegalStateException(
-                            "Forgot Password Start protected operation failed"))
+                    ? Mono.error(new ForgotPasswordStartTechnicalFailure())
                     : Mono.just(responses.toTransientResponse(result)));
   }
 

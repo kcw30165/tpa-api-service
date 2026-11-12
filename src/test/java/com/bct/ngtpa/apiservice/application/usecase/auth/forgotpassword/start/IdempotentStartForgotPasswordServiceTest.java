@@ -104,7 +104,7 @@ class IdempotentStartForgotPasswordServiceTest {
     when(f.operation.execute(any()))
         .thenReturn(Mono.just(result(StartForgotPasswordResultStatus.SYSTEM_FAILED)));
     StepVerifier.create(f.service.start(command()))
-        .expectErrorMessage("Forgot Password Start protected operation failed")
+        .expectError(ForgotPasswordStartTechnicalFailure.class)
         .verify();
     verify(f.responses, never()).toTransientResponse(any());
   }

@@ -19,6 +19,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.Forgot
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
@@ -36,6 +37,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResultStatus;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordStartTechnicalFailure;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import java.time.Duration;
 import java.util.Map;
@@ -48,6 +50,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -82,7 +85,8 @@ public final class ForgotPasswordController {
               String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage,
           @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (!hasText(idempotencyKey)) {
       return Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.missingIdempotencyKey()));
@@ -107,9 +111,14 @@ public final class ForgotPasswordController {
                     startMapper.toMutationResponse(result, acceptLanguage));
               })
           .onErrorResume(
-              exception ->
-                  Mono.just(
-                      ForgotPasswordHttpResponses.toResponse(startMapper.systemUnavailable())));
+              exception -> {
+                var responseEntity =
+                    ForgotPasswordHttpResponses.toResponse(startMapper.systemUnavailable());
+                if (exception instanceof ForgotPasswordStartTechnicalFailure) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return Mono.just(responseEntity);
+              });
     } catch (RuntimeException exception) {
       return Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.invalidRequest()));
     }

@@ -6,6 +6,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
@@ -31,14 +35,35 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class ForgotPasswordStartProtectedOperationTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-09-06T15:00:00Z"), ZoneOffset.UTC);
+
+  private Logger operationLogger;
+  private ListAppender<ILoggingEvent> listAppender;
+
+  @BeforeEach
+  void attachAppender() {
+    operationLogger =
+        (Logger) LoggerFactory.getLogger(ForgotPasswordStartProtectedOperation.class);
+    listAppender = new ListAppender<>();
+    listAppender.start();
+    operationLogger.addAppender(listAppender);
+  }
+
+  @AfterEach
+  void detachAppender() {
+    operationLogger.detachAppender(listAppender);
+    listAppender.stop();
+  }
 
   @Test
   void freshSuccessPreservesNormalizedIdentityContextSessionAndActorRole() {
@@ -128,6 +153,41 @@ class ForgotPasswordStartProtectedOperationTest {
     assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
     assertThat(result.authFlowSessionId()).isNull();
     assertThat(result.csrfToken()).isNull();
+    assertThat(listAppender.list)
+        .noneMatch(event -> event.getLevel() == Level.ERROR);
+  }
+
+  @Test
+  void terminalTechnicalFailureLogsOneSanitizedIncidentWithoutThrowableOrIdentity() {
+    String marker = "R1-PRIVATE-THROWABLE-MARKER";
+    Fixture fixture = new Fixture();
+    when(fixture.lookup.lookup(any())).thenReturn(Mono.error(new IllegalStateException(marker)));
+
+    var result = fixture.operation.execute(command(null)).block();
+
+    assertThat(result.status()).isEqualTo(StartForgotPasswordResultStatus.SYSTEM_FAILED);
+    assertThat(listAppender.list)
+        .filteredOn(event -> event.getLevel() == Level.ERROR)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getFormattedMessage())
+                  .contains("forgot-password.start.failed", "req-1")
+                  .doesNotContain(marker, "member01", "cust-db01", "tas-user-01");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+  }
+
+  @Test
+  void recognizedBusinessRejectionDoesNotEmitTechnicalIncident() {
+    Fixture fixture = new Fixture();
+    when(fixture.lookup.lookup(any()))
+        .thenReturn(Mono.just(ForgotPasswordUsernameLookupResult.notFound()));
+
+    var result = fixture.operation.execute(command(null)).block();
+
+    assertThat(result.status()).isEqualTo(StartForgotPasswordResultStatus.USERNAME_NOT_FOUND);
+    assertThat(listAppender.list).noneMatch(event -> event.getLevel() == Level.ERROR);
   }
 
   private static StartForgotPasswordCommand command(String existing) {

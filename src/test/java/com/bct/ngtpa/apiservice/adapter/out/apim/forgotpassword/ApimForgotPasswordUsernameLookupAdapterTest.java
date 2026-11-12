@@ -11,18 +11,26 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.SharedApimTrpChkCustIdTransport;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordUsernameLookupStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordUsernameLookupCommand;
+import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper.TrpChkCustIdForgotPasswordResultMapper;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -62,7 +70,8 @@ class ApimForgotPasswordUsernameLookupAdapterTest {
     assertThat(request.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
     assertThat(request.credentialContext().accountEnv()).isNull();
     assertThat(request.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
-    assertThat(request.incidentOwnership()).isEqualTo(ApimIncidentOwnership.APIM_OBSERVER);
+    assertThat(request.resubmissionPolicy()).isEqualTo(ApimResubmissionPolicy.ALLOW_RECOVERY);
+    assertThat(request.incidentOwnership()).isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
   }
 
   @Test
@@ -85,16 +94,81 @@ class ApimForgotPasswordUsernameLookupAdapterTest {
   }
 
   @Test
-  void malformedEnvelopeStillFailsAtFeatureBoundary() {
+  void malformedEnvelopeBecomesAClassifiedTechnicalLookupResult() {
     when(executor.postEnvelope(any()))
         .thenAnswer(invocation -> Mono.just(envelope(null, List.of())));
     StepVerifier.create(
             adapter.lookup(
                 new StartForgotPasswordUsernameLookupCommand(
                     "member01", "req-3", ActorUserRole.ROLE_USER_MBR)))
-        .expectErrorSatisfies(
-            error -> assertThat(error.getMessage()).contains("invalid/malformed response"))
-        .verify();
+        .assertNext(
+            result ->
+                assertThat(result)
+                    .satisfies(
+                        lookupResult -> {
+                          assertThat(lookupResult.status())
+                              .isEqualTo(ForgotPasswordUsernameLookupStatus.SYSTEM_FAILED);
+                          assertThat(lookupResult.failureOrigin())
+                              .isEqualTo(FailureOrigin.DOWNSTREAM_CONTRACT);
+                        }))
+        .verifyComplete();
+  }
+
+  @Test
+  void transportFailureBecomesTechnicalLookupResultForTheTerminalOwner() {
+    when(executor.postEnvelope(any()))
+        .thenAnswer(
+            invocation ->
+                Mono.error(new java.net.ConnectException("private transport marker")));
+    StepVerifier.create(
+            adapter.lookup(
+                new StartForgotPasswordUsernameLookupCommand(
+                    "member01", "req-4", ActorUserRole.ROLE_USER_MBR)))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(ForgotPasswordUsernameLookupStatus.SYSTEM_FAILED);
+              assertThat(result.failureOrigin()).isEqualTo(FailureOrigin.DOWNSTREAM_TRANSPORT);
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void unknownDownstreamErrorIsNotIncludedInMapperDiagnostics() {
+    String marker = "R1-RAW-DOWNSTREAM-ERROR-MARKER";
+    Logger logger =
+        (Logger) LoggerFactory.getLogger(TrpChkCustIdForgotPasswordResultMapper.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      when(executor.postEnvelope(any()))
+          .thenAnswer(invocation -> Mono.just(envelope(marker, null)));
+
+      StepVerifier.create(
+              adapter.lookup(
+                  new StartForgotPasswordUsernameLookupCommand(
+                      "member01", "req-5", ActorUserRole.ROLE_USER_MBR)))
+          .assertNext(
+              result -> {
+                assertThat(result.status())
+                    .isEqualTo(ForgotPasswordUsernameLookupStatus.SYSTEM_FAILED);
+                assertThat(result.failureOrigin()).isEqualTo(FailureOrigin.DOWNSTREAM_CONTRACT);
+              })
+          .verifyComplete();
+
+      assertThat(appender.list)
+          .filteredOn(event -> event.getLevel() == Level.WARN)
+          .singleElement()
+          .satisfies(
+              event ->
+                  assertThat(event.getFormattedMessage())
+                      .contains("UNRECOGNIZED_DOWNSTREAM_ERROR")
+                      .doesNotContain(marker));
+      assertThat(appender.list).noneMatch(event -> event.getLevel() == Level.ERROR);
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
   }
 
   private ApimResponseEnvelope<TrpChkCustIdApimDataItem> envelope(

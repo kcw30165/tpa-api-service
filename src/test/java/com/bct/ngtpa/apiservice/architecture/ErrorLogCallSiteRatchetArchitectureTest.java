@@ -74,14 +74,6 @@ class ErrorLogCallSiteRatchetArchitectureTest {
             + "ApimExchangeOutcomeLogger.java",
         1);
     map.put(
-        "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/"
-            + "ApimForgotPasswordUsernameLookupAdapter.java",
-        1);
-    map.put(
-        "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/mapper/"
-            + "TrpChkCustIdForgotPasswordResultMapper.java",
-        3);
-    map.put(
         "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/fundfactsheet/"
             + "ApimFundFactSheetSourceAdapter.java",
         3);
@@ -112,7 +104,7 @@ class ErrorLogCallSiteRatchetArchitectureTest {
     map.put(
         "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/start/"
             + "ForgotPasswordStartProtectedOperation.java",
-        2);
+        1);
     map.put(
         "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/resend/"
             + "LoginOtpResendService.java",

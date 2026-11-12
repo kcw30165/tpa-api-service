@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.Forgot
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordDetailsOtpWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
@@ -23,7 +24,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
-import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -50,7 +52,10 @@ class AuthForgotPasswordControllerTest {
             new AuthFlowCookieWriter(
                 new AuthFlowCookieProperties(
                     "auth_flow_sid", "/api/v1/auth", Duration.ofSeconds(900), true, true, "None")));
-    var response = new MockServerHttpResponse();
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/forgot-password/start").build());
+    var response = exchange.getResponse();
 
     StepVerifier.create(
             controller.startForgotPassword(
@@ -59,10 +64,12 @@ class AuthForgotPasswordControllerTest {
                 "req-1",
                 "en",
                 null,
-                response))
+                response,
+                exchange))
         .assertNext(
             entity -> {
               assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
+              assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isFalse();
               assertThat(entity.getBody().result().data().csrfToken()).isEqualTo("csrf_secret");
               assertThat(entity.getBody().result().data().csrfToken()).isNotBlank();
               assertThat(
@@ -100,7 +107,10 @@ class AuthForgotPasswordControllerTest {
                             "err.forgotpassword.username.notFound", "username", null)),
                     null));
     var controller = controller(useCase, AuthFlowCookieWriter.defaultWriter());
-    var response = new MockServerHttpResponse();
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/forgot-password/start").build());
+    var response = exchange.getResponse();
 
     StepVerifier.create(
             controller.startForgotPassword(
@@ -109,10 +119,12 @@ class AuthForgotPasswordControllerTest {
                 "req-1",
                 "en",
                 null,
-                response))
+                response,
+                exchange))
         .assertNext(
             entity -> {
               assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+              assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isFalse();
               assertThat(entity.getBody().status())
                   .isEqualTo(
                       com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus.BUSINESS_REJECTED);
@@ -142,7 +154,10 @@ class AuthForgotPasswordControllerTest {
                             ForgotPasswordErrorKey.AUTH_FLOW_INVALID.value(), "PAGE", null)),
                     null));
     var controller = controller(useCase, AuthFlowCookieWriter.defaultWriter());
-    var response = new MockServerHttpResponse();
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/forgot-password/start").build());
+    var response = exchange.getResponse();
 
     StepVerifier.create(
             controller.startForgotPassword(
@@ -151,10 +166,12 @@ class AuthForgotPasswordControllerTest {
                 "req-1",
                 "en",
                 "afs-stale",
-                response))
+                response,
+                exchange))
         .assertNext(
             entity -> {
               assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+              assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isFalse();
               assertThat(entity.getBody().result().nextStep())
                   .isEqualTo(WorkflowNextStep.RESTART_FLOW);
               assertThat(entity.getBody().errors())

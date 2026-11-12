@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.execution;
 
+import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -77,7 +78,12 @@ public class ApimExchangeOutcomeLogger {
       String eventName, ApimExchangeRequest<?, ?> request, String requestId) {
     Map<String, Object> event = new LinkedHashMap<>();
     event.put("event", eventName);
-    if (requestId != null) {
+    if (request.incidentOwnership() == ApimIncidentOwnership.TERMINAL_CALLER) {
+      String safeRequestId = RequestIdLogSanitizer.sanitize(requestId);
+      if (safeRequestId != null) {
+        event.put("requestId", safeRequestId);
+      }
+    } else if (requestId != null) {
       event.put("requestId", requestId);
     }
     event.put("path", request.path());
