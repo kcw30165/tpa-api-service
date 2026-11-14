@@ -59,6 +59,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.Id
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.StructuredFailureEventLogger;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
@@ -100,6 +101,7 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
 
   private Logger adapterLogger;
   private Logger operationLogger;
+  private Logger failureEventLogger;
   private Logger requestLogger;
   private ListAppender<ILoggingEvent> listAppender;
 
@@ -111,6 +113,8 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
     adapterLogger.addAppender(listAppender);
     operationLogger = (Logger) LoggerFactory.getLogger(ForgotPasswordStartProtectedOperation.class);
     operationLogger.addAppender(listAppender);
+    failureEventLogger = (Logger) LoggerFactory.getLogger(StructuredFailureEventLogger.class);
+    failureEventLogger.addAppender(listAppender);
     requestLogger = (Logger) LoggerFactory.getLogger(RequestLoggingWebFilter.class);
     requestLogger.addAppender(listAppender);
   }
@@ -119,6 +123,7 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
   void tearDown() {
     adapterLogger.detachAppender(listAppender);
     operationLogger.detachAppender(listAppender);
+    failureEventLogger.detachAppender(listAppender);
     requestLogger.detachAppender(listAppender);
     listAppender.stop();
   }
@@ -126,8 +131,9 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
   /**
    * Scenario 1: {@link ApimExchangeExecutor} fails (simulated APIM transport failure) during
    * username lookup. Real chain: the adapter's diagnostic observation is WARN and maps the error
-   * to a technical result; {@code ForgotPasswordStartProtectedOperation.execute} logs the single
-   * terminal {@code event=forgot-password.start.failed} and returns a {@code SYSTEM_FAILED} result (confirmed,
+   * to a technical result; {@code ForgotPasswordStartProtectedOperation.execute} publishes the
+   * single terminal {@code event=forgot-password.start.failed} and returns a
+   * {@code SYSTEM_FAILED} result (confirmed,
    * ForgotPasswordStartProtectedOperation.java); {@code IdempotentStartForgotPasswordService
    * .executeAcquired} sees {@code SYSTEM_FAILED} and converts it to a typed technical failure; the real {@link DefaultIdempotencyExecutor}, on
    * first acquisition with a failing supplier, propagates that error (mirrors the committed {@code
@@ -157,6 +163,9 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
         new ApimForgotPasswordUsernameLookupAdapter(
             executor, Map.of("GPFS", MemberIdentityType.GPFS));
 
+    var failureEvents =
+        new StructuredFailureEventLogger(
+            new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(new MaskingProperties())));
     var operation =
         new ForgotPasswordStartProtectedOperation(
             lookupAdapter,
@@ -172,7 +181,8 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
             true,
             true,
             false,
-            Map.of("GPFS", MemberIdentityType.GPFS));
+            Map.of("GPFS", MemberIdentityType.GPFS),
+            failureEvents);
 
     var json = new JacksonTransientJsonAdapter(OBJECT_MAPPER);
     var envelope = new ActionTaggedIdempotencyResponseEnvelope(json);
@@ -239,23 +249,32 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
         .contains("forgot-password.username-lookup.failed")
         .doesNotContain("APIM connection reset", "member1");
     assertThat(adapterEvent.getThrowableProxy()).isNull();
-    ILoggingEvent operationEvent =
-        listAppender.list.stream()
-            .filter(
-                event ->
-                    event
-                        .getLoggerName()
-                        .equals(ForgotPasswordStartProtectedOperation.class.getName()))
-            .findFirst()
-            .orElseThrow();
-    assertThat(operationEvent.getLevel()).isEqualTo(Level.ERROR);
-    assertThat(operationEvent.getFormattedMessage())
-        .contains(
-            "forgot-password.start.failed",
-            "classification=DOWNSTREAM_TRANSPORT",
-            "stage=username-lookup")
-        .doesNotContain("APIM connection reset", "member1");
-    assertThat(operationEvent.getThrowableProxy()).isNull();
+    assertThat(
+            listAppender.list.stream()
+                .filter(
+                    event ->
+                        event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+                .filter(event -> event.getLevel() == Level.ERROR))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getFormattedMessage())
+                  .contains(
+                      "forgot-password.start.failed",
+                      "\"failureOrigin\":\"DOWNSTREAM_TRANSPORT\"",
+                      "\"stage\":\"username-lookup\"")
+                  .doesNotContain("APIM connection reset", "member1");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertThat(
+            listAppender.list.stream()
+                .filter(
+                    event ->
+                        event
+                            .getLoggerName()
+                            .equals(ForgotPasswordStartProtectedOperation.class.getName()))
+                .filter(event -> event.getLevel() == Level.ERROR))
+        .isEmpty();
     ILoggingEvent accessEvent =
         listAppender.list.stream()
             .filter(

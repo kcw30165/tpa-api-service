@@ -27,6 +27,7 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLock
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordCompletionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBindingPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
@@ -102,7 +103,8 @@ public class ForgotPasswordApplicationConfig {
       ObjectMapper objectMapper,
       AuthWorkflowProperties workflows,
       AuthFlowSessionProperties sessionProperties,
-      Map<String, MemberIdentityType> forgotPasswordTasIdentityTypeMapping) {
+      Map<String, MemberIdentityType> forgotPasswordTasIdentityTypeMapping,
+      FailureEventPort failureEventPort) {
     workflows.validateForgotPasswordPolicy();
     var scenario = sessionProperties.getScenarios().getForgotPassword();
     var forgotPassword = workflows.getForgotPassword();
@@ -124,7 +126,8 @@ public class ForgotPasswordApplicationConfig {
             forgotPassword.getUsername().isTrim(),
             forgotPassword.getUsername().isCaseInsensitive(),
             "ASCII_LOWERCASE".equalsIgnoreCase(forgotPassword.getUsername().getNormalization()),
-            forgotPasswordTasIdentityTypeMapping);
+            forgotPasswordTasIdentityTypeMapping,
+            failureEventPort);
     var json = new JacksonTransientJsonAdapter(objectMapper);
     var codec =
         new ForgotPasswordStartReplayCodec(

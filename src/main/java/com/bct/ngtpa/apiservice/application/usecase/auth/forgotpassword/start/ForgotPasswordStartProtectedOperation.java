@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContextAttributeNames;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
@@ -10,9 +11,11 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenari
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
 import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
@@ -25,14 +28,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 /** START business workflow without idempotency reservation or persistence responsibility. */
 public final class ForgotPasswordStartProtectedOperation {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ForgotPasswordStartProtectedOperation.class);
+  private static final String FAILURE_EVENT = "forgot-password.start.failed";
   private static final String WORKFLOW_VERSION = "v1";
   private static final String ERROR_USERNAME_NOT_FOUND = "err.forgotpassword.username.notFound";
   private static final String ERROR_SYSTEM_UNAVAILABLE = "err.forgotpassword.system.unavailable";
@@ -41,6 +41,7 @@ public final class ForgotPasswordStartProtectedOperation {
   private final ForgotPasswordAuthFlowContextProtectorPort contextProtector;
   private final AuthFlowSessionConcurrencyService concurrencyService;
   private final CreateAuthFlowSessionCsrfUseCase csrfUseCase;
+  private final FailureEventPort failureEventPort;
   private final Clock clock;
   private final SessionTtlPolicy sessionTtlPolicy;
   private final SessionConcurrencyPolicy concurrencyPolicy;
@@ -64,13 +65,16 @@ public final class ForgotPasswordStartProtectedOperation {
       boolean trimUsername,
       boolean caseInsensitiveUsername,
       boolean asciiLowercase,
-      Map<String, MemberIdentityType> tasIdentityTypeMapping) {
+      Map<String, MemberIdentityType> tasIdentityTypeMapping,
+      FailureEventPort failureEventPort) {
     this.lookupPort = Objects.requireNonNull(lookupPort, "lookupPort must not be null");
     this.contextProtector =
         Objects.requireNonNull(contextProtector, "contextProtector must not be null");
     this.concurrencyService =
         Objects.requireNonNull(concurrencyService, "concurrencyService must not be null");
     this.csrfUseCase = Objects.requireNonNull(csrfUseCase, "csrfUseCase must not be null");
+    this.failureEventPort =
+        Objects.requireNonNull(failureEventPort, "failureEventPort must not be null");
     this.clock = Objects.requireNonNull(clock, "clock must not be null");
     this.sessionTtlPolicy =
         Objects.requireNonNull(sessionTtlPolicy, "sessionTtlPolicy must not be null");
@@ -110,7 +114,7 @@ public final class ForgotPasswordStartProtectedOperation {
             error -> {
               return Mono.just(
                   technicalFailure(
-                      command, FailureOrigin.DOWNSTREAM_TECHNICAL, "username-lookup"));
+                        command, FailureOrigin.LOCAL_SYSTEM, "username-lookup"));
             });
   }
 
@@ -194,12 +198,29 @@ public final class ForgotPasswordStartProtectedOperation {
 
   private StartForgotPasswordResult technicalFailure(
       StartForgotPasswordCommand command, FailureOrigin origin, String stage) {
-    LOGGER.error(
-        "event=forgot-password.start.failed classification={} stage={} requestId={}",
-        origin == null ? FailureOrigin.DOWNSTREAM_TECHNICAL : origin,
-        stage,
-        RequestIdLogSanitizer.sanitize(command.correlationId()));
+    failureEventPort.publish(
+        new FailureEvent(
+            FAILURE_EVENT,
+            RequestIdLogSanitizer.sanitize(command.correlationId()),
+            "FORGOT_PASSWORD",
+            "ForgotPasswordStart",
+            terminalOrigin(origin),
+            "START_TECHNICAL_FAILURE",
+            SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(),
+            503,
+            false,
+            Map.of("stage", stage)));
     return systemFailed();
+  }
+
+  private FailureOrigin terminalOrigin(FailureOrigin origin) {
+    if (origin == FailureOrigin.DOWNSTREAM_CONTRACT
+        || origin == FailureOrigin.DOWNSTREAM_INVALID_RESPONSE
+        || origin == FailureOrigin.DOWNSTREAM_TRANSPORT
+        || origin == FailureOrigin.LOCAL_SYSTEM) {
+      return origin;
+    }
+    return FailureOrigin.LOCAL_SYSTEM;
   }
 
   private StartForgotPasswordResult success(

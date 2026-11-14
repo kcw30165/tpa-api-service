@@ -102,10 +102,6 @@ class ErrorLogCallSiteRatchetArchitectureTest {
             + "resend/IdempotentResendForgotPasswordOtpService.java",
         1);
     map.put(
-        "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/start/"
-            + "ForgotPasswordStartProtectedOperation.java",
-        1);
-    map.put(
         "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/resend/"
             + "LoginOtpResendService.java",
         1);
