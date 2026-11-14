@@ -314,3 +314,25 @@ mode-0600 JSON recovery record in the user-configured mode-0700 recovery
 directory. Credentials and authentication tokens are never placed in that
 record; the reference is included only when known, and is never emitted to
 general output or evidence.
+
+The separate existing-instruction cancellation option is
+`CIM_LIVE_CANCEL_PENDING=yes` with
+`CIM_CONFIRM_LIVE_PENDING_CANCEL=I-UNDERSTAND-THIS-CANCELS-AN-EXISTING-INSTRUCTION`.
+It is mutually exclusive with the submit lifecycle and requires the same
+password opt-in and protected recovery directory. It selects only the first
+reference in the initial authenticated GET snapshot, obtains a fresh
+`CANCEL_INVESTMENT_CHOICE` token bound to that exact reference, sends one
+cancel request, and performs a final GET. The final GET must satisfy the
+documented response shape and no longer list that reference as pending.
+Cancellation failure or an unverifiable final state writes a mode-0600 JSON
+recovery record in the owned mode-0700 recovery directory; no credentials or
+tokens are included, and the reference is never printed.
+
+The public GET pending-instruction contract has no explicit cancellability
+field. The harness therefore cannot identify a later cancellable item without
+probing/canceling other references. It makes one attempt against the first
+snapshot reference and stops on `cancel.not-cancellable`; it never substitutes
+another item. The submit lifecycle remains separate and rejects any initial
+pending instruction. Its generated live payload requires three distinct GET-
+eligible funds and three positive, interval-compliant percentages totaling
+100.

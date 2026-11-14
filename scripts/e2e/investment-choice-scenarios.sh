@@ -20,6 +20,8 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/lib/cim-valid-payload.sh"
 #   CIM_USE_PASSWORD=yes        enable password-validation scenarios using the S1 snapshot
 #   CIM_LIVE_SUBMIT=yes         enable live submit/cancel using the P0 token and a live cancel token
 #   CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA
+#   CIM_LIVE_CANCEL_PENDING=yes enable one separately authorized existing-instruction cancellation
+#   CIM_CONFIRM_LIVE_PENDING_CANCEL=I-UNDERSTAND-THIS-CANCELS-AN-EXISTING-INSTRUCTION
 #   CIM_RECOVERY_DIR            existing private directory (mode 0700) for incomplete live cleanup records
 #   CIM_DRY_RUN=yes             list planned scenarios/commands without network access
 #
@@ -43,6 +45,7 @@ ACCOUNT_REF="${ACCOUNT_REF:-}"
 CIM_PASSWORD="${CIM_PASSWORD:-}"
 USE_PASSWORD="${CIM_USE_PASSWORD:-no}"
 LIVE_SUBMIT="${CIM_LIVE_SUBMIT:-no}"
+LIVE_CANCEL_PENDING="${CIM_LIVE_CANCEL_PENDING:-no}"
 RECOVERY_DIR="${CIM_RECOVERY_DIR:-}"
 DRY_RUN="${CIM_DRY_RUN:-no}"
 
@@ -59,9 +62,22 @@ if [[ "$LIVE_SUBMIT" == yes && "${CIM_CONFIRM_LIVE_SUBMIT:-}" != I-UNDERSTAND-TH
   printf 'ERROR live submit requires CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA\n' >&2
   exit 2
 fi
-if [[ "$LIVE_SUBMIT" == yes ]]; then
+if [[ "$LIVE_CANCEL_PENDING" == yes && "$USE_PASSWORD" != yes ]]; then
+  printf 'ERROR CIM_LIVE_CANCEL_PENDING=yes requires CIM_USE_PASSWORD=yes\n' >&2
+  exit 2
+fi
+if [[ "$LIVE_CANCEL_PENDING" == yes \
+  && "${CIM_CONFIRM_LIVE_PENDING_CANCEL:-}" != I-UNDERSTAND-THIS-CANCELS-AN-EXISTING-INSTRUCTION ]]; then
+  printf 'ERROR existing-instruction cancellation requires CIM_CONFIRM_LIVE_PENDING_CANCEL=I-UNDERSTAND-THIS-CANCELS-AN-EXISTING-INSTRUCTION\n' >&2
+  exit 2
+fi
+if [[ "$LIVE_SUBMIT" == yes && "$LIVE_CANCEL_PENDING" == yes ]]; then
+  printf 'ERROR CIM_LIVE_SUBMIT and CIM_LIVE_CANCEL_PENDING must run separately\n' >&2
+  exit 2
+fi
+if [[ "$LIVE_SUBMIT" == yes || "$LIVE_CANCEL_PENDING" == yes ]]; then
   if [[ -z "$RECOVERY_DIR" || "$RECOVERY_DIR" != /* || ! -d "$RECOVERY_DIR" || -L "$RECOVERY_DIR" ]]; then
-    printf 'ERROR live submit requires CIM_RECOVERY_DIR to name an existing private directory\n' >&2
+    printf 'ERROR live mutation requires CIM_RECOVERY_DIR to name an existing private directory\n' >&2
     exit 2
   fi
   recovery_permissions="$(stat -c '%a %u' -- "$RECOVERY_DIR" 2>/dev/null || true)"
@@ -99,9 +115,12 @@ dry_run() {
   printf 'Scenarios: S1 S2 S3 S4 S5 S6 S7 S8 S9'
   [[ "$USE_PASSWORD" == yes ]] && printf ' P0 P1 P2 P3'
   [[ "$LIVE_SUBMIT" == yes ]] && printf ' L1 L2 L3 L4'
+  [[ "$LIVE_CANCEL_PENDING" == yes ]] && printf ' E1 E2'
   printf '\nPassword verification count depends on the snapshot and enabled live path.\n'
   [[ "$USE_PASSWORD" != yes ]] || printf 'CIM_RANDOM_SEED=%s\n' "${CIM_RANDOM_SEED:-<generated>}"
   [[ "$USE_PASSWORD" != yes ]] || printf 'P0 requires a normal snapshot with an eligible source, at least two eligible funds, no pending instruction, and a feasible interval.\n'
+  [[ "$LIVE_SUBMIT" != yes ]] || printf 'Live submit additionally requires three distinct eligible funds and three interval-compliant allocations totaling 100.\n'
+  [[ "$LIVE_CANCEL_PENDING" != yes ]] || printf 'Existing cancellation selects only the first reference in the initial GET snapshot and never falls through to another.\n'
   printf 'Planned curl commands:\n'
   dry_request GET "$DETAILS_PATH" yes none no
   dry_request GET "$DETAILS_PATH" no none no yes yes
@@ -118,6 +137,11 @@ dry_run() {
     dry_request POST "$ISSUE_PATH" yes none yes
     dry_request POST "$ISSUE_PATH" yes none yes
     dry_request POST "$CANCEL_PATH" yes '<issued-token-bound-to-pending-reference>' yes
+  fi
+  if [[ "$LIVE_CANCEL_PENDING" == yes ]]; then
+    dry_request POST "$ISSUE_PATH" yes none yes
+    dry_request POST "$CANCEL_PATH" yes '<fresh-token-bound-to-first-snapshot-reference>' yes
+    dry_request GET "$DETAILS_PATH" yes none no
   fi
   if [[ "$LIVE_SUBMIT" == yes ]]; then
     dry_request POST "$SUBMIT_PATH" yes '<P0-token-bound-to-snapshot-payload>' yes
@@ -185,12 +209,19 @@ SCENARIO=''
 LIVE_REFERENCE_FILE="$WORK_DIR/live-reference.json"
 touch "$LIVE_REFERENCE_FILE"
 chmod 600 "$LIVE_REFERENCE_FILE"
+PENDING_CANCEL_REFERENCE_FILE="$WORK_DIR/pending-cancel-reference.json"
+touch "$PENDING_CANCEL_REFERENCE_FILE"
+chmod 600 "$PENDING_CANCEL_REFERENCE_FILE"
 P3_REFERENCE_FILE="$WORK_DIR/p3-reference.json"
 touch "$P3_REFERENCE_FILE"
 chmod 600 "$P3_REFERENCE_FILE"
 LIVE_SUBMITTED=no
 LIVE_SUBMIT_ATTEMPTED=no
 LIVE_CLEANUP_VERIFIED=no
+PENDING_CANCEL_SELECTED=no
+PENDING_CANCEL_ATTEMPTED=no
+PENDING_CANCEL_VERIFIED=no
+PENDING_CANCEL_OUTCOME=not-attempted
 # shellcheck disable=SC2329 # Invoked indirectly by the EXIT trap.
 on_exit() {
   local result=$?
@@ -223,8 +254,30 @@ on_exit() {
       result=1
     fi
   fi
+  if [[ "$PENDING_CANCEL_SELECTED" == yes && "$PENDING_CANCEL_VERIFIED" != yes ]]; then
+    local pending_recovery_file pending_recovery_written
+    pending_recovery_file="$(mktemp "$RECOVERY_DIR/cim-recovery.XXXXXX" 2>/dev/null || true)"
+    pending_recovery_written=no
+    if [[ -n "$pending_recovery_file" ]] \
+      && jq -cn --arg outcome "$PENDING_CANCEL_OUTCOME" --arg attempted "$PENDING_CANCEL_ATTEMPTED" \
+        --slurpfile reference "$PENDING_CANCEL_REFERENCE_FILE" \
+        '{status:"cleanup-incomplete",operation:"cancel-existing-pending",cancelAttempted:($attempted=="yes"),cancelOutcome:$outcome,referenceNo:$reference[0]}' \
+        >"$pending_recovery_file"; then
+      pending_recovery_written=yes
+    fi
+    if [[ -n "$pending_recovery_file" && "$pending_recovery_written" == yes ]] \
+      && chmod 600 "$pending_recovery_file"; then
+      printf 'CLEANUP INCOMPLETE: private recovery record saved at %s; inspect it through secure local access.\n' "$pending_recovery_file" >&2
+      FAILED=1
+      result=1
+    else
+      [[ -z "$pending_recovery_file" ]] || rm -f -- "$pending_recovery_file"
+      printf 'CLEANUP INCOMPLETE: private recovery record could not be saved; do not retry cancellation automatically.\n' >&2
+      result=1
+    fi
+  fi
   printf 'Summary: passed=%s skipped=%s failed=%s\n' "$PASSED" "$SKIPPED" "$FAILED"
-  rm -f -- "$COOKIE_JAR" "$LIVE_REFERENCE_FILE" "$P3_REFERENCE_FILE"
+  rm -f -- "$COOKIE_JAR" "$LIVE_REFERENCE_FILE" "$PENDING_CANCEL_REFERENCE_FILE" "$P3_REFERENCE_FILE"
   rmdir -- "$WORK_DIR"
   [[ "$result" -eq 0 ]] || exit "$result"
 }
@@ -384,7 +437,7 @@ if [[ "$SNAPSHOT_SCENARIO" == NORMAL ]]; then
   editable_source="$(jq -r '[.switchSources[] | select(.available == true) | .switchSourceCode][0] // empty' <<<"$GET_DATA")"
   fund_count="$(jq -r '[.funds[].fundCode | select(type == "string" and length > 0)] | unique | length' <<<"$GET_DATA")"
   pending_count="$(jq -r '.pendingInstructions | length' <<<"$GET_DATA")"
-  pending_reference="$(jq -r '[.pendingInstructions[].referenceNo | select(type == "string" and length > 0)][0] // empty' <<<"$GET_DATA")"
+  pending_reference="$(jq -r '.pendingInstructions[0].referenceNo // empty' <<<"$GET_DATA")"
 else
   VALID_SKIP_REASON="snapshot scenario=$SNAPSHOT_SCENARIO does not support a normal submission"
   P1_SKIP_REASON="$VALID_SKIP_REASON"
@@ -421,8 +474,23 @@ if [[ "$LIVE_SUBMIT" == yes ]]; then
   [[ "$SNAPSHOT_SCENARIO" == NORMAL ]] || fail_scenario LIVE-preflight 'NORMAL snapshot scenario' "$SNAPSHOT_SCENARIO" ''
   [[ -n "$VALID_BODY" ]] || fail_scenario LIVE-preflight 'submission-safe generated payload' "$VALID_SKIP_REASON" ''
   [[ -n "$editable_source" ]] || fail_scenario LIVE-preflight 'editable switch source' 'none' ''
-  [[ "$fund_count" -ge 2 ]] || fail_scenario LIVE-preflight 'at least two available funds' "$fund_count" ''
+  [[ "$fund_count" -ge 3 ]] || fail_scenario LIVE-preflight 'at least three available funds' "$fund_count" ''
+  ((100 % interval == 0 && 100 / interval >= 3)) \
+    || fail_scenario LIVE-preflight 'interval supports three positive allocations totaling 100' 'ineligible interval' ''
   [[ "$pending_count" == 0 ]] || fail_scenario LIVE-preflight 'no pending instruction' 'pending instruction exists' ''
+  jq -e --argjson interval "$interval" '
+    (.allocations | length) == 3
+    and ([.allocations[].fundCode] | unique | length) == 3
+    and ([.allocations[].percentage] | add) == 100
+    and all(.allocations[]; .percentage > 0 and .percentage % $interval == 0)
+  ' <<<"$VALID_BODY" >/dev/null 2>&1 \
+    || fail_scenario LIVE-preflight 'three distinct eligible funds with interval-valid percentages totaling 100' 'invalid generated payload' ''
+fi
+if [[ "$LIVE_CANCEL_PENDING" == yes ]]; then
+  [[ "$SNAPSHOT_SCENARIO" == NORMAL ]] \
+    || fail_scenario EXISTING-cancel-preflight 'NORMAL snapshot scenario' "$SNAPSHOT_SCENARIO" ''
+  [[ "$pending_count" -gt 0 && -n "$pending_reference" ]] \
+    || fail_scenario EXISTING-cancel-preflight 'first pending reference in authenticated GET snapshot' 'none available' ''
 fi
 ERROR_CODE=''
 pass_scenario S1
@@ -430,9 +498,10 @@ pass_scenario S1
 PASSWORD_ISSUANCES=0
 if [[ "$USE_PASSWORD" == yes ]]; then
   [[ -z "$VALID_SKIP_REASON" ]] && PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
-  [[ "$SNAPSHOT_SCENARIO" != NORMAL || -z "$pending_reference" ]] \
+  [[ "$SNAPSHOT_SCENARIO" != NORMAL || -z "$pending_reference" || "$LIVE_CANCEL_PENDING" == yes ]] \
     || PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
   [[ "$LIVE_SUBMIT" != yes ]] || PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
+  [[ "$LIVE_CANCEL_PENDING" != yes ]] || PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
   printf 'WARNING: every token issuance verifies the password and counts toward the member password-validation throttle.\n'
   printf 'Password verifications this run (snapshot rejections excluded): %s\n' "$PASSWORD_ISSUANCES"
   [[ -z "$VALID_SKIP_REASON" ]] || printf 'P0 will be skipped if reached: %s\n' "$VALID_SKIP_REASON"
@@ -524,13 +593,15 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     assert_error_target referenceNo
   fi
 
-  if [[ "$SNAPSHOT_SCENARIO" != NORMAL || -z "$pending_reference" ]]; then
+  if [[ "$LIVE_CANCEL_PENDING" == yes ]]; then
+    skip_scenario P3 'dedicated existing-instruction cancellation mode uses its own fresh token and one cancel attempt'
+  elif [[ "$SNAPSHOT_SCENARIO" != NORMAL || -z "$pending_reference" ]]; then
     P3_SKIP_REASON='no existing pending instruction is available for a valid cancellation-token binding test'
   fi
-  if [[ -n "$P3_SKIP_REASON" ]]; then
+  if [[ "$LIVE_CANCEL_PENDING" != yes && -n "$P3_SKIP_REASON" ]]; then
     skip_scenario P3 "$P3_SKIP_REASON"
-  else
-    jq -ec '[.pendingInstructions[].referenceNo | select(type == "string" and length > 0)][0]' \
+  elif [[ "$LIVE_CANCEL_PENDING" != yes ]]; then
+    jq -ec '.pendingInstructions[0].referenceNo | select(type == "string" and length > 0)' \
       <<<"$GET_DATA" >"$P3_REFERENCE_FILE" \
       || fail_scenario P3-preflight 'pending instruction reference available privately' "$HTTP_STATUS" "$ERROR_CODE"
     P3_BODY="$(jq -cn --slurpfile reference "$P3_REFERENCE_FILE" '{referenceNo:$reference[0]}')"
@@ -541,6 +612,52 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     REQUEST_BODY="$(jq -cn --arg reference "$P3_WRONG_REFERENCE" '{referenceNo:$reference}')"
     request POST "$CANCEL_PATH" yes "$P3_TOKEN" present
     assert_result P3-body-binding 403 err.password-validation.authorization.invalid
+  fi
+
+  if [[ "$LIVE_CANCEL_PENDING" == yes ]]; then
+    jq -ec '.pendingInstructions[0].referenceNo | select(type == "string" and length > 0)' \
+      <<<"$GET_DATA" >"$PENDING_CANCEL_REFERENCE_FILE" \
+      || fail_scenario EXISTING-cancel-preflight 'first pending reference available privately' "$HTTP_STATUS" "$ERROR_CODE"
+    PENDING_CANCEL_SELECTED=yes
+    PENDING_CANCEL_BODY="$(jq -cn --slurpfile reference "$PENDING_CANCEL_REFERENCE_FILE" '{referenceNo:$reference[0]}')"
+    SCENARIO=E1-issue
+    issue_token CANCEL_INVESTMENT_CHOICE "$PENDING_CANCEL_BODY" "$CIM_PASSWORD" E1-issue
+    PENDING_CANCEL_TOKEN="$TOKEN_VALUE"
+    REQUEST_BODY="$PENDING_CANCEL_BODY"
+    SCENARIO=E2-cancel
+    PENDING_CANCEL_ATTEMPTED=yes
+    PENDING_CANCEL_OUTCOME=unknown
+    request POST "$CANCEL_PATH" yes "$PENDING_CANCEL_TOKEN" present
+    if [[ "$HTTP_STATUS" != 200 ]]; then
+      [[ "$ERROR_CODE" != err.investment-choice.cancel.not-cancellable ]] \
+        || PENDING_CANCEL_OUTCOME=rejected
+      fail_scenario E2-cancel '200/SUCCESS for selected snapshot reference' "$HTTP_STATUS" "$ERROR_CODE"
+    fi
+    jq -e --slurpfile reference "$PENDING_CANCEL_REFERENCE_FILE" '
+      .success == true and .status == "SUCCESS"
+      and .result.data.referenceNo == $reference[0]
+    ' <<<"$RESPONSE_BODY" >/dev/null 2>&1 \
+      || fail_scenario E2-cancel 'SUCCESS with matching selected reference' "$HTTP_STATUS" "$ERROR_CODE"
+    PENDING_CANCEL_OUTCOME=confirmed
+    ERROR_CODE=''
+    pass_scenario E2-cancel
+
+    SCENARIO=E3-get
+    request GET "$DETAILS_PATH" yes none no
+    [[ "$HTTP_STATUS" == 200 ]] || fail_scenario E3-get 200 "$HTTP_STATUS" "$ERROR_CODE"
+    jq -e --slurpfile reference "$PENDING_CANCEL_REFERENCE_FILE" '
+      .success == true and .status == "SUCCESS"
+      and (.result.data.accountNumber | type == "string")
+      and .result.data.scenario == "NORMAL"
+      and (.result.data.history | type == "array")
+      and (.result.data.pendingInstructions | type == "array")
+      and ([.result.data.pendingInstructions[] | select(.referenceNo == $reference[0])] | length == 0)
+    ' <<<"$RESPONSE_BODY" >/dev/null 2>&1 \
+      || fail_scenario E3-get 'selected reference no longer listed as pending' "$HTTP_STATUS" "$ERROR_CODE"
+    PENDING_CANCEL_VERIFIED=yes
+    ERROR_CODE=''
+    printf 'PASS E3-get status=%s code=- reference_state=not-listed\n' "$HTTP_STATUS"
+    PASSED=$((PASSED + 1))
   fi
 
   if [[ "$LIVE_SUBMIT" == yes ]]; then

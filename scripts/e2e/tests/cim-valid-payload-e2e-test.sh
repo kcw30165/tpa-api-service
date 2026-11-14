@@ -18,6 +18,9 @@ FAKE_L2_MODE="${FAKE_L2_MODE:-normal}"
 FAKE_L4_MODE="${FAKE_L4_MODE:-normal}"
 FAKE_SUBMIT_MODE="${FAKE_SUBMIT_MODE:-normal}"
 FAKE_CANCEL_MODE="${FAKE_CANCEL_MODE:-normal}"
+FAKE_INTERVAL="${FAKE_INTERVAL:-20}"
+FAKE_LIVE_CANCEL_PENDING="${FAKE_LIVE_CANCEL_PENDING:-no}"
+FAKE_PENDING_CANCEL_MODE="${FAKE_PENDING_CANCEL_MODE:-normal}"
 FAKE_REFERENCE="${FAKE_REFERENCE:-LIVE-REF-1}"
 method=GET
 url=''
@@ -68,15 +71,21 @@ case "$method $path" in
         4) printf 'LIFECYCLE-GET-3\n' >>"$FAKE_CALLS" ;;
       esac
     fi
+    if [[ "$FAKE_LIVE_CANCEL_PENDING" == yes ]]; then
+      case "$count" in
+        1) printf 'EXISTING-GET-1\n' >>"$FAKE_CALLS" ;;
+        3) printf 'EXISTING-GET-2\n' >>"$FAKE_CALLS" ;;
+      esac
+    fi
     if ((count == 2)); then
       status=401
       response='{"success":false,"status":"ERROR","result":null,"messages":[],"errors":[{"code":"err.security.authentication.required"}]}'
     elif ((count == 3)) && [[ "$FAKE_L2_MODE" == missing || "$FAKE_L2_MODE" == other-first ]]; then
       pending='[]'
       [[ "$FAKE_L2_MODE" != other-first ]] || pending="$(jq -cn --arg ref "$FAKE_REFERENCE" '[{referenceNo:"OTHER-PENDING"},{referenceNo:$ref}]')"
-      response="$(jq -cn --argjson pending "$pending" --argjson funds "$eligible_funds" '{
+      response="$(jq -cn --argjson interval "$FAKE_INTERVAL" --argjson pending "$pending" --argjson funds "$eligible_funds" '{
         success:true,status:"SUCCESS",result:{data:{
-          accountNumber:"TEST-ACCOUNT",scenario:"NORMAL",intervalPercentage:20,
+          accountNumber:"TEST-ACCOUNT",scenario:"NORMAL",intervalPercentage:$interval,
           switchSources:[{switchSourceCode:"SRC-A",switchSource:"Display A",sequence:1,available:true}],
           funds:[$funds | to_entries[] | {fundCode:.value,fundName:("Fund "+.value),sequence:(.key+1),riskLevel:"1"}],
           history:[],pendingInstructions:$pending
@@ -108,6 +117,14 @@ case "$method $path" in
     purpose="$(jq -r '.purpose' <<<"$request_body")"
     printf 'ISSUE-%s\n' "$purpose" >>"$FAKE_CALLS"
     operation="$(jq -c '.operationPayload' <<<"$request_body")"
+    if [[ "$FAKE_LIVE_CANCEL_PENDING" == yes && "$purpose" == CANCEL_INVESTMENT_CHOICE ]]; then
+      issue_count="$(cat "$FAKE_CANCEL_ISSUE_COUNT")"
+      issue_count=$((issue_count + 1))
+      printf '%s' "$issue_count" >"$FAKE_CANCEL_ISSUE_COUNT"
+      if ((issue_count == 1)); then
+        printf 'EXISTING-PV\n' >>"$FAKE_CALLS"
+      fi
+    fi
     if jq -e 'has("unknown")' <<<"$operation" >/dev/null; then
       status=422
       response='{"success":false,"status":"VALIDATION_FAILED","result":null,"messages":[],"errors":[{"code":"err.investment-choice.request.invalid","targets":[] }]}'
@@ -118,7 +135,7 @@ case "$method $path" in
       status=422
       response='{"success":false,"status":"VALIDATION_FAILED","result":null,"messages":[],"errors":[{"code":"err.investment-choice.cancel.ref-required","targets":["referenceNo"]}]}'
     elif [[ "$purpose" == CHANGE_INVESTMENT_CHOICE ]]; then
-      interval=20
+      interval="$FAKE_INTERVAL"
       invalid="$(jq -r --argjson interval "$interval" '[.allocations[].percentage | select(. % $interval != 0)] | length' <<<"$operation")"
       if ((invalid > 0)); then
         status=422
@@ -186,12 +203,27 @@ case "$method $path" in
       cancel_payload="$(jq -c '.' <<<"$request_body")"
       issued_cancel_payload="$(cat "$FAKE_VALID_CANCEL_PAYLOAD")"
       reference="$(jq -r '.referenceNo' <<<"$request_body")"
+      if [[ "$FAKE_LIVE_CANCEL_PENDING" == yes \
+        && "$cancel_payload" == "$issued_cancel_payload" ]]; then
+        printf 'EXISTING-CANCEL-ATTEMPT\n' >>"$FAKE_CALLS"
+      fi
       if [[ "$cancel_payload" != "$issued_cancel_payload" ]]; then
         status=403
         response='{"success":false,"status":"ERROR","result":null,"messages":[],"errors":[{"code":"err.password-validation.authorization.invalid"}]}'
       elif [[ "$FAKE_CANCEL_MODE" == fail ]]; then
         status=500
         response='{"success":false,"status":"ERROR","result":null,"messages":[],"errors":[]}'
+      elif [[ "$FAKE_LIVE_CANCEL_PENDING" == yes \
+        && "$reference" == "$(jq -r '.[0].referenceNo // empty' "$FAKE_PENDING")" ]]; then
+        if [[ "$FAKE_PENDING_CANCEL_MODE" == not-cancellable ]]; then
+          status=422
+          response='{"success":false,"status":"BUSINESS_REJECTED","result":null,"messages":[],"errors":[{"code":"err.investment-choice.cancel.not-cancellable"}]}'
+        else
+          response="$(jq -cn --arg ref "$reference" '{success:true,status:"SUCCESS",result:{data:{referenceNo:$ref}},messages:[],errors:[]}')"
+          printf '[]' >"$FAKE_PENDING"
+          printf 'authorized-existing-cancel\n' >>"$FAKE_MUTATIONS"
+          printf 'EXISTING-CANCEL\n' >>"$FAKE_CALLS"
+        fi
       elif [[ "$FAKE_LIVE" == yes && "$reference" == "$FAKE_REFERENCE" ]]; then
         response="$(jq -cn --arg ref "$FAKE_REFERENCE" '{success:true,status:"SUCCESS",result:{data:{referenceNo:$ref}},messages:[],errors:[]}')"
         [[ "$FAKE_L4_MODE" == present ]] || printf '[]' >"$FAKE_PENDING"
@@ -228,6 +260,8 @@ if [[ "${FAKE_INSIDE_CURL:-no}" != yes ]]; then
   for arg in "$@"; do
     if [[ "$arg" == */p3-reference.json ]]; then
       printf 'p3-reference-mode=%s\n' "$(stat -c '%a' "$arg")" >>"$FAKE_PRIVATE_AUDIT"
+    elif [[ "$arg" == */pending-cancel-reference.json ]]; then
+      printf 'pending-cancel-reference-mode=%s\n' "$(stat -c '%a' "$arg")" >>"$FAKE_PRIVATE_AUDIT"
     fi
   done
 fi
@@ -237,7 +271,7 @@ chmod +x "$tmp/bin/curl"
 chmod +x "$tmp/bin/jq"
 
 run_fake_scenario() {
-  local mode="$1" out="$2" initial_pending="${3:-[]}" expected_failure="${4:-no}" run_name scenario l2_mode l4_mode submit_mode cancel_mode reference run_dir
+  local mode="$1" out="$2" initial_pending="${3:-[]}" expected_failure="${4:-no}" run_name scenario l2_mode l4_mode submit_mode cancel_mode reference pending_cancel_mode pending_cancel_result interval run_dir
   run_name="${5:-$mode}"
   scenario="${6:-NORMAL}"
   l2_mode="${7:-normal}"
@@ -245,12 +279,16 @@ run_fake_scenario() {
   submit_mode="${9:-normal}"
   cancel_mode="${10:-normal}"
   reference="${11:-LIVE-REF-1}"
+  pending_cancel_mode="${12:-no}"
+  pending_cancel_result="${13:-normal}"
+  interval="${14:-20}"
   run_dir="$tmp/$run_name"
   mkdir -p "$run_dir" "$run_dir/recovery"
   mkdir -p "$run_dir/private-tmp"
   chmod 700 "$run_dir/private-tmp"
   chmod 700 "$run_dir/recovery"
   : >"$run_dir/get-count"
+  : >"$run_dir/cancel-issue-count"
   : >"$run_dir/valid-payload"
   : >"$run_dir/valid-cancel-payload"
   printf '%s' "$initial_pending" >"$run_dir/pending"
@@ -271,6 +309,8 @@ run_fake_scenario() {
     CIM_RANDOM_SEED=2468 \
     CIM_LIVE_SUBMIT="$mode" \
     CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA \
+    CIM_LIVE_CANCEL_PENDING="$pending_cancel_mode" \
+    CIM_CONFIRM_LIVE_PENDING_CANCEL=I-UNDERSTAND-THIS-CANCELS-AN-EXISTING-INSTRUCTION \
     CIM_RECOVERY_DIR="$run_dir/recovery" \
     TMPDIR="$run_dir/private-tmp" \
     FAKE_REFERENCE="$reference" \
@@ -284,6 +324,10 @@ run_fake_scenario() {
     FAKE_L4_MODE="$l4_mode" \
     FAKE_SUBMIT_MODE="$submit_mode" \
     FAKE_CANCEL_MODE="$cancel_mode" \
+    FAKE_INTERVAL="$interval" \
+    FAKE_LIVE_CANCEL_PENDING="$pending_cancel_mode" \
+    FAKE_PENDING_CANCEL_MODE="$pending_cancel_result" \
+    FAKE_CANCEL_ISSUE_COUNT="$run_dir/cancel-issue-count" \
     FAKE_GET_COUNT="$run_dir/get-count" \
     FAKE_CALLS="$run_dir/calls" \
     FAKE_VALID_PAYLOAD="$run_dir/valid-payload" \
@@ -364,6 +408,15 @@ grep -Fq 'reference_state=not-listed' "$tmp/live.log" || {
 }
 grep -Fq 'LIVE-REF-1' "$tmp/yes/valid-cancel-payload" || {
   printf 'FAIL cancel issuance was not bound to the reference created by this run\n'
+  exit 1
+}
+jq -e '
+  (.allocations | length) == 3
+  and ([.allocations[].fundCode] | unique | length) == 3
+  and ([.allocations[].percentage] | add) == 100
+  and all(.allocations[]; .percentage > 0 and .percentage % 20 == 0)
+' "$tmp/yes/valid-payload" >/dev/null || {
+  printf 'FAIL live payload did not use three distinct eligible funds with interval-valid percentages totaling 100\n'
   exit 1
 }
 grep -Fq 'LIVE-REF-1' "$tmp/live.log" && {
@@ -540,6 +593,113 @@ fi
   exit 1
 }
 
+run_fake_scenario no "$tmp/existing-cancel.log" \
+  '[{"referenceNo":"PRE-EXISTING","submitDate":"12/11/2026","submitTime":"11:00:00","allocations":[]},{"referenceNo":"SECOND-PENDING","submitDate":"11/11/2026","submitTime":"10:00:00","allocations":[]}]' \
+  no existing-cancel NORMAL normal normal normal normal LIVE-REF-1 yes normal
+expected_existing_calls=$'EXISTING-GET-1\nEXISTING-PV\nEXISTING-CANCEL-ATTEMPT\nEXISTING-CANCEL\nEXISTING-GET-2'
+actual_existing_calls="$(grep '^EXISTING-' "$tmp/existing-cancel/calls" || true)"
+[[ "$actual_existing_calls" == "$expected_existing_calls" ]] || {
+  printf 'FAIL existing-pending cancellation did not follow GET, fresh token, single cancel, GET order\n'
+  exit 1
+}
+[[ "$(wc -l <"$tmp/existing-cancel/mutations")" -eq 1 ]] || {
+  printf 'FAIL existing-pending mode did not perform exactly one cancellation\n'
+  exit 1
+}
+jq -e '.referenceNo == "PRE-EXISTING"' "$tmp/existing-cancel/valid-cancel-payload" >/dev/null || {
+  printf 'FAIL existing-pending mode did not bind cancellation to the first GET reference\n'
+  exit 1
+}
+grep -Fxq 'pending-cancel-reference-mode=600' "$tmp/existing-cancel/private-audit" || {
+  printf 'FAIL existing-pending reference was not supplied from a mode-0600 private file\n'
+  exit 1
+}
+if ! grep -Fq 'PASS E2-cancel status=200' "$tmp/existing-cancel.log" \
+  || ! grep -Fq 'PASS E3-get status=200' "$tmp/existing-cancel.log"; then
+  printf 'FAIL existing-pending cancellation and refreshed GET were not verified\n'
+  exit 1
+fi
+grep -Fq 'SKIP P3 reason=dedicated existing-instruction cancellation mode uses its own fresh token and one cancel attempt' \
+  "$tmp/existing-cancel.log" || {
+  printf 'FAIL standalone P3 flow was not suppressed for the one-shot existing-cancellation lifecycle\n'
+  exit 1
+}
+grep -Fq 'Password verifications this run (snapshot rejections excluded): 1' "$tmp/existing-cancel.log" || {
+  printf 'FAIL existing cancellation mode issued an unexpected additional password verification\n'
+  exit 1
+}
+[[ "$(jq -r 'length' "$tmp/existing-cancel/pending")" == 0 ]] || {
+  printf 'FAIL fake final GET retained the canceled reference\n'
+  exit 1
+}
+grep -Fq 'PRE-EXISTING' "$tmp/existing-cancel.log" && {
+  printf 'FAIL existing pending reference appeared in terminal output\n'
+  exit 1
+}
+[[ ! -s "$tmp/existing-cancel/jq-arg-leaks" ]] || {
+  printf 'FAIL existing pending reference appeared in jq arguments\n'
+  exit 1
+}
+[[ -z "$(find "$tmp/existing-cancel/private-tmp" -mindepth 1 -print -quit)" ]] || {
+  printf 'FAIL existing-pending private reference state was not cleaned up\n'
+  exit 1
+}
+
+run_fake_scenario no "$tmp/existing-not-cancellable.log" \
+  '[{"referenceNo":"PRE-EXISTING","submitDate":"12/11/2026","submitTime":"11:00:00","allocations":[]},{"referenceNo":"SECOND-PENDING","submitDate":"11/11/2026","submitTime":"10:00:00","allocations":[]}]' \
+  yes existing-not-cancellable NORMAL normal normal normal normal LIVE-REF-1 yes not-cancellable
+[[ "$(grep -c '^EXISTING-CANCEL-ATTEMPT$' "$tmp/existing-not-cancellable/calls")" -eq 1 ]] || {
+  printf 'FAIL non-cancellable instruction did not receive exactly one cancellation attempt\n'
+  exit 1
+}
+if grep -q '^EXISTING-CANCEL$' "$tmp/existing-not-cancellable/calls"; then
+  printf 'FAIL a second pending reference was substituted after the first was not cancellable\n'
+  exit 1
+fi
+not_cancellable_recovery="$(find "$tmp/existing-not-cancellable/recovery" -type f -print -quit)"
+[[ -n "$not_cancellable_recovery" && "$(stat -c '%a' "$not_cancellable_recovery")" == 600 ]] || {
+  printf 'FAIL rejected existing cancellation did not preserve protected recovery state\n'
+  exit 1
+}
+[[ "$(stat -c '%a %u' "$tmp/existing-not-cancellable/recovery")" == "700 $(id -u)" \
+  && "$(stat -c '%u' "$not_cancellable_recovery")" == "$(id -u)" ]] || {
+  printf 'FAIL existing-cancellation recovery ownership or directory mode was unsafe\n'
+  exit 1
+}
+jq -e '.operation == "cancel-existing-pending" and .cancelAttempted == true and .referenceNo == "PRE-EXISTING"' \
+  "$not_cancellable_recovery" >/dev/null || {
+  printf 'FAIL rejected existing cancellation recovery record was incomplete\n'
+  exit 1
+}
+grep -Fq 'PRE-EXISTING' "$tmp/existing-not-cancellable.log" && {
+  printf 'FAIL rejected existing reference appeared in terminal output\n'
+  exit 1
+}
+
+run_fake_scenario no "$tmp/existing-cancel-unknown.log" \
+  '[{"referenceNo":"PRE-EXISTING","submitDate":"12/11/2026","submitTime":"11:00:00","allocations":[]}]' \
+  yes existing-cancel-unknown NORMAL normal normal normal fail LIVE-REF-1 yes normal
+[[ "$(grep -c '^EXISTING-CANCEL-ATTEMPT$' "$tmp/existing-cancel-unknown/calls")" -eq 1 ]] || {
+  printf 'FAIL ambiguous existing cancellation was retried or omitted\n'
+  exit 1
+}
+unknown_cancel_recovery="$(find "$tmp/existing-cancel-unknown/recovery" -type f -print -quit)"
+[[ -n "$unknown_cancel_recovery" && "$(stat -c '%a' "$unknown_cancel_recovery")" == 600 ]] || {
+  printf 'FAIL ambiguous existing cancellation did not preserve protected recovery state\n'
+  exit 1
+}
+jq -e '.status == "cleanup-incomplete" and .operation == "cancel-existing-pending" and .cancelAttempted == true and .cancelOutcome == "unknown" and .referenceNo == "PRE-EXISTING"' \
+  "$unknown_cancel_recovery" >/dev/null || {
+  printf 'FAIL ambiguous existing cancellation recovery state was incorrect\n'
+  exit 1
+}
+
+run_fake_scenario yes "$tmp/live-two-funds.log" '[]' yes live-two-funds NORMAL normal normal normal normal LIVE-REF-1 no normal 50
+[[ ! -s "$tmp/live-two-funds/mutations" ]] || {
+  printf 'FAIL live submit proceeded without three interval-compliant fund allocations\n'
+  exit 1
+}
+
 run_fake_scenario no "$tmp/restricted.log" '[]' no restricted FUNCTION_UNAVAILABLE
 grep -Fq 'PASS S1 status=200' "$tmp/restricted.log" || {
   printf 'FAIL restricted GET response was not accepted as a valid S1 contract\n'
@@ -610,6 +770,50 @@ fi
   exit 1
 }
 
+mkdir -p "$tmp/pending-cancel-missing-opt-in"
+: >"$tmp/pending-cancel-missing-opt-in/get-count"
+if PATH="$tmp/bin:$PATH" \
+  CIM_USE_PASSWORD=yes \
+  CIM_LIVE_CANCEL_PENDING=yes \
+  CIM_CONFIRM_LIVE_PENDING_CANCEL='' \
+  FAKE_GET_COUNT="$tmp/pending-cancel-missing-opt-in/get-count" \
+  bash "$SCENARIO" >"$tmp/pending-cancel-missing-opt-in.log" 2>&1; then
+  printf 'FAIL existing-pending cancellation ran without its dedicated confirmation\n'
+  exit 1
+else
+  [[ "$?" -eq 2 ]] || {
+    printf 'FAIL missing existing-cancellation confirmation returned an unexpected status\n'
+    exit 1
+  }
+fi
+[[ ! -s "$tmp/pending-cancel-missing-opt-in/get-count" ]] || {
+  printf 'FAIL a network request occurred before existing-cancellation confirmation\n'
+  exit 1
+}
+
+mkdir -p "$tmp/conflicting-live-modes"
+: >"$tmp/conflicting-live-modes/get-count"
+if PATH="$tmp/bin:$PATH" \
+  CIM_USE_PASSWORD=yes \
+  CIM_LIVE_SUBMIT=yes \
+  CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA \
+  CIM_LIVE_CANCEL_PENDING=yes \
+  CIM_CONFIRM_LIVE_PENDING_CANCEL=I-UNDERSTAND-THIS-CANCELS-AN-EXISTING-INSTRUCTION \
+  FAKE_GET_COUNT="$tmp/conflicting-live-modes/get-count" \
+  bash "$SCENARIO" >"$tmp/conflicting-live-modes.log" 2>&1; then
+  printf 'FAIL mutually exclusive live mutation modes were accepted together\n'
+  exit 1
+else
+  [[ "$?" -eq 2 ]] || {
+    printf 'FAIL conflicting live modes returned an unexpected status\n'
+    exit 1
+  }
+fi
+[[ ! -s "$tmp/conflicting-live-modes/get-count" ]] || {
+  printf 'FAIL a network request occurred with conflicting live modes\n'
+  exit 1
+}
+
 mkdir -p "$tmp/insecure-recovery"
 chmod 755 "$tmp/insecure-recovery"
 : >"$tmp/insecure-recovery/get-count"
@@ -644,7 +848,8 @@ for secret in \
   fake-cancel-token \
   LIVE-REF-1 \
   OTHER-PENDING \
-  PRE-EXISTING; do
+  PRE-EXISTING \
+  SECOND-PENDING; do
   if grep -Fq -- "$secret" "$tmp"/*.log; then
     printf 'FAIL secret appeared in scenario output/evidence\n'
     exit 1
