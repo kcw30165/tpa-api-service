@@ -338,7 +338,8 @@ public final class ForgotPasswordController {
               String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String language,
           @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (!hasText(idempotencyKey)) {
       return Mono.just(
@@ -361,8 +362,17 @@ public final class ForgotPasswordController {
                   clean(requestId),
                   clean(language),
                   idempotencyKey.trim()))
-          .map(otpResendMapper::toMutationResponse)
-          .map(ForgotPasswordHttpResponses::toResponse)
+          .map(
+              result -> {
+                var responseEntity =
+                    ForgotPasswordHttpResponses.toResponse(
+                        otpResendMapper.toMutationResponse(result));
+                if (result.publicationReceipt() != null
+                    && result.publicationReceipt().terminalFailure()) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return responseEntity;
+              })
           .onErrorResume(
               exception ->
                   Mono.just(

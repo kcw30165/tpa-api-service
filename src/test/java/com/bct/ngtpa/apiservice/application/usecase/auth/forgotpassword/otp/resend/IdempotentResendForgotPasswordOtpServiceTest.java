@@ -14,6 +14,9 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOu
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionResult;
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.otpresend.ForgotPasswordOtpResendExecutionBridge;
 import java.time.Duration;
@@ -36,13 +39,112 @@ class IdempotentResendForgotPasswordOtpServiceTest {
       mock(ForgotPasswordOtpResendExecutionBridge.class);
   private final ForgotPasswordIdempotencyIntegrationPolicy policy =
       mock(ForgotPasswordIdempotencyIntegrationPolicy.class);
+  private final FailureEventPort failureEvents = mock(FailureEventPort.class);
   private final Duration ttl = Duration.ofMinutes(5);
 
   private final AuthFlowSessionId sid = new AuthFlowSessionId("afs-idem-resend-1");
 
   private IdempotentResendForgotPasswordOtpService newService() {
     return new IdempotentResendForgotPasswordOtpService(
-        executor, operation, responses, policy, ttl);
+        executor, operation, responses, policy, ttl, failureEvents);
+  }
+
+  @Test
+  void deliveryFailedPublishesCauseFreeLocalSystemIncident() throws Exception {
+    stubPolicyIdentity();
+    ResendForgotPasswordOtpResult failed =
+        new ResendForgotPasswordOtpResult(
+            ResendForgotPasswordOtpStatus.DELIVERY_FAILED, null, null, null, null, null);
+    HydratedIdempotentResponse response = mock(HydratedIdempotentResponse.class);
+    when(operation.execute(any()))
+        .thenReturn(
+            Mono.just(
+                new ForgotPasswordOtpResendProtectedExecutionResult(
+                    failed, null, java.util.List.of(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY))));
+    when(responses.toTransientResponse(failed)).thenReturn(response);
+    when(responses.fromTransientResponse(response)).thenReturn(failed);
+    when(executor.execute(any()))
+        .thenAnswer(
+            invocation -> {
+              IdempotentExecutionCommand execution = invocation.getArgument(0);
+              return execution
+                  .protectedOperation()
+                  .get()
+                  .map(
+                      captured ->
+                          new IdempotentExecutionResult(
+                              IdempotencyReservationOutcome.ACQUIRED, captured));
+            });
+
+    IdempotentResendForgotPasswordOtpService service = serviceWithFailureEvents();
+    StepVerifier.create(service.resend(command()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(failed.status());
+              assertThat(result.publicationReceipt()).isNotNull();
+              assertThat(result.publicationReceipt().terminalFailure()).isTrue();
+            })
+        .verifyComplete();
+
+    ArgumentCaptor<FailureEvent> event = ArgumentCaptor.forClass(FailureEvent.class);
+    org.mockito.Mockito.verify(failureEvents).publish(event.capture());
+    assertThat(event.getValue().event()).isEqualTo("forgot-password.resend.failed");
+    assertThat(event.getValue().capability()).isEqualTo("FORGOT_PASSWORD");
+    assertThat(event.getValue().operation()).isEqualTo("OTP_RESEND");
+    assertThat(event.getValue().origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(event.getValue().internalCode()).isEqualTo("OTP_RESEND_TECHNICAL_FAILURE");
+    assertThat(event.getValue().safeDimensions()).containsEntry("stage", "message-delivery");
+    assertThat(event.getValue().httpStatus()).isEqualTo(503);
+    assertThat(event.getValue().retryable()).isFalse();
+    org.mockito.Mockito.verify(failureEvents, org.mockito.Mockito.never())
+        .publish(any(FailureEvent.class), any(Throwable.class));
+  }
+
+  @Test
+  void unknownDeliveryOutcomePublishesDistinctIncidentWithoutCause() {
+    stubPolicyIdentity();
+    ResendForgotPasswordOtpResult unknown =
+        new ResendForgotPasswordOtpResult(
+            ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null);
+    when(operation.execute(any()))
+        .thenReturn(
+            Mono.just(
+                new ForgotPasswordOtpResendProtectedExecutionResult(
+                    unknown,
+                    null,
+                    java.util.List.of(ForgotPasswordOtpResendIncident.UNKNOWN_DELIVERY))));
+    executeProtectedAsAcquired();
+
+    StepVerifier.create(newService().resend(command()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(result.publicationReceipt().terminalFailure()).isTrue();
+            })
+        .verifyComplete();
+
+    ArgumentCaptor<FailureEvent> event = ArgumentCaptor.forClass(FailureEvent.class);
+    org.mockito.Mockito.verify(failureEvents).publish(event.capture());
+    assertThat(event.getValue().internalCode()).isEqualTo("OTP_RESEND_UNKNOWN_DELIVERY_OUTCOME");
+    assertThat(event.getValue().origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(event.getValue().httpStatus()).isEqualTo(503);
+    org.mockito.Mockito.verify(failureEvents, org.mockito.Mockito.never())
+        .publish(any(FailureEvent.class), any(Throwable.class));
+  }
+
+  private IdempotentResendForgotPasswordOtpService serviceWithFailureEvents()
+      throws ReflectiveOperationException {
+    var constructor =
+        java.util.Arrays.stream(IdempotentResendForgotPasswordOtpService.class.getConstructors())
+            .filter(
+                candidate ->
+                    candidate.getParameterCount() == 6
+                        && candidate.getParameterTypes()[5] == FailureEventPort.class)
+            .findFirst()
+            .orElseThrow(
+                () -> new AssertionError("FailureEventPort constructor has not been added"));
+    return (IdempotentResendForgotPasswordOtpService)
+        constructor.newInstance(executor, operation, responses, policy, ttl, failureEvents);
   }
 
   @Test
@@ -50,7 +152,7 @@ class IdempotentResendForgotPasswordOtpServiceTest {
     assertThatThrownBy(
             () ->
                 new IdempotentResendForgotPasswordOtpService(
-                    executor, operation, responses, policy, Duration.ZERO))
+                    executor, operation, responses, policy, Duration.ZERO, failureEvents))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -82,14 +184,33 @@ class IdempotentResendForgotPasswordOtpServiceTest {
     stubPolicyIdentity();
     ArgumentCaptor<IdempotentExecutionCommand> captor =
         ArgumentCaptor.forClass(IdempotentExecutionCommand.class);
+    HydratedIdempotentResponse response = mock(HydratedIdempotentResponse.class);
     when(executor.execute(captor.capture()))
         .thenReturn(
             Mono.just(
                 new IdempotentExecutionResult(
-                    IdempotencyReservationOutcome.ACQUIRED,
-                    mock(HydratedIdempotentResponse.class))));
+                    IdempotencyReservationOutcome.ACQUIRED, response)));
+    when(responses.fromTransientResponse(response))
+        .thenReturn(
+            new ResendForgotPasswordOtpResult(
+                ResendForgotPasswordOtpStatus.SECURITY_REJECTED, null, null, null, null, null));
     newService().resend(command()).block();
     return captor.getValue();
+  }
+
+  private void executeProtectedAsAcquired() {
+    when(executor.execute(any()))
+        .thenAnswer(
+            invocation -> {
+              IdempotentExecutionCommand execution = invocation.getArgument(0);
+              return execution
+                  .protectedOperation()
+                  .get()
+                  .map(
+                      response ->
+                          new IdempotentExecutionResult(
+                              IdempotencyReservationOutcome.ACQUIRED, response));
+            });
   }
 
   // ----- direct protectedOperation supplier tests (executeAcquired) -----------
@@ -103,7 +224,7 @@ class IdempotentResendForgotPasswordOtpServiceTest {
         .thenReturn(Mono.just(new ForgotPasswordOtpResendProtectedExecutionResult(failed, null)));
     IdempotentExecutionCommand cmd = captureExecutionCommand();
     StepVerifier.create(cmd.protectedOperation().get())
-        .expectError(IllegalStateException.class)
+        .expectError(RuntimeException.class)
         .verify();
   }
 
@@ -136,6 +257,162 @@ class IdempotentResendForgotPasswordOtpServiceTest {
     when(responses.toTransientResponse(securityRejected)).thenReturn(baseResponse);
     IdempotentExecutionCommand cmd = captureExecutionCommand();
     StepVerifier.create(cmd.protectedOperation().get()).expectNext(baseResponse).verifyComplete();
+    org.mockito.Mockito.verifyNoInteractions(failureEvents);
+  }
+
+  @Test
+  void malformedCounterIncidentCarriesNonTerminalReceiptOnAcquiredSuccess() {
+    stubPolicyIdentity();
+    ResendForgotPasswordOtpResult resent =
+        new ResendForgotPasswordOtpResult(
+            ResendForgotPasswordOtpStatus.RESENT, "j***@example.com", 300, 60, 4, null);
+    ProtectedReplayReference reference =
+        new ProtectedReplayReference("replay-ref-1234567890abcd");
+    when(operation.execute(any()))
+        .thenReturn(
+            Mono.just(
+                new ForgotPasswordOtpResendProtectedExecutionResult(
+                    resent,
+                    reference,
+                    java.util.List.of(
+                        ForgotPasswordOtpResendIncident.MALFORMED_RESEND_COUNT))));
+    HydratedIdempotentResponse response = mock(HydratedIdempotentResponse.class);
+    HydratedIdempotentResponse responseWithReference = mock(HydratedIdempotentResponse.class);
+    when(responses.toTransientResponse(resent)).thenReturn(response);
+    when(response.withProtectedReplayReference(reference)).thenReturn(responseWithReference);
+    when(responses.fromTransientResponse(responseWithReference)).thenReturn(resent);
+    executeProtectedAsAcquired();
+
+    StepVerifier.create(newService().resend(command()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(ResendForgotPasswordOtpStatus.RESENT);
+              assertThat(result.publicationReceipt()).isNotNull();
+              assertThat(result.publicationReceipt().terminalFailure()).isFalse();
+            })
+        .verifyComplete();
+
+    ArgumentCaptor<FailureEvent> event = ArgumentCaptor.forClass(FailureEvent.class);
+    org.mockito.Mockito.verify(failureEvents).publish(event.capture());
+    assertThat(event.getValue().internalCode()).isEqualTo("OTP_RESEND_COUNTER_MALFORMED");
+    assertThat(event.getValue().safeDimensions()).containsEntry("stage", "resend-count");
+    assertThat(event.getValue().httpStatus()).isEqualTo(200);
+  }
+
+  @Test
+  void technicalIncidentRetainsMappedClientErrorStatus() {
+    stubPolicyIdentity();
+    ResendForgotPasswordOtpResult invalidFlow =
+        new ResendForgotPasswordOtpResult(
+            ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID, null, null, null, null, null);
+    when(operation.execute(any()))
+        .thenReturn(
+            Mono.just(
+                new ForgotPasswordOtpResendProtectedExecutionResult(
+                    invalidFlow,
+                    null,
+                    java.util.List.of(ForgotPasswordOtpResendIncident.CONTEXT_UNPROTECT))));
+    HydratedIdempotentResponse response = mock(HydratedIdempotentResponse.class);
+    when(responses.toTransientResponse(invalidFlow)).thenReturn(response);
+    when(responses.fromTransientResponse(response)).thenReturn(invalidFlow);
+    executeProtectedAsAcquired();
+
+    StepVerifier.create(newService().resend(command()))
+        .assertNext(result -> assertThat(result.status()).isEqualTo(invalidFlow.status()))
+        .verifyComplete();
+
+    ArgumentCaptor<FailureEvent> event = ArgumentCaptor.forClass(FailureEvent.class);
+    org.mockito.Mockito.verify(failureEvents).publish(event.capture());
+    assertThat(event.getValue().httpStatus()).isEqualTo(400);
+  }
+
+  @Test
+  void completedReplayDoesNotPublishOrInheritReceipt() {
+    stubPolicyIdentity();
+    HydratedIdempotentResponse response = mock(HydratedIdempotentResponse.class);
+    when(executor.execute(any()))
+        .thenReturn(
+            Mono.just(
+                new IdempotentExecutionResult(
+                    IdempotencyReservationOutcome.COMPLETED_REPLAY, response)));
+    ResendForgotPasswordOtpResult replay =
+        new ResendForgotPasswordOtpResult(
+            ResendForgotPasswordOtpStatus.DELIVERY_FAILED, null, null, null, null, null);
+    when(responses.fromTransientResponse(response)).thenReturn(replay);
+
+    StepVerifier.create(newService().resend(command()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(ResendForgotPasswordOtpStatus.DELIVERY_FAILED);
+              assertThat(result.publicationReceipt()).isNull();
+            })
+        .verifyComplete();
+
+    org.mockito.Mockito.verifyNoInteractions(failureEvents, operation);
+  }
+
+  @Test
+  void independentExecutorFailurePublishesItsOwnTerminalIncident() {
+    stubPolicyIdentity();
+    when(executor.execute(any()))
+        .thenReturn(Mono.error(new IllegalStateException("store-value-must-not-leak")));
+
+    StepVerifier.create(newService().resend(command()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(result.publicationReceipt()).isNotNull();
+              assertThat(result.publicationReceipt().terminalFailure()).isTrue();
+            })
+        .verifyComplete();
+
+    ArgumentCaptor<FailureEvent> event = ArgumentCaptor.forClass(FailureEvent.class);
+    org.mockito.Mockito.verify(failureEvents).publish(event.capture());
+    assertThat(event.getValue().internalCode()).isEqualTo("OTP_RESEND_IDEMPOTENCY_FAILURE");
+    assertThat(event.getValue().safeDimensions()).containsEntry("stage", "idempotency");
+    assertThat(event.getValue().requestId()).isEqualTo("req-1");
+    assertThat(event.getValue().toString()).doesNotContain("store-value-must-not-leak");
+    org.mockito.Mockito.verify(failureEvents, org.mockito.Mockito.never())
+        .publish(any(FailureEvent.class), any(Throwable.class));
+  }
+
+  @Test
+  void independentExecutorFailureIsPublishedAfterProtectedIncident() {
+    stubPolicyIdentity();
+    ResendForgotPasswordOtpResult failed =
+        new ResendForgotPasswordOtpResult(
+            ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null);
+    when(operation.execute(any()))
+        .thenReturn(
+            Mono.just(
+                new ForgotPasswordOtpResendProtectedExecutionResult(
+                    failed,
+                    null,
+                    java.util.List.of(ForgotPasswordOtpResendIncident.FOUNDATION))));
+    when(executor.execute(any()))
+        .thenAnswer(
+            invocation -> {
+              IdempotentExecutionCommand execution = invocation.getArgument(0);
+              return execution
+                  .protectedOperation()
+                  .get()
+                  .map(
+                      response ->
+                          new IdempotentExecutionResult(
+                              IdempotencyReservationOutcome.ACQUIRED, response))
+                  .onErrorResume(
+                      ignored -> Mono.error(new IllegalStateException("unknown-persist-secret")));
+            });
+
+    StepVerifier.create(newService().resend(command()))
+        .assertNext(result -> assertThat(result.publicationReceipt().terminalFailure()).isTrue())
+        .verifyComplete();
+
+    ArgumentCaptor<FailureEvent> events = ArgumentCaptor.forClass(FailureEvent.class);
+    org.mockito.Mockito.verify(failureEvents, org.mockito.Mockito.times(2)).publish(events.capture());
+    assertThat(events.getAllValues())
+        .extracting(FailureEvent::internalCode)
+        .containsExactly("OTP_RESEND_TECHNICAL_FAILURE", "OTP_RESEND_IDEMPOTENCY_FAILURE");
   }
 
   // ----- route() outcome-switch branches (via canned executor results) --------------
@@ -167,6 +444,7 @@ class IdempotentResendForgotPasswordOtpServiceTest {
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
         .verifyComplete();
+    org.mockito.Mockito.verifyNoInteractions(failureEvents, operation);
   }
 
   @Test
@@ -183,6 +461,7 @@ class IdempotentResendForgotPasswordOtpServiceTest {
                 assertThat(r.status())
                     .isEqualTo(ResendForgotPasswordOtpStatus.IDEMPOTENCY_KEY_REUSED))
         .verifyComplete();
+    org.mockito.Mockito.verifyNoInteractions(failureEvents, operation);
   }
 
   @Test
@@ -197,6 +476,7 @@ class IdempotentResendForgotPasswordOtpServiceTest {
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.PREVIOUS_FAILED))
         .verifyComplete();
+    org.mockito.Mockito.verifyNoInteractions(failureEvents, operation);
   }
 
   @Test
@@ -209,8 +489,44 @@ class IdempotentResendForgotPasswordOtpServiceTest {
                     IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING, null)));
     StepVerifier.create(newService().resend(command()))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.UNKNOWN_OUTCOME))
+            r -> {
+              assertThat(r.status()).isEqualTo(ResendForgotPasswordOtpStatus.UNKNOWN_OUTCOME);
+              assertThat(r.publicationReceipt()).isNull();
+            })
         .verifyComplete();
+    org.mockito.Mockito.verifyNoInteractions(failureEvents, operation);
+  }
+
+  @Test
+  void expectedLockContentionSystemResultDoesNotPublishOrMarkOwnership() {
+    stubPolicyIdentity();
+    ResendForgotPasswordOtpResult contention =
+        new ResendForgotPasswordOtpResult(
+            ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null);
+    when(operation.execute(any()))
+        .thenReturn(
+            Mono.just(new ForgotPasswordOtpResendProtectedExecutionResult(contention, null)));
+    when(executor.execute(any()))
+        .thenAnswer(
+            invocation -> {
+              IdempotentExecutionCommand execution = invocation.getArgument(0);
+              return execution
+                  .protectedOperation()
+                  .get()
+                  .map(
+                      response ->
+                          new IdempotentExecutionResult(
+                              IdempotencyReservationOutcome.ACQUIRED, response));
+            });
+
+    StepVerifier.create(newService().resend(command()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(result.publicationReceipt()).isNull();
+            })
+        .verifyComplete();
+    org.mockito.Mockito.verifyNoInteractions(failureEvents);
   }
 
   @Test

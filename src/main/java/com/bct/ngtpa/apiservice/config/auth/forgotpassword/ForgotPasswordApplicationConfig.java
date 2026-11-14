@@ -448,7 +448,8 @@ public class ForgotPasswordApplicationConfig {
       Clock clock,
       ObjectMapper objectMapper,
       AuthWorkflowProperties properties,
-      CorsProperties corsProperties) {
+      CorsProperties corsProperties,
+      FailureEventPort failureEventPort) {
     properties.validateForgotPasswordPolicy();
     Duration ttl =
         Duration.ofSeconds(
@@ -490,7 +491,7 @@ public class ForgotPasswordApplicationConfig {
             new CanonicalIdempotencyFingerprintFactory());
     return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend
         .IdempotentResendForgotPasswordOtpService(
-        idempotencyExecutor, protectedOperation, responses, policy, ttl);
+        idempotencyExecutor, protectedOperation, responses, policy, ttl, failureEventPort);
   }
 
   @Bean

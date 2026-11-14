@@ -133,7 +133,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
   private void assertLoggedFailure(String stage) {
     assertThat(logAppender.list).hasSize(1);
     ILoggingEvent event = logAppender.list.get(0);
-    assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+    assertThat(event.getLevel()).isEqualTo(Level.WARN);
     assertThat(event.getThrowableProxy()).isNull();
     assertThat(event.getFormattedMessage())
         .contains(
@@ -141,7 +141,14 @@ class ForgotPasswordOtpResendProtectedOperationTest {
             "requestId=",
             "stage=" + stage,
             "exceptionType=IllegalStateException")
-        .doesNotContain("boom");
+        .doesNotContain(
+            "boom",
+            "template-secret",
+            "challenge-secret",
+            "cipher-secret",
+            "session-secret",
+            "challenge-store-secret",
+            "commit-store-secret");
   }
 
   // ----- construction helpers ---------------------------------------------
@@ -265,6 +272,52 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     when(locks.acquire(any(), any()))
         .thenReturn(Mono.just(new SessionLockHandle(true, "lock-key", "lock-token")));
     when(locks.release(any())).thenReturn(Mono.just(true));
+  }
+
+  @Test
+  void lockContentionIsExpectedAndHasNoTechnicalIncident() {
+    when(locks.acquire(any(), any()))
+        .thenReturn(Mono.just(new SessionLockHandle(false, "lock-key", "lock-token")));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(result.incidents()).isEmpty();
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void thrownLockAcquisitionIsClassifiedAsTechnicalFailure() {
+    when(locks.acquire(any(), any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(result.incidents())
+                  .contains(ForgotPasswordOtpResendIncident.LOCK_ACQUISITION);
+            })
+        .verifyComplete();
+
+    assertLoggedFailure("lock-acquisition");
+  }
+
+  @Test
+  void pendingReferenceGenerationFailureIsClassified() {
+    when(refs.generate()).thenThrow(new IllegalStateException("boom"));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result ->
+                assertThat(result.incidents())
+                    .contains(ForgotPasswordOtpResendIncident.PENDING_REFERENCE_GENERATION))
+        .verifyComplete();
+
+    assertLoggedFailure("pending-reference");
   }
 
   private void givenSession(AuthFlowSession session) {
@@ -437,11 +490,14 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     when(protector.unprotect(any())).thenThrow(new IllegalStateException("boom"));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r ->
+            r -> {
                 assertThat(r.result().status())
-                    .isEqualTo(ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID))
+                    .isEqualTo(ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID);
+                assertThat(r.incidents())
+                    .contains(ForgotPasswordOtpResendIncident.CONTEXT_UNPROTECT);
+            })
         .verifyComplete();
-    assertLoggedFailure("decrypt");
+    assertLoggedFailure("context-unprotect");
   }
 
   @Test
@@ -537,9 +593,11 @@ class ForgotPasswordOtpResendProtectedOperationTest {
                     ForgotPasswordOtpResendEligibilityStatus.COOLDOWN_ACTIVE, 30, 1)));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r ->
+            r -> {
                 assertThat(r.result().status())
-                    .isEqualTo(ResendForgotPasswordOtpStatus.COOLDOWN_ACTIVE))
+                    .isEqualTo(ResendForgotPasswordOtpStatus.COOLDOWN_ACTIVE);
+                assertThat(r.incidents()).isEmpty();
+            })
         .verifyComplete();
   }
 
@@ -605,9 +663,11 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     when(foundation.evaluate(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r ->
+            r -> {
                 assertThat(r.result().status())
-                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
+                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+                assertThat(r.incidents()).contains(ForgotPasswordOtpResendIncident.FOUNDATION);
+            })
         .verifyComplete();
     assertLoggedFailure("foundation");
   }
@@ -630,11 +690,13 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     when(sessions.loadSnapshot(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r ->
+            r -> {
                 assertThat(r.result().status())
-                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
+                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+                assertThat(r.incidents()).contains(ForgotPasswordOtpResendIncident.SESSION_READ);
+            })
         .verifyComplete();
-    assertLoggedFailure("execute");
+    assertLoggedFailure("session-read");
   }
 
   private AuthFlowSession validSessionWithResendCount(String count) {
@@ -667,24 +729,133 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     givenSession(validSession());
     givenContext();
     when(challengeState.findById(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
-    StepVerifier.create(newOp().execute(validCommand())).expectNextCount(1).verifyComplete();
-    assertLoggedFailure("eligibility");
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result ->
+                assertThat(result.incidents())
+                    .contains(ForgotPasswordOtpResendIncident.CHALLENGE_READ))
+        .verifyComplete();
+    assertLoggedFailure("challenge-read");
   }
 
   @Test
-  void unparsableResendCountIsLogged() {
-    givenLockAcquired();
+  void templateResolutionFailureIsClassifiedBeforeChallengeCreation() {
+    givenEligible();
+    when(registry.resolve(any(), any(), any()))
+        .thenThrow(new IllegalStateException("template-secret"));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(result.incidents())
+                  .contains(ForgotPasswordOtpResendIncident.TEMPLATE_RESOLUTION);
+            })
+        .verifyComplete();
+
+    verify(otp, org.mockito.Mockito.never()).createChallenge(any());
+    verify(delivery, org.mockito.Mockito.never()).deliver(any());
+    assertLoggedFailure("template-resolution");
+  }
+
+  @Test
+  void challengeCreationFailureIsClassifiedBeforeDelivery() {
+    givenEligible();
+    when(otp.createChallenge(any()))
+        .thenReturn(Mono.error(new IllegalStateException("challenge-secret")));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(result.incidents())
+                  .contains(ForgotPasswordOtpResendIncident.CHALLENGE_CREATION);
+            })
+        .verifyComplete();
+
+    verify(delivery, org.mockito.Mockito.never()).deliver(any());
+    assertLoggedFailure("challenge-creation");
+  }
+
+  @Test
+  void contextProtectionFailureIsClassifiedBeforeDelivery() {
+    givenEligible();
+    when(protector.protect(any())).thenThrow(new IllegalStateException("cipher-secret"));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(result.incidents())
+                  .contains(ForgotPasswordOtpResendIncident.CONTEXT_PROTECTION);
+            })
+        .verifyComplete();
+
+    verify(delivery, org.mockito.Mockito.never()).deliver(any());
+    assertLoggedFailure("context-protection");
+  }
+
+  @Test
+  void sessionMutationFailureIsClassifiedBeforeDelivery() {
+    givenEligible();
+    when(sessions.updateRevisioned(any()))
+        .thenReturn(Mono.error(new IllegalStateException("session-secret")));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(result.incidents())
+                  .contains(ForgotPasswordOtpResendIncident.SESSION_MUTATION);
+            })
+        .verifyComplete();
+
+    verify(delivery, org.mockito.Mockito.never()).deliver(any());
+    assertLoggedFailure("session-mutation");
+  }
+
+  @Test
+  void unparsableResendCountFallsBackToZeroAndEmitsOnlyDiagnosticWarning() {
+    givenEligible();
     givenSession(validSessionWithResendCount("not-a-number"));
-    givenContext();
-    givenChallenge();
-    when(foundation.evaluate(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
-    StepVerifier.create(newOp().execute(validCommand())).expectNextCount(1).verifyComplete();
+    when(delivery.deliver(any()))
+        .thenReturn(
+            Mono.just(
+                new MessageDeliveryResult(
+                    MessageDeliveryStatus.ACCEPTED,
+                    MessageDeliveryChannel.EMAIL,
+                    "provider-1",
+                    null,
+                    null)));
+    when(commitStates.saveIfAbsent(any(), any(), any())).thenReturn(Mono.just(true));
+    when(commitStates.load(any()))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    new ForgotPasswordOtpCommitState(
+                        sid.value(), "candidate-1", NOW, NOW.plusSeconds(300)))));
+    when(commitStates.delete(any())).thenReturn(Mono.empty());
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            execution -> {
+              assertThat(execution.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.RESENT);
+              assertThat(execution.result().remainingResendAttempts())
+                  .isEqualTo(otpPolicy.maxResendAttempts() - 1);
+              assertThat(execution.incidents())
+                  .contains(ForgotPasswordOtpResendIncident.MALFORMED_RESEND_COUNT);
+            })
+        .verifyComplete();
     List<ILoggingEvent> counted =
         logAppender.list.stream()
             .filter(event -> event.getFormattedMessage().contains("stage=resend-count"))
             .toList();
     assertThat(counted).hasSize(1);
-    assertThat(counted.get(0).getLevel()).isEqualTo(Level.ERROR);
+    assertThat(counted.get(0).getLevel()).isEqualTo(Level.WARN);
     assertThat(counted.get(0).getThrowableProxy()).isNull();
     assertThat(counted.get(0).getFormattedMessage())
         .contains(
@@ -741,6 +912,27 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     when(challengeState.delete(any())).thenReturn(Mono.empty());
   }
 
+  private void givenAcceptedDelivery() {
+    when(delivery.deliver(any()))
+        .thenReturn(
+            Mono.just(
+                new MessageDeliveryResult(
+                    MessageDeliveryStatus.ACCEPTED,
+                    MessageDeliveryChannel.EMAIL,
+                    "provider-1",
+                    null,
+                    null)));
+    when(commitStates.saveIfAbsent(any(), any(), any())).thenReturn(Mono.just(true));
+    when(commitStates.load(any()))
+        .thenAnswer(
+            invocation ->
+                Mono.just(
+                    Optional.of(
+                        new ForgotPasswordOtpCommitState(
+                            sid.value(), "candidate-1", NOW, NOW.plusSeconds(300)))));
+    when(commitStates.delete(any())).thenReturn(Mono.empty());
+  }
+
   @Test
   void eligibleWithDeliveryAcceptedYieldsResent() {
     givenEligible();
@@ -786,9 +978,12 @@ class ForgotPasswordOtpResendProtectedOperationTest {
                     "boom")));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r ->
+            r -> {
                 assertThat(r.result().status())
-                    .isEqualTo(ResendForgotPasswordOtpStatus.DELIVERY_FAILED))
+                    .isEqualTo(ResendForgotPasswordOtpStatus.DELIVERY_FAILED);
+                assertThat(r.incidents())
+                    .contains(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY);
+            })
         .verifyComplete();
   }
 
@@ -806,9 +1001,54 @@ class ForgotPasswordOtpResendProtectedOperationTest {
                     null)));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r ->
+            r -> {
                 assertThat(r.result().status())
-                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED))
+                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+                assertThat(r.incidents())
+                    .contains(ForgotPasswordOtpResendIncident.UNKNOWN_DELIVERY);
+            })
         .verifyComplete();
+  }
+
+  @Test
+  void challengeMutationFailureAfterDeliveryIsClassifiedWithoutRedelivery() {
+    givenEligible();
+    givenAcceptedDelivery();
+    when(challengeState.update(any()))
+        .thenReturn(Mono.error(new IllegalStateException("challenge-store-secret")));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(result.incidents())
+                  .contains(ForgotPasswordOtpResendIncident.CHALLENGE_MUTATION);
+            })
+        .verifyComplete();
+
+    verify(delivery).deliver(any());
+    assertLoggedFailure("challenge-mutation");
+  }
+
+  @Test
+  void commitStatePersistenceFailureAfterDeliveryIsClassified() {
+    givenEligible();
+    givenAcceptedDelivery();
+    when(commitStates.saveIfAbsent(any(), any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("commit-store-secret")));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(result.incidents())
+                  .contains(ForgotPasswordOtpResendIncident.COMMIT_STATE);
+            })
+        .verifyComplete();
+
+    verify(delivery).deliver(any());
+    assertLoggedFailure("commit-state");
   }
 }

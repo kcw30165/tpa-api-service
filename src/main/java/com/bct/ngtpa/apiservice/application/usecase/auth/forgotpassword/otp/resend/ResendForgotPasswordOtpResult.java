@@ -6,7 +6,37 @@ public record ResendForgotPasswordOtpResult(
     Integer expiresInSeconds,
     Integer resendCooldownSeconds,
     Integer remainingResendAttempts,
-    Integer retryAfterSeconds) {
+    Integer retryAfterSeconds,
+    ForgotPasswordOtpResendPublicationReceipt publicationReceipt) {
+  public ResendForgotPasswordOtpResult(
+      ResendForgotPasswordOtpStatus status,
+      String maskedDestination,
+      Integer expiresInSeconds,
+      Integer resendCooldownSeconds,
+      Integer remainingResendAttempts,
+      Integer retryAfterSeconds) {
+    this(
+        status,
+        maskedDestination,
+        expiresInSeconds,
+        resendCooldownSeconds,
+        remainingResendAttempts,
+        retryAfterSeconds,
+        null);
+  }
+
+  public ResendForgotPasswordOtpResult withPublicationReceipt(
+      ForgotPasswordOtpResendPublicationReceipt receipt) {
+    return new ResendForgotPasswordOtpResult(
+        status,
+        maskedDestination,
+        expiresInSeconds,
+        resendCooldownSeconds,
+        remainingResendAttempts,
+        retryAfterSeconds,
+        receipt);
+  }
+
   @Override
   public String toString() {
     return "ResendForgotPasswordOtpResult[status="
