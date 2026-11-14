@@ -310,7 +310,7 @@ separate API guarantee of cancellation: the GET contract does not define
 canceled-instruction visibility. If the run-created reference remains listed
 as pending, the harness conservatively marks cleanup incomplete. A failed or
 ambiguous post-submit lifecycle also marks cleanup incomplete and preserves a
-mode-0600 recovery record in the user-configured mode-0700 recovery directory.
-Credentials and authentication
-tokens are never placed in that record; the reference is included only when
-known, and is never emitted to general output or evidence.
+mode-0600 JSON recovery record in the user-configured mode-0700 recovery
+directory. Credentials and authentication tokens are never placed in that
+record; the reference is included only when known, and is never emitted to
+general output or evidence.

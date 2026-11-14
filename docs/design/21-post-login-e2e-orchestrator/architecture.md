@@ -37,7 +37,9 @@ contract-validated final read. Cancellation is established by the cancel
 endpoint's successful response; absence from the GET pending list is not
 documented as an independent cancellation guarantee. Incomplete cleanup
 preserves a private recovery record under an explicitly configured mode-0700
-directory, with no reference or authentication value in logs or evidence.
+directory. The mode-0600 recovery file is JSON so arbitrary reference strings
+remain unambiguous; neither the reference nor authentication values appear in
+logs or evidence.
 If the run-created reference remains listed as pending in GET #3, the harness
 conservatively marks cleanup incomplete.
 

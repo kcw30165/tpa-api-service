@@ -182,7 +182,9 @@ PASSED=0
 SKIPPED=0
 FAILED=0
 SCENARIO=''
-LIVE_REFERENCE=''
+LIVE_REFERENCE_FILE="$WORK_DIR/live-reference.json"
+touch "$LIVE_REFERENCE_FILE"
+chmod 600 "$LIVE_REFERENCE_FILE"
 LIVE_SUBMITTED=no
 LIVE_SUBMIT_ATTEMPTED=no
 LIVE_CLEANUP_VERIFIED=no
@@ -191,15 +193,24 @@ on_exit() {
   local result=$?
   if [[ "$result" -ne 0 && "$FAILED" -eq 0 ]]; then FAILED=1; fi
   if [[ "$LIVE_SUBMIT_ATTEMPTED" == yes && "$LIVE_CLEANUP_VERIFIED" != yes ]]; then
-    local recovery_file recovery_outcome
+    local recovery_file recovery_outcome recovery_written
     recovery_file="$(mktemp "$RECOVERY_DIR/cim-recovery.XXXXXX" 2>/dev/null || true)"
     recovery_outcome=unknown
+    recovery_written=no
     [[ "$LIVE_SUBMITTED" != yes ]] || recovery_outcome=confirmed
-    if [[ -n "$recovery_file" ]] && {
-      printf 'status=cleanup-incomplete\n'
-      printf 'submit_outcome=%s\n' "$recovery_outcome"
-      if [[ "$LIVE_SUBMITTED" == yes ]]; then printf 'referenceNo=%s\n' "$LIVE_REFERENCE"; fi
-    } >"$recovery_file" && chmod 600 "$recovery_file"; then
+    if [[ -n "$recovery_file" ]]; then
+      if [[ "$LIVE_SUBMITTED" == yes ]]; then
+        if jq -cn --arg outcome "$recovery_outcome" --slurpfile reference "$LIVE_REFERENCE_FILE" \
+          '{status:"cleanup-incomplete",submitOutcome:$outcome,referenceNo:$reference[0]}' \
+          >"$recovery_file"; then recovery_written=yes; fi
+      else
+        if jq -cn --arg outcome "$recovery_outcome" \
+          '{status:"cleanup-incomplete",submitOutcome:$outcome}' >"$recovery_file"; then
+          recovery_written=yes
+        fi
+      fi
+    fi
+    if [[ -n "$recovery_file" && "$recovery_written" == yes ]] && chmod 600 "$recovery_file"; then
       printf 'CLEANUP INCOMPLETE: private recovery record saved at %s; inspect it through secure local access.\n' "$recovery_file" >&2
       FAILED=1
       result=1
@@ -210,7 +221,7 @@ on_exit() {
     fi
   fi
   printf 'Summary: passed=%s skipped=%s failed=%s\n' "$PASSED" "$SKIPPED" "$FAILED"
-  rm -f -- "$COOKIE_JAR"
+  rm -f -- "$COOKIE_JAR" "$LIVE_REFERENCE_FILE"
   rmdir -- "$WORK_DIR"
   [[ "$result" -eq 0 ]] || exit "$result"
 }
@@ -297,9 +308,20 @@ REQUEST_BODY=''
 GET_DATA=''
 
 password_json() {
-  local purpose="$1" operation="$2" password="$3"
-  ISSUANCE_BODY="$(printf '%s' "$password" | jq -Rsc --arg purpose "$purpose" --argjson operation "$operation" \
-    '{password: ., purpose: $purpose, operationPayload: $operation}')"
+  local purpose="$1" operation="$2" password="$3" password_fd operation_fd jq_status
+  exec {password_fd}< <(printf '%s' "$password")
+  exec {operation_fd}< <(printf '%s' "$operation")
+  if ISSUANCE_BODY="$(jq -Rn --arg purpose "$purpose" \
+    --rawfile password "/dev/fd/$password_fd" \
+    --slurpfile operation "/dev/fd/$operation_fd" \
+    '{password:$password,purpose:$purpose,operationPayload:$operation[0]}')"; then
+    jq_status=0
+  else
+    jq_status=$?
+  fi
+  exec {password_fd}<&-
+  exec {operation_fd}<&-
+  [[ "$jq_status" -eq 0 ]] || return "$jq_status"
 }
 
 issue_token() {
@@ -530,7 +552,9 @@ if [[ "$USE_PASSWORD" == yes ]]; then
       and (.result.data.submitDate | test("^[0-9]{2}/[0-9]{2}/[0-9]{4}$"))
       and (.result.data.submitTime | test("^[0-9]{2}:[0-9]{2}:[0-9]{2}$"))
     ' <<<"$RESPONSE_BODY" >/dev/null 2>&1 || fail_scenario L1-submit 'SUBMITTED response contract' "$HTTP_STATUS" "$ERROR_CODE"
-    LIVE_REFERENCE="$(jq -r '.result.data.referenceNo' <<<"$RESPONSE_BODY")"
+    jq -ec '.result.data.referenceNo | select(type == "string" and length > 0)' \
+      <<<"$RESPONSE_BODY" >"$LIVE_REFERENCE_FILE" \
+      || fail_scenario L1-submit 'submitted reference available privately' "$HTTP_STATUS" "$ERROR_CODE"
     LIVE_SUBMITTED=yes
     ERROR_CODE=''
     pass_scenario L1-submit
@@ -538,20 +562,20 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     SCENARIO=L2-get
     request GET "$DETAILS_PATH" yes none no
     [[ "$HTTP_STATUS" == 200 ]] || fail_scenario L2-get 200 "$HTTP_STATUS" "$ERROR_CODE"
-    jq -e --arg ref "$LIVE_REFERENCE" '
+    jq -e --slurpfile submitted "$LIVE_REFERENCE_FILE" '
       .success == true and .status == "SUCCESS"
       and (.result.data.accountNumber | type == "string")
       and .result.data.scenario == "NORMAL"
       and (.result.data.history | type == "array")
       and (.result.data.pendingInstructions | type == "array")
-      and ([.result.data.pendingInstructions[] | select(.referenceNo == $ref)] | length == 1)
+      and ([.result.data.pendingInstructions[] | select(.referenceNo == $submitted[0])] | length == 1)
     ' <<<"$RESPONSE_BODY" >/dev/null 2>&1 \
       || fail_scenario L2-get 'submitted reference uniquely present in pendingInstructions' "$HTTP_STATUS" "$ERROR_CODE"
     GET_DATA="$(jq -c '.result.data' <<<"$RESPONSE_BODY")"
     ERROR_CODE=''
     pass_scenario L2-get
 
-    LIVE_CANCEL_BODY="$(jq -cn --arg ref "$LIVE_REFERENCE" '{referenceNo:$ref}')"
+    LIVE_CANCEL_BODY="$(jq -cn --slurpfile submitted "$LIVE_REFERENCE_FILE" '{referenceNo:$submitted[0]}')"
     SCENARIO=L3-issue
     issue_token CANCEL_INVESTMENT_CHOICE "$LIVE_CANCEL_BODY" "$CIM_PASSWORD" L3-issue
     LIVE_CANCEL_TOKEN="$TOKEN_VALUE"
@@ -561,8 +585,8 @@ if [[ "$USE_PASSWORD" == yes ]]; then
       fail_scenario L3-cancel '200/SUCCESS' "$HTTP_STATUS" "$ERROR_CODE"
     fi
     [[ "$HTTP_STATUS" == 200 ]] || fail_scenario L3-cancel '200/SUCCESS' "$HTTP_STATUS" "$ERROR_CODE"
-    jq -e --arg ref "$LIVE_REFERENCE" '
-      .success == true and .status == "SUCCESS" and .result.data.referenceNo == $ref
+    jq -e --slurpfile submitted "$LIVE_REFERENCE_FILE" '
+      .success == true and .status == "SUCCESS" and .result.data.referenceNo == $submitted[0]
     ' \
       <<<"$RESPONSE_BODY" >/dev/null 2>&1 || fail_scenario L3-cancel 'SUCCESS with matching referenceNo' "$HTTP_STATUS" "$ERROR_CODE"
     ERROR_CODE=''
@@ -579,8 +603,8 @@ if [[ "$USE_PASSWORD" == yes ]]; then
       and (.result.data.pendingInstructions | type == "array")
     ' <<<"$RESPONSE_BODY" >/dev/null 2>&1 \
       || fail_scenario L4-get '200/SUCCESS GET contract with pendingInstructions array' "$HTTP_STATUS" "$ERROR_CODE"
-    if jq -e --arg ref "$LIVE_REFERENCE" \
-      '.result.data.pendingInstructions | any(.[]; .referenceNo == $ref)' \
+    if jq -e --slurpfile submitted "$LIVE_REFERENCE_FILE" \
+      '.result.data.pendingInstructions | any(.[]; .referenceNo == $submitted[0])' \
       <<<"$RESPONSE_BODY" >/dev/null 2>&1; then
       fail_scenario L4-get 'submitted reference not listed as pending after successful cancel response' "$HTTP_STATUS" "$ERROR_CODE"
     fi

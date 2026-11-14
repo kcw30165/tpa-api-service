@@ -6,16 +6,19 @@ SCENARIO="$ROOT/scripts/e2e/investment-choice-scenarios.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf -- "$tmp"' EXIT
 mkdir -p "$tmp/bin"
+real_jq="$(command -v jq)"
 
 cat >"$tmp/bin/curl" <<'FAKE_CURL'
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+export FAKE_INSIDE_CURL=yes
 FAKE_CALLS="${FAKE_CALLS:-/dev/null}"
 FAKE_L2_MODE="${FAKE_L2_MODE:-normal}"
 FAKE_L4_MODE="${FAKE_L4_MODE:-normal}"
 FAKE_SUBMIT_MODE="${FAKE_SUBMIT_MODE:-normal}"
 FAKE_CANCEL_MODE="${FAKE_CANCEL_MODE:-normal}"
+FAKE_REFERENCE="${FAKE_REFERENCE:-LIVE-REF-1}"
 method=GET
 url=''
 body_arg=''
@@ -58,12 +61,19 @@ case "$method $path" in
     count=$((count + 1))
     printf '%s' "$count" >"$FAKE_GET_COUNT"
     printf 'GET-%s\n' "$count" >>"$FAKE_CALLS"
+    if [[ "$FAKE_LIVE" == yes ]]; then
+      case "$count" in
+        1) printf 'LIFECYCLE-GET-1\n' >>"$FAKE_CALLS" ;;
+        3) printf 'LIFECYCLE-GET-2\n' >>"$FAKE_CALLS" ;;
+        4) printf 'LIFECYCLE-GET-3\n' >>"$FAKE_CALLS" ;;
+      esac
+    fi
     if ((count == 2)); then
       status=401
       response='{"success":false,"status":"ERROR","result":null,"messages":[],"errors":[{"code":"err.security.authentication.required"}]}'
     elif ((count == 3)) && [[ "$FAKE_L2_MODE" == missing || "$FAKE_L2_MODE" == other-first ]]; then
       pending='[]'
-      [[ "$FAKE_L2_MODE" != other-first ]] || pending='[{"referenceNo":"OTHER-PENDING"},{"referenceNo":"LIVE-REF-1"}]'
+      [[ "$FAKE_L2_MODE" != other-first ]] || pending="$(jq -cn --arg ref "$FAKE_REFERENCE" '[{referenceNo:"OTHER-PENDING"},{referenceNo:$ref}]')"
       response="$(jq -cn --argjson pending "$pending" --argjson funds "$eligible_funds" '{
         success:true,status:"SUCCESS",result:{data:{
           accountNumber:"TEST-ACCOUNT",scenario:"NORMAL",intervalPercentage:20,
@@ -121,6 +131,9 @@ case "$method $path" in
       else
         jq -c '.' <<<"$operation" >"$FAKE_VALID_PAYLOAD"
         response='{"success":true,"status":"SUCCESS","result":{"data":{"token":"fake-cim-token"}},"messages":[],"errors":[]}'
+        if [[ "$FAKE_LIVE" == yes ]]; then
+          printf 'LIFECYCLE-CHANGE-ISSUE\n' >>"$FAKE_CALLS"
+        fi
       fi
     else
       reference="$(jq -r '.referenceNo // empty' <<<"$operation")"
@@ -129,6 +142,9 @@ case "$method $path" in
       if [[ -n "$reference" && "$reference" == "$pending" ]]; then
         jq -c '.' <<<"$operation" >"$FAKE_VALID_CANCEL_PAYLOAD"
         response='{"success":true,"status":"SUCCESS","result":{"data":{"token":"fake-cancel-token"}},"messages":[],"errors":[]}'
+        if [[ "$FAKE_LIVE" == yes ]]; then
+          printf 'LIFECYCLE-CANCEL-ISSUE\n' >>"$FAKE_CALLS"
+        fi
       else
         status=422
         response='{"success":false,"status":"VALIDATION_FAILED","result":null,"messages":[],"errors":[{"code":"err.investment-choice.cancel.ref-invalid","targets":["referenceNo"]}]}'
@@ -138,6 +154,7 @@ case "$method $path" in
   'POST /api/v1/investment-choice/instructions')
     if [[ "$token" == fake-cim-token && "$FAKE_LIVE" == yes ]]; then
       printf 'SUBMIT\n' >>"$FAKE_CALLS"
+      printf 'LIFECYCLE-SUBMIT\n' >>"$FAKE_CALLS"
       if [[ "$FAKE_SUBMIT_MODE" == fail ]]; then
         status=500
         response='{"success":false,"status":"ERROR","result":null,"messages":[],"errors":[]}'
@@ -150,8 +167,8 @@ case "$method $path" in
           response='{}'
         else
           printf 'payload_reuse=PASS\n' >"$FAKE_REUSE"
-          printf '[{"referenceNo":"LIVE-REF-1","submitDate":"12/11/2026","submitTime":"12:00:00","allocations":[]}]' >"$FAKE_PENDING"
-          response='{"success":true,"status":"SUBMITTED","result":{"data":{"referenceNo":"LIVE-REF-1","submitDate":"12/11/2026","submitTime":"12:00:00"}},"messages":[],"errors":[]}'
+          jq -cn --arg ref "$FAKE_REFERENCE" '[{referenceNo:$ref,submitDate:"12/11/2026",submitTime:"12:00:00",allocations:[]}]' >"$FAKE_PENDING"
+          response="$(jq -cn --arg ref "$FAKE_REFERENCE" '{success:true,status:"SUBMITTED",result:{data:{referenceNo:$ref,submitDate:"12/11/2026",submitTime:"12:00:00"}},messages:[],errors:[]}')"
           printf 'authorized-submit\n' >>"$FAKE_MUTATIONS"
         fi
       fi
@@ -163,6 +180,7 @@ case "$method $path" in
   'POST /api/v1/investment-choice/instructions/cancel')
     if [[ "$FAKE_LIVE" == yes && "$token" == fake-cancel-token ]]; then
       printf 'CANCEL\n' >>"$FAKE_CALLS"
+      printf 'LIFECYCLE-CANCEL\n' >>"$FAKE_CALLS"
     fi
     if [[ "$token" == fake-cancel-token ]]; then
       cancel_payload="$(jq -c '.' <<<"$request_body")"
@@ -174,8 +192,8 @@ case "$method $path" in
       elif [[ "$FAKE_CANCEL_MODE" == fail ]]; then
         status=500
         response='{"success":false,"status":"ERROR","result":null,"messages":[],"errors":[]}'
-      elif [[ "$FAKE_LIVE" == yes && "$reference" == LIVE-REF-1 ]]; then
-        response='{"success":true,"status":"SUCCESS","result":{"data":{"referenceNo":"LIVE-REF-1"}},"messages":[],"errors":[]}'
+      elif [[ "$FAKE_LIVE" == yes && "$reference" == "$FAKE_REFERENCE" ]]; then
+        response="$(jq -cn --arg ref "$FAKE_REFERENCE" '{success:true,status:"SUCCESS",result:{data:{referenceNo:$ref}},messages:[],errors:[]}')"
         [[ "$FAKE_L4_MODE" == present ]] || printf '[]' >"$FAKE_PENDING"
         printf 'authorized-cancel\n' >>"$FAKE_MUTATIONS"
       else
@@ -194,16 +212,33 @@ case "$method $path" in
 esac
 printf '%s\n%s' "$response" "$status"
 FAKE_CURL
+cat >"$tmp/bin/jq" <<'FAKE_JQ'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+if [[ "${FAKE_INSIDE_CURL:-no}" != yes ]]; then
+  previous_arg=''
+  for arg in "$@"; do
+    if [[ "$arg" == *LIVE-REF-1* || "$arg" == *OTHER-PENDING* \
+      || ( -n "${FAKE_REFERENCE:-}" && "$arg" == *"$FAKE_REFERENCE"* ) ]]; then
+      printf 'submitted-reference-argument-after=%s\n' "$previous_arg" >>"$FAKE_JQ_ARG_LEAKS"
+    fi
+    previous_arg="$arg"
+  done
+fi
+exec "$REAL_JQ" "$@"
+FAKE_JQ
 chmod +x "$tmp/bin/curl"
+chmod +x "$tmp/bin/jq"
 
 run_fake_scenario() {
-  local mode="$1" out="$2" initial_pending="${3:-[]}" expected_failure="${4:-no}" run_name scenario l2_mode l4_mode submit_mode cancel_mode run_dir
+  local mode="$1" out="$2" initial_pending="${3:-[]}" expected_failure="${4:-no}" run_name scenario l2_mode l4_mode submit_mode cancel_mode reference run_dir
   run_name="${5:-$mode}"
   scenario="${6:-NORMAL}"
   l2_mode="${7:-normal}"
   l4_mode="${8:-normal}"
   submit_mode="${9:-normal}"
   cancel_mode="${10:-normal}"
+  reference="${11:-LIVE-REF-1}"
   run_dir="$tmp/$run_name"
   mkdir -p "$run_dir" "$run_dir/recovery"
   chmod 700 "$run_dir/recovery"
@@ -214,6 +249,7 @@ run_fake_scenario() {
   : >"$run_dir/reuse"
   : >"$run_dir/mutations"
   : >"$run_dir/calls"
+  : >"$run_dir/jq-arg-leaks"
   : >"$run_dir/diagnostic"
   if ! PATH="$tmp/bin:$PATH" \
     BASE_URL=http://fake.invalid \
@@ -227,6 +263,9 @@ run_fake_scenario() {
     CIM_LIVE_SUBMIT="$mode" \
     CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA \
     CIM_RECOVERY_DIR="$run_dir/recovery" \
+    FAKE_REFERENCE="$reference" \
+    FAKE_JQ_ARG_LEAKS="$run_dir/jq-arg-leaks" \
+    REAL_JQ="$real_jq" \
     FAKE_LIVE="$mode" \
     FAKE_SCENARIO="$scenario" \
     FAKE_L2_MODE="$l2_mode" \
@@ -301,8 +340,8 @@ grep -Fq 'Password verifications this run (snapshot rejections excluded): 2' "$t
   printf 'FAIL explicit live opt-in did not exercise exactly one submit and one cancel\n'
   exit 1
 }
-expected_live_calls=$'SUBMIT\nGET-3\nISSUE-CANCEL_INVESTMENT_CHOICE\nCANCEL\nGET-4'
-actual_live_calls="$(sed -n '/^SUBMIT$/,$p' "$tmp/yes/calls")"
+expected_live_calls=$'LIFECYCLE-GET-1\nLIFECYCLE-CHANGE-ISSUE\nLIFECYCLE-SUBMIT\nLIFECYCLE-GET-2\nLIFECYCLE-CANCEL-ISSUE\nLIFECYCLE-CANCEL\nLIFECYCLE-GET-3'
+actual_live_calls="$(grep '^LIFECYCLE-' "$tmp/yes/calls" || true)"
 [[ "$actual_live_calls" == "$expected_live_calls" ]] || {
   printf 'FAIL live lifecycle call order differed from submit, refreshed GET, cancel issuance, cancel, final GET\n'
   exit 1
@@ -317,6 +356,12 @@ grep -Fq 'LIVE-REF-1' "$tmp/yes/valid-cancel-payload" || {
 }
 grep -Fq 'LIVE-REF-1' "$tmp/live.log" && {
   printf 'FAIL submitted instruction reference appeared in terminal output\n'
+  exit 1
+}
+[[ ! -s "$tmp/yes/jq-arg-leaks" ]] || {
+  printf 'FAIL submitted instruction reference appeared in jq process arguments (%s occurrences)\n' \
+    "$(wc -l <"$tmp/yes/jq-arg-leaks")"
+  cat "$tmp/yes/jq-arg-leaks"
   exit 1
 }
 
@@ -334,12 +379,38 @@ recovery_file="$(find "$tmp/l2-missing/recovery" -type f -print -quit)"
   printf 'FAIL incomplete GET #2 cleanup did not preserve a mode-0600 recovery record\n'
   exit 1
 }
-grep -Fq 'referenceNo=LIVE-REF-1' "$recovery_file" || {
+jq -e '.status == "cleanup-incomplete" and .submitOutcome == "confirmed" and .referenceNo == "LIVE-REF-1"' \
+  "$recovery_file" >/dev/null || {
   printf 'FAIL private recovery record omitted the outstanding submitted reference\n'
+  exit 1
+}
+[[ "$(stat -c '%a %u' "$tmp/l2-missing/recovery")" == "700 $(id -u)" \
+  && "$(stat -c '%u' "$recovery_file")" == "$(id -u)" ]] || {
+  printf 'FAIL recovery directory or record ownership/mode was unsafe\n'
   exit 1
 }
 grep -Fq 'LIVE-REF-1' "$tmp/l2-missing.log" && {
   printf 'FAIL outstanding reference appeared in terminal output\n'
+  exit 1
+}
+
+newline_reference=$'line-one\nsubmit_outcome=forged'
+run_fake_scenario yes "$tmp/newline-recovery.log" '[]' yes newline-recovery NORMAL missing normal normal normal "$newline_reference"
+newline_recovery="$(find "$tmp/newline-recovery/recovery" -type f -print -quit)"
+[[ -n "$newline_recovery" ]] || {
+  printf 'FAIL newline-bearing reference did not preserve recovery record\n'
+  exit 1
+}
+jq -e --arg expected "$newline_reference" '
+  .status == "cleanup-incomplete"
+  and .submitOutcome == "confirmed"
+  and .referenceNo == $expected
+' "$newline_recovery" >/dev/null || {
+  printf 'FAIL recovery record did not preserve an arbitrary reference as unambiguous JSON\n'
+  exit 1
+}
+[[ ! -s "$tmp/newline-recovery/jq-arg-leaks" ]] || {
+  printf 'FAIL newline-bearing reference appeared in jq process arguments\n'
   exit 1
 }
 
@@ -362,7 +433,8 @@ run_fake_scenario yes "$tmp/submit-failed.log" '[]' yes submit-failed NORMAL nor
   printf 'FAIL ambiguous submit outcome did not preserve recovery status\n'
   exit 1
 }
-grep -Fq 'submit_outcome=unknown' "$tmp/submit-failed/recovery/"* || {
+jq -e '.status == "cleanup-incomplete" and .submitOutcome == "unknown" and (has("referenceNo") | not)' \
+  "$tmp/submit-failed/recovery/"* >/dev/null || {
   printf 'FAIL ambiguous submit recovery record did not identify unknown outcome\n'
   exit 1
 }
@@ -376,7 +448,7 @@ run_fake_scenario yes "$tmp/cancel-failed.log" '[]' yes cancel-failed NORMAL nor
   printf 'FAIL cancel failure caused an automatic submit retry\n'
   exit 1
 }
-grep -Fq 'referenceNo=LIVE-REF-1' "$tmp/cancel-failed/recovery/"* || {
+jq -e '.referenceNo == "LIVE-REF-1"' "$tmp/cancel-failed/recovery/"* >/dev/null || {
   printf 'FAIL failed cancellation recovery record omitted the outstanding reference\n'
   exit 1
 }
@@ -467,6 +539,9 @@ fund_response="$(
   FAKE_REUSE="$tmp/fund-unavailable/reuse" \
   FAKE_MUTATIONS="$tmp/fund-unavailable/mutations" \
   FAKE_DIAGNOSTIC="$tmp/fund-unavailable/diagnostic" \
+  FAKE_JQ_ARG_LEAKS="$tmp/fund-unavailable/jq-arg-leaks" \
+  FAKE_REFERENCE=LIVE-REF-1 \
+  REAL_JQ="$real_jq" \
   FAKE_LIVE=no \
   FAKE_SCENARIO=NORMAL \
     curl -X POST --data-binary "$fund_request" http://fake.invalid/api/v1/password-validation
