@@ -30,6 +30,17 @@ Each run creates a new mode-0700 private directory and restrictive secret files.
 
 Registry entries are trusted paths. Packs return reliable process status. Investment-choice retains standalone provided-session execution and all password/live-mutation safeguards. Orchestrated packs do not log out independently.
 
+The optional live CIM lifecycle is non-retrying: GET #1, change-token issuance,
+submit once, GET #2 to refresh and prove the exact new reference is pending,
+cancel-token issuance for that same reference, cancel once, and GET #3 for a
+contract-validated final read. Cancellation is established by the cancel
+endpoint's successful response; absence from the GET pending list is not
+documented as an independent cancellation guarantee. Incomplete cleanup
+preserves a private recovery record under an explicitly configured mode-0700
+directory, with no reference or authentication value in logs or evidence.
+If the run-created reference remains listed as pending in GET #3, the harness
+conservatively marks cleanup incomplete.
+
 ## Logout guard
 
 Implementation must establish the exact endpoint, API result, CSRF/cookie usage, and cookie-clear behavior from full repository source and tests. If evidence is insufficient, implementation stops rather than inventing a contract.

@@ -20,6 +20,7 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/lib/cim-valid-payload.sh"
 #   CIM_USE_PASSWORD=yes        enable password-validation scenarios using the S1 snapshot
 #   CIM_LIVE_SUBMIT=yes         enable live submit/cancel using the P0 token and a live cancel token
 #   CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA
+#   CIM_RECOVERY_DIR            existing private directory (mode 0700) for incomplete live cleanup records
 #   CIM_DRY_RUN=yes             list planned scenarios/commands without network access
 #
 # Input secrets may be supplied in the environment or entered at a silent prompt.
@@ -42,6 +43,7 @@ ACCOUNT_REF="${ACCOUNT_REF:-}"
 CIM_PASSWORD="${CIM_PASSWORD:-}"
 USE_PASSWORD="${CIM_USE_PASSWORD:-no}"
 LIVE_SUBMIT="${CIM_LIVE_SUBMIT:-no}"
+RECOVERY_DIR="${CIM_RECOVERY_DIR:-}"
 DRY_RUN="${CIM_DRY_RUN:-no}"
 
 if [[ -n "${CIM_RANDOM_SEED:-}" ]] && ! cim_resolve_random_seed "$CIM_RANDOM_SEED"; then
@@ -56,6 +58,17 @@ fi
 if [[ "$LIVE_SUBMIT" == yes && "${CIM_CONFIRM_LIVE_SUBMIT:-}" != I-UNDERSTAND-THIS-CHANGES-REAL-DATA ]]; then
   printf 'ERROR live submit requires CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA\n' >&2
   exit 2
+fi
+if [[ "$LIVE_SUBMIT" == yes ]]; then
+  if [[ -z "$RECOVERY_DIR" || "$RECOVERY_DIR" != /* || ! -d "$RECOVERY_DIR" || -L "$RECOVERY_DIR" ]]; then
+    printf 'ERROR live submit requires CIM_RECOVERY_DIR to name an existing private directory\n' >&2
+    exit 2
+  fi
+  recovery_permissions="$(stat -c '%a %u' -- "$RECOVERY_DIR" 2>/dev/null || true)"
+  if [[ "$recovery_permissions" != "700 $(id -u)" ]]; then
+    printf 'ERROR CIM_RECOVERY_DIR must be owned by the current user with mode 0700\n' >&2
+    exit 2
+  fi
 fi
 
 dry_request() {
@@ -122,7 +135,7 @@ if [[ "$DRY_RUN" == yes ]]; then
   exit 0
 fi
 
-for command_name in curl jq date mktemp; do
+for command_name in curl jq date mktemp stat id; do
   command -v "$command_name" >/dev/null 2>&1 || {
     printf 'ERROR required command is unavailable: %s\n' "$command_name" >&2
     exit 2
@@ -171,16 +184,35 @@ FAILED=0
 SCENARIO=''
 LIVE_REFERENCE=''
 LIVE_SUBMITTED=no
+LIVE_SUBMIT_ATTEMPTED=no
+LIVE_CLEANUP_VERIFIED=no
 # shellcheck disable=SC2329 # Invoked indirectly by the EXIT trap.
 on_exit() {
   local result=$?
   if [[ "$result" -ne 0 && "$FAILED" -eq 0 ]]; then FAILED=1; fi
-  if [[ "$result" -ne 0 && "$LIVE_SUBMITTED" == yes ]]; then
-    printf 'MANUAL CLEANUP: submitted referenceNo=%s; inspect its status and cancel manually if it remains pending.\n' "$LIVE_REFERENCE" >&2
+  if [[ "$LIVE_SUBMIT_ATTEMPTED" == yes && "$LIVE_CLEANUP_VERIFIED" != yes ]]; then
+    local recovery_file recovery_outcome
+    recovery_file="$(mktemp "$RECOVERY_DIR/cim-recovery.XXXXXX" 2>/dev/null || true)"
+    recovery_outcome=unknown
+    [[ "$LIVE_SUBMITTED" != yes ]] || recovery_outcome=confirmed
+    if [[ -n "$recovery_file" ]] && {
+      printf 'status=cleanup-incomplete\n'
+      printf 'submit_outcome=%s\n' "$recovery_outcome"
+      if [[ "$LIVE_SUBMITTED" == yes ]]; then printf 'referenceNo=%s\n' "$LIVE_REFERENCE"; fi
+    } >"$recovery_file" && chmod 600 "$recovery_file"; then
+      printf 'CLEANUP INCOMPLETE: private recovery record saved at %s; inspect it through secure local access.\n' "$recovery_file" >&2
+      FAILED=1
+      result=1
+    else
+      [[ -z "$recovery_file" ]] || rm -f -- "$recovery_file"
+      printf 'CLEANUP INCOMPLETE: private recovery record could not be saved; do not retry submission or cancellation automatically.\n' >&2
+      result=1
+    fi
   fi
   printf 'Summary: passed=%s skipped=%s failed=%s\n' "$PASSED" "$SKIPPED" "$FAILED"
   rm -f -- "$COOKIE_JAR"
   rmdir -- "$WORK_DIR"
+  [[ "$result" -eq 0 ]] || exit "$result"
 }
 trap on_exit EXIT
 
@@ -489,6 +521,7 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     [[ -n "$LIVE_TOKEN" ]] || fail_scenario LIVE-preflight 'positive P0 token' 'missing' ''
     SCENARIO=L1-submit
     REQUEST_BODY="$LIVE_BODY"
+    LIVE_SUBMIT_ATTEMPTED=yes
     request POST "$SUBMIT_PATH" yes "$LIVE_TOKEN" present
     [[ "$HTTP_STATUS" == 200 ]] || fail_scenario L1-submit '200/SUBMITTED' "$HTTP_STATUS" "$ERROR_CODE"
     jq -e '
@@ -500,14 +533,20 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     LIVE_REFERENCE="$(jq -r '.result.data.referenceNo' <<<"$RESPONSE_BODY")"
     LIVE_SUBMITTED=yes
     ERROR_CODE=''
-    printf 'PASS L1-submit status=%s code=- referenceNo=%s\n' "$HTTP_STATUS" "$LIVE_REFERENCE"
-    PASSED=$((PASSED + 1))
+    pass_scenario L1-submit
 
     SCENARIO=L2-get
     request GET "$DETAILS_PATH" yes none no
     [[ "$HTTP_STATUS" == 200 ]] || fail_scenario L2-get 200 "$HTTP_STATUS" "$ERROR_CODE"
-    jq -e --arg ref "$LIVE_REFERENCE" '.result.data.pendingInstructions | any(.[]; .referenceNo == $ref)' \
-      <<<"$RESPONSE_BODY" >/dev/null 2>&1 || fail_scenario L2-get 'submitted reference in pendingInstructions' "$HTTP_STATUS" "$ERROR_CODE"
+    jq -e --arg ref "$LIVE_REFERENCE" '
+      .success == true and .status == "SUCCESS"
+      and (.result.data.accountNumber | type == "string")
+      and .result.data.scenario == "NORMAL"
+      and (.result.data.history | type == "array")
+      and (.result.data.pendingInstructions | type == "array")
+      and ([.result.data.pendingInstructions[] | select(.referenceNo == $ref)] | length == 1)
+    ' <<<"$RESPONSE_BODY" >/dev/null 2>&1 \
+      || fail_scenario L2-get 'submitted reference uniquely present in pendingInstructions' "$HTTP_STATUS" "$ERROR_CODE"
     GET_DATA="$(jq -c '.result.data' <<<"$RESPONSE_BODY")"
     ERROR_CODE=''
     pass_scenario L2-get
@@ -519,12 +558,12 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     REQUEST_BODY="$LIVE_CANCEL_BODY"
     request POST "$CANCEL_PATH" yes "$LIVE_CANCEL_TOKEN" present
     if [[ "$HTTP_STATUS" == 422 && "$ERROR_CODE" == err.investment-choice.cancel.not-cancellable ]]; then
-      printf 'FAIL L3-cancel instruction is already processing; manual handling is required. referenceNo=%s\n' "$LIVE_REFERENCE" >&2
-      FAILED=1
-      exit 1
+      fail_scenario L3-cancel '200/SUCCESS' "$HTTP_STATUS" "$ERROR_CODE"
     fi
     [[ "$HTTP_STATUS" == 200 ]] || fail_scenario L3-cancel '200/SUCCESS' "$HTTP_STATUS" "$ERROR_CODE"
-    jq -e --arg ref "$LIVE_REFERENCE" '.status == "SUCCESS" and .result.data.referenceNo == $ref' \
+    jq -e --arg ref "$LIVE_REFERENCE" '
+      .success == true and .status == "SUCCESS" and .result.data.referenceNo == $ref
+    ' \
       <<<"$RESPONSE_BODY" >/dev/null 2>&1 || fail_scenario L3-cancel 'SUCCESS with matching referenceNo' "$HTTP_STATUS" "$ERROR_CODE"
     ERROR_CODE=''
     pass_scenario L3-cancel
@@ -532,18 +571,24 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     SCENARIO=L4-get
     request GET "$DETAILS_PATH" yes none no
     [[ "$HTTP_STATUS" == 200 ]] || fail_scenario L4-get 200 "$HTTP_STATUS" "$ERROR_CODE"
-    jq -e --arg ref "$LIVE_REFERENCE" '(.result.data.pendingInstructions | any(.[]; .referenceNo == $ref)) | not' \
-      <<<"$RESPONSE_BODY" >/dev/null 2>&1 || fail_scenario L4-get 'cancelled reference absent from pendingInstructions' "$HTTP_STATUS" "$ERROR_CODE"
+    jq -e '
+      .success == true and .status == "SUCCESS"
+      and (.result.data.accountNumber | type == "string")
+      and .result.data.scenario == "NORMAL"
+      and (.result.data.history | type == "array")
+      and (.result.data.pendingInstructions | type == "array")
+    ' <<<"$RESPONSE_BODY" >/dev/null 2>&1 \
+      || fail_scenario L4-get '200/SUCCESS GET contract with pendingInstructions array' "$HTTP_STATUS" "$ERROR_CODE"
+    if jq -e --arg ref "$LIVE_REFERENCE" \
+      '.result.data.pendingInstructions | any(.[]; .referenceNo == $ref)' \
+      <<<"$RESPONSE_BODY" >/dev/null 2>&1; then
+      fail_scenario L4-get 'submitted reference not listed as pending after successful cancel response' "$HTTP_STATUS" "$ERROR_CODE"
+    fi
     GET_DATA="$(jq -c '.result.data' <<<"$RESPONSE_BODY")"
+    LIVE_CLEANUP_VERIFIED=yes
     ERROR_CODE=''
-    pass_scenario L4-get
-
-    SCENARIO=L4-issue
-    password_json CANCEL_INVESTMENT_CHOICE "$LIVE_CANCEL_BODY" "$CIM_PASSWORD"
-    REQUEST_BODY="$ISSUANCE_BODY"
-    request POST "$ISSUE_PATH" yes none present
-    assert_result L4-issue 422 err.investment-choice.cancel.ref-invalid
-    assert_error_target referenceNo
+    printf 'PASS L4-get status=%s code=- reference_state=not-listed\n' "$HTTP_STATUS"
+    PASSED=$((PASSED + 1))
   fi
 fi
 

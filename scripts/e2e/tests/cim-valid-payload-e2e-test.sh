@@ -11,6 +11,11 @@ cat >"$tmp/bin/curl" <<'FAKE_CURL'
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+FAKE_CALLS="${FAKE_CALLS:-/dev/null}"
+FAKE_L2_MODE="${FAKE_L2_MODE:-normal}"
+FAKE_L4_MODE="${FAKE_L4_MODE:-normal}"
+FAKE_SUBMIT_MODE="${FAKE_SUBMIT_MODE:-normal}"
+FAKE_CANCEL_MODE="${FAKE_CANCEL_MODE:-normal}"
 method=GET
 url=''
 body_arg=''
@@ -52,9 +57,21 @@ case "$method $path" in
     count="$(cat "$FAKE_GET_COUNT")"
     count=$((count + 1))
     printf '%s' "$count" >"$FAKE_GET_COUNT"
+    printf 'GET-%s\n' "$count" >>"$FAKE_CALLS"
     if ((count == 2)); then
       status=401
       response='{"success":false,"status":"ERROR","result":null,"messages":[],"errors":[{"code":"err.security.authentication.required"}]}'
+    elif ((count == 3)) && [[ "$FAKE_L2_MODE" == missing || "$FAKE_L2_MODE" == other-first ]]; then
+      pending='[]'
+      [[ "$FAKE_L2_MODE" != other-first ]] || pending='[{"referenceNo":"OTHER-PENDING"},{"referenceNo":"LIVE-REF-1"}]'
+      response="$(jq -cn --argjson pending "$pending" --argjson funds "$eligible_funds" '{
+        success:true,status:"SUCCESS",result:{data:{
+          accountNumber:"TEST-ACCOUNT",scenario:"NORMAL",intervalPercentage:20,
+          switchSources:[{switchSourceCode:"SRC-A",switchSource:"Display A",sequence:1,available:true}],
+          funds:[$funds | to_entries[] | {fundCode:.value,fundName:("Fund "+.value),sequence:(.key+1),riskLevel:"1"}],
+          history:[],pendingInstructions:$pending
+        }},messages:[],errors:[]
+      }')"
     elif [[ "$FAKE_SCENARIO" != NORMAL ]]; then
       response="$(jq -cn --arg scenario "$FAKE_SCENARIO" '{
         success:true,status:"SUCCESS",result:{data:{
@@ -72,10 +89,14 @@ case "$method $path" in
           history:[],pendingInstructions:$pending
         }},messages:[],errors:[]
       }')"
+      if ((count == 4)) && [[ "$FAKE_L4_MODE" == malformed ]]; then
+        response='{"success":true,"status":"SUCCESS","result":{"data":{"pendingInstructions":null}},"messages":[],"errors":[]}'
+      fi
     fi
     ;;
   'POST /api/v1/password-validation')
     purpose="$(jq -r '.purpose' <<<"$request_body")"
+    printf 'ISSUE-%s\n' "$purpose" >>"$FAKE_CALLS"
     operation="$(jq -c '.operationPayload' <<<"$request_body")"
     if jq -e 'has("unknown")' <<<"$operation" >/dev/null; then
       status=422
@@ -116,17 +137,23 @@ case "$method $path" in
     ;;
   'POST /api/v1/investment-choice/instructions')
     if [[ "$token" == fake-cim-token && "$FAKE_LIVE" == yes ]]; then
-      submitted="$(jq -c '.' <<<"$request_body")"
-      issued="$(cat "$FAKE_VALID_PAYLOAD")"
-      if [[ "$submitted" != "$issued" ]]; then
-        printf 'payload_reuse=FAIL\n' >"$FAKE_REUSE"
+      printf 'SUBMIT\n' >>"$FAKE_CALLS"
+      if [[ "$FAKE_SUBMIT_MODE" == fail ]]; then
         status=500
-        response='{}'
+        response='{"success":false,"status":"ERROR","result":null,"messages":[],"errors":[]}'
       else
-        printf 'payload_reuse=PASS\n' >"$FAKE_REUSE"
-        printf '[{"referenceNo":"LIVE-REF-1","submitDate":"12/11/2026","submitTime":"12:00:00","allocations":[]}]' >"$FAKE_PENDING"
-        response='{"success":true,"status":"SUBMITTED","result":{"data":{"referenceNo":"LIVE-REF-1","submitDate":"12/11/2026","submitTime":"12:00:00"}},"messages":[],"errors":[]}'
-        printf 'authorized-submit\n' >>"$FAKE_MUTATIONS"
+        submitted="$(jq -c '.' <<<"$request_body")"
+        issued="$(cat "$FAKE_VALID_PAYLOAD")"
+        if [[ "$submitted" != "$issued" ]]; then
+          printf 'payload_reuse=FAIL\n' >"$FAKE_REUSE"
+          status=500
+          response='{}'
+        else
+          printf 'payload_reuse=PASS\n' >"$FAKE_REUSE"
+          printf '[{"referenceNo":"LIVE-REF-1","submitDate":"12/11/2026","submitTime":"12:00:00","allocations":[]}]' >"$FAKE_PENDING"
+          response='{"success":true,"status":"SUBMITTED","result":{"data":{"referenceNo":"LIVE-REF-1","submitDate":"12/11/2026","submitTime":"12:00:00"}},"messages":[],"errors":[]}'
+          printf 'authorized-submit\n' >>"$FAKE_MUTATIONS"
+        fi
       fi
     else
       status=403
@@ -134,6 +161,9 @@ case "$method $path" in
     fi
     ;;
   'POST /api/v1/investment-choice/instructions/cancel')
+    if [[ "$FAKE_LIVE" == yes && "$token" == fake-cancel-token ]]; then
+      printf 'CANCEL\n' >>"$FAKE_CALLS"
+    fi
     if [[ "$token" == fake-cancel-token ]]; then
       cancel_payload="$(jq -c '.' <<<"$request_body")"
       issued_cancel_payload="$(cat "$FAKE_VALID_CANCEL_PAYLOAD")"
@@ -141,9 +171,12 @@ case "$method $path" in
       if [[ "$cancel_payload" != "$issued_cancel_payload" ]]; then
         status=403
         response='{"success":false,"status":"ERROR","result":null,"messages":[],"errors":[{"code":"err.password-validation.authorization.invalid"}]}'
+      elif [[ "$FAKE_CANCEL_MODE" == fail ]]; then
+        status=500
+        response='{"success":false,"status":"ERROR","result":null,"messages":[],"errors":[]}'
       elif [[ "$FAKE_LIVE" == yes && "$reference" == LIVE-REF-1 ]]; then
         response='{"success":true,"status":"SUCCESS","result":{"data":{"referenceNo":"LIVE-REF-1"}},"messages":[],"errors":[]}'
-        printf '[]' >"$FAKE_PENDING"
+        [[ "$FAKE_L4_MODE" == present ]] || printf '[]' >"$FAKE_PENDING"
         printf 'authorized-cancel\n' >>"$FAKE_MUTATIONS"
       else
         status=403
@@ -164,17 +197,23 @@ FAKE_CURL
 chmod +x "$tmp/bin/curl"
 
 run_fake_scenario() {
-  local mode="$1" out="$2" initial_pending="${3:-[]}" expected_failure="${4:-no}" run_name scenario run_dir
+  local mode="$1" out="$2" initial_pending="${3:-[]}" expected_failure="${4:-no}" run_name scenario l2_mode l4_mode submit_mode cancel_mode run_dir
   run_name="${5:-$mode}"
   scenario="${6:-NORMAL}"
+  l2_mode="${7:-normal}"
+  l4_mode="${8:-normal}"
+  submit_mode="${9:-normal}"
+  cancel_mode="${10:-normal}"
   run_dir="$tmp/$run_name"
-  mkdir -p "$run_dir"
+  mkdir -p "$run_dir" "$run_dir/recovery"
+  chmod 700 "$run_dir/recovery"
   : >"$run_dir/get-count"
   : >"$run_dir/valid-payload"
   : >"$run_dir/valid-cancel-payload"
   printf '%s' "$initial_pending" >"$run_dir/pending"
   : >"$run_dir/reuse"
   : >"$run_dir/mutations"
+  : >"$run_dir/calls"
   : >"$run_dir/diagnostic"
   if ! PATH="$tmp/bin:$PATH" \
     BASE_URL=http://fake.invalid \
@@ -187,9 +226,15 @@ run_fake_scenario() {
     CIM_RANDOM_SEED=2468 \
     CIM_LIVE_SUBMIT="$mode" \
     CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA \
+    CIM_RECOVERY_DIR="$run_dir/recovery" \
     FAKE_LIVE="$mode" \
     FAKE_SCENARIO="$scenario" \
+    FAKE_L2_MODE="$l2_mode" \
+    FAKE_L4_MODE="$l4_mode" \
+    FAKE_SUBMIT_MODE="$submit_mode" \
+    FAKE_CANCEL_MODE="$cancel_mode" \
     FAKE_GET_COUNT="$run_dir/get-count" \
+    FAKE_CALLS="$run_dir/calls" \
     FAKE_VALID_PAYLOAD="$run_dir/valid-payload" \
     FAKE_VALID_CANCEL_PAYLOAD="$run_dir/valid-cancel-payload" \
     FAKE_PENDING="$run_dir/pending" \
@@ -254,6 +299,105 @@ grep -Fq 'Password verifications this run (snapshot rejections excluded): 2' "$t
 }
 [[ "$(wc -l <"$tmp/yes/mutations")" -eq 2 ]] || {
   printf 'FAIL explicit live opt-in did not exercise exactly one submit and one cancel\n'
+  exit 1
+}
+expected_live_calls=$'SUBMIT\nGET-3\nISSUE-CANCEL_INVESTMENT_CHOICE\nCANCEL\nGET-4'
+actual_live_calls="$(sed -n '/^SUBMIT$/,$p' "$tmp/yes/calls")"
+[[ "$actual_live_calls" == "$expected_live_calls" ]] || {
+  printf 'FAIL live lifecycle call order differed from submit, refreshed GET, cancel issuance, cancel, final GET\n'
+  exit 1
+}
+grep -Fq 'reference_state=not-listed' "$tmp/live.log" || {
+  printf 'FAIL final GET did not report the observed pending-list state\n'
+  exit 1
+}
+grep -Fq 'LIVE-REF-1' "$tmp/yes/valid-cancel-payload" || {
+  printf 'FAIL cancel issuance was not bound to the reference created by this run\n'
+  exit 1
+}
+grep -Fq 'LIVE-REF-1' "$tmp/live.log" && {
+  printf 'FAIL submitted instruction reference appeared in terminal output\n'
+  exit 1
+}
+
+run_fake_scenario yes "$tmp/l2-missing.log" '[]' yes l2-missing NORMAL missing
+! grep -Fq 'ISSUE-CANCEL_INVESTMENT_CHOICE' <(sed -n '/^SUBMIT$/,$p' "$tmp/l2-missing/calls") || {
+  printf 'FAIL cancellation issuance ran when GET #2 omitted the submitted reference\n'
+  exit 1
+}
+[[ "$(grep -c '^SUBMIT$' "$tmp/l2-missing/calls")" -eq 1 ]] || {
+  printf 'FAIL submission was retried after GET #2 rejected cancellation eligibility\n'
+  exit 1
+}
+recovery_file="$(find "$tmp/l2-missing/recovery" -type f -print -quit)"
+[[ -n "$recovery_file" && "$(stat -c '%a' "$recovery_file")" == 600 ]] || {
+  printf 'FAIL incomplete GET #2 cleanup did not preserve a mode-0600 recovery record\n'
+  exit 1
+}
+grep -Fq 'referenceNo=LIVE-REF-1' "$recovery_file" || {
+  printf 'FAIL private recovery record omitted the outstanding submitted reference\n'
+  exit 1
+}
+grep -Fq 'LIVE-REF-1' "$tmp/l2-missing.log" && {
+  printf 'FAIL outstanding reference appeared in terminal output\n'
+  exit 1
+}
+
+run_fake_scenario yes "$tmp/other-pending.log" '[]' no other-pending NORMAL other-first
+grep -Fq 'PASS L3-issue status=200' "$tmp/other-pending.log" || {
+  printf 'FAIL cancel issuance did not accept the submitted reference when another pending reference came first\n'
+  exit 1
+}
+grep -Fq 'LIVE-REF-1' "$tmp/other-pending/valid-cancel-payload" || {
+  printf 'FAIL another pending reference was substituted for the run-created reference\n'
+  exit 1
+}
+
+run_fake_scenario yes "$tmp/submit-failed.log" '[]' yes submit-failed NORMAL normal normal fail
+[[ "$(grep -c '^SUBMIT$' "$tmp/submit-failed/calls")" -eq 1 ]] || {
+  printf 'FAIL failed submit was automatically retried\n'
+  exit 1
+}
+[[ "$(find "$tmp/submit-failed/recovery" -type f | wc -l)" -eq 1 ]] || {
+  printf 'FAIL ambiguous submit outcome did not preserve recovery status\n'
+  exit 1
+}
+grep -Fq 'submit_outcome=unknown' "$tmp/submit-failed/recovery/"* || {
+  printf 'FAIL ambiguous submit recovery record did not identify unknown outcome\n'
+  exit 1
+}
+
+run_fake_scenario yes "$tmp/cancel-failed.log" '[]' yes cancel-failed NORMAL normal normal normal fail
+[[ "$(grep -c '^CANCEL$' "$tmp/cancel-failed/calls")" -eq 1 ]] || {
+  printf 'FAIL failed cancel was automatically retried\n'
+  exit 1
+}
+[[ "$(grep -c '^SUBMIT$' "$tmp/cancel-failed/calls")" -eq 1 ]] || {
+  printf 'FAIL cancel failure caused an automatic submit retry\n'
+  exit 1
+}
+grep -Fq 'referenceNo=LIVE-REF-1' "$tmp/cancel-failed/recovery/"* || {
+  printf 'FAIL failed cancellation recovery record omitted the outstanding reference\n'
+  exit 1
+}
+
+run_fake_scenario yes "$tmp/final-get-invalid.log" '[]' yes final-get-invalid NORMAL normal malformed
+[[ "$(grep -c '^CANCEL$' "$tmp/final-get-invalid/calls")" -eq 1 ]] || {
+  printf 'FAIL final GET verification failure retried cancellation\n'
+  exit 1
+}
+[[ "$(find "$tmp/final-get-invalid/recovery" -type f | wc -l)" -eq 1 ]] || {
+  printf 'FAIL invalid final GET did not mark cleanup incomplete\n'
+  exit 1
+}
+
+run_fake_scenario yes "$tmp/final-get-still-pending.log" '[]' yes final-get-still-pending NORMAL normal present
+grep -Fq 'submitted reference not listed as pending after successful cancel response' "$tmp/final-get-still-pending.log" || {
+  printf 'FAIL final GET did not flag the run-created reference still pending\n'
+  exit 1
+}
+[[ "$(find "$tmp/final-get-still-pending/recovery" -type f | wc -l)" -eq 1 ]] || {
+  printf 'FAIL still-pending final state did not preserve cleanup recovery\n'
   exit 1
 }
 
@@ -362,6 +506,30 @@ fi
   exit 1
 }
 
+mkdir -p "$tmp/insecure-recovery"
+chmod 755 "$tmp/insecure-recovery"
+: >"$tmp/insecure-recovery/get-count"
+if PATH="$tmp/bin:$PATH" \
+  BASE_URL=http://fake.invalid \
+  CIM_USE_PASSWORD=yes \
+  CIM_LIVE_SUBMIT=yes \
+  CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA \
+  CIM_RECOVERY_DIR="$tmp/insecure-recovery" \
+  FAKE_GET_COUNT="$tmp/insecure-recovery/get-count" \
+  bash "$SCENARIO" >"$tmp/insecure-recovery.log" 2>&1; then
+  printf 'FAIL live submission accepted an insecure recovery directory\n'
+  exit 1
+else
+  [[ "$?" -eq 2 ]] || {
+    printf 'FAIL insecure recovery directory returned an unexpected status\n'
+    exit 1
+  }
+fi
+[[ ! -s "$tmp/insecure-recovery/get-count" ]] || {
+  printf 'FAIL network request occurred before recovery directory validation\n'
+  exit 1
+}
+
 for secret in \
   generator-password-sentinel \
   unused-login-password-sentinel \
@@ -369,11 +537,28 @@ for secret in \
   generator-csrf-sentinel \
   generator-account-ref-sentinel \
   fake-cim-token \
-  fake-cancel-token; do
+  fake-cancel-token \
+  LIVE-REF-1 \
+  OTHER-PENDING; do
   if grep -Fq -- "$secret" "$tmp"/*.log; then
     printf 'FAIL secret appeared in scenario output/evidence\n'
     exit 1
   fi
+done
+
+for recovery_file in "$tmp"/*/recovery/*; do
+  [[ -f "$recovery_file" ]] || continue
+  for secret in \
+    generator-password-sentinel \
+    generator-cookie-sentinel \
+    generator-csrf-sentinel \
+    fake-cim-token \
+    fake-cancel-token; do
+    if grep -Fq -- "$secret" "$recovery_file"; then
+      printf 'FAIL authentication secret appeared in private recovery record\n'
+      exit 1
+    fi
+  done
 done
 
 printf 'PASS CIM M6 issuance, exact payload reuse, live gates, and output redaction\n'
