@@ -22,7 +22,7 @@ Every behaviour is introduced by a failing test first; evidence (red then green)
 
 ## Web (`VestingScaleWebMapperTest`, `VestingScaleControllerTest` WebTestClient, `ExceptionMappingsTest`)
 - Restructure into planTypes / overview / vestingScale; DS order preserved.
-- en / zh-HK / missing / unsupported Accept-Language; no fallback (chi null, eng present → null).
+- en / zh-HK / missing / unsupported Accept-Language; plan type falls back to nonblank English when Chinese is missing/blank; other fields have no cross-language fallback.
 - Vesting rows sorted ascending (feed unsorted input).
 - JSON over real codec: hidden key absent, null emitted as `null`, `[]` emitted.
 - Date output dd/MM/yyyy.

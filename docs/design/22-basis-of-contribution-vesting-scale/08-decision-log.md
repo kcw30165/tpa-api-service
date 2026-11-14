@@ -24,7 +24,7 @@
 | Q21 | All roles may access; DS controls access. |
 | Q21a | No feature role gate; shared APIM credential resolver applies unchanged (resolver role support is platform scope). |
 | Q22 | 3 identity codes → 503 public, internal ACCOUNT_CONTEXT_MISMATCH, ERROR; other codes generic path. |
-| Q23 | No cross-language fallback. |
+| Q23 | `planTypes[].planType` uses nonblank English when the selected Chinese description is missing or blank; other localized fields have no cross-language fallback. |
 | Q24 | Print is FE only. |
 | N4 | Not mapped: `env`, `plan-name`, `vest-period-base` code, config metadata. |
 | N5 | E2E via the upcoming real orchestrator, as M5 after feature delivery. |

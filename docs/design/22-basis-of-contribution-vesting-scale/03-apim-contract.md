@@ -29,7 +29,7 @@ The typed envelope comes from ApimExchangeExecutor (transport/JSON syntax only).
 | `config[].item-name/item-type/function/sch-type` | ignored | — |
 | `plans` | required JSON array (may be `[]`) | malformed |
 | `plans[].plan-no` | required non-blank; unique within response | malformed |
-| `plans[].plan-type-desc-eng/chi` | required non-blank (pull-down label) | malformed |
+| `plans[].plan-type-desc-eng/chi` | optional; absent or null → null, string including `""` → value | non-null non-string → malformed |
 | `plans[].plan-name`, `vest-period-base` | ignored | — |
 | `plans[].plan-service` | absent / null / object `{years, months}`; inner values integer or null, passed through | wrong type → malformed |
 | `plans[].vest-period-base-eng/chi`, `basis-cont-*` | absent / null / string | wrong type → malformed |

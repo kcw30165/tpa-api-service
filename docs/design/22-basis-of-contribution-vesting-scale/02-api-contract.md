@@ -29,7 +29,6 @@
         "plans": [
           {
             "planNo": "OCAC",
-            "planType": "Company Account (Notional MPF)",
             "planEffectiveDate": "01/02/2019",
             "dateOfJoiningPlan": "01/02/2019",
             "vestingPeriodBasedOn": "Date Joined Company",
@@ -61,13 +60,12 @@
 | BFF field | Source (APIM) | Configurable item-id | Notes |
 |---|---|---|---|
 | `planTypes[].planNo` | `plans[].plan-no` | — | always present; join key |
-| `planTypes[].planType` | `plan-type-desc-eng/chi` | — | language-filtered; pull-down text |
+| `planTypes[].planType` | `plan-type-desc-eng/chi` | — | language-filtered; for zh, a missing/blank Chinese description falls back to a nonblank English description |
 | `overview.member.memberCategory` | `member.member-category` | `member-category` | opaque string, `""` passed through |
 | `overview.member.dateJoinedCompany` | `member.date-joined-company` | `date-joined-company` | dd/MM/yyyy or null |
 | `overview.member.dateJoinedScheme` | `member.date-joined-scheme` | `date-joined-scheme` | dd/MM/yyyy or null |
 | `overview.member.employmentDate` | `member.employment-date` | `employment-date` | dd/MM/yyyy or null |
 | `overview.plans[].planNo` | `plan-no` | — | always present |
-| `overview.plans[].planType` | `plan-type-desc-eng/chi` | — | language-filtered |
 | `overview.plans[].planEffectiveDate` | `plan-effective-date` | `plan-effective-date` | dd/MM/yyyy or null |
 | `overview.plans[].dateOfJoiningPlan` | `date-of-joining-plan` | `date-of-joining-plan` | dd/MM/yyyy or null |
 | `overview.plans[].planService` | `plan-service` | `plan-service` | `{years, months}` passed as DS sends; or null |
@@ -87,6 +85,7 @@
 
 - `overview.member` is always present (may be `{}`).
 - `planTypes`, `overview.plans` are always present (may be `[]`); same order as DS; FE selects first.
+- Plan type descriptions are exposed only in `planTypes[]`, not repeated in `overview.plans[]`.
 - `vestingScale` is absent when `vesting-scale` is HIDDEN (section not shown). Otherwise present; it contains an entry for each plan whose `vesting-scale` key is present (`scales` = sorted rows, `[]`, or `null`).
 
 ## Errors

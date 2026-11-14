@@ -25,7 +25,8 @@ Visibility is applied in the application layer (`VestingScaleVisibilityPolicy`) 
 
 ## 4.3 Language
 - Resolve via existing `RequestLanguageResolver`: `zh`, `zh-HK`, `zh_HK` → Chinese (`-chi`); everything else → English (`-eng`).
-- **No cross-language fallback.** Null in the selected language stays null.
+- For `planTypes[].planType`, if the selected Chinese description is absent, null, or blank, use the English description when it is nonblank.
+- Other localized fields use only the selected language; no cross-language fallback. Null in the selected language stays null.
 
 ## 4.4 Formatting / ordering
 - Dates: parse and output `dd/MM/yyyy` (formatter `dd/MM/uuuu`, STRICT). Null passes through.
