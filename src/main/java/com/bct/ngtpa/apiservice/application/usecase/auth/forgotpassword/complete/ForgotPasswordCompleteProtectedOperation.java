@@ -72,7 +72,13 @@ public final class ForgotPasswordCompleteProtectedOperation {
     Objects.requireNonNull(input, "protected completion input must not be null");
     return locks
         .acquire(input.command().authFlowSessionId(), lockLease)
-        .flatMap(handle -> route(input, handle));
+        .flatMap(handle -> route(input, handle))
+        .onErrorResume(
+            failure ->
+                Mono.just(
+                    technical(
+                        ForgotPasswordCompleteIncident.local(
+                            "COMPLETE_LOCK_ACQUISITION_FAILURE", "lock-acquisition"))));
   }
 
   private Mono<ForgotPasswordCompleteProtectedExecutionResult> route(
@@ -132,7 +138,8 @@ public final class ForgotPasswordCompleteProtectedOperation {
                 command.correlationId(),
                 command.actorUserRole()))
         .flatMap(result -> classify(session, context, result, now))
-        .onErrorResume(ignored -> blockUnknown(session, now));
+        .onErrorResume(
+            failure -> blockUnknown(session, now, List.of(incidentFor(failure))));
   }
 
   private Mono<ForgotPasswordCompleteProtectedExecutionResult> classify(
@@ -143,10 +150,14 @@ public final class ForgotPasswordCompleteProtectedOperation {
     if (result == null
         || result.status() == ForgotPasswordCompletionResult.Status.TECHNICAL_FAILURE) {
       return Mono.just(
-          ForgotPasswordCompleteProtectedExecutionResult.technicalFailure(systemFailed()));
+          technical(
+              result == null
+                  ? ForgotPasswordCompleteIncident.local(
+                      "COMPLETE_APIM_RESPONSE_FAILURE", "apim-reset-response")
+                  : incidentFor(result)));
     }
     if (result.status() == ForgotPasswordCompletionResult.Status.UNKNOWN_OUTCOME) {
-      return blockUnknown(session, now);
+      return blockUnknown(session, now, List.of(incidentFor(result)));
     }
     if (result.status() == ForgotPasswordCompletionResult.Status.REJECTED) {
       if (DOWNSTREAM_PASSWORD_INVALID.equals(result.downstreamErrorCode())) {
@@ -159,14 +170,25 @@ public final class ForgotPasswordCompleteProtectedOperation {
       if (DOWNSTREAM_MEMBER_NOT_FOUND.equals(result.downstreamErrorCode())) {
         return updateSession(session, AuthFlowStatus.COMPLETED, context, now)
             .thenReturn(ForgotPasswordCompleteProtectedExecutionResult.terminal(memberNotFound()))
-            .onErrorResume(ignored -> blockUnknown(session, now));
+            .onErrorResume(
+                failure ->
+                    blockUnknown(
+                        session,
+                        now,
+                        List.of(
+                            ForgotPasswordCompleteIncident.local(
+                                "COMPLETE_SESSION_UPDATE_FAILURE", "session-update"))));
       }
       return Mono.just(
-          ForgotPasswordCompleteProtectedExecutionResult.technicalFailure(systemFailed()));
+          technical(
+              ForgotPasswordCompleteIncident.local(
+                  "COMPLETE_APIM_RESPONSE_FAILURE", "apim-reset-response")));
     }
     if (result.status() != ForgotPasswordCompletionResult.Status.RESET) {
       return Mono.just(
-          ForgotPasswordCompleteProtectedExecutionResult.technicalFailure(systemFailed()));
+          technical(
+              ForgotPasswordCompleteIncident.local(
+                  "COMPLETE_APIM_RESPONSE_FAILURE", "apim-reset-response")));
     }
     ForgotPasswordResetAuthorization authorization = context.resetAuthorization();
     ForgotPasswordResetAuthorization consumed =
@@ -185,15 +207,61 @@ public final class ForgotPasswordCompleteProtectedOperation {
         .flatMap(
             completing -> updateSession(completing, AuthFlowStatus.COMPLETED, updatedContext, now))
         .thenReturn(ForgotPasswordCompleteProtectedExecutionResult.terminal(success()))
-        .onErrorResume(ignored -> blockUnknown(session, now));
+        .onErrorResume(
+            failure ->
+                blockUnknown(
+                    session,
+                    now,
+                    List.of(
+                        ForgotPasswordCompleteIncident.local(
+                            "COMPLETE_SESSION_UPDATE_FAILURE", "session-update"))));
   }
 
   private Mono<ForgotPasswordCompleteProtectedExecutionResult> blockUnknown(
-      AuthFlowSession session, Instant now) {
+      AuthFlowSession session, Instant now, List<ForgotPasswordCompleteIncident> incidents) {
     return updateStatus(session, AuthFlowStatus.UNKNOWN_OUTCOME_BLOCKED, now)
-        .onErrorResume(ignored -> Mono.empty())
-        .thenReturn(
-            ForgotPasswordCompleteProtectedExecutionResult.unknownOutcome(unknownOutcome()));
+        .thenReturn(incidents)
+        .onErrorResume(
+            failure ->
+                Mono.just(
+                    append(
+                        incidents,
+                        ForgotPasswordCompleteIncident.local(
+                            "COMPLETE_BLOCKED_SESSION_WRITE_FAILURE", "blocked-session-write"))))
+        .map(
+            failures ->
+                ForgotPasswordCompleteProtectedExecutionResult.unknownOutcome(
+                    unknownOutcome(), failures));
+  }
+
+  private ForgotPasswordCompleteProtectedExecutionResult technical(
+      ForgotPasswordCompleteIncident incident) {
+    return ForgotPasswordCompleteProtectedExecutionResult.technicalFailure(
+        systemFailed(), List.of(incident));
+  }
+
+  private ForgotPasswordCompleteIncident incidentFor(ForgotPasswordCompletionResult result) {
+    if (result.failureOrigin() != null && result.failureStage() != null) {
+      return ForgotPasswordCompleteIncident.apim(result.failureOrigin(), result.failureStage());
+    }
+    return ForgotPasswordCompleteIncident.local(
+        "COMPLETE_APIM_RESPONSE_FAILURE", "apim-reset-response");
+  }
+
+  private ForgotPasswordCompleteIncident incidentFor(Throwable failure) {
+    if (failure instanceof ForgotPasswordCompletionTechnicalFailure technical) {
+      return ForgotPasswordCompleteIncident.apim(technical.origin(), technical.stage());
+    }
+    return ForgotPasswordCompleteIncident.local(
+        "COMPLETE_PROTECTED_OPERATION_FAILURE", "protected-operation");
+  }
+
+  private List<ForgotPasswordCompleteIncident> append(
+      List<ForgotPasswordCompleteIncident> incidents, ForgotPasswordCompleteIncident incident) {
+    java.util.ArrayList<ForgotPasswordCompleteIncident> combined =
+        new java.util.ArrayList<>(incidents);
+    combined.add(incident);
+    return List.copyOf(combined);
   }
 
   private Mono<AuthFlowSession> updateStatus(

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
@@ -22,6 +24,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
@@ -326,14 +329,57 @@ class ForgotPasswordCompleteProtectedOperationTest {
     givenAuthValid();
     givenPasswordValid();
     when(completion.complete(any()))
-        .thenReturn(Mono.just(ForgotPasswordCompletionResult.technicalFailure()));
+        .thenReturn(
+            Mono.just(
+                ForgotPasswordCompletionResult.technicalFailure(
+                    FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset")));
     StepVerifier.create(newOp().execute(input()))
         .assertNext(
-            r ->
-                assertThat(r.outcome())
-                    .isEqualTo(
-                        ForgotPasswordCompleteProtectedExecutionResult.Outcome.TECHNICAL_FAILURE))
+            r -> {
+              assertThat(r.outcome())
+                  .isEqualTo(
+                      ForgotPasswordCompleteProtectedExecutionResult.Outcome.TECHNICAL_FAILURE);
+              assertThat(r.incidents())
+                  .singleElement()
+                  .satisfies(
+                      incident -> {
+                        assertThat(incident.origin()).isEqualTo(FailureOrigin.DOWNSTREAM_TRANSPORT);
+                        assertThat(incident.stage()).isEqualTo("apim-reset");
+                      });
+            })
         .verifyComplete();
+  }
+
+  @Test
+  void failedUnknownOutcomeBlockWriteIsAnIndependentIncident() {
+    givenLockAcquired();
+    givenAuthValid();
+    givenPasswordValid();
+    when(sessions.loadSnapshot(any())).thenReturn(Mono.just(Optional.of(snapshot)));
+    when(sessions.updateRevisioned(any()))
+        .thenReturn(Mono.error(new IllegalStateException("session-store-secret")));
+    when(completion.complete(any()))
+        .thenReturn(
+            Mono.error(
+                  new ForgotPasswordCompletionTechnicalFailure(
+                      FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset")));
+
+    StepVerifier.create(newOp().execute(input()))
+        .assertNext(
+            result -> {
+                assertThat(result.outcome())
+                    .isEqualTo(ForgotPasswordCompleteProtectedExecutionResult.Outcome.UNKNOWN_OUTCOME);
+                assertThat(result.incidents())
+                    .extracting(ForgotPasswordCompleteIncident::stage)
+                    .containsExactly("apim-reset", "blocked-session-write");
+                assertThat(result.incidents())
+                    .extracting(ForgotPasswordCompleteIncident::origin)
+                    .containsExactly(
+                        FailureOrigin.DOWNSTREAM_TRANSPORT, FailureOrigin.LOCAL_SYSTEM);
+            })
+        .verifyComplete();
+    verify(completion, times(1)).complete(any());
+    verify(sessions, times(1)).updateRevisioned(any());
   }
 
   // ----- 9: RESET success ------------------------------------------------

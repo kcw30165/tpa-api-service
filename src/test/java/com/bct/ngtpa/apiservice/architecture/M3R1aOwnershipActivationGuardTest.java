@@ -26,6 +26,7 @@ class M3R1aOwnershipActivationGuardTest {
                     "com/bct/ngtpa/apiservice/adapter/out/apim/investmentchoice/ApimInvestmentChoiceCancelAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/investmentchoice/ApimInvestmentChoiceDetailsAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/investmentchoice/ApimInvestmentChoiceInstructionAdapter.java",
+                    "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/ApimForgotPasswordCompletionAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/ApimForgotPasswordUsernameLookupAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/details/ApimForgotPasswordDetailsLookupAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationCompletionAdapter.java",
@@ -70,6 +71,12 @@ class M3R1aOwnershipActivationGuardTest {
                 "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/details/"
                     + "ApimForgotPasswordDetailsLookupAdapter.java"));
     assertThat(forgotPasswordDetails).contains("ApimIncidentOwnership.TERMINAL_CALLER");
+    String forgotPasswordCompletion =
+        read(
+            root.resolve(
+                "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/"
+                    + "ApimForgotPasswordCompletionAdapter.java"));
+    assertThat(forgotPasswordCompletion).contains("ApimIncidentOwnership.TERMINAL_CALLER");
   }
 
   @Test

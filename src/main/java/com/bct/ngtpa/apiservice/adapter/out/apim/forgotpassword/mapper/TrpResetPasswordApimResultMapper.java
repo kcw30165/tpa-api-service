@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.TrpResetPasswordApimEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimDataItem;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionResult;
 import com.bct.ngtpa.apiservice.shared.identity.IdentifierNormalizer;
 import java.time.LocalDate;
@@ -24,7 +25,7 @@ public final class TrpResetPasswordApimResultMapper {
       TrpResetPasswordApimEnvelope envelope, String expectedCustomerId) {
     Objects.requireNonNull(expectedCustomerId, "expectedCustomerId must not be null");
     if (envelope == null || envelope.errMessage() == null) {
-      return ForgotPasswordCompletionResult.technicalFailure();
+      return contractFailure();
     }
     if (!envelope.errMessage().isEmpty()) {
       if (PASSWORD_INVALID.equals(envelope.errMessage())
@@ -32,23 +33,29 @@ public final class TrpResetPasswordApimResultMapper {
           || MEMBER_NOT_FOUND.equals(envelope.errMessage())) {
         return ForgotPasswordCompletionResult.rejected(envelope.errMessage());
       }
-      return ForgotPasswordCompletionResult.technicalFailure();
+      return contractFailure();
     }
     List<TrpResetPasswordApimDataItem> data = envelope.data();
     if (data == null || data.size() != 1) {
-      return ForgotPasswordCompletionResult.technicalFailure();
+      return contractFailure();
     }
     TrpResetPasswordApimDataItem item = data.get(0);
     if (!Boolean.TRUE.equals(item.success())) {
-      return ForgotPasswordCompletionResult.technicalFailure();
+      return contractFailure();
     }
     if (!IdentifierNormalizer.equalsNormalized(expectedCustomerId, item.customerId())) {
-      return ForgotPasswordCompletionResult.technicalFailure();
+      return contractFailure();
     }
     if (!isValidDate(item.updateDate()) || !isValidTime(item.updateTime())) {
-      return ForgotPasswordCompletionResult.technicalFailure();
+      return contractFailure();
     }
+
     return ForgotPasswordCompletionResult.reset(item.updateDate(), item.updateTime());
+  }
+
+  private ForgotPasswordCompletionResult contractFailure() {
+    return ForgotPasswordCompletionResult.technicalFailure(
+        FailureOrigin.DOWNSTREAM_CONTRACT, "apim-reset-response");
   }
 
   private boolean isValidDate(String value) {

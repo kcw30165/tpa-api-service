@@ -175,7 +175,8 @@ public class ForgotPasswordApplicationConfig {
       AuthWorkflowPolicyPort policies,
       Clock clock,
       ObjectMapper objectMapper,
-      AuthWorkflowProperties properties) {
+      AuthWorkflowProperties properties,
+      FailureEventPort failureEventPort) {
     properties.validateForgotPasswordPolicy();
     var operation =
         new ForgotPasswordCompleteProtectedOperation(
@@ -197,7 +198,7 @@ public class ForgotPasswordApplicationConfig {
             new IdempotencyOperationIdentityFactory(),
             new CanonicalIdempotencyFingerprintFactory());
     return new IdempotentCompleteForgotPasswordService(
-        idempotencyExecutor, sessions, protector, operation, responses, policy);
+        idempotencyExecutor, sessions, protector, operation, responses, policy, failureEventPort);
   }
 
   @Bean

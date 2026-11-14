@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.Forgot
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordCommand;
@@ -22,6 +23,8 @@ import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.bind.annotation.PostMapping;
 import reactor.core.publisher.Mono;
 
@@ -41,7 +44,8 @@ class AuthForgotPasswordCompleteControllerTest {
             String.class,
             String.class,
             String.class,
-            org.springframework.http.server.reactive.ServerHttpResponse.class);
+            org.springframework.http.server.reactive.ServerHttpResponse.class,
+            org.springframework.web.server.ServerWebExchange.class);
 
     PostMapping mapping = method.getAnnotation(PostMapping.class);
     assertThat(mapping).isNotNull();
@@ -77,7 +81,8 @@ class AuthForgotPasswordCompleteControllerTest {
                     "en",
                     "https://portal.example",
                     "https://portal.example/page",
-                    response)
+                    response,
+                    MockServerWebExchange.from(MockServerHttpRequest.post("/").build()))
                 .block());
 
     assertThat(json.at("/body/result/nextStep").asText()).isEqualTo("RETURN_TO_LOGIN");
@@ -85,6 +90,32 @@ class AuthForgotPasswordCompleteControllerTest {
     assertThat(json.at("/body/result/data").size()).isZero();
     assertThat(json.toString())
         .doesNotContain("Password1!", "afs_abc", "csrf_abc", "idem_abc", "db655", "authz-01");
+  }
+
+  @Test
+  void ownedFailureMarksOnlyAfterBuildingResponseAndDoesNotExposeReceipt() {
+    var exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/").build());
+    var controller = controller(new OwnedFailureUseCase());
+
+    var response =
+        controller
+            .complete(
+                new ForgotPasswordCompleteRequest("Password1!", "Password1!"),
+                "afs_abc",
+                "csrf_abc",
+                "idem_abc",
+                "req_abc",
+                "en",
+                "https://portal.example",
+                "https://portal.example/page",
+                new MockServerHttpResponse(),
+                exchange)
+            .block();
+
+    assertThat(response).isNotNull();
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isTrue();
+    assertThat(objectMapper.valueToTree(response).toString())
+        .doesNotContain("publicationReceipt", "terminalFailure");
   }
 
   private static final class RecordingUseCase implements CompleteForgotPasswordUseCase {
@@ -97,6 +128,21 @@ class AuthForgotPasswordCompleteControllerTest {
               true,
               true,
               List.of()));
+    }
+  }
+
+  private static final class OwnedFailureUseCase implements CompleteForgotPasswordUseCase {
+    @Override
+    public Mono<CompleteForgotPasswordResult> complete(CompleteForgotPasswordCommand command) {
+      return Mono.just(
+          new CompleteForgotPasswordResult(
+              CompleteForgotPasswordStatus.SYSTEM_FAILED,
+              WorkflowNextStep.NONE,
+              false,
+              false,
+              List.of())
+              .withPublicationReceipt(new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword
+                  .complete.ForgotPasswordCompletePublicationReceipt(true)));
     }
   }
 

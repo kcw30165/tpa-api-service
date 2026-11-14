@@ -1,15 +1,22 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.observability.LogExecutionFailurePolicy;
 import java.util.Objects;
 
 public record ForgotPasswordCompletionCommand(
-    String customerId, String password, String correlationId, ActorUserRole actorUserRole) {
+    String customerId, String password, String correlationId, ActorUserRole actorUserRole)
+    implements LogExecutionFailurePolicy {
   public ForgotPasswordCompletionCommand {
     customerId = required(customerId, "customerId");
     password = required(password, "password");
     correlationId = correlationId == null || correlationId.isBlank() ? null : correlationId.trim();
     Objects.requireNonNull(actorUserRole, "actorUserRole must not be null");
+  }
+
+  @Override
+  public boolean warningOnlyOnFailure() {
+    return true;
   }
 
   private static String required(String value, String name) {

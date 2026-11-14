@@ -24,7 +24,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionResult;
-import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionTechnicalFailure;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -123,7 +123,7 @@ class ApimForgotPasswordCompletionNoResubmissionTransportTest {
 
   private void expectApimFailure(Harness harness) {
     StepVerifier.create(harness.adapter.complete(command()))
-        .expectError(ApimException.class)
+        .expectError(ForgotPasswordCompletionTechnicalFailure.class)
         .verify(Duration.ofSeconds(5));
   }
 

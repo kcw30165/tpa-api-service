@@ -1,10 +1,14 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete;
 
 import java.util.Objects;
+import java.util.List;
 
 /** Idempotency-neutral COMPLETE execution classification returned to the shared coordinator. */
 public record ForgotPasswordCompleteProtectedExecutionResult(
-    Outcome outcome, CompleteForgotPasswordResult result) {
+    Outcome outcome, CompleteForgotPasswordResult result, List<ForgotPasswordCompleteIncident> incidents) {
+  public ForgotPasswordCompleteProtectedExecutionResult(Outcome outcome, CompleteForgotPasswordResult result) {
+    this(outcome, result, List.of());
+  }
   public enum Outcome {
     TERMINAL,
     TECHNICAL_FAILURE,
@@ -14,6 +18,7 @@ public record ForgotPasswordCompleteProtectedExecutionResult(
   public ForgotPasswordCompleteProtectedExecutionResult {
     Objects.requireNonNull(outcome, "protected execution outcome must not be null");
     Objects.requireNonNull(result, "protected execution result must not be null");
+    incidents = incidents == null ? List.of() : List.copyOf(incidents);
     if (outcome == Outcome.UNKNOWN_OUTCOME
         && result.status() != CompleteForgotPasswordStatus.UNKNOWN_OUTCOME) {
       throw new IllegalArgumentException("unknown execution requires unknown public result");
@@ -39,8 +44,20 @@ public record ForgotPasswordCompleteProtectedExecutionResult(
     return new ForgotPasswordCompleteProtectedExecutionResult(Outcome.TECHNICAL_FAILURE, result);
   }
 
+  public static ForgotPasswordCompleteProtectedExecutionResult technicalFailure(
+      CompleteForgotPasswordResult result, List<ForgotPasswordCompleteIncident> incidents) {
+    return new ForgotPasswordCompleteProtectedExecutionResult(
+        Outcome.TECHNICAL_FAILURE, result, incidents);
+  }
+
   public static ForgotPasswordCompleteProtectedExecutionResult unknownOutcome(
       CompleteForgotPasswordResult result) {
     return new ForgotPasswordCompleteProtectedExecutionResult(Outcome.UNKNOWN_OUTCOME, result);
+  }
+
+  public static ForgotPasswordCompleteProtectedExecutionResult unknownOutcome(
+      CompleteForgotPasswordResult result, List<ForgotPasswordCompleteIncident> incidents) {
+    return new ForgotPasswordCompleteProtectedExecutionResult(
+        Outcome.UNKNOWN_OUTCOME, result, incidents);
   }
 }

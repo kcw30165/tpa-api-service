@@ -15,6 +15,7 @@ import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordCompletionPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionResult;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionTechnicalFailure;
 import com.bct.ngtpa.apiservice.infrastructure.logging.ExecutionLoggingAspect;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
@@ -80,14 +81,15 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
 
   /**
    * Scenario 1 of 3: the downstream envelope is missing entirely (empty {@code data} array). Per
-   * the confirmed adapter mechanism, {@code toEnvelope()} throws an {@code ApimException}
+   * the confirmed adapter mechanism, {@code toEnvelope()} detects a missing response and converts
+   * it to a cause-free completion classification
    * synchronously inside {@code .map(...)}, which becomes an {@code onError} signal. {@code
    * ExecutionLoggingAspect.decorateMono(...)} routes {@code onError} to {@code logError(...)}, so
-   * exactly {@code method.execution.start} (INFO) then {@code method.execution.error} (ERROR, with
-   * stack trace) are logged.
+   * exactly {@code method.execution.start} (INFO) then {@code method.execution.error} (WARN,
+   * without a Throwable) are logged because the completion caller owns the incident.
    */
   @Test
-  void missingEnvelopeLogsStartThenErrorWithStackTrace() {
+  void missingEnvelopeLogsStartThenWarningWithoutThrowable() {
     // envelope.getResponse() must itself be null to trigger the adapter's own
     // ApimException throw inside toEnvelope() (confirmed:
     // "envelope == null || envelope.getResponse() == null"). An envelope with a
@@ -110,16 +112,15 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
             "afs-aspect-missing-envelope", "member1", "Password1!", ActorUserRole.ROLE_USER_MBR);
 
     StepVerifier.create(adapter.complete(command))
-        .expectErrorSatisfies(
-            e -> assertThat(e).isInstanceOf(com.bct.ngtpa.apiservice.exception.ApimException.class))
+        .expectError(ForgotPasswordCompletionTechnicalFailure.class)
         .verify();
 
     assertThat(listAppender.list).hasSize(2);
     assertThat(listAppender.list.get(0).getLevel()).isEqualTo(Level.INFO);
     assertThat(listAppender.list.get(0).getFormattedMessage()).contains("method.execution.start");
-    assertThat(listAppender.list.get(1).getLevel()).isEqualTo(Level.ERROR);
+    assertThat(listAppender.list.get(1).getLevel()).isEqualTo(Level.WARN);
     assertThat(listAppender.list.get(1).getFormattedMessage()).contains("method.execution.error");
-    assertThat(listAppender.list.get(1).getThrowableProxy()).isNotNull();
+    assertThat(listAppender.list.get(1).getThrowableProxy()).isNull();
   }
 
   /**
@@ -127,7 +128,8 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
    * non-crypto error (e.g. transport failure). {@code onErrorResume} only intercepts crypto
    * failures, so this propagates to {@code onErrorMap}'s {@code safeFailure}, which wraps it as an
    * {@code ApimException} - still an {@code onError} signal. Same log shape as scenario 1: {@code
-   * method.execution.start} then {@code method.execution.error} with stack trace.
+   * method.execution.start} then a warning-only {@code method.execution.error} without a
+   * Throwable.
    */
   @Test
   void unexpectedFailureLogsStartThenErrorWithStackTrace() {
@@ -149,22 +151,19 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
     assertThat(listAppender.list).hasSize(2);
     assertThat(listAppender.list.get(0).getLevel()).isEqualTo(Level.INFO);
     assertThat(listAppender.list.get(0).getFormattedMessage()).contains("method.execution.start");
-    assertThat(listAppender.list.get(1).getLevel()).isEqualTo(Level.ERROR);
+    assertThat(listAppender.list.get(1).getLevel()).isEqualTo(Level.WARN);
     assertThat(listAppender.list.get(1).getFormattedMessage()).contains("method.execution.error");
-    assertThat(listAppender.list.get(1).getThrowableProxy()).isNotNull();
+    assertThat(listAppender.list.get(1).getThrowableProxy()).isNull();
   }
 
   /**
    * Scenario 3 of 3: the executor's {@code postEnvelope(...)} fails with {@link
-   * ApimCryptoException}. {@code onErrorResume(ApimCryptoFailureClassifier::isCryptoFailure, ...)}
-   * intercepts it before {@code onErrorMap} and resolves to {@code
-   * Mono.just(ForgotPasswordCompletionResult.unknownOutcome())} - a SUCCESS signal, not an error
-   * signal. {@code ExecutionLoggingAspect.decorateMono(...)} therefore logs {@code
-   * method.execution.start} then {@code method.execution.success}, with NO {@code
-   * method.execution.error} at all.
+   * ApimCryptoException}. The adapter propagates a cause-free technical classification so the
+   * protected operation can mark the reset outcome unknown. The targeted aspect policy logs only a
+   * warning without the throwable.
    */
   @Test
-  void cryptoFailureLogsStartThenSuccessWithNoError() {
+  void cryptoFailureLogsWarningWithoutThrowable() {
     ApimExchangeExecutor executor =
         new ApimExchangeExecutor() {
           @Override
@@ -178,17 +177,16 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
         new ForgotPasswordCompletionCommand(
             "afs-aspect-crypto-failure", "member1", "Password1!", ActorUserRole.ROLE_USER_MBR);
 
-    ForgotPasswordCompletionResult result = adapter.complete(command).block();
-    assertThat(result).isNotNull();
-    assertThat(result.status()).isEqualTo(ForgotPasswordCompletionResult.Status.UNKNOWN_OUTCOME);
+    StepVerifier.create(adapter.complete(command))
+        .expectError(ForgotPasswordCompletionTechnicalFailure.class)
+        .verify();
 
     assertThat(listAppender.list).hasSize(2);
     assertThat(listAppender.list.get(0).getLevel()).isEqualTo(Level.INFO);
     assertThat(listAppender.list.get(0).getFormattedMessage()).contains("method.execution.start");
-    assertThat(listAppender.list.get(1).getLevel()).isEqualTo(Level.INFO);
-    assertThat(listAppender.list.get(1).getFormattedMessage()).contains("method.execution.success");
-    assertThat(listAppender.list)
-        .noneMatch(event -> event.getFormattedMessage().contains("method.execution.error"));
+    assertThat(listAppender.list.get(1).getLevel()).isEqualTo(Level.WARN);
+    assertThat(listAppender.list.get(1).getFormattedMessage()).contains("method.execution.error");
+    assertThat(listAppender.list.get(1).getThrowableProxy()).isNull();
   }
 
   /**

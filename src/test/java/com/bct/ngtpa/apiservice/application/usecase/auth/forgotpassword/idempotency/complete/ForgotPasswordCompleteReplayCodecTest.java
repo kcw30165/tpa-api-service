@@ -11,6 +11,7 @@ import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference
 import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordStatus;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletePublicationReceipt;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -69,6 +70,23 @@ class ForgotPasswordCompleteReplayCodecTest {
                 .map(bridge::fromTransientResponse))
         .expectNext(result)
         .verifyComplete();
+  }
+
+  @Test
+  void invocationPublicationReceiptIsExcludedFromTransientAndReplayWireFormats() {
+    var result =
+        new CompleteForgotPasswordResult(
+                CompleteForgotPasswordStatus.SUCCESS,
+                WorkflowNextStep.RETURN_TO_LOGIN,
+                true,
+                true,
+                List.of())
+            .withPublicationReceipt(new ForgotPasswordCompletePublicationReceipt(true));
+    var response = bridge.toTransientResponse(result);
+
+    assertThat(response.serializedBody())
+        .doesNotContain("publicationReceipt", "terminalFailure");
+    assertThat(bridge.fromTransientResponse(response).publicationReceipt()).isNull();
   }
 
   @Test

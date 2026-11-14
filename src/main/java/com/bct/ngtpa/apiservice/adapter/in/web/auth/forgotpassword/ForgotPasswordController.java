@@ -280,7 +280,8 @@ public final class ForgotPasswordController {
           @RequestHeader(name = "Accept-Language", required = false) String language,
           @RequestHeader(name = "Origin", required = false) String origin,
           @RequestHeader(name = "Referer", required = false) String referer,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (!hasText(sessionId)) {
       return Mono.just(
@@ -313,7 +314,13 @@ public final class ForgotPasswordController {
                 if (result.clearAuthFlowCookie()) {
                   cookieWriter.clearAuthFlowCookie(response);
                 }
-                return ForgotPasswordHttpResponses.toResponse(completeMapper.toResponse(result));
+                var responseEntity =
+                    ForgotPasswordHttpResponses.toResponse(completeMapper.toResponse(result));
+                if (result.publicationReceipt() != null
+                    && result.publicationReceipt().terminalFailure()) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return responseEntity;
               })
           .onErrorResume(
               error ->
