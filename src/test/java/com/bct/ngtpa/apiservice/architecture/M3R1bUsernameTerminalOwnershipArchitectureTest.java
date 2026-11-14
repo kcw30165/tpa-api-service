@@ -33,7 +33,7 @@ class M3R1bUsernameTerminalOwnershipArchitectureTest {
     assertThat(
             read(
                 "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/ApimForgotPasswordUsernameLookupAdapter.java"))
-        .doesNotContain("TERMINAL_CALLER");
+        .contains("ApimIncidentOwnership.TERMINAL_CALLER");
   }
 
   @Test
