@@ -332,7 +332,14 @@ The public GET pending-instruction contract has no explicit cancellability
 field. The harness therefore cannot identify a later cancellable item without
 probing/canceling other references. It makes one attempt against the first
 snapshot reference and stops on `cancel.not-cancellable`; it never substitutes
-another item. The submit lifecycle remains separate and rejects any initial
-pending instruction. Its generated live payload requires three distinct GET-
-eligible funds and three positive, interval-compliant percentages totaling
-100.
+another item. The submit lifecycle permits its initial GET to contain pending
+instructions; it does not apply a blanket zero-pending rule or infer Progress
+eligibility client-side. Progress owns duplicate, one-pending-per-source,
+identical-to-current, cutoff, and effective-date decisions. Its generated live
+payload requires three distinct GET-eligible funds and three positive,
+interval-compliant percentages totaling 100. If Progress rejects the submit,
+the harness reports the public error code as FAIL and stops without retrying,
+changing the payload, or proceeding to cancellation. Existing pending
+references are never used as cancellation candidates in this lifecycle; GET
+#2 must identify the reference created by this run exactly once, and
+cancellation remains bound to that exact reference.

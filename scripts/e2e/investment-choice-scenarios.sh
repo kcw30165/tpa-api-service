@@ -118,7 +118,7 @@ dry_run() {
   [[ "$LIVE_CANCEL_PENDING" == yes ]] && printf ' E1 E2'
   printf '\nPassword verification count depends on the snapshot and enabled live path.\n'
   [[ "$USE_PASSWORD" != yes ]] || printf 'CIM_RANDOM_SEED=%s\n' "${CIM_RANDOM_SEED:-<generated>}"
-  [[ "$USE_PASSWORD" != yes ]] || printf 'P0 requires a normal snapshot with an eligible source, at least two eligible funds, no pending instruction, and a feasible interval.\n'
+  [[ "$USE_PASSWORD" != yes ]] || printf 'P0 requires a normal snapshot with an eligible source, at least two eligible funds, and a feasible interval.\n'
   [[ "$LIVE_SUBMIT" != yes ]] || printf 'Live submit additionally requires three distinct eligible funds and three interval-compliant allocations totaling 100.\n'
   [[ "$LIVE_CANCEL_PENDING" != yes ]] || printf 'Existing cancellation selects only the first reference in the initial GET snapshot and never falls through to another.\n'
   printf 'Planned curl commands:\n'
@@ -477,7 +477,6 @@ if [[ "$LIVE_SUBMIT" == yes ]]; then
   [[ "$fund_count" -ge 3 ]] || fail_scenario LIVE-preflight 'at least three available funds' "$fund_count" ''
   ((100 % interval == 0 && 100 / interval >= 3)) \
     || fail_scenario LIVE-preflight 'interval supports three positive allocations totaling 100' 'ineligible interval' ''
-  [[ "$pending_count" == 0 ]] || fail_scenario LIVE-preflight 'no pending instruction' 'pending instruction exists' ''
   jq -e --argjson interval "$interval" '
     (.allocations | length) == 3
     and ([.allocations[].fundCode] | unique | length) == 3

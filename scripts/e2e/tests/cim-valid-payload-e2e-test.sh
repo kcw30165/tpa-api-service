@@ -154,13 +154,17 @@ case "$method $path" in
       fi
     else
       reference="$(jq -r '.referenceNo // empty' <<<"$operation")"
-      pending=''
-      [[ ! -s "$FAKE_PENDING" ]] || pending="$(jq -r '.[0].referenceNo // empty' "$FAKE_PENDING")"
-      if [[ -n "$reference" && "$reference" == "$pending" ]]; then
+      if [[ -n "$reference" ]] \
+        && jq -e --arg reference "$reference" 'any(.[]; .referenceNo == $reference)' \
+          "$FAKE_PENDING" >/dev/null; then
         jq -c '.' <<<"$operation" >"$FAKE_VALID_CANCEL_PAYLOAD"
         response='{"success":true,"status":"SUCCESS","result":{"data":{"token":"fake-cancel-token"}},"messages":[],"errors":[]}'
         if [[ "$FAKE_LIVE" == yes ]]; then
-          printf 'LIFECYCLE-CANCEL-ISSUE\n' >>"$FAKE_CALLS"
+          if (( $(cat "$FAKE_GET_COUNT") >= 3 )); then
+            printf 'LIFECYCLE-CANCEL-ISSUE\n' >>"$FAKE_CALLS"
+          else
+            printf 'LIFECYCLE-P3-CANCEL-ISSUE\n' >>"$FAKE_CALLS"
+          fi
         fi
       else
         status=422
@@ -175,6 +179,9 @@ case "$method $path" in
       if [[ "$FAKE_SUBMIT_MODE" == fail ]]; then
         status=500
         response='{"success":false,"status":"ERROR","result":null,"messages":[],"errors":[]}'
+      elif [[ "$FAKE_SUBMIT_MODE" == reject ]]; then
+        status=503
+        response='{"success":false,"status":"SYSTEM_ERROR","result":null,"messages":[],"errors":[{"code":"err.investment-choice.submission.unavailable"}]}'
       else
         submitted="$(jq -c '.' <<<"$request_body")"
         issued="$(cat "$FAKE_VALID_PAYLOAD")"
@@ -184,7 +191,9 @@ case "$method $path" in
           response='{}'
         else
           printf 'payload_reuse=PASS\n' >"$FAKE_REUSE"
-          jq -cn --arg ref "$FAKE_REFERENCE" '[{referenceNo:$ref,submitDate:"12/11/2026",submitTime:"12:00:00",allocations:[]}]' >"$FAKE_PENDING"
+          updated_pending="$(jq -cn --arg ref "$FAKE_REFERENCE" --slurpfile existing "$FAKE_PENDING" \
+            '$existing[0] + [{referenceNo:$ref,submitDate:"12/11/2026",submitTime:"12:00:00",allocations:[]}]')"
+          printf '%s' "$updated_pending" >"$FAKE_PENDING"
           response="$(jq -cn --arg ref "$FAKE_REFERENCE" '{success:true,status:"SUBMITTED",result:{data:{referenceNo:$ref,submitDate:"12/11/2026",submitTime:"12:00:00"}},messages:[],errors:[]}')"
           printf 'authorized-submit\n' >>"$FAKE_MUTATIONS"
         fi
@@ -196,8 +205,11 @@ case "$method $path" in
     ;;
   'POST /api/v1/investment-choice/instructions/cancel')
     if [[ "$FAKE_LIVE" == yes && "$token" == fake-cancel-token ]]; then
-      printf 'CANCEL\n' >>"$FAKE_CALLS"
-      printf 'LIFECYCLE-CANCEL\n' >>"$FAKE_CALLS"
+      reference="$(jq -r '.referenceNo' <<<"$request_body")"
+      if [[ "$reference" == "$FAKE_REFERENCE" ]]; then
+        printf 'CANCEL\n' >>"$FAKE_CALLS"
+        printf 'LIFECYCLE-CANCEL\n' >>"$FAKE_CALLS"
+      fi
     fi
     if [[ "$token" == fake-cancel-token ]]; then
       cancel_payload="$(jq -c '.' <<<"$request_body")"
@@ -226,7 +238,11 @@ case "$method $path" in
         fi
       elif [[ "$FAKE_LIVE" == yes && "$reference" == "$FAKE_REFERENCE" ]]; then
         response="$(jq -cn --arg ref "$FAKE_REFERENCE" '{success:true,status:"SUCCESS",result:{data:{referenceNo:$ref}},messages:[],errors:[]}')"
-        [[ "$FAKE_L4_MODE" == present ]] || printf '[]' >"$FAKE_PENDING"
+        if [[ "$FAKE_L4_MODE" != present ]]; then
+          remaining_pending="$(jq -c --arg reference "$reference" \
+            '[.[] | select(.referenceNo != $reference)]' "$FAKE_PENDING")"
+          printf '%s' "$remaining_pending" >"$FAKE_PENDING"
+        fi
         printf 'authorized-cancel\n' >>"$FAKE_MUTATIONS"
       else
         status=403
@@ -504,6 +520,37 @@ jq -e '.status == "cleanup-incomplete" and .submitOutcome == "unknown" and (has(
   exit 1
 }
 
+run_fake_scenario yes "$tmp/submit-rejected.log" \
+  '[{"referenceNo":"PRE-EXISTING","submitDate":"12/11/2026","submitTime":"11:00:00","allocations":[]}]' \
+  yes submit-rejected NORMAL normal normal reject
+grep -Fq 'FAIL L1-submit expected=200/SUBMITTED got=503 code=err.investment-choice.submission.unavailable' \
+  "$tmp/submit-rejected.log" || {
+  printf 'FAIL Progress rejection did not report its public error code\n'
+  exit 1
+}
+[[ "$(grep -c '^SUBMIT$' "$tmp/submit-rejected/calls")" -eq 1 ]] || {
+  printf 'FAIL Progress rejection caused an automatic submit retry\n'
+  exit 1
+}
+if grep -Eq '^LIFECYCLE-CANCEL-(ISSUE|CANCEL)$' \
+  <(sed -n '/^LIFECYCLE-SUBMIT$/,$p' "$tmp/submit-rejected/calls"); then
+  printf 'FAIL cancellation proceeded after Progress rejected submission\n'
+  exit 1
+fi
+[[ ! -s "$tmp/submit-rejected/mutations" ]] || {
+  printf 'FAIL rejected Progress submission caused a fake mutation\n'
+  exit 1
+}
+rejected_recovery="$(find "$tmp/submit-rejected/recovery" -type f -print -quit)"
+[[ -n "$rejected_recovery" && "$(stat -c '%a' "$rejected_recovery")" == 600 ]] || {
+  printf 'FAIL rejected submission did not preserve protected recovery state\n'
+  exit 1
+}
+grep -Fq 'PRE-EXISTING' "$tmp/submit-rejected.log" && {
+  printf 'FAIL existing pending reference appeared in rejection output\n'
+  exit 1
+}
+
 run_fake_scenario yes "$tmp/cancel-failed.log" '[]' yes cancel-failed NORMAL normal normal normal fail
 [[ "$(grep -c '^CANCEL$' "$tmp/cancel-failed/calls")" -eq 1 ]] || {
   printf 'FAIL failed cancel was automatically retried\n'
@@ -538,25 +585,43 @@ grep -Fq 'submitted reference not listed as pending after successful cancel resp
   exit 1
 }
 
-run_fake_scenario yes "$tmp/pending-preflight.log" \
-  '[{"referenceNo":"PRE-EXISTING","submitDate":"12/11/2026","submitTime":"11:00:00","allocations":[]}]' yes pending
-grep -Fq 'pending instructions exist' "$tmp/pending-preflight.log" || {
-  printf 'FAIL live preflight did not reject an existing pending instruction\n'
+run_fake_scenario yes "$tmp/pending-allowed.log" \
+  '[{"referenceNo":"PRE-EXISTING","submitDate":"12/11/2026","submitTime":"11:00:00","allocations":[]},{"referenceNo":"SECOND-PENDING","submitDate":"11/11/2026","submitTime":"10:00:00","allocations":[]}]' \
+  no pending-allowed
+grep -Fq 'PASS L1-submit status=200' "$tmp/pending-allowed.log" || {
+  printf 'FAIL existing pending instructions blocked the authorized live submit lifecycle\n'
   exit 1
 }
-[[ ! -s "$tmp/pending/mutations" ]] || {
-  printf 'FAIL pending-instruction preflight altered member data\n'
+grep -Fq 'LIVE-REF-1' "$tmp/pending-allowed/valid-cancel-payload" || {
+  printf 'FAIL run-created reference was not bound for cancellation with existing pending instructions\n'
   exit 1
 }
-grep -Fq 'PRE-EXISTING' "$tmp/pending/pending" || {
-  printf 'FAIL pending-instruction preflight did not preserve the existing reference\n'
+[[ "$(wc -l <"$tmp/pending-allowed/mutations")" -eq 2 ]] || {
+  printf 'FAIL pending-instruction lifecycle did not make exactly one submit and one run-created cancel\n'
+  exit 1
+}
+pending_lifecycle_calls=$'LIFECYCLE-GET-1\nLIFECYCLE-CHANGE-ISSUE\nLIFECYCLE-SUBMIT\nLIFECYCLE-GET-2\nLIFECYCLE-CANCEL-ISSUE\nLIFECYCLE-CANCEL\nLIFECYCLE-GET-3'
+actual_pending_lifecycle_calls="$(grep '^LIFECYCLE-' "$tmp/pending-allowed/calls" | grep -v '^LIFECYCLE-P3-' || true)"
+[[ "$actual_pending_lifecycle_calls" == "$pending_lifecycle_calls" ]] || {
+  printf 'FAIL pending-instruction lifecycle call order differed from the seven-step contract\n'
+  printf 'expected:\n%s\nactual:\n%s\n' "$pending_lifecycle_calls" "$actual_pending_lifecycle_calls"
+  exit 1
+}
+jq -e '([.[].referenceNo] | sort) == ["PRE-EXISTING","SECOND-PENDING"]' \
+  "$tmp/pending-allowed/pending" >/dev/null || {
+  printf 'FAIL live lifecycle canceled or replaced an unrelated pending instruction\n'
+  exit 1
+}
+[[ "$(grep -c '^SUBMIT$' "$tmp/pending-allowed/calls")" -eq 1 \
+  && "$(grep -c '^CANCEL$' "$tmp/pending-allowed/calls")" -eq 1 ]] || {
+  printf 'FAIL pending-instruction lifecycle retried a mutation\n'
   exit 1
 }
 
 run_fake_scenario no "$tmp/p3-pending.log" \
   '[{"referenceNo":"PRE-EXISTING","submitDate":"12/11/2026","submitTime":"11:00:00","allocations":[]}]' no existing-pending
-grep -Fq 'SKIP P0 reason=pending instructions exist' "$tmp/p3-pending.log" || {
-  printf 'FAIL positive change issuance was not skipped for an existing pending instruction\n'
+grep -Fq 'PASS P0-issue status=200' "$tmp/p3-pending.log" || {
+  printf 'FAIL existing pending instructions blocked valid change issuance\n'
   exit 1
 }
 grep -Fq 'PASS P3-issue status=200' "$tmp/p3-pending.log" || {
@@ -567,8 +632,8 @@ grep -Fq 'PASS P3-body-binding status=403' "$tmp/p3-pending.log" || {
   printf 'FAIL P3 did not reject a non-matching operationPayload\n'
   exit 1
 }
-grep -Fq 'Password verifications this run (snapshot rejections excluded): 1' "$tmp/p3-pending.log" || {
-  printf 'FAIL valid P3 issuance was not counted as a password verification\n'
+grep -Fq 'Password verifications this run (snapshot rejections excluded): 2' "$tmp/p3-pending.log" || {
+  printf 'FAIL valid P0 and P3 issuances were not counted as password verifications\n'
   exit 1
 }
 [[ ! -s "$tmp/existing-pending/mutations" ]] || {

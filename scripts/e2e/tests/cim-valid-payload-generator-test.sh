@@ -134,7 +134,16 @@ expect_skip "$(make_snapshot 5 "$funds2" '[]' NORMAL "$no_sources")" 'no eligibl
 expect_skip "$(make_snapshot 60 "$funds3")" 'intervalPercentage=60 cannot divide 100 into interval-sized units'
 expect_skip "$(make_snapshot 30 "$funds3")" 'intervalPercentage=30 cannot divide 100 into interval-sized units'
 expect_skip "$(make_snapshot 100 "$funds3")" 'intervalPercentage=100 cannot form 2 positive allocations totaling 100'
-expect_skip "$(make_snapshot 5 "$funds3" '[{"referenceNo":"pending"}]')" 'pending instructions exist; no submission-safe payload generated'
+snapshot="$(make_snapshot 5 "$funds3" '[{"referenceNo":"pending"}]')"
+if ! cim_generate_valid_payload "$snapshot" 789 >"$tmp/pending.log"; then
+  printf 'FAIL existing pending data blocked snapshot-valid payload generation\n'
+  exit 1
+fi
+assert_valid "$snapshot" 789 3
+[[ "$(jq -r '.pendingInstructions | length' <<<"$snapshot")" == 1 ]] || {
+  printf 'FAIL payload generation altered the existing pending snapshot\n'
+  exit 1
+}
 expect_skip "$(make_snapshot 5 "$funds3" '[]' FUNCTION_UNAVAILABLE)" 'snapshot scenario=FUNCTION_UNAVAILABLE does not support a normal submission'
 expect_skip "$(make_snapshot 0 "$funds3")" 'intervalPercentage is missing or invalid'
 expect_skip "$(make_snapshot null "$funds3")" 'intervalPercentage is missing or invalid'

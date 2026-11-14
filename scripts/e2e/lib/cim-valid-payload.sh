@@ -40,7 +40,7 @@ cim_skip_payload() {
 
 cim_generate_valid_payload() {
   local snapshot="$1" seed="${2:-${CIM_RANDOM_SEED:-}}"
-  local scenario interval pending_count source_json fund_json source_index
+  local scenario interval source_json fund_json source_index
   local units allocation_count remaining slots part fund_code
   local -a sources=() funds=() remaining_funds=() selected_funds=() percentages=()
 
@@ -66,11 +66,6 @@ cim_generate_valid_payload() {
     cim_skip_payload 'pendingInstructions is missing or invalid'
     return $?
   fi
-  pending_count="$(jq -r '.pendingInstructions | length' <<<"$snapshot")"
-  ((pending_count == 0)) || {
-    cim_skip_payload 'pending instructions exist; no submission-safe payload generated'
-    return $?
-  }
   if ! jq -e '.intervalPercentage | type == "number" and floor == . and . >= 1 and . <= 100' \
     <<<"$snapshot" >/dev/null 2>&1; then
     cim_skip_payload 'intervalPercentage is missing or invalid'
