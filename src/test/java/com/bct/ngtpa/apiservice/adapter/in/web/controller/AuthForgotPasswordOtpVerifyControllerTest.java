@@ -6,8 +6,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswor
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordOtpVerifyRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpVerifyWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordOtpUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.ForgotPasswordOtpVerifyPublicationReceipt;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpStatus;
@@ -16,7 +18,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.bind.annotation.PostMapping;
 import reactor.core.publisher.Mono;
 
@@ -36,11 +41,31 @@ class AuthForgotPasswordOtpVerifyControllerTest {
             String.class,
             String.class,
             String.class,
-            org.springframework.http.server.reactive.ServerHttpResponse.class);
+            org.springframework.http.server.reactive.ServerHttpResponse.class,
+            org.springframework.web.server.ServerWebExchange.class);
 
     PostMapping mapping = method.getAnnotation(PostMapping.class);
     assertThat(mapping).isNotNull();
     assertThat(mapping.path()).contains("/otp/verify");
+  }
+
+  @Test
+  void verifyAcceptsTheRequestExchangeForReceiptBasedOwnership() throws Exception {
+    Method method =
+        ForgotPasswordController.class.getDeclaredMethod(
+            "verify",
+            ForgotPasswordOtpVerifyRequest.class,
+            String.class,
+            String.class,
+            String.class,
+            String.class,
+            String.class,
+            String.class,
+            String.class,
+            org.springframework.http.server.reactive.ServerHttpResponse.class,
+            org.springframework.web.server.ServerWebExchange.class);
+
+    assertThat(method).isNotNull();
   }
 
   @Test
@@ -71,7 +96,8 @@ class AuthForgotPasswordOtpVerifyControllerTest {
                     "en",
                     null,
                     null,
-                    new MockServerHttpResponse())
+                    new MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json).contains("err.forgot-password.authFlow.invalid");
@@ -95,7 +121,8 @@ class AuthForgotPasswordOtpVerifyControllerTest {
                     "en",
                     null,
                     null,
-                    new MockServerHttpResponse())
+                    new MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json).contains("err.security.authentication.required");
@@ -119,7 +146,8 @@ class AuthForgotPasswordOtpVerifyControllerTest {
                     "en",
                     null,
                     null,
-                    new MockServerHttpResponse())
+                    new MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json).contains("err.workflow.idempotency.missing");
@@ -143,7 +171,8 @@ class AuthForgotPasswordOtpVerifyControllerTest {
                     "en",
                     null,
                     null,
-                    new MockServerHttpResponse())
+                    new MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json).contains("err.forgot-password.otp.invalid");
@@ -166,7 +195,8 @@ class AuthForgotPasswordOtpVerifyControllerTest {
             "zh-HK",
             "https://portal.example",
             "https://portal.example/page",
-            response)
+            response,
+            exchange())
         .block();
 
     assertThat(useCase.called).isTrue();
@@ -195,7 +225,8 @@ class AuthForgotPasswordOtpVerifyControllerTest {
                     "en",
                     null,
                     null,
-                    new MockServerHttpResponse())
+                    new MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json.at("/body/result/nextStep").asText()).isEqualTo("PASSWORD_SETUP");
@@ -215,6 +246,101 @@ class AuthForgotPasswordOtpVerifyControllerTest {
             "X-XSRF-TOKEN");
   }
 
+  @Test
+  void publishedTechnicalFailureMarksTheConstructedPublicResponse() {
+    var exchange = exchange();
+    VerifyForgotPasswordOtpUseCase useCase =
+        command ->
+            Mono.just(
+                new VerifyForgotPasswordOtpResult(
+                    VerifyForgotPasswordOtpStatus.SYSTEM_FAILED,
+                    WorkflowNextStep.NONE,
+                    null,
+                    new ForgotPasswordOtpVerifyPublicationReceipt(true)));
+
+    var response =
+        controller(useCase)
+            .verify(
+                new ForgotPasswordOtpVerifyRequest("123456"),
+                "afs",
+                "csrf",
+                "idem",
+                "req",
+                "en",
+                null,
+                null,
+                new MockServerHttpResponse(),
+                exchange)
+            .block();
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isTrue();
+    assertThat(objectMapper.valueToTree(response).toString()).doesNotContain("publicationReceipt");
+  }
+
+  @Test
+  void expectedFailureAndUnownedReplayDoNotMarkTheRequest() {
+    for (VerifyForgotPasswordOtpResult result :
+        List.of(
+            new VerifyForgotPasswordOtpResult(
+                VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE, null),
+            new VerifyForgotPasswordOtpResult(
+                VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, null))) {
+      var exchange = exchange();
+      controller(command -> Mono.just(result))
+          .verify(
+              new ForgotPasswordOtpVerifyRequest("123456"),
+              "afs",
+              "csrf",
+              "idem",
+              "req",
+              "en",
+              null,
+              null,
+              new MockServerHttpResponse(),
+              exchange)
+          .block();
+
+      assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isFalse();
+    }
+  }
+
+  @Test
+  void responseConstructionFailureDoesNotApplyOwnershipMarker() {
+    var exchange = exchange();
+    var mapper = org.mockito.Mockito.spy(new ForgotPasswordOtpVerifyWebMapper());
+    org.mockito.Mockito.doThrow(new IllegalStateException("mapping failed"))
+        .when(mapper)
+        .toMutationResponse(
+            org.mockito.ArgumentMatchers.any(VerifyForgotPasswordOtpResult.class));
+    VerifyForgotPasswordOtpUseCase useCase =
+        command ->
+            Mono.just(
+                new VerifyForgotPasswordOtpResult(
+                    VerifyForgotPasswordOtpStatus.SYSTEM_FAILED,
+                    WorkflowNextStep.NONE,
+                    null,
+                    new ForgotPasswordOtpVerifyPublicationReceipt(true)));
+
+    var response =
+        controller(useCase, mapper)
+            .verify(
+                new ForgotPasswordOtpVerifyRequest("123456"),
+                "afs",
+                "csrf",
+                "idem",
+                "req",
+                "en",
+                null,
+                null,
+                new MockServerHttpResponse(),
+                exchange)
+            .block();
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isFalse();
+  }
+
   private static final class RecordingUseCase implements VerifyForgotPasswordOtpUseCase {
     boolean called;
     VerifyForgotPasswordOtpCommand command;
@@ -230,6 +356,11 @@ class AuthForgotPasswordOtpVerifyControllerTest {
   }
 
   private static ForgotPasswordController controller(VerifyForgotPasswordOtpUseCase verifyUseCase) {
+    return controller(verifyUseCase, new ForgotPasswordOtpVerifyWebMapper());
+  }
+
+  private static ForgotPasswordController controller(
+      VerifyForgotPasswordOtpUseCase verifyUseCase, ForgotPasswordOtpVerifyWebMapper verifyMapper) {
     return new ForgotPasswordController(
         null,
         null,
@@ -245,6 +376,10 @@ class AuthForgotPasswordOtpVerifyControllerTest {
         command -> Mono.error(new AssertionError("resend use case must not be called")),
         new ForgotPasswordOtpResendWebMapper(),
         verifyUseCase,
-        new ForgotPasswordOtpVerifyWebMapper());
+        verifyMapper);
+  }
+
+  private static MockServerWebExchange exchange() {
+    return MockServerWebExchange.from(MockServerHttpRequest.post("/").build());
   }
 }

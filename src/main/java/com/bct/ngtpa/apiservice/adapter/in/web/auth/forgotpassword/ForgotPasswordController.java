@@ -397,7 +397,8 @@ public final class ForgotPasswordController {
           @RequestHeader(name = "Accept-Language", required = false) String language,
           @RequestHeader(name = "Origin", required = false) String origin,
           @RequestHeader(name = "Referer", required = false) String referer,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (!hasText(sessionId)) {
       return Mono.just(
@@ -426,8 +427,17 @@ public final class ForgotPasswordController {
                   clean(language),
                   clean(requestId),
                   Duration.ofSeconds(300)))
-          .map(otpVerifyMapper::toMutationResponse)
-          .map(ForgotPasswordHttpResponses::toResponse)
+          .map(
+              result -> {
+                var responseEntity =
+                    ForgotPasswordHttpResponses.toResponse(
+                        otpVerifyMapper.toMutationResponse(result));
+                if (result.publicationReceipt() != null
+                    && result.publicationReceipt().terminalFailure()) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return responseEntity;
+              })
           .onErrorResume(
               exception ->
                   Mono.just(

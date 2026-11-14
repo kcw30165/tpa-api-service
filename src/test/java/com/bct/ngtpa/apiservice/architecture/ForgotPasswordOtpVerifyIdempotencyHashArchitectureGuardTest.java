@@ -21,8 +21,11 @@ class ForgotPasswordOtpVerifyIdempotencyHashArchitectureGuardTest {
     String policy = Files.readString(POLICY);
 
     assertThat(coordinator)
-        .contains("ForgotPasswordIdempotencyAction.OTP_VERIFY", "policy.otpVerify()")
-        .doesNotContain("command.code()", "command.csrfToken()", "command.requestId()");
+        .contains(
+            "ForgotPasswordIdempotencyAction.OTP_VERIFY",
+            "policy.otpVerify()",
+            "RequestIdLogSanitizer.sanitize(command.requestId())")
+        .doesNotContain("command.code()", "command.csrfToken()", "policy.otpVerify(command.");
     assertThat(policy)
         .contains(
             "public IdempotencyFingerprint otpVerify()",

@@ -12,6 +12,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.veri
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpStatus;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Arrays;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
@@ -36,6 +37,18 @@ class ForgotPasswordOtpVerifyReplayCodecTest {
     assertThat(transientResponse.serializedBody())
         .contains("OTP_INVALID", "VERIFY_OTP", "3")
         .doesNotContain("123456", "csrf", "authorizationId", "resetSubjectId");
+  }
+
+  @Test
+  void publicationReceiptIsNotPartOfReplayWireFormat() {
+    assertThat(Arrays.stream(VerifyForgotPasswordOtpResult.class.getRecordComponents())
+            .map(java.lang.reflect.RecordComponent::getName)
+            .toList())
+        .contains("publicationReceipt");
+    assertThat(Arrays.stream(ForgotPasswordOtpVerifyReplayCodec.SafePayload.class.getRecordComponents())
+            .map(java.lang.reflect.RecordComponent::getName)
+            .toList())
+        .doesNotContain("publicationReceipt");
   }
 
   @Test

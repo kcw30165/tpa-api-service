@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import reactor.core.publisher.Mono;
 
 public final class ForgotPasswordOtpVerifyProtectedOperation {
@@ -71,41 +73,54 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
 
   public Mono<ForgotPasswordOtpVerifyProtectedExecutionResult> execute(
       VerifyForgotPasswordOtpCommand command) {
-    if (command == null || command.sessionId() == null) {
-      return Mono.just(
-          result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
-    }
-    if (!validOtp(command.code())) {
-      return Mono.just(
-          result(VerifyForgotPasswordOtpStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP));
-    }
-    return locks
-        .acquire(command.sessionId(), lease)
-        .flatMap(
-            handle ->
-                handle.acquired()
-                    ? locked(command, handle)
-                    : Mono.just(
-                        result(
-                            VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID,
-                            WorkflowNextStep.NONE)))
-        .onErrorReturn(result(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE));
+    return Mono.defer(
+            () -> {
+              if (command == null || command.sessionId() == null) {
+                return Mono.just(
+                    result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
+              }
+              if (!validOtp(command.code())) {
+                return Mono.just(
+                    result(VerifyForgotPasswordOtpStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP));
+              }
+              return stage(
+                      () -> locks.acquire(command.sessionId(), lease),
+                      ForgotPasswordOtpVerifyIncident.LOCK_ACQUISITION)
+                  .flatMap(
+                      handle ->
+                          handle.acquired()
+                              ? locked(command, handle)
+                              : Mono.just(
+                                  result(
+                                      VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID,
+                                      WorkflowNextStep.NONE)));
+            })
+        .onErrorResume(
+            ClassifiedTechnicalFailure.class,
+            failure -> Mono.just(failed(failure.incident())))
+        .onErrorResume(
+            failure ->
+                Mono.just(failed(ForgotPasswordOtpVerifyIncident.PROTECTED_OPERATION)));
   }
 
   private Mono<ForgotPasswordOtpVerifyProtectedExecutionResult> locked(
       VerifyForgotPasswordOtpCommand command, SessionLockHandle handle) {
-    Mono<ForgotPasswordOtpVerifyProtectedExecutionResult> work =
-        sessions
-            .loadSnapshot(command.sessionId())
-            .flatMap(initialOptional -> validateInitialSession(command, initialOptional))
-            .onErrorReturn(
-                result(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE));
+    AtomicBoolean synchronousReleaseFailed = new AtomicBoolean();
     return Mono.usingWhen(
-        Mono.just(handle),
-        ignored -> work,
-        ignored -> locks.release(handle).onErrorReturn(false).then(),
-        (ignored, error) -> locks.release(handle).onErrorReturn(false).then(),
-        ignored -> locks.release(handle).onErrorReturn(false).then());
+            Mono.just(handle),
+            ignored ->
+                stage(
+                        () -> sessions.loadSnapshot(command.sessionId()),
+                        ForgotPasswordOtpVerifyIncident.SESSION_READ)
+                    .flatMap(initialOptional -> validateInitialSession(command, initialOptional)),
+            ignored -> releaseAfterSuccess(handle, synchronousReleaseFailed),
+            (ignored, error) -> releaseQuietly(handle),
+            ignored -> releaseQuietly(handle))
+        .map(
+            result ->
+                synchronousReleaseFailed.get()
+                    ? failed(ForgotPasswordOtpVerifyIncident.LOCK_RELEASE)
+                    : result);
   }
 
   private Mono<ForgotPasswordOtpVerifyProtectedExecutionResult> validateInitialSession(
@@ -124,16 +139,18 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
       return Mono.just(
           result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
     }
-    return loader
-        .load(
-            new ForgotPasswordProtectedAuthFlowContextCommand(
-                command.sessionId(),
-                command.csrfToken(),
-                command.origin(),
-                command.referer(),
-                command.requestId(),
-                Set.of(AuthFlowStatus.OTP_SENT),
-                true))
+    return stage(
+            () ->
+                loader.load(
+                    new ForgotPasswordProtectedAuthFlowContextCommand(
+                        command.sessionId(),
+                        command.csrfToken(),
+                        command.origin(),
+                        command.referer(),
+                        command.requestId(),
+                        Set.of(AuthFlowStatus.OTP_SENT),
+                        true)),
+            ForgotPasswordOtpVerifyIncident.CONTEXT_LOAD)
         .flatMap(loaded -> validateLoadedContext(command, loaded));
   }
 
@@ -151,8 +168,9 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
           result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
     }
     Instant now = Instant.now(clock);
-    return sessions
-        .loadSnapshot(command.sessionId())
+    return stage(
+            () -> sessions.loadSnapshot(command.sessionId()),
+            ForgotPasswordOtpVerifyIncident.SESSION_REREAD)
         .flatMap(
             currentOptional ->
                 validateCurrentSession(command, currentOptional, context, resetSubjectId, now));
@@ -191,8 +209,11 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
       String activeOtpChallengeId,
       ForgotPasswordAuthFlowContext context,
       Instant now) {
-    return otp.verifyChallenge(
-            new VerifyOtpChallengeCommand(activeOtpChallengeId, command.code(), now))
+    return stage(
+            () ->
+                otp.verifyChallenge(
+                    new VerifyOtpChallengeCommand(activeOtpChallengeId, command.code(), now)),
+            ForgotPasswordOtpVerifyIncident.CHALLENGE_VERIFICATION)
         .flatMap(
             result ->
                 switch (result.outcome()) {
@@ -236,30 +257,70 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
         normalizeResetSubjectId(context, resetSubjectId)
             .withResetAuthorization(authorization)
             .withPhase(ForgotPasswordProtectedPhase.PASSWORD_SETUP);
-    ForgotPasswordAuthFlowEncryptedContext encrypted = protector.protect(updatedContext);
-    Map<String, String> attrs = new LinkedHashMap<>(reloaded.data().attributes());
-    attrs.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());
-    attrs.put(CONTEXT_KEY_VERSION, encrypted.keyVersion());
-    attrs.put(CONTEXT_ALGORITHM, encrypted.algorithm());
+    return stage(
+            () -> Mono.just(protector.protect(updatedContext)),
+            ForgotPasswordOtpVerifyIncident.AUTHORIZATION_PROTECTION)
+        .flatMap(
+            encrypted -> {
+              Map<String, String> attrs = new LinkedHashMap<>(reloaded.data().attributes());
+              attrs.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());
+              attrs.put(CONTEXT_KEY_VERSION, encrypted.keyVersion());
+              attrs.put(CONTEXT_ALGORITHM, encrypted.algorithm());
 
-    AuthFlowSession updated =
-        new AuthFlowSession(
-            reloaded.authFlowSessionId(),
-            reloaded.scenario(),
-            AuthFlowStatus.RESET_AUTHORIZED,
-            reloaded.csrfTokenHash(),
-            null,
-            new AuthFlowSessionData(
-                updatedContext.contactChannel(), updatedContext.maskedDestination(), attrs),
-            reloaded.createdAt(),
-            now,
-            reloaded.expiresAt());
+              AuthFlowSession updated =
+                  new AuthFlowSession(
+                      reloaded.authFlowSessionId(),
+                      reloaded.scenario(),
+                      AuthFlowStatus.RESET_AUTHORIZED,
+                      reloaded.csrfTokenHash(),
+                      null,
+                      new AuthFlowSessionData(
+                          updatedContext.contactChannel(), updatedContext.maskedDestination(), attrs),
+                      reloaded.createdAt(),
+                      now,
+                      reloaded.expiresAt());
 
-    return new RevisionAwareAuthFlowSessionWriter(sessions)
-        .updateExpected(reloaded, updated)
-        .then(expiry.refresh(command.sessionId(), now))
-        .thenReturn(result(VerifyForgotPasswordOtpStatus.VERIFIED, WorkflowNextStep.PASSWORD_SETUP))
-        .onErrorReturn(result(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE));
+              return stage(
+                      () ->
+                          new RevisionAwareAuthFlowSessionWriter(sessions)
+                              .updateExpected(reloaded, updated),
+                      ForgotPasswordOtpVerifyIncident.SESSION_UPDATE)
+                  .then(
+                      stage(
+                          () -> expiry.refresh(command.sessionId(), now),
+                          ForgotPasswordOtpVerifyIncident.EXPIRY_REFRESH))
+                  .thenReturn(
+                      result(
+                          VerifyForgotPasswordOtpStatus.VERIFIED, WorkflowNextStep.PASSWORD_SETUP));
+            });
+  }
+
+  private <T> Mono<T> stage(
+      Supplier<Mono<T>> operation, ForgotPasswordOtpVerifyIncident incident) {
+    return Mono.defer(operation)
+        .onErrorMap(
+            failure ->
+                failure instanceof ClassifiedTechnicalFailure
+                    ? failure
+                    : new ClassifiedTechnicalFailure(incident));
+  }
+
+  private Mono<Void> releaseQuietly(SessionLockHandle handle) {
+    try {
+      return locks.release(handle).onErrorReturn(false).then();
+    } catch (RuntimeException ignored) {
+      return Mono.empty();
+    }
+  }
+
+  private Mono<Void> releaseAfterSuccess(
+      SessionLockHandle handle, AtomicBoolean synchronousReleaseFailed) {
+    try {
+      return locks.release(handle).onErrorReturn(false).then();
+    } catch (RuntimeException ignored) {
+      synchronousReleaseFailed.set(true);
+      return Mono.empty();
+    }
   }
 
   private ForgotPasswordOtpVerifyProtectedExecutionResult mapLoaderFailure(
@@ -282,6 +343,14 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
       Integer remainingVerifyAttempts) {
     return new ForgotPasswordOtpVerifyProtectedExecutionResult(
         new VerifyForgotPasswordOtpResult(status, nextStep, remainingVerifyAttempts));
+  }
+
+  private ForgotPasswordOtpVerifyProtectedExecutionResult failed(
+      ForgotPasswordOtpVerifyIncident incident) {
+    return new ForgotPasswordOtpVerifyProtectedExecutionResult(
+        new VerifyForgotPasswordOtpResult(
+            VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, null),
+        incident);
   }
 
   private boolean validOtp(String code) {
@@ -315,4 +384,20 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
     }
     return context.withResetSubjectId(resetSubjectId);
   }
+
+  private static final class ClassifiedTechnicalFailure extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+
+    private final ForgotPasswordOtpVerifyIncident incident;
+
+    private ClassifiedTechnicalFailure(ForgotPasswordOtpVerifyIncident incident) {
+      super(null, null, false, false);
+      this.incident = incident;
+    }
+
+    private ForgotPasswordOtpVerifyIncident incident() {
+      return incident;
+    }
+  }
+
 }

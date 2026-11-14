@@ -494,6 +494,26 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
   }
 
   @Test
+  void synchronousLockReleaseFailureRemainsUnownedSystemFailure() {
+    givenLockAcquired();
+    givenInitialSession(validSession());
+    givenLoaderValid();
+    givenWriterAndExpirySucceed();
+    when(otp.verifyChallenge(any()))
+        .thenReturn(Mono.just(challengeResult(OtpVerificationOutcome.VALID, 0)));
+    when(locks.release(any())).thenThrow(new IllegalStateException("release-secret"));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(incidentStage(result)).isEqualTo("lock-release");
+            })
+        .verifyComplete();
+  }
+
+  @Test
   void authorizeExpiryRefreshFailureYieldsSystemFailed() {
     givenLockAcquired();
     givenInitialSession(validSession());
@@ -504,9 +524,11 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
         .thenReturn(Mono.just(challengeResult(OtpVerificationOutcome.VALID, 0)));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r ->
-                assertThat(r.result().status())
-                    .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED))
+            r -> {
+              assertThat(r.result().status())
+                  .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(incidentStage(r)).isEqualTo("expiry-refresh");
+            })
         .verifyComplete();
   }
 
@@ -525,9 +547,11 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
         .thenReturn(Mono.just(challengeResult(OtpVerificationOutcome.VALID, 0)));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r ->
-                assertThat(r.result().status())
-                    .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED))
+            r -> {
+              assertThat(r.result().status())
+                  .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(incidentStage(r)).isEqualTo("session-update");
+            })
         .verifyComplete();
   }
 
@@ -538,9 +562,11 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
     when(locks.acquire(any(), any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r ->
-                assertThat(r.result().status())
-                    .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED))
+            r -> {
+              assertThat(r.result().status())
+                  .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(incidentStage(r)).isEqualTo("lock-acquisition");
+            })
         .verifyComplete();
   }
 
@@ -550,9 +576,97 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
     when(sessions.loadSnapshot(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
-            r ->
-                assertThat(r.result().status())
-                    .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED))
+            r -> {
+              assertThat(r.result().status())
+                  .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(incidentStage(r)).isEqualTo("session-read");
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void synchronousLockAcquireFailureIsClassifiedAtLockStage() {
+    when(locks.acquire(any(), any())).thenThrow(new IllegalStateException("lock-secret"));
+
+    StepVerifier.create(Mono.defer(() -> newOp().execute(validCommand())))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(incidentStage(result)).isEqualTo("lock-acquisition");
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void reloadedSessionReadFailureHasItsOwnStage() {
+    givenLockAcquired();
+    givenInitialSession(validSession());
+    givenLoaderValid();
+    when(sessions.loadSnapshot(any()))
+        .thenReturn(Mono.just(Optional.of(snapshotOf(validSession()))))
+        .thenReturn(Mono.error(new IllegalStateException("session-secret")));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(incidentStage(result)).isEqualTo("session-reread");
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void protectedContextLoadFailureHasItsOwnStage() {
+    givenLockAcquired();
+    givenInitialSession(validSession());
+    when(loader.load(any())).thenReturn(Mono.error(new IllegalStateException("context-secret")));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(incidentStage(result)).isEqualTo("context-load");
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void challengeVerificationFailureHasItsOwnStage() {
+    givenLockAcquired();
+    givenInitialSession(validSession());
+    givenLoaderValid();
+    when(otp.verifyChallenge(any()))
+        .thenReturn(Mono.error(new IllegalStateException("challenge-secret")));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(incidentStage(result)).isEqualTo("challenge-verification");
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void resetAuthorizationProtectionFailureHasItsOwnStage() {
+    givenLockAcquired();
+    givenInitialSession(validSession());
+    givenLoaderValid();
+    when(otp.verifyChallenge(any()))
+        .thenReturn(Mono.just(challengeResult(OtpVerificationOutcome.VALID, 0)));
+    when(protector.protect(any())).thenThrow(new IllegalStateException("protector-secret"));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(incidentStage(result)).isEqualTo("authorization-protection");
+            })
         .verifyComplete();
   }
 
@@ -606,5 +720,16 @@ class ForgotPasswordOtpVerifyProtectedOperationTest {
     assertThat(saved.trustCode()).as("persisted trustCode").isEqualTo("HSBC");
     assertThat(saved.schemeName()).as("persisted schemeName").isEqualTo("Scheme En");
     assertThat(saved.schemeNameChi()).as("persisted schemeNameChi").isEqualTo("Scheme Chi");
+  }
+
+  private static String incidentStage(ForgotPasswordOtpVerifyProtectedExecutionResult result) {
+    try {
+      Object incident = result.getClass().getMethod("incident").invoke(result);
+      return incident == null
+          ? null
+          : (String) incident.getClass().getMethod("stage").invoke(incident);
+    } catch (ReflectiveOperationException missingClassification) {
+      return null;
+    }
   }
 }
