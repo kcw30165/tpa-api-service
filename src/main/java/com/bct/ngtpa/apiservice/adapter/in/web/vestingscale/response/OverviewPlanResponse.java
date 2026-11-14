@@ -10,7 +10,8 @@ public record OverviewPlanResponse(
         ResponseField<String> dateOfJoiningPlan,
     @JsonInclude(value = JsonInclude.Include.CUSTOM, valueFilter = ResponseField.AbsentFilter.class)
         ResponseField<PlanServiceResponse> planService,
-    String vestingPeriodBasedOn,
+    @JsonInclude(value = JsonInclude.Include.CUSTOM, valueFilter = ResponseField.AbsentFilter.class)
+        ResponseField<String> vestingPeriodBasedOn,
     @JsonInclude(value = JsonInclude.Include.CUSTOM, valueFilter = ResponseField.AbsentFilter.class)
         ResponseField<String> memberContributionBasis,
     @JsonInclude(value = JsonInclude.Include.CUSTOM, valueFilter = ResponseField.AbsentFilter.class)

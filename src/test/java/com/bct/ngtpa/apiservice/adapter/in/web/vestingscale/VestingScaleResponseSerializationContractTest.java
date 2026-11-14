@@ -13,6 +13,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.vestingscale.response.VestingScal
 import com.bct.ngtpa.apiservice.adapter.in.web.vestingscale.response.VestingScaleResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.vestingscale.response.VestingScaleRowResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.vestingscale.response.VestingScaleSectionResponse;
+import com.bct.ngtpa.apiservice.application.dto.vestingscale.Presence;
+import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleMember;
+import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScalePlan;
+import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleResult;
 import com.bct.ngtpa.apiservice.infrastructure.jackson.JacksonConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
@@ -132,6 +136,19 @@ class VestingScaleResponseSerializationContractTest {
   }
 
   @Test
+  void serializesVestingPeriodAbsentNullAndValueThroughBothEncoders() {
+    assertBothEncoders(
+        vestingPeriodResponse(Presence.absent(), Presence.absent()),
+        "{\"data\":{\"planTypes\":[{\"planNo\":\"P1\",\"planType\":\"English\"}],\"overview\":{\"member\":{},\"plans\":[{\"planNo\":\"P1\"}]}}}");
+    assertBothEncoders(
+        vestingPeriodResponse(Presence.present(null), Presence.absent()),
+        "{\"data\":{\"planTypes\":[{\"planNo\":\"P1\",\"planType\":\"English\"}],\"overview\":{\"member\":{},\"plans\":[{\"planNo\":\"P1\",\"vestingPeriodBasedOn\":null}]}}}");
+    assertBothEncoders(
+        vestingPeriodResponse(Presence.present("Company date"), Presence.absent()),
+        "{\"data\":{\"planTypes\":[{\"planNo\":\"P1\",\"planType\":\"English\"}],\"overview\":{\"member\":{},\"plans\":[{\"planNo\":\"P1\",\"vestingPeriodBasedOn\":\"Company date\"}]}}}");
+  }
+
+  @Test
   void omitsAbsentVestingScaleButIncludesEmptyAndNullScaleValuesThroughBothEncoders() {
     VestingScaleResultResponse absentSection = responseWithVestingScale(ResponseField.absent());
     VestingScaleResultResponse emptySection =
@@ -165,7 +182,7 @@ class VestingScaleResponseSerializationContractTest {
             ResponseField.absent(),
             ResponseField.absent(),
             ResponseField.absent(),
-            "Company date",
+            ResponseField.present("Company date"),
             ResponseField.absent(),
             ResponseField.absent());
     VestingScaleResultResponse response =
@@ -194,7 +211,7 @@ class VestingScaleResponseSerializationContractTest {
             ResponseField.present(null),
             ResponseField.present(null),
             ResponseField.present(null),
-            "Company date",
+            ResponseField.present("Company date"),
             ResponseField.present(null),
             ResponseField.present(null));
     VestingScaleResultResponse response =
@@ -263,7 +280,7 @@ class VestingScaleResponseSerializationContractTest {
             ResponseField.present("01/02/2019"),
             ResponseField.present(null),
             ResponseField.present(new PlanServiceResponse(2, 3)),
-            "Company date",
+            ResponseField.present("Company date"),
             ResponseField.present(null),
             ResponseField.present("5%"));
     VestingScaleSectionResponse scale =
@@ -278,6 +295,33 @@ class VestingScaleResponseSerializationContractTest {
             List.of(new PlanTypeOptionResponse("P1", "English")),
             new OverviewResponse(member, List.of(plan)),
             ResponseField.present(scale)));
+  }
+
+  private static VestingScaleResultResponse vestingPeriodResponse(
+      Presence<String> english, Presence<String> chinese) {
+    VestingScalePlan plan =
+        new VestingScalePlan(
+            "P1",
+            "English",
+            null,
+            Presence.absent(),
+            Presence.absent(),
+            Presence.absent(),
+            english,
+            chinese,
+            Presence.absent(),
+            Presence.absent(),
+            Presence.absent(),
+            Presence.absent(),
+            Presence.absent());
+    return new VestingScaleWebMapper()
+        .toResultResponse(
+            new VestingScaleResult(
+                new VestingScaleMember(
+                    Presence.absent(), Presence.absent(), Presence.absent(), Presence.absent()),
+                List.of(plan),
+                false),
+            "en");
   }
 
   private static VestingScaleResultResponse emptyResponse() {

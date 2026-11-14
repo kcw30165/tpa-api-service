@@ -72,7 +72,7 @@ public final class VestingScaleWebMapper {
         mapDate(plan.planEffectiveDate()),
         mapDate(plan.dateOfJoiningPlan()),
         mapped(plan.planService(), value -> new PlanServiceResponse(value.years(), value.months())),
-        vestingPeriodDescription(plan, chinese),
+        map(chinese ? plan.vestPeriodBaseChi() : plan.vestPeriodBaseEng()),
         map(chinese ? plan.basisContEeChi() : plan.basisContEeEng()),
         map(chinese ? plan.basisContErChi() : plan.basisContErEng()));
   }
@@ -110,11 +110,6 @@ public final class VestingScaleWebMapper {
 
   private static boolean hasText(String value) {
     return value != null && !value.isBlank();
-  }
-
-  private static String vestingPeriodDescription(VestingScalePlan plan, boolean chinese) {
-    Presence<String> description = chinese ? plan.vestPeriodBaseChi() : plan.vestPeriodBaseEng();
-    return description.isPresent() ? description.value() : null;
   }
 
   private static ResponseField<String> mapDate(Presence<LocalDate> presence) {

@@ -67,7 +67,7 @@ class VestingScaleWebMapperTest {
 
     assertThat(response.data().planTypes().getFirst().planType()).isEqualTo("English name");
     assertThat(response.data().overview().plans().getFirst().vestingPeriodBasedOn())
-        .isEqualTo("English vesting basis");
+        .isEqualTo(ResponseField.present("English vesting basis"));
   }
 
   @ParameterizedTest
@@ -79,7 +79,7 @@ class VestingScaleWebMapperTest {
 
     assertThat(response.data().planTypes().getFirst().planType()).isEqualTo("中文名稱");
     assertThat(response.data().overview().plans().getFirst().vestingPeriodBasedOn())
-        .isEqualTo("中文歸屬基準");
+        .isEqualTo(ResponseField.present("中文歸屬基準"));
   }
 
   @Test
@@ -127,9 +127,27 @@ class VestingScaleWebMapperTest {
             .plans()
             .getFirst();
 
-    assertThat(mapped.vestingPeriodBasedOn()).isNull();
+    assertThat(mapped.vestingPeriodBasedOn()).isEqualTo(ResponseField.present(null));
     assertThat(mapped.memberContributionBasis()).isEqualTo(ResponseField.present(null));
     assertThat(mapped.employerContributionBasis()).isEqualTo(ResponseField.present(null));
+  }
+
+  @Test
+  void preservesAbsentNullAndValueForEnglishVestingPeriod() {
+    assertThat(mappedVestingPeriod("en", Presence.absent(), Presence.present("Chinese")))
+        .isEqualTo(ResponseField.absent());
+    assertThat(mappedVestingPeriod("en", Presence.present(null), Presence.present("Chinese")))
+        .isEqualTo(ResponseField.present(null));
+    assertThat(mappedVestingPeriod("en", Presence.present("English"), Presence.present("Chinese")))
+        .isEqualTo(ResponseField.present("English"));
+  }
+
+  @Test
+  void preservesChineseVestingPeriodAbsenceAndNullWithoutEnglishFallback() {
+    assertThat(mappedVestingPeriod("zh-HK", Presence.present("English"), Presence.absent()))
+        .isEqualTo(ResponseField.absent());
+    assertThat(mappedVestingPeriod("zh-HK", Presence.present("English"), Presence.present(null)))
+        .isEqualTo(ResponseField.present(null));
   }
 
   @Test
@@ -158,7 +176,7 @@ class VestingScaleWebMapperTest {
     assertThat(mappedPlan.planService().present()).isFalse();
     assertThat(mappedPlan.memberContributionBasis()).isEqualTo(ResponseField.present("中文僱員供款基準"));
     assertThat(mappedPlan.employerContributionBasis()).isEqualTo(ResponseField.present(null));
-    assertThat(mappedPlan.vestingPeriodBasedOn()).isEqualTo("中文歸屬基準");
+    assertThat(mappedPlan.vestingPeriodBasedOn()).isEqualTo(ResponseField.present("中文歸屬基準"));
   }
 
   @Test
@@ -234,6 +252,32 @@ class VestingScaleWebMapperTest {
             Presence.absent()),
         plans,
         sectionVisible);
+  }
+
+  private Object mappedVestingPeriod(
+      String language, Presence<String> english, Presence<String> chinese) {
+    VestingScalePlan plan =
+        new VestingScalePlan(
+            "P1",
+            "English name",
+            "中文名稱",
+            Presence.absent(),
+            Presence.absent(),
+            Presence.absent(),
+            english,
+            chinese,
+            Presence.absent(),
+            Presence.absent(),
+            Presence.absent(),
+            Presence.absent(),
+            Presence.absent());
+    return mapper
+        .toResultResponse(result(List.of(plan), false), language)
+        .data()
+        .overview()
+        .plans()
+        .getFirst()
+        .vestingPeriodBasedOn();
   }
 
   private static VestingScalePlan plan(
