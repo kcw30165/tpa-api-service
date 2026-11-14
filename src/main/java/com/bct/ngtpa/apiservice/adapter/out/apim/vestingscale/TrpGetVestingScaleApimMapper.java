@@ -1,5 +1,36 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale;
 
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.CONFIG;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.ConfigItem.CONFIG_VALUE;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.ConfigItem.ITEM_ID;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.MEMBER;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member.DATE_JOINED_COMPANY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member.DATE_JOINED_SCHEME;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member.EMPLOYMENT_DATE;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member.MEMBER_CATEGORY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.PLANS;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.BASIS_CONT_EE_CHI;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.BASIS_CONT_EE_ENG;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.BASIS_CONT_ER_CHI;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.BASIS_CONT_ER_ENG;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.DATE_OF_JOINING_PLAN;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.PLAN_EFFECTIVE_DATE;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.PLAN_NO;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.PLAN_SERVICE;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.PLAN_TYPE_DESC_ENG;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.VESTING_SCALE;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.PlanService.MONTHS;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.PlanService.YEARS;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.VestingRow.COMPLETED_YEARS;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.VestingRow.VEST_PCNT;
+
+import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.ApimField;
+import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.ConfigItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member;
+import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan;
+import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.PlanService;
+import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.VestingRow;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.Presence;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigValue;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleData;
@@ -7,8 +38,7 @@ import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleMember;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScalePlan;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScalePlanService;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleRow;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -30,75 +60,94 @@ final class TrpGetVestingScaleApimMapper {
       DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
   private static final Set<String> CONFIG_ITEM_IDS =
       Set.of(
-          "member-category",
-          "plan-effective-date",
-          "basis-cont-ee-chi",
-          "basis-cont-ee-eng",
-          "basis-cont-er-chi",
-          "basis-cont-er-eng",
-          "date-joined-company",
-          "date-joined-scheme",
-          "date-of-joining-plan",
-          "employment-date",
-          "plan-service",
-          "vesting-scale");
+          MEMBER_CATEGORY,
+          PLAN_EFFECTIVE_DATE,
+          BASIS_CONT_EE_CHI,
+          BASIS_CONT_EE_ENG,
+          BASIS_CONT_ER_CHI,
+          BASIS_CONT_ER_ENG,
+          DATE_JOINED_COMPANY,
+          DATE_JOINED_SCHEME,
+          DATE_OF_JOINING_PLAN,
+          EMPLOYMENT_DATE,
+          PLAN_SERVICE,
+          VESTING_SCALE);
 
-  VestingScaleData map(JsonNode item) {
-    ObjectNode root = requireObject(item);
-    VestingScaleMember member = mapMember(requireObject(root.get("member")));
-    List<VestingScalePlan> plans = mapPlans(requireArray(root.get("plans")));
-    Map<String, VestingScaleConfigValue> config = mapConfig(requireArray(root.get("config")));
-    return new VestingScaleData(member, plans, config);
+  VestingScaleData map(TrpGetVestingScaleApimDataItem item) {
+    if (item == null) {
+      throw malformed(
+          TrpGetVestingScaleApimDataItem.DATA,
+          VestingScaleMalformedResponseException.MalformedReason.MISSING_REQUIRED_FIELD);
+    }
+    Member member = required(item.member(), MEMBER);
+    List<Plan> plans = required(item.plans(), PLANS);
+    List<ConfigItem> config = required(item.config(), CONFIG);
+    return new VestingScaleData(mapMember(member), mapPlans(plans), mapConfig(config));
   }
 
-  private static VestingScaleMember mapMember(ObjectNode member) {
+  private static VestingScaleMember mapMember(Member member) {
     return new VestingScaleMember(
-        optional(member, "member-category", TrpGetVestingScaleApimMapper::requiredText),
-        optional(member, "date-joined-company", node -> date(node, "member.date-joined-company")),
-        optional(member, "date-joined-scheme", node -> date(node, "member.date-joined-scheme")),
-        optional(member, "employment-date", node -> date(node, "member.employment-date")));
+        presence(member.memberCategory(), TrpGetVestingScaleApimMapper::text),
+        datePresence(member.dateJoinedCompany(), path(MEMBER, DATE_JOINED_COMPANY)),
+        datePresence(member.dateJoinedScheme(), path(MEMBER, DATE_JOINED_SCHEME)),
+        datePresence(member.employmentDate(), path(MEMBER, EMPLOYMENT_DATE)));
   }
 
-  private static List<VestingScalePlan> mapPlans(JsonNode plansNode) {
+  private static List<VestingScalePlan> mapPlans(List<Plan> planItems) {
     Set<String> planNumbers = new HashSet<>();
     List<VestingScalePlan> plans = new ArrayList<>();
-    for (JsonNode planNode : plansNode) {
-      ObjectNode plan = requireObject(planNode);
-      String planNo = requiredNonBlankText(plan.get("plan-no"), "plans[].plan-no");
-      if (!planNumbers.add(planNo)) {
-        throw malformed();
+    for (int index = 0; index < planItems.size(); index++) {
+      String planPath = indexed(PLANS, index);
+      Plan plan = planItems.get(index);
+      if (plan == null) {
+        throw malformed(
+            planPath, VestingScaleMalformedResponseException.MalformedReason.INVALID_TYPE);
       }
+      String planNo = requiredNonBlank(plan.planNo(), path(planPath, PLAN_NO));
+      if (!planNumbers.add(planNo)) {
+        throw malformed(
+            path(planPath, PLAN_NO),
+            VestingScaleMalformedResponseException.MalformedReason.DUPLICATE_VALUE);
+      }
+      String planTypeDescEng =
+          requiredNonBlank(plan.planTypeDescEng(), path(planPath, PLAN_TYPE_DESC_ENG));
+      String planTypeDescChi = optionalValue(plan.planTypeDescChi());
       plans.add(
           new VestingScalePlan(
               planNo,
-              optionalText(plan.get("plan-type-desc-eng"), "plans[].plan-type-desc-eng"),
-              optionalText(plan.get("plan-type-desc-chi"), "plans[].plan-type-desc-chi"),
-              optional(
-                  plan, "plan-effective-date", node -> date(node, "plans[].plan-effective-date")),
-              optional(
-                  plan, "date-of-joining-plan", node -> date(node, "plans[].date-of-joining-plan")),
-              optional(plan, "plan-service", TrpGetVestingScaleApimMapper::planService),
-              optional(plan, "vest-period-base-eng", TrpGetVestingScaleApimMapper::requiredText),
-              optional(plan, "vest-period-base-chi", TrpGetVestingScaleApimMapper::requiredText),
-              optional(plan, "basis-cont-ee-eng", TrpGetVestingScaleApimMapper::requiredText),
-              optional(plan, "basis-cont-ee-chi", TrpGetVestingScaleApimMapper::requiredText),
-              optional(plan, "basis-cont-er-eng", TrpGetVestingScaleApimMapper::requiredText),
-              optional(plan, "basis-cont-er-chi", TrpGetVestingScaleApimMapper::requiredText),
-              optional(plan, "vesting-scale", TrpGetVestingScaleApimMapper::vestingRows)));
+              planTypeDescEng,
+              planTypeDescChi,
+              datePresence(plan.planEffectiveDate(), path(planPath, PLAN_EFFECTIVE_DATE)),
+              datePresence(plan.dateOfJoiningPlan(), path(planPath, DATE_OF_JOINING_PLAN)),
+              planService(plan.planService(), path(planPath, PLAN_SERVICE)),
+              presence(plan.vestPeriodBaseEng(), Function.identity()),
+              presence(plan.vestPeriodBaseChi(), Function.identity()),
+              presence(plan.basisContEeEng(), Function.identity()),
+              presence(plan.basisContEeChi(), Function.identity()),
+              presence(plan.basisContErEng(), Function.identity()),
+              presence(plan.basisContErChi(), Function.identity()),
+              vestingScale(plan.vestingScale(), path(planPath, VESTING_SCALE))));
     }
     return List.copyOf(plans);
   }
 
-  private static Map<String, VestingScaleConfigValue> mapConfig(JsonNode configNode) {
+  private static Map<String, VestingScaleConfigValue> mapConfig(List<ConfigItem> items) {
     Set<String> seen = new HashSet<>();
     Map<String, VestingScaleConfigValue> config = new LinkedHashMap<>();
-    for (JsonNode itemNode : configNode) {
-      ObjectNode item = requireObject(itemNode);
-      String itemId = requiredNonBlankText(item.get("item-id"));
-      if (!seen.add(itemId)) {
-        throw malformed();
+    for (int index = 0; index < items.size(); index++) {
+      String itemPath = indexed(CONFIG, index);
+      ConfigItem item = items.get(index);
+      if (item == null) {
+        throw malformed(
+            itemPath, VestingScaleMalformedResponseException.MalformedReason.INVALID_TYPE);
       }
-      VestingScaleConfigValue value = configValue(item.get("config-value"));
+      String itemId = requiredNonBlank(item.itemId(), path(itemPath, ITEM_ID));
+      if (!seen.add(itemId)) {
+        throw malformed(
+            path(itemPath, ITEM_ID),
+            VestingScaleMalformedResponseException.MalformedReason.DUPLICATE_VALUE);
+      }
+      VestingScaleConfigValue value = configValue(item.configValue(), path(itemPath, CONFIG_VALUE));
       if (CONFIG_ITEM_IDS.contains(itemId)) {
         config.put(itemId, value);
       } else {
@@ -108,86 +157,90 @@ final class TrpGetVestingScaleApimMapper {
     return Map.copyOf(config);
   }
 
-  private static VestingScaleConfigValue configValue(JsonNode valueNode) {
-    String value = requiredText(valueNode);
+  private static VestingScaleConfigValue configValue(ApimField<String> field, String fieldPath) {
+    String value = required(field, fieldPath);
     try {
       return VestingScaleConfigValue.valueOf(value);
     } catch (IllegalArgumentException exception) {
-      throw malformed();
-    }
-  }
-
-  private static VestingScalePlanService planService(JsonNode node) {
-    ObjectNode service = requireObject(node);
-    if (!service.has("years") || !service.has("months")) {
-      throw malformed();
-    }
-    return new VestingScalePlanService(
-        nullableInteger(service.get("years")), nullableInteger(service.get("months")));
-  }
-
-  private static Integer nullableInteger(JsonNode node) {
-    if (node == null) {
-      throw malformed();
-    }
-    if (node.isNull()) {
-      return null;
-    }
-    if (!node.isIntegralNumber() || !node.canConvertToInt()) {
-      throw malformed();
-    }
-    return node.intValue();
-  }
-
-  private static List<VestingScaleRow> vestingRows(JsonNode rowsNode) {
-    if (!rowsNode.isArray()) {
-      throw malformed();
-    }
-    List<VestingScaleRow> rows = new ArrayList<>();
-    for (JsonNode rowNode : rowsNode) {
-      ObjectNode row = requireObject(rowNode);
-      JsonNode years = row.get("completed-years");
-      JsonNode percentage = row.get("vest-pcnt");
-      if (years == null
-          || !years.isIntegralNumber()
-          || !years.canConvertToInt()
-          || percentage == null
-          || !percentage.isNumber()) {
-        throw malformed();
-      }
-      rows.add(new VestingScaleRow(years.intValue(), percentage.decimalValue()));
-    }
-    return List.copyOf(rows);
-  }
-
-  private static <T> Presence<T> optional(
-      ObjectNode source, String field, Function<JsonNode, T> parser) {
-    if (!source.has(field)) {
-      return Presence.absent();
-    }
-    JsonNode node = source.get(field);
-    return Presence.present(node.isNull() ? null : parser.apply(node));
-  }
-
-  private static LocalDate date(JsonNode node, String fieldPath) {
-    if (node == null || !node.isTextual()) {
       throw malformed(
-          fieldPath, VestingScaleMalformedResponseException.MalformedReason.REQUIRED_TEXT_TYPE);
+          fieldPath, VestingScaleMalformedResponseException.MalformedReason.INVALID_ENUM_VALUE);
     }
+  }
+
+  private static Presence<VestingScalePlanService> planService(
+      ApimField<PlanService> field, String path) {
+    return presence(
+        field,
+        service -> {
+          if (service == null) {
+            throw malformed(
+                path, VestingScaleMalformedResponseException.MalformedReason.INVALID_TYPE);
+          }
+          return new VestingScalePlanService(
+              nullableInteger(service.years(), path(path, YEARS)),
+              nullableInteger(service.months(), path(path, MONTHS)));
+        });
+  }
+
+  private static Integer nullableInteger(ApimField<Integer> field, String fieldPath) {
+    return switch (state(field, fieldPath)) {
+      case ABSENT ->
+          throw malformed(
+              fieldPath,
+              VestingScaleMalformedResponseException.MalformedReason.MISSING_REQUIRED_FIELD);
+      case NULL -> null;
+      case VALUE -> field.value();
+    };
+  }
+
+  private static Presence<List<VestingScaleRow>> vestingScale(
+      ApimField<List<VestingRow>> field, String fieldPath) {
+    return presence(field, rows -> mapRows(rows, fieldPath));
+  }
+
+  private static List<VestingScaleRow> mapRows(List<VestingRow> rows, String fieldPath) {
+    if (rows == null) {
+      throw malformed(
+          fieldPath, VestingScaleMalformedResponseException.MalformedReason.INVALID_TYPE);
+    }
+    List<VestingScaleRow> mapped = new ArrayList<>();
+    for (int index = 0; index < rows.size(); index++) {
+      String rowPath = indexed(fieldPath, index);
+      VestingRow row = rows.get(index);
+      if (row == null) {
+        throw malformed(
+            rowPath, VestingScaleMalformedResponseException.MalformedReason.INVALID_TYPE);
+      }
+      Integer years = required(row.completedYears(), path(rowPath, COMPLETED_YEARS));
+      BigDecimal percentage = required(row.vestPcnt(), path(rowPath, VEST_PCNT));
+      mapped.add(new VestingScaleRow(years, percentage));
+    }
+    return List.copyOf(mapped);
+  }
+
+  private static Presence<LocalDate> datePresence(ApimField<String> field, String fieldPath) {
+    return presence(field, value -> parseDate(value, fieldPath));
+  }
+
+  private static LocalDate parseDate(String value, String fieldPath) {
     try {
-      return LocalDate.parse(node.textValue(), DATE_FORMAT);
+      return LocalDate.parse(value, DATE_FORMAT);
     } catch (DateTimeParseException exception) {
       throw malformed(
           fieldPath, VestingScaleMalformedResponseException.MalformedReason.INVALID_DATE_FORMAT);
     }
   }
 
-  private static String requiredNonBlankText(JsonNode node, String fieldPath) {
-    if (node == null || !node.isTextual()) {
-      throw malformed(
-          fieldPath, VestingScaleMalformedResponseException.MalformedReason.REQUIRED_TEXT_TYPE);
-    }
-    String value = node.textValue();
+  private static String text(String value) {
+    return value;
+  }
+
+  private static String optionalValue(ApimField<String> field) {
+    return field == null || field.state() != ApimField.State.VALUE ? null : field.value();
+  }
+
+  private static String requiredNonBlank(ApimField<String> field, String fieldPath) {
+    String value = required(field, fieldPath);
     if (value.isBlank()) {
       throw malformed(
           fieldPath, VestingScaleMalformedResponseException.MalformedReason.REQUIRED_TEXT_BLANK);
@@ -195,48 +248,43 @@ final class TrpGetVestingScaleApimMapper {
     return value;
   }
 
-  private static String optionalText(JsonNode node, String fieldPath) {
-    if (node == null || node.isNull()) {
-      return null;
-    }
-    if (!node.isTextual()) {
+  private static <T> T required(ApimField<T> field, String fieldPath) {
+    return switch (state(field, fieldPath)) {
+      case ABSENT, NULL ->
+          throw malformed(
+              fieldPath,
+              VestingScaleMalformedResponseException.MalformedReason.MISSING_REQUIRED_FIELD);
+      case VALUE -> field.value();
+    };
+  }
+
+  private static ApimField.State state(ApimField<?> field, String fieldPath) {
+    if (field == null) {
       throw malformed(
-          fieldPath, VestingScaleMalformedResponseException.MalformedReason.REQUIRED_TEXT_TYPE);
+          fieldPath, VestingScaleMalformedResponseException.MalformedReason.MISSING_REQUIRED_FIELD);
     }
-    return node.textValue();
+    return field.state();
   }
 
-  private static String requiredNonBlankText(JsonNode node) {
-    String value = requiredText(node);
-    if (value.isBlank()) {
-      throw malformed();
+  private static <T, R> Presence<R> presence(ApimField<T> field, Function<T, R> mapper) {
+    if (field == null) {
+      throw malformed(
+          TrpGetVestingScaleApimDataItem.DATA,
+          VestingScaleMalformedResponseException.MalformedReason.MISSING_REQUIRED_FIELD);
     }
-    return value;
+    return switch (field.state()) {
+      case ABSENT -> Presence.absent();
+      case NULL -> Presence.present(null);
+      case VALUE -> Presence.present(mapper.apply(field.value()));
+    };
   }
 
-  private static String requiredText(JsonNode node) {
-    if (node == null || !node.isTextual()) {
-      throw malformed();
-    }
-    return node.textValue();
+  private static String indexed(String field, int index) {
+    return field + "[" + index + "]";
   }
 
-  private static ObjectNode requireObject(JsonNode node) {
-    if (node == null || !node.isObject()) {
-      throw malformed();
-    }
-    return (ObjectNode) node;
-  }
-
-  private static JsonNode requireArray(JsonNode node) {
-    if (node == null || !node.isArray()) {
-      throw malformed();
-    }
-    return node;
-  }
-
-  private static VestingScaleMalformedResponseException malformed() {
-    return new VestingScaleMalformedResponseException();
+  private static String path(String parent, String field) {
+    return parent + "." + field;
   }
 
   private static VestingScaleMalformedResponseException malformed(

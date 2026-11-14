@@ -21,6 +21,7 @@ public record VestingScalePlan(
 
   public VestingScalePlan {
     Objects.requireNonNull(planNo, "planNo must not be null");
+    Objects.requireNonNull(planTypeDescEng, "planTypeDescEng must not be null");
     Objects.requireNonNull(planEffectiveDate, "planEffectiveDate must not be null");
     Objects.requireNonNull(dateOfJoiningPlan, "dateOfJoiningPlan must not be null");
     Objects.requireNonNull(planService, "planService must not be null");

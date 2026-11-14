@@ -3,10 +3,12 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.Presence;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigValue;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleData;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScalePlan;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -26,7 +28,7 @@ class TrpGetVestingScaleApimMapperTest {
   @Test
   void mapsTheFullResponseAndIgnoresUnmappedWireFields() throws Exception {
     VestingScaleData data =
-        mapper.map(
+        map(
             JSON.readTree(
                 """
                 {
@@ -98,14 +100,13 @@ class TrpGetVestingScaleApimMapperTest {
 
   @Test
   void acceptsEmptyMemberPlansAndConfigAndPreservesEmptyMemberCategory() throws Exception {
-    VestingScaleData empty =
-        mapper.map(JSON.readTree("{\"member\": {}, \"plans\": [], \"config\": []}"));
+    VestingScaleData empty = map(JSON.readTree("{\"member\": {}, \"plans\": [], \"config\": []}"));
     assertThat(empty.plans()).isEmpty();
     assertThat(empty.config()).isEmpty();
     assertThat(empty.member().memberCategory().state()).isEqualTo(Presence.State.ABSENT);
 
     VestingScaleData blankCategory =
-        mapper.map(
+        map(
             JSON.readTree(
                 """
                 {"member":{"member-category":""},"plans":[],"config":[]}
@@ -114,29 +115,60 @@ class TrpGetVestingScaleApimMapperTest {
   }
 
   @Test
-  void acceptsAbsentNullAndEmptyPlanTypeDescriptions() {
+  void requiresEnglishPlanTypeAndAcceptsAbsentNullAndBlankChineseDescriptions() {
     VestingScaleData data =
-        mapper.map(
+        map(
             read(
                 """
                 {
                   "member": {},
                   "plans": [
-                    {"plan-no":"absent"},
-                    {"plan-no":"null","plan-type-desc-eng":null,"plan-type-desc-chi":null},
-                    {"plan-no":"empty","plan-type-desc-eng":"","plan-type-desc-chi":""}
+                    {"plan-no":"absent-chi","plan-type-desc-eng":"English"},
+                    {"plan-no":"null-chi","plan-type-desc-eng":"English","plan-type-desc-chi":null},
+                    {"plan-no":"empty-chi","plan-type-desc-eng":"English","plan-type-desc-chi":""},
+                    {"plan-no":"blank-chi","plan-type-desc-eng":"English","plan-type-desc-chi":"  "}
                   ],
                   "config": []
                 }
                 """));
 
-    assertThat(data.plans()).hasSize(3);
-    assertThat(data.plans().get(0).planTypeDescEng()).isNull();
+    assertThat(data.plans()).hasSize(4);
+    assertThat(data.plans().get(0).planTypeDescEng()).isEqualTo("English");
     assertThat(data.plans().get(0).planTypeDescChi()).isNull();
-    assertThat(data.plans().get(1).planTypeDescEng()).isNull();
+    assertThat(data.plans().get(1).planTypeDescEng()).isEqualTo("English");
     assertThat(data.plans().get(1).planTypeDescChi()).isNull();
-    assertThat(data.plans().get(2).planTypeDescEng()).isEmpty();
+    assertThat(data.plans().get(2).planTypeDescEng()).isEqualTo("English");
     assertThat(data.plans().get(2).planTypeDescChi()).isEmpty();
+    assertThat(data.plans().get(3).planTypeDescChi()).isEqualTo("  ");
+  }
+
+  @ParameterizedTest(name = "English plan type {0} → {1}")
+  @MethodSource("invalidEnglishPlanTypes")
+  void rejectsMissingBlankAndWrongKindEnglishPlanTypeWithIndexedReason(
+      String planJson, String expectedReason) {
+    JsonNode response = twoPlanResponse(planJson);
+
+    assertThatThrownBy(() -> map(response))
+        .isInstanceOfSatisfying(
+            VestingScaleMalformedResponseException.class,
+            exception -> {
+              assertThat(exception.malformedField()).isEqualTo("plans[1].plan-type-desc-eng");
+              assertThat(exception.malformedReason()).isNotNull();
+              assertThat(exception.malformedReason().name()).isEqualTo(expectedReason);
+            });
+  }
+
+  @ParameterizedTest(name = "{1}")
+  @MethodSource("missingRequiredStructures")
+  void rejectsMissingRequiredStructuresWithIndexedReasonsAndPaths(
+      String response, String expectedReason, String expectedField) {
+    assertMalformed(read(response), expectedReason, expectedField);
+  }
+
+  @ParameterizedTest(name = "{1}")
+  @MethodSource("indexedBusinessValidationFailures")
+  void reportsIndexedBusinessValidationFailures(String response, String reason, String field) {
+    assertMalformed(read(response), reason, field);
   }
 
   @ParameterizedTest(name = "{0}.{1} is {2}")
@@ -154,7 +186,7 @@ class TrpGetVestingScaleApimMapperTest {
       parent.set(field.wireName(), JSON.readTree(field.valueJson()));
     }
 
-    VestingScaleData data = mapper.map(root);
+    VestingScaleData data = map(root);
     Presence<?> actual = presence(data, field);
 
     assertThat(actual.state())
@@ -170,8 +202,9 @@ class TrpGetVestingScaleApimMapperTest {
   @ParameterizedTest
   @MethodSource("malformedResponses")
   void rejectsMalformedJsonKindsAndRequiredValues(String response) {
-    assertThatThrownBy(() -> mapper.map(read(response)))
-        .isInstanceOf(VestingScaleMalformedResponseException.class);
+    assertThatThrownBy(() -> map(read(response)))
+        .isInstanceOfAny(
+            VestingScaleMalformedResponseException.class, IllegalArgumentException.class);
   }
 
   static Stream<Arguments> presenceCases() {
@@ -183,6 +216,8 @@ class TrpGetVestingScaleApimMapperTest {
             new FieldSpec(false, "plan-effective-date", "\"01/02/2019\""),
             new FieldSpec(false, "date-of-joining-plan", "\"02/02/2019\""),
             new FieldSpec(false, "plan-service", "{\"years\":1,\"months\":2}"),
+            new FieldSpec(false, "vest-period-base-eng", "\"Date Joined Company\""),
+            new FieldSpec(false, "vest-period-base-chi", "\"入職日期\""),
             new FieldSpec(false, "basis-cont-ee-eng", "\"Employee basis\""),
             new FieldSpec(false, "basis-cont-ee-chi", "\"僱員基礎\""),
             new FieldSpec(false, "basis-cont-er-eng", "\"Employer basis\""),
@@ -283,6 +318,8 @@ class TrpGetVestingScaleApimMapperTest {
       case "plan-effective-date" -> plan.planEffectiveDate();
       case "date-of-joining-plan" -> plan.dateOfJoiningPlan();
       case "plan-service" -> plan.planService();
+      case "vest-period-base-eng" -> plan.vestPeriodBaseEng();
+      case "vest-period-base-chi" -> plan.vestPeriodBaseChi();
       case "basis-cont-ee-eng" -> plan.basisContEeEng();
       case "basis-cont-ee-chi" -> plan.basisContEeChi();
       case "basis-cont-er-eng" -> plan.basisContErEng();
@@ -297,6 +334,93 @@ class TrpGetVestingScaleApimMapperTest {
       return JSON.readTree(value);
     } catch (Exception exception) {
       throw new AssertionError(exception);
+    }
+  }
+
+  private static JsonNode twoPlanResponse(String secondPlanJson) {
+    return read(
+        """
+        {"member":{},"plans":[
+          {"plan-no":"P0","plan-type-desc-eng":"First"},
+          %s
+        ],"config":[]}
+        """
+            .formatted(secondPlanJson));
+  }
+
+  private static void assertMalformed(JsonNode response, String reason, String field) {
+    assertThatThrownBy(() -> new TrpGetVestingScaleApimMapper().map(toTyped(response)))
+        .isInstanceOfSatisfying(
+            VestingScaleMalformedResponseException.class,
+            exception -> {
+              assertThat(exception.malformedField()).isEqualTo(field);
+              assertThat(exception.malformedReason()).isNotNull();
+              assertThat(exception.malformedReason().name()).isEqualTo(reason);
+            });
+  }
+
+  static Stream<Arguments> invalidEnglishPlanTypes() {
+    return Stream.of(
+        Arguments.of("{\"plan-no\":\"P1\"}", "MISSING_REQUIRED_FIELD"),
+        Arguments.of("{\"plan-no\":\"P1\",\"plan-type-desc-eng\":null}", "MISSING_REQUIRED_FIELD"),
+        Arguments.of("{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"\"}", "REQUIRED_TEXT_BLANK"),
+        Arguments.of("{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"  \"}", "REQUIRED_TEXT_BLANK"));
+  }
+
+  static Stream<Arguments> missingRequiredStructures() {
+    return Stream.of(
+        Arguments.of("{\"plans\":[],\"config\":[]}", "MISSING_REQUIRED_FIELD", "member"),
+        Arguments.of("{\"member\":{},\"config\":[]}", "MISSING_REQUIRED_FIELD", "plans"),
+        Arguments.of("{\"member\":{},\"plans\":[]}", "MISSING_REQUIRED_FIELD", "config"),
+        Arguments.of(
+            "{\"member\":null,\"plans\":[],\"config\":[]}", "MISSING_REQUIRED_FIELD", "member"),
+        Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"E\",\"plan-service\":{\"months\":2}}],\"config\":[]}",
+            "MISSING_REQUIRED_FIELD",
+            "plans[0].plan-service.years"));
+  }
+
+  static Stream<Arguments> indexedBusinessValidationFailures() {
+    return Stream.of(
+        Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P0\",\"plan-type-desc-eng\":\"E\"},{\"plan-no\":\"P0\",\"plan-type-desc-eng\":\"E\"}],\"config\":[]}",
+            "DUPLICATE_VALUE",
+            "plans[1].plan-no"),
+        Arguments.of(
+            "{\"member\":{},\"plans\":[],\"config\":[{\"item-id\":\"member-category\",\"config-value\":\"READONLY\"},{\"item-id\":\"member-category\",\"config-value\":\"HIDDEN\"}]}",
+            "DUPLICATE_VALUE",
+            "config[1].item-id"),
+        Arguments.of(
+            "{\"member\":{},\"plans\":[],\"config\":[{\"item-id\":\"member-category\",\"config-value\":\"READ_ONLY\"}]}",
+            "INVALID_ENUM_VALUE",
+            "config[0].config-value"),
+        Arguments.of(
+            "{\"member\":{\"date-joined-company\":\"31/02/2020\"},\"plans\":[],\"config\":[]}",
+            "INVALID_DATE_FORMAT",
+            "member.date-joined-company"),
+        Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"E\",\"plan-service\":{\"years\":1}}],\"config\":[]}",
+            "MISSING_REQUIRED_FIELD",
+            "plans[0].plan-service.months"),
+        Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"E\",\"vesting-scale\":[{\"vest-pcnt\":10}]}],\"config\":[]}",
+            "MISSING_REQUIRED_FIELD",
+            "plans[0].vesting-scale[0].completed-years"),
+        Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"E\",\"vesting-scale\":[{\"completed-years\":1}]}],\"config\":[]}",
+            "MISSING_REQUIRED_FIELD",
+            "plans[0].vesting-scale[0].vest-pcnt"));
+  }
+
+  private VestingScaleData map(JsonNode value) {
+    return mapper.map(toTyped(value));
+  }
+
+  private static TrpGetVestingScaleApimDataItem toTyped(JsonNode value) {
+    try {
+      return JSON.treeToValue(value, TrpGetVestingScaleApimDataItem.class);
+    } catch (JsonProcessingException exception) {
+      throw new IllegalArgumentException(exception);
     }
   }
 

@@ -7,10 +7,6 @@ final class VestingScaleMalformedResponseException extends RuntimeException {
   private final String malformedField;
   private final MalformedReason malformedReason;
 
-  VestingScaleMalformedResponseException() {
-    this(null, null);
-  }
-
   VestingScaleMalformedResponseException(String malformedField, MalformedReason malformedReason) {
     super("Malformed vesting-scale APIM response");
     this.malformedField = malformedField;
@@ -27,7 +23,11 @@ final class VestingScaleMalformedResponseException extends RuntimeException {
 
   enum MalformedReason {
     INVALID_DATE_FORMAT,
-    REQUIRED_TEXT_TYPE,
-    REQUIRED_TEXT_BLANK
+    REQUIRED_TEXT_BLANK,
+    MISSING_REQUIRED_FIELD,
+    INVALID_TYPE,
+    INVALID_ENUM_VALUE,
+    DUPLICATE_VALUE,
+    INVALID_CARDINALITY
   }
 }

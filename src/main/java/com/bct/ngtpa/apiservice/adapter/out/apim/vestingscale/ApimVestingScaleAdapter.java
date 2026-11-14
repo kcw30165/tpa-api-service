@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
+import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimRequest;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
@@ -19,7 +20,10 @@ import com.bct.ngtpa.apiservice.application.exception.VestingScaleRetrievalExcep
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.VestingScalePort;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,6 +41,7 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
 
   private final ApimExchangeExecutor executor;
   private final FailureEventPort failureEventPort;
+  private final ObjectMapper objectMapper;
   private final String path;
   private final TrpGetVestingScaleApimMapper mapper = new TrpGetVestingScaleApimMapper();
 
@@ -44,15 +49,20 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
   public ApimVestingScaleAdapter(
       ApimExchangeExecutor executor,
       FailureEventPort failureEventPort,
+      ObjectMapper objectMapper,
       VestingScaleApimProperties properties) {
-    this(executor, failureEventPort, properties.getPath());
+    this(executor, failureEventPort, objectMapper, properties.getPath());
   }
 
   ApimVestingScaleAdapter(
-      ApimExchangeExecutor executor, FailureEventPort failureEventPort, String path) {
+      ApimExchangeExecutor executor,
+      FailureEventPort failureEventPort,
+      ObjectMapper objectMapper,
+      String path) {
     this.executor = Objects.requireNonNull(executor, "executor must not be null");
     this.failureEventPort =
         Objects.requireNonNull(failureEventPort, "failureEventPort must not be null");
+    this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
     if (path == null || path.isBlank()) {
       throw new IllegalArgumentException("path must not be blank");
     }
@@ -84,7 +94,12 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
                       ApimIncidentOwnership.TERMINAL_CALLER);
               return executor
                   .<TrpGetVestingScaleApimRequest, JsonNode>postEnvelope(exchange)
-                  .switchIfEmpty(Mono.error(new VestingScaleMalformedResponseException()))
+                  .switchIfEmpty(
+                      Mono.error(
+                          malformed(
+                              TrpGetVestingScaleApimDataItem.RESPONSE,
+                              VestingScaleMalformedResponseException.MalformedReason
+                                  .MISSING_REQUIRED_FIELD)))
                   .map(this::mapEnvelope);
             })
         .doOnEach(this::publishFailure)
@@ -97,7 +112,9 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
 
   private VestingScaleData mapEnvelope(ApimResponseEnvelope<JsonNode> envelope) {
     if (envelope == null || envelope.getResponse() == null) {
-      throw new VestingScaleMalformedResponseException();
+      throw malformed(
+          TrpGetVestingScaleApimDataItem.RESPONSE,
+          VestingScaleMalformedResponseException.MalformedReason.MISSING_REQUIRED_FIELD);
     }
     var response = envelope.getResponse();
     String errMessage = response.getErrMessage();
@@ -106,9 +123,55 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
     }
     List<JsonNode> data = response.getData();
     if (data == null || data.size() != 1 || data.getFirst() == null) {
-      throw new VestingScaleMalformedResponseException();
+      throw malformed(
+          TrpGetVestingScaleApimDataItem.DATA,
+          VestingScaleMalformedResponseException.MalformedReason.INVALID_CARDINALITY);
     }
-    return mapper.map(data.getFirst());
+    try {
+      TrpGetVestingScaleApimDataItem item =
+          objectMapper.treeToValue(data.getFirst(), TrpGetVestingScaleApimDataItem.class);
+      return mapper.map(item);
+    } catch (JsonProcessingException | IllegalArgumentException failure) {
+      throw malformed(
+          jacksonPath(failure),
+          VestingScaleMalformedResponseException.MalformedReason.INVALID_TYPE);
+    }
+  }
+
+  private static String jacksonPath(Throwable failure) {
+    Throwable current = failure;
+    for (int depth = 0; current != null && depth < 16; depth++) {
+      if (current instanceof JsonMappingException mapping) {
+        String path = formatPath(mapping);
+        if (path != null) {
+          return path;
+        }
+      }
+      Throwable cause = current.getCause();
+      current = cause == current ? null : cause;
+    }
+    return TrpGetVestingScaleApimDataItem.DATA + "[0]";
+  }
+
+  private static String formatPath(JsonMappingException mapping) {
+    List<JsonMappingException.Reference> references = mapping.getPath();
+    StringBuilder path = new StringBuilder();
+    for (JsonMappingException.Reference reference : references) {
+      if (reference.getFieldName() != null) {
+        if (path.length() > 0) {
+          path.append('.');
+        }
+        path.append(reference.getFieldName());
+      } else if (reference.getIndex() >= 0) {
+        path.append('[').append(reference.getIndex()).append(']');
+      }
+    }
+    return path.length() == 0 ? null : path.toString();
+  }
+
+  private static VestingScaleMalformedResponseException malformed(
+      String fieldPath, VestingScaleMalformedResponseException.MalformedReason reason) {
+    return new VestingScaleMalformedResponseException(fieldPath, reason);
   }
 
   private void publishFailure(reactor.core.publisher.Signal<VestingScaleData> signal) {

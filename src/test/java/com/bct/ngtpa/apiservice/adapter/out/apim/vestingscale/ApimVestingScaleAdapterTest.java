@@ -24,6 +24,7 @@ import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleCommand;
 import com.bct.ngtpa.apiservice.application.exception.VestingScaleRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.infrastructure.jackson.JacksonConfig;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,7 +52,7 @@ class ApimVestingScaleAdapterTest {
   private static final String CERT_NO = "cert-sensitive-17";
   private static final String ACTOR_ID = "actor-sensitive-88";
   private static final String REQUEST_ID = "request-id-123";
-  private static final ObjectMapper JSON = new ObjectMapper();
+  private static final ObjectMapper JSON = new JacksonConfig().objectMapper();
 
   private ApimExchangeExecutor executor;
   private FailureEventPort failureEventPort;
@@ -154,6 +155,98 @@ class ApimVestingScaleAdapterTest {
   }
 
   @ParameterizedTest
+  @MethodSource("invalidEnglishPlanTypeResponses")
+  void rejectsInvalidEnglishPlanTypeWithIndexedFailureDimensions(
+      String responseJson, String expectedReason) {
+    respond(envelope("", List.of(json(responseJson))));
+
+    StepVerifier.create(adapter().load(command()).contextWrite(requestContext()))
+        .expectError(VestingScaleRetrievalException.class)
+        .verify();
+
+    assertMalformedEvent("plans[1].plan-type-desc-eng", expectedReason);
+    assertThat(events.getFirst().toString())
+        .doesNotContain("sensitive-downstream-value", POLICY_NO, CERT_NO, ACTOR_ID);
+  }
+
+  @Test
+  void rejectsWrongKindChinesePlanTypeWithIndexedFailureDimensions() {
+    respond(
+        envelope(
+            "",
+            List.of(
+                json(
+                    """
+                    {"member":{},"plans":[
+                      {"plan-no":"P0","plan-type-desc-eng":"First"},
+                      {"plan-no":"P1","plan-type-desc-eng":"English","plan-type-desc-chi":123}
+                    ],"config":[]}
+                    """))));
+
+    StepVerifier.create(adapter().load(command()))
+        .expectError(VestingScaleRetrievalException.class)
+        .verify();
+
+    assertMalformedEvent("plans[1].plan-type-desc-chi", "INVALID_TYPE");
+  }
+
+  @ParameterizedTest(name = "{1}")
+  @MethodSource("strictTypeResponses")
+  void rejectsWrongJsonKindsWithNormalizedIndexedPaths(String responseJson, String fieldPath) {
+    respond(envelope("", List.of(json(responseJson))));
+
+    StepVerifier.create(adapter().load(command()))
+        .expectError(VestingScaleRetrievalException.class)
+        .verify();
+
+    assertMalformedEvent(fieldPath, "INVALID_TYPE");
+  }
+
+  @ParameterizedTest
+  @MethodSource("blankErrorMessages")
+  void treatsMissingNullAndBlankErrorMessagesAsNoError(String errMessage) throws Exception {
+    respond(envelope(errMessage, List.of(successData())));
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(result -> assertThat(result.plans()).isEmpty())
+        .verifyComplete();
+
+    assertThat(events).isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "err.tpa.login.user.id.invalid",
+        "err.tpa.cert.no.not.found",
+        "err.tpa.cert.no.required"
+      })
+  void errorMessageClassificationPrecedesMalformedData(String code) {
+    respond(envelope(code, List.of(json("{\"member\":\"malformed-sensitive-downstream-value\"}"))));
+
+    StepVerifier.create(adapter().load(command()))
+        .expectError(VestingScaleRetrievalException.class)
+        .verify();
+
+    assertThat(events.getFirst().safeDimensions())
+        .containsExactly(Map.entry("reason", "ACCOUNT_CONTEXT_MISMATCH"));
+    assertThat(events.getFirst().toString())
+        .doesNotContain("malformed-sensitive-downstream-value", code);
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidDataCardinality")
+  void reportsDataCardinalityWithStableReasonAndPath(List<JsonNode> data) {
+    respond(envelope("", data));
+
+    StepVerifier.create(adapter().load(command()))
+        .expectError(VestingScaleRetrievalException.class)
+        .verify();
+
+    assertMalformedEvent("data", "INVALID_CARDINALITY");
+  }
+
+  @ParameterizedTest
   @MethodSource("malformedEnvelopes")
   void reportsMissingOrInvalidEnvelopeCardinalityAsMalformed(Object response) {
     if (response == null) {
@@ -171,8 +264,14 @@ class ApimVestingScaleAdapterTest {
 
     assertThat(events).hasSize(1);
     assertThat(events.getFirst().origin()).isEqualTo(FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
+    boolean responseMissing =
+        response == null || ((ApimResponseEnvelope<?>) response).getResponse() == null;
     assertThat(events.getFirst().safeDimensions())
-        .containsExactly(Map.entry("reason", "MALFORMED_RESPONSE"));
+        .containsEntry("reason", "MALFORMED_RESPONSE")
+        .containsEntry("malformedField", responseMissing ? "response" : "data")
+        .containsEntry(
+            "malformedReason", responseMissing ? "MISSING_REQUIRED_FIELD" : "INVALID_CARDINALITY")
+        .containsOnlyKeys("reason", "malformedField", "malformedReason");
   }
 
   @Test
@@ -288,7 +387,7 @@ class ApimVestingScaleAdapterTest {
   }
 
   private ApimVestingScaleAdapter adapter() {
-    return new ApimVestingScaleAdapter(executor, failureEventPort, PATH);
+    return new ApimVestingScaleAdapter(executor, failureEventPort, JSON, PATH);
   }
 
   private VestingScaleCommand command() {
@@ -314,6 +413,10 @@ class ApimVestingScaleAdapterTest {
                 """)));
   }
 
+  private static JsonNode successData() throws Exception {
+    return JSON.readTree("{\"member\":{},\"plans\":[],\"config\":[]}");
+  }
+
   private static ApimResponseEnvelope<JsonNode> envelope(String errMessage, List<JsonNode> data) {
     return new ApimResponseEnvelope<>(new ApimResponseBody<>(errMessage, data));
   }
@@ -324,5 +427,79 @@ class ApimVestingScaleAdapterTest {
     } catch (Exception exception) {
       throw new AssertionError(exception);
     }
+  }
+
+  private void assertMalformedEvent(String field, String reason) {
+    assertThat(events).hasSize(1);
+    assertThat(events.getFirst().origin()).isEqualTo(FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
+    assertThat(events.getFirst().safeDimensions())
+        .containsEntry("reason", "MALFORMED_RESPONSE")
+        .containsEntry("malformedField", field)
+        .containsEntry("malformedReason", reason)
+        .containsOnlyKeys("reason", "malformedField", "malformedReason");
+  }
+
+  static List<org.junit.jupiter.params.provider.Arguments> invalidEnglishPlanTypeResponses() {
+    return List.of(
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P0\",\"plan-type-desc-eng\":\"First\"},{\"plan-no\":\"P1\"}],\"config\":[]}",
+            "MISSING_REQUIRED_FIELD"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P0\",\"plan-type-desc-eng\":\"First\"},{\"plan-no\":\"P1\",\"plan-type-desc-eng\":null}],\"config\":[]}",
+            "MISSING_REQUIRED_FIELD"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P0\",\"plan-type-desc-eng\":\"First\"},{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"\"}],\"config\":[]}",
+            "REQUIRED_TEXT_BLANK"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P0\",\"plan-type-desc-eng\":\"First\"},{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"  \"}],\"config\":[]}",
+            "REQUIRED_TEXT_BLANK"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P0\",\"plan-type-desc-eng\":\"First\"},{\"plan-no\":\"P1\",\"plan-type-desc-eng\":123}],\"config\":[]}",
+            "INVALID_TYPE"));
+  }
+
+  static List<org.junit.jupiter.params.provider.Arguments> strictTypeResponses() {
+    return List.of(
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":\"wrong\",\"plans\":[],\"config\":[]}", "member"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{},\"plans\":{},\"config\":[]}", "plans"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{},\"plans\":[],\"config\":{}}", "config"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{\"member-category\":123},\"plans\":[],\"config\":[]}",
+            "member.member-category"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{\"member-category\":true},\"plans\":[],\"config\":[]}",
+            "member.member-category"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"E\",\"plan-service\":{\"years\":\"7\",\"months\":2}}],\"config\":[]}",
+            "plans[0].plan-service.years"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"E\",\"plan-service\":\"3\"}],\"config\":[]}",
+            "plans[0].plan-service"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"E\",\"vesting-scale\":[{\"completed-years\":4.8,\"vest-pcnt\":10}]}],\"config\":[]}",
+            "plans[0].vesting-scale[0].completed-years"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"E\",\"vesting-scale\":[{\"completed-years\":1,\"vest-pcnt\":\"10.0\"}]}],\"config\":[]}",
+            "plans[0].vesting-scale[0].vest-pcnt"),
+        org.junit.jupiter.params.provider.Arguments.of(
+            "{\"member\":{},\"plans\":[{\"plan-no\":\"P1\",\"plan-type-desc-eng\":123}],\"config\":[]}",
+            "plans[0].plan-type-desc-eng"));
+  }
+
+  static List<org.junit.jupiter.params.provider.Arguments> invalidDataCardinality() {
+    return List.of(
+        org.junit.jupiter.params.provider.Arguments.of(List.of()),
+        org.junit.jupiter.params.provider.Arguments.of(List.of(json("{}"), json("{}"))));
+  }
+
+  static List<org.junit.jupiter.params.provider.Arguments> blankErrorMessages() {
+    return List.of(
+        org.junit.jupiter.params.provider.Arguments.of((Object) null),
+        org.junit.jupiter.params.provider.Arguments.of(""),
+        org.junit.jupiter.params.provider.Arguments.of(" "),
+        org.junit.jupiter.params.provider.Arguments.of("  "));
   }
 }

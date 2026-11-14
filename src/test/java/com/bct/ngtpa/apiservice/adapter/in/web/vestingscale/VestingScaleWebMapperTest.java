@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.vestingscale;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.vestingscale.response.OverviewPlanResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.vestingscale.response.PlanTypeOptionResponse;
@@ -81,9 +82,16 @@ class VestingScaleWebMapperTest {
         .isEqualTo("中文歸屬基準");
   }
 
+  @Test
+  void requiresEnglishPlanTypeInApplicationPlan() {
+    assertThatThrownBy(() -> plan("P1", null, "中文名稱", Presence.absent()))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("planTypeDescEng must not be null");
+  }
+
   @ParameterizedTest
   @NullSource
-  @ValueSource(strings = {"", " "})
+  @ValueSource(strings = {"", " ", "  "})
   void fallsBackToEnglishPlanTypeWhenChineseDescriptionIsMissingOrBlank(String chineseName) {
     VestingScalePlan plan = plan("P1", "English name", chineseName, Presence.absent());
 
@@ -91,6 +99,37 @@ class VestingScaleWebMapperTest {
 
     assertThat(response.data().planTypes().getFirst().planType()).isEqualTo("English name");
     assertThat(response.data().overview().plans().getFirst().planNo()).isEqualTo("P1");
+  }
+
+  @Test
+  void preservesNullSelectedLanguageValuesWithoutCrossLanguageFallback() {
+    VestingScalePlan plan =
+        new VestingScalePlan(
+            "P1",
+            "English name",
+            null,
+            Presence.absent(),
+            Presence.absent(),
+            Presence.absent(),
+            Presence.present("English vesting basis"),
+            Presence.present(null),
+            Presence.present("English employee basis"),
+            Presence.present(null),
+            Presence.present("English employer basis"),
+            Presence.present(null),
+            Presence.absent());
+
+    OverviewPlanResponse mapped =
+        mapper
+            .toResultResponse(result(List.of(plan), false), "zh-HK")
+            .data()
+            .overview()
+            .plans()
+            .getFirst();
+
+    assertThat(mapped.vestingPeriodBasedOn()).isNull();
+    assertThat(mapped.memberContributionBasis()).isEqualTo(ResponseField.present(null));
+    assertThat(mapped.employerContributionBasis()).isEqualTo(ResponseField.present(null));
   }
 
   @Test
