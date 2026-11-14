@@ -3,10 +3,13 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identit
 import static com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContextAttributeNames.*;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.*;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordIdentityUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;
+import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.*;
 import java.time.*;
 import java.util.*;
@@ -14,11 +17,15 @@ import reactor.core.publisher.Mono;
 
 public final class VerifyForgotPasswordIdentityService
     implements VerifyForgotPasswordIdentityUseCase {
+  private static final String FAILURE_EVENT = "forgot-password.identity-check.failed";
+  private static final String ERROR_SYSTEM_UNAVAILABLE = "err.forgot-password.system.unavailable";
+
   private final ForgotPasswordProtectedAuthFlowContextLoader loader;
   private final ForgotPasswordAuthFlowContextProtectorPort protector;
   private final AuthFlowSessionPort sessions;
   private final AuthFlowSessionMutationLockPort locks;
   private final AuthFlowSessionExpiryRefreshPort expiry;
+  private final FailureEventPort failureEventPort;
   private final ForgotPasswordIdentityVerifier verifier = new ForgotPasswordIdentityVerifier();
   private final Clock clock;
   private final Duration lease;
@@ -30,7 +37,8 @@ public final class VerifyForgotPasswordIdentityService
       AuthFlowSessionMutationLockPort x,
       AuthFlowSessionExpiryRefreshPort e,
       Clock c,
-      Duration lease) {
+      Duration lease,
+      FailureEventPort failureEventPort) {
     loader = l;
     protector = p;
     sessions = s;
@@ -38,6 +46,7 @@ public final class VerifyForgotPasswordIdentityService
     expiry = e;
     clock = c;
     this.lease = lease;
+    this.failureEventPort = Objects.requireNonNull(failureEventPort, "failureEventPort");
     if (lease == null || lease.isZero() || lease.isNegative())
       throw new IllegalArgumentException("mutation lock lease must be positive");
   }
@@ -50,8 +59,8 @@ public final class VerifyForgotPasswordIdentityService
     if (verifier.mapPublicIdentityType(c.identityType()) == null)
       return Mono.just(
           VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.INVALID_TYPE));
-    return locks
-        .acquire(c.sessionId(), lease)
+    return Mono.defer(() -> locks.acquire(c.sessionId(), lease))
+        .onErrorMap(error -> new IdentityTechnicalFailure("session-lock-acquire"))
         .flatMap(
             h ->
                 h.acquired()
@@ -59,20 +68,17 @@ public final class VerifyForgotPasswordIdentityService
                     : Mono.just(
                         VerifyForgotPasswordIdentityResult.of(
                             VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW)))
-        .onErrorReturn(
-            VerifyForgotPasswordIdentityResult.of(
-                VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED));
+        .onErrorResume(
+            IdentityTechnicalFailure.class,
+            failure -> technicalFailure(c, failure.stage()));
   }
 
   private Mono<VerifyForgotPasswordIdentityResult> locked(
       VerifyForgotPasswordIdentityCommand c, SessionLockHandle h) {
     Mono<VerifyForgotPasswordIdentityResult> work =
-        sessions
-            .loadSnapshot(c.sessionId())
-            .flatMap(o -> loadedSession(c, o))
-            .onErrorReturn(
-                VerifyForgotPasswordIdentityResult.of(
-                    VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED));
+        Mono.defer(() -> sessions.loadSnapshot(c.sessionId()))
+            .onErrorMap(error -> new IdentityTechnicalFailure("session-read"))
+            .flatMap(o -> loadedSession(c, o));
     return Mono.usingWhen(
         Mono.just(h),
         ignored -> work,
@@ -104,8 +110,11 @@ public final class VerifyForgotPasswordIdentityService
             c.referer(),
             c.requestId(),
             Set.of(AuthFlowStatus.STARTED),
+            true,
             true);
-    return loader.load(q).flatMap(r -> loadedContext(c, r, now));
+    return Mono.defer(() -> loader.load(q))
+        .onErrorMap(error -> new IdentityTechnicalFailure("protected-context-load"))
+        .flatMap(r -> loadedContext(c, r, now));
   }
 
   private Mono<VerifyForgotPasswordIdentityResult> loadedContext(
@@ -130,12 +139,13 @@ public final class VerifyForgotPasswordIdentityService
       return Mono.just(
           VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.INCORRECT_ID));
     var verifiedContext = context.withPhase(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
-    return sessions
-        .loadSnapshot(c.sessionId())
-        .flatMap(latest -> persistVerified(latest, verifiedContext, now));
+    return Mono.defer(() -> sessions.loadSnapshot(c.sessionId()))
+        .onErrorMap(error -> new IdentityTechnicalFailure("session-read-before-transition"))
+        .flatMap(latest -> persistVerified(c, latest, verifiedContext, now));
   }
 
   private Mono<VerifyForgotPasswordIdentityResult> persistVerified(
+      VerifyForgotPasswordIdentityCommand command,
       java.util.Optional<AuthFlowSessionSnapshot> latest,
       ForgotPasswordAuthFlowContext verifiedContext,
       Instant now) {
@@ -153,27 +163,93 @@ public final class VerifyForgotPasswordIdentityService
           VerifyForgotPasswordIdentityResult.of(
               VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
     }
-    var encrypted = protector.protect(verifiedContext);
-    var attrs = new LinkedHashMap<>(current.data().attributes());
-    attrs.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());
-    attrs.put(CONTEXT_KEY_VERSION, encrypted.keyVersion());
-    attrs.put(CONTEXT_ALGORITHM, encrypted.algorithm());
-    AuthFlowSession updated =
-        new AuthFlowSession(
-            current.authFlowSessionId(),
-            current.scenario(),
-            AuthFlowStatus.IDENTITY_VERIFIED,
-            current.csrfTokenHash(),
-            current.activeOtpChallengeId(),
-            new AuthFlowSessionData(
-                current.data().contactType(), current.data().maskedDestination(), attrs),
-            current.createdAt(),
-            now,
-            current.expiresAt());
-    return new com.bct.ngtpa.apiservice.application.usecase.session.authflow
-            .RevisionAwareAuthFlowSessionWriter(sessions)
-        .updateExpected(current, updated)
-        .thenReturn(
-            VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.VERIFIED));
+    return Mono.fromCallable(() -> protector.protect(verifiedContext))
+        .onErrorMap(error -> new IdentityTechnicalFailure("context-protection"))
+        .flatMap(
+            encrypted -> {
+              return Mono.fromCallable(
+                      () -> {
+                        var attrs = new LinkedHashMap<>(current.data().attributes());
+                        attrs.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());
+                        attrs.put(CONTEXT_KEY_VERSION, encrypted.keyVersion());
+                        attrs.put(CONTEXT_ALGORITHM, encrypted.algorithm());
+                        return new AuthFlowSession(
+                            current.authFlowSessionId(),
+                            current.scenario(),
+                            AuthFlowStatus.IDENTITY_VERIFIED,
+                            current.csrfTokenHash(),
+                            current.activeOtpChallengeId(),
+                            new AuthFlowSessionData(
+                                current.data().contactType(),
+                                current.data().maskedDestination(),
+                                attrs),
+                            current.createdAt(),
+                            now,
+                            current.expiresAt());
+                      })
+                  .onErrorMap(error -> new IdentityTechnicalFailure("session-transition"))
+                  .flatMap(
+                      updated ->
+                          Mono.defer(
+                                  () ->
+                                      sessions.updateRevisioned(
+                                          new RevisionedAuthFlowSessionMutationCommand(
+                                              latest.get(), updated)))
+                              .onErrorMap(
+                                  error -> new IdentityTechnicalFailure("session-transition"))
+                              .flatMap(
+                                  result ->
+                                      switch (result.outcome()) {
+                                        case APPLIED ->
+                                            Mono.just(
+                                                VerifyForgotPasswordIdentityResult.of(
+                                                    VerifyForgotPasswordIdentityStatus.VERIFIED));
+                                        case SESSION_NOT_FOUND,
+                                            SESSION_REVISION_CHANGED,
+                                            EXPECTED_STATE_CHANGED,
+                                            INVALID_TRANSITION ->
+                                            Mono.just(
+                                                VerifyForgotPasswordIdentityResult.of(
+                                                    VerifyForgotPasswordIdentityStatus
+                                                        .SYSTEM_FAILED));
+                                        case SESSION_REVISION_MISSING,
+                                            CORRUPT_STATE,
+                                            SCHEMA_NOT_ESTABLISHED,
+                                            SYSTEM_FAILURE ->
+                                            technicalFailure(command, "session-transition");
+                                      }));
+            });
+  }
+
+  private Mono<VerifyForgotPasswordIdentityResult> technicalFailure(
+      VerifyForgotPasswordIdentityCommand command, String stage) {
+    failureEventPort.publish(
+        new FailureEvent(
+            FAILURE_EVENT,
+            RequestIdLogSanitizer.sanitize(command.requestId()),
+            "FORGOT_PASSWORD",
+            "ForgotPasswordIdentityCheck",
+            FailureOrigin.LOCAL_SYSTEM,
+            "IDENTITY_CHECK_TECHNICAL_FAILURE",
+            ERROR_SYSTEM_UNAVAILABLE,
+            503,
+            false,
+            Map.of("stage", stage)));
+    return Mono.just(
+        VerifyForgotPasswordIdentityResult.incidentPublished(
+            VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED));
+  }
+
+  private static final class IdentityTechnicalFailure extends RuntimeException {
+    private final String stage;
+
+    private IdentityTechnicalFailure(String stage) {
+      super(null, null, false, false);
+      this.stage = stage;
+    }
+
+    private String stage() {
+      return stage;
+    }
   }
 }

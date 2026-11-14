@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -17,10 +19,12 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.ForgotPasswordProtectedAuthFlowContextLoader;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.ForgotPasswordProtectedAuthFlowContextResult;
@@ -29,6 +33,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -55,12 +61,13 @@ class VerifyForgotPasswordIdentityServiceTest {
   private final AuthFlowSessionMutationLockPort locks = mock(AuthFlowSessionMutationLockPort.class);
   private final AuthFlowSessionExpiryRefreshPort expiry =
       mock(AuthFlowSessionExpiryRefreshPort.class);
+  private final RecordingFailureEventPort failureEvents = new RecordingFailureEventPort();
 
   private final AuthFlowSessionId sid = new AuthFlowSessionId("afs-identity-1");
 
   private VerifyForgotPasswordIdentityService newService() {
     return new VerifyForgotPasswordIdentityService(
-        loader, protector, sessions, locks, expiry, clock, lease);
+        loader, protector, sessions, locks, expiry, clock, lease, failureEvents);
   }
 
   // ----- fixtures ------------------------------------------------------------
@@ -108,12 +115,17 @@ class VerifyForgotPasswordIdentityServiceTest {
   }
 
   private VerifyForgotPasswordIdentityCommand command(String identityType, String identityValue) {
+    return command(identityType, identityValue, "req-1");
+  }
+
+  private VerifyForgotPasswordIdentityCommand command(
+      String identityType, String identityValue, String requestId) {
     return new VerifyForgotPasswordIdentityCommand(
         sid,
         "csrf-token",
         "https://portal.bcthk.com",
         "https://portal.bcthk.com/identity",
-        "req-1",
+        requestId,
         identityType,
         identityValue);
   }
@@ -170,6 +182,7 @@ class VerifyForgotPasswordIdentityServiceTest {
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_TYPE))
         .verifyComplete();
+    assertThat(failureEvents.events).isEmpty();
   }
 
   @Test
@@ -181,6 +194,21 @@ class VerifyForgotPasswordIdentityServiceTest {
                 assertThat(r.status())
                     .isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
+    assertThat(failureEvents.events).isEmpty();
+  }
+
+  @Test
+  void lockAcquisitionExceptionPublishesOneCauseFreeLocalSystemIncident() {
+    when(locks.acquire(any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("identityValue=LOCK-SECRET")));
+
+    StepVerifier.create(newService().verify(command("GPN", "G12345678", "req-1\nunsafe")))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
+        .verifyComplete();
+
+    assertSingleTechnicalFailure("session-lock-acquire", "req-1?unsafe");
   }
 
   // ----- initial session gate --------------------------------------------------
@@ -195,6 +223,7 @@ class VerifyForgotPasswordIdentityServiceTest {
                 assertThat(r.status())
                     .isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
+    assertThat(failureEvents.events).isEmpty();
   }
 
   @Test
@@ -241,6 +270,7 @@ class VerifyForgotPasswordIdentityServiceTest {
                 assertThat(r.status())
                     .isEqualTo(VerifyForgotPasswordIdentityStatus.SECURITY_REJECTED))
         .verifyComplete();
+    assertThat(failureEvents.events).isEmpty();
   }
 
   @Test
@@ -258,6 +288,7 @@ class VerifyForgotPasswordIdentityServiceTest {
                 assertThat(r.status())
                     .isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
+    assertThat(failureEvents.events).isEmpty();
   }
 
   @Test
@@ -284,6 +315,7 @@ class VerifyForgotPasswordIdentityServiceTest {
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.INCORRECT_ID))
         .verifyComplete();
+    assertThat(failureEvents.events).isEmpty();
   }
 
   @Test
@@ -312,6 +344,7 @@ class VerifyForgotPasswordIdentityServiceTest {
                 assertThat(r.status())
                     .isEqualTo(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW))
         .verifyComplete();
+    assertThat(failureEvents.events).isEmpty();
   }
 
   // ----- happy path ----------------------------------------------------------------
@@ -326,15 +359,173 @@ class VerifyForgotPasswordIdentityServiceTest {
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.VERIFIED))
         .verifyComplete();
+    var transitionCaptor =
+        org.mockito.ArgumentCaptor.forClass(RevisionedAuthFlowSessionMutationCommand.class);
+    org.mockito.Mockito.verify(sessions).updateRevisioned(transitionCaptor.capture());
+    var transition = transitionCaptor.getValue();
+    assertThat(transition.expected().session().status()).isEqualTo(AuthFlowStatus.STARTED);
+    assertThat(transition.updated().status()).isEqualTo(AuthFlowStatus.IDENTITY_VERIFIED);
+    assertThat(failureEvents.events).isEmpty();
   }
 
   @Test
   void loadSnapshotErrorYieldsSystemFailed() {
     givenLockAcquired();
-    when(sessions.loadSnapshot(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    when(sessions.loadSnapshot(any()))
+        .thenReturn(Mono.error(new IllegalStateException("identityValue=READ-SECRET")));
     StepVerifier.create(newService().verify(validCommand()))
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
         .verifyComplete();
+    assertSingleTechnicalFailure("session-read", "req-1");
+  }
+
+  @Test
+  void transitionSnapshotReadExceptionPublishesLocalSystemIncident() {
+    givenLockAcquired();
+    givenLoaderValid(ForgotPasswordProtectedPhase.USERNAME_VERIFIED, "GPN", "G12345678");
+    when(sessions.loadSnapshot(any()))
+        .thenReturn(Mono.just(Optional.of(snapshotOf(startedSession()))))
+        .thenReturn(Mono.error(new IllegalStateException("token=TRANSITION-READ-SECRET")));
+
+    StepVerifier.create(newService().verify(validCommand()))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
+        .verifyComplete();
+
+    assertSingleTechnicalFailure("session-read-before-transition", "req-1");
+  }
+
+  @Test
+  void protectedContextExceptionPublishesLocalSystemIncident() {
+    givenLockAcquired();
+    givenSession(startedSession());
+    when(loader.load(any()))
+        .thenReturn(Mono.error(new IllegalStateException("token=CSRF-SECRET")));
+
+    StepVerifier.create(newService().verify(validCommand()))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
+        .verifyComplete();
+
+    assertSingleTechnicalFailure("protected-context-load", "req-1");
+  }
+
+  @Test
+  void contextProtectionExceptionPublishesLocalSystemIncident() {
+    givenLockAcquired();
+    givenSession(startedSession());
+    givenLoaderValid(ForgotPasswordProtectedPhase.USERNAME_VERIFIED, "GPN", "G12345678");
+    when(protector.protect(any()))
+        .thenThrow(new IllegalStateException("identityValue=PROTECT-SECRET"));
+
+    StepVerifier.create(newService().verify(validCommand()))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
+        .verifyComplete();
+
+    assertSingleTechnicalFailure("context-protection", "req-1");
+  }
+
+  @Test
+  void revisionConflictPreservesSystemFailureResponseAndPublishesNoIncident() {
+    givenLockAcquired();
+    givenSession(startedSession());
+    givenLoaderValid(ForgotPasswordProtectedPhase.USERNAME_VERIFIED, "GPN", "G12345678");
+    givenWriterSucceeds();
+    when(sessions.updateRevisioned(any()))
+        .thenReturn(
+            Mono.just(
+                AuthFlowSessionMutationResult.outcome(
+                    AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED)));
+
+    StepVerifier.create(newService().verify(validCommand()))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
+        .verifyComplete();
+
+    assertThat(failureEvents.events).isEmpty();
+  }
+
+  @Test
+  void returnedPersistenceFailurePublishesOneLocalSystemIncident() {
+    givenLockAcquired();
+    givenSession(startedSession());
+    givenLoaderValid(ForgotPasswordProtectedPhase.USERNAME_VERIFIED, "GPN", "G12345678");
+    givenWriterSucceeds();
+    when(sessions.updateRevisioned(any()))
+        .thenReturn(
+            Mono.just(
+                AuthFlowSessionMutationResult.outcome(AuthFlowSessionMutationOutcome.SYSTEM_FAILURE)));
+
+    StepVerifier.create(newService().verify(validCommand()))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
+        .verifyComplete();
+
+    assertSingleTechnicalFailure("session-transition", "req-1");
+  }
+
+  @Test
+  void thrownRevisionPersistenceFailurePublishesOneLocalSystemIncident() {
+    givenLockAcquired();
+    givenSession(startedSession());
+    givenLoaderValid(ForgotPasswordProtectedPhase.USERNAME_VERIFIED, "GPN", "G12345678");
+    givenWriterSucceeds();
+    when(sessions.updateRevisioned(any()))
+        .thenReturn(Mono.error(new IllegalStateException("password=WRITE-SECRET")));
+
+    StepVerifier.create(newService().verify(validCommand()))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
+        .verifyComplete();
+
+    assertSingleTechnicalFailure("session-transition", "req-1");
+  }
+
+  private void assertSingleTechnicalFailure(String stage, String requestId) {
+    assertThat(failureEvents.events)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.event()).isEqualTo("forgot-password.identity-check.failed");
+              assertThat(event.requestId()).isEqualTo(requestId);
+              assertThat(event.capability()).isEqualTo("FORGOT_PASSWORD");
+              assertThat(event.operation()).isEqualTo("ForgotPasswordIdentityCheck");
+              assertThat(event.origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+              assertThat(event.internalCode()).isEqualTo("IDENTITY_CHECK_TECHNICAL_FAILURE");
+              assertThat(event.publicCode()).isEqualTo("err.forgot-password.system.unavailable");
+              assertThat(event.httpStatus()).isEqualTo(503);
+              assertThat(event.retryable()).isFalse();
+              assertThat(event.safeDimensions()).containsExactly(Map.entry("stage", stage));
+              assertThat(event.toString())
+                  .doesNotContain(
+                      "READ-SECRET",
+                      "CSRF-SECRET",
+                      "PROTECT-SECRET",
+                      "WRITE-SECRET",
+                      "LOCK-SECRET",
+                      "identityValue=",
+                      "token=",
+                      "password=");
+            });
+    assertThat(failureEvents.causeCalls).isZero();
+  }
+
+  private static final class RecordingFailureEventPort implements FailureEventPort {
+    private final List<FailureEvent> events = new ArrayList<>();
+    private int causeCalls;
+
+    @Override
+    public void publish(FailureEvent event) {
+      events.add(event);
+    }
+
+    @Override
+    public void publish(FailureEvent event, Throwable cause) {
+      causeCalls++;
+      FailureEventPort.super.publish(event, cause);
+    }
   }
 }

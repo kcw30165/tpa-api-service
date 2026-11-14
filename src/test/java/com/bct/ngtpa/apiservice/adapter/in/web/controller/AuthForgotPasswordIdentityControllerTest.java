@@ -19,7 +19,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.bind.annotation.PostMapping;
 import reactor.core.publisher.Mono;
 
@@ -38,7 +39,8 @@ class AuthForgotPasswordIdentityControllerTest {
             String.class,
             String.class,
             String.class,
-            org.springframework.http.server.reactive.ServerHttpResponse.class);
+            org.springframework.http.server.reactive.ServerHttpResponse.class,
+            org.springframework.web.server.ServerWebExchange.class);
 
     PostMapping mapping = method.getAnnotation(PostMapping.class);
     assertThat(mapping).isNotNull();
@@ -49,6 +51,8 @@ class AuthForgotPasswordIdentityControllerTest {
   void identityCheckRequiresCookieAndXsrfBeforeCallingUseCase() throws Exception {
     var useCase = new RecordingUseCase();
     var controller = controller(useCase);
+    var exchange =
+        MockServerWebExchange.from(MockServerHttpRequest.post("/identity-check").build());
 
     String json =
         objectMapper.writeValueAsString(
@@ -61,7 +65,8 @@ class AuthForgotPasswordIdentityControllerTest {
                     null,
                     "req-1",
                     "en",
-                    new MockServerHttpResponse())
+                    exchange.getResponse(),
+                    exchange)
                 .block());
 
     assertThat(json).contains("err.forgot-password.system.unavailable");
@@ -72,7 +77,9 @@ class AuthForgotPasswordIdentityControllerTest {
   void identityCheckEchoesRequestIdAndDoesNotExposeAccountRefOrRawIdentityValue() {
     var useCase = new RecordingUseCase();
     var controller = controller(useCase);
-    var response = new MockServerHttpResponse();
+    var exchange =
+        MockServerWebExchange.from(MockServerHttpRequest.post("/identity-check").build());
+    var response = exchange.getResponse();
 
     JsonNode json =
         objectMapper.valueToTree(
@@ -85,7 +92,8 @@ class AuthForgotPasswordIdentityControllerTest {
                     "https://portal.example/page",
                     "req-1",
                     "en",
-                    response)
+                    response,
+                    exchange)
                 .block());
 
     assertThat(useCase.called).isTrue();

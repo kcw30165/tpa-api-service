@@ -151,10 +151,18 @@ public class ForgotPasswordApplicationConfig {
           com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort sessions,
           com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort locks,
           com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort expiry,
-          Clock clock) {
+          Clock clock,
+          FailureEventPort failureEventPort) {
     return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity
         .VerifyForgotPasswordIdentityService(
-        loader, protector, sessions, locks, expiry, clock, java.time.Duration.ofSeconds(10));
+        loader,
+        protector,
+        sessions,
+        locks,
+        expiry,
+        clock,
+        java.time.Duration.ofSeconds(10),
+        failureEventPort);
   }
 
   @Bean

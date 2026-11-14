@@ -64,7 +64,8 @@ public class DefaultForgotPasswordProtectedAuthFlowContextLoader
       return pipeline;
     }
 
-    return csrfService
+    Mono<ForgotPasswordProtectedAuthFlowContextResult> validated =
+        csrfService
         .validateForSession(
             new ValidateAuthFlowSessionCsrfCommand(
                 command.authFlowSessionId(),
@@ -82,15 +83,18 @@ public class DefaultForgotPasswordProtectedAuthFlowContextLoader
                     .thenReturn(ForgotPasswordProtectedAuthFlowContextResult.invalid(status));
               }
               return pipeline;
-            })
-        .onErrorResume(
-            RuntimeException.class,
-            ignored ->
-                publishSecurityRejection(
-                        command, now, ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID)
-                    .thenReturn(
-                        ForgotPasswordProtectedAuthFlowContextResult.invalid(
-                            ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID)));
+            });
+    if (command.propagateTechnicalFailures()) {
+      return validated;
+    }
+    return validated.onErrorResume(
+        RuntimeException.class,
+        ignored ->
+            publishSecurityRejection(
+                    command, now, ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID)
+                .thenReturn(
+                    ForgotPasswordProtectedAuthFlowContextResult.invalid(
+                        ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID)));
   }
 
   private Mono<Void> publishSecurityRejection(
@@ -167,6 +171,9 @@ public class DefaultForgotPasswordProtectedAuthFlowContextLoader
       return ForgotPasswordProtectedAuthFlowContextResult.valid(
           session.activeOtpChallengeId(), context);
     } catch (RuntimeException exception) {
+      if (command.propagateTechnicalFailures()) {
+        throw exception;
+      }
       return ForgotPasswordProtectedAuthFlowContextResult.invalid(
           ForgotPasswordProtectedAuthFlowContextStatus.CONTEXT_DECRYPTION_FAILED);
     }

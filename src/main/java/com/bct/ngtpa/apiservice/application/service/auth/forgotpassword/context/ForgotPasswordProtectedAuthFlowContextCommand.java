@@ -12,7 +12,8 @@ public record ForgotPasswordProtectedAuthFlowContextCommand(
     String referer,
     String correlationId,
     Set<AuthFlowStatus> acceptedStatuses,
-    boolean csrfRequired) {
+    boolean csrfRequired,
+    boolean propagateTechnicalFailures) {
 
   public ForgotPasswordProtectedAuthFlowContextCommand {
     Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null");
@@ -23,6 +24,25 @@ public record ForgotPasswordProtectedAuthFlowContextCommand(
         acceptedStatuses == null || acceptedStatuses.isEmpty()
             ? Set.of(AuthFlowStatus.IDENTITY_VERIFIED)
             : Set.copyOf(acceptedStatuses);
+  }
+
+  public ForgotPasswordProtectedAuthFlowContextCommand(
+      AuthFlowSessionId authFlowSessionId,
+      String csrfToken,
+      String origin,
+      String referer,
+      String correlationId,
+      Set<AuthFlowStatus> acceptedStatuses,
+      boolean csrfRequired) {
+    this(
+        authFlowSessionId,
+        csrfToken,
+        origin,
+        referer,
+        correlationId,
+        acceptedStatuses,
+        csrfRequired,
+        false);
   }
 
   @Override

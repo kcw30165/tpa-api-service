@@ -137,7 +137,8 @@ public final class ForgotPasswordController {
           @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
               String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String language,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (!hasText(sid))
       return Mono.just(
@@ -149,7 +150,15 @@ public final class ForgotPasswordController {
     try {
       return identityCheckUseCase
           .verify(identityCheckMapper.command(body, sid, csrf, origin, referer, requestId))
-          .map(r -> ForgotPasswordHttpResponses.toResponse(identityCheckMapper.response(r)));
+          .map(
+              r -> {
+                var responseEntity =
+                    ForgotPasswordHttpResponses.toResponse(identityCheckMapper.response(r));
+                if (r.incidentPublished()) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return responseEntity;
+              });
     } catch (RuntimeException e) {
       return Mono.just(
           ForgotPasswordHttpResponses.toResponse(
