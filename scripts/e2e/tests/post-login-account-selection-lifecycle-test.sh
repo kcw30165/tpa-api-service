@@ -4,6 +4,24 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 tmp="$(mktemp -d)"
 trap 'rm -rf -- "$tmp"' EXIT
+umask 077
+
+mkdir -p "$tmp/bin"
+REAL_JQ="$(command -v jq)"
+export REAL_JQ
+export FAKE_JQ_ARGV="$tmp/jq-arguments"
+export FAKE_SECRET_ENV_LEAKS="$tmp/jq-secret-environment"
+cat >"$tmp/bin/jq" <<'FAKE_JQ'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >>"$FAKE_JQ_ARGV"
+for name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD AUTH_FLOW_COOKIE_VALUE \
+  PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF CIM_PASSWORD SESSION_COOKIE \
+  CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF POST_LOGIN_ACCOUNT_SELECTOR; do
+  [[ -v "$name" ]] && printf '%s\n' "$name" >>"$FAKE_SECRET_ENV_LEAKS"
+done
+exec "$REAL_JQ" "$@"
+FAKE_JQ
+chmod 700 "$tmp/bin/jq"
 
 mkdir -p "$tmp/otp"
 printf '%s' otp-code-sentinel >"$tmp/otp/code"
@@ -23,19 +41,39 @@ unset E2E_PRIVATE_STATE_DIR E2E_ACCOUNT_REF
 
 # shellcheck source=scripts/e2e/run-post-login.sh
 source "$ROOT/scripts/e2e/run-post-login.sh" --library-only
+PATH="$tmp/bin:$PATH"
+export PATH
 
 fake_curl() {
+  printf '%s\n' "$@" >>"$tmp/curl-arguments"
   local headers_file='' body_file='' url='' endpoint='' method=GET
+  local header_ref='' body_arg='' unsafe_file request_stem
   while (($#)); do
     case "$1" in
       -D) headers_file="$2"; shift 2 ;;
       -o) body_file="$2"; shift 2 ;;
       -X) method="$2"; shift 2 ;;
+      -H)
+        [[ "$2" == @* ]] && header_ref="${2#@}"
+        shift 2
+        ;;
+      --data-binary) body_arg="$2"; shift 2 ;;
       http://*|https://*) url="$1"; shift ;;
       *) shift ;;
     esac
   done
   endpoint="${url#"$BFF_BASE_URL"}"
+  request_stem="${endpoint//\//_}"
+  if [[ -n "$header_ref" ]]; then
+    cat "$header_ref" >"$tmp/request-headers-$request_stem"
+  fi
+  if [[ -n "$body_arg" ]]; then
+    if [[ "$body_arg" == @* ]]; then
+      cat "${body_arg#@}" >"$tmp/request-body-$request_stem"
+    else
+      printf '%s' "$body_arg" >"$tmp/request-body-$request_stem"
+    fi
+  fi
   printf '%s %s\n' "$method" "$endpoint" >>"$tmp/calls"
   case "$endpoint" in
     /api/v1/auth/login)
@@ -74,6 +112,17 @@ fake_curl() {
       return 1
       ;;
   esac
+  if [[ -n "${E2E_PRIVATE_STATE_DIR:-}" && -d "$E2E_PRIVATE_STATE_DIR" ]]; then
+    [[ "$(stat -c '%a' "$E2E_PRIVATE_STATE_DIR")" == 700 ]] || {
+      printf 'FAIL private runtime directory mode was not 0700\n'
+      printf 'private-directory-mode\n' >>"$tmp/transport-test-failures"
+    }
+    unsafe_file="$(find "$E2E_PRIVATE_STATE_DIR" -type f ! -perm 600 -print -quit)"
+    [[ -z "$unsafe_file" ]] || {
+      printf 'FAIL private runtime file mode was not 0600\n'
+      printf 'private-file-mode\n' >>"$tmp/transport-test-failures"
+    }
+  fi
 }
 curl() { fake_curl "$@"; }
 orchestrator_run_feature() {
@@ -84,6 +133,31 @@ orchestrator_run_feature() {
 }
 
 fail=0
+assert_process_arguments_are_secret_free() {
+  local value
+  for value in \
+    selector-reference-not-in-response \
+    account-reference-first \
+    account-reference-second \
+    auth-flow-cookie-sentinel \
+    login-csrf-sentinel \
+    portal-cookie-sentinel \
+    authenticated-csrf-sentinel \
+    login-user-sentinel \
+    login-password-sentinel \
+    otp-code-sentinel; do
+    if grep -Fq -- "$value" "$tmp/curl-arguments" "$tmp/jq-arguments"; then
+      printf 'FAIL authentication secret appeared in curl or jq process arguments\n'
+      fail=1
+      break
+    fi
+  done
+  [[ ! -s "$FAKE_SECRET_ENV_LEAKS" ]] || {
+    printf 'FAIL authentication secret was inherited by jq\n'
+    fail=1
+  }
+}
+
 run_case() {
   local name="$1" logout_mode="$2" evidence_root state_dir rc
   evidence_root="$tmp/evidence-$name"
@@ -92,6 +166,10 @@ run_case() {
   export E2E_ACCOUNT_REF=selector-reference-not-in-response
   : >"$tmp/calls"
   : >"$tmp/features"
+  : >"$tmp/curl-arguments"
+  : >"$tmp/jq-arguments"
+  : >"$FAKE_SECRET_ENV_LEAKS"
+  : >"$tmp/transport-test-failures"
   initialize_post_login_runtime || { printf 'FAIL runtime initialization\n'; fail=1; return; }
   [[ ! -v E2E_ACCOUNT_REF ]] || { printf 'FAIL selector was not removed from environment before login\n'; fail=1; }
   state_dir="$E2E_PRIVATE_STATE_DIR"
@@ -129,6 +207,8 @@ run_case() {
   [[ ! -s "$tmp/features" ]] || { printf 'FAIL feature pack executed\n'; fail=1; }
   [[ ! -v E2E_ACCOUNT_REF ]] || { printf 'FAIL input selector remained in environment\n'; fail=1; }
   [[ ! -e "$state_dir" ]] || { printf 'FAIL private authentication state was not cleaned\n'; fail=1; }
+  assert_process_arguments_are_secret_free
+  [[ ! -s "$tmp/transport-test-failures" ]] || { fail=1; }
 
   for value in \
     selector-reference-not-in-response \
@@ -158,6 +238,10 @@ export LOGOUT_MODE=success
 : >"$tmp/calls"
 : >"$tmp/features"
 : >"$tmp/feature-state"
+: >"$tmp/curl-arguments"
+: >"$tmp/jq-arguments"
+: >"$FAKE_SECRET_ENV_LEAKS"
+: >"$tmp/transport-test-failures"
 initialize_post_login_runtime || { printf 'FAIL matching runtime initialization\n'; exit 1; }
 [[ ! -v E2E_ACCOUNT_REF ]] || { printf 'FAIL matching selector was not removed from environment before login\n'; fail=1; }
 matched_state_dir="$E2E_PRIVATE_STATE_DIR"
@@ -185,6 +269,41 @@ grep -Fq 'selected_account_index=1' "$E2E_RUN_EVIDENCE_DIR/017-authenticated-tra
 }
 [[ "$(wc -l <"$tmp/calls")" == 4 ]] || {
   printf 'FAIL matched selection issued an unexpected account-selection request\n'
+  fail=1
+}
+assert_process_arguments_are_secret_free
+[[ ! -s "$tmp/transport-test-failures" ]] || { fail=1; }
+login_request="$(<"$tmp/request-body-_api_v1_auth_login")"
+otp_send_request="$(<"$tmp/request-body-_api_v1_auth_login_otp_send")"
+otp_verify_request="$(<"$tmp/request-body-_api_v1_auth_login_otp_verify")"
+[[ "$login_request" == *'"username":"login-user-sentinel"'* \
+  && "$login_request" == *'"password":"login-password-sentinel"'* ]] || {
+  printf 'FAIL login request body contract changed\n'
+  fail=1
+}
+[[ "$otp_send_request" == *'"destinationId":"email-destination"'* ]] || {
+  printf 'FAIL OTP destination request body contract changed\n'
+  fail=1
+}
+[[ "$otp_verify_request" == *'"code":"otp-code-sentinel"'* ]] || {
+  printf 'FAIL OTP verification request body contract changed\n'
+  fail=1
+}
+otp_send_headers=''
+otp_verify_headers=''
+logout_headers=''
+[[ ! -f "$tmp/request-headers-_api_v1_auth_login_otp_send" ]] \
+  || otp_send_headers="$(<"$tmp/request-headers-_api_v1_auth_login_otp_send")"
+[[ ! -f "$tmp/request-headers-_api_v1_auth_login_otp_verify" ]] \
+  || otp_verify_headers="$(<"$tmp/request-headers-_api_v1_auth_login_otp_verify")"
+[[ ! -f "$tmp/request-headers-_api_v1_auth_logout" ]] \
+  || logout_headers="$(<"$tmp/request-headers-_api_v1_auth_logout")"
+[[ "$otp_send_headers" == *'X-XSRF-TOKEN: login-csrf-sentinel'* \
+  && "$otp_send_headers" == *'Cookie: auth_flow_sid=auth-flow-cookie-sentinel'* \
+  && "$otp_verify_headers" == *'Cookie: auth_flow_sid=auth-flow-cookie-sentinel'* \
+  && "$logout_headers" == *'X-XSRF-TOKEN: authenticated-csrf-sentinel'* \
+  && "$logout_headers" == *'Cookie: portal_sid=portal-cookie-sentinel'* ]] || {
+  printf 'FAIL required OTP/logout cookie or CSRF headers changed\n'
   fail=1
 }
 for value in \

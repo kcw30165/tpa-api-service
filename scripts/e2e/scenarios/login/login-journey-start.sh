@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 login_journey_start() {
-  local out="$E2E_RUN_EVIDENCE_DIR" raw_headers raw_body metrics rc request_id idempotency_key request_body
+  local out="$E2E_RUN_EVIDENCE_DIR" raw_headers raw_body metrics rc request_id idempotency_key
+  local username_file password_file request_body_file
+  export -n LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD
   [[ -n "${LOGIN_TEST_USERNAME:-}" && -n "${LOGIN_TEST_PASSWORD:-}" ]] || {
     printf 'FAIL runtime Login credentials are required\n'; return 1;
   }
@@ -9,14 +11,35 @@ login_journey_start() {
   }
   raw_headers="$E2E_PRIVATE_STATE_DIR/login-start.headers"
   raw_body="$E2E_PRIVATE_STATE_DIR/login-start.json"
+  username_file="$E2E_PRIVATE_STATE_DIR/login_username"
+  password_file="$E2E_PRIVATE_STATE_DIR/login_password"
+  request_body_file="$E2E_PRIVATE_STATE_DIR/login-start-request.json"
   request_id="${REQUEST_ID_PREFIX}-start-$(date +%s)-$$"
   idempotency_key="login-start-$(date +%s)-$$"
-  request_body="$(jq -cn --arg username "$LOGIN_TEST_USERNAME" --arg password "$LOGIN_TEST_PASSWORD" '{username:$username,password:$password}')"
+  write_private_value login_username "$LOGIN_TEST_USERNAME" || return 1
+  write_private_value login_password "$LOGIN_TEST_PASSWORD" || return 1
+  if ! jq -cn --rawfile username "$username_file" --rawfile password "$password_file" \
+    '{username:$username,password:$password}' >"$request_body_file"; then
+    printf 'FAIL could not prepare private login request body\n' >&2
+    return 1
+  fi
+  chmod 600 "$request_body_file" || {
+    printf 'FAIL could not protect private login request body\n' >&2
+    return 1
+  }
+  rm -f -- "$username_file" "$password_file" || {
+    printf 'FAIL could not remove private login credential files\n' >&2
+    return 1
+  }
   if metrics="$(curl --silent --show-error --connect-timeout "$E2E_CONNECT_TIMEOUT_SECONDS" --max-time "$E2E_REQUEST_TIMEOUT_SECONDS" \
       -X POST "${BFF_BASE_URL%/}/api/v1/auth/login" \
       -H "Accept-Language: $ACCEPT_LANGUAGE" -H "X-Request-Id: $request_id" \
       -H "Idempotency-Key: $idempotency_key" -H 'Content-Type: application/json' \
-      --data-binary "$request_body" -D "$raw_headers" -o "$raw_body" -w '%{http_code} %{time_total}')"; then rc=0; else rc=$?; fi
+      --data-binary "@$request_body_file" -D "$raw_headers" -o "$raw_body" -w '%{http_code} %{time_total}')"; then rc=0; else rc=$?; fi
+  rm -f -- "$request_body_file" || {
+    printf 'FAIL could not remove private login request body\n' >&2
+    return 1
+  }
   LOGIN_START_CURL_EXIT="$rc"
   LOGIN_START_HTTP_STATUS="${metrics%% *}"
   redact_headers_file "$raw_headers" "$out/006-response-headers-redacted.txt"

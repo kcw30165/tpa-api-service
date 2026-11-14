@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 set -uo pipefail
+for secret_name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD CIM_PASSWORD \
+  PORTAL_SESSION_COOKIE_VALUE AUTH_FLOW_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF \
+  SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF POST_LOGIN_ACCOUNT_SELECTOR; do
+  [[ -v "$secret_name" ]] && export -n "${secret_name?}"
+done
+unset secret_name
 E2E_REPOSITORY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.."&&pwd)"
 source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/runtime.sh"
 source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/assertions.sh"
@@ -40,10 +46,25 @@ initialize_post_login_runtime(){
  source "$E2E_REPOSITORY_ROOT/scripts/e2e/scenarios/login/login-journey-start.sh"
 }
 orchestrator_run_feature(){
- local name="$1" path
+ local name="$1" path feature_password='' secret_name
  path="$(feature_pack_path "$name")"||return 1
  [[ -n "${BFF_BASE_URL:-}" && -n "${PORTAL_SESSION_COOKIE_VALUE:-}" && -n "${XSRF_TOKEN:-}" && -n "${ACCOUNT_REF:-}" ]]||return 1
- BASE_URL="$BFF_BASE_URL" SESSION_COOKIE="$PORTAL_SESSION_COOKIE_VALUE" CSRF_TOKEN="$XSRF_TOKEN" ACCOUNT_REF="$ACCOUNT_REF" bash "$path"
+ for secret_name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD CIM_PASSWORD \
+  PORTAL_SESSION_COOKIE_VALUE AUTH_FLOW_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF \
+  SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF POST_LOGIN_ACCOUNT_SELECTOR; do
+  [[ -v "$secret_name" ]] && export -n "${secret_name?}"
+ done
+ if [[ "${CIM_USE_PASSWORD:-no}" == yes ]]; then
+  feature_password="${CIM_PASSWORD:-${LOGIN_TEST_PASSWORD:-}}"
+ fi
+ if [[ "${CIM_USE_PASSWORD:-no}" == yes && -n "$feature_password" ]]; then
+  BASE_URL="$BFF_BASE_URL" SESSION_COOKIE="$PORTAL_SESSION_COOKIE_VALUE" \
+   CSRF_TOKEN="$XSRF_TOKEN" ACCOUNT_REF="$ACCOUNT_REF" CIM_PASSWORD="$feature_password" \
+   bash "$path"
+ else
+  BASE_URL="$BFF_BASE_URL" SESSION_COOKIE="$PORTAL_SESSION_COOKIE_VALUE" \
+   CSRF_TOKEN="$XSRF_TOKEN" ACCOUNT_REF="$ACCOUNT_REF" bash "$path"
+ fi
 }
 post_login_main(){
  local resolved name

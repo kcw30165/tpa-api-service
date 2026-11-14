@@ -40,7 +40,7 @@ select_account_ref() {
       return 1
     }
   else
-    match_indices="$(jq -c --arg selector "$selector" '
+    match_indices="$(jq -c --rawfile selector <(printf '%s' "$selector") '
       [.result.data.accounts
         | to_entries[]
         | select(.value.accountRef == $selector)
@@ -102,13 +102,21 @@ publish_authenticated_http_state() {
   XSRF_TOKEN="$authenticated_csrf"
   ACCOUNT_REF="$account_ref"
   unset AUTH_FLOW_COOKIE_VALUE
-  export PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF
+  export -n PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF
 }
 
 authenticated_login_journey() {
-  local rc=0 cookie csrf destination_id otp_code request_body metrics curl_rc
+  local rc=0 cookie csrf destination_id otp_code metrics curl_rc
   local raw_headers raw_body request_id idempotency_key portal_cookie authenticated_csrf account_ref
   local account_selector='' account_selector_provided=false selection_mode
+  local request_body_file secret_headers_fd otp_secret_file
+  local secret_name
+  for secret_name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD CIM_PASSWORD \
+    PORTAL_SESSION_COOKIE_VALUE AUTH_FLOW_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF \
+    SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF POST_LOGIN_ACCOUNT_SELECTOR; do
+    [[ -v "$secret_name" ]] && export -n "${secret_name?}"
+  done
+  unset secret_name
   capture_post_login_account_selector
   account_selector_provided="$POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED"
   account_selector="${POST_LOGIN_ACCOUNT_SELECTOR:-}"
@@ -126,8 +134,36 @@ authenticated_login_journey() {
   cookie="$(read_private_value auth_flow_cookie)"; csrf="$(read_private_value csrf_token)"; destination_id="$(read_private_value destination_id)"
   raw_headers="$E2E_PRIVATE_STATE_DIR/otp-send.headers"; raw_body="$E2E_PRIVATE_STATE_DIR/otp-send.json"
   request_id="${REQUEST_ID_PREFIX}-otp-send-$(date +%s)-$$"; idempotency_key="login-otp-send-$(date +%s)-$$"
-  request_body="$(jq -cn --arg destinationId "$destination_id" '{destinationId:$destinationId}')"
-  if metrics="$(curl --silent --show-error --connect-timeout "$E2E_CONNECT_TIMEOUT_SECONDS" --max-time "$E2E_REQUEST_TIMEOUT_SECONDS" -X POST "${BFF_BASE_URL%/}/api/v1/auth/login/otp/send" -H "Accept-Language: $ACCEPT_LANGUAGE" -H "X-Request-Id: $request_id" -H "Idempotency-Key: $idempotency_key" -H "X-XSRF-TOKEN: $csrf" -H 'Content-Type: application/json' --cookie "auth_flow_sid=$cookie" --data-binary "$request_body" -D "$raw_headers" -o "$raw_body" -w '%{http_code} %{time_total}')"; then curl_rc=0; else curl_rc=$?; fi
+  write_private_value otp_destination_id "$destination_id" || return 1
+  request_body_file="$E2E_PRIVATE_STATE_DIR/otp-send-request.json"
+  if ! jq -cn --rawfile destinationId "$E2E_PRIVATE_STATE_DIR/otp_destination_id" \
+    '{destinationId:$destinationId}' >"$request_body_file"; then
+    printf 'FAIL could not prepare private OTP destination request body\n' >&2
+    return 1
+  fi
+  chmod 600 "$request_body_file" || {
+    printf 'FAIL could not protect private OTP destination request body\n' >&2
+    return 1
+  }
+  rm -f -- "$E2E_PRIVATE_STATE_DIR/otp_destination_id" || {
+    printf 'FAIL could not remove private OTP destination file\n' >&2
+    return 1
+  }
+  exec {secret_headers_fd}< <(printf 'X-XSRF-TOKEN: %s\nCookie: auth_flow_sid=%s\n' "$csrf" "$cookie")
+  if metrics="$(curl --silent --show-error --connect-timeout "$E2E_CONNECT_TIMEOUT_SECONDS" --max-time "$E2E_REQUEST_TIMEOUT_SECONDS" \
+    -X POST "${BFF_BASE_URL%/}/api/v1/auth/login/otp/send" \
+    -H "Accept-Language: $ACCEPT_LANGUAGE" -H "X-Request-Id: $request_id" \
+    -H "Idempotency-Key: $idempotency_key" -H 'Content-Type: application/json' \
+    -H "@/dev/fd/$secret_headers_fd" --data-binary "@$request_body_file" \
+    -D "$raw_headers" -o "$raw_body" -w '%{http_code} %{time_total}')"; then curl_rc=0; else curl_rc=$?; fi
+  exec {secret_headers_fd}<&- || {
+    printf 'FAIL could not close private OTP request headers\n' >&2
+    return 1
+  }
+  rm -f -- "$request_body_file" || {
+    printf 'FAIL could not remove private OTP destination request body\n' >&2
+    return 1
+  }
   redact_headers_file "$raw_headers" "$E2E_RUN_EVIDENCE_DIR/012-otp-send-response-headers-redacted.txt"
   redact_json_file "$raw_body" "$E2E_RUN_EVIDENCE_DIR/013-otp-send-response-body-redacted.json"
   assert_eq 0 "$curl_rc" otp_send_curl_exit || rc=1; assert_eq 200 "${metrics%% *}" otp_send_http_status || rc=1
@@ -141,9 +177,40 @@ authenticated_login_journey() {
   fi
   [[ -n "$otp_code" ]] || { printf 'FAIL OTP is required\n'; return 1; }
   raw_headers="$E2E_PRIVATE_STATE_DIR/otp-verify.headers"; raw_body="$E2E_PRIVATE_STATE_DIR/otp-verify.json"
-  request_id="${REQUEST_ID_PREFIX}-otp-verify-$(date +%s)-$$"; idempotency_key="login-otp-verify-$(date +%s)-$$"; request_body="$(jq -cn --arg code "$otp_code" '{code:$code}')"; otp_code=''
-  if metrics="$(curl --silent --show-error --connect-timeout "$E2E_CONNECT_TIMEOUT_SECONDS" --max-time "$E2E_REQUEST_TIMEOUT_SECONDS" -X POST "${BFF_BASE_URL%/}/api/v1/auth/login/otp/verify" -H "Accept-Language: $ACCEPT_LANGUAGE" -H "X-Request-Id: $request_id" -H "Idempotency-Key: $idempotency_key" -H "X-XSRF-TOKEN: $csrf" -H 'Content-Type: application/json' --cookie "auth_flow_sid=$cookie" --data-binary "$request_body" -D "$raw_headers" -o "$raw_body" -w '%{http_code} %{time_total}')"; then curl_rc=0; else curl_rc=$?; fi
-  request_body=''; redact_headers_file "$raw_headers" "$E2E_RUN_EVIDENCE_DIR/015-otp-verify-response-headers-redacted.txt"; redact_json_file "$raw_body" "$E2E_RUN_EVIDENCE_DIR/016-otp-verify-response-body-redacted.json"
+  request_id="${REQUEST_ID_PREFIX}-otp-verify-$(date +%s)-$$"
+  idempotency_key="login-otp-verify-$(date +%s)-$$"
+  otp_secret_file="$E2E_PRIVATE_STATE_DIR/otp_code"
+  request_body_file="$E2E_PRIVATE_STATE_DIR/otp-verify-request.json"
+  write_private_value otp_code "$otp_code" || return 1
+  otp_code=''
+  if ! jq -cn --rawfile code "$otp_secret_file" '{code:$code}' >"$request_body_file"; then
+    printf 'FAIL could not prepare private OTP verification request body\n' >&2
+    return 1
+  fi
+  chmod 600 "$request_body_file" || {
+    printf 'FAIL could not protect private OTP verification request body\n' >&2
+    return 1
+  }
+  rm -f -- "$otp_secret_file" || {
+    printf 'FAIL could not remove private OTP code file\n' >&2
+    return 1
+  }
+  exec {secret_headers_fd}< <(printf 'X-XSRF-TOKEN: %s\nCookie: auth_flow_sid=%s\n' "$csrf" "$cookie")
+  if metrics="$(curl --silent --show-error --connect-timeout "$E2E_CONNECT_TIMEOUT_SECONDS" --max-time "$E2E_REQUEST_TIMEOUT_SECONDS" \
+    -X POST "${BFF_BASE_URL%/}/api/v1/auth/login/otp/verify" \
+    -H "Accept-Language: $ACCEPT_LANGUAGE" -H "X-Request-Id: $request_id" \
+    -H "Idempotency-Key: $idempotency_key" -H 'Content-Type: application/json' \
+    -H "@/dev/fd/$secret_headers_fd" --data-binary "@$request_body_file" \
+    -D "$raw_headers" -o "$raw_body" -w '%{http_code} %{time_total}')"; then curl_rc=0; else curl_rc=$?; fi
+  exec {secret_headers_fd}<&- || {
+    printf 'FAIL could not close private OTP verification headers\n' >&2
+    return 1
+  }
+  rm -f -- "$request_body_file" || {
+    printf 'FAIL could not remove private OTP verification request body\n' >&2
+    return 1
+  }
+  redact_headers_file "$raw_headers" "$E2E_RUN_EVIDENCE_DIR/015-otp-verify-response-headers-redacted.txt"; redact_json_file "$raw_body" "$E2E_RUN_EVIDENCE_DIR/016-otp-verify-response-body-redacted.json"
   assert_eq 0 "$curl_rc" otp_verify_curl_exit || rc=1; assert_eq 200 "${metrics%% *}" otp_verify_http_status || rc=1
   assert_json_scalar_eq "$E2E_RUN_EVIDENCE_DIR/016-otp-verify-response-body-redacted.json" '.status' SUCCESS otp_verify_api_status || rc=1
   assert_json_scalar_eq "$E2E_RUN_EVIDENCE_DIR/016-otp-verify-response-body-redacted.json" '.result.nextStep' SELECT_ACCOUNT otp_verify_next_step || rc=1
@@ -193,9 +260,24 @@ validate_logout_contract() {
 }
 
 authenticated_logout_journey() {
-  local portal_cookie csrf headers body metrics rc=0 request_id curl_rc cleared=no
+  local portal_cookie csrf headers body metrics rc=0 request_id curl_rc cleared=no secret_headers_fd
+  local secret_name
+  for secret_name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD CIM_PASSWORD \
+    PORTAL_SESSION_COOKIE_VALUE AUTH_FLOW_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF \
+    SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF POST_LOGIN_ACCOUNT_SELECTOR; do
+    [[ -v "$secret_name" ]] && export -n "${secret_name?}"
+  done
+  unset secret_name
   portal_cookie="$(read_private_value portal_cookie)"; csrf="$(read_private_value authenticated_csrf)"; headers="$E2E_PRIVATE_STATE_DIR/logout.headers"; body="$E2E_PRIVATE_STATE_DIR/logout.json"; request_id="${REQUEST_ID_PREFIX}-logout-$(date +%s)-$$"
-  if metrics="$(curl --silent --show-error --connect-timeout "$E2E_CONNECT_TIMEOUT_SECONDS" --max-time "$E2E_REQUEST_TIMEOUT_SECONDS" -X POST "${BFF_BASE_URL%/}/api/v1/auth/logout" -H "X-Request-Id: $request_id" -H "X-XSRF-TOKEN: $csrf" --cookie "portal_sid=$portal_cookie" -D "$headers" -o "$body" -w '%{http_code} %{time_total}')"; then curl_rc=0; else curl_rc=$?; fi
+  exec {secret_headers_fd}< <(printf 'X-XSRF-TOKEN: %s\nCookie: portal_sid=%s\n' "$csrf" "$portal_cookie")
+  if metrics="$(curl --silent --show-error --connect-timeout "$E2E_CONNECT_TIMEOUT_SECONDS" --max-time "$E2E_REQUEST_TIMEOUT_SECONDS" \
+    -X POST "${BFF_BASE_URL%/}/api/v1/auth/logout" -H "X-Request-Id: $request_id" \
+    -H "@/dev/fd/$secret_headers_fd" -D "$headers" -o "$body" \
+    -w '%{http_code} %{time_total}')"; then curl_rc=0; else curl_rc=$?; fi
+  exec {secret_headers_fd}<&- || {
+    printf 'FAIL could not close private logout headers\n' >&2
+    return 1
+  }
   redact_headers_file "$headers" "$E2E_RUN_EVIDENCE_DIR/030-logout-response-headers-redacted.txt"; redact_json_file "$body" "$E2E_RUN_EVIDENCE_DIR/031-logout-response-body-redacted.json"
   assert_eq 0 "$curl_rc" logout_curl_exit || rc=1; assert_eq 200 "${metrics%% *}" logout_http_status || rc=1; assert_json_scalar_eq "$E2E_RUN_EVIDENCE_DIR/031-logout-response-body-redacted.json" '.status' SUCCESS logout_api_status || rc=1
   sed -n -E '/^[Ss]et-[Cc]ookie:[[:space:]]*portal_sid=/p' "$headers" | grep -Eq '([Mm]ax-[Aa]ge=0|[Ee]xpires=Thu, 01 Jan 1970)' && cleared=yes || rc=1
