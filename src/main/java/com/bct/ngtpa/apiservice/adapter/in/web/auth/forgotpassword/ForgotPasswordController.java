@@ -183,7 +183,8 @@ public final class ForgotPasswordController {
               String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String lang,
           @RequestHeader(name = "Idempotency-Key", required = false) String key,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (b == null || !hasText(sid) || !hasText(key))
       return Mono.just(
@@ -204,7 +205,13 @@ public final class ForgotPasswordController {
                   b.dateOfBirth(),
                   b.email(),
                   b.mobile()))
-          .map(r -> ForgotPasswordHttpResponses.toResponse(detailsCheckMapper.map(r)));
+          .map(
+              r -> {
+                if (r.incidentPublished()) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return ForgotPasswordHttpResponses.toResponse(detailsCheckMapper.map(r));
+              });
     } catch (RuntimeException e) {
       return Mono.just(
           ForgotPasswordHttpResponses.toResponse(

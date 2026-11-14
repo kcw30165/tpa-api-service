@@ -311,7 +311,8 @@ public class ForgotPasswordApplicationConfig {
       Clock clock,
       ObjectMapper objectMapper,
       AuthWorkflowProperties properties,
-      com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort registry) {
+      com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort registry,
+      FailureEventPort failureEventPort) {
     properties.validateForgotPasswordPolicy();
     Duration ttl =
         Duration.ofSeconds(
@@ -344,7 +345,7 @@ public class ForgotPasswordApplicationConfig {
             new IdempotencyOperationIdentityFactory(),
             new CanonicalIdempotencyFingerprintFactory());
     return new IdempotentForgotPasswordDetailsOtpService(
-        idempotencyExecutor, protectedOperation, responses, policy, ttl);
+        idempotencyExecutor, protectedOperation, responses, policy, ttl, failureEventPort);
   }
 
   @Bean

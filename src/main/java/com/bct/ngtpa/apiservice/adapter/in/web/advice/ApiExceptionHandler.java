@@ -10,6 +10,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.error.LogLevel;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp
+    .ForgotPasswordDetailsOtpIncidentPublishedException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -84,7 +86,9 @@ public class ApiExceptionHandler {
         logAtError ? null : registry.diagnosticMessage(exception));
     ResponseEntity<MutationResponse<Void>> response =
         renderer.render(descriptor, messages, context);
-    if (descriptor.logLevel() == LogLevel.ERROR
+    if (exception instanceof ForgotPasswordDetailsOtpIncidentPublishedException) {
+      TerminalIncidentHttpObservation.markOwned(exchange);
+    } else if (descriptor.logLevel() == LogLevel.ERROR
         && descriptor.httpStatus().is5xxServerError()
         && HttpMethod.POST.equals(exchange.getRequest().getMethod())
         && ("/api/v1/auth/registration/start".equals(exchange.getRequest().getPath().value())

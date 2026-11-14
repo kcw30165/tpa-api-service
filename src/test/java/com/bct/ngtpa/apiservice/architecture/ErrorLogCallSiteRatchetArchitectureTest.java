@@ -90,10 +90,6 @@ class ErrorLogCallSiteRatchetArchitectureTest {
             + "detailsotp/ForgotPasswordDetailsOtpProtectedOperation.java",
         1);
     map.put(
-        "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/"
-            + "detailsotp/ForgotPasswordUnderLockDetailsVerifier.java",
-        1);
-    map.put(
         "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/"
             + "resend/ForgotPasswordOtpResendProtectedOperation.java",
         1);

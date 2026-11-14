@@ -7,14 +7,9 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordDetailsLookupPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.*;
 import java.util.Objects;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 public final class ForgotPasswordUnderLockDetailsVerifier {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ForgotPasswordUnderLockDetailsVerifier.class);
-
   private final ForgotPasswordDetailsLookupPort lookup;
 
   public ForgotPasswordUnderLockDetailsVerifier(ForgotPasswordDetailsLookupPort l) {
@@ -32,8 +27,9 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
     if (lock == null || !lock.acquired() || session == null || context == null)
       return Mono.just(
           ForgotPasswordUnderLockDetailsVerification.of(ForgotPasswordDetailsStatus.SYSTEM_FAILED));
-    return lookup
-        .verify(
+    return Mono.defer(
+            () ->
+                lookup.verify(
             new ForgotPasswordDetailsLookupCommand(
                 context.identityType(),
                 context.identityValue(),
@@ -42,7 +38,7 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
                 mobile,
                 context.username(),
                 requestId,
-                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))
+                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
         .map(
             r ->
                 r.status() == ForgotPasswordDetailsLookupStatus.MATCHED
@@ -53,20 +49,40 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
                         r.schemeNameChi())
                     : ForgotPasswordUnderLockDetailsVerification.of(
                         ForgotPasswordDetailsStatus.BUSINESS_REJECTED))
-        .doOnError(cause -> logFailure(requestId, cause))
         .onErrorResume(
-            cause ->
-                Mono.just(
+            cause -> {
+              FailureOrigin origin = lookup.classifyFailure(cause);
+              if (origin == null) {
+                origin = FailureOrigin.LOCAL_SYSTEM;
+              }
+              if (isExpectedBusinessOrigin(origin)) {
+                return Mono.just(
                     ForgotPasswordUnderLockDetailsVerification.of(
-                        lookup.classifyFailure(cause) == FailureOrigin.DOWNSTREAM_TRANSPORT
-                            ? ForgotPasswordDetailsStatus.SYSTEM_UNAVAILABLE
-                            : ForgotPasswordDetailsStatus.SYSTEM_FAILED)));
+                        ForgotPasswordDetailsStatus.BUSINESS_REJECTED));
+              }
+              FailureOrigin terminalOrigin = terminalOrigin(origin);
+              return Mono.just(
+                  ForgotPasswordUnderLockDetailsVerification.technical(
+                      lookup.isUnavailableFailure(cause)
+                          ? ForgotPasswordDetailsStatus.SYSTEM_UNAVAILABLE
+                          : ForgotPasswordDetailsStatus.SYSTEM_FAILED,
+                      terminalOrigin));
+            });
   }
 
-  private static void logFailure(String requestId, Throwable cause) {
-    LOGGER.error(
-        "event=forgot-password.details-otp.failed requestId={} stage=lookup exceptionType={}",
-        requestId,
-        cause.getClass().getSimpleName());
+  private static boolean isExpectedBusinessOrigin(FailureOrigin origin) {
+    return origin == FailureOrigin.DOWNSTREAM_BUSINESS
+        || origin == FailureOrigin.LOCAL_BUSINESS
+        || origin == FailureOrigin.LOCAL_VALIDATION;
+  }
+
+  private static FailureOrigin terminalOrigin(FailureOrigin origin) {
+    return switch (origin) {
+      case DOWNSTREAM_CONTRACT, DOWNSTREAM_INVALID_RESPONSE, DOWNSTREAM_TRANSPORT, LOCAL_SYSTEM ->
+          origin;
+      case DOWNSTREAM_TECHNICAL -> FailureOrigin.LOCAL_SYSTEM;
+      case DOWNSTREAM_BUSINESS, LOCAL_BUSINESS, LOCAL_VALIDATION ->
+          throw new IllegalArgumentException("Expected business origin cannot own an incident");
+    };
   }
 }

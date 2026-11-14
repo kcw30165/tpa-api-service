@@ -9,4 +9,9 @@ public interface ForgotPasswordDetailsLookupPort {
 
   /** Classifies a technical failure from {@link #verify} without repeating the lookup. */
   FailureOrigin classifyFailure(Throwable failure);
+
+  /** Retains the legacy unavailable-response mapping independently of incident origin. */
+  default boolean isUnavailableFailure(Throwable failure) {
+    return false;
+  }
 }

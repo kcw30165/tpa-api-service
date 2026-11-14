@@ -64,6 +64,23 @@ class ForgotPasswordDetailsOtpExecutionBridgeTest {
   }
 
   @Test
+  void incidentMarkerIsNotStoredInTransientReplayPayload() {
+    var incident =
+        new ForgotPasswordDetailsOtpResult(
+                ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE,
+                null,
+                0,
+                0,
+                List.of())
+            .withIncidentPublished();
+    var bridge = newBridge();
+    HydratedIdempotentResponse response = bridge.toTransientResponse(incident);
+
+    assertThat(response.serializedBody()).doesNotContain("incidentPublished");
+    assertThat(bridge.fromTransientResponse(response).incidentPublished()).isFalse();
+  }
+
+  @Test
   void fromTransientResponseWrongMediaTypeThrows() {
     HydratedIdempotentResponse response =
         new HydratedIdempotentResponse(200, "text/plain", "{}", Map.of());

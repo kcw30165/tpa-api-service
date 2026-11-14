@@ -18,6 +18,7 @@ import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryScenario;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryStatus;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
 import com.bct.ngtpa.apiservice.application.dto.message.NoticeTemplateDefinition;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -33,6 +34,7 @@ import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpBindingCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpBindingResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitState;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator;
@@ -47,6 +49,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -109,20 +112,26 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
 
   public Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> execute(
       ForgotPasswordDetailsOtpCommand command) {
-    String reference = references.generate();
-    return locks
-        .acquire(command.sessionId(), policy.lease())
-        .flatMap(handle -> handle.acquired() ? locked(command, reference, handle) : failure())
-        .doOnError(cause -> logFailure(command, "execute", cause))
-        .onErrorResume(ignored -> failure());
+    return Mono.fromCallable(references::generate)
+        .switchIfEmpty(Mono.error(new LocalTechnicalFailure("commit-reference-generation")))
+        .onErrorMap(ignored -> new LocalTechnicalFailure("commit-reference-generation"))
+        .flatMap(
+            reference ->
+                technicalAt(
+                        "lock-acquisition",
+                        () -> locks.acquire(command.sessionId(), policy.lease()))
+                    .flatMap(handle -> handle.acquired() ? locked(command, reference, handle) : failure()))
+        .onErrorResume(LockReleaseFailure.class, ignored -> failure())
+        .onErrorResume(
+            LocalTechnicalFailure.class, error -> technicalFailure(error.stage()))
+        .onErrorResume(ignored -> technicalFailure("protected-operation"));
   }
 
   private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> locked(
       ForgotPasswordDetailsOtpCommand command, String reference, SessionLockHandle handle) {
     var budget = new ForgotPasswordMutationLeaseBudget(policy.lease(), System::nanoTime);
     Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> work =
-        sessions
-            .loadSnapshot(command.sessionId())
+        technicalAt("session-read", () -> sessions.loadSnapshot(command.sessionId()))
             .flatMap(
                 optional -> {
                   if (optional.isEmpty()) return failure();
@@ -130,62 +139,81 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                   if (session.scenario() != AuthFlowScenario.FORGOT_PASSWORD
                       || session.status() != AuthFlowStatus.IDENTITY_VERIFIED
                       || session.isExpired(clock.instant())) return failure();
-                  ForgotPasswordAuthFlowContext context = decrypt(session);
-                  if (context.phase() != ForgotPasswordProtectedPhase.IDENTITY_VERIFIED)
-                    return failure();
-                  return details
-                      .verify(
-                          handle,
-                          session,
-                          context,
-                          command.dateOfBirth(),
-                          command.email(),
-                          command.mobile(),
-                          command.requestId())
+                  return technicalAt("context-unprotection", () -> Mono.fromCallable(() -> decrypt(session)))
                       .flatMap(
-                          result -> {
-                            if (result.status() == ForgotPasswordDetailsStatus.DETAILS_VERIFIED) {
-                              return issue(
-                                  command,
-                                  reference,
-                                  handle,
-                                  budget,
-                                  context.withLookupFields(
-                                      result.trustCode(),
-                                      result.schemeName(),
-                                      result.schemeNameChi()));
-                            }
-                            if (result.status() == ForgotPasswordDetailsStatus.BUSINESS_REJECTED) {
-                              return Mono.just(
-                                  new ForgotPasswordDetailsOtpProtectedExecutionResult(
-                                      new ForgotPasswordDetailsOtpResult(
-                                          ForgotPasswordDetailsOtpResult.Status.BUSINESS_REJECTED,
-                                          null,
-                                          0,
-                                          0,
-                                          List.of("PAGE")),
-                                      null));
-                            }
-                            if (result.status() == ForgotPasswordDetailsStatus.SYSTEM_UNAVAILABLE) {
-                              return Mono.just(
-                                  new ForgotPasswordDetailsOtpProtectedExecutionResult(
-                                      new ForgotPasswordDetailsOtpResult(
-                                          ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE,
-                                          null,
-                                          0,
-                                          0,
-                                          List.of()),
-                                      null));
-                            }
-                            return failure();
+                          context -> {
+                            if (context.phase() != ForgotPasswordProtectedPhase.IDENTITY_VERIFIED)
+                              return failure();
+                            return technicalAt(
+                                    "details-lookup",
+                                    () ->
+                                        details.verify(
+                                            handle,
+                                            session,
+                                            context,
+                                            command.dateOfBirth(),
+                                            command.email(),
+                                            command.mobile(),
+                                            command.requestId()))
+                                .flatMap(
+                                    result -> {
+                                      if (result.failureOrigin() != null) {
+                                        ForgotPasswordDetailsOtpResult.Status status =
+                                            result.status()
+                                                    == ForgotPasswordDetailsStatus.SYSTEM_UNAVAILABLE
+                                                ? ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE
+                                                : ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR;
+                                        return technicalFailure(
+                                            status, result.failureOrigin(), "details-lookup");
+                                      }
+                                      if (result.status()
+                                          == ForgotPasswordDetailsStatus.DETAILS_VERIFIED) {
+                                        return issue(
+                                            command,
+                                            reference,
+                                            handle,
+                                            budget,
+                                            context.withLookupFields(
+                                                result.trustCode(),
+                                                result.schemeName(),
+                                                result.schemeNameChi()));
+                                      }
+                                      if (result.status()
+                                          == ForgotPasswordDetailsStatus.BUSINESS_REJECTED) {
+                                        return Mono.just(
+                                            new ForgotPasswordDetailsOtpProtectedExecutionResult(
+                                                new ForgotPasswordDetailsOtpResult(
+                                                    ForgotPasswordDetailsOtpResult.Status
+                                                        .BUSINESS_REJECTED,
+                                                    null,
+                                                    0,
+                                                    0,
+                                                    List.of("PAGE")),
+                                                null));
+                                      }
+                                      if (result.status()
+                                          == ForgotPasswordDetailsStatus.SYSTEM_UNAVAILABLE) {
+                                        return Mono.just(
+                                            new ForgotPasswordDetailsOtpProtectedExecutionResult(
+                                                new ForgotPasswordDetailsOtpResult(
+                                                    ForgotPasswordDetailsOtpResult.Status
+                                                        .SYSTEM_UNAVAILABLE,
+                                                    null,
+                                                    0,
+                                                    0,
+                                                    List.of()),
+                                                null));
+                                      }
+                                      return failure();
+                                    });
                           });
                 });
     return Mono.usingWhen(
         Mono.just(handle),
         ignored -> work,
-        ignored -> locks.release(handle).onErrorReturn(false).then(),
-        (ignored, error) -> locks.release(handle).onErrorReturn(false).then(),
-        ignored -> locks.release(handle).onErrorReturn(false).then());
+        ignored -> release(handle, command),
+        (ignored, error) -> release(handle, command),
+        ignored -> release(handle, command));
   }
 
   private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> issue(
@@ -200,41 +228,66 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
     OtpChannel otpChannel = CHANNEL_EMAIL.equals(channel) ? OtpChannel.EMAIL : OtpChannel.SMS;
     MessageDeliveryChannel deliveryChannel =
         CHANNEL_EMAIL.equals(channel) ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
-    NoticeTemplateDefinition definition =
-        registry.resolve(
-            MessageDeliveryType.FORGOT_PASSWORD_OTP, deliveryChannel, command.language());
-    return otp.createChallenge(
-            new CreateOtpChallengeCommand(
-                OtpScenario.FORGOT_PASSWORD,
-                command.sessionId().value(),
-                otpChannel,
-                hex(destination),
-                6,
-                true,
-                300,
-                5,
-                5,
-                clock.instant()))
+    return technicalAt(
+            "template-setup",
+            () ->
+                Mono.fromCallable(
+                    () ->
+                        Objects.requireNonNull(
+                            registry.resolve(
+                                MessageDeliveryType.FORGOT_PASSWORD_OTP,
+                                deliveryChannel,
+                                command.language()))))
         .flatMap(
-            challenge -> {
-              if (!budget.active()) return failure();
-              return delivery
-                  .deliver(
-                      message(
-                          command, destination, challenge, context, deliveryChannel, definition))
-                  .flatMap(
-                      result ->
-                          bindAndCommit(
-                              command,
-                              reference,
-                              handle,
-                              channel,
-                              destination,
-                              challenge,
-                              result,
-                              budget,
-                              context));
-            });
+            definition ->
+                technicalAt(
+                        "otp-challenge",
+                        () ->
+                            otp.createChallenge(
+                                new CreateOtpChallengeCommand(
+                                    OtpScenario.FORGOT_PASSWORD,
+                                    command.sessionId().value(),
+                                    otpChannel,
+                                    hex(destination),
+                                    6,
+                                    true,
+                                    300,
+                                    5,
+                                    5,
+                                    clock.instant())))
+                    .flatMap(
+                        challenge -> {
+                          if (!budget.active()) return failure();
+                          return technicalAt(
+                                  "message-setup",
+                                  () ->
+                                      Mono.fromCallable(
+                                          () ->
+                                              message(
+                                                  command,
+                                                  destination,
+                                                  challenge,
+                                                  context,
+                                                  deliveryChannel,
+                                                  definition)))
+                              .flatMap(
+                                  message ->
+                                      technicalAt(
+                                              "message-delivery",
+                                              () -> delivery.deliver(message))
+                                          .flatMap(
+                                              result ->
+                                                  bindAndCommit(
+                                                      command,
+                                                      reference,
+                                                      handle,
+                                                      channel,
+                                                      destination,
+                                                      challenge,
+                                                      result,
+                                                      budget,
+                                                      context)));
+                        }));
   }
 
   private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> bindAndCommit(
@@ -268,14 +321,17 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
             context.trustCode(),
             context.schemeName(),
             context.schemeNameChi());
-    return binding
-        .apply(bind)
+    return technicalAt("session-binding", () -> binding.apply(bind))
         .flatMap(
             bound -> {
-              if (deliveryResult.status() != MessageDeliveryStatus.ACCEPTED || !bound.bound()) {
-                return Mono.error(
-                    new IllegalStateException(
-                        "DETAILS_AND_OTP delivery outcome is not safely completed"));
+              if (bound.status() == ForgotPasswordOtpBindingResult.Status.TECHNICAL_FAILURE) {
+                return technicalFailure("session-binding");
+              }
+              if (deliveryResult.status() != MessageDeliveryStatus.ACCEPTED) {
+                return technicalFailure("message-delivery");
+              }
+              if (!bound.bound()) {
+                return failure();
               }
               if (!budget.hasPersistenceBudget(policy.persistenceAllowance())) return failure();
               var state =
@@ -285,9 +341,13 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                       now,
                       challenge.expiresAt());
               Duration ttl = retention.ttl(now, challenge.expiresAt(), now.plus(idempotencyTtl));
-              return commitStates
-                  .saveIfAbsent(reference, state, ttl)
-                  .flatMap(saved -> commitStates.load(reference))
+              return technicalAt(
+                      "commit-state-persistence",
+                      () -> commitStates.saveIfAbsent(reference, state, ttl))
+                  .flatMap(
+                      saved ->
+                          technicalAt(
+                              "commit-state-persistence", () -> commitStates.load(reference)))
                   .flatMap(
                       found ->
                           found.isPresent() && found.get().equals(state)
@@ -300,9 +360,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                                           60,
                                           List.of()),
                                       new ProtectedReplayReference(reference)))
-                              : Mono.error(
-                                  new IllegalStateException(
-                                      "DETAILS_AND_OTP commit state conflict")));
+                              : Mono.error(new LocalTechnicalFailure("commit-state-persistence")));
             });
   }
 
@@ -370,13 +428,58 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
             ForgotPasswordDetailsOtpResult.system(), null));
   }
 
-  private static void logFailure(
-      ForgotPasswordDetailsOtpCommand command, String stage, Throwable cause) {
-    LOGGER.error(
-        "event=forgot-password.details-otp.failed requestId={} stage={} exceptionType={}",
-        command.requestId(),
-        stage,
-        cause.getClass().getSimpleName());
+  private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> technicalFailure(String stage) {
+    return technicalFailure(ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR,
+        FailureOrigin.LOCAL_SYSTEM, stage);
+  }
+
+  private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> technicalFailure(
+      ForgotPasswordDetailsOtpResult.Status status, FailureOrigin origin, String stage) {
+    return Mono.just(
+        new ForgotPasswordDetailsOtpProtectedExecutionResult(
+            new ForgotPasswordDetailsOtpResult(status, null, 0, 0, List.of()),
+            null,
+            origin,
+            stage));
+  }
+
+  private <T> Mono<T> technicalAt(String stage, Supplier<Mono<T>> action) {
+    return Mono.defer(action)
+        .switchIfEmpty(Mono.error(new IllegalStateException()))
+        .onErrorMap(ignored -> new LocalTechnicalFailure(stage));
+  }
+
+  private Mono<Void> release(
+      SessionLockHandle handle, ForgotPasswordDetailsOtpCommand command) {
+    try {
+      return locks.release(handle).onErrorReturn(false).then();
+    } catch (RuntimeException cause) {
+      LOGGER.error(
+          "event=forgot-password.details-otp.failed requestId={} stage=execute exceptionType={}",
+          command.requestId(),
+          cause.getClass().getSimpleName());
+      return Mono.error(new LockReleaseFailure());
+    }
+  }
+
+  private static final class LocalTechnicalFailure extends RuntimeException {
+    private final String stage;
+
+    private LocalTechnicalFailure(String stage) {
+      super(null, null, false, false);
+      this.stage = stage;
+    }
+
+    private String stage() {
+      return stage;
+    }
+  }
+
+  private static final class LockReleaseFailure extends RuntimeException {
+
+    private LockReleaseFailure() {
+      super(null, null, false, false);
+    }
   }
 
   private String hex(String value) {

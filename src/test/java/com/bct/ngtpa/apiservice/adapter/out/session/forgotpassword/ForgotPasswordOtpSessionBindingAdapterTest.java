@@ -212,11 +212,10 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
   }
 
   @Test
-  void sessionLoadErrorYieldsRejected() {
+  void sessionLoadErrorRemainsDistinctFromAnExpectedBindingRejection() {
     when(sessions.loadSnapshot(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(
-            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(r -> assertThat(r.status()).isNotEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -451,13 +450,40 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
   }
 
   @Test
-  void acceptedChallengeLookupErrorYieldsRejected() {
+  void acceptedChallengeLookupErrorRemainsDistinctFromAnExpectedBindingRejection() {
     givenSession(identityVerifiedSession());
     givenContext(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
     when(challenges.findById(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(
-            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(r -> assertThat(r.status()).isNotEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .verifyComplete();
+  }
+
+  @Test
+  void protectorFailureRemainsDistinctFromAnExpectedBindingRejection() {
+    givenSession(identityVerifiedSession());
+    when(protector.unprotect(any())).thenThrow(new IllegalStateException("protected context failed"));
+    StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
+        .assertNext(r -> assertThat(r.status()).isNotEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .verifyComplete();
+  }
+
+  @Test
+  void ordinaryRevisionContentionRemainsAnExpectedRejection() {
+    givenSession(identityVerifiedSession());
+    givenContext(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
+    when(challenges.findById(any())).thenReturn(Mono.just(Optional.of(validChallenge())));
+    when(protector.protect(any()))
+        .thenReturn(new ForgotPasswordAuthFlowEncryptedContext("ct-2", "kv-2", "AES_GCM_V1"));
+    when(sessions.updateRevisioned(any()))
+        .thenReturn(
+            Mono.just(
+                new AuthFlowSessionMutationResult(
+                    AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED,
+                    snapshotOf(identityVerifiedSession()))));
+
+    StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
+        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 

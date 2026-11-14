@@ -17,6 +17,10 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.ApimForg
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.ForgotPasswordResetAuthorization;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
+import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryChannel;
+import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryResult;
+import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryStatus;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -38,6 +42,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowConte
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordDetailsLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBindingPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
@@ -185,6 +190,102 @@ class ForgotPasswordDetailsOtpTechnicalFailureRoutingTest {
   }
 
   @Test
+  void sessionReadExceptionIsLocalTechnicalFailureWithFixedStage() {
+    var dependencies = new Dependencies();
+    when(dependencies.sessions.loadSnapshot(SESSION_ID))
+        .thenReturn(Mono.error(new IllegalStateException("SESSION-SECRET")));
+
+    var execution =
+        dependencies
+            .operation(
+                new ForgotPasswordUnderLockDetailsVerifier(mock(ForgotPasswordDetailsLookupPort.class)))
+            .execute(command())
+            .block();
+
+    assertThat(execution.result().status()).isEqualTo(ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR);
+    assertThat(execution.failureOrigin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(execution.failureStage()).isEqualTo("session-read");
+    verify(dependencies.locks).release(LOCK);
+    verify(dependencies.otp, never()).createChallenge(any());
+    verify(dependencies.delivery, never()).deliver(any());
+  }
+
+  @Test
+  void genericDownstreamTechnicalObserverClassificationNeverOwnsTerminalError() {
+    var lookup = mock(ForgotPasswordDetailsLookupPort.class);
+    when(lookup.verify(any())).thenReturn(Mono.error(new IllegalStateException("unknown")));
+    when(lookup.classifyFailure(any())).thenReturn(FailureOrigin.DOWNSTREAM_TECHNICAL);
+    var dependencies = new Dependencies();
+
+    var execution =
+        dependencies
+            .operation(new ForgotPasswordUnderLockDetailsVerifier(lookup))
+            .execute(command())
+            .block();
+
+    assertThat(execution.failureOrigin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(execution.failureStage()).isEqualTo("details-lookup");
+  }
+
+  @Test
+  void failedAndUncertainDeliveryAreLocalTechnicalFailuresWithoutResubmission() {
+    assertDeliveryFailure(MessageDeliveryStatus.FAILED);
+    assertDeliveryFailure(MessageDeliveryStatus.UNKNOWN_OUTCOME);
+  }
+
+  private static void assertDeliveryFailure(MessageDeliveryStatus deliveryStatus) {
+    var dependencies = new Dependencies();
+    var challenge =
+        new com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeResult(
+            "otp-id", "123456", NOW.plusSeconds(300), 300);
+    when(dependencies.otp.createChallenge(any())).thenReturn(Mono.just(challenge));
+    when(dependencies.registry.resolve(any(), any(), any()))
+        .thenReturn(
+            new com.bct.ngtpa.apiservice.application.dto.message.NoticeTemplateDefinition(
+                com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType
+                    .FORGOT_PASSWORD_OTP,
+                MessageDeliveryChannel.EMAIL,
+                "en",
+                "Subject",
+                "Body {code}",
+                java.util.Set.of("code"),
+                "minutes"));
+    when(dependencies.delivery.deliver(any()))
+        .thenReturn(
+            Mono.just(
+                new MessageDeliveryResult(deliveryStatus, MessageDeliveryChannel.EMAIL, null, null, null)));
+    when(dependencies.binding.apply(any()))
+        .thenReturn(
+            Mono.just(
+                new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp
+                    .ForgotPasswordOtpBindingResult(
+                    com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp
+                        .ForgotPasswordOtpBindingResult.Status.BOUND)));
+    ForgotPasswordDetailsLookupPort lookup = mock(ForgotPasswordDetailsLookupPort.class);
+    when(lookup.verify(any()))
+        .thenReturn(
+            Mono.just(
+                new ForgotPasswordDetailsLookupResult(
+                    com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details
+                        .ForgotPasswordDetailsLookupStatus.MATCHED,
+                    "trust-code",
+                    "scheme-name",
+                    "scheme-name-chi")));
+
+    var execution =
+        dependencies.operation(new ForgotPasswordUnderLockDetailsVerifier(lookup))
+            .execute(command())
+            .block();
+
+    assertThat(execution.result().status()).isEqualTo(ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR);
+    assertThat(execution.failureOrigin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(execution.failureStage()).isEqualTo("message-delivery");
+    verify(dependencies.otp).createChallenge(any());
+    verify(dependencies.delivery).deliver(any());
+    verify(dependencies.otp).createChallenge(any());
+  }
+
+  @Test
   void otherApimHttpFailuresKeepTheExistingSystemErrorClassification() {
     assertTechnicalFailure(
         new ApimException(
@@ -216,17 +317,26 @@ class ForgotPasswordDetailsOtpTechnicalFailureRoutingTest {
             0,
             List.of());
     var transientResponse = new HydratedIdempotentResponse(503, "application/json", "{}", Map.of());
-    when(responses.toTransientResponse(unavailable)).thenReturn(transientResponse);
+    when(responses.toTransientResponse(any())).thenReturn(transientResponse);
     when(responses.fromTransientResponse(transientResponse)).thenReturn(unavailable);
+    var failureEvents = mock(FailureEventPort.class);
     var service =
         new IdempotentForgotPasswordDetailsOtpService(
-            idempotencyExecutor, operation, responses, policy, Duration.ofMinutes(5));
+            idempotencyExecutor,
+            operation,
+            responses,
+            policy,
+            Duration.ofMinutes(5),
+            failureEvents);
 
     var first = service.process(command()).block();
     var replay = service.process(command()).block();
 
     assertThat(first.status()).isEqualTo(ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE);
     assertThat(replay.status()).isEqualTo(first.status());
+    assertThat(first.incidentPublished()).isTrue();
+    assertThat(replay.incidentPublished()).isFalse();
+    verify(failureEvents).publish(any());
     assertThat(idempotencyExecutor.protectedExecutions).isEqualTo(1);
     verify(apimExecutor).postEnvelope(any());
     verify(dependencies.otp, never()).createChallenge(any());

@@ -4,7 +4,9 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureClassifier;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.ForgotPasswordTrpSearchMemberDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.ForgotPasswordTrpSearchMemberRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.mapper.ForgotPasswordTrpSearchMemberMapper;
@@ -55,7 +57,9 @@ public final class ApimForgotPasswordDetailsLookupAdapter
             ForgotPasswordTrpSearchMemberDataItem.class,
             ApimDatabaseScope.NON_ACCOUNT,
             new ApimCredentialResolutionContext(command.actorUserRole(), null),
-            ApimRetryEligibility.SAFE_BUSINESS_CALL);
+            ApimRetryEligibility.SAFE_BUSINESS_CALL,
+            ApimResubmissionPolicy.ALLOW_RECOVERY,
+            ApimIncidentOwnership.TERMINAL_CALLER);
     return executor
         .postEnvelope(request)
         .map(
@@ -65,29 +69,56 @@ public final class ApimForgotPasswordDetailsLookupAdapter
                     ForgotPasswordDetailsDownstreamException.Reason.UNEXPECTED_ERROR);
               }
               var response = envelope.getResponse();
-              List<ForgotPasswordTrpSearchMemberDataItem> data =
-                  response.getData() == null ? List.of() : List.copyOf(response.getData());
+              List<ForgotPasswordTrpSearchMemberDataItem> data = response.getData();
               return mapper.toResult(response.getErrMessage(), data, command.customerId());
             });
   }
 
   @Override
   public FailureOrigin classifyFailure(Throwable failure) {
-    if (failure instanceof ForgotPasswordDetailsDownstreamException) {
-      return FailureOrigin.DOWNSTREAM_CONTRACT;
+    ForgotPasswordDetailsDownstreamException downstream =
+        findCause(failure, ForgotPasswordDetailsDownstreamException.class);
+    if (downstream != null) {
+      return switch (downstream.reason()) {
+        case MALFORMED_DATA, AMBIGUOUS_DATA -> FailureOrigin.DOWNSTREAM_INVALID_RESPONSE;
+        case EMPTY_DATA, CONTACT_MISMATCH -> FailureOrigin.DOWNSTREAM_BUSINESS;
+        case UNEXPECTED_ERROR -> FailureOrigin.DOWNSTREAM_CONTRACT;
+      };
     }
-    if (isUnavailableFailure(failure)) {
+
+    ApimException apim = findCause(failure, ApimException.class);
+    if (apim != null && ErrorCodes.APIM_RESPONSE_INVALID.equals(apim.getErrorCode())) {
+      return FailureOrigin.DOWNSTREAM_INVALID_RESPONSE;
+    }
+    if (isUnavailable(failure)) {
       return FailureOrigin.DOWNSTREAM_TRANSPORT;
     }
     return switch (ApimFailureClassifier.classify(failure)) {
       case DOWNSTREAM_CONTRACT -> FailureOrigin.DOWNSTREAM_CONTRACT;
       case DOWNSTREAM_INVALID_RESPONSE -> FailureOrigin.DOWNSTREAM_INVALID_RESPONSE;
-      case DOWNSTREAM_TRANSPORT -> FailureOrigin.DOWNSTREAM_TECHNICAL;
+      case DOWNSTREAM_TRANSPORT -> FailureOrigin.DOWNSTREAM_TRANSPORT;
       case LOCAL_SYSTEM -> FailureOrigin.LOCAL_SYSTEM;
     };
   }
 
-  private static boolean isUnavailableFailure(Throwable failure) {
+  @Override
+  public boolean isUnavailableFailure(Throwable failure) {
+    return isUnavailable(failure);
+  }
+
+  private static <T extends Throwable> T findCause(Throwable failure, Class<T> type) {
+    Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+    Throwable current = failure;
+    while (current != null && visited.add(current)) {
+      if (type.isInstance(current)) {
+        return type.cast(current);
+      }
+      current = current.getCause();
+    }
+    return null;
+  }
+
+  private static boolean isUnavailable(Throwable failure) {
     Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
     Throwable current = failure;
     while (current != null && visited.add(current)) {

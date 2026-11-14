@@ -55,6 +55,8 @@ public class ExceptionMappingRegistryConfig {
             InvestmentChoiceExceptionMappings.submissionUnavailable(),
             InvestmentChoiceExceptionMappings.cancelUnavailable(),
             InvestmentChoiceExceptionMappings.cancelNotCancellable(),
+            ForgotPasswordDetailsOtpExceptionMappings.incidentAlreadyPublished(),
+            ForgotPasswordDetailsOtpExceptionMappings.expectedFailure(),
             WebExchangeBindExceptionMappings.validationFailed());
     return new ExceptionMappingRegistry(mappings, CatchAllExceptionMapping.INSTANCE);
   }

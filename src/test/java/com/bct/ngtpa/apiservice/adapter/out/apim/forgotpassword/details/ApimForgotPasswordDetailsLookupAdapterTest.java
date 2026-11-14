@@ -8,14 +8,25 @@ import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.ForgotPasswordTrpSearchMemberDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.ForgotPasswordTrpSearchMemberRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsDownstreamException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupStatus;
+import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -58,6 +69,77 @@ class ApimForgotPasswordDetailsLookupAdapterTest {
   @Test
   void verifyRejectsNullCommand() {
     assertThatThrownBy(() -> newAdapter().verify(null)).isInstanceOf(NullPointerException.class);
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  @Test
+  void detailsLookupUsesTerminalCallerWithoutChangingItsRoutingContract() {
+    givenExecutorReturns(envelopeWith(null, List.of()));
+    StepVerifier.create(newAdapter().verify(command()))
+        .assertNext(result -> assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.NOT_FOUND))
+        .verifyComplete();
+
+    ArgumentCaptor<ApimExchangeRequest> requestCaptor =
+        ArgumentCaptor.forClass(ApimExchangeRequest.class);
+    org.mockito.Mockito.verify(executor).postEnvelope(requestCaptor.capture());
+    ApimExchangeRequest<?, ?> request = requestCaptor.getValue();
+    assertThat(request.path()).isEqualTo(ApimForgotPasswordDetailsLookupAdapter.API_NAME);
+    assertThat(request.request())
+        .isEqualTo(
+            new ForgotPasswordTrpSearchMemberRequest(
+                "STAFFNO", "12345", "01/01/1990", "test@example.com", "91234567"));
+    assertThat(request.requestType()).isEqualTo(ForgotPasswordTrpSearchMemberRequest.class);
+    assertThat(request.responseDataType()).isEqualTo(ForgotPasswordTrpSearchMemberDataItem.class);
+    assertThat(request.databaseScope()).isEqualTo(ApimDatabaseScope.NON_ACCOUNT);
+    assertThat(request.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
+    assertThat(request.credentialContext().accountEnv()).isNull();
+    assertThat(request.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
+    assertThat(request.resubmissionPolicy()).isEqualTo(ApimResubmissionPolicy.ALLOW_RECOVERY);
+    assertThat(request.incidentOwnership()).isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
+  }
+
+  @Test
+  void establishedTechnicalFailuresKeepTheirSpecificTerminalOrigins() {
+    var adapter = newAdapter();
+
+    assertThat(
+            adapter.classifyFailure(
+                new ForgotPasswordDetailsDownstreamException(
+                    ForgotPasswordDetailsDownstreamException.Reason.UNEXPECTED_ERROR)))
+        .isEqualTo(FailureOrigin.DOWNSTREAM_CONTRACT);
+    assertThat(
+            adapter.classifyFailure(
+                new ForgotPasswordDetailsDownstreamException(
+                    ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA)))
+        .isEqualTo(FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
+    assertThat(
+            adapter.classifyFailure(
+                new ApimException(
+                    HttpStatus.BAD_GATEWAY,
+                    ErrorCodes.APIM_RESPONSE_INVALID,
+                    "response rejected")))
+        .isEqualTo(FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
+    assertThat(
+            adapter.classifyFailure(
+                new ApimException(
+                    HttpStatus.BAD_GATEWAY,
+                    ErrorCodes.APIM_UPSTREAM_FAILURE,
+                    "upstream rejected")))
+        .isEqualTo(FailureOrigin.DOWNSTREAM_TRANSPORT);
+    assertThat(
+            adapter.isUnavailableFailure(
+                new ApimException(
+                    HttpStatus.BAD_GATEWAY,
+                    ErrorCodes.APIM_UPSTREAM_FAILURE,
+                    "upstream rejected")))
+        .isFalse();
+    assertThat(
+            adapter.isUnavailableFailure(
+                new ApimException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    ErrorCodes.APIM_SERVICE_UNAVAILABLE,
+                    "unavailable")))
+        .isTrue();
   }
 
   // ----- null envelope / null response guards -------------------------------------
@@ -126,6 +208,24 @@ class ApimForgotPasswordDetailsLookupAdapterTest {
             result ->
                 assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.NOT_FOUND))
         .verifyComplete();
+  }
+
+  @Test
+  void nullDataItemIsClassifiedAsDownstreamInvalidResponse() {
+    var adapter = newAdapter();
+    givenExecutorReturns(envelopeWith(null, java.util.Collections.singletonList(null)));
+
+    StepVerifier.create(adapter.verify(command()))
+        .expectErrorSatisfies(
+            failure -> {
+              assertThat(failure)
+                  .isInstanceOf(ForgotPasswordDetailsDownstreamException.class);
+              assertThat(((ForgotPasswordDetailsDownstreamException) failure).reason())
+                  .isEqualTo(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
+              assertThat(adapter.classifyFailure(failure))
+                  .isEqualTo(FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
+            })
+        .verify();
   }
 
   // ----- happy path: matched member (delegates to mapper's own MATCHED path) -------

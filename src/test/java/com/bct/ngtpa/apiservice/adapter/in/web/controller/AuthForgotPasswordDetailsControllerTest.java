@@ -22,6 +22,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.web.bind.annotation.PostMapping;
 import reactor.core.publisher.Mono;
 
@@ -41,7 +43,8 @@ class AuthForgotPasswordDetailsControllerTest {
             String.class,
             String.class,
             String.class,
-            org.springframework.http.server.reactive.ServerHttpResponse.class);
+            org.springframework.http.server.reactive.ServerHttpResponse.class,
+            org.springframework.web.server.ServerWebExchange.class);
 
     PostMapping mapping = method.getAnnotation(PostMapping.class);
     assertThat(mapping).isNotNull();
@@ -65,7 +68,8 @@ class AuthForgotPasswordDetailsControllerTest {
                     "req-1",
                     "en",
                     "idem-1",
-                    new MockServerHttpResponse())
+                    new MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json).contains("err.system.unavailable");
@@ -77,6 +81,7 @@ class AuthForgotPasswordDetailsControllerTest {
     var useCase = new RecordingUseCase();
     var controller = controller(useCase);
     var response = new MockServerHttpResponse();
+    var exchange = exchange();
 
     JsonNode json =
         objectMapper.valueToTree(
@@ -90,7 +95,8 @@ class AuthForgotPasswordDetailsControllerTest {
                     "req-1",
                     "en",
                     "idem-1",
-                    response)
+                    response,
+                    exchange)
                 .block());
 
     assertThat(useCase.called).isTrue();
@@ -100,6 +106,10 @@ class AuthForgotPasswordDetailsControllerTest {
     assertThat(useCase.command.email()).isEqualTo("member@example.com");
     assertThat(useCase.command.idempotencyKey()).isEqualTo("idem-1");
     assertThat(response.getHeaders().getFirst("X-Request-Id")).isEqualTo("req-1");
+    assertThat(
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
+                .isOwned(exchange))
+        .isFalse();
     assertThat(json.at("/body/result/nextStep").asText()).isEqualTo("VERIFY_OTP");
     assertThat(json.toString())
         .doesNotContain(
@@ -124,6 +134,7 @@ class AuthForgotPasswordDetailsControllerTest {
                         0,
                         List.of()));
     var response = new MockServerHttpResponse();
+    var exchange = exchange();
 
     var publicResponse =
         controller(useCase)
@@ -136,7 +147,8 @@ class AuthForgotPasswordDetailsControllerTest {
                 "req-1",
                 "en",
                 "idem-1",
-                response)
+                response,
+                exchange)
             .block();
 
     assertThat(publicResponse.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
@@ -152,6 +164,49 @@ class AuthForgotPasswordDetailsControllerTest {
             });
     assertThat(response.getCookies()).isEmpty();
     assertThat(response.getHeaders().getFirst("X-Request-Id")).isEqualTo("req-1");
+    assertThat(
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
+                .isOwned(exchange))
+        .isFalse();
+  }
+
+  @Test
+  void publishedIncidentMarksOnlyTheCurrentDetailsResponse() throws Exception {
+    var useCase =
+        (ProcessForgotPasswordDetailsOtpUseCase)
+            command ->
+                Mono.just(
+                    new ForgotPasswordDetailsOtpResult(
+                        ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE,
+                        null,
+                        0,
+                        0,
+                        List.of(),
+                        true));
+    var response = new MockServerHttpResponse();
+    var exchange = exchange();
+    var publicResponse =
+        controller(useCase)
+            .details(
+                new ForgotPasswordDetailsRequest("31/01/1980", "member@example.com", null),
+                "afs_abc",
+                "csrf_abc",
+                "https://portal.example",
+                "https://portal.example/page",
+                "req-1",
+                "en",
+                "idem-1",
+                response,
+                exchange)
+            .block();
+
+    assertThat(publicResponse.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    assertThat(
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
+                .isOwned(exchange))
+        .isTrue();
+    assertThat(objectMapper.writeValueAsString(publicResponse.getBody()))
+        .doesNotContain("incidentPublished");
   }
 
   @Test
@@ -167,6 +222,7 @@ class AuthForgotPasswordDetailsControllerTest {
                         0,
                         List.of("PAGE")));
     var response = new MockServerHttpResponse();
+    var exchange = exchange();
 
     var publicResponse =
         controller(useCase)
@@ -179,7 +235,8 @@ class AuthForgotPasswordDetailsControllerTest {
                 "req-1",
                 "en",
                 "idem-1",
-                response)
+                response,
+                exchange)
             .block();
 
     assertThat(publicResponse.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
@@ -194,12 +251,17 @@ class AuthForgotPasswordDetailsControllerTest {
               assertThat(error.message()).isNull();
             });
     assertThat(response.getCookies()).isEmpty();
+    assertThat(
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
+                .isOwned(exchange))
+        .isFalse();
   }
 
   @Test
   void missingXsrfTokenShortCircuitsDetailsUseCase() {
     var useCase = new RecordingUseCase();
     var response = new MockServerHttpResponse();
+    var exchange = exchange();
 
     var publicResponse =
         controller(useCase)
@@ -212,12 +274,22 @@ class AuthForgotPasswordDetailsControllerTest {
                 "req-1",
                 "en",
                 "idem-1",
-                response)
+                response,
+                exchange)
             .block();
 
     assertThat(useCase.called).isFalse();
     assertThat(publicResponse.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     assertThat(response.getCookies()).isEmpty();
+    assertThat(
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
+                .isOwned(exchange))
+        .isFalse();
+  }
+
+  private static MockServerWebExchange exchange() {
+    return MockServerWebExchange.from(
+        MockServerHttpRequest.post("/api/v1/auth/forgot-password/details").build());
   }
 
   @Test

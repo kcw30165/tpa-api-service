@@ -48,22 +48,8 @@ class ForgotPasswordUnderLockDetailsVerifierTest {
     operationLogger.detachAppender(logAppender);
   }
 
-  private void assertLoggedFailure(String stage) {
-    assertThat(logAppender.list).hasSize(1);
-    ILoggingEvent event = logAppender.list.get(0);
-    assertThat(event.getLevel()).isEqualTo(Level.ERROR);
-    assertThat(event.getThrowableProxy()).isNull();
-    assertThat(event.getFormattedMessage())
-        .contains(
-            "event=forgot-password.details-otp.failed",
-            "requestId=",
-            "stage=" + stage,
-            "exceptionType=IllegalStateException")
-        .doesNotContain("boom");
-  }
-
   @Test
-  void lookupErrorYieldsAFailureVerificationAndLogsTheFailure() {
+  void lookupErrorYieldsAFailureVerificationWithoutClaimingTerminalOwnership() {
     Instant now = Instant.parse("2026-08-04T10:15:30Z");
     AuthFlowSessionId sessionId = new AuthFlowSessionId("afs_test_123");
     SessionLockHandle lock = new SessionLockHandle(true, "lock-key", "owner-token");
@@ -115,6 +101,7 @@ class ForgotPasswordUnderLockDetailsVerifierTest {
                     lock, session, context, "04/07/1978", "HULLCS.QGLYBCY@UC.KJI", null, "req-123"))
         .expectNextCount(1)
         .verifyComplete();
-    assertLoggedFailure("lookup");
+    assertThat(logAppender.list)
+        .noneMatch(event -> event.getLevel().isGreaterOrEqual(Level.ERROR));
   }
 }

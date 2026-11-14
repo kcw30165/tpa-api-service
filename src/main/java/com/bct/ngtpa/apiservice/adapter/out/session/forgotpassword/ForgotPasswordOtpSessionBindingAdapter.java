@@ -35,10 +35,9 @@ public final class ForgotPasswordOtpSessionBindingAdapter
         || !c.mutationLock().acquired()
         || c.deliveryStatus() == null
         || c.now() == null) return rejected();
-    return sessions
-        .loadSnapshot(c.sessionId())
+    return Mono.defer(() -> sessions.loadSnapshot(c.sessionId()))
         .flatMap(o -> o.isEmpty() ? rejected() : applyReloaded(o.get().session(), c))
-        .onErrorResume(e -> rejected());
+        .onErrorResume(e -> technicalFailure());
   }
 
   private Mono<ForgotPasswordOtpBindingResult> applyReloaded(
@@ -61,10 +60,8 @@ public final class ForgotPasswordOtpSessionBindingAdapter
                   null,
                   null,
                   null,
-                  c.now())
-              .thenReturn(
-                  new ForgotPasswordOtpBindingResult(
-                      ForgotPasswordOtpBindingResult.Status.UNKNOWN_OUTCOME));
+                  c.now(),
+                  ForgotPasswordOtpBindingResult.Status.UNKNOWN_OUTCOME);
       case ACCEPTED -> accepted(s, context, c);
     };
   }
@@ -112,10 +109,8 @@ public final class ForgotPasswordOtpSessionBindingAdapter
                       c.otpChallengeId(),
                       c.challengeExpiresAt(),
                       c.resendAvailableAt(),
-                      c.now())
-                  .thenReturn(
-                      new ForgotPasswordOtpBindingResult(
-                          ForgotPasswordOtpBindingResult.Status.BOUND));
+                      c.now(),
+                      ForgotPasswordOtpBindingResult.Status.BOUND);
             });
   }
 
@@ -129,41 +124,69 @@ public final class ForgotPasswordOtpSessionBindingAdapter
                 CONTEXT_ALGORITHM, ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM)));
   }
 
-  private Mono<Void> update(
+  private Mono<ForgotPasswordOtpBindingResult> update(
       AuthFlowSession s,
       ForgotPasswordAuthFlowContext context,
       String challenge,
       Instant expires,
       Instant resend,
-      Instant now) {
-    var e = protector.protect(context);
-    var a = new LinkedHashMap<>(s.data().attributes());
-    a.put(CONTEXT_CIPHERTEXT, e.ciphertext());
-    a.put(CONTEXT_KEY_VERSION, e.keyVersion());
-    a.put(CONTEXT_ALGORITHM, e.algorithm());
-    if (expires == null) {
-      a.remove(EXPIRES_AT);
-      a.remove(RESEND_AT);
-    } else {
-      a.put(EXPIRES_AT, expires.toString());
-      a.put(RESEND_AT, resend.toString());
-    }
-    var data = new AuthFlowSessionData(context.contactChannel(), context.maskedDestination(), a);
-    return new com.bct.ngtpa.apiservice.application.usecase.session.authflow
-            .RevisionAwareAuthFlowSessionWriter(sessions)
-        .updateExpected(
-            s,
-            new AuthFlowSession(
-                s.authFlowSessionId(),
-                s.scenario(),
-                AuthFlowStatus.OTP_SENT,
-                s.csrfTokenHash(),
-                challenge,
-                data,
-                s.createdAt(),
-                now,
-                s.expiresAt()))
-        .then();
+      Instant now,
+      ForgotPasswordOtpBindingResult.Status successStatus) {
+    return Mono.fromCallable(() -> protector.protect(context))
+        .flatMap(
+            encrypted -> {
+              var a = new LinkedHashMap<>(s.data().attributes());
+              a.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());
+              a.put(CONTEXT_KEY_VERSION, encrypted.keyVersion());
+              a.put(CONTEXT_ALGORITHM, encrypted.algorithm());
+              if (expires == null) {
+                a.remove(EXPIRES_AT);
+                a.remove(RESEND_AT);
+              } else {
+                a.put(EXPIRES_AT, expires.toString());
+                a.put(RESEND_AT, resend.toString());
+              }
+              var data =
+                  new AuthFlowSessionData(context.contactChannel(), context.maskedDestination(), a);
+              var updated =
+                  new AuthFlowSession(
+                      s.authFlowSessionId(),
+                      s.scenario(),
+                      AuthFlowStatus.OTP_SENT,
+                      s.csrfTokenHash(),
+                      challenge,
+                      data,
+                      s.createdAt(),
+                      now,
+                      s.expiresAt());
+              return Mono.defer(() -> sessions.loadSnapshot(s.authFlowSessionId()))
+                  .flatMap(
+                      latest -> {
+                        if (latest.isEmpty() || !latest.get().session().equals(s)) {
+                          return rejected();
+                        }
+                        return Mono.defer(
+                                () ->
+                                    sessions.updateRevisioned(
+                                        new RevisionedAuthFlowSessionMutationCommand(
+                                            latest.get(), updated)))
+                            .flatMap(
+                                mutation ->
+                                    switch (mutation.outcome()) {
+                                      case APPLIED -> Mono.just(new ForgotPasswordOtpBindingResult(successStatus));
+                                      case SESSION_NOT_FOUND,
+                                          SESSION_REVISION_CHANGED,
+                                          EXPECTED_STATE_CHANGED,
+                                          INVALID_TRANSITION ->
+                                          rejected();
+                                      case SESSION_REVISION_MISSING,
+                                          CORRUPT_STATE,
+                                          SCHEMA_NOT_ESTABLISHED,
+                                          SYSTEM_FAILURE ->
+                                          technicalFailure();
+                                    });
+                      });
+            });
   }
 
   private static String firstText(String preferred, String fallback) {
@@ -173,6 +196,12 @@ public final class ForgotPasswordOtpSessionBindingAdapter
   private Mono<ForgotPasswordOtpBindingResult> rejected() {
     return Mono.just(
         new ForgotPasswordOtpBindingResult(ForgotPasswordOtpBindingResult.Status.REJECTED));
+  }
+
+  private Mono<ForgotPasswordOtpBindingResult> technicalFailure() {
+    return Mono.just(
+        new ForgotPasswordOtpBindingResult(
+            ForgotPasswordOtpBindingResult.Status.TECHNICAL_FAILURE));
   }
 
   private boolean blank(String v) {

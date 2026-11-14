@@ -6,13 +6,18 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFailureClassi
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOutcome;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.port.in.ProcessForgotPasswordDetailsOtpUseCase;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.detailsotp.ForgotPasswordDetailsOtpExecutionBridge;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import reactor.core.publisher.Mono;
 
 /** Thin DETAILS_AND_OTP integration over the repository-wide shared idempotency executor. */
@@ -22,6 +27,7 @@ public final class IdempotentForgotPasswordDetailsOtpService
   private final ForgotPasswordDetailsOtpProtectedOperation operation;
   private final ForgotPasswordDetailsOtpExecutionBridge responses;
   private final ForgotPasswordIdempotencyIntegrationPolicy policy;
+  private final FailureEventPort failureEventPort;
   private final ForgotPasswordDetailsValidator validator = new ForgotPasswordDetailsValidator();
   private final Duration ttl;
 
@@ -30,11 +36,13 @@ public final class IdempotentForgotPasswordDetailsOtpService
       ForgotPasswordDetailsOtpProtectedOperation operation,
       ForgotPasswordDetailsOtpExecutionBridge responses,
       ForgotPasswordIdempotencyIntegrationPolicy policy,
-      Duration ttl) {
+      Duration ttl,
+      FailureEventPort failureEventPort) {
     this.executor = Objects.requireNonNull(executor);
     this.operation = Objects.requireNonNull(operation);
     this.responses = Objects.requireNonNull(responses);
     this.policy = Objects.requireNonNull(policy);
+    this.failureEventPort = Objects.requireNonNull(failureEventPort);
     this.ttl = Objects.requireNonNull(ttl);
     if (ttl.isZero() || ttl.isNegative()) {
       throw new IllegalArgumentException("DETAILS_AND_OTP idempotency TTL must be positive");
@@ -54,6 +62,7 @@ public final class IdempotentForgotPasswordDetailsOtpService
               0,
               validation.targets()));
     }
+    var incidentPublished = new AtomicBoolean();
     var execution =
         new IdempotentExecutionCommand(
             policy.operationId(
@@ -66,26 +75,43 @@ public final class IdempotentForgotPasswordDetailsOtpService
                     Objects.toString(command.email(), ""),
                     Objects.toString(command.mobile(), ""))),
             ttl,
-            () -> executeAcquired(command),
+            () -> executeAcquired(command, incidentPublished),
             IdempotencyFailureClassifiers.possibleSideEffect(),
             response -> responses.capture(response, response.protectedReplayReference()),
             responses::hydrate);
     return executor
         .execute(execution)
-        .map(result -> route(result.lifecycleOutcome(), result.terminalResponse()));
+        .map(
+            result -> {
+              ForgotPasswordDetailsOtpResult routed =
+                  route(result.lifecycleOutcome(), result.terminalResponse());
+              return result.lifecycleOutcome() == IdempotencyReservationOutcome.ACQUIRED
+                      && incidentPublished.get()
+                  ? routed.withIncidentPublished()
+                  : routed;
+            });
   }
 
   private Mono<HydratedIdempotentResponse> executeAcquired(
-      ForgotPasswordDetailsOtpCommand command) {
+      ForgotPasswordDetailsOtpCommand command, AtomicBoolean incidentPublished) {
     return operation
         .execute(command)
         .flatMap(
             execution -> {
+              if (execution.failureOrigin() != null) {
+                failureEventPort.publish(failureEvent(command, execution));
+                incidentPublished.set(true);
+                if (execution.result().status()
+                    == ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE) {
+                  return Mono.just(
+                      responses.toTransientResponse(
+                          execution.result().withIncidentPublished()));
+                }
+                return Mono.error(new ForgotPasswordDetailsOtpIncidentPublishedException());
+              }
               if (execution.result().status()
                   == ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR) {
-                return Mono.error(
-                    new IllegalStateException(
-                        "Forgot Password DETAILS_AND_OTP protected operation failed"));
+                return Mono.error(new ForgotPasswordDetailsOtpExpectedFailureException());
               }
               HydratedIdempotentResponse response =
                   responses.toTransientResponse(execution.result());
@@ -94,6 +120,24 @@ public final class IdempotentForgotPasswordDetailsOtpService
                       ? response
                       : response.withProtectedReplayReference(execution.replayReference()));
             });
+  }
+
+  private static FailureEvent failureEvent(
+      ForgotPasswordDetailsOtpCommand command,
+      ForgotPasswordDetailsOtpProtectedExecutionResult execution) {
+    boolean unavailable =
+        execution.result().status() == ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE;
+    return new FailureEvent(
+        "forgot-password.details-otp.failed",
+        RequestIdLogSanitizer.sanitize(command.requestId()),
+        "FORGOT_PASSWORD",
+        "DETAILS_AND_OTP",
+        execution.failureOrigin(),
+        "DETAILS_OTP_TECHNICAL_FAILURE",
+        unavailable ? "err.system.unavailable" : "err.system.unexpected",
+        unavailable ? 503 : 500,
+        false,
+        Map.of("stage", execution.failureStage()));
   }
 
   private ForgotPasswordDetailsOtpResult route(

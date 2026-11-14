@@ -5,6 +5,7 @@ public record ForgotPasswordOtpBindingResult(Status status) {
     BOUND,
     CONFIRMED_FAILED,
     UNKNOWN_OUTCOME,
+    TECHNICAL_FAILURE,
     REJECTED
   }
 
