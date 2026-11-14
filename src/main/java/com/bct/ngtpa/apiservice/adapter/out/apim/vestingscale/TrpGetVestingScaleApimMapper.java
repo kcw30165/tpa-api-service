@@ -54,9 +54,9 @@ final class TrpGetVestingScaleApimMapper {
   private static VestingScaleMember mapMember(ObjectNode member) {
     return new VestingScaleMember(
         optional(member, "member-category", TrpGetVestingScaleApimMapper::requiredText),
-        optional(member, "date-joined-company", TrpGetVestingScaleApimMapper::date),
-        optional(member, "date-joined-scheme", TrpGetVestingScaleApimMapper::date),
-        optional(member, "employment-date", TrpGetVestingScaleApimMapper::date));
+        optional(member, "date-joined-company", node -> date(node, "member.date-joined-company")),
+        optional(member, "date-joined-scheme", node -> date(node, "member.date-joined-scheme")),
+        optional(member, "employment-date", node -> date(node, "member.employment-date")));
   }
 
   private static List<VestingScalePlan> mapPlans(JsonNode plansNode) {
@@ -64,17 +64,19 @@ final class TrpGetVestingScaleApimMapper {
     List<VestingScalePlan> plans = new ArrayList<>();
     for (JsonNode planNode : plansNode) {
       ObjectNode plan = requireObject(planNode);
-      String planNo = requiredNonBlankText(plan.get("plan-no"));
+      String planNo = requiredNonBlankText(plan.get("plan-no"), "plans[].plan-no");
       if (!planNumbers.add(planNo)) {
         throw malformed();
       }
       plans.add(
           new VestingScalePlan(
               planNo,
-              requiredNonBlankText(plan.get("plan-type-desc-eng")),
-              requiredNonBlankText(plan.get("plan-type-desc-chi")),
-              optional(plan, "plan-effective-date", TrpGetVestingScaleApimMapper::date),
-              optional(plan, "date-of-joining-plan", TrpGetVestingScaleApimMapper::date),
+              optionalText(plan.get("plan-type-desc-eng"), "plans[].plan-type-desc-eng"),
+              optionalText(plan.get("plan-type-desc-chi"), "plans[].plan-type-desc-chi"),
+              optional(
+                  plan, "plan-effective-date", node -> date(node, "plans[].plan-effective-date")),
+              optional(
+                  plan, "date-of-joining-plan", node -> date(node, "plans[].date-of-joining-plan")),
               optional(plan, "plan-service", TrpGetVestingScaleApimMapper::planService),
               optional(plan, "vest-period-base-eng", TrpGetVestingScaleApimMapper::requiredText),
               optional(plan, "vest-period-base-chi", TrpGetVestingScaleApimMapper::requiredText),
@@ -167,13 +169,41 @@ final class TrpGetVestingScaleApimMapper {
     return Presence.present(node.isNull() ? null : parser.apply(node));
   }
 
-  private static LocalDate date(JsonNode node) {
-    String value = requiredText(node);
-    try {
-      return LocalDate.parse(value, DATE_FORMAT);
-    } catch (DateTimeParseException exception) {
-      throw malformed();
+  private static LocalDate date(JsonNode node, String fieldPath) {
+    if (node == null || !node.isTextual()) {
+      throw malformed(
+          fieldPath, VestingScaleMalformedResponseException.MalformedReason.REQUIRED_TEXT_TYPE);
     }
+    try {
+      return LocalDate.parse(node.textValue(), DATE_FORMAT);
+    } catch (DateTimeParseException exception) {
+      throw malformed(
+          fieldPath, VestingScaleMalformedResponseException.MalformedReason.INVALID_DATE_FORMAT);
+    }
+  }
+
+  private static String requiredNonBlankText(JsonNode node, String fieldPath) {
+    if (node == null || !node.isTextual()) {
+      throw malformed(
+          fieldPath, VestingScaleMalformedResponseException.MalformedReason.REQUIRED_TEXT_TYPE);
+    }
+    String value = node.textValue();
+    if (value.isBlank()) {
+      throw malformed(
+          fieldPath, VestingScaleMalformedResponseException.MalformedReason.REQUIRED_TEXT_BLANK);
+    }
+    return value;
+  }
+
+  private static String optionalText(JsonNode node, String fieldPath) {
+    if (node == null || node.isNull()) {
+      return null;
+    }
+    if (!node.isTextual()) {
+      throw malformed(
+          fieldPath, VestingScaleMalformedResponseException.MalformedReason.REQUIRED_TEXT_TYPE);
+    }
+    return node.textValue();
   }
 
   private static String requiredNonBlankText(JsonNode node) {
@@ -207,5 +237,10 @@ final class TrpGetVestingScaleApimMapper {
 
   private static VestingScaleMalformedResponseException malformed() {
     return new VestingScaleMalformedResponseException();
+  }
+
+  private static VestingScaleMalformedResponseException malformed(
+      String fieldPath, VestingScaleMalformedResponseException.MalformedReason reason) {
+    return new VestingScaleMalformedResponseException(fieldPath, reason);
   }
 }

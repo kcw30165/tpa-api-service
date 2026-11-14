@@ -118,6 +118,7 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
     Throwable failure = signal.getThrowable();
     FailureOrigin origin;
     String reason = null;
+    Map<String, Object> dimensions;
     if (failure instanceof DownstreamErrorMessageException error) {
       origin = FailureOrigin.DOWNSTREAM_CONTRACT;
       reason = error.reason().name();
@@ -126,6 +127,17 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
       reason = VestingScaleFailureReason.MALFORMED_RESPONSE.name();
     } else {
       origin = toFailureOrigin(ApimFailureClassifier.classify(failure));
+    }
+    if (failure instanceof VestingScaleMalformedResponseException malformed
+        && malformed.malformedField() != null
+        && malformed.malformedReason() != null) {
+      dimensions =
+          Map.of(
+              "reason", reason,
+              "malformedField", malformed.malformedField(),
+              "malformedReason", malformed.malformedReason().name());
+    } else {
+      dimensions = Map.of("reason", reason == null ? origin.name() : reason);
     }
     String requestId =
         signal.getContextView().getOrDefault(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, null);
@@ -140,7 +152,7 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
             PUBLIC_CODE,
             503,
             true,
-            reason == null ? Map.of("reason", origin.name()) : Map.of("reason", reason)));
+            dimensions));
   }
 
   private static VestingScaleFailureReason reasonFor(String errMessage) {

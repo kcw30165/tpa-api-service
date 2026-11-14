@@ -83,7 +83,6 @@ class VestingScaleControllerTest {
                     },
                     "plans": [{
                       "planNo":"P1",
-                      "planType":"English plan",
                       "planEffectiveDate":"01/02/2019",
                       "dateOfJoiningPlan":null,
                       "planService":{"years":2,"months":3},
@@ -131,6 +130,8 @@ class VestingScaleControllerTest {
         .expectBody()
         .jsonPath("$.result.data.planTypes[0].planType")
         .isEqualTo("中文計劃")
+        .jsonPath("$.result.data.overview.plans[0].planType")
+        .doesNotExist()
         .jsonPath("$.result.data.overview.plans[0].vestingPeriodBasedOn")
         .isEqualTo("中文歸屬基準")
         .jsonPath("$.result.data.overview.plans[0].memberContributionBasis")
@@ -195,8 +196,8 @@ class VestingScaleControllerTest {
 
     assertThat(body)
         .isEqualTo(
-            "{\"success\":false,\"status\":\"SYSTEM_ERROR\",\"result\":null,\"messages\":[],\"errors\":[{\"type\":\"SYSTEM\",\"code\":\"err.vesting-scale.retrieval.unavailable\",\"targets\":[],\"severity\":\"ERROR\",\"source\":\"SERVER\"}]}");
-    assertThat(body).doesNotContain("err.tpa.login.user.id.invalid", "err.tpa.cert.no.required");
+            "{\"success\":false,\"status\":\"SYSTEM_ERROR\",\"result\":null,\"messages\":[],\"errors\":[{\"type\":\"SYSTEM\",\"code\":\"err.vesting-scale.retrieval.unavailable\",\"targets\":[],\"severity\":\"ERROR\",\"source\":\"SERVER\"}]}")
+        .doesNotContain("err.tpa.login.user.id.invalid", "err.tpa.cert.no.required");
   }
 
   private static WebTestClient client(

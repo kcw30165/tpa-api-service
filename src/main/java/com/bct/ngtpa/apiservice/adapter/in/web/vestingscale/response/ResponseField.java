@@ -29,5 +29,10 @@ public record ResponseField<T>(boolean present, T value) {
     public boolean equals(Object other) {
       return other instanceof ResponseField<?> field && !field.present();
     }
+
+    @Override
+    public int hashCode() {
+      return ResponseField.<Object>absent().hashCode();
+    }
   }
 }

@@ -54,7 +54,7 @@ class VestingScaleResponseSerializationContractTest {
 
   private static final String PRESENCE_JSON =
       """
-      {"data":{"planTypes":[{"planNo":"P1","planType":"English"}],"overview":{"member":{"memberCategory":"ACTIVE","dateJoinedCompany":null,"employmentDate":"30/04/2020"},"plans":[{"planNo":"P1","planType":"English","planEffectiveDate":"01/02/2019","dateOfJoiningPlan":null,"planService":{"years":2,"months":3},"vestingPeriodBasedOn":"Company date","memberContributionBasis":null,"employerContributionBasis":"5%"}]},"vestingScale":{"plans":[{"planNo":"P1","scales":[{"completedYears":1,"vestingPercentage":10.0}]}]}}}
+      {"data":{"planTypes":[{"planNo":"P1","planType":"English"}],"overview":{"member":{"memberCategory":"ACTIVE","dateJoinedCompany":null,"employmentDate":"30/04/2020"},"plans":[{"planNo":"P1","planEffectiveDate":"01/02/2019","dateOfJoiningPlan":null,"planService":{"years":2,"months":3},"vestingPeriodBasedOn":"Company date","memberContributionBasis":null,"employerContributionBasis":"5%"}]},"vestingScale":{"plans":[{"planNo":"P1","scales":[{"completedYears":1,"vestingPercentage":10.0}]}]}}}
       """
           .trim();
 
@@ -162,7 +162,6 @@ class VestingScaleResponseSerializationContractTest {
     OverviewPlanResponse plan =
         new OverviewPlanResponse(
             "P1",
-            "English",
             ResponseField.absent(),
             ResponseField.absent(),
             ResponseField.absent(),
@@ -178,7 +177,7 @@ class VestingScaleResponseSerializationContractTest {
 
     assertBothEncoders(
         response,
-        "{\"data\":{\"planTypes\":[],\"overview\":{\"member\":{},\"plans\":[{\"planNo\":\"P1\",\"planType\":\"English\",\"vestingPeriodBasedOn\":\"Company date\"}]}}}");
+        "{\"data\":{\"planTypes\":[],\"overview\":{\"member\":{},\"plans\":[{\"planNo\":\"P1\",\"vestingPeriodBasedOn\":\"Company date\"}]}}}");
   }
 
   @Test
@@ -192,7 +191,6 @@ class VestingScaleResponseSerializationContractTest {
     OverviewPlanResponse plan =
         new OverviewPlanResponse(
             "P1",
-            "English",
             ResponseField.present(null),
             ResponseField.present(null),
             ResponseField.present(null),
@@ -211,7 +209,7 @@ class VestingScaleResponseSerializationContractTest {
 
     assertBothEncoders(
         response,
-        "{\"data\":{\"planTypes\":[],\"overview\":{\"member\":{\"memberCategory\":null,\"dateJoinedCompany\":null,\"dateJoinedScheme\":null,\"employmentDate\":null},\"plans\":[{\"planNo\":\"P1\",\"planType\":\"English\",\"planEffectiveDate\":null,\"dateOfJoiningPlan\":null,\"planService\":null,\"vestingPeriodBasedOn\":\"Company date\",\"memberContributionBasis\":null,\"employerContributionBasis\":null}]},\"vestingScale\":{\"plans\":[{\"planNo\":\"P1\",\"scales\":null}]}}}");
+        "{\"data\":{\"planTypes\":[],\"overview\":{\"member\":{\"memberCategory\":null,\"dateJoinedCompany\":null,\"dateJoinedScheme\":null,\"employmentDate\":null},\"plans\":[{\"planNo\":\"P1\",\"planEffectiveDate\":null,\"dateOfJoiningPlan\":null,\"planService\":null,\"vestingPeriodBasedOn\":\"Company date\",\"memberContributionBasis\":null,\"employerContributionBasis\":null}]},\"vestingScale\":{\"plans\":[{\"planNo\":\"P1\",\"scales\":null}]}}}");
   }
 
   private void assertBothEncoders(VestingScaleResultResponse response, String expected) {
@@ -262,7 +260,6 @@ class VestingScaleResponseSerializationContractTest {
     OverviewPlanResponse plan =
         new OverviewPlanResponse(
             "P1",
-            "English",
             ResponseField.present("01/02/2019"),
             ResponseField.present(null),
             ResponseField.present(new PlanServiceResponse(2, 3)),

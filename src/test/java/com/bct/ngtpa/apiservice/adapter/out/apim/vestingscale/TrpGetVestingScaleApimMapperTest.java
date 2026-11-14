@@ -113,6 +113,32 @@ class TrpGetVestingScaleApimMapperTest {
     assertThat(blankCategory.member().memberCategory().value()).isEmpty();
   }
 
+  @Test
+  void acceptsAbsentNullAndEmptyPlanTypeDescriptions() {
+    VestingScaleData data =
+        mapper.map(
+            read(
+                """
+                {
+                  "member": {},
+                  "plans": [
+                    {"plan-no":"absent"},
+                    {"plan-no":"null","plan-type-desc-eng":null,"plan-type-desc-chi":null},
+                    {"plan-no":"empty","plan-type-desc-eng":"","plan-type-desc-chi":""}
+                  ],
+                  "config": []
+                }
+                """));
+
+    assertThat(data.plans()).hasSize(3);
+    assertThat(data.plans().get(0).planTypeDescEng()).isNull();
+    assertThat(data.plans().get(0).planTypeDescChi()).isNull();
+    assertThat(data.plans().get(1).planTypeDescEng()).isNull();
+    assertThat(data.plans().get(1).planTypeDescChi()).isNull();
+    assertThat(data.plans().get(2).planTypeDescEng()).isEmpty();
+    assertThat(data.plans().get(2).planTypeDescChi()).isEmpty();
+  }
+
   @ParameterizedTest(name = "{0}.{1} is {2}")
   @MethodSource("presenceCases")
   void preservesAbsentNullAndValueForEveryConfigurableField(
@@ -193,8 +219,7 @@ class TrpGetVestingScaleApimMapperTest {
           {"plan-no":"P1","plan-type-desc-eng":"E","plan-type-desc-chi":"C"},
           {"plan-no":"P1","plan-type-desc-eng":"E","plan-type-desc-chi":"C"}],"config":[]}
         """,
-        "{\"member\":{},\"plans\":[{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"\",\"plan-type-desc-chi\":\"C\"}],\"config\":[]}",
-        "{\"member\":{},\"plans\":[{\"plan-no\":\"P1\",\"plan-type-desc-eng\":\"E\",\"plan-type-desc-chi\":\" \"}],\"config\":[]}",
+        "{\"member\":{},\"plans\":[{\"plan-no\":\"P1\",\"plan-type-desc-chi\":1}],\"config\":[]}",
         "{\"member\":{\"member-category\":1},\"plans\":[],\"config\":[]}",
         "{\"member\":{\"employment-date\":1},\"plans\":[],\"config\":[]}",
         """

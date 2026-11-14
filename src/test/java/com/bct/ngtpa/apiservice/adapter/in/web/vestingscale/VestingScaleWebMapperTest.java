@@ -81,6 +81,18 @@ class VestingScaleWebMapperTest {
         .isEqualTo("中文歸屬基準");
   }
 
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"", " "})
+  void fallsBackToEnglishPlanTypeWhenChineseDescriptionIsMissingOrBlank(String chineseName) {
+    VestingScalePlan plan = plan("P1", "English name", chineseName, Presence.absent());
+
+    var response = mapper.toResultResponse(result(List.of(plan), false), "zh-HK");
+
+    assertThat(response.data().planTypes().getFirst().planType()).isEqualTo("English name");
+    assertThat(response.data().overview().plans().getFirst().planNo()).isEqualTo("P1");
+  }
+
   @Test
   void selectedLanguagePresenceDoesNotFallBackToTheOtherLanguage() {
     VestingScalePlan plan =

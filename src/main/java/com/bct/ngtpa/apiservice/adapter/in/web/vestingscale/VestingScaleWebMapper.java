@@ -69,7 +69,6 @@ public final class VestingScaleWebMapper {
   private static OverviewPlanResponse overviewPlan(VestingScalePlan plan, boolean chinese) {
     return new OverviewPlanResponse(
         plan.planNo(),
-        planTypeDescription(plan, chinese),
         mapDate(plan.planEffectiveDate()),
         mapDate(plan.dateOfJoiningPlan()),
         mapped(plan.planService(), value -> new PlanServiceResponse(value.years(), value.months())),
@@ -102,7 +101,15 @@ public final class VestingScaleWebMapper {
   }
 
   private static String planTypeDescription(VestingScalePlan plan, boolean chinese) {
-    return chinese ? plan.planTypeDescChi() : plan.planTypeDescEng();
+    String selected = chinese ? plan.planTypeDescChi() : plan.planTypeDescEng();
+    if (chinese && (selected == null || selected.isBlank()) && hasText(plan.planTypeDescEng())) {
+      return plan.planTypeDescEng();
+    }
+    return selected;
+  }
+
+  private static boolean hasText(String value) {
+    return value != null && !value.isBlank();
   }
 
   private static String vestingPeriodDescription(VestingScalePlan plan, boolean chinese) {

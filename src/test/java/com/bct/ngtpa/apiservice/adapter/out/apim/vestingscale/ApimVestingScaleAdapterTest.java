@@ -176,6 +176,56 @@ class ApimVestingScaleAdapterTest {
   }
 
   @Test
+  void reportsMalformedDateFieldWithoutLoggingItsValue() {
+    String invalidDate = "1993-06-15";
+    respond(
+        envelope(
+            "",
+            List.of(
+                json(
+                    """
+                    {"member":{"date-joined-company":"1993-06-15"},"plans":[],"config":[]}
+                    """))));
+
+    StepVerifier.create(adapter().load(command()).contextWrite(requestContext()))
+        .expectError(VestingScaleRetrievalException.class)
+        .verify();
+
+    FailureEvent event = events.getFirst();
+    assertThat(event.origin()).isEqualTo(FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
+    assertThat(event.safeDimensions())
+        .containsEntry("reason", "MALFORMED_RESPONSE")
+        .containsEntry("malformedField", "member.date-joined-company")
+        .containsEntry("malformedReason", "INVALID_DATE_FORMAT");
+    assertThat(event.toString()).doesNotContain(invalidDate, POLICY_NO, CERT_NO, ACTOR_ID);
+  }
+
+  @Test
+  void acceptsEmptyPlanDescriptionAndNullBasisValuesFromDownstream() {
+    respond(
+        envelope(
+            "",
+            List.of(
+                json(
+                    """
+                    {"member":{},"plans":[{"plan-no":"P1","plan-type-desc-eng":"English description",
+                      "plan-type-desc-chi":"","basis-cont-ee-eng":null,"basis-cont-er-eng":null}],
+                      "config":[]}
+                    """))));
+
+    StepVerifier.create(adapter().load(command()).contextWrite(requestContext()))
+        .assertNext(
+            result -> {
+              assertThat(result.plans()).hasSize(1);
+              assertThat(result.plans().getFirst().planTypeDescChi()).isEmpty();
+              assertThat(result.plans().getFirst().basisContEeEng().value()).isNull();
+              assertThat(result.plans().getFirst().basisContErEng().value()).isNull();
+            })
+        .verifyComplete();
+    assertThat(events).isEmpty();
+  }
+
+  @Test
   void logsUnknownConfigItemIdAndReturnsSuccessfulData() throws Exception {
     JsonNode item =
         JSON.readTree(
