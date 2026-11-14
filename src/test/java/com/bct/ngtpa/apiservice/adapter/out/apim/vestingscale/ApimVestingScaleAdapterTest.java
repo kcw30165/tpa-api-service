@@ -349,7 +349,7 @@ class ApimVestingScaleAdapterTest {
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.getLevel().toString()).isEqualTo("WARN");
+              assertThat(event.getLevel()).hasToString("WARN");
               assertThat(event.getFormattedMessage()).contains("future-field");
               assertThat(event.getFormattedMessage())
                   .doesNotContain(POLICY_NO, CERT_NO, ACTOR_ID, "member");

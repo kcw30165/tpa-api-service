@@ -193,7 +193,7 @@ class TrpGetVestingScaleApimMapperTest {
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.getLevel().toString()).isEqualTo("WARN");
+              assertThat(event.getLevel()).hasToString("WARN");
               assertThat(event.getFormattedMessage())
                   .hasToString("event=vesting-scale.config.unknown_item item-id=future-field");
             });
