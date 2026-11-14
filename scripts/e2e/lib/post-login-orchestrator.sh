@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 run_post_login_orchestrator() {
   local -a feature_names=("$@")
-  local login_status=FAIL logout_status=NOT_RUN overall_rc=0 feature_name feature_rc
+  local login_status=FAIL logout_status=NOT_RUN account_selection_status=NOT_RUN
+  local overall_rc=0 feature_name feature_rc
   local -a feature_statuses=()
 
   if orchestrator_login; then
@@ -18,10 +19,15 @@ run_post_login_orchestrator() {
   else
     overall_rc=1
     for feature_name in "${feature_names[@]}"; do feature_statuses+=(NOT_RUN); done
+    if [[ "${POST_LOGIN_AUTHENTICATED_SESSION_ESTABLISHED:-false}" == true ]]; then
+      if orchestrator_logout; then logout_status=PASS; else logout_status=FAIL; fi
+    fi
   fi
 
+  account_selection_status="${POST_LOGIN_ACCOUNT_SELECTION_STATUS:-NOT_RUN}"
   if ! orchestrator_cleanup; then overall_rc=1; fi
   printf 'LOGIN: %s\n' "$login_status"
+  printf 'ACCOUNT_SELECTION: %s\n' "$account_selection_status"
   for feature_name in "${!feature_names[@]}"; do
     printf 'FEATURE %s: %s\n' "${feature_names[$feature_name]}" "${feature_statuses[$feature_name]}"
   done

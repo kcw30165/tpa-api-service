@@ -9,12 +9,14 @@ source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/private-runtime-state.sh"
 source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/authenticated-login-journey.sh"
 source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/feature-pack-registry.sh"
 source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/post-login-orchestrator.sh"
+unset POST_LOGIN_ACCOUNT_SELECTOR POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED POST_LOGIN_ACCOUNT_SELECTOR_CAPTURED
 orchestrator_login(){ authenticated_login_journey; }
 orchestrator_logout(){ authenticated_logout_journey; }
 orchestrator_cleanup(){
  local cleanup_rc=0
  destroy_private_runtime_state || cleanup_rc=$?
- unset PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF
+ unset PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF E2E_ACCOUNT_REF \
+  POST_LOGIN_ACCOUNT_SELECTOR POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED POST_LOGIN_ACCOUNT_SELECTOR_CAPTURED
  return "$cleanup_rc"
 }
 defensive_post_login_cleanup(){ orchestrator_cleanup; }
@@ -24,10 +26,12 @@ collect_feature_names(){
  while IFS= read -r name; do basename "$name" .sh | sed 's/-scenarios$//'; done <<<"$resolved"
 }
 initialize_post_login_runtime(){
+ capture_post_login_account_selector
  E2E_SCENARIO_PACK=post-login
  E2E_SCENARIO_ID=orchestrator
  E2E_ENVIRONMENT="${E2E_ENVIRONMENT:-local}"
  E2E_BOOTSTRAP_MODE=authenticated-login
+ unset POST_LOGIN_AUTHENTICATED_SESSION_ESTABLISHED POST_LOGIN_ACCOUNT_SELECTION_STATUS
  export E2E_SCENARIO_PACK E2E_SCENARIO_ID E2E_ENVIRONMENT E2E_BOOTSTRAP_MODE
  create_evidence_dir
  create_private_runtime_state
@@ -44,6 +48,7 @@ orchestrator_run_feature(){
 post_login_main(){
  local resolved name
  local -a names=()
+ capture_post_login_account_selector
  resolved="$(collect_feature_names "${E2E_FEATURE_PACKS:-}")" || return 1
  while IFS= read -r name; do names+=("$name"); done <<<"$resolved"
  initialize_post_login_runtime || return 1

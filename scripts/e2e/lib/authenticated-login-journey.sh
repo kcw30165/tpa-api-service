@@ -6,11 +6,78 @@ select_first_email_destination_id() {
   printf '%s\n' "$destination_id"
 }
 
-select_first_account_ref() {
-  local response_file="$1" account_ref
-  account_ref="$(jq -er '.result.data.accounts[0].accountRef // empty' "$response_file")" || true
-  [[ -n "$account_ref" ]] || { printf 'FAIL no account is available after OTP verification\n' >&2; return 1; }
-  printf '%s\n' "$account_ref"
+select_account_ref() {
+  local response_file="$1" selector_provided="$2" selector="$3"
+  local match_indices match_count selected_index
+
+  SELECTED_ACCOUNT_REF=''
+  SELECTED_ACCOUNT_INDEX=''
+  SELECTED_ACCOUNT_COUNT=unknown
+
+  if ! jq -e '(.result.data.accounts | type) == "array"' "$response_file" \
+    >/dev/null 2>&1; then
+    printf 'FAIL account selection failed: login response account list is unavailable or malformed\n' >&2
+    return 1
+  fi
+  SELECTED_ACCOUNT_COUNT="$(jq -r '.result.data.accounts | length' "$response_file" 2>/dev/null)" \
+    || SELECTED_ACCOUNT_COUNT=unknown
+  if ! jq -e '
+    all(.result.data.accounts[];
+      type == "object"
+      and (.accountRef | type) == "string"
+      and (.accountRef | length) > 0)
+  ' "$response_file" >/dev/null 2>&1; then
+    printf 'FAIL account selection failed: login response account list is unavailable or malformed\n' >&2
+    return 1
+  fi
+
+  if [[ "$selector_provided" != true ]]; then
+    selected_index=0
+    SELECTED_ACCOUNT_REF="$(jq -er \
+      '.result.data.accounts[0].accountRef | select(type == "string" and length > 0)' \
+      "$response_file" 2>/dev/null)" || {
+      printf 'FAIL account selection failed: login response account list is unavailable or malformed\n' >&2
+      return 1
+    }
+  else
+    match_indices="$(jq -c --arg selector "$selector" '
+      [.result.data.accounts
+        | to_entries[]
+        | select(.value.accountRef == $selector)
+        | .key]
+    ' "$response_file" 2>/dev/null)" || {
+      printf 'FAIL account selection failed: login response account list is unavailable or malformed\n' >&2
+      return 1
+    }
+    match_count="$(jq -r 'length' <<<"$match_indices" 2>/dev/null)" || match_count=0
+    [[ "$match_count" == 1 ]] || {
+      printf 'FAIL account selection failed: explicit selector did not match exactly one login response account\n' >&2
+      return 1
+    }
+    selected_index="$(jq -r '.[0]' <<<"$match_indices")" || {
+      printf 'FAIL account selection failed: login response account list is unavailable or malformed\n' >&2
+      return 1
+    }
+    SELECTED_ACCOUNT_REF="$(jq -er --argjson index "$selected_index" \
+      '.result.data.accounts[$index].accountRef | select(type == "string" and length > 0)' \
+      "$response_file" 2>/dev/null)" || {
+      printf 'FAIL account selection failed: login response account list is unavailable or malformed\n' >&2
+      return 1
+    }
+  fi
+
+  SELECTED_ACCOUNT_INDEX="$selected_index"
+}
+
+capture_post_login_account_selector() {
+  [[ "${POST_LOGIN_ACCOUNT_SELECTOR_CAPTURED:-false}" == true ]] && return 0
+  POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED=false
+  if [[ "${E2E_ACCOUNT_REF+x}" == x ]]; then
+    POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED=true
+    POST_LOGIN_ACCOUNT_SELECTOR="$E2E_ACCOUNT_REF"
+  fi
+  unset E2E_ACCOUNT_REF
+  POST_LOGIN_ACCOUNT_SELECTOR_CAPTURED=true
 }
 
 acquire_login_otp() {
@@ -40,7 +107,16 @@ publish_authenticated_http_state() {
 
 authenticated_login_journey() {
   local rc=0 cookie csrf destination_id otp_code request_body metrics curl_rc
-  local raw_headers raw_body request_id idempotency_key portal_cookie authenticated_csrf account_count account_index account_ref
+  local raw_headers raw_body request_id idempotency_key portal_cookie authenticated_csrf account_ref
+  local account_selector='' account_selector_provided=false selection_mode
+  capture_post_login_account_selector
+  account_selector_provided="$POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED"
+  account_selector="${POST_LOGIN_ACCOUNT_SELECTOR:-}"
+  unset POST_LOGIN_ACCOUNT_SELECTOR POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED POST_LOGIN_ACCOUNT_SELECTOR_CAPTURED
+  # shellcheck disable=SC2034 # Read by post-login-orchestrator.sh after the journey returns.
+  POST_LOGIN_ACCOUNT_SELECTION_STATUS=NOT_RUN
+  # shellcheck disable=SC2034 # Read by post-login-orchestrator.sh to close an established session.
+  POST_LOGIN_AUTHENTICATED_SESSION_ESTABLISHED=false
   [[ "${E2E_ALLOW_EXTERNAL_EFFECTS:-false}" == true ]] || { printf 'BLOCKED authenticated journey requires E2E_ALLOW_EXTERNAL_EFFECTS=true\n'; return 3; }
   [[ "${E2E_ALLOW_OTP_VERIFICATION:-false}" == true ]] || { printf 'BLOCKED OTP verification requires E2E_ALLOW_OTP_VERIFICATION=true\n'; return 4; }
   if ! private_runtime_state_is_owned; then
@@ -72,13 +148,38 @@ authenticated_login_journey() {
   assert_json_scalar_eq "$E2E_RUN_EVIDENCE_DIR/016-otp-verify-response-body-redacted.json" '.status' SUCCESS otp_verify_api_status || rc=1
   assert_json_scalar_eq "$E2E_RUN_EVIDENCE_DIR/016-otp-verify-response-body-redacted.json" '.result.nextStep' SELECT_ACCOUNT otp_verify_next_step || rc=1
   [[ "$rc" -eq 0 ]] || return "$rc"
-  portal_cookie="$(sed -n -E 's/^[Ss]et-[Cc]ookie:[[:space:]]*portal_sid=([^;]+).*/\1/p' "$raw_headers" | tail -n 1)"; authenticated_csrf="$(jq -er '.result.data.csrfToken' "$raw_body")"; account_count="$(jq -r '.result.data.accounts|length' "$raw_body")"
-  account_index=0
-  account_ref="$(select_first_account_ref "$raw_body")" || return 1
-  [[ -n "$portal_cookie" && -n "$authenticated_csrf" && -n "$account_ref" ]] || return 1
-  write_private_value portal_cookie "$portal_cookie"; write_private_value authenticated_csrf "$authenticated_csrf"; write_private_value selected_account_ref "$account_ref"
+  portal_cookie="$(sed -n -E 's/^[Ss]et-[Cc]ookie:[[:space:]]*portal_sid=([^;]+).*/\1/p' "$raw_headers" | tail -n 1)"
+  authenticated_csrf="$(jq -er '.result.data.csrfToken' "$raw_body" 2>/dev/null)" || authenticated_csrf=''
+  [[ -n "$portal_cookie" && -n "$authenticated_csrf" ]] || return 1
+  write_private_value portal_cookie "$portal_cookie" || return 1
+  write_private_value authenticated_csrf "$authenticated_csrf" || return 1
+  # shellcheck disable=SC2034 # Read by post-login-orchestrator.sh when login later fails.
+  POST_LOGIN_AUTHENTICATED_SESSION_ESTABLISHED=true
+
+  if [[ "$account_selector_provided" == true ]]; then
+    selection_mode=explicit
+  else
+    selection_mode=first
+  fi
+  if ! select_account_ref "$raw_body" "$account_selector_provided" "$account_selector"; then
+    POST_LOGIN_ACCOUNT_SELECTION_STATUS=FAIL
+    printf 'next_step=SELECT_ACCOUNT\naccount_count=%s\naccount_selection=FAIL\nselection_mode=%s\nselected_account_index=none\nportal_cookie_issued=yes\n' \
+      "$SELECTED_ACCOUNT_COUNT" "$selection_mode" \
+      >"$E2E_RUN_EVIDENCE_DIR/017-authenticated-transition-summary.txt"
+    account_selector=''
+    return 1
+  fi
+  # shellcheck disable=SC2034 # Printed by post-login-orchestrator.sh in the consolidated summary.
+  POST_LOGIN_ACCOUNT_SELECTION_STATUS=PASS
+  account_ref="$SELECTED_ACCOUNT_REF"
+  write_private_value selected_account_ref "$account_ref" || return 1
+  account_selector=''
+  unset SELECTED_ACCOUNT_REF
   publish_authenticated_http_state || return 1
-  printf 'next_step=SELECT_ACCOUNT\naccount_count=%s\nselected_account_index=%s\nportal_cookie_issued=yes\n' "$account_count" "$account_index" >"$E2E_RUN_EVIDENCE_DIR/017-authenticated-transition-summary.txt"
+  printf 'next_step=SELECT_ACCOUNT\naccount_count=%s\naccount_selection=PASS\nselection_mode=%s\nselected_account_index=%s\nportal_cookie_issued=yes\n' \
+    "$SELECTED_ACCOUNT_COUNT" "$selection_mode" "$SELECTED_ACCOUNT_INDEX" \
+    >"$E2E_RUN_EVIDENCE_DIR/017-authenticated-transition-summary.txt"
+  unset SELECTED_ACCOUNT_INDEX SELECTED_ACCOUNT_COUNT
   printf 'login_start_attempts=1\notp_send_attempts=1\notp_verify_attempts=1\nautomatic_retries=0\n' >"$E2E_RUN_EVIDENCE_DIR/018-external-effect-summary.txt"
 }
 

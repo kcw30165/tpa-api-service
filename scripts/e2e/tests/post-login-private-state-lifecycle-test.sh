@@ -144,6 +144,7 @@ destroy_private_runtime_state || true
 assert_equal "$(cat "$tmp/forged/keep.txt" 2>/dev/null || true)" forged-directory-data \
   'forged ownership modified unrelated file contents'
 unset E2E_PRIVATE_STATE_DIR E2E_PRIVATE_STATE_OWNED_DIR
+unset E2E_ACCOUNT_REF
 ROOT="$ROOT" UNRELATED="$tmp/unrelated" CLEANUP_LOG="$tmp/inherited-fd-cleanup.out" \
   bash -c '
     exec 199<"$UNRELATED"
@@ -216,6 +217,18 @@ assert_equal "$(find "$TMPDIR" -mindepth 1 -maxdepth 1 -type d | wc -l)" 1 \
   'authenticated login journey created more than one private directory'
 assert_equal "$(wc -l <"$tmp/fake-network-calls.txt")" 3 \
   'fake login did not make exactly the three expected network operations'
+grep -Fq 'account_selection=PASS' "$E2E_RUN_EVIDENCE_DIR/017-authenticated-transition-summary.txt" || {
+  printf 'FAIL default account selection was not recorded\n'
+  fail=1
+}
+grep -Fq 'selection_mode=first' "$E2E_RUN_EVIDENCE_DIR/017-authenticated-transition-summary.txt" || {
+  printf 'FAIL default first-account selection mode changed\n'
+  fail=1
+}
+grep -Fq 'selected_account_index=0' "$E2E_RUN_EVIDENCE_DIR/017-authenticated-transition-summary.txt" || {
+  printf 'FAIL default selected-account index changed\n'
+  fail=1
+}
 assert_private_modes "$orchestrator_state_dir"
 assert_unrelated_directory_unchanged
 assert_no_authentication_values_in_output_or_evidence
