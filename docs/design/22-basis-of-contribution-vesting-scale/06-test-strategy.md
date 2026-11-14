@@ -2,13 +2,16 @@
 
 Every behaviour is introduced by a failing test first; evidence (red then green) goes in the sub-task REPORT.md.
 
-## Adapter (`ApimVestingScaleAdapterTest`, `TrpGetVestingScaleApimDtoContractTest`, `TrpGetVestingScaleApimMapperTest`, `VestingScaleApimConfigurationTest`)
+## Adapter (`ApimVestingScaleAdapterTest`, `ApimFieldDeserializerTest`, `TrpGetVestingScaleApimDtoContractTest`, `TrpGetVestingScaleApimMapperTest`, `VestingScaleApimConfigurationTest`)
 - Request body: exactly 4 fields with values from context; role wire format `role_user_mbr`.
 - Full sample (dates converted to dd/MM/yyyy) parses; `env` ignored.
-- Presence: each configurable field absent / null / value (member and plan).
+- Presence: each configurable member/plan field absent / null / value, including through `ApimField<T>` deserialization and conversion to application `Presence`.
 - `member: {}` ok; `plans: []` ok; `config: []` ok.
 - `member-category: ""` passes through.
-- Malformed: member missing; plans missing/non-array; config missing; bad date (`1995-10-01`, `31/02/2020`); unknown config-value; duplicate item-id; blank/duplicate plan-no; blank plan-type-desc; wrong types; vesting row missing fields.
+- Malformed: member/plans/config missing or null; wrong JSON kinds; bad date (`1995-10-01`, `31/02/2020`); unknown config-value; duplicate item-id/plan-no; blank plan-no or required English plan type; missing/null/blank/wrong-kind English plan type; wrong-kind Chinese plan type; vesting row missing fields. Assert exact indexed field path and `MalformedReason`.
+- Strict scalar kinds: strings do not coerce to integers/numbers, floating-point values do not coerce to integers, numbers/booleans do not coerce to strings, and vesting percentages accept JSON numbers only.
+- Cardinality: absent/empty/multiple/null data items → `INVALID_CARDINALITY` at `data`. Missing/null/empty/whitespace `err-message` succeeds with valid data; non-blank err-message wins over absent or malformed data.
+- Malformed failure-event dimensions contain only the static reason and normalized field path; assert no downstream value or Jackson message is exposed.
 - Unknown item-id → WARN log asserted, success.
 - Each of the 3 identity err-messages → ACCOUNT_CONTEXT_MISMATCH, ERROR event, retrieval exception.
 - Other err-message → generic path; data absent with err-message is handled.
@@ -22,7 +25,7 @@ Every behaviour is introduced by a failing test first; evidence (red then green)
 
 ## Web (`VestingScaleWebMapperTest`, `VestingScaleControllerTest` WebTestClient, `ExceptionMappingsTest`)
 - Restructure into planTypes / overview / vestingScale; DS order preserved.
-- en / zh-HK / missing / unsupported Accept-Language; plan type falls back to nonblank English when Chinese is missing/blank; other fields have no cross-language fallback.
+- en / zh-HK / missing / unsupported Accept-Language; Chinese plan type falls back to English for absent/null/empty/whitespace Chinese text, while non-blank Chinese is emitted and English always selects English; other localized fields have no cross-language fallback, including null values.
 - Vesting rows sorted ascending (feed unsorted input).
 - JSON over real codec: hidden key absent, null emitted as `null`, `[]` emitted.
 - Date output dd/MM/yyyy.

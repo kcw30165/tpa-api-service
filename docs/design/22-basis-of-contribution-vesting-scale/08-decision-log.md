@@ -11,7 +11,7 @@
 | Q8 | Visible + null → returned as `null`. |
 | Q9/N1 | Key present + no config entry → visible. Key absent → omitted (DS may remove hidden fields). Unknown item-id → ignore + WARN. Unknown config-value / duplicate item-id → contract violation (existing practice). |
 | Q10 | `sch-type`, `function`, `item-type` not used. |
-| Q11 | ApimExchangeExecutor supplies the typed transport/JSON envelope; the feature adapter checks missing envelope/response, non-blank err-message before data, and exactly one non-null data item. |
+| Q11 | ApimExchangeExecutor supplies the shared envelope with JsonNode data; the feature adapter checks envelope/response, non-blank err-message before data, and exactly one non-null item, then converts data[0] to a typed APIM response DTO using the injected primary Jackson 2 ObjectMapper. Missing/null/empty/whitespace err-message is not an error. |
 | Q12 | `member` always present (`{}` if all hidden); dates may be null; `member-category` may be `""`; `plans: []` is success → FE "no plan" message. Missing key = hidden; `[]` = no data; null = N/A. |
 | Q13 | DS plan order; FE selects first. |
 | N3/Q14 | Config list in the contract is the current full list; member-category is an opaque string. |
@@ -24,9 +24,11 @@
 | Q21 | All roles may access; DS controls access. |
 | Q21a | No feature role gate; shared APIM credential resolver applies unchanged (resolver role support is platform scope). |
 | Q22 | 3 identity codes → 503 public, internal ACCOUNT_CONTEXT_MISMATCH, ERROR; other codes generic path. |
-| Q23 | `planTypes[].planType` uses nonblank English when the selected Chinese description is missing or blank; other localized fields have no cross-language fallback. |
+| Q23 | `planTypes[].planType` uses nonblank English when the selected Chinese description is absent, null, empty, or whitespace-only; otherwise it emits Chinese. English is always required and non-blank. This is the only cross-language fallback; vesting-period and contribution-basis values remain selected-language-only, including null. Overview plans do not repeat `planType`. |
 | Q24 | Print is FE only. |
 | N4 | Not mapped: `env`, `plan-name`, `vest-period-base` code, config metadata. |
 | N5 | E2E via the upcoming real orchestrator, as M5 after feature delivery. |
 | Shape | `data` = `planTypes` + `overview{member, plans}` + `vestingScale{plans}`; BFF naming, not DS naming. |
-| Derived (existing practice R5) | Required: `member` object, `plans` array, `config` array, non-blank unique `plan-no`, non-blank `plan-type-desc-*`, vesting row fields; violations → 503 malformed. |
+| Q25 / R1-R4 | `plan-type-desc-eng` is required non-blank text; absent/null → `MISSING_REQUIRED_FIELD`, blank → `REQUIRED_TEXT_BLANK`, wrong kind → `INVALID_TYPE`, all at the indexed field path. `plan-type-desc-chi` is optional and accepts absent/null/empty/whitespace, but wrong kind → `INVALID_TYPE`. Chinese plan type falls back to English only in `planTypes[]`; no fallback applies to other localized fields. |
+| Q26 / A-D | Keep `JsonNode` at the shared executor boundary, then convert the one accepted data item into typed APIM records. Use a contextual `ApimField<T>` to preserve ABSENT/NULL/VALUE and strictly validate scalar JSON kinds. `MalformedReason` is exactly `INVALID_DATE_FORMAT`, `REQUIRED_TEXT_BLANK`, `MISSING_REQUIRED_FIELD`, `INVALID_TYPE`, `INVALID_ENUM_VALUE`, `DUPLICATE_VALUE`, and `INVALID_CARDINALITY`; diagnostics use indexed paths and static labels only. |
+| Derived (existing practice R5) | Required: `member` object, `plans` array, `config` array, non-blank unique `plan-no`, config item-id/value, and vesting row fields; violations → 503 malformed with the corresponding static reason and indexed field path. |

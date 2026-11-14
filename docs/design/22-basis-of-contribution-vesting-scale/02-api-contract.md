@@ -60,7 +60,7 @@
 | BFF field | Source (APIM) | Configurable item-id | Notes |
 |---|---|---|---|
 | `planTypes[].planNo` | `plans[].plan-no` | — | always present; join key |
-| `planTypes[].planType` | `plan-type-desc-eng/chi` | — | language-filtered; for zh, a missing/blank Chinese description falls back to a nonblank English description |
+| `planTypes[].planType` | `plan-type-desc-eng/chi` | — | English description is required and non-blank; for zh, absent/null/blank Chinese falls back to English, otherwise Chinese is emitted |
 | `overview.member.memberCategory` | `member.member-category` | `member-category` | opaque string, `""` passed through |
 | `overview.member.dateJoinedCompany` | `member.date-joined-company` | `date-joined-company` | dd/MM/yyyy or null |
 | `overview.member.dateJoinedScheme` | `member.date-joined-scheme` | `date-joined-scheme` | dd/MM/yyyy or null |
@@ -86,6 +86,7 @@
 - `overview.member` is always present (may be `{}`).
 - `planTypes`, `overview.plans` are always present (may be `[]`); same order as DS; FE selects first.
 - Plan type descriptions are exposed only in `planTypes[]`, not repeated in `overview.plans[]`.
+- The plan type fallback applies only to `planTypes[].planType`. Selected-language vesting-period and contribution-basis fields do not fall back to the other language; a selected-language `null` remains `null`.
 - `vestingScale` is absent when `vesting-scale` is HIDDEN (section not shown). Otherwise present; it contains an entry for each plan whose `vesting-scale` key is present (`scales` = sorted rows, `[]`, or `null`).
 
 ## Errors
