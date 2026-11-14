@@ -28,7 +28,7 @@ adapter/in/web/vestingscale/VestingScaleController            GET /api/v1/vestin
   -> application/port/in/GetVestingScaleUseCase
   -> application/usecase/vestingscale/GetVestingScaleService   (applies VestingScaleVisibilityPolicy)
   -> application/port/out/VestingScalePort
-  -> adapter/out/apim/vestingscale/ApimVestingScaleAdapter     (ApimExchangeExecutor.postEnvelope, JsonNode parsing)
+  -> adapter/out/apim/vestingscale/ApimVestingScaleAdapter     (ApimExchangeExecutor.postEnvelope, typed DTO mapping)
        dto/TrpGetVestingScaleApimRequest
        TrpGetVestingScaleApimMapper                            (strict parse, presence-aware)
   <- application/dto/vestingscale/*                            (presence-aware model, both languages)
@@ -47,6 +47,6 @@ Names above are binding unless the implementor proves a conflicting origin/dev c
 ## 5. Layering of rules
 | Rule | Layer |
 |---|---|
-| Strict parsing, presence capture (ABSENT vs NULL vs value), err-message classification, contract violations | APIM adapter |
-| Visibility (config HIDDEN → ABSENT; unknown item-id WARN) | Application service (`VestingScaleVisibilityPolicy`) |
+| Strict parsing, presence capture (ABSENT vs NULL vs value), err-message classification, contract violations, config item-id translation and unknown-item warning | APIM adapter |
+| Visibility (config HIDDEN → ABSENT), keyed by application-owned `VestingScaleConfigItem` | Application service (`VestingScaleVisibilityPolicy`) |
 | Language selection, date formatting, vesting sort, BFF restructuring, JSON omission | Web mapper / response DTOs |

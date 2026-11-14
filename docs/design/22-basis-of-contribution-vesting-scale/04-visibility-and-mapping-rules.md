@@ -12,7 +12,7 @@ M1 preflight must confirm origin/dev Jackson settings (e.g. `spring.jackson.defa
 ## 4.2 Visibility decision (per field)
 ```
 if key absent in DS data            -> omit
-else if config[item-id] == HIDDEN   -> omit
+else if config[VestingScaleConfigItem] == HIDDEN -> omit
 else (READONLY or no config entry)  -> include (value or null)
 ```
 Non-configurable fields (`plan-no`, `plan-type-desc-*`, `vest-period-base-*`) are always included when present.
@@ -22,6 +22,10 @@ Language pairs: for `basis-cont-ee-*` / `basis-cont-er-*`, use the config item o
 `vesting-scale`: if config HIDDEN → omit the whole `vestingScale` section. Otherwise include, per plan, an entry only when that plan's `vesting-scale` key is present.
 
 Visibility is applied in the application layer (`VestingScaleVisibilityPolicy`) for both language variants; the web mapper then picks the language.
+
+The APIM mapper translates raw `item-id` values to application-owned `VestingScaleConfigItem` keys using the DTO wire-name constants. The application enum contains no wire strings, and `VestingScaleVisibilityPolicy` uses enum keys only. Duplicate detection occurs against the raw item ID before translation; unknown IDs are dropped and logged exactly once at WARN by the APIM mapper (item ID only), never by the visibility policy.
+
+For `overview.plans[].vestingPeriodBasedOn`, the web mapper uses only the selected-language `vest-period-base` field: ABSENT is omitted from JSON, explicit NULL is emitted as `null`, and no cross-language fallback is applied.
 
 ## 4.3 Language
 - Resolve via existing `RequestLanguageResolver`: `zh`, `zh-HK`, `zh_HK` → Chinese (`-chi`); everything else → English (`-eng`).

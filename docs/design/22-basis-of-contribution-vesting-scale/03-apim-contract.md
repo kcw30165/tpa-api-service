@@ -45,7 +45,7 @@ Response DTOs and `ApimField<T>` live under `adapter/out/apim/vestingscale/dto/`
 ## Known config item-ids (current full list)
 `member-category, plan-effective-date, basis-cont-ee-chi, basis-cont-ee-eng, basis-cont-er-chi, basis-cont-er-eng, date-joined-company, date-joined-scheme, date-of-joining-plan, employment-date, plan-service, vesting-scale`
 
-`item-id` equals the wire field name inside `member` or `plans[]`; the same DTO constants define these identifiers.
+`item-id` equals the wire field name inside `member` or `plans[]`. The APIM mapper translates known IDs using the APIM DTO wire-name constants into the application-owned `VestingScaleConfigItem` enum; the enum contains no wire strings. Duplicate detection uses the raw `item-id` before translation. An unknown ID is dropped and produces exactly one WARN from the APIM mapper, containing only that item ID.
 
 ## Not mapped
 `env`, `plan-name`, `vest-period-base` (code), all `config[]` attributes except `item-id`/`config-value`.
