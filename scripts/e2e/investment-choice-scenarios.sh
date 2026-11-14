@@ -496,7 +496,8 @@ pass_scenario S1
 
 PASSWORD_ISSUANCES=0
 if [[ "$USE_PASSWORD" == yes ]]; then
-  [[ -z "$VALID_SKIP_REASON" ]] && PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
+  [[ -z "$VALID_SKIP_REASON" && "$LIVE_CANCEL_PENDING" != yes ]] \
+    && PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
   [[ "$SNAPSHOT_SCENARIO" != NORMAL || -z "$pending_reference" || "$LIVE_CANCEL_PENDING" == yes ]] \
     || PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
   [[ "$LIVE_SUBMIT" != yes ]] || PASSWORD_ISSUANCES=$((PASSWORD_ISSUANCES + 1))
@@ -557,7 +558,9 @@ request POST "$ISSUE_PATH" yes none present
 assert_result S9-blank 422 err.investment-choice.cancel.ref-required
 
 if [[ "$USE_PASSWORD" == yes ]]; then
-  if [[ -z "$VALID_SKIP_REASON" ]]; then
+  if [[ "$LIVE_CANCEL_PENDING" == yes ]]; then
+    skip_scenario P0 'dedicated existing-instruction cancellation mode uses its own fresh token'
+  elif [[ -z "$VALID_SKIP_REASON" ]]; then
     SCENARIO=P0-issue
     issue_token CHANGE_INVESTMENT_CHOICE "$VALID_BODY" "$CIM_PASSWORD" P0-issue
     P0_TOKEN="$TOKEN_VALUE"

@@ -148,6 +148,9 @@ case "$method $path" in
       else
         jq -c '.' <<<"$operation" >"$FAKE_VALID_PAYLOAD"
         response='{"success":true,"status":"SUCCESS","result":{"data":{"token":"fake-cim-token"}},"messages":[],"errors":[]}'
+        if [[ "$FAKE_LIVE_CANCEL_PENDING" == yes ]]; then
+          printf 'P0-CHANGE-TOKEN-ISSUED\n' >>"$FAKE_CALLS"
+        fi
         if [[ "$FAKE_LIVE" == yes ]]; then
           printf 'LIFECYCLE-CHANGE-ISSUE\n' >>"$FAKE_CALLS"
         fi
@@ -159,6 +162,9 @@ case "$method $path" in
           "$FAKE_PENDING" >/dev/null; then
         jq -c '.' <<<"$operation" >"$FAKE_VALID_CANCEL_PAYLOAD"
         response='{"success":true,"status":"SUCCESS","result":{"data":{"token":"fake-cancel-token"}},"messages":[],"errors":[]}'
+        if [[ "$FAKE_LIVE_CANCEL_PENDING" == yes ]]; then
+          printf 'DEDICATED-CANCEL-TOKEN-ISSUED\n' >>"$FAKE_CALLS"
+        fi
         if [[ "$FAKE_LIVE" == yes ]]; then
           if (( $(cat "$FAKE_GET_COUNT") >= 3 )); then
             printf 'LIFECYCLE-CANCEL-ISSUE\n' >>"$FAKE_CALLS"
@@ -689,6 +695,14 @@ grep -Fq 'SKIP P3 reason=dedicated existing-instruction cancellation mode uses i
   printf 'FAIL standalone P3 flow was not suppressed for the one-shot existing-cancellation lifecycle\n'
   exit 1
 }
+[[ "$(grep -c '^DEDICATED-CANCEL-TOKEN-ISSUED$' "$tmp/existing-cancel/calls")" -eq 1 ]] || {
+  printf 'FAIL existing-cancel mode did not issue exactly one cancellation token\n'
+  exit 1
+}
+if grep -q '^P0-CHANGE-TOKEN-ISSUED$' "$tmp/existing-cancel/calls"; then
+  printf 'FAIL existing-cancel mode issued a P0 change token\n'
+  exit 1
+fi
 grep -Fq 'Password verifications this run (snapshot rejections excluded): 1' "$tmp/existing-cancel.log" || {
   printf 'FAIL existing cancellation mode issued an unexpected additional password verification\n'
   exit 1
