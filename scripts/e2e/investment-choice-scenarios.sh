@@ -185,6 +185,9 @@ SCENARIO=''
 LIVE_REFERENCE_FILE="$WORK_DIR/live-reference.json"
 touch "$LIVE_REFERENCE_FILE"
 chmod 600 "$LIVE_REFERENCE_FILE"
+P3_REFERENCE_FILE="$WORK_DIR/p3-reference.json"
+touch "$P3_REFERENCE_FILE"
+chmod 600 "$P3_REFERENCE_FILE"
 LIVE_SUBMITTED=no
 LIVE_SUBMIT_ATTEMPTED=no
 LIVE_CLEANUP_VERIFIED=no
@@ -221,7 +224,7 @@ on_exit() {
     fi
   fi
   printf 'Summary: passed=%s skipped=%s failed=%s\n' "$PASSED" "$SKIPPED" "$FAILED"
-  rm -f -- "$COOKIE_JAR" "$LIVE_REFERENCE_FILE"
+  rm -f -- "$COOKIE_JAR" "$LIVE_REFERENCE_FILE" "$P3_REFERENCE_FILE"
   rmdir -- "$WORK_DIR"
   [[ "$result" -eq 0 ]] || exit "$result"
 }
@@ -527,7 +530,10 @@ if [[ "$USE_PASSWORD" == yes ]]; then
   if [[ -n "$P3_SKIP_REASON" ]]; then
     skip_scenario P3 "$P3_SKIP_REASON"
   else
-    P3_BODY="$(jq -cn --arg reference "$pending_reference" '{referenceNo:$reference}')"
+    jq -ec '[.pendingInstructions[].referenceNo | select(type == "string" and length > 0)][0]' \
+      <<<"$GET_DATA" >"$P3_REFERENCE_FILE" \
+      || fail_scenario P3-preflight 'pending instruction reference available privately' "$HTTP_STATUS" "$ERROR_CODE"
+    P3_BODY="$(jq -cn --slurpfile reference "$P3_REFERENCE_FILE" '{referenceNo:$reference[0]}')"
     SCENARIO=P3-issue
     issue_token CANCEL_INVESTMENT_CHOICE "$P3_BODY" "$CIM_PASSWORD" P3-issue
     P3_TOKEN="$TOKEN_VALUE"

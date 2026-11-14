@@ -219,10 +219,16 @@ if [[ "${FAKE_INSIDE_CURL:-no}" != yes ]]; then
   previous_arg=''
   for arg in "$@"; do
     if [[ "$arg" == *LIVE-REF-1* || "$arg" == *OTHER-PENDING* \
+      || ( -n "${FAKE_PENDING_REFERENCE:-}" && "$arg" == *"$FAKE_PENDING_REFERENCE"* ) \
       || ( -n "${FAKE_REFERENCE:-}" && "$arg" == *"$FAKE_REFERENCE"* ) ]]; then
-      printf 'submitted-reference-argument-after=%s\n' "$previous_arg" >>"$FAKE_JQ_ARG_LEAKS"
+      printf 'instruction-reference-argument-after=%s\n' "$previous_arg" >>"$FAKE_JQ_ARG_LEAKS"
     fi
     previous_arg="$arg"
+  done
+  for arg in "$@"; do
+    if [[ "$arg" == */p3-reference.json ]]; then
+      printf 'p3-reference-mode=%s\n' "$(stat -c '%a' "$arg")" >>"$FAKE_PRIVATE_AUDIT"
+    fi
   done
 fi
 exec "$REAL_JQ" "$@"
@@ -241,6 +247,8 @@ run_fake_scenario() {
   reference="${11:-LIVE-REF-1}"
   run_dir="$tmp/$run_name"
   mkdir -p "$run_dir" "$run_dir/recovery"
+  mkdir -p "$run_dir/private-tmp"
+  chmod 700 "$run_dir/private-tmp"
   chmod 700 "$run_dir/recovery"
   : >"$run_dir/get-count"
   : >"$run_dir/valid-payload"
@@ -250,6 +258,7 @@ run_fake_scenario() {
   : >"$run_dir/mutations"
   : >"$run_dir/calls"
   : >"$run_dir/jq-arg-leaks"
+  : >"$run_dir/private-audit"
   : >"$run_dir/diagnostic"
   if ! PATH="$tmp/bin:$PATH" \
     BASE_URL=http://fake.invalid \
@@ -263,8 +272,11 @@ run_fake_scenario() {
     CIM_LIVE_SUBMIT="$mode" \
     CIM_CONFIRM_LIVE_SUBMIT=I-UNDERSTAND-THIS-CHANGES-REAL-DATA \
     CIM_RECOVERY_DIR="$run_dir/recovery" \
+    TMPDIR="$run_dir/private-tmp" \
     FAKE_REFERENCE="$reference" \
+    FAKE_PENDING_REFERENCE=PRE-EXISTING \
     FAKE_JQ_ARG_LEAKS="$run_dir/jq-arg-leaks" \
+    FAKE_PRIVATE_AUDIT="$run_dir/private-audit" \
     REAL_JQ="$real_jq" \
     FAKE_LIVE="$mode" \
     FAKE_SCENARIO="$scenario" \
@@ -510,6 +522,23 @@ grep -Fq 'Password verifications this run (snapshot rejections excluded): 1' "$t
   printf 'FAIL non-live P3 altered existing member data\n'
   exit 1
 }
+[[ ! -s "$tmp/existing-pending/jq-arg-leaks" ]] || {
+  printf 'FAIL API-returned pending reference appeared in jq process arguments\n'
+  cat "$tmp/existing-pending/jq-arg-leaks"
+  exit 1
+}
+grep -Fxq 'p3-reference-mode=600' "$tmp/existing-pending/private-audit" || {
+  printf 'FAIL P3 reference was not supplied through a mode-0600 private file\n'
+  exit 1
+}
+if grep -Fq 'PRE-EXISTING' "$tmp/p3-pending.log"; then
+  printf 'FAIL API-returned pending reference appeared in terminal output/evidence\n'
+  exit 1
+fi
+[[ -z "$(find "$tmp/existing-pending/private-tmp" -mindepth 1 -print -quit)" ]] || {
+  printf 'FAIL P3 private reference state was not cleaned up\n'
+  exit 1
+}
 
 run_fake_scenario no "$tmp/restricted.log" '[]' no restricted FUNCTION_UNAVAILABLE
 grep -Fq 'PASS S1 status=200' "$tmp/restricted.log" || {
@@ -614,7 +643,8 @@ for secret in \
   fake-cim-token \
   fake-cancel-token \
   LIVE-REF-1 \
-  OTHER-PENDING; do
+  OTHER-PENDING \
+  PRE-EXISTING; do
   if grep -Fq -- "$secret" "$tmp"/*.log; then
     printf 'FAIL secret appeared in scenario output/evidence\n'
     exit 1
