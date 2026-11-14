@@ -97,7 +97,7 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
                   .switchIfEmpty(
                       Mono.error(
                           malformed(
-                              TrpGetVestingScaleApimDataItem.RESPONSE,
+                              TrpGetVestingScaleApimDataItem.RESPONSE_KEY,
                               VestingScaleMalformedResponseException.MalformedReason
                                   .MISSING_REQUIRED_FIELD)))
                   .map(this::mapEnvelope);
@@ -113,7 +113,7 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
   private VestingScaleData mapEnvelope(ApimResponseEnvelope<JsonNode> envelope) {
     if (envelope == null || envelope.getResponse() == null) {
       throw malformed(
-          TrpGetVestingScaleApimDataItem.RESPONSE,
+          TrpGetVestingScaleApimDataItem.RESPONSE_KEY,
           VestingScaleMalformedResponseException.MalformedReason.MISSING_REQUIRED_FIELD);
     }
     var response = envelope.getResponse();
@@ -124,7 +124,7 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
     List<JsonNode> data = response.getData();
     if (data == null || data.size() != 1 || data.getFirst() == null) {
       throw malformed(
-          TrpGetVestingScaleApimDataItem.DATA,
+          TrpGetVestingScaleApimDataItem.DATA_KEY,
           VestingScaleMalformedResponseException.MalformedReason.INVALID_CARDINALITY);
     }
     try {
@@ -150,7 +150,7 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
       Throwable cause = current.getCause();
       current = cause == current ? null : cause;
     }
-    return TrpGetVestingScaleApimDataItem.DATA + "[0]";
+    return TrpGetVestingScaleApimDataItem.DATA_KEY + "[0]";
   }
 
   private static String formatPath(JsonMappingException mapping) {
@@ -158,7 +158,7 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
     StringBuilder path = new StringBuilder();
     for (JsonMappingException.Reference reference : references) {
       if (reference.getFieldName() != null) {
-        if (path.length() > 0) {
+        if (!path.isEmpty()) {
           path.append('.');
         }
         path.append(reference.getFieldName());
@@ -166,7 +166,7 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
         path.append('[').append(reference.getIndex()).append(']');
       }
     }
-    return path.length() == 0 ? null : path.toString();
+    return path.isEmpty() ? null : path.toString();
   }
 
   private static VestingScaleMalformedResponseException malformed(

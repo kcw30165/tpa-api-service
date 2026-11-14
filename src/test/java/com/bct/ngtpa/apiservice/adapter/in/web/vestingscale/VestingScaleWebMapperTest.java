@@ -84,7 +84,12 @@ class VestingScaleWebMapperTest {
 
   @Test
   void requiresEnglishPlanTypeInApplicationPlan() {
-    assertThatThrownBy(() -> plan("P1", null, "中文名稱", Presence.absent()))
+    String planNo = "P1";
+    String englishName = null;
+    String chineseName = "中文名稱";
+    Presence<List<VestingScaleRow>> scales = Presence.absent();
+
+    assertThatThrownBy(() -> plan(planNo, englishName, chineseName, scales))
         .isInstanceOf(NullPointerException.class)
         .hasMessage("planTypeDescEng must not be null");
   }

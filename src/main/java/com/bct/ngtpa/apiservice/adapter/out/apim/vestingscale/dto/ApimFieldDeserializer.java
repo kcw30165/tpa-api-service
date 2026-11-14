@@ -35,12 +35,12 @@ public final class ApimFieldDeserializer extends JsonDeserializer<ApimField<?>>
       throw JsonMappingException.from(context, "ApimField requires one value type");
     }
 
-    JavaType valueType = wrapperType.containedType(0);
-    JsonDeserializer<?> valueDeserializer =
-        isStrictScalar(valueType)
+    JavaType contextualValueType = wrapperType.containedType(0);
+    JsonDeserializer<?> contextualValueDeserializer =
+        isStrictScalar(contextualValueType)
             ? null
-            : context.findContextualValueDeserializer(valueType, property);
-    return new ApimFieldDeserializer(valueType, valueDeserializer);
+            : context.findContextualValueDeserializer(contextualValueType, property);
+    return new ApimFieldDeserializer(contextualValueType, contextualValueDeserializer);
   }
 
   @Override
@@ -50,6 +50,20 @@ public final class ApimFieldDeserializer extends JsonDeserializer<ApimField<?>>
       throw JsonMappingException.from(parser, "ApimField deserializer is not contextualized");
     }
 
+    if (isStrictScalar(valueType)) {
+      return deserializeStrictScalar(parser);
+    }
+    if (valueType.isCollectionLikeType() || valueType.isArrayType()) {
+      if (parser.currentToken() != JsonToken.START_ARRAY) {
+        throw mismatch(parser, "Expected JSON array");
+      }
+    } else if (parser.currentToken() != JsonToken.START_OBJECT) {
+      throw mismatch(parser, "Expected JSON object");
+    }
+    return ApimField.value(valueDeserializer.deserialize(parser, context));
+  }
+
+  private ApimField<?> deserializeStrictScalar(JsonParser parser) throws IOException {
     if (valueType.hasRawClass(String.class)) {
       if (parser.currentToken() != JsonToken.VALUE_STRING) {
         throw mismatch(parser, "Expected JSON string");
@@ -62,21 +76,11 @@ public final class ApimFieldDeserializer extends JsonDeserializer<ApimField<?>>
       }
       return ApimField.value(parser.getIntValue());
     }
-    if (valueType.hasRawClass(BigDecimal.class)) {
-      if (parser.currentToken() != JsonToken.VALUE_NUMBER_INT
-          && parser.currentToken() != JsonToken.VALUE_NUMBER_FLOAT) {
-        throw mismatch(parser, "Expected JSON number");
-      }
-      return ApimField.value(parser.getDecimalValue());
+    if (parser.currentToken() != JsonToken.VALUE_NUMBER_INT
+        && parser.currentToken() != JsonToken.VALUE_NUMBER_FLOAT) {
+      throw mismatch(parser, "Expected JSON number");
     }
-    if (valueType.isCollectionLikeType() || valueType.isArrayType()) {
-      if (parser.currentToken() != JsonToken.START_ARRAY) {
-        throw mismatch(parser, "Expected JSON array");
-      }
-    } else if (parser.currentToken() != JsonToken.START_OBJECT) {
-      throw mismatch(parser, "Expected JSON object");
-    }
-    return ApimField.value(valueDeserializer.deserialize(parser, context));
+    return ApimField.value(parser.getDecimalValue());
   }
 
   @Override

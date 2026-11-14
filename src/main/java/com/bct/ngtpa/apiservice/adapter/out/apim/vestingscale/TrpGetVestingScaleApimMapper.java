@@ -1,28 +1,28 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale;
 
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.CONFIG;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.ConfigItem.CONFIG_VALUE;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.ConfigItem.ITEM_ID;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.MEMBER;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member.DATE_JOINED_COMPANY;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member.DATE_JOINED_SCHEME;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member.EMPLOYMENT_DATE;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member.MEMBER_CATEGORY;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.PLANS;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.BASIS_CONT_EE_CHI;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.BASIS_CONT_EE_ENG;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.BASIS_CONT_ER_CHI;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.BASIS_CONT_ER_ENG;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.DATE_OF_JOINING_PLAN;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.PLAN_EFFECTIVE_DATE;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.PLAN_NO;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.PLAN_SERVICE;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.PLAN_TYPE_DESC_ENG;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.VESTING_SCALE;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.PlanService.MONTHS;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.PlanService.YEARS;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.VestingRow.COMPLETED_YEARS;
-import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.VestingRow.VEST_PCNT;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.CONFIG_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.ConfigItem.CONFIG_VALUE_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.ConfigItem.ITEM_ID_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.MEMBER_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member.DATE_JOINED_COMPANY_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member.DATE_JOINED_SCHEME_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member.EMPLOYMENT_DATE_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Member.MEMBER_CATEGORY_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.PLANS_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.BASIS_CONT_EE_CHI_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.BASIS_CONT_EE_ENG_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.BASIS_CONT_ER_CHI_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.BASIS_CONT_ER_ENG_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.DATE_OF_JOINING_PLAN_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.PLAN_EFFECTIVE_DATE_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.PLAN_NO_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.PLAN_SERVICE_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.PLAN_TYPE_DESC_ENG_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.Plan.VESTING_SCALE_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.PlanService.MONTHS_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.PlanService.YEARS_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.VestingRow.COMPLETED_YEARS_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.VestingRow.VEST_PCNT_KEY;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.ApimField;
 import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem;
@@ -61,73 +61,73 @@ final class TrpGetVestingScaleApimMapper {
       DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
   private static final Map<String, VestingScaleConfigItem> CONFIG_ITEMS_BY_ID =
       Map.ofEntries(
-          Map.entry(MEMBER_CATEGORY, VestingScaleConfigItem.MEMBER_CATEGORY),
-          Map.entry(DATE_JOINED_COMPANY, VestingScaleConfigItem.DATE_JOINED_COMPANY),
-          Map.entry(DATE_JOINED_SCHEME, VestingScaleConfigItem.DATE_JOINED_SCHEME),
-          Map.entry(EMPLOYMENT_DATE, VestingScaleConfigItem.EMPLOYMENT_DATE),
-          Map.entry(PLAN_EFFECTIVE_DATE, VestingScaleConfigItem.PLAN_EFFECTIVE_DATE),
-          Map.entry(DATE_OF_JOINING_PLAN, VestingScaleConfigItem.DATE_OF_JOINING_PLAN),
-          Map.entry(PLAN_SERVICE, VestingScaleConfigItem.PLAN_SERVICE),
-          Map.entry(VESTING_SCALE, VestingScaleConfigItem.VESTING_SCALE),
-          Map.entry(BASIS_CONT_EE_ENG, VestingScaleConfigItem.BASIS_CONT_EE_ENG),
-          Map.entry(BASIS_CONT_EE_CHI, VestingScaleConfigItem.BASIS_CONT_EE_CHI),
-          Map.entry(BASIS_CONT_ER_ENG, VestingScaleConfigItem.BASIS_CONT_ER_ENG),
-          Map.entry(BASIS_CONT_ER_CHI, VestingScaleConfigItem.BASIS_CONT_ER_CHI));
+          Map.entry(MEMBER_CATEGORY_KEY, VestingScaleConfigItem.MEMBER_CATEGORY),
+          Map.entry(DATE_JOINED_COMPANY_KEY, VestingScaleConfigItem.DATE_JOINED_COMPANY),
+          Map.entry(DATE_JOINED_SCHEME_KEY, VestingScaleConfigItem.DATE_JOINED_SCHEME),
+          Map.entry(EMPLOYMENT_DATE_KEY, VestingScaleConfigItem.EMPLOYMENT_DATE),
+          Map.entry(PLAN_EFFECTIVE_DATE_KEY, VestingScaleConfigItem.PLAN_EFFECTIVE_DATE),
+          Map.entry(DATE_OF_JOINING_PLAN_KEY, VestingScaleConfigItem.DATE_OF_JOINING_PLAN),
+          Map.entry(PLAN_SERVICE_KEY, VestingScaleConfigItem.PLAN_SERVICE),
+          Map.entry(VESTING_SCALE_KEY, VestingScaleConfigItem.VESTING_SCALE),
+          Map.entry(BASIS_CONT_EE_ENG_KEY, VestingScaleConfigItem.BASIS_CONT_EE_ENG),
+          Map.entry(BASIS_CONT_EE_CHI_KEY, VestingScaleConfigItem.BASIS_CONT_EE_CHI),
+          Map.entry(BASIS_CONT_ER_ENG_KEY, VestingScaleConfigItem.BASIS_CONT_ER_ENG),
+          Map.entry(BASIS_CONT_ER_CHI_KEY, VestingScaleConfigItem.BASIS_CONT_ER_CHI));
 
   VestingScaleData map(TrpGetVestingScaleApimDataItem item) {
     if (item == null) {
       throw malformed(
-          TrpGetVestingScaleApimDataItem.DATA,
+          TrpGetVestingScaleApimDataItem.DATA_KEY,
           VestingScaleMalformedResponseException.MalformedReason.MISSING_REQUIRED_FIELD);
     }
-    Member member = required(item.member(), MEMBER);
-    List<Plan> plans = required(item.plans(), PLANS);
-    List<ConfigItem> config = required(item.config(), CONFIG);
+    Member member = required(item.member(), MEMBER_KEY);
+    List<Plan> plans = required(item.plans(), PLANS_KEY);
+    List<ConfigItem> config = required(item.config(), CONFIG_KEY);
     return new VestingScaleData(mapMember(member), mapPlans(plans), mapConfig(config));
   }
 
   private static VestingScaleMember mapMember(Member member) {
     return new VestingScaleMember(
         presence(member.memberCategory(), TrpGetVestingScaleApimMapper::text),
-        datePresence(member.dateJoinedCompany(), path(MEMBER, DATE_JOINED_COMPANY)),
-        datePresence(member.dateJoinedScheme(), path(MEMBER, DATE_JOINED_SCHEME)),
-        datePresence(member.employmentDate(), path(MEMBER, EMPLOYMENT_DATE)));
+        datePresence(member.dateJoinedCompany(), path(MEMBER_KEY, DATE_JOINED_COMPANY_KEY)),
+        datePresence(member.dateJoinedScheme(), path(MEMBER_KEY, DATE_JOINED_SCHEME_KEY)),
+        datePresence(member.employmentDate(), path(MEMBER_KEY, EMPLOYMENT_DATE_KEY)));
   }
 
   private static List<VestingScalePlan> mapPlans(List<Plan> planItems) {
     Set<String> planNumbers = new HashSet<>();
     List<VestingScalePlan> plans = new ArrayList<>();
     for (int index = 0; index < planItems.size(); index++) {
-      String planPath = indexed(PLANS, index);
+      String planPath = indexed(PLANS_KEY, index);
       Plan plan = planItems.get(index);
       if (plan == null) {
         throw malformed(
             planPath, VestingScaleMalformedResponseException.MalformedReason.INVALID_TYPE);
       }
-      String planNo = requiredNonBlank(plan.planNo(), path(planPath, PLAN_NO));
+      String planNo = requiredNonBlank(plan.planNo(), path(planPath, PLAN_NO_KEY));
       if (!planNumbers.add(planNo)) {
         throw malformed(
-            path(planPath, PLAN_NO),
+            path(planPath, PLAN_NO_KEY),
             VestingScaleMalformedResponseException.MalformedReason.DUPLICATE_VALUE);
       }
       String planTypeDescEng =
-          requiredNonBlank(plan.planTypeDescEng(), path(planPath, PLAN_TYPE_DESC_ENG));
+          requiredNonBlank(plan.planTypeDescEng(), path(planPath, PLAN_TYPE_DESC_ENG_KEY));
       String planTypeDescChi = optionalValue(plan.planTypeDescChi());
       plans.add(
           new VestingScalePlan(
               planNo,
               planTypeDescEng,
               planTypeDescChi,
-              datePresence(plan.planEffectiveDate(), path(planPath, PLAN_EFFECTIVE_DATE)),
-              datePresence(plan.dateOfJoiningPlan(), path(planPath, DATE_OF_JOINING_PLAN)),
-              planService(plan.planService(), path(planPath, PLAN_SERVICE)),
+              datePresence(plan.planEffectiveDate(), path(planPath, PLAN_EFFECTIVE_DATE_KEY)),
+              datePresence(plan.dateOfJoiningPlan(), path(planPath, DATE_OF_JOINING_PLAN_KEY)),
+              planService(plan.planService(), path(planPath, PLAN_SERVICE_KEY)),
               presence(plan.vestPeriodBaseEng(), Function.identity()),
               presence(plan.vestPeriodBaseChi(), Function.identity()),
               presence(plan.basisContEeEng(), Function.identity()),
               presence(plan.basisContEeChi(), Function.identity()),
               presence(plan.basisContErEng(), Function.identity()),
               presence(plan.basisContErChi(), Function.identity()),
-              vestingScale(plan.vestingScale(), path(planPath, VESTING_SCALE))));
+              vestingScale(plan.vestingScale(), path(planPath, VESTING_SCALE_KEY))));
     }
     return List.copyOf(plans);
   }
@@ -137,19 +137,20 @@ final class TrpGetVestingScaleApimMapper {
     Set<String> seen = new HashSet<>();
     Map<VestingScaleConfigItem, VestingScaleConfigValue> config = new LinkedHashMap<>();
     for (int index = 0; index < items.size(); index++) {
-      String itemPath = indexed(CONFIG, index);
+      String itemPath = indexed(CONFIG_KEY, index);
       ConfigItem item = items.get(index);
       if (item == null) {
         throw malformed(
             itemPath, VestingScaleMalformedResponseException.MalformedReason.INVALID_TYPE);
       }
-      String itemId = requiredNonBlank(item.itemId(), path(itemPath, ITEM_ID));
+      String itemId = requiredNonBlank(item.itemId(), path(itemPath, ITEM_ID_KEY));
       if (!seen.add(itemId)) {
         throw malformed(
-            path(itemPath, ITEM_ID),
+            path(itemPath, ITEM_ID_KEY),
             VestingScaleMalformedResponseException.MalformedReason.DUPLICATE_VALUE);
       }
-      VestingScaleConfigValue value = configValue(item.configValue(), path(itemPath, CONFIG_VALUE));
+      VestingScaleConfigValue value =
+          configValue(item.configValue(), path(itemPath, CONFIG_VALUE_KEY));
       VestingScaleConfigItem configItem = CONFIG_ITEMS_BY_ID.get(itemId);
       if (configItem != null) {
         config.put(configItem, value);
@@ -180,8 +181,8 @@ final class TrpGetVestingScaleApimMapper {
                 path, VestingScaleMalformedResponseException.MalformedReason.INVALID_TYPE);
           }
           return new VestingScalePlanService(
-              nullableInteger(service.years(), path(path, YEARS)),
-              nullableInteger(service.months(), path(path, MONTHS)));
+              nullableInteger(service.years(), path(path, YEARS_KEY)),
+              nullableInteger(service.months(), path(path, MONTHS_KEY)));
         });
   }
 
@@ -214,8 +215,8 @@ final class TrpGetVestingScaleApimMapper {
         throw malformed(
             rowPath, VestingScaleMalformedResponseException.MalformedReason.INVALID_TYPE);
       }
-      Integer years = required(row.completedYears(), path(rowPath, COMPLETED_YEARS));
-      BigDecimal percentage = required(row.vestPcnt(), path(rowPath, VEST_PCNT));
+      Integer years = required(row.completedYears(), path(rowPath, COMPLETED_YEARS_KEY));
+      BigDecimal percentage = required(row.vestPcnt(), path(rowPath, VEST_PCNT_KEY));
       mapped.add(new VestingScaleRow(years, percentage));
     }
     return List.copyOf(mapped);
@@ -272,7 +273,7 @@ final class TrpGetVestingScaleApimMapper {
   private static <T, R> Presence<R> presence(ApimField<T> field, Function<T, R> mapper) {
     if (field == null) {
       throw malformed(
-          TrpGetVestingScaleApimDataItem.DATA,
+          TrpGetVestingScaleApimDataItem.DATA_KEY,
           VestingScaleMalformedResponseException.MalformedReason.MISSING_REQUIRED_FIELD);
     }
     return switch (field.state()) {

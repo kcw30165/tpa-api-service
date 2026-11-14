@@ -195,7 +195,7 @@ class TrpGetVestingScaleApimMapperTest {
             event -> {
               assertThat(event.getLevel().toString()).isEqualTo("WARN");
               assertThat(event.getFormattedMessage())
-                  .isEqualTo("event=vesting-scale.config.unknown_item item-id=future-field");
+                  .hasToString("event=vesting-scale.config.unknown_item item-id=future-field");
             });
   }
 
@@ -300,7 +300,8 @@ class TrpGetVestingScaleApimMapperTest {
   @ParameterizedTest
   @MethodSource("malformedResponses")
   void rejectsMalformedJsonKindsAndRequiredValues(String response) {
-    assertThatThrownBy(() -> map(read(response)))
+    JsonNode malformedResponse = read(response);
+    assertThatThrownBy(() -> map(malformedResponse))
         .isInstanceOfAny(
             VestingScaleMalformedResponseException.class, IllegalArgumentException.class);
   }
