@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.GetVestingScaleCommand;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.Presence;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleCommand;
+import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigItem;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigValue;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleData;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleMember;
@@ -84,6 +85,8 @@ class GetVestingScaleServiceTest {
             Presence.absent(),
             Presence.present(List.of(new VestingScaleRow(1, new BigDecimal("25")))));
     return new VestingScaleData(
-        member, List.of(plan), Map.of("member-category", VestingScaleConfigValue.HIDDEN));
+        member,
+        List.of(plan),
+        Map.of(VestingScaleConfigItem.MEMBER_CATEGORY, VestingScaleConfigValue.HIDDEN));
   }
 }

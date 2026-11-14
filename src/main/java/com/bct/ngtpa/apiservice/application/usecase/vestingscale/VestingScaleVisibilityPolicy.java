@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.vestingscale;
 
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.Presence;
+import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigItem;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigValue;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleData;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleMember;
@@ -16,14 +17,21 @@ public final class VestingScaleVisibilityPolicy {
     Objects.requireNonNull(data, "data must not be null");
     var config = data.config();
     boolean vestingScaleSectionVisible =
-        config.get("vesting-scale") != VestingScaleConfigValue.HIDDEN;
+        config.get(VestingScaleConfigItem.VESTING_SCALE) != VestingScaleConfigValue.HIDDEN;
 
     VestingScaleMember member =
         new VestingScaleMember(
-            visible(data.member().memberCategory(), config, "member-category"),
-            visible(data.member().dateJoinedCompany(), config, "date-joined-company"),
-            visible(data.member().dateJoinedScheme(), config, "date-joined-scheme"),
-            visible(data.member().employmentDate(), config, "employment-date"));
+            visible(data.member().memberCategory(), config, VestingScaleConfigItem.MEMBER_CATEGORY),
+            visible(
+                data.member().dateJoinedCompany(),
+                config,
+                VestingScaleConfigItem.DATE_JOINED_COMPANY),
+            visible(
+                data.member().dateJoinedScheme(),
+                config,
+                VestingScaleConfigItem.DATE_JOINED_SCHEME),
+            visible(
+                data.member().employmentDate(), config, VestingScaleConfigItem.EMPLOYMENT_DATE));
     List<VestingScalePlan> plans =
         data.plans().stream()
             .map(
@@ -32,24 +40,44 @@ public final class VestingScaleVisibilityPolicy {
                         plan.planNo(),
                         plan.planTypeDescEng(),
                         plan.planTypeDescChi(),
-                        visible(plan.planEffectiveDate(), config, "plan-effective-date"),
-                        visible(plan.dateOfJoiningPlan(), config, "date-of-joining-plan"),
-                        visible(plan.planService(), config, "plan-service"),
+                        visible(
+                            plan.planEffectiveDate(),
+                            config,
+                            VestingScaleConfigItem.PLAN_EFFECTIVE_DATE),
+                        visible(
+                            plan.dateOfJoiningPlan(),
+                            config,
+                            VestingScaleConfigItem.DATE_OF_JOINING_PLAN),
+                        visible(plan.planService(), config, VestingScaleConfigItem.PLAN_SERVICE),
                         plan.vestPeriodBaseEng(),
                         plan.vestPeriodBaseChi(),
-                        visible(plan.basisContEeEng(), config, "basis-cont-ee-eng"),
-                        visible(plan.basisContEeChi(), config, "basis-cont-ee-chi"),
-                        visible(plan.basisContErEng(), config, "basis-cont-er-eng"),
-                        visible(plan.basisContErChi(), config, "basis-cont-er-chi"),
-                        visible(plan.vestingScale(), config, "vesting-scale")))
+                        visible(
+                            plan.basisContEeEng(),
+                            config,
+                            VestingScaleConfigItem.BASIS_CONT_EE_ENG),
+                        visible(
+                            plan.basisContEeChi(),
+                            config,
+                            VestingScaleConfigItem.BASIS_CONT_EE_CHI),
+                        visible(
+                            plan.basisContErEng(),
+                            config,
+                            VestingScaleConfigItem.BASIS_CONT_ER_ENG),
+                        visible(
+                            plan.basisContErChi(),
+                            config,
+                            VestingScaleConfigItem.BASIS_CONT_ER_CHI),
+                        visible(plan.vestingScale(), config, VestingScaleConfigItem.VESTING_SCALE)))
             .toList();
 
     return new VestingScaleResult(member, plans, vestingScaleSectionVisible);
   }
 
   private static <T> Presence<T> visible(
-      Presence<T> presence, Map<String, VestingScaleConfigValue> config, String itemId) {
-    if (!presence.isPresent() || config.get(itemId) == VestingScaleConfigValue.HIDDEN) {
+      Presence<T> presence,
+      Map<VestingScaleConfigItem, VestingScaleConfigValue> config,
+      VestingScaleConfigItem item) {
+    if (!presence.isPresent() || config.get(item) == VestingScaleConfigValue.HIDDEN) {
       return Presence.absent();
     }
     return presence;

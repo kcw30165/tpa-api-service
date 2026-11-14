@@ -32,6 +32,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingS
 import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.PlanService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.VestingRow;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.Presence;
+import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigItem;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigValue;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleData;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleMember;
@@ -58,20 +59,20 @@ final class TrpGetVestingScaleApimMapper {
   private static final Logger LOG = LoggerFactory.getLogger(TrpGetVestingScaleApimMapper.class);
   private static final DateTimeFormatter DATE_FORMAT =
       DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
-  private static final Set<String> CONFIG_ITEM_IDS =
-      Set.of(
-          MEMBER_CATEGORY,
-          PLAN_EFFECTIVE_DATE,
-          BASIS_CONT_EE_CHI,
-          BASIS_CONT_EE_ENG,
-          BASIS_CONT_ER_CHI,
-          BASIS_CONT_ER_ENG,
-          DATE_JOINED_COMPANY,
-          DATE_JOINED_SCHEME,
-          DATE_OF_JOINING_PLAN,
-          EMPLOYMENT_DATE,
-          PLAN_SERVICE,
-          VESTING_SCALE);
+  private static final Map<String, VestingScaleConfigItem> CONFIG_ITEMS_BY_ID =
+      Map.ofEntries(
+          Map.entry(MEMBER_CATEGORY, VestingScaleConfigItem.MEMBER_CATEGORY),
+          Map.entry(DATE_JOINED_COMPANY, VestingScaleConfigItem.DATE_JOINED_COMPANY),
+          Map.entry(DATE_JOINED_SCHEME, VestingScaleConfigItem.DATE_JOINED_SCHEME),
+          Map.entry(EMPLOYMENT_DATE, VestingScaleConfigItem.EMPLOYMENT_DATE),
+          Map.entry(PLAN_EFFECTIVE_DATE, VestingScaleConfigItem.PLAN_EFFECTIVE_DATE),
+          Map.entry(DATE_OF_JOINING_PLAN, VestingScaleConfigItem.DATE_OF_JOINING_PLAN),
+          Map.entry(PLAN_SERVICE, VestingScaleConfigItem.PLAN_SERVICE),
+          Map.entry(VESTING_SCALE, VestingScaleConfigItem.VESTING_SCALE),
+          Map.entry(BASIS_CONT_EE_ENG, VestingScaleConfigItem.BASIS_CONT_EE_ENG),
+          Map.entry(BASIS_CONT_EE_CHI, VestingScaleConfigItem.BASIS_CONT_EE_CHI),
+          Map.entry(BASIS_CONT_ER_ENG, VestingScaleConfigItem.BASIS_CONT_ER_ENG),
+          Map.entry(BASIS_CONT_ER_CHI, VestingScaleConfigItem.BASIS_CONT_ER_CHI));
 
   VestingScaleData map(TrpGetVestingScaleApimDataItem item) {
     if (item == null) {
@@ -131,9 +132,10 @@ final class TrpGetVestingScaleApimMapper {
     return List.copyOf(plans);
   }
 
-  private static Map<String, VestingScaleConfigValue> mapConfig(List<ConfigItem> items) {
+  private static Map<VestingScaleConfigItem, VestingScaleConfigValue> mapConfig(
+      List<ConfigItem> items) {
     Set<String> seen = new HashSet<>();
-    Map<String, VestingScaleConfigValue> config = new LinkedHashMap<>();
+    Map<VestingScaleConfigItem, VestingScaleConfigValue> config = new LinkedHashMap<>();
     for (int index = 0; index < items.size(); index++) {
       String itemPath = indexed(CONFIG, index);
       ConfigItem item = items.get(index);
@@ -148,8 +150,9 @@ final class TrpGetVestingScaleApimMapper {
             VestingScaleMalformedResponseException.MalformedReason.DUPLICATE_VALUE);
       }
       VestingScaleConfigValue value = configValue(item.configValue(), path(itemPath, CONFIG_VALUE));
-      if (CONFIG_ITEM_IDS.contains(itemId)) {
-        config.put(itemId, value);
+      VestingScaleConfigItem configItem = CONFIG_ITEMS_BY_ID.get(itemId);
+      if (configItem != null) {
+        config.put(configItem, value);
       } else {
         LOG.warn("event=vesting-scale.config.unknown_item item-id={}", itemId);
       }

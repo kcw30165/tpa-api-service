@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.usecase.vestingscale;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.Presence;
+import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigItem;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigValue;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleData;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleMember;
@@ -34,12 +35,12 @@ class VestingScaleVisibilityPolicyTest {
   void appliesPresenceAndVisibilityRulesToEveryConfigurableField(Field field, Scenario scenario) {
     var config =
         scenario.configValue == null
-            ? Map.<String, VestingScaleConfigValue>of()
-            : Map.of(field.itemId, scenario.configValue);
+            ? Map.<VestingScaleConfigItem, VestingScaleConfigValue>of()
+            : Map.of(field.configItem, scenario.configValue);
     var result = policy.apply(source(field, scenario, config));
 
     assertThat(valueAt(result, field))
-        .as("%s with %s", field.itemId, scenario)
+        .as("%s with %s", field.configItem, scenario)
         .isEqualTo(expected(field, scenario));
   }
 
@@ -53,10 +54,10 @@ class VestingScaleVisibilityPolicyTest {
                 source.member(),
                 source.plans(),
                 Map.of(
-                    "basis-cont-ee-eng", VestingScaleConfigValue.HIDDEN,
-                    "basis-cont-ee-chi", VestingScaleConfigValue.READONLY,
-                    "basis-cont-er-eng", VestingScaleConfigValue.READONLY,
-                    "basis-cont-er-chi", VestingScaleConfigValue.HIDDEN)));
+                    VestingScaleConfigItem.BASIS_CONT_EE_ENG, VestingScaleConfigValue.HIDDEN,
+                    VestingScaleConfigItem.BASIS_CONT_EE_CHI, VestingScaleConfigValue.READONLY,
+                    VestingScaleConfigItem.BASIS_CONT_ER_ENG, VestingScaleConfigValue.READONLY,
+                    VestingScaleConfigItem.BASIS_CONT_ER_CHI, VestingScaleConfigValue.HIDDEN)));
     assertThat(englishHidden.plans().getFirst().basisContEeEng()).isEqualTo(Presence.absent());
     assertThat(englishHidden.plans().getFirst().basisContEeChi())
         .isEqualTo(Presence.present("ee-chi"));
@@ -70,10 +71,10 @@ class VestingScaleVisibilityPolicyTest {
                 source.member(),
                 source.plans(),
                 Map.of(
-                    "basis-cont-ee-eng", VestingScaleConfigValue.READONLY,
-                    "basis-cont-ee-chi", VestingScaleConfigValue.HIDDEN,
-                    "basis-cont-er-eng", VestingScaleConfigValue.HIDDEN,
-                    "basis-cont-er-chi", VestingScaleConfigValue.READONLY)));
+                    VestingScaleConfigItem.BASIS_CONT_EE_ENG, VestingScaleConfigValue.READONLY,
+                    VestingScaleConfigItem.BASIS_CONT_EE_CHI, VestingScaleConfigValue.HIDDEN,
+                    VestingScaleConfigItem.BASIS_CONT_ER_ENG, VestingScaleConfigValue.HIDDEN,
+                    VestingScaleConfigItem.BASIS_CONT_ER_CHI, VestingScaleConfigValue.READONLY)));
     assertThat(chineseHidden.plans().getFirst().basisContEeEng())
         .isEqualTo(Presence.present("ee-eng"));
     assertThat(chineseHidden.plans().getFirst().basisContEeChi()).isEqualTo(Presence.absent());
@@ -89,7 +90,7 @@ class VestingScaleVisibilityPolicyTest {
             source(
                 Field.VESTING_SCALE,
                 Scenario.VALUE_HIDDEN,
-                Map.of("vesting-scale", VestingScaleConfigValue.HIDDEN)));
+                Map.of(VestingScaleConfigItem.VESTING_SCALE, VestingScaleConfigValue.HIDDEN)));
 
     assertThat(result.vestingScaleSectionVisible()).isFalse();
     assertThat(result.plans().getFirst().vestingScale()).isEqualTo(Presence.absent());
@@ -113,12 +114,7 @@ class VestingScaleVisibilityPolicyTest {
             new VestingScaleData(
                 source.member(),
                 source.plans(),
-                Map.of(
-                    "plan-no", VestingScaleConfigValue.HIDDEN,
-                    "plan-type-desc-eng", VestingScaleConfigValue.HIDDEN,
-                    "plan-type-desc-chi", VestingScaleConfigValue.HIDDEN,
-                    "vest-period-base-eng", VestingScaleConfigValue.HIDDEN,
-                    "vest-period-base-chi", VestingScaleConfigValue.HIDDEN)));
+                Map.of(VestingScaleConfigItem.MEMBER_CATEGORY, VestingScaleConfigValue.HIDDEN)));
 
     assertThat(result.plans().getFirst().planNo()).isEqualTo("plan-no");
     assertThat(result.plans().getFirst().planTypeDescEng()).isEqualTo("plan-type-eng");
@@ -165,7 +161,9 @@ class VestingScaleVisibilityPolicyTest {
   }
 
   private static VestingScaleData source(
-      Field target, Scenario scenario, Map<String, VestingScaleConfigValue> config) {
+      Field target,
+      Scenario scenario,
+      Map<VestingScaleConfigItem, VestingScaleConfigValue> config) {
     var member =
         new VestingScaleMember(
             presence(Field.MEMBER_CATEGORY, target, scenario, "member"),
@@ -264,23 +262,23 @@ class VestingScaleVisibilityPolicyTest {
   }
 
   private enum Field {
-    MEMBER_CATEGORY("member-category"),
-    DATE_JOINED_COMPANY("date-joined-company"),
-    DATE_JOINED_SCHEME("date-joined-scheme"),
-    EMPLOYMENT_DATE("employment-date"),
-    PLAN_EFFECTIVE_DATE("plan-effective-date"),
-    DATE_OF_JOINING_PLAN("date-of-joining-plan"),
-    PLAN_SERVICE("plan-service"),
-    VESTING_SCALE("vesting-scale"),
-    BASIS_CONT_EE_ENG("basis-cont-ee-eng"),
-    BASIS_CONT_EE_CHI("basis-cont-ee-chi"),
-    BASIS_CONT_ER_ENG("basis-cont-er-eng"),
-    BASIS_CONT_ER_CHI("basis-cont-er-chi");
+    MEMBER_CATEGORY(VestingScaleConfigItem.MEMBER_CATEGORY),
+    DATE_JOINED_COMPANY(VestingScaleConfigItem.DATE_JOINED_COMPANY),
+    DATE_JOINED_SCHEME(VestingScaleConfigItem.DATE_JOINED_SCHEME),
+    EMPLOYMENT_DATE(VestingScaleConfigItem.EMPLOYMENT_DATE),
+    PLAN_EFFECTIVE_DATE(VestingScaleConfigItem.PLAN_EFFECTIVE_DATE),
+    DATE_OF_JOINING_PLAN(VestingScaleConfigItem.DATE_OF_JOINING_PLAN),
+    PLAN_SERVICE(VestingScaleConfigItem.PLAN_SERVICE),
+    VESTING_SCALE(VestingScaleConfigItem.VESTING_SCALE),
+    BASIS_CONT_EE_ENG(VestingScaleConfigItem.BASIS_CONT_EE_ENG),
+    BASIS_CONT_EE_CHI(VestingScaleConfigItem.BASIS_CONT_EE_CHI),
+    BASIS_CONT_ER_ENG(VestingScaleConfigItem.BASIS_CONT_ER_ENG),
+    BASIS_CONT_ER_CHI(VestingScaleConfigItem.BASIS_CONT_ER_CHI);
 
-    private final String itemId;
+    private final VestingScaleConfigItem configItem;
 
-    Field(String itemId) {
-      this.itemId = itemId;
+    Field(VestingScaleConfigItem configItem) {
+      this.configItem = configItem;
     }
   }
 

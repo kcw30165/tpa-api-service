@@ -7,7 +7,7 @@ import java.util.Objects;
 public record VestingScaleData(
     VestingScaleMember member,
     List<VestingScalePlan> plans,
-    Map<String, VestingScaleConfigValue> config) {
+    Map<VestingScaleConfigItem, VestingScaleConfigValue> config) {
 
   public VestingScaleData {
     Objects.requireNonNull(member, "member must not be null");

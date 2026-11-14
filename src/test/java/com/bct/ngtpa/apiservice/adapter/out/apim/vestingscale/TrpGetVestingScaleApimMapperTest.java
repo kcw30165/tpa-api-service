@@ -3,8 +3,12 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.Presence;
+import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigItem;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigValue;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleData;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScalePlan;
@@ -15,15 +19,34 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.slf4j.LoggerFactory;
 
 class TrpGetVestingScaleApimMapperTest {
 
   private static final ObjectMapper JSON = new ObjectMapper();
   private final TrpGetVestingScaleApimMapper mapper = new TrpGetVestingScaleApimMapper();
+  private Logger mapperLogger;
+  private ListAppender<ILoggingEvent> appender;
+
+  @BeforeEach
+  void setUp() {
+    mapperLogger = (Logger) LoggerFactory.getLogger(TrpGetVestingScaleApimMapper.class);
+    appender = new ListAppender<>();
+    appender.start();
+    mapperLogger.addAppender(appender);
+  }
+
+  @AfterEach
+  void tearDown() {
+    mapperLogger.detachAppender(appender);
+    appender.stop();
+  }
 
   @Test
   void mapsTheFullResponseAndIgnoresUnmappedWireFields() throws Exception {
@@ -94,8 +117,8 @@ class TrpGetVestingScaleApimMapperTest {
     assertThat(data.config())
         .containsExactlyInAnyOrderEntriesOf(
             Map.of(
-                "member-category", VestingScaleConfigValue.READONLY,
-                "vesting-scale", VestingScaleConfigValue.HIDDEN));
+                VestingScaleConfigItem.MEMBER_CATEGORY, VestingScaleConfigValue.READONLY,
+                VestingScaleConfigItem.VESTING_SCALE, VestingScaleConfigValue.HIDDEN));
   }
 
   @Test
@@ -112,6 +135,68 @@ class TrpGetVestingScaleApimMapperTest {
                 {"member":{"member-category":""},"plans":[],"config":[]}
                 """));
     assertThat(blankCategory.member().memberCategory().value()).isEmpty();
+  }
+
+  @Test
+  void mapsEveryKnownConfigItemIdToTheApplicationEnum() {
+    VestingScaleData data =
+        map(
+            read(
+                """
+                {"member":{},"plans":[],"config":[
+                  {"item-id":"member-category","config-value":"READONLY"},
+                  {"item-id":"date-joined-company","config-value":"READONLY"},
+                  {"item-id":"date-joined-scheme","config-value":"READONLY"},
+                  {"item-id":"employment-date","config-value":"READONLY"},
+                  {"item-id":"plan-effective-date","config-value":"READONLY"},
+                  {"item-id":"date-of-joining-plan","config-value":"READONLY"},
+                  {"item-id":"plan-service","config-value":"READONLY"},
+                  {"item-id":"vesting-scale","config-value":"READONLY"},
+                  {"item-id":"basis-cont-ee-eng","config-value":"READONLY"},
+                  {"item-id":"basis-cont-ee-chi","config-value":"READONLY"},
+                  {"item-id":"basis-cont-er-eng","config-value":"READONLY"},
+                  {"item-id":"basis-cont-er-chi","config-value":"READONLY"}]}
+                """));
+
+    assertThat(data.config().keySet())
+        .allSatisfy(
+            key -> assertThat(key.getClass().getSimpleName()).isEqualTo("VestingScaleConfigItem"));
+    assertThat(data.config().keySet())
+        .extracting(Object::toString)
+        .containsExactlyInAnyOrder(
+            "MEMBER_CATEGORY",
+            "DATE_JOINED_COMPANY",
+            "DATE_JOINED_SCHEME",
+            "EMPLOYMENT_DATE",
+            "PLAN_EFFECTIVE_DATE",
+            "DATE_OF_JOINING_PLAN",
+            "PLAN_SERVICE",
+            "VESTING_SCALE",
+            "BASIS_CONT_EE_ENG",
+            "BASIS_CONT_EE_CHI",
+            "BASIS_CONT_ER_ENG",
+            "BASIS_CONT_ER_CHI");
+  }
+
+  @Test
+  void dropsUnknownConfigItemAndLogsOneWarning() {
+    VestingScaleData data =
+        map(
+            read(
+                """
+                {"member":{},"plans":[],"config":[
+                  {"item-id":"future-field","config-value":"READONLY"}]}
+                """));
+
+    assertThat(data.config()).isEmpty();
+    assertThat(appender.list)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel().toString()).isEqualTo("WARN");
+              assertThat(event.getFormattedMessage())
+                  .isEqualTo("event=vesting-scale.config.unknown_item item-id=future-field");
+            });
   }
 
   @Test
