@@ -200,6 +200,19 @@ class TrpGetVestingScaleApimMapperTest {
   }
 
   @Test
+  void rejectsDuplicateUnknownConfigItemIdsBeforeIgnoringUnknownItems() {
+    assertMalformed(
+        read(
+            """
+            {"member":{},"plans":[],"config":[
+              {"item-id":"future-field","config-value":"READONLY"},
+              {"item-id":"future-field","config-value":"READONLY"}]}
+            """),
+        "DUPLICATE_VALUE",
+        "config[1].item-id");
+  }
+
+  @Test
   void requiresEnglishPlanTypeAndAcceptsAbsentNullAndBlankChineseDescriptions() {
     VestingScaleData data =
         map(
