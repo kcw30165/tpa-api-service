@@ -4,13 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /** Executable preservation guards for the audited COMPLETE protected-operation behavior matrix. */
 class ForgotPasswordCompleteProtectedOperationBehaviorGuardTest {
   private static final Path OPERATION =
-      Path.of(
+      sourcePath(
           "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/complete/ForgotPasswordCompleteProtectedOperation.java");
 
   @Test
@@ -60,34 +59,36 @@ class ForgotPasswordCompleteProtectedOperationBehaviorGuardTest {
             "private Mono<ForgotPasswordCompleteProtectedExecutionResult> blockUnknown(",
             "private ForgotPasswordCompleteProtectedExecutionResult technical(");
 
-    assertThat(invoke)
+    String compactInvoke = compact(invoke);
+    String compactClassify = compact(classify);
+    String compactBlockUnknown = compact(blockUnknown);
+
+    assertThat(compactInvoke)
         .contains(
-            "return completion",
-            ".complete(",
-            "classify(session, context, result, now)",
-            "blockUnknown(session, now, List.of(incidentFor(failure)))");
-    String compactClassify = classify.replaceAll("\\s+", "");
+            "returncompletion.complete(",
+            ".flatMap(result->classify(session,context,result,now))",
+            ".onErrorResume(failure->blockUnknown(session,now,List.of(incidentFor(failure))))");
+    assertThat(count(compactInvoke, "completion.complete(")).isEqualTo(1);
+
     assertThat(compactClassify)
         .contains(
             "if(result.status()==ForgotPasswordCompletionResult.Status.UNKNOWN_OUTCOME){returnblockUnknown(session,now,List.of(incidentFor(result)));}",
-            "updateSession(session,AuthFlowStatus.COMPLETED,context,now).thenReturn(ForgotPasswordCompleteProtectedExecutionResult.terminal(memberNotFound())).onErrorResume(failure->blockUnknown(",
-            "updateStatus(session,AuthFlowStatus.COMPLETING,now).flatMap(completing->updateSession(completing,AuthFlowStatus.COMPLETED,updatedContext,now)).thenReturn(ForgotPasswordCompleteProtectedExecutionResult.terminal(success())).onErrorResume(failure->blockUnknown(",
-            "COMPLETE_SESSION_UPDATE_FAILURE",
-            "session-update");
-    assertThat(count(classify, "blockUnknown(")).isEqualTo(3);
-    assertThat(blockUnknown.replaceAll("\\s+", ""))
+            "updateSession(session,AuthFlowStatus.COMPLETED,context,now).thenReturn(ForgotPasswordCompleteProtectedExecutionResult.terminal(memberNotFound())).onErrorResume(failure->blockUnknown(session,now,List.of(ForgotPasswordCompleteIncident.local(\"COMPLETE_SESSION_UPDATE_FAILURE\",\"session-update\"))))",
+            "updateStatus(session,AuthFlowStatus.COMPLETING,now).flatMap(completing->updateSession(completing,AuthFlowStatus.COMPLETED,updatedContext,now)).thenReturn(ForgotPasswordCompleteProtectedExecutionResult.terminal(success())).onErrorResume(failure->blockUnknown(session,now,List.of(ForgotPasswordCompleteIncident.local(\"COMPLETE_SESSION_UPDATE_FAILURE\",\"session-update\"))))");
+    assertThat(count(compactClassify, "blockUnknown(")).isEqualTo(3);
+
+    assertThat(compactBlockUnknown)
         .contains(
             "AuthFlowSessionsession,Instantnow,List<ForgotPasswordCompleteIncident>incidents",
             "updateStatus(session,AuthFlowStatus.UNKNOWN_OUTCOME_BLOCKED,now)",
             "COMPLETE_BLOCKED_SESSION_WRITE_FAILURE",
-            "append(",
-            "incidents",
+            "append(incidents,ForgotPasswordCompleteIncident.local(\"COMPLETE_BLOCKED_SESSION_WRITE_FAILURE\",\"blocked-session-write\"))",
+            ".thenReturn(incidents)",
             "ForgotPasswordCompleteProtectedExecutionResult.unknownOutcome(unknownOutcome(),failures)");
     assertThat(
-            count(blockUnknown, "updateStatus(session, AuthFlowStatus.UNKNOWN_OUTCOME_BLOCKED, now)"))
-        .isEqualTo(1);
-    assertThat(
-            Pattern.compile("completion\\s*\\.complete\\s*\\(").matcher(source).results().count())
+            count(
+                compactBlockUnknown,
+                "updateStatus(session,AuthFlowStatus.UNKNOWN_OUTCOME_BLOCKED,now)"))
         .isEqualTo(1);
   }
 
@@ -128,6 +129,15 @@ class ForgotPasswordCompleteProtectedOperationBehaviorGuardTest {
       throw new AssertionError("Could not locate source section: " + start);
     }
     return source.substring(startIndex, endIndex);
+  }
+
+  private static Path sourcePath(String relativePath) {
+    String root = System.getProperty("guard.source.root");
+    return root == null ? Path.of(relativePath) : Path.of(root, relativePath);
+  }
+
+  private static String compact(String source) {
+    return source.replaceAll("\\s+", "");
   }
 
   private static int count(String source, String value) {
