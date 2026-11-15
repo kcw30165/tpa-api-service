@@ -17,6 +17,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto.TrpCIMReqApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto.TrpCIMReqApimRequest;
@@ -120,6 +121,7 @@ class ApimInvestmentChoiceInstructionAdapterTest {
     assertThat(request.credentialContext().accountEnv()).isEqualTo("JP");
     assertThat(request.retryEligibility()).isEqualTo(ApimRetryEligibility.NON_RETRYABLE);
     assertThat(request.resubmissionPolicy()).isEqualTo(ApimResubmissionPolicy.NEVER);
+    assertThat(request.incidentOwnership()).isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
     assertThat(objectMapper.readTree(objectMapper.writeValueAsString(request.request())))
         .isEqualTo(
             objectMapper.readTree(
@@ -163,6 +165,22 @@ class ApimInvestmentChoiceInstructionAdapterTest {
         .verify();
 
     assertSingleEvent(FailureOrigin.DOWNSTREAM_CONTRACT, errorCode, REQUEST_ID);
+  }
+
+  @Test
+  void terminalOwnedTransportFailureLeavesOnlyTheFailureEventAtError() {
+    try (var capture = TerminalApimFailureLogCapture.start()) {
+      var terminalAdapter =
+          new ApimInvestmentChoiceInstructionAdapter(
+              capture.executor(), capture.failureEvents(), PATH);
+
+      StepVerifier.create(terminalAdapter.submit(command()).contextWrite(requestContext()))
+          .expectError(InvestmentChoiceSubmissionUnknownOutcomeException.class)
+          .verify();
+
+      capture.assertSingleTerminalError(
+          "investment-choice.submission.downstream_failure", POLICY_NO, CERT_NO, USER_ID);
+    }
   }
 
   @ParameterizedTest

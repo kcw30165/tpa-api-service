@@ -7,6 +7,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto.TrpGetCIMDtlApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto.TrpGetCIMDtlApimDataItem.InvestMandate;
 import com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto.TrpGetCIMDtlApimDataItem.PendingReq;
@@ -93,7 +95,9 @@ public final class ApimInvestmentChoiceDetailsAdapter implements InvestmentChoic
                       ApimDatabaseScope.ACCOUNT_ENV,
                       new ApimCredentialResolutionContext(
                           command.actorUserRole(), command.accountEnv()),
-                      ApimRetryEligibility.SAFE_BUSINESS_CALL);
+                      ApimRetryEligibility.SAFE_BUSINESS_CALL,
+                      ApimResubmissionPolicy.ALLOW_RECOVERY,
+                      ApimIncidentOwnership.TERMINAL_CALLER);
               return executor
                   .<TrpGetCIMDtlApimRequest, JsonNode>postEnvelope(exchange)
                   .map(this::toDetails);

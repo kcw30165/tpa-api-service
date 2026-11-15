@@ -20,6 +20,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto.TrpGetCIMDtlApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto.TrpGetCIMDtlApimDataItem.InvestMandate;
 import com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto.TrpGetCIMDtlApimDataItem.PendingReq;
@@ -204,6 +205,7 @@ class ApimInvestmentChoiceDetailsAdapterTest {
     assertThat(request.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_INPUT);
     assertThat(request.credentialContext().accountEnv()).isEqualTo("JP");
     assertThat(request.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
+    assertThat(request.incidentOwnership()).isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
     assertThat(
             new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(request.request()))
         .isEqualTo(
@@ -259,6 +261,19 @@ class ApimInvestmentChoiceDetailsAdapterTest {
 
     assertSingleEvent(FailureOrigin.DOWNSTREAM_CONTRACT, code);
     assertThat(events.getFirst().requestId()).isEqualTo(REQUEST_ID);
+  }
+
+  @Test
+  void terminalOwnedTransportFailureLeavesOnlyTheFailureEventAtError() {
+    try (var capture = TerminalApimFailureLogCapture.start()) {
+      var terminalAdapter =
+          new ApimInvestmentChoiceDetailsAdapter(capture.executor(), capture.failureEvents(), PATH);
+
+      expectRetrievalFailure(terminalAdapter.load(command()).contextWrite(requestContext()));
+
+      capture.assertSingleTerminalError(
+          "investment-choice.retrieval.downstream_failure", POLICY_NO, CERT_NO, ACCOUNT_REF);
+    }
   }
 
   @Test

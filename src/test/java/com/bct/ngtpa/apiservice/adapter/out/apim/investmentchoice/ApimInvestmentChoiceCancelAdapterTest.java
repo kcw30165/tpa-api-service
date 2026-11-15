@@ -18,6 +18,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto.TrpCnlCIMReqApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto.TrpCnlCIMReqApimRequest;
@@ -123,6 +124,7 @@ class ApimInvestmentChoiceCancelAdapterTest {
     assertThat(exchange.credentialContext().accountEnv()).isEqualTo(ACCOUNT_ENV);
     assertThat(exchange.retryEligibility()).isEqualTo(ApimRetryEligibility.NON_RETRYABLE);
     assertThat(exchange.resubmissionPolicy()).isEqualTo(ApimResubmissionPolicy.NEVER);
+    assertThat(exchange.incidentOwnership()).isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
     assertThat(objectMapper.readTree(objectMapper.writeValueAsString(exchange.request())))
         .isEqualTo(
             objectMapper.readTree(
@@ -164,6 +166,21 @@ class ApimInvestmentChoiceCancelAdapterTest {
         422,
         REQUEST_ID,
         FailureOrigin.DOWNSTREAM_BUSINESS.name());
+  }
+
+  @Test
+  void terminalOwnedTransportFailureLeavesOnlyTheFailureEventAtError() {
+    try (var capture = TerminalApimFailureLogCapture.start()) {
+      var terminalAdapter =
+          new ApimInvestmentChoiceCancelAdapter(capture.executor(), capture.failureEvents(), PATH);
+
+      StepVerifier.create(terminalAdapter.cancel(command()).contextWrite(requestContext()))
+          .expectError(InvestmentChoiceCancelUnavailableException.class)
+          .verify();
+
+      capture.assertSingleTerminalError(
+          "investment-choice.cancel.downstream_failure", POLICY_NO, CERT_NO, USER_ID, REFERENCE_NO);
+    }
   }
 
   @ParameterizedTest
