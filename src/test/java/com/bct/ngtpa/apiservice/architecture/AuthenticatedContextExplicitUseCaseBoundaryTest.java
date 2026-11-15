@@ -5,11 +5,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.*;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 class AuthenticatedContextExplicitUseCaseBoundaryTest {
   private static final Path MAIN = Path.of("src/main/java/com/bct/ngtpa/apiservice");
+  private static final Pattern ACTOR_CONTEXT =
+      Pattern.compile("(?<![A-Za-z0-9_])ACTOR_CONTEXT(?![A-Za-z0-9_])");
+  private static final Pattern ACCOUNT_CONTEXT =
+      Pattern.compile("(?<![A-Za-z0-9_])ACCOUNT_CONTEXT(?![A-Za-z0-9_])");
   private static final List<String> SERVICES =
       List.of(
           "GetNotificationsService.java",
@@ -42,7 +47,9 @@ class AuthenticatedContextExplicitUseCaseBoundaryTest {
         String s = Files.readString(p);
         if (containsIgnoringWhitespace(s, "CurrentPortalAccessContextResolver")
             || containsIgnoringWhitespace(s, "PortalAccessContextKeys")
-            || containsIgnoringWhitespace(s, "PortalAccessContext")) offenders.add(p.toString());
+            || containsIgnoringWhitespace(s, "PortalAccessContext")
+            || ACTOR_CONTEXT.matcher(s).find()
+            || ACCOUNT_CONTEXT.matcher(s).find()) offenders.add(p.toString());
       }
     }
     assertThat(offenders).isEmpty();
