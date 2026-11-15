@@ -11,7 +11,7 @@ Every behaviour is introduced by a failing test first; evidence (red then green)
 - Malformed: member/plans/config missing or null; wrong JSON kinds; bad date (`1995-10-01`, `31/02/2020`); unknown config-value; duplicate item-id/plan-no; blank plan-no or required English plan type; missing/null/blank/wrong-kind English plan type; wrong-kind Chinese plan type; vesting row missing fields. Assert exact indexed field path and `MalformedReason`.
 - Strict scalar kinds: strings do not coerce to integers/numbers, floating-point values do not coerce to integers, numbers/booleans do not coerce to strings, and vesting percentages accept JSON numbers only.
 - Cardinality: absent/empty/multiple/null data items → `INVALID_CARDINALITY` at `data`. Missing/null/empty/whitespace `err-message` succeeds with valid data; non-blank err-message wins over absent or malformed data.
-- Malformed failure-event dimensions contain only the static reason and normalized field path; assert no downstream value or Jackson message is exposed.
+- Malformed failure-event dimensions are limited to `reason`, `malformedField` (normalized indexed wire-field path) and `malformedReason` (static label); assert no downstream value or Jackson message is exposed.
 - Unknown item-id → WARN log asserted, success.
 - Each of the 3 identity err-messages → ACCOUNT_CONTEXT_MISMATCH, ERROR event, retrieval exception.
 - Other err-message → generic path; data absent with err-message is handled.
