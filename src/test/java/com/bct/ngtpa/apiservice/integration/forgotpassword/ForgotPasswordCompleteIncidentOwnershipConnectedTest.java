@@ -140,6 +140,66 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
   }
 
   @Test
+  void postAcquisitionFailurePublishesProtectedOperationStage() {
+    RunResult run =
+        invoke(
+              false,
+              List.of(
+                  ForgotPasswordCompleteIncident.local(
+                      "COMPLETE_PROTECTED_OPERATION_FAILURE", "protected-operation")));
+
+    assertThat(run.response().getStatusCode().value()).isEqualTo(503);
+    assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isTrue();
+    assertThat(appender.list.stream().filter(event -> event.getLevel() == Level.ERROR))
+        .singleElement()
+        .satisfies(
+              event -> {
+                assertThat(event.getLoggerName())
+                    .isEqualTo(StructuredFailureEventLogger.class.getName());
+                assertThat(event.getFormattedMessage())
+                    .contains(
+                        "COMPLETE_PROTECTED_OPERATION_FAILURE",
+                        "\"failureOrigin\":\"LOCAL_SYSTEM\"",
+                        "\"stage\":\"protected-operation\"")
+                    .doesNotContain("reset-secret", "customer-secret", "ciphertext-secret");
+                assertThat(event.getThrowableProxy()).isNull();
+              });
+  }
+
+  @Test
+  void primaryAndBlockedSessionWriteIncidentsRemainSeparateTerminalEvents() {
+    RunResult run =
+        invoke(
+              false,
+              List.of(
+                  ForgotPasswordCompleteIncident.apim(
+                      FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset"),
+                  ForgotPasswordCompleteIncident.local(
+                      "COMPLETE_BLOCKED_SESSION_WRITE_FAILURE", "blocked-session-write")));
+
+    assertThat(run.response().getStatusCode().value()).isEqualTo(503);
+    assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isTrue();
+    var incidentErrors = appender.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
+    assertThat(incidentErrors)
+        .hasSize(2)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .satisfiesExactly(
+              primary ->
+                  assertThat(primary)
+                      .contains("COMPLETE_APIM_FAILURE", "\"stage\":\"apim-reset\""),
+              blocked ->
+                  assertThat(blocked)
+                      .contains(
+                          "COMPLETE_BLOCKED_SESSION_WRITE_FAILURE",
+                          "\"failureOrigin\":\"LOCAL_SYSTEM\"",
+                          "\"stage\":\"blocked-session-write\""));
+    assertThat(incidentErrors).allSatisfy(event -> assertThat(event.getThrowableProxy()).isNull());
+    assertThat(requestEvents("http.request.failed"))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
+  }
+
+  @Test
   void unknownOutcomeReplayHasNoNewPublicationOrOwnershipMarker() {
     RunResult run = invoke(true);
 
@@ -155,6 +215,15 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
   }
 
   private RunResult invoke(boolean replay) {
+    return invoke(
+        replay,
+        List.of(
+            ForgotPasswordCompleteIncident.apim(
+                FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset")));
+  }
+
+  private RunResult invoke(
+      boolean replay, List<ForgotPasswordCompleteIncident> incidents) {
     appender.list.clear();
     var operation = mock(ForgotPasswordCompleteProtectedOperation.class);
     var responses = mock(ForgotPasswordCompleteExecutionBridge.class);
@@ -171,9 +240,7 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
               Mono.just(
                   ForgotPasswordCompleteProtectedExecutionResult.technicalFailure(
                       technical,
-                      List.of(
-                          ForgotPasswordCompleteIncident.apim(
-                              FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset")))));
+                      incidents)));
     }
 
     AuthFlowSessionId sid = new AuthFlowSessionId("session-secret");

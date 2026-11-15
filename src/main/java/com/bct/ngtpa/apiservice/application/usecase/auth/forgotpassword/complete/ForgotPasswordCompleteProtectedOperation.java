@@ -70,9 +70,17 @@ public final class ForgotPasswordCompleteProtectedOperation {
   public Mono<ForgotPasswordCompleteProtectedExecutionResult> execute(
       ForgotPasswordCompleteProtectedOperationInput input) {
     Objects.requireNonNull(input, "protected completion input must not be null");
-    return locks
-        .acquire(input.command().authFlowSessionId(), lockLease)
-        .flatMap(handle -> route(input, handle))
+    return Mono.defer(() -> locks.acquire(input.command().authFlowSessionId(), lockLease))
+        .flatMap(
+            handle ->
+                Mono.defer(() -> route(input, handle))
+                    .onErrorResume(
+                        failure ->
+                            Mono.just(
+                                technical(
+                                    ForgotPasswordCompleteIncident.local(
+                                        "COMPLETE_PROTECTED_OPERATION_FAILURE",
+                                        "protected-operation")))))
         .onErrorResume(
             failure ->
                 Mono.just(

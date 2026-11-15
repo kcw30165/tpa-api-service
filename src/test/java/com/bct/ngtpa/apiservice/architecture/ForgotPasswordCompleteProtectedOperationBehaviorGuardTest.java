@@ -107,6 +107,26 @@ class ForgotPasswordCompleteProtectedOperationBehaviorGuardTest {
   }
 
   @Test
+  void acquisitionAndPostAcquisitionFailuresHaveSeparateClassifications() throws Exception {
+    String source = Files.readString(OPERATION);
+    String execute =
+        section(
+            source,
+            "public Mono<ForgotPasswordCompleteProtectedExecutionResult> execute(",
+            "private Mono<ForgotPasswordCompleteProtectedExecutionResult> route(");
+    String compact = compact(execute);
+
+    assertThat(compact)
+        .contains(
+            "Mono.defer(()->locks.acquire(input.command().authFlowSessionId(),lockLease))",
+            "COMPLETE_LOCK_ACQUISITION_FAILURE",
+            "\"lock-acquisition\"",
+            "Mono.defer(()->route(input,handle))",
+            "COMPLETE_PROTECTED_OPERATION_FAILURE",
+            "\"protected-operation\"");
+  }
+
+  @Test
   void protectedBoundaryOwnsNoIdempotencyLifecycleOrSensitiveLogging() throws Exception {
     assertThat(Files.readString(OPERATION))
         .doesNotContain(

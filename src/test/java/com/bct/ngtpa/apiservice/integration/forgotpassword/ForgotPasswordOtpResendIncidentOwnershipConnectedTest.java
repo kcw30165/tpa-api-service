@@ -152,6 +152,34 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
   }
 
   @Test
+  void lockAcquisitionFailureHasOneOwnedLocalSystemIncident() {
+    RunResult run = invoke(Scenario.LOCK_ACQUISITION_FAILURE);
+
+    assertThat(run.response().getStatusCode().value()).isEqualTo(503);
+    assertThat(responseBody(run).status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+    assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isTrue();
+    assertThat(
+            appender.list.stream()
+                .filter(event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+                .filter(event -> event.getLevel() == Level.ERROR))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getFormattedMessage())
+                  .contains(
+                      "OTP_RESEND_TECHNICAL_FAILURE",
+                      "lock-acquisition",
+                      "\"failureOrigin\":\"LOCAL_SYSTEM\"",
+                      "\"httpStatus\":503")
+                  .doesNotContain("lock-secret", "csrf-secret", "idempotency-secret");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertThat(requestEvents("http.request.failed"))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
+  }
+
+  @Test
   void successfulMalformedCounterIncidentDoesNotOwnSuccessfulHttpResponse() {
     RunResult run = invoke(Scenario.MALFORMED_COUNTER);
 
@@ -229,7 +257,10 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
       result =
           new ResendForgotPasswordOtpResult(
               ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null);
-      incidents = List.of();
+      incidents =
+          scenario == Scenario.LOCK_ACQUISITION_FAILURE
+              ? List.of(ForgotPasswordOtpResendIncident.LOCK_ACQUISITION)
+              : List.of();
       when(operation.execute(any()))
           .thenReturn(
               Mono.just(
@@ -334,6 +365,7 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
   private enum Scenario {
     DELIVERY_FAILED,
     LOCK_CONTENTION,
+    LOCK_ACQUISITION_FAILURE,
     MALFORMED_COUNTER,
     COMPLETED_REPLAY
   }

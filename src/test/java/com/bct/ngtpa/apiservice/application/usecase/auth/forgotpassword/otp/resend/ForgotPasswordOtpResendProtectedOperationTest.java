@@ -307,6 +307,23 @@ class ForgotPasswordOtpResendProtectedOperationTest {
   }
 
   @Test
+  void synchronousLockAcquisitionThrowIsClassifiedAsLockAcquisitionFailure() {
+    when(locks.acquire(any(), any())).thenThrow(new IllegalStateException("boom"));
+
+    StepVerifier.create(newOp().execute(validCommand()))
+        .assertNext(
+            result -> {
+              assertThat(result.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(result.incidents())
+                  .containsExactly(ForgotPasswordOtpResendIncident.LOCK_ACQUISITION);
+            })
+        .verifyComplete();
+
+    assertLoggedFailure("lock-acquisition");
+  }
+
+  @Test
   void pendingReferenceGenerationFailureIsClassified() {
     when(refs.generate()).thenThrow(new IllegalStateException("boom"));
 

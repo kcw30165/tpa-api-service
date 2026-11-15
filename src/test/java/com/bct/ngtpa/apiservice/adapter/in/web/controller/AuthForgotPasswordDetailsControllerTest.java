@@ -1,8 +1,12 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mockStatic;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordDetailsRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
@@ -207,6 +211,49 @@ class AuthForgotPasswordDetailsControllerTest {
         .isTrue();
     assertThat(objectMapper.writeValueAsString(publicResponse.getBody()))
         .doesNotContain("incidentPublished");
+  }
+
+  @Test
+  void responseConstructionFailureDoesNotMarkTheDetailsResponseAsOwned() {
+    var useCase =
+        (ProcessForgotPasswordDetailsOtpUseCase)
+            command ->
+                Mono.just(
+                    new ForgotPasswordDetailsOtpResult(
+                        ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE,
+                        null,
+                        0,
+                        0,
+                        List.of(),
+                        true));
+    var exchange = exchange();
+
+    try (var responseFactory = mockStatic(ForgotPasswordHttpResponses.class)) {
+      responseFactory
+          .when(() -> ForgotPasswordHttpResponses.toResponse(any()))
+          .thenThrow(new IllegalStateException());
+      assertThatThrownBy(
+              () ->
+                  controller(useCase)
+                      .details(
+                          new ForgotPasswordDetailsRequest(
+                              "31/01/1980", "member@example.com", null),
+                          "afs_abc",
+                          "csrf_abc",
+                          "https://portal.example",
+                          "https://portal.example/page",
+                          "req-1",
+                          "en",
+                          "idem-1",
+                          new MockServerHttpResponse(),
+                          exchange)
+                      .block())
+          .isInstanceOf(IllegalStateException.class);
+    }
+    assertThat(
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
+                .isOwned(exchange))
+        .isFalse();
   }
 
   @Test

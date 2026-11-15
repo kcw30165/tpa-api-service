@@ -208,10 +208,12 @@ public final class ForgotPasswordController {
                   b.mobile()))
           .map(
               r -> {
+                var responseEntity =
+                    ForgotPasswordHttpResponses.toResponse(detailsCheckMapper.map(r));
                 if (r.incidentPublished()) {
                   TerminalIncidentHttpObservation.markOwned(exchange);
                 }
-                return ForgotPasswordHttpResponses.toResponse(detailsCheckMapper.map(r));
+                return responseEntity;
               });
     } catch (RuntimeException e) {
       return Mono.just(

@@ -113,8 +113,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                     incidents));
           }
           incidents.stage(ForgotPasswordOtpResendIncident.LOCK_ACQUISITION);
-          return locks
-              .acquire(command.sessionId(), lockLease)
+          return Mono.defer(() -> locks.acquire(command.sessionId(), lockLease))
               .flatMap(
                   handle ->
                       handle.acquired()

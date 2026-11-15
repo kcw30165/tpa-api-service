@@ -209,6 +209,80 @@ class ForgotPasswordCompleteProtectedOperationTest {
         .verifyComplete();
   }
 
+  @Test
+  void synchronousLockAcquisitionThrowHasLockAcquisitionClassification() {
+    when(locks.acquire(any(), any())).thenThrow(new IllegalStateException("lock-secret"));
+
+    StepVerifier.create(newOp().execute(input()))
+        .assertNext(
+            result -> {
+              assertThat(result.outcome())
+                  .isEqualTo(
+                      ForgotPasswordCompleteProtectedExecutionResult.Outcome.TECHNICAL_FAILURE);
+              assertThat(result.result().status())
+                  .isEqualTo(CompleteForgotPasswordStatus.SYSTEM_FAILED);
+              assertThat(result.incidents())
+                  .singleElement()
+                  .satisfies(
+                      incident -> {
+                        assertThat(incident.origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+                        assertThat(incident.internalCode())
+                            .isEqualTo("COMPLETE_LOCK_ACQUISITION_FAILURE");
+                        assertThat(incident.stage()).isEqualTo("lock-acquisition");
+                      });
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void reactiveLockAcquisitionFailureHasLockAcquisitionClassification() {
+    when(locks.acquire(any(), any())).thenReturn(Mono.error(new IllegalStateException("lock-secret")));
+
+    StepVerifier.create(newOp().execute(input()))
+        .assertNext(
+            result -> {
+              assertThat(result.outcome())
+                  .isEqualTo(
+                      ForgotPasswordCompleteProtectedExecutionResult.Outcome.TECHNICAL_FAILURE);
+              assertThat(result.incidents())
+                  .singleElement()
+                  .satisfies(
+                      incident -> {
+                        assertThat(incident.internalCode())
+                            .isEqualTo("COMPLETE_LOCK_ACQUISITION_FAILURE");
+                        assertThat(incident.stage()).isEqualTo("lock-acquisition");
+                      });
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void unexpectedFailureAfterLockAcquisitionHasProtectedOperationClassification() {
+    givenLockAcquired();
+    when(authValidator.validate(any(), any(), any(), any(), any()))
+        .thenThrow(new IllegalStateException("post-acquisition-secret"));
+
+    StepVerifier.create(newOp().execute(input()))
+        .assertNext(
+            result -> {
+              assertThat(result.outcome())
+                  .isEqualTo(
+                      ForgotPasswordCompleteProtectedExecutionResult.Outcome.TECHNICAL_FAILURE);
+              assertThat(result.result().status())
+                  .isEqualTo(CompleteForgotPasswordStatus.SYSTEM_FAILED);
+              assertThat(result.incidents())
+                  .singleElement()
+                  .satisfies(
+                      incident -> {
+                        assertThat(incident.origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+                        assertThat(incident.internalCode())
+                            .isEqualTo("COMPLETE_PROTECTED_OPERATION_FAILURE");
+                        assertThat(incident.stage()).isEqualTo("protected-operation");
+                      });
+            })
+        .verifyComplete();
+  }
+
   // ----- 2: unknown-outcome-blocked authorization ------------------------
 
   @Test

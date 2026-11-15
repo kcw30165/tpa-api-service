@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
@@ -14,6 +15,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordDetailsRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
@@ -103,6 +105,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -264,6 +267,32 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
   }
 
   @Test
+  void responseConstructionFailureRemainsVisibleToTheRequestFilter() {
+    RunResult run = invoke(Scenario.RESPONSE_CONSTRUCTION_FAILURE);
+
+    assertThat(run.response()).isNull();
+    assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isFalse();
+    assertThat(
+            appender.list.stream()
+                .filter(
+                    event ->
+                        event.getLoggerName()
+                            .equals(StructuredFailureEventLogger.class.getName()))
+                .filter(event -> event.getLevel() == Level.ERROR))
+        .hasSize(1);
+    assertThat(
+            appender.list.stream()
+                .filter(
+                    event ->
+                        event.getLoggerName()
+                            .equals(RequestLoggingWebFilter.class.getName()))
+                .filter(event -> event.getFormattedMessage().contains("\"event\":\"http.request.error\""))
+                .map(ILoggingEvent::getLevel))
+        .containsExactly(Level.ERROR);
+    assertDiagnosticsArePrivate();
+  }
+
+  @Test
   void missingSessionUsesExpectedMappingWithoutIncidentOwnership() {
     RunResult run = invoke(Scenario.MISSING_SESSION);
 
@@ -328,7 +357,8 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
             eq(ForgotPasswordTrpSearchMemberRequest.class),
             isNull()))
         .thenAnswer(invocation -> invocation.getArgument(1));
-    if (scenario == Scenario.TRANSPORT_FAILURE) {
+    if (scenario == Scenario.TRANSPORT_FAILURE
+        || scenario == Scenario.RESPONSE_CONSTRUCTION_FAILURE) {
       when(apimFacade.postSuccessfulExchange(
               anyString(),
               any(),
@@ -431,26 +461,39 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
     var handler = exceptionHandler();
     var filter = new RequestLoggingWebFilter(new RequestLoggingProperties(), sanitizer(), OBJECT_MAPPER);
 
-    StepVerifier.create(
-            filter.filter(
-                exchange,
-                webExchange ->
-                    invokeController(controller, webExchange)
-                        .doOnNext(
-                            entity -> {
-                              response.set(entity);
-                              webExchange.getResponse().setStatusCode(entity.getStatusCode());
-                            })
-                        .then()
-                        .onErrorResume(
-                            Exception.class,
-                            error -> {
-                              var mapped = handler.handle(error, webExchange);
-                              response.set(mapped);
-                              webExchange.getResponse().setStatusCode(mapped.getStatusCode());
-                              return Mono.empty();
-                            })))
-        .verifyComplete();
+    Mono<Void> filtered =
+        filter.filter(
+            exchange,
+            webExchange ->
+                invokeController(controller, webExchange)
+                    .doOnNext(
+                        entity -> {
+                          response.set(entity);
+                          webExchange.getResponse().setStatusCode(entity.getStatusCode());
+                        })
+                    .then()
+                    .onErrorResume(
+                        Exception.class,
+                        error -> {
+                          if (scenario == Scenario.RESPONSE_CONSTRUCTION_FAILURE) {
+                            return Mono.error(error);
+                          }
+                          var mapped = handler.handle(error, webExchange);
+                          response.set(mapped);
+                          webExchange.getResponse().setStatusCode(mapped.getStatusCode());
+                          return Mono.empty();
+                        }));
+    try (MockedStatic<ForgotPasswordHttpResponses> responseFactory =
+        scenario == Scenario.RESPONSE_CONSTRUCTION_FAILURE
+            ? mockStatic(ForgotPasswordHttpResponses.class)
+            : null) {
+      if (responseFactory != null) {
+        responseFactory
+            .when(() -> ForgotPasswordHttpResponses.toResponse(any()))
+            .thenThrow(new IllegalStateException());
+      }
+      StepVerifier.create(filtered.onErrorComplete()).verifyComplete();
+    }
     return new RunResult(response.get(), exchange);
   }
 
@@ -569,6 +612,7 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
 
   private enum Scenario {
     TRANSPORT_FAILURE,
+    RESPONSE_CONSTRUCTION_FAILURE,
     MEMBER_MISMATCH,
     LOCAL_FAILURE,
     MISSING_SESSION
