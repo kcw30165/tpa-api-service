@@ -27,6 +27,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.bind.annotation.PostMapping;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -45,7 +47,8 @@ class AuthForgotPasswordCancelControllerTest {
             String.class,
             String.class,
             String.class,
-            ServerHttpResponse.class);
+            ServerHttpResponse.class,
+            org.springframework.web.server.ServerWebExchange.class);
     PostMapping mapping = method.getAnnotation(PostMapping.class);
     assertThat(mapping).isNotNull();
     assertThat(mapping.path()).contains("/cancel");
@@ -68,7 +71,8 @@ class AuthForgotPasswordCancelControllerTest {
                 "https://portal.example/fp",
                 "req_abc",
                 "en",
-                response))
+                response,
+                exchange()))
         .assertNext(
             entity -> {
               assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -99,7 +103,8 @@ class AuthForgotPasswordCancelControllerTest {
                 "https://portal.example/fp",
                 "req_abc",
                 "en",
-                response))
+                response,
+                exchange()))
         .assertNext(
             entity -> {
               assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -134,7 +139,8 @@ class AuthForgotPasswordCancelControllerTest {
                 "https://portal.example/fp",
                 "req_abc",
                 "en",
-                response))
+                response,
+                exchange()))
         .assertNext(
             entity -> {
               assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -149,6 +155,7 @@ class AuthForgotPasswordCancelControllerTest {
         .verifyComplete();
 
     assertThat(response.getCookies().getFirst("auth_flow_sid").getValue()).isEmpty();
+    assertThat(response.getCookies().getFirst("XSRF-TOKEN")).isNull();
     assertThat(response.getHeaders().getFirst("X-Request-Id")).isEqualTo("req_abc");
   }
 
@@ -171,7 +178,8 @@ class AuthForgotPasswordCancelControllerTest {
                 "https://portal.example/fp",
                 "req_abc",
                 "en",
-                response))
+                response,
+                exchange()))
         .assertNext(
             entity -> {
               assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -208,7 +216,8 @@ class AuthForgotPasswordCancelControllerTest {
                 "https://portal.example/fp",
                 "req_abc",
                 "en",
-                response))
+                response,
+                exchange()))
         .assertNext(
             entity -> {
               assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
@@ -229,6 +238,10 @@ class AuthForgotPasswordCancelControllerTest {
   private static WorkflowErrorDescriptor error(WorkflowErrorType type, String code) {
     return new WorkflowErrorDescriptor(
         type, code, null, List.of("PAGE"), WorkflowErrorSeverity.ERROR, "SERVER");
+  }
+
+  private static MockServerWebExchange exchange() {
+    return MockServerWebExchange.from(MockServerHttpRequest.post("/").build());
   }
 
   private static final class RecordingUseCase implements CancelForgotPasswordUseCase {

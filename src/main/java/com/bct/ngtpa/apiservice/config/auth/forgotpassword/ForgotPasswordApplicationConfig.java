@@ -419,6 +419,7 @@ public class ForgotPasswordApplicationConfig {
       OtpChallengePort otpChallenges,
       AuthFlowSessionCancellationPort cancellationPort,
       Clock clock,
+      FailureEventPort failureEventPort,
       CorsProperties corsProperties) {
     return new CancelForgotPasswordService(
         sessions,
@@ -426,6 +427,7 @@ public class ForgotPasswordApplicationConfig {
         otpChallenges,
         cancellationPort,
         clock,
+        failureEventPort,
         corsProperties == null ? List.of() : corsProperties.getAllowedOrigins());
   }
 

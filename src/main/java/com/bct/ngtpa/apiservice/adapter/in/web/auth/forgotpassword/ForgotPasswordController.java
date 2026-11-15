@@ -30,6 +30,7 @@ import com.bct.ngtpa.apiservice.application.port.in.ResendForgotPasswordOtpUseCa
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordIdentityUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordOtpUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.cancel.CancelForgotPasswordCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityResult;
@@ -234,7 +235,8 @@ public final class ForgotPasswordController {
           @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
               String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String language,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (!hasText(sessionId)) {
       cookieWriter.clearAuthFlowCookie(response);
@@ -243,22 +245,51 @@ public final class ForgotPasswordController {
     if (!hasText(csrfToken)) {
       return CsrfHttpResponses.missingToken();
     }
+    CancelForgotPasswordCommand command;
+    try {
+      command = cancelMapper.toCommand(sessionId, csrfToken, origin, referer, requestId);
+    } catch (RuntimeException exception) {
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.csrfInvalid()));
+    }
     try {
       return cancelUseCase
-          .cancel(cancelMapper.toCommand(sessionId, csrfToken, origin, referer, requestId))
+          .cancel(command)
           .map(
               result -> {
                 if (result.clearAuthFlowCookie()) {
                   cookieWriter.clearAuthFlowCookie(response);
                 }
-                return ForgotPasswordHttpResponses.toResponse(cancelMapper.toResponse(result));
+                ResponseEntity<
+                        MutationResponse<
+                            ForgotPasswordWorkflowResultResponse<ForgotPasswordCancelDataResponse>>>
+                    responseEntity =
+                        ForgotPasswordHttpResponses.toResponse(cancelMapper.toResponse(result));
+                if (result.incidentPublished()
+                    && responseEntity.getStatusCode().is5xxServerError()) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return responseEntity;
               })
           .onErrorResume(
               error ->
                   Mono.just(
                       ForgotPasswordHttpResponses.toResponse(cancelMapper.systemUnavailable())));
     } catch (RuntimeException exception) {
-      return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.csrfInvalid()));
+      boolean incidentPublished = false;
+      try {
+        incidentPublished = cancelUseCase.reportSynchronousTechnicalFailure(requestId);
+      } catch (RuntimeException ignored) {
+        incidentPublished = false;
+      }
+      ResponseEntity<
+              MutationResponse<
+                  ForgotPasswordWorkflowResultResponse<ForgotPasswordCancelDataResponse>>>
+          responseEntity =
+              ForgotPasswordHttpResponses.toResponse(cancelMapper.csrfInvalid());
+      if (incidentPublished && responseEntity.getStatusCode().is5xxServerError()) {
+        TerminalIncidentHttpObservation.markOwned(exchange);
+      }
+      return Mono.just(responseEntity);
     }
   }
 
