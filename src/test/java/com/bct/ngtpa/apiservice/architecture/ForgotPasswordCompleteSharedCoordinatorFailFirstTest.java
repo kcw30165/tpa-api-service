@@ -11,6 +11,8 @@ class ForgotPasswordCompleteSharedCoordinatorFailFirstTest {
   private static final Path COORDINATOR =
       Path.of(
           "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/complete/IdempotentCompleteForgotPasswordService.java");
+  private static final Path SHARED_EXECUTOR =
+      Path.of("src/main/java/com/bct/ngtpa/apiservice/application/idempotency/DefaultIdempotencyExecutor.java");
 
   @Test
   void requiresSharedCoordinatorImplementation() {
@@ -39,15 +41,74 @@ class ForgotPasswordCompleteSharedCoordinatorFailFirstTest {
   @Test
   void acquiredExecutionRoutesClassifiedProtectedResultsBeforeCapture() throws Exception {
     if (!Files.exists(COORDINATOR)) return;
-    assertThat(Files.readString(COORDINATOR))
+    String source = Files.readString(COORDINATOR);
+    String executionSetup =
+        section(
+            source,
+            "var execution =",
+            "return Mono.defer(() -> executor.execute(execution))");
+    String acquired =
+        section(
+            source,
+            "private Mono<HydratedIdempotentResponse> executeAcquired(",
+            "private Mono<HydratedIdempotentResponse> executeLoaded(");
+    String loaded =
+        section(
+            source,
+            "private Mono<HydratedIdempotentResponse> executeLoaded(",
+            "private ForgotPasswordAuthFlowContext loadContext(");
+    String outcomeRoute =
+        section(
+            source,
+            "private CompleteForgotPasswordResult route(",
+            "private CompleteForgotPasswordResult invalidAuthFlow(");
+    String executorSource = Files.readString(SHARED_EXECUTOR);
+    String executorRoute =
+        section(
+            executorSource,
+            "private Mono<IdempotentExecutionResult> route(",
+            "private Mono<IdempotentExecutionResult> hydrateCompleted(");
+    String executorCapture =
+        section(
+            executorSource,
+            "private Mono<IdempotentExecutionResult> complete(",
+            "private Mono<HydratedIdempotentResponse> classifyProtectedFailureThenError(");
+
+    assertThat(compact(executionSetup))
         .contains(
-            "return operation",
-            ".execute(new ForgotPasswordCompleteProtectedOperationInput(",
+            "() -> executeAcquired(",
+            "IdempotencyFailureClassifiers.possibleSideEffect()",
+            "responses::capture",
+            "responses::hydrate");
+    assertThat(compact(acquired)).contains("snapshot -> executeLoaded(");
+    assertThat(loaded)
+        .contains(
+            "operation.execute(",
             "ForgotPasswordCompleteProtectedExecutionResult.Outcome.TERMINAL",
             "ForgotPasswordCompleteProtectedExecutionResult.Outcome.TECHNICAL_FAILURE",
-            "ForgotPasswordCompleteProtectedExecutionResult.Outcome.UNKNOWN_OUTCOME",
-            "responses.toTransientResponse(",
-            "Mono.error(");
+            "execution.incidents()",
+            "responses.toTransientResponse(execution.result())",
+            "Mono.error(signal)");
+    assertThat(compact(loaded))
+        .contains(
+            "if (execution.outcome() == ForgotPasswordCompleteProtectedExecutionResult.Outcome.TERMINAL) { return Mono.just(responses.toTransientResponse(execution.result())); }");
+    assertThat(count(loaded, "operation.execute(")).isEqualTo(1);
+    assertThat(outcomeRoute)
+        .contains(
+            "case ACQUIRED, COMPLETED_REPLAY -> responses.fromTransientResponse(response)",
+            "case UNKNOWN_OUTCOME_EXISTING",
+            "unknownOutcome()");
+    assertThat(outcomeRoute)
+        .doesNotContain("executeAcquired(", "executeLoaded(", "operation.execute(");
+    assertThat(compact(executorRoute))
+        .contains(
+            "case ACQUIRED -> executeOwned(command, reservation.reservationToken())",
+            "case COMPLETED_REPLAY -> hydrateCompleted(reservation.terminalResponse(), command.replayResolver())",
+            "case DUPLICATE_IN_PROGRESS, KEY_REUSED_WITH_DIFFERENT_REQUEST, FAILED_EXISTING, UNKNOWN_OUTCOME_EXISTING -> Mono.just(");
+    assertThat(compact(executorCapture))
+        .contains(
+            "Mono.defer(() -> command.responseCapture().capture(response))",
+            "persistence .complete(");
   }
 
   @Test
@@ -81,5 +142,28 @@ class ForgotPasswordCompleteSharedCoordinatorFailFirstTest {
             "command.csrfToken()",
             ".block(",
             ".subscribe(");
+  }
+
+  private static String section(String source, String start, String end) {
+    int startIndex = source.indexOf(start);
+    int endIndex = source.indexOf(end, startIndex);
+    if (startIndex < 0 || endIndex < 0) {
+      throw new AssertionError("Could not locate source section: " + start);
+    }
+    return source.substring(startIndex, endIndex);
+  }
+
+  private static String compact(String source) {
+    return source.replaceAll("\\s+", " ").trim();
+  }
+
+  private static int count(String source, String value) {
+    int count = 0;
+    int offset = 0;
+    while ((offset = source.indexOf(value, offset)) >= 0) {
+      count++;
+      offset += value.length();
+    }
+    return count;
   }
 }
