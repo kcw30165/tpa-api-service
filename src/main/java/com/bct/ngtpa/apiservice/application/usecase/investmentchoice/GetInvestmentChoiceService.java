@@ -31,9 +31,17 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
 
   private static final String RETRIEVAL_PUBLIC_CODE = "err.investment-choice.retrieval.unavailable";
   private static final String IDENTIFIER_INVALID = "ACCOUNT_IDENTIFIER_INVALID";
+  private static final String REFERENCE_DATE_FAILED =
+      "investment-choice.retrieval.reference_date_failed";
+  private static final String SNAPSHOT_WRITE_FAILED =
+      "investment-choice.retrieval.snapshot_write_failed";
+  private static final String REFERENCE_DATE_FAILURE_REASON = "REFERENCE_DATE_RESOLUTION_FAILED";
+  private static final String RESTRICTED_SNAPSHOT_WRITE_FAILURE_REASON =
+      "RESTRICTED_SNAPSHOT_WRITE_FAILED";
   private static final String METADATA_INTEGRITY_EVENT =
       "investment-choice.retrieval.metadata_integrity";
   private static final String ALLOCATION_METADATA_MISSING = "ALLOCATION_METADATA_MISSING";
+  private static final String CAPABILITY = "INVESTMENT_CHOICE";
 
   private final ReferenceDatePort referenceDatePort;
   private final InvestmentChoiceDetailsPort detailsPort;
@@ -59,6 +67,7 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
     Objects.requireNonNull(command, "command must not be null");
     return referenceDatePort
         .resolveReferenceDate(command.accountEnv())
+        .doOnError(error -> publishReferenceDateFailure(command))
         .onErrorMap(
             error -> !(error instanceof InvestmentChoiceDetailsRetrievalException),
             error -> InvestmentChoiceDetailsRetrievalException.systemFailure())
@@ -95,7 +104,8 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
                 .onErrorResume(error -> Mono.empty())
             : snapshotCache
                 .writeRestrictedState(command.sessionId(), state, command.requestId())
-                .onErrorMap(error -> InvestmentChoiceDetailsRetrievalException.systemFailure());
+                .onErrorMap(error -> InvestmentChoiceDetailsRetrievalException.systemFailure())
+                .doOnError(error -> publishRestrictedSnapshotWriteFailure(command));
     return write.then(
         Mono.fromSupplier(
             () -> {
@@ -118,6 +128,44 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
               503,
               true,
               Map.of("reason", IDENTIFIER_INVALID)));
+    } catch (RuntimeException ignored) {
+      // Telemetry must not change the retrieval outcome.
+    }
+  }
+
+  private void publishReferenceDateFailure(GetInvestmentChoiceCommand command) {
+    publishSafely(
+        new FailureEvent(
+            REFERENCE_DATE_FAILED,
+            command.requestId(),
+            CAPABILITY,
+            "REFERENCE_DATE",
+            FailureOrigin.LOCAL_SYSTEM,
+            null,
+            RETRIEVAL_PUBLIC_CODE,
+            503,
+            true,
+            Map.of("reason", REFERENCE_DATE_FAILURE_REASON)));
+  }
+
+  private void publishRestrictedSnapshotWriteFailure(GetInvestmentChoiceCommand command) {
+    publishSafely(
+        new FailureEvent(
+            SNAPSHOT_WRITE_FAILED,
+            command.requestId(),
+            CAPABILITY,
+            "SNAPSHOT",
+            FailureOrigin.LOCAL_SYSTEM,
+            null,
+            RETRIEVAL_PUBLIC_CODE,
+            503,
+            true,
+            Map.of("reason", RESTRICTED_SNAPSHOT_WRITE_FAILURE_REASON)));
+  }
+
+  private void publishSafely(FailureEvent event) {
+    try {
+      failures.publish(event);
     } catch (RuntimeException ignored) {
       // Telemetry must not change the retrieval outcome.
     }

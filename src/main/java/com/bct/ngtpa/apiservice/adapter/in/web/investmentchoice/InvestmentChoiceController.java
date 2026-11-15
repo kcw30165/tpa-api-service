@@ -20,12 +20,15 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.CancelInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.SubmitInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.domain.passwordvalidation.PayloadDigest;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -35,6 +38,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.NullNode;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.springframework.http.HttpStatus;
@@ -61,6 +65,7 @@ public final class InvestmentChoiceController {
   private final SubmitInvestmentChoiceUseCase submitUseCase;
   private final CancelInvestmentChoiceUseCase cancelUseCase;
   private final CurrentPortalAccessContextResolver contextResolver;
+  private final FailureEventPort failureEvents;
   private final AuthenticatedSessionCookieReader sessionCookieReader;
   private final InvestmentChoiceWebMapper webMapper;
   private final ObjectMapper objectMapper;
@@ -80,12 +85,14 @@ public final class InvestmentChoiceController {
       CurrentPortalAccessContextResolver contextResolver,
       AuthenticatedSessionCookieReader sessionCookieReader,
       InvestmentChoiceWebMapper webMapper,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      FailureEventPort failureEvents) {
     this.useCase = Objects.requireNonNull(useCase, "useCase must not be null");
     this.submitUseCase = Objects.requireNonNull(submitUseCase, "submitUseCase must not be null");
     this.cancelUseCase = Objects.requireNonNull(cancelUseCase, "cancelUseCase must not be null");
     this.contextResolver =
         Objects.requireNonNull(contextResolver, "contextResolver must not be null");
+    this.failureEvents = Objects.requireNonNull(failureEvents, "failureEvents must not be null");
     this.sessionCookieReader =
         Objects.requireNonNull(sessionCookieReader, "sessionCookieReader must not be null");
     this.webMapper = Objects.requireNonNull(webMapper, "webMapper must not be null");
@@ -152,6 +159,8 @@ public final class InvestmentChoiceController {
                     }
                     Optional<PayloadDigest> binding = gateBindings.binding(exchange);
                     if (binding.isEmpty()) {
+                      publishMissingGateBinding(
+                          "investment-choice.submission.binding_missing", requestId);
                       return Mono.just(submitAuthorizationRejected(exchange));
                     }
                     return requestBody
@@ -202,6 +211,8 @@ public final class InvestmentChoiceController {
                     }
                     Optional<PayloadDigest> binding = gateBindings.binding(exchange);
                     if (binding.isEmpty()) {
+                      publishMissingGateBinding(
+                          "investment-choice.cancel.binding_missing", requestId);
                       return Mono.just(cancelAuthorizationRejected(exchange));
                     }
                     return cancelBody(
@@ -286,6 +297,25 @@ public final class InvestmentChoiceController {
                       ApiError.form(violation.code(), null, violation.targets(), ERROR_SOURCE);
                 })
         .toList();
+  }
+
+  private void publishMissingGateBinding(String event, String requestId) {
+    try {
+      failureEvents.publish(
+          new FailureEvent(
+              event,
+              requestId,
+              "INVESTMENT_CHOICE",
+              "AUTHORIZATION_BINDING",
+              FailureOrigin.LOCAL_SYSTEM,
+              null,
+              ErrorCodes.PASSWORD_VALIDATION_AUTHORIZATION_INVALID,
+              HttpStatus.FORBIDDEN.value(),
+              false,
+              Map.of("reason", "BINDING_MISSING")));
+    } catch (RuntimeException ignored) {
+      // Telemetry must not change the authorization response.
+    }
   }
 
   private static ResponseEntity<MutationResponse<InvestmentChoiceSubmissionResultResponse>>

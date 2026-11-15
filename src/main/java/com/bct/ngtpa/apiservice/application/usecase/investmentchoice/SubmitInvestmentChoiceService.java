@@ -10,9 +10,12 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionRejectedException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.port.in.SubmitInvestmentChoiceUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceDetailsPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceInstructionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
@@ -22,6 +25,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -32,24 +36,32 @@ public final class SubmitInvestmentChoiceService implements SubmitInvestmentChoi
 
   private static final ZoneId HONG_KONG_ZONE = ZoneId.of("Asia/Hong_Kong");
   private static final Logger LOG = LoggerFactory.getLogger(SubmitInvestmentChoiceService.class);
+  private static final String REFERENCE_DATE_FAILED =
+      "investment-choice.submission.reference_date_failed";
+  private static final String REFERENCE_DATE_FAILURE_REASON = "REFERENCE_DATE_RESOLUTION_FAILED";
+  private static final String SUBMISSION_PUBLIC_CODE =
+      "err.investment-choice.submission.unavailable";
 
   private final ReferenceDatePort referenceDatePort;
   private final InvestmentChoiceDetailsPort detailsPort;
   private final InvestmentChoiceInstructionPort instructionPort;
   private final InvestmentChoiceSnapshotCacheService snapshotCache;
   private final Clock clock;
+  private final FailureEventPort failures;
 
   public SubmitInvestmentChoiceService(
       ReferenceDatePort referenceDatePort,
       InvestmentChoiceDetailsPort detailsPort,
       InvestmentChoiceInstructionPort instructionPort,
       InvestmentChoiceSnapshotCacheService snapshotCache,
-      Clock clock) {
+      Clock clock,
+      FailureEventPort failures) {
     this.referenceDatePort = Objects.requireNonNull(referenceDatePort);
     this.detailsPort = Objects.requireNonNull(detailsPort);
     this.instructionPort = Objects.requireNonNull(instructionPort);
     this.snapshotCache = Objects.requireNonNull(snapshotCache);
     this.clock = Objects.requireNonNull(clock);
+    this.failures = Objects.requireNonNull(failures);
   }
 
   @Override
@@ -90,6 +102,7 @@ public final class SubmitInvestmentChoiceService implements SubmitInvestmentChoi
   private Mono<InvestmentChoiceSubmitOutcome> reconcile(
       SubmitInvestmentChoiceCommand command, List<InvestmentChoiceInstructionRow> rows) {
     return Mono.defer(() -> referenceDatePort.resolveReferenceDate(command.accountEnv()))
+        .doOnError(error -> publishReferenceDateFailure(command))
         .switchIfEmpty(Mono.error(unavailable()))
         .onErrorMap(error -> unavailable())
         .flatMap(
@@ -106,6 +119,25 @@ public final class SubmitInvestmentChoiceService implements SubmitInvestmentChoi
                     .switchIfEmpty(Mono.error(unavailable()))
                     .onErrorMap(error -> unavailable())
                     .flatMap(details -> reconcileDetails(command, rows, details)));
+  }
+
+  private void publishReferenceDateFailure(SubmitInvestmentChoiceCommand command) {
+    try {
+      failures.publish(
+          new FailureEvent(
+              REFERENCE_DATE_FAILED,
+              command.requestId(),
+              "INVESTMENT_CHOICE",
+              "REFERENCE_DATE",
+              FailureOrigin.LOCAL_SYSTEM,
+              null,
+              SUBMISSION_PUBLIC_CODE,
+              503,
+              false,
+              Map.of("reason", REFERENCE_DATE_FAILURE_REASON)));
+    } catch (RuntimeException ignored) {
+      // Telemetry must not replace the submission outcome.
+    }
   }
 
   private Mono<InvestmentChoiceSubmitOutcome> reconcileDetails(
