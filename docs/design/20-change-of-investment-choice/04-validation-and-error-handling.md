@@ -48,6 +48,12 @@ Rule: exactly one ERROR-level incident record per CIM incident, owned by CIM cod
 contains **no** direct `log.error(` / `atError(` call, so `ErrorLogCallSiteRatchetArchitectureTest`
 `KNOWN_REMAINING` is unchanged.
 
+The three CIM APIM adapters pass `ApimIncidentOwnership.TERMINAL_CALLER`. The shared facade's
+upstream HTTP-failure line and the shared `apim.exchange.failed` outcome line are WARN for these
+requests; the CIM adapter's structured `FailureEvent` remains the single ERROR. GET retry-attempt
+diagnostics remain WARN. Retry eligibility, resubmission policy, scope, and credential context are
+unchanged. No shared exception-management code was changed.
+
 For a successful GET whose history or pending allocation references source/fund metadata
 that is missing or has no display name, `GetInvestmentChoiceService` publishes exactly one
 non-fatal `DOWNSTREAM_INVALID_RESPONSE` `FailureEvent` named
@@ -60,37 +66,55 @@ and no API exception handler ERROR is produced because the response remains succ
 
 | Who | Does |
 |---|---|
-| CIM APIM adapters | On any failure of their exchange: classify with `ApimFailureClassifier.classify(throwable)`, map `ApimFailureCategory` -> `FailureOrigin` 1:1 (same names), publish one `FailureEvent`, then map to the feature exception. On nonblank `err-message`: publish origin `DOWNSTREAM_CONTRACT` with `internalCode` = the `err-message` code (D-34). On malformed data detected by the adapter: origin `DOWNSTREAM_INVALID_RESPONSE` |
-| CIM use cases | Snapshot miss: publish origin `LOCAL_SYSTEM`. Reconciled / unreconciled: plain WARN (not an incident) |
+| CIM APIM adapters | On any failure of their exchange: classify with `ApimFailureClassifier.classify(throwable)`, map `ApimFailureCategory` -> `FailureOrigin` 1:1 (same names), publish one `FailureEvent`, then map to the feature exception. Their requests are terminal incident owners. On nonblank `err-message`: publish origin `DOWNSTREAM_CONTRACT` with `internalCode` = the `err-message` code (D-34). On malformed data detected by the adapter: origin `DOWNSTREAM_INVALID_RESPONSE` |
+| CIM use cases | Snapshot miss: publish origin `LOCAL_SYSTEM`. GET reference-date failure: operation `REFERENCE_DATE`, event `investment-choice.retrieval.reference_date_failed`. Restricted GET snapshot-write failure: operation `SNAPSHOT`, event `investment-choice.retrieval.snapshot_write_failed`. Submit reconciliation reference-date failure: operation `REFERENCE_DATE`, event `investment-choice.submission.reference_date_failed`; this is separate from the submit adapter's event. Reconciled / unreconciled: plain WARN (not an incident) |
+| CIM controller | If the gate dispatched but the submit/cancel binding is missing, publish one `LOCAL_SYSTEM` event with operation `AUTHORIZATION_BINDING`, respectively `investment-choice.submission.binding_missing` or `investment-choice.cancel.binding_missing`; keep the existing 403 response unchanged |
 | `InvestmentChoiceExceptionMappings` | Render the public 503 with `ApiError.system`; log level **below ERROR** (WARN) and no stack trace, so `ApiExceptionHandler` does not create a second ERROR. Sub-task 0.1 confirms a mapping can declare this; otherwise STOP |
-| Shared executor | Unchanged. It still logs `apim.exchange.failed` at ERROR on transport/exchange failures and `apim.business.rejected` at WARN on `err-message`. That duplicate on transport failures is shared behaviour owned by exception-handling M3 (3.8), recorded as O-9; CIM does not change it |
+| Shared executor | No shared code change. For CIM `TERMINAL_CALLER` exchanges, the facade upstream HTTP-failure line and `apim.exchange.failed` are WARN; `apim.business.rejected` remains WARN. O-9 remains open for shared exception-management M3 paths that do not have a terminal feature owner |
 
 `FailureEvent` fields for CIM: `capability` `INVESTMENT_CHOICE`; `operation` `TRPGetCIMDtl` or
-`TRPCIMReq` (or `SNAPSHOT`); `publicCode` the 503 code; `httpStatus` 503; `retryable` true for
-the GET, false for submit; `safeDimensions` only counts and reasons - never policy, certificate,
-user id, account ref, fund codes or percentages.
+`TRPCIMReq`, `TRPCnclCIMReq`, `SNAPSHOT`, `REFERENCE_DATE`, or `AUTHORIZATION_BINDING`;
+`publicCode` is the applicable feature code; `httpStatus` is the mapped status; retryability stays
+false for submit/cancel and true for safe GET work. The new local incidents use only fixed reason
+labels in `safeDimensions`; metadata-integrity events use fixed reasons and integer counts. Never
+include policy, certificate, user id, account ref, fund codes, references, or percentages.
 
 Event names: `investment-choice.retrieval.downstream_failure`,
 `investment-choice.retrieval.metadata_integrity`,
-`investment-choice.submission.downstream_failure`, `investment-choice.submission.snapshot.missing`.
+`investment-choice.retrieval.reference_date_failed`,
+`investment-choice.retrieval.snapshot_write_failed`,
+`investment-choice.submission.downstream_failure`,
+`investment-choice.submission.reference_date_failed`,
+`investment-choice.submission.snapshot.missing`,
+`investment-choice.submission.binding_missing`,
+`investment-choice.cancel.downstream_failure`,
+`investment-choice.cancel.snapshot.missing`,
+`investment-choice.cancel.binding_missing`.
+
+The restricted snapshot-write, reference-date, and missing-gate-binding gaps are incident-worthy by
+Nick's decision. A failure to publish telemetry must not replace the original response or exception.
 
 ## 4. Error matrix
 
 | Case | HTTP | status | type / code | Incident (ERROR) | Other logs |
 |---|---|---|---|---|---|
-| GET: transport / timeout / 5xx / crypto | 503 | `SYSTEM_ERROR` | `SYSTEM` / `err.investment-choice.retrieval.unavailable` | details adapter, classified origin | executor ERROR (O-9) |
+| GET: transport / timeout / 5xx / crypto | 503 | `SYSTEM_ERROR` | `SYSTEM` / `err.investment-choice.retrieval.unavailable` | details adapter, classified origin | shared APIM lines WARN for `TERMINAL_CALLER`; O-9 remains open for shared paths |
+| GET: reference-date resolution fails | 503 | `SYSTEM_ERROR` | same | GET use case, `LOCAL_SYSTEM`, operation `REFERENCE_DATE`, event `investment-choice.retrieval.reference_date_failed` | shared fallback is unchanged |
 | GET: nonblank `err-message` | 503 | `SYSTEM_ERROR` | same | details adapter, `DOWNSTREAM_CONTRACT` | executor WARN |
 | GET: malformed (empty data, >1 item, missing required, integrity, strict date) | 503 | `SYSTEM_ERROR` | same | details adapter, `DOWNSTREAM_INVALID_RESPONSE` | - |
 | GET: missing referenced source description or fund name in allocation metadata | 200 | `SUCCESS` | - | Get use case, one `DOWNSTREAM_INVALID_RESPONSE` metadata-integrity event | one structured ERROR, no throwable; response retains allocation and original codes with null missing names |
 | GET: `AccountIdentifierFormatter` rejects policy/cert | 503 | `SYSTEM_ERROR` | same | use case, `LOCAL_SYSTEM` | - |
-| GET: snapshot write skipped/failed | 200 | `SUCCESS` | - | none | WARN from cache service (D-31) |
+| GET: NORMAL snapshot write skipped/failed | 200 | `SUCCESS` | - | none | best effort; cache-service WARN (D-31) |
+| GET: restricted snapshot write fails | 503 | `SYSTEM_ERROR` | same | GET use case, `LOCAL_SYSTEM`, operation `SNAPSHOT`, event `investment-choice.retrieval.snapshot_write_failed` | restricted GET does not return stale success |
 | Submit: token problem | 403 | `BUSINESS_REJECTED` | existing gate | existing | existing |
 | Submit: V1-V8, S1-S3 | 422 | `VALIDATION_FAILED` | section 2 | none | INFO |
 | Submit: snapshot miss (absent, unreadable, unusable session, account mismatch) | 503 | `SYSTEM_ERROR` | `SYSTEM` / `err.investment-choice.submission.unavailable` | use case, `LOCAL_SYSTEM` | cache service INFO miss reason |
 | Submit: nonblank `err-message` | 503 | `SYSTEM_ERROR` | same | instruction adapter, `DOWNSTREAM_CONTRACT` | executor WARN |
-| Submit: unknown outcome, reconciled to one pending | 200 | `SUBMITTED` | - | instruction adapter (classified) | WARN reconciled; executor ERROR (O-9) |
-| Submit: unknown outcome, not reconciled | 503 | `SYSTEM_ERROR` | same | instruction adapter (classified) | WARN unreconciled; executor ERROR (O-9) |
-| Submit: reconciliation call fails | 503 | `SYSTEM_ERROR` | same | instruction adapter + details adapter (two operations) | executor ERRORs (O-9) |
+| Submit: gate dispatched, binding missing | 403 | `BUSINESS_REJECTED` | existing password-validation authorization code | controller, `LOCAL_SYSTEM`, operation `AUTHORIZATION_BINDING`, event `investment-choice.submission.binding_missing` | existing response body unchanged |
+| Submit: unknown outcome, reconciled to one pending | 200 | `SUBMITTED` | - | instruction adapter (classified) | WARN reconciled; shared APIM lines WARN for `TERMINAL_CALLER` |
+| Submit: unknown outcome, not reconciled | 503 | `SYSTEM_ERROR` | same | instruction adapter (classified) | WARN unreconciled; shared APIM lines WARN for `TERMINAL_CALLER` |
+| Submit: reconciliation reference-date resolution fails | 503 | `SYSTEM_ERROR` | same | instruction adapter event plus submit use case `LOCAL_SYSTEM`, operation `REFERENCE_DATE`, event `investment-choice.submission.reference_date_failed` | shared APIM lines WARN for `TERMINAL_CALLER` |
+| Submit: reconciliation GET details call fails | 503 | `SYSTEM_ERROR` | same | instruction adapter plus details adapter events (two operations) | shared APIM lines WARN for `TERMINAL_CALLER` |
 
 Every failure: `success: false`, `result: null`, `messages: []`, `message: null`. Public responses
 never expose `DOWNSTREAM_*`, `err-message` values, policy, certificate or user id.
@@ -138,14 +162,15 @@ CV1 takes precedence over CV2. `referenceNo` has no format rule (C6). CV1 and CV
 | `err.request.cannot.be.cancelled` | 422 | `BUSINESS_REJECTED` | `err.investment-choice.cancel.not-cancellable` | none (WARN only): adapter publishes `DOWNSTREAM_BUSINESS` | executor WARN |
 | Any other `err-message` | 503 | `SYSTEM_ERROR` | `SYSTEM` / `err.investment-choice.cancel.unavailable` | adapter, `DOWNSTREAM_CONTRACT` | executor WARN |
 | Malformed success | 503 | `SYSTEM_ERROR` | same | adapter, `DOWNSTREAM_INVALID_RESPONSE` | - |
-| Throwable (transport, crypto, contract, local) | 503 | `SYSTEM_ERROR` | same | adapter, classified origin | executor ERROR for transport (O-9) |
+| Gate dispatched, binding missing | 403 | `BUSINESS_REJECTED` | existing password-validation authorization code | controller, `LOCAL_SYSTEM`, operation `AUTHORIZATION_BINDING`, event `investment-choice.cancel.binding_missing` | existing response body unchanged |
+| Throwable (transport, crypto, contract, local) | 503 | `SYSTEM_ERROR` | same | adapter, classified origin | shared APIM lines WARN for `TERMINAL_CALLER`; O-9 remains open for shared paths |
 | Success | 200 | `SUCCESS` | - | none | snapshot removal best effort; a skipped write logs one WARN |
 
 Every failure: `success: false`, `result: null`, `messages: []`, `message: null`. Public responses never expose `DOWNSTREAM_*`, `err-message` values, policy, certificate, user id, reference numbers or the token.
 
 ### 8.3 Events
 
-Cancel adapter events: capability `INVESTMENT_CHOICE`, operation `TRPCnclCIMReq`, event `investment-choice.cancel.downstream_failure`, `retryable` false, `httpStatus` 503 (422 for the business rejection), `publicCode` `err.investment-choice.cancel.unavailable` (or `...not-cancellable`). Snapshot miss: operation `SNAPSHOT`, event `investment-choice.cancel.snapshot.missing`, origin `LOCAL_SYSTEM`. Exactly one event per failure. `safeDimensions` carry reasons only.
+Cancel adapter events: capability `INVESTMENT_CHOICE`, operation `TRPCnclCIMReq`, event `investment-choice.cancel.downstream_failure`, `retryable` false, `httpStatus` 503 (422 for the business rejection), `publicCode` `err.investment-choice.cancel.unavailable` (or `...not-cancellable`). Snapshot miss: operation `SNAPSHOT`, event `investment-choice.cancel.snapshot.missing`, origin `LOCAL_SYSTEM`. Missing gate binding: operation `AUTHORIZATION_BINDING`, event `investment-choice.cancel.binding_missing`, origin `LOCAL_SYSTEM`, HTTP 403 and the existing password-validation authorization public code. Exactly one feature event per applicable failure; the gate's own rejection event is distinct. `safeDimensions` carry fixed reasons only.
 
 ### 8.4 Logging and privacy
 
