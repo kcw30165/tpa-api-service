@@ -13,6 +13,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.error.ErrorResponseRenderer;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.ExceptionMappingRegistryConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.error.PublicMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.passwordvalidation.PasswordValidationGateBindingTestSupport;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
@@ -34,6 +36,8 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceViolation;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelNotCancellableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelUnavailableException;
@@ -54,7 +58,9 @@ import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -595,7 +601,8 @@ class InvestmentChoiceControllerTest {
             resolver(context("ACC-1")),
             exchange -> Optional.of(SESSION_ID),
             new InvestmentChoiceWebMapper(),
-            new ObjectMapper());
+            new ObjectMapper(),
+            event -> {});
     var exchange = MockServerWebExchange.from(MockServerHttpRequest.post(CANCEL_ROUTE).build());
     PasswordValidationGateBindingTestSupport.bind(exchange);
 
@@ -984,6 +991,7 @@ class InvestmentChoiceControllerTest {
   void cimControllersRejectMissingGateBindingBeforeUseCaseDispatch() throws Exception {
     AtomicInteger submitCalls = new AtomicInteger();
     AtomicInteger cancelCalls = new AtomicInteger();
+    List<FailureEvent> events = new ArrayList<>();
     var controller =
         new InvestmentChoiceController(
             command -> Mono.error(new AssertionError("GET use case must not run")),
@@ -1003,7 +1011,8 @@ class InvestmentChoiceControllerTest {
             resolver(context("ACC-1")),
             exchange -> Optional.of(SESSION_ID),
             new InvestmentChoiceWebMapper(),
-            new ObjectMapper());
+            new ObjectMapper(),
+            events::add);
     var submitExchange =
         MockServerWebExchange.from(MockServerHttpRequest.post(SUBMIT_ROUTE).build());
     var cancelExchange =
@@ -1024,8 +1033,122 @@ class InvestmentChoiceControllerTest {
 
     assertThat(submitResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     assertThat(cancelResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(submitResponse.getBody().status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
+    assertThat(cancelResponse.getBody().status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
+    var unchangedAuthorizationError =
+        new ApiError(
+            "BUSINESS",
+            ErrorCodes.PASSWORD_VALIDATION_AUTHORIZATION_INVALID,
+            null,
+            List.of("X-Password-Validation-Token"),
+            "ERROR",
+            "SERVER");
+    assertThat(submitResponse.getBody().errors()).containsExactly(unchangedAuthorizationError);
+    assertThat(cancelResponse.getBody().errors()).containsExactly(unchangedAuthorizationError);
     assertThat(submitCalls).hasValue(0);
     assertThat(cancelCalls).hasValue(0);
+    assertThat(events)
+        .containsExactly(
+            new FailureEvent(
+                "investment-choice.submission.binding_missing",
+                null,
+                "INVESTMENT_CHOICE",
+                "AUTHORIZATION_BINDING",
+                FailureOrigin.LOCAL_SYSTEM,
+                null,
+                ErrorCodes.PASSWORD_VALIDATION_AUTHORIZATION_INVALID,
+                403,
+                false,
+                Map.of("reason", "BINDING_MISSING")),
+            new FailureEvent(
+                "investment-choice.cancel.binding_missing",
+                null,
+                "INVESTMENT_CHOICE",
+                "AUTHORIZATION_BINDING",
+                FailureOrigin.LOCAL_SYSTEM,
+                null,
+                ErrorCodes.PASSWORD_VALIDATION_AUTHORIZATION_INVALID,
+                403,
+                false,
+                Map.of("reason", "BINDING_MISSING")));
+    assertThat(events.toString()).doesNotContain("ACC-1", CANCEL_REFERENCE_NO, "sid_");
+  }
+
+  @Test
+  void successfulSubmitAndCancelDoNotPublishMissingBindingEvents() throws Exception {
+    List<FailureEvent> events = new ArrayList<>();
+    var controller =
+        new InvestmentChoiceController(
+            command -> Mono.error(new AssertionError("GET use case must not run")),
+            command ->
+                Mono.just(
+                    new InvestmentChoiceSubmitOutcome.Submitted(
+                        new InvestmentChoiceSubmission(
+                            "submission-reference", LocalDate.of(2026, 11, 6), LocalTime.NOON))),
+            command ->
+                Mono.just(
+                    new InvestmentChoiceCancelOutcome.Cancelled(
+                        new InvestmentChoiceCancellation(command.referenceNo()))),
+            resolver(context("ACC-1")),
+            exchange -> Optional.of(SESSION_ID),
+            new InvestmentChoiceWebMapper(),
+            new ObjectMapper(),
+            events::add);
+    var submitExchange =
+        MockServerWebExchange.from(MockServerHttpRequest.post(SUBMIT_ROUTE).build());
+    var cancelExchange =
+        MockServerWebExchange.from(MockServerHttpRequest.post(CANCEL_ROUTE).build());
+    PasswordValidationGateBindingTestSupport.bind(submitExchange);
+    PasswordValidationGateBindingTestSupport.bind(cancelExchange);
+
+    controller
+        .submitInvestmentChoice(
+            Mono.just(new tools.jackson.databind.ObjectMapper().readTree(VALID_INSTRUCTION)),
+            submitExchange)
+        .block();
+    controller
+        .cancelInvestmentChoice(
+            Mono.just(new tools.jackson.databind.ObjectMapper().readTree(CANCEL_BODY)),
+            cancelExchange)
+        .block();
+
+    assertThat(events).isEmpty();
+  }
+
+  @Test
+  void missingGateBindingResponseSurvivesFailureEventPublishFailure() throws Exception {
+    var controller =
+        new InvestmentChoiceController(
+            command -> Mono.error(new AssertionError("GET use case must not run")),
+            command -> Mono.error(new AssertionError("submit use case must not run")),
+            command -> Mono.error(new AssertionError("cancel use case must not run")),
+            resolver(context("ACC-1")),
+            exchange -> Optional.of(SESSION_ID),
+            new InvestmentChoiceWebMapper(),
+            new ObjectMapper(),
+            event -> {
+              throw new IllegalStateException("telemetry-sensitive");
+            });
+    var exchange = MockServerWebExchange.from(MockServerHttpRequest.post(SUBMIT_ROUTE).build());
+
+    var response =
+        controller
+            .submitInvestmentChoice(
+                Mono.just(new tools.jackson.databind.ObjectMapper().readTree(VALID_INSTRUCTION)),
+                exchange)
+            .block();
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(response.getBody().status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
+    assertThat(response.getBody().errors())
+        .containsExactly(
+            new ApiError(
+                "BUSINESS",
+                ErrorCodes.PASSWORD_VALIDATION_AUTHORIZATION_INVALID,
+                null,
+                List.of("X-Password-Validation-Token"),
+                "ERROR",
+                "SERVER"));
   }
 
   @Test
@@ -1126,7 +1249,8 @@ class InvestmentChoiceControllerTest {
         resolver(context),
         sessionCookieReader,
         new InvestmentChoiceWebMapper(),
-        new ObjectMapper());
+        new ObjectMapper(),
+        event -> {});
   }
 
   private static WebTestClient submitClient(
@@ -1156,7 +1280,8 @@ class InvestmentChoiceControllerTest {
         resolver(context),
         sessionCookieReader,
         new InvestmentChoiceWebMapper(),
-        new ObjectMapper());
+        new ObjectMapper(),
+        event -> {});
   }
 
   private static WebTestClient cancelClient(
@@ -1171,7 +1296,8 @@ class InvestmentChoiceControllerTest {
                 resolver(context),
                 sessionCookieReader,
                 new InvestmentChoiceWebMapper(),
-                new ObjectMapper()))
+                new ObjectMapper(),
+                event -> {}))
         .controllerAdvice(advice())
         .webFilter(PasswordValidationGateBindingTestSupport.bindingFilter())
         .build();

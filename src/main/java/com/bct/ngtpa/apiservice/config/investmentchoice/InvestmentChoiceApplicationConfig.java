@@ -37,9 +37,10 @@ public class InvestmentChoiceApplicationConfig {
       InvestmentChoiceDetailsPort detailsPort,
       InvestmentChoiceInstructionPort instructionPort,
       InvestmentChoiceSnapshotCacheService snapshotCache,
-      Clock clock) {
+      Clock clock,
+      FailureEventPort failures) {
     return new SubmitInvestmentChoiceService(
-        referenceDatePort, detailsPort, instructionPort, snapshotCache, clock);
+        referenceDatePort, detailsPort, instructionPort, snapshotCache, clock, failures);
   }
 
   @Bean

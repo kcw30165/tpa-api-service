@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto.TrpCIMReqApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.investmentchoice.dto.TrpCIMReqApimRequest;
@@ -83,7 +84,8 @@ public final class ApimInvestmentChoiceInstructionAdapter
                       new ApimCredentialResolutionContext(
                           command.actorUserRole(), command.accountEnv()),
                       ApimRetryEligibility.NON_RETRYABLE,
-                      ApimResubmissionPolicy.NEVER);
+                      ApimResubmissionPolicy.NEVER,
+                      ApimIncidentOwnership.TERMINAL_CALLER);
               return executor
                   .<TrpCIMReqApimRequest, TrpCIMReqApimDataItem>postEnvelope(exchange)
                   .map(this::interpret);

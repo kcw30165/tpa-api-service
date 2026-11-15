@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.usecase.investmentchoice;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -247,11 +248,72 @@ class GetInvestmentChoiceServiceTest {
         .thenReturn(Mono.error(new IllegalStateException("restricted-snapshot-write-sensitive")));
 
     StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
-        .expectError(InvestmentChoiceDetailsRetrievalException.class)
+        .expectErrorSatisfies(
+            error -> {
+              assertThat(error).isInstanceOf(InvestmentChoiceDetailsRetrievalException.class);
+              assertThat(error.getMessage()).doesNotContain("restricted-snapshot-write-sensitive");
+              assertThat(error.getCause()).isNull();
+            })
         .verify();
 
     verify(snapshotCache).writeRestrictedState(any(), any(), any());
+    var captured = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(failures, times(1)).publish(captured.capture());
+    assertThat(captured.getValue())
+        .isEqualTo(
+            new FailureEvent(
+                "investment-choice.retrieval.snapshot_write_failed",
+                REQUEST_ID,
+                "INVESTMENT_CHOICE",
+                "SNAPSHOT",
+                FailureOrigin.LOCAL_SYSTEM,
+                null,
+                "err.investment-choice.retrieval.unavailable",
+                503,
+                true,
+                java.util.Map.of("reason", "RESTRICTED_SNAPSHOT_WRITE_FAILED")));
+    assertThat(captured.getValue().toString())
+        .doesNotContain(
+            SUCCESS_POLICY_NO,
+            ACCOUNT_REF,
+            SESSION_ID.value(),
+            "restricted-snapshot-write-sensitive");
     assertNoSensitiveLogValues();
+  }
+
+  @Test
+  void restrictedSnapshotWriteFailureDoesNotReplaceRetrievalFailureWhenTelemetryThrows() {
+    arrangeDetails(
+        new InvestmentChoiceDetails.Restricted(
+            InvestmentChoiceScenario.MEMBER_INELIGIBLE, List.of(), List.of(), List.of()));
+    when(snapshotCache.writeRestrictedState(any(), any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("restricted-snapshot-write-sensitive")));
+    doThrow(new IllegalStateException("telemetry-sensitive")).when(failures).publish(any());
+
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+        .expectErrorSatisfies(
+            error -> {
+              assertThat(error).isInstanceOf(InvestmentChoiceDetailsRetrievalException.class);
+              assertThat(error.getMessage())
+                  .doesNotContain("restricted-snapshot-write-sensitive", "telemetry-sensitive");
+              assertThat(error.getCause()).isNull();
+            })
+        .verify();
+    assertNoSensitiveLogValues();
+  }
+
+  @Test
+  void normalSnapshotWriteFailureRemainsBestEffortWithoutLocalFailureEvent() {
+    arrangeDetails(details());
+    when(snapshotCache.writeState(any(), any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("snapshot-write-sensitive")));
+
+    StepVerifier.create(useCase().get(command(SUCCESS_POLICY_NO, SUCCESS_CERT_NO)))
+        .expectNextCount(1)
+        .verifyComplete();
+
+    verify(snapshotCache).writeState(any(), any(), any());
+    verifyNoInteractions(failures);
   }
 
   @ParameterizedTest
@@ -324,7 +386,24 @@ class GetInvestmentChoiceServiceTest {
             })
         .verify();
 
-    verifyNoInteractions(detailsPort, snapshotCache, failures);
+    verifyNoInteractions(detailsPort, snapshotCache);
+    var captured = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(failures, times(1)).publish(captured.capture());
+    assertThat(captured.getValue())
+        .isEqualTo(
+            new FailureEvent(
+                "investment-choice.retrieval.reference_date_failed",
+                REQUEST_ID,
+                "INVESTMENT_CHOICE",
+                "REFERENCE_DATE",
+                FailureOrigin.LOCAL_SYSTEM,
+                null,
+                "err.investment-choice.retrieval.unavailable",
+                503,
+                true,
+                java.util.Map.of("reason", "REFERENCE_DATE_RESOLUTION_FAILED")));
+    assertThat(captured.getValue().toString())
+        .doesNotContain(SUCCESS_POLICY_NO, ACCOUNT_REF, SESSION_ID.value());
     assertNoSensitiveLogValues();
   }
 

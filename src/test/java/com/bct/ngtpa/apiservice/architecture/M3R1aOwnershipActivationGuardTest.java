@@ -22,6 +22,10 @@ class M3R1aOwnershipActivationGuardTest {
             List.of(
                     "com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacade.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/execution/ApimExchangeOutcomeLogger.java",
+                    // CIM adopts TERMINAL_CALLER by Nick's approval, 2026-11-10.
+                    "com/bct/ngtpa/apiservice/adapter/out/apim/investmentchoice/ApimInvestmentChoiceCancelAdapter.java",
+                    "com/bct/ngtpa/apiservice/adapter/out/apim/investmentchoice/ApimInvestmentChoiceDetailsAdapter.java",
+                    "com/bct/ngtpa/apiservice/adapter/out/apim/investmentchoice/ApimInvestmentChoiceInstructionAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationCompletionAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationUsernameAvailabilityAdapter.java")

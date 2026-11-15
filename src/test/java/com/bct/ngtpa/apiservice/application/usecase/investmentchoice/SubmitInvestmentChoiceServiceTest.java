@@ -26,11 +26,14 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoic
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmission;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.InvestmentChoiceSubmitOutcome;
 import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmentChoiceCommand;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionRejectedException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnknownOutcomeException;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceDetailsPort;
 import com.bct.ngtpa.apiservice.application.port.out.InvestmentChoiceInstructionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
@@ -89,6 +92,7 @@ class SubmitInvestmentChoiceServiceTest {
       mock(InvestmentChoiceInstructionPort.class);
   private final InvestmentChoiceSnapshotCacheService snapshotCache =
       mock(InvestmentChoiceSnapshotCacheService.class);
+  private final FailureEventPort failures = mock(FailureEventPort.class);
   private final Clock clock = Clock.fixed(HK_BOUNDARY_INSTANT, ZoneOffset.UTC);
   private final Logger logger =
       (Logger) LoggerFactory.getLogger(SubmitInvestmentChoiceService.class);
@@ -108,7 +112,7 @@ class SubmitInvestmentChoiceServiceTest {
 
   private SubmitInvestmentChoiceService useCase() {
     return new SubmitInvestmentChoiceService(
-        referenceDatePort, detailsPort, instructionPort, snapshotCache, clock);
+        referenceDatePort, detailsPort, instructionPort, snapshotCache, clock, failures);
   }
 
   private static SubmitInvestmentChoiceCommand command(InvestmentChoiceInstructionRequest request) {
@@ -194,6 +198,7 @@ class SubmitInvestmentChoiceServiceTest {
             new InvestmentChoiceInstructionCommand(
                 ACTOR_USER_ID, ACTOR_USER_ROLE, ACCOUNT_ENV, POLICY_NO, CERT_NO, EXPANDED_ROWS));
     verifyNoInteractions(snapshotCache, referenceDatePort, detailsPort);
+    verifyNoInteractions(failures);
     assertThat(appender.list).isEmpty();
     assertNoSensitiveLogValues();
   }
@@ -248,6 +253,7 @@ class SubmitInvestmentChoiceServiceTest {
     var refreshedSnapshot = ArgumentCaptor.forClass(InvestmentChoiceSnapshotState.class);
     verify(snapshotCache, times(1))
         .writeState(eq(SESSION_ID), refreshedSnapshot.capture(), eq(REQUEST_ID));
+    verifyNoInteractions(failures);
     assertThat(refreshedSnapshot.getValue().normalSnapshot().orElseThrow().pendingRefNos())
         .containsExactly(PENDING_REFERENCE_NO);
     verify(referenceDatePort).resolveReferenceDate(ACCOUNT_ENV);
@@ -377,12 +383,40 @@ class SubmitInvestmentChoiceServiceTest {
         .thenReturn(Mono.error(new IllegalStateException("reference-date-sensitive")));
 
     StepVerifier.create(useCase().submit(command(VALID_REQUEST)))
-        .expectError(InvestmentChoiceSubmissionUnavailableException.class)
+        .expectErrorSatisfies(
+            error -> {
+              assertThat(error).isInstanceOf(InvestmentChoiceSubmissionUnavailableException.class);
+              assertThat(error.getMessage()).doesNotContain("reference-date-sensitive");
+              assertThat(error.getCause()).isNull();
+            })
         .verify();
 
     verifyNoInteractions(detailsPort);
     verify(snapshotCache, never()).write(any(), any(), any());
     assertThat(appender.list).isEmpty();
+    var captured = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(failures, times(1)).publish(captured.capture());
+    assertThat(captured.getValue())
+        .isEqualTo(
+            new FailureEvent(
+                "investment-choice.submission.reference_date_failed",
+                REQUEST_ID,
+                "INVESTMENT_CHOICE",
+                "REFERENCE_DATE",
+                FailureOrigin.LOCAL_SYSTEM,
+                null,
+                "err.investment-choice.submission.unavailable",
+                503,
+                false,
+                java.util.Map.of("reason", "REFERENCE_DATE_RESOLUTION_FAILED")));
+    assertThat(captured.getValue().toString())
+        .doesNotContain(
+            ACTOR_USER_ID,
+            POLICY_NO,
+            CERT_NO,
+            SNAPSHOT_ACCOUNT_REF,
+            SESSION_ID.value(),
+            "reference-date-sensitive");
   }
 
   @Test

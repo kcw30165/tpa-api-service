@@ -39,7 +39,7 @@
 | D-33 | Local `private static final` strict `dd/MM/uuuu` and `HH:mm:ss` formatters in CIM mappers (E5) |
 | D-34 | Nonblank `err-message` is published with origin `DOWNSTREAM_CONTRACT` (ERROR) (F2 = a) |
 | D-35 | Malformed submit body code `err.investment-choice.request.invalid` (F4 = a; supersedes the generic code in the earlier D-28 text) |
-| D-36 | CIM uses `ApimFailureClassifier` at its adapters and owns one incident record per failure through `FailureEventPort`; its exception mappings log below ERROR; no direct ERROR calls (E3, F1 = A). CIM has no exception-handling M3 slice |
+| D-36 | CIM uses `ApimFailureClassifier` at its adapters and owns one incident record per failure through `FailureEventPort`; all three CIM APIM adapters use `TERMINAL_CALLER`, so shared facade/outcome technical logs are WARN and the feature event remains the sole ERROR. Exception mappings log below ERROR; no direct ERROR calls. Shared exception-management M3h remains open for shared paths (E3, F1 = A) |
 | D-37 | `SwitchSrc`: hidden sources are omitted by Progress; `avail-sw` Boolean, true = editable, false = read-only; downstream confirmed 2026-11-06, closes O-1 |
 | D-38 | Cancel operation `TRPCnclCIMReq` with `login-user-id`, `login-user-role`, `policy-no`, `cert-no`, `ref-no`; response `data[0].success` mapped, not inspected (D-14); NON_RETRYABLE, never resubmitted; config key `apim.investment-choice.cancel.path` |
 | D-39 | Cancel endpoint `POST /api/v1/investment-choice/instructions/cancel` with body `{"referenceNo": "..."}`; password-confirmed with purpose `CANCEL_INVESTMENT_CHOICE`, the body is the `operationPayload` (token bound to the reference); no path variable; `refNo` is not an alias |
@@ -52,6 +52,7 @@
 | D-46 | Store scenario with account ownership. NORMAL retains existing authorization data; restricted state replaces the prior account snapshot without fabricated editable data. Keep existing storage/concurrency behavior; no CAS redesign or GET fencing, and no stronger consistency claim |
 | D-47 | Submit and cancel issuance inspect stored scenario and reject restricted scenarios before throttle/password/grant: `FUNCTION_UNAVAILABLE` -> 422 `BUSINESS_REJECTED`, type `BUSINESS`, `err.investment-choice.function-unavailable`; `MEMBER_INELIGIBLE` -> corresponding `err.investment-choice.member-ineligible`. Empty targets, null message, existing severity/source; no technical incident. Ordinary snapshot misses retain the existing feature-owned 503. No execution-time scenario check or change to issued-token semantics |
 | D-48 | Submit precedence: V1 remains immediate without snapshot read; structurally safe V violations win over a restricted scenario and suppress normal-only S rules. With no V violations, restricted state rejects; NORMAL retains V/S aggregation and snapshot-miss precedence. Cancel CV1/CV2 remain early; a valid cancel payload sees restricted-state rejection before pending-reference membership |
+| D-49 | By Nick's decision, the restricted GET snapshot-write failure, GET and submit-reconciliation reference-date failures escaping the shared fallback, and submit/cancel missing-gate-binding branches are incidents. Each publishes one safe `LOCAL_SYSTEM` `FailureEvent`: operations `SNAPSHOT`, `REFERENCE_DATE`, or `AUTHORIZATION_BINDING`, with the corresponding retrieval/submission/binding event and public code. Existing GET/submit 503 behavior and the controller's existing 403 response remain unchanged; normal best-effort snapshot writes remain non-fatal |
 
 ## Open items
 
@@ -62,7 +63,7 @@
 | O-5 | History or pending fund code absent from `SwitchFund` -> `fundName: null`. Confirm Progress always includes closed funds | Progress | No |
 | O-6 | Progress sample dates still ISO | Progress | M2 live test |
 | O-7 | Pending items have no effective date after the downstream change; confirm the BRD screen needs none | BA | No |
-| O-9 | Shared executor still logs `apim.exchange.failed` at ERROR, so a CIM transport failure has two ERROR lines until exception-handling M3 3.8 | Exception-handling M3 | No |
+| O-9 | Shared exception-management M3h remains open for shared paths without a terminal feature owner. CIM APIM requests now use `TERMINAL_CALLER`: facade upstream HTTP-failure and `apim.exchange.failed` records are WARN, leaving the CIM `FailureEvent` as the sole ERROR | Exception-handling M3 | No |
 | O-10 | Non-matched path variants (trailing slash, case) render 404 as 500 `err.system.unexpected` via the shared exception handler. Shared web behaviour, not CIM-specific; re-check at 4.4 with the real controller | Nick / shared web | No |
 | O-11 | A non-empty body with a missing or `text/plain` Content-Type is rejected before the use case and rendered as HTTP 500 (same behaviour as Personal Information). Shared web behaviour | Nick / shared web | No |
 | O-12 | At controller level, duplicate JSON member names collapse to the last member; the token gate (strict canonicalizer, 400 `err.request.invalid`) is the authority on body integrity, so production requests never reach the controller with duplicates | Nick | No |

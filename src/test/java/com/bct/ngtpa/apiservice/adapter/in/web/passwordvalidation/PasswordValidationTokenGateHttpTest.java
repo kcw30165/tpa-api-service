@@ -1845,7 +1845,8 @@ class PasswordValidationTokenGateHttpTest {
           contexts,
           cookies,
           new InvestmentChoiceWebMapper(),
-          objectMapper);
+          objectMapper,
+          mock(FailureEventPort.class));
     }
 
     @Bean
