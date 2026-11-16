@@ -672,12 +672,12 @@ class ExceptionMappingsTest {
   }
 
   @Test
-  void configAssemblesExactlyThirtyOneMappingsPlusCatchAll()
+  void configAssemblesExactlyThirtyTwoMappingsPlusCatchAll()
       throws ReflectiveOperationException {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(31, registry.mappingCount());
+    assertEquals(32, registry.mappingCount());
 
     ErrorDescriptor alreadyPublished =
         registry.resolve(
