@@ -6,14 +6,17 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
+import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionTechnicalFailure;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionResult;
-import com.bct.ngtpa.apiservice.exception.ApimException;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -39,17 +42,18 @@ import reactor.test.StepVerifier;
 class ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest {
 
   /**
-   * Scenario 1 of 2: the downstream envelope itself is missing (envelope.getResponse() is null).
-   * {@code toEnvelope()} throws {@link ApimException} synchronously rather than returning a result
-   * value.
+   * Scenario 1 of 2: a missing downstream envelope becomes a cause-free, classified technical
+   * failure for the protected-operation terminal owner.
    */
   @Test
-  void complete_missingEnvelope_throwsApimException() {
+  void complete_missingEnvelope_throwsClassifiedTechnicalFailure() {
+    var capturedRequest = new AtomicReference<ApimExchangeRequest<?, ?>>();
     ApimExchangeExecutor executor =
         new ApimExchangeExecutor() {
           @Override
           public <R, D> Mono<ApimResponseEnvelope<D>> postEnvelope(
               ApimExchangeRequest<R, D> request) {
+            capturedRequest.set(request);
             ApimResponseEnvelope<D> envelope = new ApimResponseEnvelope<>(null);
             return Mono.just(envelope);
           }
@@ -64,17 +68,23 @@ class ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest {
 
     StepVerifier.create(adapter.complete(command))
         .expectErrorSatisfies(
-            error ->
-                assertThat(error)
-                    .isInstanceOfSatisfying(
-                        ApimException.class,
-                        apimException -> {
-                          assertThat(apimException.getStatusCode())
-                              .isEqualTo(HttpStatus.BAD_GATEWAY);
-                          assertThat(apimException.getErrorCode())
-                              .isEqualTo(ErrorCodes.APIM_RESPONSE_INVALID);
-                        }))
+            error -> {
+              assertThat(error).isInstanceOf(ForgotPasswordCompletionTechnicalFailure.class);
+              var failure = (ForgotPasswordCompletionTechnicalFailure) error;
+              assertThat(failure.origin()).isEqualTo(FailureOrigin.DOWNSTREAM_CONTRACT);
+              assertThat(failure.stage()).isEqualTo("apim-reset");
+              assertThat(failure.getCause()).isNull();
+              assertThat(failure.getMessage())
+                  .doesNotContain("response envelope is missing response");
+            })
         .verify();
+
+    assertThat(capturedRequest.get()).isNotNull();
+    assertThat(capturedRequest.get().incidentOwnership())
+        .isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
+    assertThat(capturedRequest.get().resubmissionPolicy()).isEqualTo(ApimResubmissionPolicy.NEVER);
+    assertThat(capturedRequest.get().retryEligibility())
+        .isEqualTo(ApimRetryEligibility.NON_RETRYABLE);
   }
 
   /**

@@ -24,6 +24,10 @@ import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetriev
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.exception.VestingScaleRetrievalException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp
+    .ForgotPasswordDetailsOtpExpectedFailureException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp
+    .ForgotPasswordDetailsOtpIncidentPublishedException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionPreDispatchException;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
@@ -668,11 +672,30 @@ class ExceptionMappingsTest {
   }
 
   @Test
-  void configAssemblesExactlyThirtyMappingsPlusCatchAll() {
+  void configAssemblesExactlyThirtyOneMappingsPlusCatchAll()
+      throws ReflectiveOperationException {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(30, registry.mappingCount());
+    assertEquals(31, registry.mappingCount());
+
+    ErrorDescriptor alreadyPublished =
+        registry.resolve(
+            instantiateMappingException(ForgotPasswordDetailsOtpIncidentPublishedException.class),
+            CONTEXT);
+    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, alreadyPublished.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, alreadyPublished.apiStatus());
+    assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, firstEntry(alreadyPublished).code());
+    assertEquals(LogLevel.WARN, alreadyPublished.logLevel());
+
+    ErrorDescriptor expectedFailure =
+        registry.resolve(
+            instantiateMappingException(ForgotPasswordDetailsOtpExpectedFailureException.class),
+            CONTEXT);
+    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, expectedFailure.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, expectedFailure.apiStatus());
+    assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, firstEntry(expectedFailure).code());
+    assertEquals(LogLevel.WARN, expectedFailure.logLevel());
 
     ErrorDescriptor updateUnavailable =
         registry.resolve(
@@ -716,6 +739,13 @@ class ExceptionMappingsTest {
             new IllegalStateException("not individually mapped"),
             new ErrorContext("GET", "/api/v1/unknown", "req-y"));
     assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, unmapped.errors().getFirst().code());
+  }
+
+  private static <T extends Throwable> T instantiateMappingException(Class<T> exceptionType)
+      throws ReflectiveOperationException {
+    var constructor = exceptionType.getDeclaredConstructor();
+    constructor.setAccessible(true);
+    return constructor.newInstance();
   }
 
   // ───────────────────────── bind-exception test fixtures ─────────────────────────
