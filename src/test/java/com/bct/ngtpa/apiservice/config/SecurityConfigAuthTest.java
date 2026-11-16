@@ -59,6 +59,18 @@ class SecurityConfigAuthTest {
   }
 
   @Test
+  void unauthenticatedUnknownRouteIsRejectedBeforeRouteResolution() {
+    webTestClient
+        .get()
+        .uri("/api/v1/this-route-does-not-exist")
+        .exchange()
+        .expectStatus()
+        .isUnauthorized()
+        .expectBody()
+        .isEmpty();
+  }
+
+  @Test
   void unauthenticatedGetContributionsExportIsRejected() {
     webTestClient
         .get()
