@@ -50,121 +50,104 @@
 ### Forgot Password -- ApimForgotPasswordUsernameLookupAdapter (TRPChkCustId)
 
 - **Condition:** missing envelope/response
-- **Detection site:** `ApimForgotPasswordUsernameLookupAdapter.java:79-81` (`toTransportEnvelope`). Confirmed: this adapter performs its own `postEnvelope` call and conversion; `SharedApimTrpChkCustIdTransport` is referenced only for its `API_NAME` constant (line 51), not as a co-handler.
-- **Handling:** `throw new IllegalStateException("TRPChkCustId response envelope is missing response")` (line 80). Propagates past `.map()`, observed by `.doOnError` (lines 68-74, logs `event=forgot-password.username-lookup.failed` ERROR with full exception). `ForgotPasswordStartProtectedOperation.execute`'s `.onErrorResume` (lines 100-108) swallows it into `systemFailed()` -- a result value, not an exception.
-- **Message policy:** N/A at this point -- swallowed to a result value before any `ExceptionMapping`
-- **Ordered log lines:** `event=forgot-password.username-lookup.failed` ERROR with full exception (`ApimForgotPasswordUsernameLookupAdapter.java:68-74`); `event=forgot-password.start.failed requestId={} stage=username-lookup exceptionType={}` ERROR at the swallow site (`ForgotPasswordStartProtectedOperation.java:100-107`)
+- **Detection site:** `ApimForgotPasswordUsernameLookupAdapter.toTransportEnvelope` detects a missing response envelope.
+- **Handling:** R1 sets `ApimIncidentOwnership.TERMINAL_CALLER`. The adapter classifies the exception and returns `SYSTEM_FAILED` with its `FailureOrigin`; `ForgotPasswordStartProtectedOperation` carries that origin into the acquired application flow, which publishes the terminal `FailureEvent` without attaching the original Throwable.
+- **Message policy:** The technical result is rendered by the Forgot Password start mapper; no generic `ExceptionMapping` owns this result path.
+- **Ordered log lines:** The APIM observer and adapter/method diagnostic observations are WARN-only for this invocation. The acquired application boundary publishes the single terminal incident ERROR through `FailureEventPort`; its event is cause-free and contains no raw downstream message.
 - **Idempotency replay:** Yes -- Forgot Password start
-- **Origin tag today:** none
-- **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
-- **Public HTTP status:** 503. `IdempotentStartForgotPasswordService.executeAcquired` (lines 58-67) re-converts a `SYSTEM_FAILED` result BACK into a thrown `IllegalStateException`. `ForgotPasswordController.startForgotPassword` (lines 93-116) has a reactive `.onErrorResume(exception -> Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.systemUnavailable())))` (lines 109-112), which catches this re-thrown exception. `ForgotPasswordHttpResponses.status()` resolves `ApiStatus.SYSTEM_ERROR` -> `HttpStatus.SERVICE_UNAVAILABLE` (lines 46-48, `ForgotPasswordHttpResponses.java:46-47`). Confirmed: this entirely bypasses `ApimExceptionMappings`/`CatchAllExceptionMapping`.
+- **Failure origin:** `DOWNSTREAM_CONTRACT` for a missing envelope; the adapter preserves the classifier's technical origin in the result.
+- **Public HTTP status:** 503, `ApiStatus.SYSTEM_ERROR`; the existing start characterization preserves `err.system.unavailable`. R1 changes incident ownership/diagnostics, not the public response.
 - **Public ApiStatus:** `SYSTEM_ERROR`
-- **Public error code/type:** `"FORM"` / `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()` (`ForgotPasswordStartWebMapper.systemUnavailable()`, lines 119-127, routes through the shared `failure(...)` helper, lines 129-140, which calls `ApiError.form(error.code(), null, sanitizeTargets(error), "BFF")` -- source is `"BFF"`, not `"DOWNSTREAM"`)
-- **Citation:** `ApimForgotPasswordUsernameLookupAdapter.java:77-91`; `ForgotPasswordStartProtectedOperation.java:86-109`; `IdempotentStartForgotPasswordService.java:58-67`; `ForgotPasswordController.java:93-116`; `ForgotPasswordHttpResponses.java:21-50`
+- **Expected business behavior:** Recognized `err.tpa.cust.id.not.registered` and a valid `isExist=false` result remain `NOT_FOUND`, not technical incidents; their existing response behavior is unchanged.
+- **Idempotency/replay:** Start is idempotency-protected. Only the acquired execution publishes an incident; completed replay returns its stored response without republishing the original incident.
+- **Citation:** `ApimForgotPasswordUsernameLookupAdapter.java`; `ForgotPasswordStartProtectedOperation.java`; `IdempotentStartForgotPasswordService.java`; `ApimForgotPasswordUsernameLookupAdapterBatch2aCharacterizationTest`; `ForgotPasswordBatch2aStartCharacterizationTest`.
 
 ### Forgot Password -- ApimForgotPasswordUsernameLookupAdapter (TRPChkCustId)
 
 - **Condition:** no err-message AND no data, or data present but every item malformed
 - **Detection site:** `ApimForgotPasswordUsernameLookupAdapter.java:86-100`
-- **Handling:** `throw new ApimException(BAD_GATEWAY, APIM_RESPONSE_INVALID, ...)` (lines 87-90 or 96-99). Same swallow chain as the row above: observed by the adapter's `.doOnError`, then swallowed by `ForgotPasswordStartProtectedOperation`'s `.onErrorResume` into `systemFailed()`.
-- **Message policy:** N/A -- swallowed before any `ExceptionMapping`
-- **Ordered log lines:** `apim.contract.invalid` ERROR from the classifier (matches its malformed rule); adapter's `event=forgot-password.username-lookup.failed` ERROR with exception; `event=forgot-password.start.failed` ERROR at the swallow site
-- **Idempotency replay:** Yes
-- **Origin tag today:** none
-- **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
-- **Public HTTP status:** 503 via the same confirmed routing as the row above
-- **Public ApiStatus:** `SYSTEM_ERROR`
-- **Public error code/type:** `"FORM"` / `SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value()` (`ForgotPasswordStartWebMapper.systemUnavailable()`, lines 119-127)
-- **Citation:** `ApimForgotPasswordUsernameLookupAdapter.java:86-100`; `ForgotPasswordStartProtectedOperation.java:86-109`; `ForgotPasswordController.java:93-116`
+- **Handling:** The adapter retains malformed-response detection, classifies the failure, and returns `SYSTEM_FAILED` with its technical origin to the R1 terminal caller.
+- **Message policy:** Rendered through the existing Forgot Password start system-error mapping.
+- **Ordered log lines:** Lower APIM observations are WARN-only; the acquired application boundary publishes the one cause-free terminal `FailureEvent` at ERROR. No raw downstream diagnostic is included.
+- **Idempotency/replay:** Start is idempotency-protected; a completed replay does not repeat the lookup or republish the original incident.
+- **Failure origin:** The adapter retains the classified technical origin in `SYSTEM_FAILED`; the characterization tests assert `DOWNSTREAM_CONTRACT` for missing-envelope and malformed-envelope exceptions.
+- **Public behavior:** Existing characterization preserves HTTP 503, `ApiStatus.SYSTEM_ERROR`, and `err.system.unavailable`; no public contract change is part of R1.
+- **Citation:** `ApimForgotPasswordUsernameLookupAdapterBatch2aCharacterizationTest`; `ApimForgotPasswordUsernameLookupAdapterTest`; `ForgotPasswordBatch2aStartCharacterizationTest`.
 
 ### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
 
 - **Condition:** missing response envelope
 - **Detection site:** `ApimForgotPasswordCompletionAdapter.java:64-68` (`toEnvelope`)
-- **Handling:** `throw new ApimException(BAD_GATEWAY, APIM_RESPONSE_INVALID, ...)` (lines 65-68). **Routing confirmed:** this propagates past `.map(this::toEnvelope)` (line 54) to the chain's `.onErrorResume(ApimCryptoFailureClassifier::isCryptoFailure, ...)` (lines 56-58, does NOT match -- `ApimException` is not a crypto failure) then `.onErrorMap(this::safeFailure)` (line 59, re-wraps as `ApimException(INTERNAL_SERVER_ERROR, ...)` only if not already an `ApimException` -- here it IS already an `ApimException`, so `safeFailure` returns it unchanged per line 75: `if (t instanceof ApimException) return t;`). Reaches `ForgotPasswordCompleteProtectedOperation.invoke`'s own `.onErrorResume(ignored -> blockUnknown(session, now))` (line 135), which swallows ANY throwable into `unknownOutcome()` -- a result value.
-- **Message policy:** N/A -- swallowed to a result value by `ForgotPasswordCompleteProtectedOperation`
-- **Ordered log lines:** `apim.contract.invalid` ERROR from the classifier (missing response matches malformed rule); no adapter-level named log line for this specific condition (unlike the username-lookup adapter, this adapter has no `.doOnError` of its own at this throw site). `event=forgot-password.details-otp.failed` does NOT apply here (that is the Details/OTP flow, not Completion). ApimForgotPasswordCompletionAdapter is confirmed `@LogExecution`-annotated (unfiltered grep, 10-class list). Both ERROR lines fire in order: (1) apim.contract.invalid ERROR from DefaultApimExchangeExecutor's own onNext classification (missing response matches the malformed rule; this fires before the adapter's own throw, since toEnvelope()'s check runs inside .map(...) downstream of the executor's postEnvelope(...)); (2) method.execution.error ERROR with full stack trace (ExecutionLoggingAspect.java:161-170) -- the @LogExecution-annotated complete(...) method's own Mono emits onError for this condition (the swallow to unknownOutcome() happens one layer up, in ForgotPasswordCompleteProtectedOperation.invoke, not inside complete() itself). Pinned by ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest.missingEnvelopeLogsStartThenErrorWithStackTrace.
+- **Handling and ownership:** The adapter converts the missing response into a cause-free `ForgotPasswordCompletionTechnicalFailure` with `DOWNSTREAM_CONTRACT`; the invocation selects `TERMINAL_CALLER`. The protected operation records a completion incident, and the acquired idempotent application service publishes the terminal `FailureEvent` without the original Throwable.
+- **Message policy:** `classifiedFailure` converts the intermediate adapter exception to a cause-free technical result before it leaves the adapter; the existing completion system-error mapping remains public.
+- **Ordered log lines:** APIM envelope observation and `@LogExecution` observation are WARN-only for this terminal-caller invocation and carry no Throwable. The application boundary publishes the single terminal incident ERROR. `ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest.missingEnvelopeLogsStartThenWarningWithoutThrowable` characterizes the adapter observer; the connected application test characterizes the terminal event and public response separately.
 - **Idempotency replay:** Yes -- Forgot Password complete
-- **Origin tag today:** none
-- **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
-- **Public HTTP status:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Public ApiStatus:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Public error code/type:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Citation:** `ApimForgotPasswordCompletionAdapter.java:62-72`; `ForgotPasswordCompleteProtectedOperation.java:127-135,191-197`; `ForgotPasswordController.java:274-296`
+- **Failure origin:** `DOWNSTREAM_CONTRACT`; original Throwable/message is not attached to the terminal failure event.
+- **Public/replay behavior:** `ForgotPasswordCompleteIncidentOwnershipConnectedTest` characterizes the acquired technical-failure response as HTTP 503 / `SYSTEM_ERROR` / `err.system.unavailable`, and separately verifies that an unknown-outcome replay does not publish another incident or ownership marker. The missing-envelope adapter is not composed through protected execution and replay in one test; retain this layered-evidence limit (independent review finding F2).
+- **Citation:** `ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest`; `ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest`; `ForgotPasswordCompleteIncidentOwnershipConnectedTest`; `ForgotPasswordCompleteProtectedOperation.java`; `IdempotentCompleteForgotPasswordService.java`.
 
 ### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
 - **Condition:** present response, err-message empty, data empty
 - **Detection site:** ApimForgotPasswordCompletionAdapter.java (toEnvelope passes the envelope through unchanged since its own response is non-null; resultMapper.toResult(...) maps empty data to a TECHNICAL_FAILURE result rather than throwing)
 - **Handling:** returned as ForgotPasswordCompletionResult(status=TECHNICAL_FAILURE, ...); no exception is thrown
 - **Message policy:** N/A -- returned as a normal result value
-- **Ordered log lines:** apim.contract.invalid ERROR (DefaultApimExchangeExecutor's own onNext classification of the empty-data envelope); method.execution.start then method.execution.success INFO (the @LogExecution aspect, since complete(...) completes normally with a result value rather than an error). Pinned by ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest.complete_emptyButPresentResponse_returnsTechnicalFailureResult.
+- **Ordered log lines:** The APIM observer is diagnostic WARN for `TERMINAL_CALLER`; the adapter returns normally, so the aspect records start/success at INFO. The acquired application boundary treats `TECHNICAL_FAILURE` as a terminal incident and publishes one cause-free `FailureEvent`.
 - **Idempotency replay:** Yes -- Forgot Password complete
-- **Origin tag today:** none
-- **Proposed FailureOrigin (section 3):** FailureOrigin.DOWNSTREAM_CONTRACT
-- **Public HTTP status:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Public ApiStatus:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Public error code/type:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Citation:** ApimForgotPasswordCompletionAdapter.java:52-60; ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest.complete_emptyButPresentResponse_returnsTechnicalFailureResult
+- **Failure origin:** The result mapper marks the empty-data response as `TECHNICAL_FAILURE` with `DOWNSTREAM_CONTRACT`; the public/incident routing is performed by the protected operation and application service.
+- **Public/replay behavior:** The existing technical-failure and replay characterization described above remains applicable at the service/controller layer; it does not prove a single end-to-end envelope-to-replay path for this specific adapter response.
+- **Citation:** `ApimForgotPasswordCompletionAdapterBatch2aCharacterizationTest.complete_emptyButPresentResponse_returnsTechnicalFailureResult`; `ForgotPasswordCompleteIncidentOwnershipConnectedTest`.
 
 ### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
 
 - **Condition:** crypto failure (`ApimCryptoException`/`ApimResponseMappingException`)
 - **Detection site:** `ApimPayloadCryptoService.java:164` (`throw new ApimCryptoException("Failed to decrypt APIM response payload.", ex)`); classifier `ApimCryptoFailureClassifier.java:15-16`; confirmed sole caller `ApimForgotPasswordCompletionAdapter.java:57`
-- **Handling:** `.onErrorResume(ApimCryptoFailureClassifier::isCryptoFailure, e -> Mono.just(ForgotPasswordCompletionResult.unknownOutcome()))` (lines 56-58). This swallow happens INSIDE `complete()`'s own chain (line 52-59), one layer below `ForgotPasswordCompleteProtectedOperation.invoke`'s further `.onErrorResume(ignored -> blockUnknown(...))` (line 135) -- the adapter's own swallow fires first, so `blockUnknown`'s broader catch never sees this specific failure.
+- **Handling:** The adapter's `classifiedFailure` maps crypto/response-mapping failures to a cause-free `ForgotPasswordCompletionTechnicalFailure` with `DOWNSTREAM_INVALID_RESPONSE`; it no longer converts them to an adapter-level `unknownOutcome()` result. The protected operation owns incident classification/publication.
 - **Message policy:** N/A -- swallowed
-- **Ordered log lines:** `apim.exchange.failed` ERROR (genuine Mono onError signal from the executor's decryption step, fires via `doOnEach` before this adapter-level swallow -- confirmed structural guarantee). ApimForgotPasswordCompletionAdapter is confirmed `@LogExecution`-annotated (unfiltered grep, 10-class list). The adapter swallows this failure into ForgotPasswordCompletionResult.unknownOutcome() (lines 56-58), so the call completes normally: the @LogExecution aspect logs method.execution.start and method.execution.success (INFO) and no method.execution.error (ExecutionLoggingAspect.java:103-104). Pinned by ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest.
+- **Ordered log lines:** The APIM observer and `@LogExecution` observer are WARN-only without a Throwable for `TERMINAL_CALLER`; the application boundary emits the single cause-free terminal incident ERROR. `ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest.cryptoFailureLogsWarningWithoutThrowable` covers the adapter-level observation.
 - **Idempotency replay:** Yes
-- **Origin tag today:** none
-- **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_INVALID_RESPONSE`
-- **Public HTTP status:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Public ApiStatus:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Public error code/type:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Citation:** `ApimPayloadCryptoService.java:158-166`; `ApimForgotPasswordCompletionAdapter.java:52-58`
+- **Failure origin:** `DOWNSTREAM_INVALID_RESPONSE`.
+- **Public/replay behavior:** Existing technical-failure/public-response and unknown-outcome replay tests characterize the service/controller behavior separately; the crypto adapter path is not composed with those assertions in one end-to-end replay test (F2).
+- **Citation:** `ApimForgotPasswordCompletionAdapter.java`; `ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest`; `ForgotPasswordCompleteIncidentOwnershipConnectedTest`.
 
 ### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
 
-- **Condition:** `safeFailure` catch-all, sub-cause: HTTP-error-status response (facade)
-- **Detection site:** `ApimForgotPasswordCompletionAdapter.java:74-81`
-- **Handling:** `.onErrorMap(this::safeFailure)` (line 59) -- but confirmed this is reached only when the upstream throwable is NOT already an `ApimException` (line 75's `if (t instanceof ApimException) return t;` guard means a facade-raised HTTP-error `ApimException` is returned UNCHANGED by `safeFailure`, not re-wrapped). Either way (unchanged facade `ApimException`, or a freshly-wrapped `ApimException(INTERNAL_SERVER_ERROR, ...)` for a non-`ApimException` cause), the result still reaches `ForgotPasswordCompleteProtectedOperation.invoke`'s `.onErrorResume(ignored -> blockUnknown(...))` (line 135) and is swallowed into `unknownOutcome()`.
-- **Message policy:** N/A -- ultimately swallowed by `ForgotPasswordCompleteProtectedOperation`
-- **Ordered log lines:** `apim.exchange.failed` ERROR (genuine Mono error via the facade's HTTP-error path). ApimForgotPasswordCompletionAdapter is confirmed `@LogExecution`-annotated (unfiltered grep, 10-class list). .onErrorMap(this::safeFailure) rethrows (does not swallow) an ApimException inside complete()'s own chain, so complete()'s Mono emits onError and the aspect logs method.execution.error ERROR with full stack trace (ExecutionLoggingAspect.java:161-170) -- confirmed by ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest.unexpectedFailureLogsStartThenErrorWithStackTrace (representative non-crypto, unexpected-failure scenario). NOTE: this specific sub-path - safeFailure returning a facade-raised ApimException UNCHANGED (line 75's guard) rather than freshly wrapping a non-ApimException cause - is NOT independently pinned by a dedicated test; the cited test is representative/non-specific to this exact sub-case.
+- **Condition:** HTTP non-2xx response
+- **Detection site:** `ApimWebClientFacade` / the shared executor returns a technical error to the completion adapter.
+- **Handling:** `classifiedFailure` preserves the classified technical origin in a cause-free `ForgotPasswordCompletionTechnicalFailure`; R6 assigns `TERMINAL_CALLER`. The terminal application boundary publishes the incident.
+- **Message policy:** Existing completion system-error response; arbitrary downstream text is not public.
+- **Ordered log lines:** Lower APIM and method-execution observations are WARN-only without Throwable details; one cause-free terminal `FailureEvent` is published at ERROR by the application boundary.
 - **Idempotency replay:** Yes
-- **Origin tag today:** none
-- **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_TRANSPORT`
-- **Public HTTP status:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Public ApiStatus:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Public error code/type:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Citation:** `ApimForgotPasswordCompletionAdapter.java:74-81`; `ForgotPasswordCompleteProtectedOperation.java:127-135,191-197`
+- **Failure origin:** Normally `DOWNSTREAM_TRANSPORT` for an APIM HTTP-error response, as determined by `ApimFailureClassifier`.
+- **Public/replay behavior:** The connected technical-failure response and unknown-outcome replay are characterized separately as described above; this exact facade path is not composed through the adapter and replay in one test (F2).
+- **Citation:** `ApimForgotPasswordCompletionAdapter.java`; `ApimFailureClassifier`; `ForgotPasswordCompleteIncidentOwnershipConnectedTest`.
 
 ### Forgot Password -- ApimForgotPasswordCompletionAdapter (TRPResetPassword)
 
-- **Condition:** `safeFailure` catch-all, sub-cause: connection-level failure (`WebClientRequestException`/`TimeoutException`, retries exhausted)
-- **Detection site:** `ApimForgotPasswordCompletionAdapter.java:74-81`
-- **Handling:** Same `safeFailure` catch-all (`t instanceof ApimException ? t : new ApimException(INTERNAL_SERVER_ERROR, ...)`). Connection-level failures are re-raised unconverted by `ApimWebClientFacade.sendBusinessAttempt`'s `onErrorResume` once retries exhaust (`ApimWebClientFacade.java:219-225`), so `safeFailure` wraps them fresh as `ApimException(INTERNAL_SERVER_ERROR, SYSTEM_UNEXPECTED, ...)`. Same eventual swallow as the row above via `ForgotPasswordCompleteProtectedOperation.blockUnknown`.
-- **Message policy:** N/A -- ultimately swallowed
-- **Ordered log lines:** `apim.exchange.failed` ERROR (genuine Mono error). Same safeFailure re-wrap as the row above (not swallowed inside complete()), so complete()'s own Mono emits onError and the aspect logs method.execution.error ERROR with full stack trace (ExecutionLoggingAspect.java:161-170) -- confirmed by ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest.unexpectedFailureLogsStartThenErrorWithStackTrace.
+- **Condition:** connection/timeout failure during the `NON_RETRYABLE` completion exchange
+- **Detection site:** APIM transport/executor failure propagated to `ApimForgotPasswordCompletionAdapter.complete`.
+- **Handling:** `classifiedFailure` maps it to a cause-free technical failure, normally `DOWNSTREAM_TRANSPORT`; the protected operation and application boundary retain terminal ownership.
+- **Message policy:** Existing completion system-error response; no Throwable text is exposed.
+- **Ordered log lines:** Lower APIM and method-execution observations are WARN-only; one cause-free terminal `FailureEvent` is emitted at ERROR.
 - **Idempotency replay:** Yes
-- **Origin tag today:** none
-- **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_TRANSPORT`
-- **Public HTTP status:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Public ApiStatus:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Public error code/type:** not characterized (Test B deferred): the public response and replay for this condition are not pinned by a test; `ForgotPasswordCompleteProtectedOperation` and `IdempotentCompleteForgotPasswordService` are not exercised end to end.
-- **Citation:** `ApimForgotPasswordCompletionAdapter.java:74-81`; `ApimWebClientFacade.java:212-241`; `ForgotPasswordCompleteProtectedOperation.java:127-135,191-197`
+- **Failure origin:** `DOWNSTREAM_TRANSPORT` for classified connection/timeout failures.
+- **Public/replay behavior:** Existing system-error and unknown-outcome replay characterization remains unchanged; the single real-transport-to-public-replay composition is an acknowledged test-evidence gap (F2).
+- **Retry/resubmission:** `TRPResetPassword` remains `NON_RETRYABLE` / `NEVER`; no automatic APIM retry, reset resubmission, or recovery resubmission is authorized. This invocation-level policy does not close O-19's different-key/crash/persistence uncertainty.
+- **Citation:** `ApimForgotPasswordCompletionAdapter`; `ApimForgotPasswordCompletionNoResubmissionTransportTest`; `ForgotPasswordCompletionExecutorArchitectureTest`; `ForgotPasswordCompleteIncidentOwnershipConnectedTest`.
 
 ### Forgot Password -- ApimForgotPasswordDetailsLookupAdapter (TRPSearchMember)
 
-- **Condition:** missing envelope
-- **Detection site:** `ForgotPasswordTrpSearchMemberMapper.java:46`; `ApimForgotPasswordDetailsLookupAdapter.java:51-52`
-- **Handling:** `throw new ForgotPasswordDetailsDownstreamException(Reason.UNEXPECTED_ERROR)`. The real consumer is `ForgotPasswordUnderLockDetailsVerifier.verify()` (lines 34-58), which wraps the lookup-port call. `.doOnError(cause -> logFailure(requestId, cause))` (line 55) logs `event=forgot-password.details-otp.failed requestId={} stage=lookup exceptionType={}` ERROR (exception class name only, no stack trace, lines 61-66), then `.onErrorReturn(ForgotPasswordUnderLockDetailsVerification.of(SYSTEM_FAILED))` (lines 56-58) swallows it to a result value. This result flows up through `ForgotPasswordDetailsOtpProtectedOperation.locked` (lines 136-144), which returns `BUSINESS_REJECTED` only if `status()==DETAILS_VERIFIED`; any other status (including `SYSTEM_FAILED`) falls through that same `locked` method's flow unchanged as a `ForgotPasswordUnderLockDetailsVerification` with `SYSTEM_FAILED`.
-- **Message policy:** N/A -- swallowed before any `ExceptionMapping`
-- **Ordered log lines:** `event=forgot-password.details-otp.failed stage=lookup` ERROR, exception class name only, no stack trace (`ForgotPasswordUnderLockDetailsVerifier.java:61-66`)
+- **Condition:** missing envelope, malformed response, or other technical lookup failure (M3c R3)
+- **Detection site:** `ApimForgotPasswordDetailsLookupAdapter.verify` and `ForgotPasswordTrpSearchMemberMapper`; the adapter classifies the operation failure, and `ForgotPasswordUnderLockDetailsVerifier` distinguishes technical origins from expected business outcomes.
+- **Handling and ownership:** The invocation uses `TERMINAL_CALLER`. The verifier carries a technical `FailureOrigin` into the protected operation; `IdempotentForgotPasswordDetailsOtpService` publishes one cause-free terminal `FailureEvent` for the acquired execution. APIM lower observations are WARN-only; no raw downstream message or Throwable is attached to the terminal event.
+- **Expected business behavior:** Recognized member-not-found and empty data remain `NOT_FOUND`/business rejection, not technical incidents. Adapter/mapper tests preserve empty-data as `NOT_FOUND`; the controller test preserves HTTP 422 / `BUSINESS_REJECTED` / `err.forgot-password.member.notFound` for member mismatch. Empty data is an expected result, not a technical exception.
+- **Message policy:** Technical results use the existing Details/OTP system-error response; expected identity mismatch remains the existing business response.
+- **Ordered log lines:** A technical incident produces the lower APIM WARN observation and one application-owned terminal ERROR. Expected business outcomes produce no technical incident ERROR; any recognized APIM rejection observation remains WARN.
 - **Idempotency replay:** Yes -- Forgot Password details/OTP is idempotency-protected
-- **Origin tag today:** none
-- **Proposed `FailureOrigin` (section 3):** `FailureOrigin.DOWNSTREAM_CONTRACT`
-- **Public HTTP status:** **UNVERIFIED, narrowly scoped:** `ForgotPasswordDetailsOtpProtectedOperation.locked`'s exact handling of a `SYSTEM_FAILED` verification result (as opposed to `DETAILS_VERIFIED`/`BUSINESS_REJECTED`, both confirmed) was not traced to its final `ForgotPasswordDetailsOtpResult.Status` -- the relevant method body section was not read
-- **Public ApiStatus:** UNVERIFIED
-- **Public error code/type:** UNVERIFIED
-- **Citation:** `ForgotPasswordUnderLockDetailsVerifier.java:1-67`; `ApimForgotPasswordDetailsLookupAdapter.java:51-52`; `ForgotPasswordDetailsOtpProtectedOperation.java:110-174` (confirmed read; `SYSTEM_FAILED` sub-branch not conclusively isolated)
+- **Failure origin:** `DOWNSTREAM_CONTRACT`, `DOWNSTREAM_INVALID_RESPONSE`, `DOWNSTREAM_TRANSPORT`, or `LOCAL_SYSTEM` according to the classified failure. Expected `DOWNSTREAM_BUSINESS` remains unowned.
+- **Public behavior/replay:** Existing controller and connected tests pin the system-error and business-rejection responses; replay remains owned by the shared idempotency service and does not republish a completed incident.
+- **Citation:** `ApimForgotPasswordDetailsLookupAdapter.java`; `ForgotPasswordUnderLockDetailsVerifier.java`; `ForgotPasswordDetailsOtpProtectedOperation.java`; `IdempotentForgotPasswordDetailsOtpService.java`; `ApimForgotPasswordDetailsLookupAdapterTest`; `ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest`; `AuthForgotPasswordDetailsControllerTest`.
+
+**Completion-wide preservation:** The APIM request remains `NON_RETRYABLE` / `NEVER` with `TERMINAL_CALLER`. Recognized reset business rejections (including password-invalid/reused outcomes) retain feature-owned result mapping and do not become technical incidents. The adapter-level missing-envelope/empty-data cases and the connected public/replay cases are characterized in separate tests; no single test composes the actual adapter failure through protected execution, response rendering, and completed replay (review finding F2). O-19 remains separate: `NEVER` prevents resubmission within an invocation but does not close different-key, crash, or persistence-failure uncertainty.
 
 ### Username Recovery -- TrpSearchMemberAdapter (TRPSearchMember)
 
@@ -772,12 +755,12 @@ Fail-first characterization update, replace every `DOWNSTREAM_SYSTEM` occurrence
 
 ## 7. Sub-task plan
 
-2b.2 characterization pack (open: `ForgotPasswordDetailsOtpProtectedOperation.locked`'s `SYSTEM_FAILED` sub-branch routing, deferred to Batch 2b; the Forgot Password completion public response and replay, deferred with Test B); 2b.2a (section 6); 2b.3 shared classifier; 2b.4..2b.n per-feature commits.
+The earlier 2b.2 characterization-pack deferrals for Details/OTP `SYSTEM_FAILED` routing and Forgot Password completion response/replay are superseded by M3c implementation and tests. Current source and evidence are summarized in the Forgot Password rows above. Completion evidence remains layered: adapter-level failure characterization and service/controller/replay characterization exist, but no single test composes the actual adapter failure through protected execution, response rendering, and completed replay (review finding F2).
 
 ## 8. Open questions
 
 - **Open question for Nick:** technical downstream failure rendered as BUSINESS by RegistrationUsernameCheckWebMapper.apiError() - CheckRegistrationUsernameService.java:306 constructs a WorkflowErrorDescriptor with WorkflowErrorType.DOWNSTREAM_SYSTEM, but the real web mapper discards this value and always renders type="BUSINESS" to the client instead (confirmed by real passing test evidence). Is this intentional, or should the mapper be corrected to render the real WorkflowErrorType like every other adapter in this inventory does?
-Every confirmed `new ApimException(` construction site (`ApimWebClientFacade.java:411`, `ApimForgotPasswordCompletionAdapter.java:65`, `ApimForgotPasswordUsernameLookupAdapter.java:87,96`, `ApimResponseValidator.java:37,57`, `ApimUpdatePersonalInformationAdapter.java:63,71`, `ApimReferenceDateRefreshAdapter.java:58,67`, `SharedApimTrpChkCustIdTransport.java:45,55,64`, `TrpRegMemberApimResultMapper.java:26`) uses `HttpStatus.BAD_GATEWAY` (502), with exactly one exception: `ApimForgotPasswordCompletionAdapter.java:76`'s `safeFailure` fallback, which constructs `HttpStatus.INTERNAL_SERVER_ERROR` (500). That specific 500 construction is confirmed (section 1, Forgot Password completion `safeFailure` rows) to never reach a public response -- `ForgotPasswordCompleteProtectedOperation.invoke`'s own `.onErrorResume` swallows it into `unknownOutcome()` before any `ExceptionMapping` dispatch occurs. Separately, `ApimWebClientFacade.handleErrorBody` (lines 391-416) always constructs `HttpStatus.BAD_GATEWAY` regardless of the actual upstream HTTP status; `mapUpstreamErrorCode` (lines 485-491) varies only the public error *code* (`APIM_SERVICE_UNAVAILABLE` for upstream 503, `APIM_TIMEOUT` for upstream 504, `APIM_UPSTREAM_FAILURE` otherwise), never the HTTP status. There is no row in this inventory where a public status other than 502 is actually returned for a generic `ApimException`, and no remaining decision: differentiating the public status by upstream 503/504 would itself be a public-behaviour change, which M2b's own rules place out of scope.
+The previously inventoried `ApimForgotPasswordCompletionAdapter.safeFailure` fallback no longer exists after M3c. The adapter now classifies APIM, crypto, mapping, and local failures into cause-free `ForgotPasswordCompletionTechnicalFailure` values with a `FailureOrigin`; the protected operation/application boundary owns incident publication. The remaining `ApimException` construction sites must be checked against current source before drawing conclusions about public status. Separately, `ApimWebClientFacade.handleErrorBody` maps upstream HTTP errors to `BAD_GATEWAY`; its public error code may vary by upstream status. Completion's public response is governed by Forgot Password's feature-owned mapping, not by exposing the adapter exception directly.
 
 - `RegistrationHttpResponses.status()`'s duplicate `SYSTEM_ERROR`/`BUSINESS_REJECTED` branches (the second `ApiStatus.SYSTEM_ERROR` check, which would return `SERVICE_UNAVAILABLE`, is unreachable because the first check always returns `BAD_GATEWAY`; the repeated `BUSINESS_REJECTED` condition is harmless); no change proposed in M2b.
 - 4xx vs 5xx downstream status both resolve identically via the facade today; whether a 4xx should classify differently is open.
