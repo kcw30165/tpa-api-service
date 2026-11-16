@@ -284,3 +284,62 @@ cleanup must tolerate restricted state without creating editable data or
 blocking downstream success. Neither reconciliation nor cleanup adds an
 execution-time scenario/business precheck; already-issued token semantics are
 unchanged.
+
+## 12. E2E live submit/cancel lifecycle
+
+The authenticated E2E harness uses the following non-retrying lifecycle:
+
+```text
+GET #1 -> CHANGE_INVESTMENT_CHOICE password validation -> submit once
+       -> GET #2 -> CANCEL_INVESTMENT_CHOICE password validation -> cancel once
+       -> GET #3
+```
+
+GET #2 is required because successful submit does not update the Redis
+investment-choice snapshot. It refreshes that snapshot and must return the
+newly submitted reference exactly once in `pendingInstructions` before the
+harness requests a cancel token. The cancel payload and request body are the
+same single-reference object, bound to the reference returned by this run's
+submit; no other pending reference may be substituted.
+
+The cancel endpoint's documented `200 SUCCESS` response echoing the requested
+reference is the cancellation result contract. GET #3 validates and records the
+actual GET response, including whether the reference is still listed as
+pending. The harness does not treat absence from `pendingInstructions` as a
+separate API guarantee of cancellation: the GET contract does not define
+canceled-instruction visibility. If the run-created reference remains listed
+as pending, the harness conservatively marks cleanup incomplete. A failed or
+ambiguous post-submit lifecycle also marks cleanup incomplete and preserves a
+mode-0600 JSON recovery record in the user-configured mode-0700 recovery
+directory. Credentials and authentication tokens are never placed in that
+record; the reference is included only when known, and is never emitted to
+general output or evidence.
+
+The separate existing-instruction cancellation option is
+`CIM_LIVE_CANCEL_PENDING=yes` with
+`CIM_CONFIRM_LIVE_PENDING_CANCEL=I-UNDERSTAND-THIS-CANCELS-AN-EXISTING-INSTRUCTION`.
+It is mutually exclusive with the submit lifecycle and requires the same
+password opt-in and protected recovery directory. It selects only the first
+reference in the initial authenticated GET snapshot, obtains a fresh
+`CANCEL_INVESTMENT_CHOICE` token bound to that exact reference, sends one
+cancel request, and performs a final GET. The final GET must satisfy the
+documented response shape and no longer list that reference as pending.
+Cancellation failure or an unverifiable final state writes a mode-0600 JSON
+recovery record in the owned mode-0700 recovery directory; no credentials or
+tokens are included, and the reference is never printed.
+
+The public GET pending-instruction contract has no explicit cancellability
+field. The harness therefore cannot identify a later cancellable item without
+probing/canceling other references. It makes one attempt against the first
+snapshot reference and stops on `cancel.not-cancellable`; it never substitutes
+another item. The submit lifecycle permits its initial GET to contain pending
+instructions; it does not apply a blanket zero-pending rule or infer Progress
+eligibility client-side. Progress owns duplicate, one-pending-per-source,
+identical-to-current, cutoff, and effective-date decisions. Its generated live
+payload requires three distinct GET-eligible funds and three positive,
+interval-compliant percentages totaling 100. If Progress rejects the submit,
+the harness reports the public error code as FAIL and stops without retrying,
+changing the payload, or proceeding to cancellation. Existing pending
+references are never used as cancellation candidates in this lifecycle; GET
+#2 must identify the reference created by this run exactly once, and
+cancellation remains bound to that exact reference.

@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -uo pipefail
+for secret_name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD CIM_PASSWORD \
+  PORTAL_SESSION_COOKIE_VALUE AUTH_FLOW_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF \
+  SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF POST_LOGIN_ACCOUNT_SELECTOR; do
+  [[ -v "$secret_name" ]] && export -n "${secret_name?}"
+done
+unset secret_name
+E2E_REPOSITORY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.."&&pwd)"
+source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/runtime.sh"
+source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/assertions.sh"
+source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/evidence.sh"
+source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/redaction.sh"
+source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/private-runtime-state.sh"
+source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/authenticated-login-journey.sh"
+source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/feature-pack-registry.sh"
+source "$E2E_REPOSITORY_ROOT/scripts/e2e/lib/post-login-orchestrator.sh"
+unset POST_LOGIN_ACCOUNT_SELECTOR POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED POST_LOGIN_ACCOUNT_SELECTOR_CAPTURED
+orchestrator_login(){ authenticated_login_journey; }
+orchestrator_logout(){ authenticated_logout_journey; }
+orchestrator_cleanup(){
+ local cleanup_rc=0
+ destroy_private_runtime_state || cleanup_rc=$?
+ unset PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF E2E_ACCOUNT_REF \
+  POST_LOGIN_ACCOUNT_SELECTOR POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED POST_LOGIN_ACCOUNT_SELECTOR_CAPTURED
+ return "$cleanup_rc"
+}
+defensive_post_login_cleanup(){ orchestrator_cleanup; }
+collect_feature_names(){
+ local configured="$1" resolved name
+ resolved="$(resolve_feature_packs "$configured")" || return 1
+ while IFS= read -r name; do basename "$name" .sh | sed 's/-scenarios$//'; done <<<"$resolved"
+}
+initialize_post_login_runtime(){
+ capture_post_login_account_selector
+ E2E_SCENARIO_PACK=post-login
+ E2E_SCENARIO_ID=orchestrator
+ E2E_ENVIRONMENT="${E2E_ENVIRONMENT:-local}"
+ E2E_BOOTSTRAP_MODE=authenticated-login
+ unset POST_LOGIN_AUTHENTICATED_SESSION_ESTABLISHED POST_LOGIN_ACCOUNT_SELECTION_STATUS
+ export E2E_SCENARIO_PACK E2E_SCENARIO_ID E2E_ENVIRONMENT E2E_BOOTSTRAP_MODE
+ create_evidence_dir
+ create_private_runtime_state
+ printf 'environment=%s\npack=%s\nscenario=%s\nbootstrap=%s\n' "$E2E_ENVIRONMENT" "$E2E_SCENARIO_PACK" "$E2E_SCENARIO_ID" "$E2E_BOOTSTRAP_MODE" >"$E2E_RUN_EVIDENCE_DIR/001-preflight.txt"
+ printf 'base_url=%s\nportal_cookie=%s\nxsrf=%s\naccount_ref=%s\n' "${BFF_BASE_URL:-<unset>}" "$(redacted_presence "${PORTAL_SESSION_COOKIE_VALUE:-}")" "$(redacted_presence "${XSRF_TOKEN:-}")" "$(redacted_presence "${ACCOUNT_REF:-}")" >"$E2E_RUN_EVIDENCE_DIR/002-runtime-input-manifest-redacted.txt"
+ source "$E2E_REPOSITORY_ROOT/scripts/e2e/scenarios/login/login-journey-start.sh"
+}
+orchestrator_run_feature(){
+ local name="$1" path feature_password='' secret_name
+ path="$(feature_pack_path "$name")"||return 1
+ [[ -n "${BFF_BASE_URL:-}" && -n "${PORTAL_SESSION_COOKIE_VALUE:-}" && -n "${XSRF_TOKEN:-}" && -n "${ACCOUNT_REF:-}" ]]||return 1
+ for secret_name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD CIM_PASSWORD \
+  PORTAL_SESSION_COOKIE_VALUE AUTH_FLOW_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF \
+  SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF POST_LOGIN_ACCOUNT_SELECTOR; do
+  [[ -v "$secret_name" ]] && export -n "${secret_name?}"
+ done
+ if [[ "${CIM_USE_PASSWORD:-no}" == yes ]]; then
+  feature_password="${CIM_PASSWORD:-${LOGIN_TEST_PASSWORD:-}}"
+ fi
+ if [[ "${CIM_USE_PASSWORD:-no}" == yes && -n "$feature_password" ]]; then
+  BASE_URL="$BFF_BASE_URL" SESSION_COOKIE="$PORTAL_SESSION_COOKIE_VALUE" \
+   CSRF_TOKEN="$XSRF_TOKEN" ACCOUNT_REF="$ACCOUNT_REF" CIM_PASSWORD="$feature_password" \
+   bash "$path"
+ else
+  BASE_URL="$BFF_BASE_URL" SESSION_COOKIE="$PORTAL_SESSION_COOKIE_VALUE" \
+   CSRF_TOKEN="$XSRF_TOKEN" ACCOUNT_REF="$ACCOUNT_REF" bash "$path"
+ fi
+}
+post_login_main(){
+ local resolved name
+ local -a names=()
+ capture_post_login_account_selector
+ resolved="$(collect_feature_names "${E2E_FEATURE_PACKS:-}")" || return 1
+ while IFS= read -r name; do names+=("$name"); done <<<"$resolved"
+ initialize_post_login_runtime || return 1
+ trap defensive_post_login_cleanup EXIT INT TERM
+ run_post_login_orchestrator "${names[@]}"
+ local rc=$?
+ [[ -z "${E2E_PRIVATE_STATE_DIR:-}" ]] && trap - EXIT INT TERM
+ return "$rc"
+}
+[[ "${1:-}" == --library-only ]]||post_login_main
