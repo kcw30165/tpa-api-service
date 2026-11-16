@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimCryptoFailureClassifier;
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureCategory;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureClassifier;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;

@@ -137,7 +137,7 @@ class IdempotentVerifyForgotPasswordOtpServiceTest {
   }
 
   @Test
-  void acquiredProtectedFailurePublishesOneCauseFreeLocalSystemIncident() throws Exception {
+  void acquiredProtectedFailurePublishesOneCauseFreeLocalSystemIncident() {
     Fixture fixture = new Fixture();
     fixture.executor.invokeProtected = true;
     when(fixture.policy.operationId(any(), any(), any()))
@@ -172,7 +172,7 @@ class IdempotentVerifyForgotPasswordOtpServiceTest {
   }
 
   @Test
-  void independentExecutorFailurePublishesSeparateIncident() throws Exception {
+  void independentExecutorFailurePublishesSeparateIncident() {
     Fixture fixture = new Fixture();
     fixture.executor.executeFailure = new IllegalStateException("store-secret");
     when(fixture.policy.operationId(any(), any(), any()))
@@ -240,7 +240,7 @@ class IdempotentVerifyForgotPasswordOtpServiceTest {
   }
 
   @Test
-  void independentExecutorFailureAfterProtectedIncidentPublishesBoth() throws Exception {
+  void independentExecutorFailureAfterProtectedIncidentPublishesBoth() {
     Fixture fixture = new Fixture();
     fixture.executor.invokeProtected = true;
     fixture.executor.recoveryFailure = new IllegalStateException("recovery-store-secret");
@@ -262,7 +262,7 @@ class IdempotentVerifyForgotPasswordOtpServiceTest {
   }
 
   @Test
-  void publicationFailureDoesNotCreateReceiptOrRetryPublication() throws Exception {
+  void publicationFailureDoesNotCreateReceiptOrRetryPublication() {
     Fixture fixture = new Fixture();
     fixture.executor.invokeProtected = true;
     when(fixture.policy.operationId(any(), any(), any()))
@@ -281,7 +281,7 @@ class IdempotentVerifyForgotPasswordOtpServiceTest {
   }
 
   @Test
-  void completedAndUncertainReplaysDoNotPublishOrCarryReceipt() throws Exception {
+  void completedAndUncertainReplaysDoNotPublishOrCarryReceipt() {
     for (IdempotencyReservationOutcome outcome :
         new IdempotencyReservationOutcome[] {
           IdempotencyReservationOutcome.COMPLETED_REPLAY,

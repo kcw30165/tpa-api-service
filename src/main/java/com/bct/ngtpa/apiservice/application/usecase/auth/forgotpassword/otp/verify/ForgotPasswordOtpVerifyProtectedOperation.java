@@ -6,7 +6,6 @@ import static com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.conte
 
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.ForgotPasswordResetAuthorization;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;

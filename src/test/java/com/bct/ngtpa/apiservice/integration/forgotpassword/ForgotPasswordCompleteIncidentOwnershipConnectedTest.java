@@ -46,7 +46,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompleteIncident;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompleteProtectedExecutionResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompleteProtectedOperation;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompleteProtectedOperationInput;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.IdempotentCompleteForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.complete.ForgotPasswordCompleteExecutionBridge;

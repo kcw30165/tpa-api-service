@@ -32,7 +32,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.rese
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendProtectedExecutionResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.IdempotentResendForgotPasswordOtpService;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpStatus;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;

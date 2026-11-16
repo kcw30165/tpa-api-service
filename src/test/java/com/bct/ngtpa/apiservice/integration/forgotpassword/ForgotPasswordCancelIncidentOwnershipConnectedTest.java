@@ -22,13 +22,13 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlow
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCancellationResult;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCancellationStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCancellationReason;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
@@ -195,7 +195,7 @@ class ForgotPasswordCancelIncidentOwnershipConnectedTest {
     assertThat(responseBody(run).status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
     assertThat(responseBody(run).errors())
         .singleElement()
-        .extracting(error -> error.code())
+        .extracting(ApiError::code)
         .isEqualTo("err.forgot-password.csrf.invalid");
     assertThat(responseBody(run).errors())
         .singleElement()

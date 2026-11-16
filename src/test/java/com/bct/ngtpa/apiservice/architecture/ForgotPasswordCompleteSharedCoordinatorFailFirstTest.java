@@ -134,8 +134,7 @@ class ForgotPasswordCompleteSharedCoordinatorFailFirstTest {
         .contains(
             "case ACQUIRED, COMPLETED_REPLAY -> responses.fromTransientResponse(response)",
             "case UNKNOWN_OUTCOME_EXISTING",
-            "unknownOutcome()");
-    assertThat(serviceRoute)
+            "unknownOutcome()")
         .doesNotContain("executeAcquired(", "executeLoaded(", "operation.execute(");
     assertThat(compact(executorRoute))
         .contains(
