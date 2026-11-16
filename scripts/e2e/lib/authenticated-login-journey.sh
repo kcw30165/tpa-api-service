@@ -7,7 +7,7 @@ select_first_email_destination_id() {
 }
 
 select_account_ref() {
-  local response_file="$1" selector_provided="$2" selector="$3"
+  local response_file="$1" selector_provided="$2" selector="$3" requested_index="${4:-0}"
   local match_indices match_count selected_index
 
   SELECTED_ACCOUNT_REF=''
@@ -32,9 +32,15 @@ select_account_ref() {
   fi
 
   if [[ "$selector_provided" != true ]]; then
-    selected_index=0
-    SELECTED_ACCOUNT_REF="$(jq -er \
-      '.result.data.accounts[0].accountRef | select(type == "string" and length > 0)' \
+    selected_index="$(jq -er --arg index "$requested_index" '
+      ($index | sub("^0+"; "") | if . == "" then "0" else . end | tonumber) as $selected
+      | if $selected < (.result.data.accounts | length) then $selected else empty end
+    ' "$response_file" 2>/dev/null)" || {
+      printf 'FAIL account selection failed: E2E_ACCOUNT_INDEX is outside the available account list\n' >&2
+      return 1
+    }
+    SELECTED_ACCOUNT_REF="$(jq -er --argjson index "$selected_index" \
+      '.result.data.accounts[$index].accountRef | select(type == "string" and length > 0)' \
       "$response_file" 2>/dev/null)" || {
       printf 'FAIL account selection failed: login response account list is unavailable or malformed\n' >&2
       return 1
@@ -71,12 +77,24 @@ select_account_ref() {
 
 capture_post_login_account_selector() {
   [[ "${POST_LOGIN_ACCOUNT_SELECTOR_CAPTURED:-false}" == true ]] && return 0
+  local account_index="${E2E_ACCOUNT_INDEX:-}"
+  if [[ -n "${E2E_ACCOUNT_REF:-}" && -n "$account_index" ]]; then
+    unset E2E_ACCOUNT_REF E2E_ACCOUNT_INDEX
+    printf 'ERROR E2E_ACCOUNT_REF and E2E_ACCOUNT_INDEX cannot both be set\n' >&2
+    return 1
+  fi
+  if [[ "${E2E_ACCOUNT_INDEX+x}" == x && ! "$account_index" =~ ^[0-9]+$ ]]; then
+    unset E2E_ACCOUNT_REF E2E_ACCOUNT_INDEX
+    printf 'ERROR E2E_ACCOUNT_INDEX must contain only decimal digits\n' >&2
+    return 1
+  fi
+  POST_LOGIN_ACCOUNT_INDEX="${account_index:-0}"
   POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED=false
   if [[ "${E2E_ACCOUNT_REF+x}" == x ]]; then
     POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED=true
     POST_LOGIN_ACCOUNT_SELECTOR="$E2E_ACCOUNT_REF"
   fi
-  unset E2E_ACCOUNT_REF
+  unset E2E_ACCOUNT_REF E2E_ACCOUNT_INDEX
   POST_LOGIN_ACCOUNT_SELECTOR_CAPTURED=true
 }
 
@@ -108,18 +126,19 @@ publish_authenticated_http_state() {
 authenticated_login_journey() {
   local rc=0 cookie csrf destination_id otp_code metrics curl_rc
   local raw_headers raw_body request_id idempotency_key portal_cookie authenticated_csrf account_ref
-  local account_selector='' account_selector_provided=false selection_mode
+  local account_selector='' account_selector_provided=false selection_mode account_index=0
   local request_body_file secret_headers_fd otp_secret_file
   local secret_name
   for secret_name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD CIM_PASSWORD \
     PORTAL_SESSION_COOKIE_VALUE AUTH_FLOW_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF \
-    SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF POST_LOGIN_ACCOUNT_SELECTOR; do
+    SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF E2E_ACCOUNT_INDEX POST_LOGIN_ACCOUNT_SELECTOR; do
     [[ -v "$secret_name" ]] && export -n "${secret_name?}"
   done
   unset secret_name
-  capture_post_login_account_selector
+  capture_post_login_account_selector || return 1
   account_selector_provided="$POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED"
   account_selector="${POST_LOGIN_ACCOUNT_SELECTOR:-}"
+  account_index="$POST_LOGIN_ACCOUNT_INDEX"
   unset POST_LOGIN_ACCOUNT_SELECTOR POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED POST_LOGIN_ACCOUNT_SELECTOR_CAPTURED
   # shellcheck disable=SC2034 # Read by post-login-orchestrator.sh after the journey returns.
   POST_LOGIN_ACCOUNT_SELECTION_STATUS=NOT_RUN
@@ -228,12 +247,13 @@ authenticated_login_journey() {
   else
     selection_mode=first
   fi
-  if ! select_account_ref "$raw_body" "$account_selector_provided" "$account_selector"; then
+  if ! select_account_ref "$raw_body" "$account_selector_provided" "$account_selector" "$account_index"; then
     POST_LOGIN_ACCOUNT_SELECTION_STATUS=FAIL
     printf 'next_step=SELECT_ACCOUNT\naccount_count=%s\naccount_selection=FAIL\nselection_mode=%s\nselected_account_index=none\nportal_cookie_issued=yes\n' \
       "$SELECTED_ACCOUNT_COUNT" "$selection_mode" \
       >"$E2E_RUN_EVIDENCE_DIR/017-authenticated-transition-summary.txt"
     account_selector=''
+    unset POST_LOGIN_ACCOUNT_INDEX
     return 1
   fi
   # shellcheck disable=SC2034 # Printed by post-login-orchestrator.sh in the consolidated summary.
@@ -241,7 +261,7 @@ authenticated_login_journey() {
   account_ref="$SELECTED_ACCOUNT_REF"
   write_private_value selected_account_ref "$account_ref" || return 1
   account_selector=''
-  unset SELECTED_ACCOUNT_REF
+  unset SELECTED_ACCOUNT_REF POST_LOGIN_ACCOUNT_INDEX
   publish_authenticated_http_state || return 1
   printf 'next_step=SELECT_ACCOUNT\naccount_count=%s\naccount_selection=PASS\nselection_mode=%s\nselected_account_index=%s\nportal_cookie_issued=yes\n' \
     "$SELECTED_ACCOUNT_COUNT" "$selection_mode" "$SELECTED_ACCOUNT_INDEX" \
@@ -264,7 +284,7 @@ authenticated_logout_journey() {
   local secret_name
   for secret_name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD CIM_PASSWORD \
     PORTAL_SESSION_COOKIE_VALUE AUTH_FLOW_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF \
-    SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF POST_LOGIN_ACCOUNT_SELECTOR; do
+    SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF E2E_ACCOUNT_INDEX POST_LOGIN_ACCOUNT_SELECTOR; do
     [[ -v "$secret_name" ]] && export -n "${secret_name?}"
   done
   unset secret_name

@@ -11,6 +11,7 @@ cat >"$tmp/feature.sh" <<'FEATURE'
   printf 'SESSION_COOKIE=%s\n' "$SESSION_COOKIE"
   printf 'CSRF_TOKEN=%s\n' "$CSRF_TOKEN"
   printf 'ACCOUNT_REF=%s\n' "$ACCOUNT_REF"
+  printf 'VESTING_SCALE_EXPECT_ABSENT=%s\n' "${VESTING_SCALE_EXPECT_ABSENT:-}"
   printf 'CIM_PASSWORD=%s\n' "${CIM_PASSWORD:-}"
   for name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD AUTH_FLOW_COOKIE_VALUE \
     PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN; do
@@ -45,7 +46,7 @@ export CIM_PASSWORD=explicit-cim-password
 source "$ROOT/scripts/e2e/run-post-login.sh" --library-only
 
 feature_pack_path() {
-  [[ "$1" == investment-choice ]] || return 1
+  [[ "$1" == investment-choice || "$1" == vesting-scale ]] || return 1
   printf '%s\n' "$tmp/feature.sh"
 }
 
@@ -83,7 +84,7 @@ orchestrator_run_feature investment-choice || {
   printf 'FAIL feature pack did not run with the authenticated contract\n'
   exit 1
 }
-[[ "$(cat "$RUNNER_CAPTURE")" == $'BASE_URL=http://mock\nSESSION_COOKIE=cookie-secret\nCSRF_TOKEN=csrf-secret\nACCOUNT_REF=account-secret\nCIM_PASSWORD=\nLOGIN_TEST_USERNAME=absent\nLOGIN_TEST_PASSWORD=absent\nAUTH_FLOW_COOKIE_VALUE=absent\nPORTAL_SESSION_COOKIE_VALUE=absent\nXSRF_TOKEN=absent\nSESSION_COOKIE=exported\nCSRF_TOKEN=exported\nACCOUNT_REF=exported\nCIM_PASSWORD=absent' ]] || {
+[[ "$(cat "$RUNNER_CAPTURE")" == $'BASE_URL=http://mock\nSESSION_COOKIE=cookie-secret\nCSRF_TOKEN=csrf-secret\nACCOUNT_REF=account-secret\nVESTING_SCALE_EXPECT_ABSENT=\nCIM_PASSWORD=\nLOGIN_TEST_USERNAME=absent\nLOGIN_TEST_PASSWORD=absent\nAUTH_FLOW_COOKIE_VALUE=absent\nPORTAL_SESSION_COOKIE_VALUE=absent\nXSRF_TOKEN=absent\nSESSION_COOKIE=exported\nCSRF_TOKEN=exported\nACCOUNT_REF=exported\nCIM_PASSWORD=absent' ]] || {
   printf 'FAIL feature variables or secret export state changed\n'
   exit 1
 }
@@ -122,7 +123,7 @@ orchestrator_run_feature investment-choice || {
   printf 'FAIL password-reuse feature pack did not run\n'
   exit 1
 }
-[[ "$(cat "$RUNNER_CAPTURE")" == $'BASE_URL=http://mock\nSESSION_COOKIE=cookie-secret\nCSRF_TOKEN=csrf-secret\nACCOUNT_REF=account-secret\nCIM_PASSWORD=login-password-secret\nLOGIN_TEST_USERNAME=absent\nLOGIN_TEST_PASSWORD=absent\nAUTH_FLOW_COOKIE_VALUE=absent\nPORTAL_SESSION_COOKIE_VALUE=absent\nXSRF_TOKEN=absent\nSESSION_COOKIE=exported\nCSRF_TOKEN=exported\nACCOUNT_REF=exported\nCIM_PASSWORD=exported' ]] || {
+[[ "$(cat "$RUNNER_CAPTURE")" == $'BASE_URL=http://mock\nSESSION_COOKIE=cookie-secret\nCSRF_TOKEN=csrf-secret\nACCOUNT_REF=account-secret\nVESTING_SCALE_EXPECT_ABSENT=\nCIM_PASSWORD=login-password-secret\nLOGIN_TEST_USERNAME=absent\nLOGIN_TEST_PASSWORD=absent\nAUTH_FLOW_COOKIE_VALUE=absent\nPORTAL_SESSION_COOKIE_VALUE=absent\nXSRF_TOKEN=absent\nSESSION_COOKIE=exported\nCSRF_TOKEN=exported\nACCOUNT_REF=exported\nCIM_PASSWORD=exported' ]] || {
   printf 'FAIL login-password reuse did not preserve the feature contract\n'
   exit 1
 }
@@ -155,6 +156,43 @@ if ! contains_environment_entry "$RUNNER_ENV" 'SESSION_COOKIE=cookie-secret' \
   printf 'FAIL password-mode feature environment did not contain only required secrets\n'
   exit 1
 fi
+
+unset CIM_USE_PASSWORD
+export E2E_ACCOUNT_INDEX=1
+export VESTING_SCALE_EXPECT_ABSENT='planService'
+orchestrator_run_feature vesting-scale || {
+  printf 'FAIL vesting-scale pack did not run with the authenticated contract\n'
+  exit 1
+}
+[[ "$(cat "$RUNNER_CAPTURE")" == $'BASE_URL=http://mock\nSESSION_COOKIE=cookie-secret\nCSRF_TOKEN=csrf-secret\nACCOUNT_REF=account-secret\nVESTING_SCALE_EXPECT_ABSENT=planService\nCIM_PASSWORD=\nLOGIN_TEST_USERNAME=absent\nLOGIN_TEST_PASSWORD=absent\nAUTH_FLOW_COOKIE_VALUE=absent\nPORTAL_SESSION_COOKIE_VALUE=absent\nXSRF_TOKEN=absent\nSESSION_COOKIE=exported\nCSRF_TOKEN=exported\nACCOUNT_REF=exported\nCIM_PASSWORD=absent' ]] || {
+  printf 'FAIL vesting-scale child received an unexpected input contract\n'
+  exit 1
+}
+if contains_environment_key "$RUNNER_ENV" E2E_ACCOUNT_INDEX; then
+  printf 'FAIL shared account index was inherited by the vesting-scale child\n'
+  exit 1
+fi
+for secret in cookie-secret csrf-secret account-secret auth-flow-secret \
+  login-user-secret login-password-secret explicit-cim-password; do
+  if contains_secret "$RUNNER_CMDLINE" "$secret"; then
+    printf 'FAIL authentication secret escaped the vesting-scale contract\n'
+    exit 1
+  fi
+done
+for secret in auth-flow-secret login-user-secret login-password-secret explicit-cim-password; do
+  if contains_secret "$RUNNER_ENV" "$secret"; then
+    printf 'FAIL unnecessary authentication secret reached the vesting-scale child\n'
+    exit 1
+  fi
+done
+for name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD AUTH_FLOW_COOKIE_VALUE \
+  PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN CIM_PASSWORD; do
+  if contains_environment_key "$RUNNER_ENV" "$name"; then
+    printf 'FAIL unexpected authentication variable reached the vesting-scale child\n'
+    exit 1
+  fi
+done
+unset E2E_ACCOUNT_INDEX VESTING_SCALE_EXPECT_ABSENT
 
 unset PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF
 if orchestrator_run_feature investment-choice >/dev/null 2>&1; then

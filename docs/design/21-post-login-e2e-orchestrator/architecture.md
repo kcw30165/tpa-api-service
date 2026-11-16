@@ -12,7 +12,7 @@
 ## Lifecycle
 
 - `PREFLIGHT`: reject empty, duplicate, or unknown `E2E_FEATURE_PACKS` entries before login.
-- `LOGIN`: select first email only, acquire and verify OTP, select first account, and publish state. On failure, features do not run and logout is `NOT_RUN`.
+- `LOGIN`: select first email only, acquire and verify OTP, select the account at zero-based `E2E_ACCOUNT_INDEX` (default `0`) or the exact `E2E_ACCOUNT_REF` match, and publish state. A malformed index or non-empty selector conflict is rejected before login. An out-of-range index fails selection closed; features do not run, and the existing post-authentication logout and cleanup behavior is preserved.
 - `FEATURES`: invoke every resolved pack sequentially and record each result. Never re-login on 401 or 403.
 - `LOGOUT`: run once after all feature attempts. Failure contributes to overall failure.
 - `SUMMARY`: PASS only when login, every feature, and logout pass.
@@ -20,7 +20,7 @@
 
 ## State and security
 
-Each run creates a new mode-0700 private directory and restrictive secret files. It never loads stale state. Cookies, CSRF, OTP, password, and complete authenticated bodies are excluded from evidence or redacted by existing helpers. Cleanup removes the private directory on normal and abnormal exits.
+Each run creates a new mode-0700 private directory and restrictive secret files. It never loads stale state. Selector inputs are captured and removed from the environment before login; the selected Account-Ref remains in private state and is never logged or written to evidence. Cookies, CSRF, OTP, password, and complete authenticated bodies are excluded from evidence or redacted by existing helpers. Cleanup removes the private directory on normal and abnormal exits.
 
 ## OTP extension boundary
 
@@ -29,6 +29,10 @@ Each run creates a new mode-0700 private directory and restrictive secret files.
 ## Feature contract
 
 Registry entries are trusted paths. Packs return reliable process status. Investment-choice retains standalone provided-session execution and all password/live-mutation safeguards. Orchestrated packs do not log out independently.
+
+The `vesting-scale` pack consumes only the runner's authenticated request values and performs exactly two GETs to `/api/v1/vesting-scale`, in `en` then `zh-HK`, without mutation or pack-owned login/logout. It validates the response envelope and shape, plan cross-references, optional date formats, scale ordering, and identical `planTypes[].planNo` sequences. Its evidence is summary-only (HTTP status, list counts, passed checks, and absent-list result); raw response files stay in private runtime state for normal orchestrator cleanup.
+
+`VESTING_SCALE_EXPECT_ABSENT` is optional and accepts a comma-separated, whitespace-trimmed list of unique configurable BFF field names only: member fields `memberCategory`, `dateJoinedCompany`, `dateJoinedScheme`, `employmentDate`; plan fields `planEffectiveDate`, `dateOfJoiningPlan`, `planService`, `memberContributionBasis`, `employerContributionBasis`; and section field `vestingScale`. Validation occurs during preflight before login. Each assertion uses key presence semantics, so an explicit `null` does not satisfy an expected absence.
 
 The optional live CIM lifecycle is non-retrying: GET #1, change-token issuance,
 submit once, GET #2 to refresh and prove the exact new reference is pending,
