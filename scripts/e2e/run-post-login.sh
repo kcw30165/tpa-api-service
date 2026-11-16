@@ -2,7 +2,7 @@
 set -uo pipefail
 for secret_name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD CIM_PASSWORD \
   PORTAL_SESSION_COOKIE_VALUE AUTH_FLOW_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF \
-  SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF POST_LOGIN_ACCOUNT_SELECTOR; do
+  SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF E2E_ACCOUNT_INDEX POST_LOGIN_ACCOUNT_SELECTOR; do
   [[ -v "$secret_name" ]] && export -n "${secret_name?}"
 done
 unset secret_name
@@ -21,7 +21,8 @@ orchestrator_logout(){ authenticated_logout_journey; }
 orchestrator_cleanup(){
  local cleanup_rc=0
  destroy_private_runtime_state || cleanup_rc=$?
- unset PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF E2E_ACCOUNT_REF \
+ unset PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF E2E_ACCOUNT_REF E2E_ACCOUNT_INDEX \
+  POST_LOGIN_ACCOUNT_INDEX \
   POST_LOGIN_ACCOUNT_SELECTOR POST_LOGIN_ACCOUNT_SELECTOR_PROVIDED POST_LOGIN_ACCOUNT_SELECTOR_CAPTURED
  return "$cleanup_rc"
 }
@@ -32,7 +33,7 @@ collect_feature_names(){
  while IFS= read -r name; do basename "$name" .sh | sed 's/-scenarios$//'; done <<<"$resolved"
 }
 initialize_post_login_runtime(){
- capture_post_login_account_selector
+ capture_post_login_account_selector || return 1
  E2E_SCENARIO_PACK=post-login
  E2E_SCENARIO_ID=orchestrator
  E2E_ENVIRONMENT="${E2E_ENVIRONMENT:-local}"
@@ -51,7 +52,7 @@ orchestrator_run_feature(){
  [[ -n "${BFF_BASE_URL:-}" && -n "${PORTAL_SESSION_COOKIE_VALUE:-}" && -n "${XSRF_TOKEN:-}" && -n "${ACCOUNT_REF:-}" ]]||return 1
  for secret_name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD CIM_PASSWORD \
   PORTAL_SESSION_COOKIE_VALUE AUTH_FLOW_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF \
-  SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF POST_LOGIN_ACCOUNT_SELECTOR; do
+  SESSION_COOKIE CSRF_TOKEN BASE_URL E2E_ACCOUNT_REF E2E_ACCOUNT_INDEX POST_LOGIN_ACCOUNT_SELECTOR; do
   [[ -v "$secret_name" ]] && export -n "${secret_name?}"
  done
  if [[ "${CIM_USE_PASSWORD:-no}" == yes ]]; then
@@ -69,7 +70,7 @@ orchestrator_run_feature(){
 post_login_main(){
  local resolved name
  local -a names=()
- capture_post_login_account_selector
+ capture_post_login_account_selector || return 2
  resolved="$(collect_feature_names "${E2E_FEATURE_PACKS:-}")" || return 1
  while IFS= read -r name; do names+=("$name"); done <<<"$resolved"
  initialize_post_login_runtime || return 1

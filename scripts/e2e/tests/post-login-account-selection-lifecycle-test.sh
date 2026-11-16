@@ -37,7 +37,7 @@ export REQUEST_ID_PREFIX=account-selection-test
 export E2E_CONNECT_TIMEOUT_SECONDS=1
 export E2E_REQUEST_TIMEOUT_SECONDS=1
 export ACCEPT_LANGUAGE=en
-unset E2E_PRIVATE_STATE_DIR E2E_ACCOUNT_REF
+unset E2E_PRIVATE_STATE_DIR E2E_ACCOUNT_REF E2E_ACCOUNT_INDEX
 
 # shellcheck source=scripts/e2e/run-post-login.sh
 source "$ROOT/scripts/e2e/run-post-login.sh" --library-only
@@ -322,6 +322,114 @@ for value in \
     break
   fi
 done
+
+run_index_case() {
+  local name="$1" index="${2:-}" expected_ref="$3" expected_index="$4" rc state_dir
+  export E2E_EVIDENCE_ROOT="$tmp/evidence-index-$name"
+  export LOGOUT_MODE=success
+  unset E2E_ACCOUNT_REF E2E_ACCOUNT_INDEX
+  [[ -z "$index" ]] || export E2E_ACCOUNT_INDEX="$index"
+  : >"$tmp/calls"
+  : >"$tmp/features"
+  : >"$tmp/feature-state"
+  : >"$tmp/curl-arguments"
+  : >"$tmp/jq-arguments"
+  : >"$FAKE_SECRET_ENV_LEAKS"
+  : >"$tmp/transport-test-failures"
+  initialize_post_login_runtime || { printf 'FAIL %s runtime initialization\n' "$name"; fail=1; return; }
+  [[ ! -v E2E_ACCOUNT_INDEX ]] || { printf 'FAIL %s account index was not captured before login\n' "$name"; fail=1; }
+  state_dir="$E2E_PRIVATE_STATE_DIR"
+  set +e
+  run_post_login_orchestrator investment-choice >"$tmp/$name.out" 2>&1
+  rc=$?
+  set -e
+  [[ "$rc" -eq 0 ]] || { printf 'FAIL %s account index selection failed\n' "$name"; fail=1; }
+  grep -Fq 'ACCOUNT_SELECTION: PASS' "$tmp/$name.out" || { printf 'FAIL %s selection status\n' "$name"; fail=1; }
+  grep -Fq 'FEATURE investment-choice: PASS' "$tmp/$name.out" || { printf 'FAIL %s feature did not run\n' "$name"; fail=1; }
+  [[ "$(cat "$tmp/feature-state")" == "$expected_ref"$'\n'"$expected_ref" ]] || {
+    printf 'FAIL %s selected account did not reach the feature\n' "$name"
+    fail=1
+  }
+  grep -Fq "selected_account_index=$expected_index" \
+    "$E2E_RUN_EVIDENCE_DIR/017-authenticated-transition-summary.txt" || {
+    printf 'FAIL %s selected account index was not recorded\n' "$name"
+    fail=1
+  }
+  [[ "$(grep -c '^POST /api/v1/auth/logout$' "$tmp/calls")" == 1 ]] || {
+    printf 'FAIL %s logout policy changed\n' "$name"
+    fail=1
+  }
+  [[ ! -e "$state_dir" ]] || { printf 'FAIL %s private state was not cleaned\n' "$name"; fail=1; }
+  for value in account-reference-first account-reference-second; do
+    if grep -R -F -q -- "$value" "$tmp/$name.out" "$E2E_RUN_EVIDENCE_DIR"; then
+      printf 'FAIL %s account reference appeared in output or evidence\n' "$name"
+      fail=1
+      break
+    fi
+  done
+  assert_process_arguments_are_secret_free
+}
+
+run_index_case index-default '' account-reference-first 0
+run_index_case index-one 1 account-reference-second 1
+
+export E2E_EVIDENCE_ROOT="$tmp/evidence-index-out-of-range"
+export E2E_ACCOUNT_INDEX=2
+: >"$tmp/calls"
+: >"$tmp/features"
+initialize_post_login_runtime || { printf 'FAIL out-of-range runtime initialization\n'; exit 1; }
+out_of_range_state_dir="$E2E_PRIVATE_STATE_DIR"
+set +e
+run_post_login_orchestrator investment-choice >"$tmp/index-out-of-range.out" 2>&1
+out_of_range_rc=$?
+set -e
+[[ "$out_of_range_rc" -ne 0 ]] || { printf 'FAIL out-of-range index succeeded\n'; fail=1; }
+grep -Fq 'ACCOUNT_SELECTION: FAIL' "$tmp/index-out-of-range.out" || {
+  printf 'FAIL out-of-range selection was not reported\n'
+  fail=1
+}
+grep -Fq 'FEATURE investment-choice: NOT_RUN' "$tmp/index-out-of-range.out" || {
+  printf 'FAIL feature ran after out-of-range selection\n'
+  fail=1
+}
+[[ "$(grep -c '^POST /api/v1/auth/logout$' "$tmp/calls")" == 1 ]] || {
+  printf 'FAIL out-of-range selection changed logout policy\n'
+  fail=1
+}
+[[ ! -e "$out_of_range_state_dir" ]] || { printf 'FAIL out-of-range private state was not cleaned\n'; fail=1; }
+for value in account-reference-first account-reference-second; do
+  if grep -R -F -q -- "$value" "$tmp/index-out-of-range.out" "$E2E_RUN_EVIDENCE_DIR"; then
+    printf 'FAIL out-of-range account reference appeared in output or evidence\n'
+    fail=1
+    break
+  fi
+done
+
+run_preflight_rejection() {
+  local name="$1" expected="$2" rc
+  export E2E_EVIDENCE_ROOT="$tmp/evidence-preflight-$name"
+  : >"$tmp/calls"
+  set +e
+  post_login_main >"$tmp/preflight-$name.out" 2>&1
+  rc=$?
+  set -e
+  [[ "$rc" -ne 0 ]] || { printf 'FAIL %s preflight was accepted\n' "$name"; fail=1; }
+  grep -Fq "$expected" "$tmp/preflight-$name.out" || {
+    printf 'FAIL %s preflight rejection was not clear\n' "$name"
+    fail=1
+  }
+  [[ ! -s "$tmp/calls" ]] || { printf 'FAIL %s preflight made a network call\n' "$name"; fail=1; }
+  [[ -z "${E2E_PRIVATE_STATE_DIR:-}" ]] || { printf 'FAIL %s created private runtime state\n' "$name"; fail=1; }
+}
+
+unset E2E_ACCOUNT_REF
+export E2E_ACCOUNT_INDEX=not-a-number
+run_preflight_rejection nonnumeric 'E2E_ACCOUNT_INDEX must contain only decimal digits'
+export E2E_ACCOUNT_INDEX=''
+run_preflight_rejection empty-index 'E2E_ACCOUNT_INDEX must contain only decimal digits'
+export E2E_ACCOUNT_REF=selector-reference-not-in-response
+export E2E_ACCOUNT_INDEX=1
+run_preflight_rejection selector-conflict 'E2E_ACCOUNT_REF and E2E_ACCOUNT_INDEX cannot both be set'
 
 [[ "$fail" -eq 0 ]] || exit 1
 printf 'PASS post-login account-selection and authenticated lifecycle\n'

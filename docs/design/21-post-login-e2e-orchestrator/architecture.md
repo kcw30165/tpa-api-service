@@ -12,7 +12,7 @@
 ## Lifecycle
 
 - `PREFLIGHT`: reject empty, duplicate, or unknown `E2E_FEATURE_PACKS` entries before login.
-- `LOGIN`: select first email only, acquire and verify OTP, select first account, and publish state. On failure, features do not run and logout is `NOT_RUN`.
+- `LOGIN`: select first email only, acquire and verify OTP, select the account at zero-based `E2E_ACCOUNT_INDEX` (default `0`) or the exact `E2E_ACCOUNT_REF` match, and publish state. A malformed index or non-empty selector conflict is rejected before login. An out-of-range index fails selection closed; features do not run, and the existing post-authentication logout and cleanup behavior is preserved.
 - `FEATURES`: invoke every resolved pack sequentially and record each result. Never re-login on 401 or 403.
 - `LOGOUT`: run once after all feature attempts. Failure contributes to overall failure.
 - `SUMMARY`: PASS only when login, every feature, and logout pass.
@@ -20,7 +20,7 @@
 
 ## State and security
 
-Each run creates a new mode-0700 private directory and restrictive secret files. It never loads stale state. Cookies, CSRF, OTP, password, and complete authenticated bodies are excluded from evidence or redacted by existing helpers. Cleanup removes the private directory on normal and abnormal exits.
+Each run creates a new mode-0700 private directory and restrictive secret files. It never loads stale state. Selector inputs are captured and removed from the environment before login; the selected Account-Ref remains in private state and is never logged or written to evidence. Cookies, CSRF, OTP, password, and complete authenticated bodies are excluded from evidence or redacted by existing helpers. Cleanup removes the private directory on normal and abnormal exits.
 
 ## OTP extension boundary
 
