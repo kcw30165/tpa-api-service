@@ -42,6 +42,7 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
       "investment-choice.retrieval.metadata_integrity";
   private static final String ALLOCATION_METADATA_MISSING = "ALLOCATION_METADATA_MISSING";
   private static final String CAPABILITY = "INVESTMENT_CHOICE";
+  private static final String REASON_DIMENSION = "reason";
 
   private final ReferenceDatePort referenceDatePort;
   private final InvestmentChoiceDetailsPort detailsPort;
@@ -120,14 +121,14 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
           new FailureEvent(
               "investment-choice.retrieval.local_failure",
               command.requestId(),
-              "INVESTMENT_CHOICE",
+              CAPABILITY,
               "GetInvestmentChoice",
               FailureOrigin.LOCAL_SYSTEM,
               IDENTIFIER_INVALID,
               RETRIEVAL_PUBLIC_CODE,
               503,
               true,
-              Map.of("reason", IDENTIFIER_INVALID)));
+              Map.of(REASON_DIMENSION, IDENTIFIER_INVALID)));
     } catch (RuntimeException ignored) {
       // Telemetry must not change the retrieval outcome.
     }
@@ -145,7 +146,7 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
             RETRIEVAL_PUBLIC_CODE,
             503,
             true,
-            Map.of("reason", REFERENCE_DATE_FAILURE_REASON)));
+            Map.of(REASON_DIMENSION, REFERENCE_DATE_FAILURE_REASON)));
   }
 
   private void publishRestrictedSnapshotWriteFailure(GetInvestmentChoiceCommand command) {
@@ -160,7 +161,7 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
             RETRIEVAL_PUBLIC_CODE,
             503,
             true,
-            Map.of("reason", RESTRICTED_SNAPSHOT_WRITE_FAILURE_REASON)));
+            Map.of(REASON_DIMENSION, RESTRICTED_SNAPSHOT_WRITE_FAILURE_REASON)));
   }
 
   private void publishSafely(FailureEvent event) {
@@ -182,7 +183,7 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
           new FailureEvent(
               METADATA_INTEGRITY_EVENT,
               command.requestId(),
-              "INVESTMENT_CHOICE",
+              CAPABILITY,
               "GetInvestmentChoice",
               FailureOrigin.DOWNSTREAM_INVALID_RESPONSE,
               ALLOCATION_METADATA_MISSING,
@@ -190,7 +191,7 @@ public final class GetInvestmentChoiceService implements GetInvestmentChoiceUseC
               200,
               false,
               Map.of(
-                  "reason",
+                  REASON_DIMENSION,
                   ALLOCATION_METADATA_MISSING,
                   "missingSourceReferences",
                   counts.missingSourceReferences(),
