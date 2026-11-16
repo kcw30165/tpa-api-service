@@ -97,11 +97,63 @@ class ApplicationRoutesLoggerTest {
 
     JsonNode listEvent = objectMapper.readTree(debug.getFormattedMessage());
     assertThat(listEvent.path("event").asText()).isEqualTo("app.routes.detail");
+    assertThat(countEvent.path("routes").asInt()).isEqualTo(listEvent.path("mappings").size());
     assertThat(listEvent.path("mappings"))
         .extracting(
             mapping -> mapping.path("method").asText() + " " + mapping.path("path").asText())
         .containsExactly("GET /api/v1/zones/{zoneId}", "POST /api/v1/alpha");
     assertThat(debug.getFormattedMessage()).doesNotContain("HandlerMethod");
+  }
+
+  @Test
+  void countsDistinctMethodPathPairsAcrossMultiPathAndMultiMethodMappings() throws Exception {
+    logger.setLevel(Level.DEBUG);
+    RequestMappingInfo multiPathMultiMethod =
+        RequestMappingInfo.paths("/api/v1/one", "/api/v1/two")
+            .methods(RequestMethod.GET, RequestMethod.POST)
+            .build();
+    RequestMappingInfo methodAgnostic = RequestMappingInfo.paths("/api/v1/any-method").build();
+    RequestMappingInfo duplicateGetOneA =
+        RequestMappingInfo.paths("/api/v1/one")
+            .methods(RequestMethod.GET)
+            .headers("X-Mode=a")
+            .build();
+    RequestMappingInfo duplicateGetOneB =
+        RequestMappingInfo.paths("/api/v1/one")
+            .methods(RequestMethod.GET)
+            .headers("X-Mode=b")
+            .build();
+    RequestMappingHandlerMapping handlerMapping =
+        handlerMapping(multiPathMultiMethod, methodAgnostic, duplicateGetOneA, duplicateGetOneB);
+    when(mappingsProvider.orderedStream()).thenReturn(Stream.of(handlerMapping));
+
+    logger().onApplicationReady(mock(ApplicationReadyEvent.class));
+
+    ILoggingEvent info =
+        appender.list.stream()
+            .filter(event -> event.getLevel() == Level.INFO)
+            .findFirst()
+            .orElseThrow();
+    ILoggingEvent debug =
+        appender.list.stream()
+            .filter(event -> event.getLevel() == Level.DEBUG)
+            .findFirst()
+            .orElseThrow();
+    JsonNode countEvent = objectMapper.readTree(info.getFormattedMessage());
+    JsonNode detailEvent = objectMapper.readTree(debug.getFormattedMessage());
+
+    assertThat(countEvent.path("registeredMappings").asInt()).isEqualTo(4);
+    assertThat(countEvent.path("routes").asInt()).isEqualTo(5);
+    assertThat(countEvent.path("routes").asInt()).isEqualTo(detailEvent.path("mappings").size());
+    assertThat(detailEvent.path("mappings"))
+        .extracting(
+            mapping -> mapping.path("method").asText() + " " + mapping.path("path").asText())
+        .containsExactly(
+            "ANY /api/v1/any-method",
+            "GET /api/v1/one",
+            "GET /api/v1/two",
+            "POST /api/v1/one",
+            "POST /api/v1/two");
   }
 
   @Test
@@ -116,6 +168,7 @@ class ApplicationRoutesLoggerTest {
     JsonNode event = objectMapper.readTree(appender.list.getFirst().getFormattedMessage());
     assertThat(event.path("event").asText()).isEqualTo("app.routes");
     assertThat(event.path("registeredMappings").asText()).isEqualTo("unknown");
+    assertThat(event.path("routes").asText()).isEqualTo("unknown");
   }
 
   @Test
@@ -131,6 +184,7 @@ class ApplicationRoutesLoggerTest {
     JsonNode event = objectMapper.readTree(appender.list.getFirst().getFormattedMessage());
     assertThat(event.path("event").asText()).isEqualTo("app.routes");
     assertThat(event.path("registeredMappings").asText()).isEqualTo("unknown");
+    assertThat(event.path("routes").asText()).isEqualTo("unknown");
   }
 
   private ApplicationRoutesLogger logger() {

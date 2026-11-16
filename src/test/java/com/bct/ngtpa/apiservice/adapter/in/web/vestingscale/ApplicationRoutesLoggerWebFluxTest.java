@@ -98,6 +98,7 @@ class ApplicationRoutesLoggerWebFluxTest {
 
     JsonNode detailEvent = objectMapper.readTree(debug.getFormattedMessage());
     assertThat(detailEvent.path("event").asText()).isEqualTo("app.routes.detail");
+    assertThat(countEvent.path("routes").asInt()).isEqualTo(detailEvent.path("mappings").size());
     assertThat(detailEvent.path("mappings"))
         .anySatisfy(
             mapping -> {

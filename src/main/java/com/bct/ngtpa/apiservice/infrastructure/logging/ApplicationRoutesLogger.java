@@ -51,6 +51,7 @@ public final class ApplicationRoutesLogger {
     Map<String, Object> countEvent = new LinkedHashMap<>();
     countEvent.put("event", "app.routes");
     countEvent.put("registeredMappings", snapshot.loggedCount());
+    countEvent.put("routes", snapshot.loggedRouteCount());
     log.info("{}", toJson(countEvent));
 
     if (log.isDebugEnabled() && snapshot.registeredMappings() != null) {
@@ -64,6 +65,7 @@ public final class ApplicationRoutesLogger {
   private static List<RoutePattern> routePatterns(List<RequestMappingInfo> mappings) {
     return mappings.stream()
         .flatMap(ApplicationRoutesLogger::routePatterns)
+        .distinct()
         .sorted(Comparator.comparing(RoutePattern::method).thenComparing(RoutePattern::path))
         .toList();
   }
@@ -98,6 +100,10 @@ public final class ApplicationRoutesLogger {
 
     private Object loggedCount() {
       return registeredMappings == null ? UNKNOWN : registeredMappings;
+    }
+
+    private Object loggedRouteCount() {
+      return registeredMappings == null ? UNKNOWN : mappings.size();
     }
   }
 }
