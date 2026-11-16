@@ -236,6 +236,15 @@ class ApimRoutingLedgerCharacterizationTest {
               "command.accountEnv()",
               "NON_RETRYABLE",
               "EXECUTOR",
+              "ACCOUNT_ENV"),
+          e(
+              "TRPGetVestingScale",
+              "vestingscale/ApimVestingScaleAdapter.java",
+              "ACCOUNT_ENV",
+              "command.actorUserRole()",
+              "command.accountEnv()",
+              "SAFE_BUSINESS_CALL",
+              "EXECUTOR",
               "ACCOUNT_ENV"));
 
   @Test
@@ -243,7 +252,7 @@ class ApimRoutingLedgerCharacterizationTest {
     assertThat(LEDGER)
         .extracting(Entry::operation)
         .doesNotHaveDuplicates()
-        .hasSize(24)
+        .hasSize(25)
         .containsExactlyInAnyOrder(
             "TRPPwdValidation",
             "TRPGetInvestGL",
@@ -268,7 +277,8 @@ class ApimRoutingLedgerCharacterizationTest {
             "TRPGetFundFactSheet",
             "TRPGetCIMDtl",
             "TRPCIMReq",
-            "TRPCnclCIMReq");
+            "TRPCnclCIMReq",
+            "TRPGetVestingScale");
   }
 
   @Test

@@ -23,6 +23,7 @@ import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmission
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
+import com.bct.ngtpa.apiservice.application.exception.VestingScaleRetrievalException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionPreDispatchException;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
@@ -494,6 +495,23 @@ class ExceptionMappingsTest {
   }
 
   @Test
+  void vestingScaleRetrievalMapping() {
+    var exception = VestingScaleRetrievalException.systemFailure();
+    ErrorDescriptor descriptor =
+        new ExceptionMappingRegistryConfig().exceptionMappingRegistry().resolve(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals(ErrorCodes.VESTING_SCALE_RETRIEVAL_UNAVAILABLE, entry.code());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+  }
+
+  @Test
   void investmentChoiceSubmissionMapping() {
     var mapping = InvestmentChoiceExceptionMappings.submissionUnavailable();
     var exception = new InvestmentChoiceSubmissionUnavailableException();
@@ -627,11 +645,11 @@ class ExceptionMappingsTest {
   }
 
   @Test
-  void configAssemblesExactlyTwentyEightMappingsPlusCatchAll() {
+  void configAssemblesExactlyTwentyNineMappingsPlusCatchAll() {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(28, registry.mappingCount());
+    assertEquals(29, registry.mappingCount());
 
     ErrorDescriptor updateUnavailable =
         registry.resolve(

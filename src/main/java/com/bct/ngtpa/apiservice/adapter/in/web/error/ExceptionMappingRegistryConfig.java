@@ -50,6 +50,7 @@ public class ExceptionMappingRegistryConfig {
             AccountGainLossExceptionMappings.retrievalFailure(),
             FundFactSheetExceptionMappings.retrievalUnavailable(),
             InvestmentChoiceExceptionMappings.retrievalUnavailable(),
+            VestingScaleExceptionMappings.retrievalUnavailable(),
             InvestmentChoiceExceptionMappings.submissionUnavailable(),
             InvestmentChoiceExceptionMappings.cancelUnavailable(),
             InvestmentChoiceExceptionMappings.cancelNotCancellable(),

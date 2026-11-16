@@ -1,0 +1,16 @@
+package com.bct.ngtpa.apiservice.application.dto.vestingscale;
+
+public enum VestingScaleConfigItem {
+  MEMBER_CATEGORY,
+  DATE_JOINED_COMPANY,
+  DATE_JOINED_SCHEME,
+  EMPLOYMENT_DATE,
+  PLAN_EFFECTIVE_DATE,
+  DATE_OF_JOINING_PLAN,
+  PLAN_SERVICE,
+  VESTING_SCALE,
+  BASIS_CONT_EE_ENG,
+  BASIS_CONT_EE_CHI,
+  BASIS_CONT_ER_ENG,
+  BASIS_CONT_ER_CHI
+}
