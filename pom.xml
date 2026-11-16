@@ -29,6 +29,7 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<source.git.commit>unknown</source.git.commit>
 		<spring-cloud.version>2025.1.0</spring-cloud.version>
 		<bouncycastle.version>1.82</bouncycastle.version>
 	</properties>
@@ -169,6 +170,9 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
+					<additionalProperties>
+						<commit>${source.git.commit}</commit>
+					</additionalProperties>
 					<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>
@@ -176,6 +180,13 @@
 						</exclude>
 					</excludes>
 				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>build-info</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>

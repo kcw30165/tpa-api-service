@@ -1,5 +1,7 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 
+ARG SOURCE_GIT_COMMIT=unknown
+
 WORKDIR /workspace
 
 ENV MAVEN_OPTS="-Dmaven.resolver.transport=wagon -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true"
@@ -15,7 +17,7 @@ COPY src ./src
 RUN set -eux; \
     SETTINGS=""; \
     if [ -f /usr/share/maven/ref/settings.xml ]; then SETTINGS="-s /usr/share/maven/ref/settings.xml"; fi; \
-    mvn $SETTINGS -q -DskipTests package
+    mvn $SETTINGS -q -DskipTests -Dsource.git.commit="$SOURCE_GIT_COMMIT" package
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
