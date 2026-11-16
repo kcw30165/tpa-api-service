@@ -31,6 +31,7 @@ import com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
@@ -41,6 +42,7 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.reactive.resource.NoResourceFoundException;
 import org.springframework.web.server.ServerWebInputException;
 
 /**
@@ -619,6 +621,27 @@ class ExceptionMappingsTest {
     assertTrue(descriptor.errors().getFirst().targets().isEmpty());
   }
 
+  @Test
+  void webResourceNotFoundMappingUsesClientRequestValidationContract() {
+    var mapping = WebResourceExceptionMappings.notFound();
+    var exception =
+        new NoResourceFoundException(
+            URI.create("/api/v1/this-route-does-not-exist"), "/api/v1/this-route-does-not-exist");
+
+    ErrorDescriptor descriptor = mapping.describe(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.NOT_FOUND, descriptor.httpStatus());
+    assertEquals(ApiStatus.VALIDATION_FAILED, descriptor.apiStatus());
+    assertEquals("FORM", entry.type());
+    assertEquals(ErrorCodes.REQUEST_RESOURCE_NOT_FOUND, entry.code());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(MessagePolicy.RESOLVE, entry.policy());
+    assertEquals("http.api.error", descriptor.logEventName());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+  }
+
   // ───────────────────────── registry assembly ─────────────────────────
 
   @Test
@@ -645,11 +668,11 @@ class ExceptionMappingsTest {
   }
 
   @Test
-  void configAssemblesExactlyTwentyNineMappingsPlusCatchAll() {
+  void configAssemblesExactlyThirtyMappingsPlusCatchAll() {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(29, registry.mappingCount());
+    assertEquals(30, registry.mappingCount());
 
     ErrorDescriptor updateUnavailable =
         registry.resolve(

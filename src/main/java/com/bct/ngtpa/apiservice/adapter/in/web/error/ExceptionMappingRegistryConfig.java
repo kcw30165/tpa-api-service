@@ -35,6 +35,7 @@ public class ExceptionMappingRegistryConfig {
             PortalAccessExceptionMappings.resolutionFailure(),
             ApplicationExceptionMappings.generic(),
             RequestValidationExceptionMappings.malformedBody(),
+            WebResourceExceptionMappings.notFound(),
             SecurityExceptionMappings.authenticationRequired(),
             SecurityExceptionMappings.accessDenied(),
             PersonalInformationExceptionMappings.invalidUpdate(),
