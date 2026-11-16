@@ -39,6 +39,8 @@ public final class ForgotPasswordCompleteProtectedOperation {
   private static final String DOWNSTREAM_PASSWORD_REUSED =
       "err.tpa.password.used.in.last.5.changes.";
   private static final String DOWNSTREAM_MEMBER_NOT_FOUND = "err.tpa.member.not.found";
+  private static final String COMPLETE_APIM_RESPONSE_FAILURE = "COMPLETE_APIM_RESPONSE_FAILURE";
+  private static final String APIM_RESET_RESPONSE_STAGE = "apim-reset-response";
   private final AuthFlowSessionPort sessions;
   private final AuthFlowSessionMutationLockPort locks;
   private final ForgotPasswordAuthFlowContextProtectorPort protector;
@@ -161,7 +163,7 @@ public final class ForgotPasswordCompleteProtectedOperation {
           technical(
               result == null
                   ? ForgotPasswordCompleteIncident.local(
-                      "COMPLETE_APIM_RESPONSE_FAILURE", "apim-reset-response")
+                      COMPLETE_APIM_RESPONSE_FAILURE, APIM_RESET_RESPONSE_STAGE)
                   : incidentFor(result)));
     }
     if (result.status() == ForgotPasswordCompletionResult.Status.UNKNOWN_OUTCOME) {
@@ -190,13 +192,13 @@ public final class ForgotPasswordCompleteProtectedOperation {
       return Mono.just(
           technical(
               ForgotPasswordCompleteIncident.local(
-                  "COMPLETE_APIM_RESPONSE_FAILURE", "apim-reset-response")));
+                  COMPLETE_APIM_RESPONSE_FAILURE, APIM_RESET_RESPONSE_STAGE)));
     }
     if (result.status() != ForgotPasswordCompletionResult.Status.RESET) {
       return Mono.just(
           technical(
               ForgotPasswordCompleteIncident.local(
-                  "COMPLETE_APIM_RESPONSE_FAILURE", "apim-reset-response")));
+                  COMPLETE_APIM_RESPONSE_FAILURE, APIM_RESET_RESPONSE_STAGE)));
     }
     ForgotPasswordResetAuthorization authorization = context.resetAuthorization();
     ForgotPasswordResetAuthorization consumed =
@@ -253,7 +255,7 @@ public final class ForgotPasswordCompleteProtectedOperation {
       return ForgotPasswordCompleteIncident.apim(result.failureOrigin(), result.failureStage());
     }
     return ForgotPasswordCompleteIncident.local(
-        "COMPLETE_APIM_RESPONSE_FAILURE", "apim-reset-response");
+        COMPLETE_APIM_RESPONSE_FAILURE, APIM_RESET_RESPONSE_STAGE);
   }
 
   private ForgotPasswordCompleteIncident incidentFor(Throwable failure) {

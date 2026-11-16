@@ -190,16 +190,12 @@ public final class IdempotentCompleteForgotPasswordService
                 return Mono.just(responses.toTransientResponse(execution.result()));
               }
               if (!execution.incidents().isEmpty()) {
-                try {
-                  for (ForgotPasswordCompleteIncident incident : execution.incidents()) {
-                    publishAndRecord(command, incident, publication, publicationFailed);
-                  }
-                } catch (RuntimeException publishFailure) {
-                  return Mono.error(publishFailure);
-                }
-                RuntimeException signal = new ReportedOperationFailureException();
-                reportedOperationFailure.set(signal);
-                return Mono.error(signal);
+                return publishIncidentsAndSignalFailure(
+                    command,
+                    execution.incidents(),
+                    publication,
+                    publicationFailed,
+                    reportedOperationFailure);
               }
               if (execution.outcome()
                   == ForgotPasswordCompleteProtectedExecutionResult.Outcome.TECHNICAL_FAILURE) {
@@ -221,6 +217,24 @@ public final class IdempotentCompleteForgotPasswordService
               noIncidentOutcome.set(signal);
               return Mono.error(signal);
             });
+  }
+
+  private Mono<HydratedIdempotentResponse> publishIncidentsAndSignalFailure(
+      CompleteForgotPasswordCommand command,
+      List<ForgotPasswordCompleteIncident> incidents,
+      PublicationTracker publication,
+      AtomicBoolean publicationFailed,
+      AtomicReference<RuntimeException> reportedOperationFailure) {
+    try {
+      for (ForgotPasswordCompleteIncident incident : incidents) {
+        publishAndRecord(command, incident, publication, publicationFailed);
+      }
+    } catch (RuntimeException publishFailure) {
+      return Mono.error(publishFailure);
+    }
+    RuntimeException signal = new ReportedOperationFailureException();
+    reportedOperationFailure.set(signal);
+    return Mono.error(signal);
   }
 
   private ForgotPasswordAuthFlowContext loadContext(Map<String, String> attributes) {

@@ -391,6 +391,14 @@ class ForgotPasswordCompleteProtectedOperationTest {
                   .isEqualTo(
                       ForgotPasswordCompleteProtectedExecutionResult.Outcome.TECHNICAL_FAILURE);
               assertThat(r.result().status()).isEqualTo(CompleteForgotPasswordStatus.SYSTEM_FAILED);
+              assertThat(r.incidents())
+                  .singleElement()
+                  .satisfies(
+                      incident -> {
+                        assertThat(incident.internalCode())
+                            .isEqualTo("COMPLETE_APIM_RESPONSE_FAILURE");
+                        assertThat(incident.stage()).isEqualTo("apim-reset-response");
+                      });
             })
         .verifyComplete();
   }

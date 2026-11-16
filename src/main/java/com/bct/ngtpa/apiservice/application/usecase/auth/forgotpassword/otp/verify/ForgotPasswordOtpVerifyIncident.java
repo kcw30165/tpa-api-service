@@ -2,17 +2,17 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ver
 
 /** Fixed, value-free technical incident metadata for OTP_VERIFY. */
 public enum ForgotPasswordOtpVerifyIncident {
-  LOCK_ACQUISITION("OTP_VERIFY_TECHNICAL_FAILURE", "lock-acquisition", true),
-  SESSION_READ("OTP_VERIFY_TECHNICAL_FAILURE", "session-read", true),
-  SESSION_REREAD("OTP_VERIFY_TECHNICAL_FAILURE", "session-reread", true),
-  CONTEXT_LOAD("OTP_VERIFY_TECHNICAL_FAILURE", "context-load", true),
-  CHALLENGE_VERIFICATION("OTP_VERIFY_TECHNICAL_FAILURE", "challenge-verification", true),
-  AUTHORIZATION_PROTECTION("OTP_VERIFY_TECHNICAL_FAILURE", "authorization-protection", true),
-  SESSION_UPDATE("OTP_VERIFY_TECHNICAL_FAILURE", "session-update", true),
-  EXPIRY_REFRESH("OTP_VERIFY_TECHNICAL_FAILURE", "expiry-refresh", true),
-  PROTECTED_OPERATION("OTP_VERIFY_TECHNICAL_FAILURE", "protected-operation", true),
+  LOCK_ACQUISITION(Codes.TECHNICAL_FAILURE, "lock-acquisition", true),
+  SESSION_READ(Codes.TECHNICAL_FAILURE, "session-read", true),
+  SESSION_REREAD(Codes.TECHNICAL_FAILURE, "session-reread", true),
+  CONTEXT_LOAD(Codes.TECHNICAL_FAILURE, "context-load", true),
+  CHALLENGE_VERIFICATION(Codes.TECHNICAL_FAILURE, "challenge-verification", true),
+  AUTHORIZATION_PROTECTION(Codes.TECHNICAL_FAILURE, "authorization-protection", true),
+  SESSION_UPDATE(Codes.TECHNICAL_FAILURE, "session-update", true),
+  EXPIRY_REFRESH(Codes.TECHNICAL_FAILURE, "expiry-refresh", true),
+  PROTECTED_OPERATION(Codes.TECHNICAL_FAILURE, "protected-operation", true),
   IDEMPOTENCY("OTP_VERIFY_IDEMPOTENCY_FAILURE", "idempotency", true),
-  LOCK_RELEASE("OTP_VERIFY_TECHNICAL_FAILURE", "lock-release", false);
+  LOCK_RELEASE(Codes.TECHNICAL_FAILURE, "lock-release", false);
 
   private final String internalCode;
   private final String stage;
@@ -35,5 +35,11 @@ public enum ForgotPasswordOtpVerifyIncident {
 
   public boolean terminalPublicationRequired() {
     return terminalPublicationRequired;
+  }
+
+  private static final class Codes {
+    private static final String TECHNICAL_FAILURE = "OTP_VERIFY_TECHNICAL_FAILURE";
+
+    private Codes() {}
   }
 }
