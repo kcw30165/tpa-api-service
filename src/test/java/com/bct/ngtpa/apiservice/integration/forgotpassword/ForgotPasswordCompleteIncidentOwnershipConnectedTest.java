@@ -95,7 +95,7 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
   }
 
   @Test
-  void acquiredTechnicalFailureHasOneTerminalErrorAndWarnOnlyHttpObservation() throws Exception {
+  void acquiredTechnicalFailureHasOneTerminalErrorAndWarnOnlyHttpObservation() {
     RunResult run = invoke(false);
 
     assertPublicTechnicalFailureResponse(run);

@@ -283,7 +283,8 @@ class AuthForgotPasswordDetailsControllerTest {
                 exchange)
             .block();
 
-    assertThat(publicResponse.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    assertThat(publicResponse.getStatusCode().value())
+        .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT.value());
     assertThat(publicResponse.getBody().status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
     assertThat(publicResponse.getBody().errors())
         .singleElement()
