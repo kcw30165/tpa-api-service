@@ -9,11 +9,6 @@ public record ForgotPasswordOtpResendProtectedExecutionResult(
     ResendForgotPasswordOtpResult result,
     ProtectedReplayReference replayReference,
     List<ForgotPasswordOtpResendIncident> incidents) {
-  public ForgotPasswordOtpResendProtectedExecutionResult(
-      ResendForgotPasswordOtpResult result, ProtectedReplayReference replayReference) {
-    this(result, replayReference, List.of());
-  }
-
   public ForgotPasswordOtpResendProtectedExecutionResult {
     Objects.requireNonNull(result, "result must not be null");
     incidents = List.copyOf(Objects.requireNonNull(incidents, "incidents must not be null"));

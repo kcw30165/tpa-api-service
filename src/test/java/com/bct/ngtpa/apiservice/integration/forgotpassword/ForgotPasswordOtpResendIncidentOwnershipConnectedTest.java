@@ -228,7 +228,7 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
     if (scenario == Scenario.DELIVERY_FAILED || scenario == Scenario.COMPLETED_REPLAY) {
       result =
           new ResendForgotPasswordOtpResult(
-              ResendForgotPasswordOtpStatus.DELIVERY_FAILED, null, null, null, null, null);
+              ResendForgotPasswordOtpStatus.DELIVERY_FAILED, null, null, null, null, null, null);
       incidents =
           scenario == Scenario.DELIVERY_FAILED
               ? List.of(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY)
@@ -245,7 +245,7 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
     } else if (scenario == Scenario.MALFORMED_COUNTER) {
       result =
           new ResendForgotPasswordOtpResult(
-              ResendForgotPasswordOtpStatus.RESENT, "j***@example.com", 300, 60, 4, null);
+              ResendForgotPasswordOtpStatus.RESENT, "j***@example.com", 300, 60, 4, null, null);
       replayReference = new ProtectedReplayReference("replay-ref-1234567890abcd");
       incidents = List.of(ForgotPasswordOtpResendIncident.MALFORMED_RESEND_COUNT);
       when(operation.execute(any()))
@@ -256,7 +256,7 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
     } else {
       result =
           new ResendForgotPasswordOtpResult(
-              ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null);
+              ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null, null);
       incidents =
           scenario == Scenario.LOCK_ACQUISITION_FAILURE
               ? List.of(ForgotPasswordOtpResendIncident.LOCK_ACQUISITION)

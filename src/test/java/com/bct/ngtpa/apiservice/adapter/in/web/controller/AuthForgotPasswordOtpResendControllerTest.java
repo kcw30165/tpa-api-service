@@ -171,7 +171,7 @@ class AuthForgotPasswordOtpResendControllerTest {
     var useCase = new RecordingUseCase();
     useCase.result =
         new ResendForgotPasswordOtpResult(
-                ResendForgotPasswordOtpStatus.DELIVERY_FAILED, null, null, null, null, null)
+                ResendForgotPasswordOtpStatus.DELIVERY_FAILED, null, null, null, null, null, null)
             .withPublicationReceipt(new ForgotPasswordOtpResendPublicationReceipt(true));
     var controller = controller(useCase);
     var exchange = exchange();
@@ -198,7 +198,7 @@ class AuthForgotPasswordOtpResendControllerTest {
     var useCase = new RecordingUseCase();
     useCase.result =
         new ResendForgotPasswordOtpResult(
-                ResendForgotPasswordOtpStatus.RESENT, "m****r@example.com", 300, 60, 4, null)
+                ResendForgotPasswordOtpStatus.RESENT, "m****r@example.com", 300, 60, 4, null, null)
             .withPublicationReceipt(new ForgotPasswordOtpResendPublicationReceipt(false));
     var exchange = exchange();
 
@@ -221,7 +221,7 @@ class AuthForgotPasswordOtpResendControllerTest {
     var useCase = new RecordingUseCase();
     useCase.result =
         new ResendForgotPasswordOtpResult(
-                null, null, null, null, null, null)
+                null, null, null, null, null, null, null)
             .withPublicationReceipt(new ForgotPasswordOtpResendPublicationReceipt(true));
     var exchange = exchange();
 
@@ -244,7 +244,7 @@ class AuthForgotPasswordOtpResendControllerTest {
     ResendForgotPasswordOtpCommand command;
     ResendForgotPasswordOtpResult result =
         new ResendForgotPasswordOtpResult(
-            ResendForgotPasswordOtpStatus.RESENT, "m****r@example.com", 300, 60, 4, null);
+            ResendForgotPasswordOtpStatus.RESENT, "m****r@example.com", 300, 60, 4, null, null);
 
     @Override
     public Mono<ResendForgotPasswordOtpResult> resend(ResendForgotPasswordOtpCommand command) {

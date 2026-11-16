@@ -136,7 +136,7 @@ public final class ForgotPasswordCompleteProtectedOperation {
                   WorkflowNextStep.PASSWORD_SETUP,
                   false,
                   false,
-                  passwordValidation.errors())));
+                  passwordValidation.errors(), null)));
     }
     return completion
         .complete(
@@ -416,7 +416,7 @@ public final class ForgotPasswordCompleteProtectedOperation {
       boolean clearXsrfCookie,
       List<WorkflowErrorDescriptor> errors) {
     return new CompleteForgotPasswordResult(
-        status, nextStep, clearAuthFlowCookie, clearXsrfCookie, errors);
+        status, nextStep, clearAuthFlowCookie, clearXsrfCookie, errors, null);
   }
 
   private WorkflowErrorDescriptor error(WorkflowErrorType type, String code, String target) {

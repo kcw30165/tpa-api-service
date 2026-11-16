@@ -52,7 +52,7 @@ class ForgotPasswordDetailsOtpExecutionBridgeTest {
 
   private static ForgotPasswordDetailsOtpResult success() {
     return new ForgotPasswordDetailsOtpResult(
-        ForgotPasswordDetailsOtpResult.Status.SUCCESS, "j***@example.com", 300, 60, List.of());
+        ForgotPasswordDetailsOtpResult.Status.SUCCESS, "j***@example.com", 300, 60, List.of(), false);
   }
 
   @Test
@@ -71,7 +71,7 @@ class ForgotPasswordDetailsOtpExecutionBridgeTest {
                 null,
                 0,
                 0,
-                List.of())
+                List.of(), false)
             .withIncidentPublished();
     var bridge = newBridge();
     HydratedIdempotentResponse response = bridge.toTransientResponse(incident);

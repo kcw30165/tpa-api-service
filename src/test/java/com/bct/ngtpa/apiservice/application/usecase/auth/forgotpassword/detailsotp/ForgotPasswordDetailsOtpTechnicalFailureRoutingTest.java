@@ -315,7 +315,7 @@ class ForgotPasswordDetailsOtpTechnicalFailureRoutingTest {
             null,
             0,
             0,
-            List.of());
+            List.of(), false);
     var transientResponse = new HydratedIdempotentResponse(503, "application/json", "{}", Map.of());
     when(responses.toTransientResponse(any())).thenReturn(transientResponse);
     when(responses.fromTransientResponse(transientResponse)).thenReturn(unavailable);

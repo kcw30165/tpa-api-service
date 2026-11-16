@@ -188,8 +188,8 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                                                     null,
                                                     0,
                                                     0,
-                                                    List.of("PAGE")),
-                                                null));
+                                                    List.of("PAGE"), false),
+                                                null, null, null));
                                       }
                                       if (result.status()
                                           == ForgotPasswordDetailsStatus.SYSTEM_UNAVAILABLE) {
@@ -201,8 +201,8 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                                                     null,
                                                     0,
                                                     0,
-                                                    List.of()),
-                                                null));
+                                                    List.of(), false),
+                                                null, null, null));
                                       }
                                       return failure();
                                     });
@@ -358,8 +358,8 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                                           maskedDestination,
                                           challenge.expiresInSeconds(),
                                           60,
-                                          List.of()),
-                                      new ProtectedReplayReference(reference)))
+                                          List.of(), false),
+                                      new ProtectedReplayReference(reference), null, null))
                               : Mono.error(new LocalTechnicalFailure("commit-state-persistence")));
             });
   }
@@ -425,7 +425,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
   private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> failure() {
     return Mono.just(
         new ForgotPasswordDetailsOtpProtectedExecutionResult(
-            ForgotPasswordDetailsOtpResult.system(), null));
+            ForgotPasswordDetailsOtpResult.system(), null, null, null));
   }
 
   private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> technicalFailure(String stage) {
@@ -437,7 +437,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
       ForgotPasswordDetailsOtpResult.Status status, FailureOrigin origin, String stage) {
     return Mono.just(
         new ForgotPasswordDetailsOtpProtectedExecutionResult(
-            new ForgotPasswordDetailsOtpResult(status, null, 0, 0, List.of()),
+            new ForgotPasswordDetailsOtpResult(status, null, 0, 0, List.of(), false),
             null,
             origin,
             stage));

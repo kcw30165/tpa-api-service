@@ -2,12 +2,8 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identit
 
 public record VerifyForgotPasswordIdentityResult(
     VerifyForgotPasswordIdentityStatus status, boolean incidentPublished) {
-  public VerifyForgotPasswordIdentityResult(VerifyForgotPasswordIdentityStatus status) {
-    this(status, false);
-  }
-
   public static VerifyForgotPasswordIdentityResult of(VerifyForgotPasswordIdentityStatus status) {
-    return new VerifyForgotPasswordIdentityResult(status);
+    return new VerifyForgotPasswordIdentityResult(status, false);
   }
 
   public static VerifyForgotPasswordIdentityResult incidentPublished(

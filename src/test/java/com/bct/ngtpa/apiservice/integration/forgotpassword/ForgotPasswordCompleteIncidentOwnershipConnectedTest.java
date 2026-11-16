@@ -233,7 +233,7 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
             WorkflowNextStep.NONE,
             false,
             false,
-            List.of());
+            List.of(), null);
     if (!replay) {
       when(operation.execute(any()))
           .thenReturn(

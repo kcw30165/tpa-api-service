@@ -8,23 +8,6 @@ public record ResendForgotPasswordOtpResult(
     Integer remainingResendAttempts,
     Integer retryAfterSeconds,
     ForgotPasswordOtpResendPublicationReceipt publicationReceipt) {
-  public ResendForgotPasswordOtpResult(
-      ResendForgotPasswordOtpStatus status,
-      String maskedDestination,
-      Integer expiresInSeconds,
-      Integer resendCooldownSeconds,
-      Integer remainingResendAttempts,
-      Integer retryAfterSeconds) {
-    this(
-        status,
-        maskedDestination,
-        expiresInSeconds,
-        resendCooldownSeconds,
-        remainingResendAttempts,
-        retryAfterSeconds,
-        null);
-  }
-
   public ResendForgotPasswordOtpResult withPublicationReceipt(
       ForgotPasswordOtpResendPublicationReceipt receipt) {
     return new ResendForgotPasswordOtpResult(

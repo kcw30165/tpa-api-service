@@ -342,7 +342,7 @@ public final class IdempotentCompleteForgotPasswordService
                 null,
                 List.of("PAGE"),
                 WorkflowErrorSeverity.ERROR,
-                SOURCE_SERVER)));
+                SOURCE_SERVER)), null);
   }
 
   private static final class PublicationTracker {

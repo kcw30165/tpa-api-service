@@ -60,7 +60,7 @@ public final class IdempotentForgotPasswordDetailsOtpService
               null,
               0,
               0,
-              validation.targets()));
+              validation.targets(), false));
     }
     var incidentPublished = new AtomicBoolean();
     var execution =
@@ -152,6 +152,6 @@ public final class IdempotentForgotPasswordDetailsOtpService
   }
 
   private ForgotPasswordDetailsOtpResult simple(ForgotPasswordDetailsOtpResult.Status status) {
-    return new ForgotPasswordDetailsOtpResult(status, null, 0, 0, List.of());
+    return new ForgotPasswordDetailsOtpResult(status, null, 0, 0, List.of(), false);
   }
 }

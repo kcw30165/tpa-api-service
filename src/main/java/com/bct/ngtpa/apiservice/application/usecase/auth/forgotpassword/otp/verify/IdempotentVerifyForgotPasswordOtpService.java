@@ -191,7 +191,7 @@ public final class IdempotentVerifyForgotPasswordOtpService
 
   private VerifyForgotPasswordOtpResult simple(
       VerifyForgotPasswordOtpStatus status, WorkflowNextStep nextStep) {
-    return new VerifyForgotPasswordOtpResult(status, nextStep, null);
+    return new VerifyForgotPasswordOtpResult(status, nextStep, null, null);
   }
 
   private static final class PublicationTracker {

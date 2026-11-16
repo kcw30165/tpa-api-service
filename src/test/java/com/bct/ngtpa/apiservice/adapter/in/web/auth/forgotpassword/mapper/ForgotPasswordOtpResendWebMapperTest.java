@@ -18,7 +18,7 @@ class ForgotPasswordOtpResendWebMapperTest {
     var resent =
         mapper.toMutationResponse(
             new ResendForgotPasswordOtpResult(
-                ResendForgotPasswordOtpStatus.RESENT, "m****r@example.com", 300, 60, 4, null));
+                ResendForgotPasswordOtpStatus.RESENT, "m****r@example.com", 300, 60, 4, null, null));
     var replay =
         mapper.toMutationResponse(
             new ResendForgotPasswordOtpResult(
@@ -27,7 +27,7 @@ class ForgotPasswordOtpResendWebMapperTest {
                 300,
                 null,
                 4,
-                60));
+                60, null));
     var cooldown =
         mapper.toMutationResponse(
             new ResendForgotPasswordOtpResult(
@@ -36,7 +36,7 @@ class ForgotPasswordOtpResendWebMapperTest {
                 300,
                 null,
                 4,
-                25));
+                25, null));
 
     assertThat(resent.status()).isEqualTo(ApiStatus.SUCCESS);
     assertThat(replay.status()).isEqualTo(ApiStatus.SUCCESS);
@@ -60,7 +60,7 @@ class ForgotPasswordOtpResendWebMapperTest {
                 null,
                 null,
                 null,
-                null));
+                null, null));
 
     assertThat(previousFailed.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
     assertThat(previousFailed.result().nextStep()).isEqualTo(WorkflowNextStep.RESEND_OTP);
@@ -81,7 +81,7 @@ class ForgotPasswordOtpResendWebMapperTest {
                 null,
                 null,
                 0,
-                null));
+                null, null));
     var reused =
         mapper.toMutationResponse(
             new ResendForgotPasswordOtpResult(
@@ -90,7 +90,7 @@ class ForgotPasswordOtpResendWebMapperTest {
                 null,
                 null,
                 null,
-                null));
+                null, null));
     var unavailable =
         mapper.toMutationResponse(
             new ResendForgotPasswordOtpResult(
@@ -99,7 +99,7 @@ class ForgotPasswordOtpResendWebMapperTest {
                 null,
                 null,
                 null,
-                null));
+                null, null));
 
     assertThat(limitReached.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
     assertThat(limitReached.errors())
@@ -129,7 +129,7 @@ class ForgotPasswordOtpResendWebMapperTest {
                 null,
                 null,
                 4,
-                23));
+                23, null));
 
     var json = objectMapper.valueToTree(response);
 

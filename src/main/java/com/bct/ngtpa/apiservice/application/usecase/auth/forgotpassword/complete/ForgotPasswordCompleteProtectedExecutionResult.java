@@ -6,9 +6,6 @@ import java.util.List;
 /** Idempotency-neutral COMPLETE execution classification returned to the shared coordinator. */
 public record ForgotPasswordCompleteProtectedExecutionResult(
     Outcome outcome, CompleteForgotPasswordResult result, List<ForgotPasswordCompleteIncident> incidents) {
-  public ForgotPasswordCompleteProtectedExecutionResult(Outcome outcome, CompleteForgotPasswordResult result) {
-    this(outcome, result, List.of());
-  }
   public enum Outcome {
     TERMINAL,
     TECHNICAL_FAILURE,
@@ -36,12 +33,12 @@ public record ForgotPasswordCompleteProtectedExecutionResult(
 
   public static ForgotPasswordCompleteProtectedExecutionResult terminal(
       CompleteForgotPasswordResult result) {
-    return new ForgotPasswordCompleteProtectedExecutionResult(Outcome.TERMINAL, result);
+    return new ForgotPasswordCompleteProtectedExecutionResult(Outcome.TERMINAL, result, List.of());
   }
 
   public static ForgotPasswordCompleteProtectedExecutionResult technicalFailure(
       CompleteForgotPasswordResult result) {
-    return new ForgotPasswordCompleteProtectedExecutionResult(Outcome.TECHNICAL_FAILURE, result);
+    return new ForgotPasswordCompleteProtectedExecutionResult(Outcome.TECHNICAL_FAILURE, result, List.of());
   }
 
   public static ForgotPasswordCompleteProtectedExecutionResult technicalFailure(
@@ -52,7 +49,7 @@ public record ForgotPasswordCompleteProtectedExecutionResult(
 
   public static ForgotPasswordCompleteProtectedExecutionResult unknownOutcome(
       CompleteForgotPasswordResult result) {
-    return new ForgotPasswordCompleteProtectedExecutionResult(Outcome.UNKNOWN_OUTCOME, result);
+    return new ForgotPasswordCompleteProtectedExecutionResult(Outcome.UNKNOWN_OUTCOME, result, List.of());
   }
 
   public static ForgotPasswordCompleteProtectedExecutionResult unknownOutcome(

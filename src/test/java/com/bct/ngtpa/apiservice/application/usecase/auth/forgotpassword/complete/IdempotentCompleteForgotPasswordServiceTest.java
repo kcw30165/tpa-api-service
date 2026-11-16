@@ -146,7 +146,7 @@ class IdempotentCompleteForgotPasswordServiceTest {
         WorkflowNextStep.RETURN_TO_LOGIN,
         true,
         true,
-        List.of());
+        List.of(), null);
   }
 
   private static CompleteForgotPasswordResult systemFailedResult() {
@@ -155,7 +155,7 @@ class IdempotentCompleteForgotPasswordServiceTest {
         WorkflowNextStep.PASSWORD_SETUP,
         false,
         false,
-        List.of());
+        List.of(), null);
   }
 
   /** Captures the command passed to executor.execute(...) and returns it. */
@@ -262,7 +262,7 @@ class IdempotentCompleteForgotPasswordServiceTest {
             WorkflowNextStep.PASSWORD_SETUP,
             false,
             false,
-            List.of());
+            List.of(), null);
     when(operation.execute(any()))
         .thenReturn(
             Mono.just(ForgotPasswordCompleteProtectedExecutionResult.terminal(business)));
@@ -459,7 +459,7 @@ class IdempotentCompleteForgotPasswordServiceTest {
                         WorkflowNextStep.NONE,
                         false,
                         false,
-                        List.of()),
+                        List.of(), null),
                     List.of(
                         ForgotPasswordCompleteIncident.apim(
                             FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset"),

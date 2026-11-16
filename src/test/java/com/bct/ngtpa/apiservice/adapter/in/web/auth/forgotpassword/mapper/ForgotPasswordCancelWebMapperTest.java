@@ -27,7 +27,7 @@ class ForgotPasswordCancelWebMapperTest {
           CancelForgotPasswordStatus.ALREADY_TERMINAL
         }) {
       var response =
-          mapper.toResponse(new CancelForgotPasswordResult(status, true, true, List.of()));
+          mapper.toResponse(new CancelForgotPasswordResult(status, true, true, List.of(), false));
       var json = objectMapper.valueToTree(response);
 
       assertThat(response.success()).isTrue();
@@ -47,7 +47,7 @@ class ForgotPasswordCancelWebMapperTest {
     var response =
         mapper.toResponse(
             new CancelForgotPasswordResult(
-                CancelForgotPasswordStatus.CANCELLED, true, true, List.of()));
+                CancelForgotPasswordStatus.CANCELLED, true, true, List.of(), false));
     var json = objectMapper.valueToTree(response);
     assertThat(json.toString())
         .doesNotContain("CANCELLED", "SESSION_NOT_FOUND", "ALREADY_TERMINAL");
@@ -63,7 +63,7 @@ class ForgotPasswordCancelWebMapperTest {
                 false,
                 List.of(
                     error(
-                        WorkflowErrorType.FORM, "err.forgot-password.authFlow.invalid", "PAGE"))));
+                        WorkflowErrorType.FORM, "err.forgot-password.authFlow.invalid", "PAGE")), false));
 
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
@@ -87,7 +87,7 @@ class ForgotPasswordCancelWebMapperTest {
                 false,
                 false,
                 List.of(
-                    error(WorkflowErrorType.FORM, "err.forgot-password.csrf.invalid", "PAGE"))));
+                    error(WorkflowErrorType.FORM, "err.forgot-password.csrf.invalid", "PAGE")), false));
 
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
@@ -109,7 +109,7 @@ class ForgotPasswordCancelWebMapperTest {
                 CancelForgotPasswordStatus.SYSTEM_FAILED,
                 false,
                 false,
-                List.of(error(WorkflowErrorType.SYSTEM, "err.system.unavailable", "PAGE"))));
+                List.of(error(WorkflowErrorType.SYSTEM, "err.system.unavailable", "PAGE")), false));
 
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);

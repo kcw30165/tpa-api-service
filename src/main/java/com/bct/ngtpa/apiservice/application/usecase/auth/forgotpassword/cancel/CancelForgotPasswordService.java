@@ -203,7 +203,7 @@ public final class CancelForgotPasswordService implements CancelForgotPasswordUs
   }
 
   private CancelForgotPasswordResult cleanup(CancelForgotPasswordStatus status) {
-    return new CancelForgotPasswordResult(status, true, true, List.of());
+    return new CancelForgotPasswordResult(status, true, true, List.of(), false);
   }
 
   private CancelForgotPasswordResult csrfFailure() {

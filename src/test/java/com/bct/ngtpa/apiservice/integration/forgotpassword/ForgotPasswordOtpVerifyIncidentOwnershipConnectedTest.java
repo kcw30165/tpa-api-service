@@ -203,10 +203,10 @@ class ForgotPasswordOtpVerifyIncidentOwnershipConnectedTest {
     var operation = mock(ForgotPasswordOtpVerifyProtectedOperation.class);
     var expected =
         new VerifyForgotPasswordOtpResult(
-            VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE, null);
+            VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE, null, null);
     var technical =
         new VerifyForgotPasswordOtpResult(
-            VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, null);
+            VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, null, null);
     IdempotencyReservationOutcome outcome = IdempotencyReservationOutcome.ACQUIRED;
     HydratedIdempotentResponse replayResponse =
         new HydratedIdempotentResponse(503, "application/json", "{}", Map.of());
@@ -218,7 +218,7 @@ class ForgotPasswordOtpVerifyIncidentOwnershipConnectedTest {
                       technical, ForgotPasswordOtpVerifyIncident.SESSION_READ)));
     } else if (scenario == Scenario.EXPECTED_REJECTION) {
       when(operation.execute(any()))
-          .thenReturn(Mono.just(new ForgotPasswordOtpVerifyProtectedExecutionResult(expected)));
+          .thenReturn(Mono.just(new ForgotPasswordOtpVerifyProtectedExecutionResult(expected, null)));
       replayResponse = new HydratedIdempotentResponse(400, "application/json", "{}", Map.of());
     } else if (scenario == Scenario.COMPLETED_REPLAY) {
       outcome = IdempotencyReservationOutcome.COMPLETED_REPLAY;

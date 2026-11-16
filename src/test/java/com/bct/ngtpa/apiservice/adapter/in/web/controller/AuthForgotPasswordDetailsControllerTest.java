@@ -136,7 +136,7 @@ class AuthForgotPasswordDetailsControllerTest {
                         null,
                         0,
                         0,
-                        List.of()));
+                        List.of(), false));
     var response = new MockServerHttpResponse();
     var exchange = exchange();
 
@@ -267,7 +267,7 @@ class AuthForgotPasswordDetailsControllerTest {
                         null,
                         0,
                         0,
-                        List.of("PAGE")));
+                        List.of("PAGE"), false));
     var response = new MockServerHttpResponse();
     var exchange = exchange();
 
@@ -362,7 +362,7 @@ class AuthForgotPasswordDetailsControllerTest {
               "m****r@example.com",
               300,
               60,
-              java.util.List.of()));
+              java.util.List.of(), false));
     }
   }
 

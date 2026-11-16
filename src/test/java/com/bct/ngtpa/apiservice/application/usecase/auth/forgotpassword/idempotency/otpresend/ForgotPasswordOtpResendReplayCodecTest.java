@@ -48,12 +48,12 @@ class ForgotPasswordOtpResendReplayCodecTest {
 
   private static ResendForgotPasswordOtpResult resent() {
     return new ResendForgotPasswordOtpResult(
-        ResendForgotPasswordOtpStatus.RESENT, "j***@example.com", 300, 60, 4, null);
+        ResendForgotPasswordOtpStatus.RESENT, "j***@example.com", 300, 60, 4, null, null);
   }
 
   private static ResendForgotPasswordOtpResult securityRejected() {
     return new ResendForgotPasswordOtpResult(
-        ResendForgotPasswordOtpStatus.SECURITY_REJECTED, null, null, null, null, null);
+        ResendForgotPasswordOtpStatus.SECURITY_REJECTED, null, null, null, null, null, null);
   }
 
   // ----- capture() -------------------------------------------------------------
@@ -106,7 +106,7 @@ class ForgotPasswordOtpResendReplayCodecTest {
             null,
             null,
             null,
-            null);
+            null, null);
     assertThatThrownBy(() -> newCodec().capture(malformed, response(403, Map.of()), null))
         .isInstanceOf(IllegalArgumentException.class);
   }

@@ -149,7 +149,7 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
                         command.referer(),
                         command.requestId(),
                         Set.of(AuthFlowStatus.OTP_SENT),
-                        true)),
+                        true, false)),
             ForgotPasswordOtpVerifyIncident.CONTEXT_LOAD)
         .flatMap(loaded -> validateLoadedContext(command, loaded));
   }
@@ -342,14 +342,14 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
       WorkflowNextStep nextStep,
       Integer remainingVerifyAttempts) {
     return new ForgotPasswordOtpVerifyProtectedExecutionResult(
-        new VerifyForgotPasswordOtpResult(status, nextStep, remainingVerifyAttempts));
+        new VerifyForgotPasswordOtpResult(status, nextStep, remainingVerifyAttempts, null), null);
   }
 
   private ForgotPasswordOtpVerifyProtectedExecutionResult failed(
       ForgotPasswordOtpVerifyIncident incident) {
     return new ForgotPasswordOtpVerifyProtectedExecutionResult(
         new VerifyForgotPasswordOtpResult(
-            VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, null),
+            VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, null, null),
         incident);
   }
 

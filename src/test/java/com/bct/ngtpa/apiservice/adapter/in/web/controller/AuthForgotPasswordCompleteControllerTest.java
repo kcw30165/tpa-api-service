@@ -127,7 +127,7 @@ class AuthForgotPasswordCompleteControllerTest {
               WorkflowNextStep.RETURN_TO_LOGIN,
               true,
               true,
-              List.of()));
+              List.of(), null));
     }
   }
 
@@ -140,7 +140,7 @@ class AuthForgotPasswordCompleteControllerTest {
               WorkflowNextStep.NONE,
               false,
               false,
-              List.of())
+              List.of(), null)
               .withPublicationReceipt(new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword
                   .complete.ForgotPasswordCompletePublicationReceipt(true)));
     }

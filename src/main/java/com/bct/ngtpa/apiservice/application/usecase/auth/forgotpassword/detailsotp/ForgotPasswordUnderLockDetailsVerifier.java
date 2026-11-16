@@ -46,7 +46,7 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
                         ForgotPasswordDetailsStatus.DETAILS_VERIFIED,
                         r.trustCode(),
                         r.schemeName(),
-                        r.schemeNameChi())
+                        r.schemeNameChi(), null)
                     : ForgotPasswordUnderLockDetailsVerification.of(
                         ForgotPasswordDetailsStatus.BUSINESS_REJECTED))
         .onErrorResume(

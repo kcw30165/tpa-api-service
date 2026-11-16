@@ -61,7 +61,7 @@ class IdempotentVerifyForgotPasswordOtpServiceTest {
     VerifyForgotPasswordOtpResult verified = result(VerifyForgotPasswordOtpStatus.VERIFIED);
     HydratedIdempotentResponse response = response();
     when(acquired.operation.execute(command()))
-        .thenReturn(Mono.just(new ForgotPasswordOtpVerifyProtectedExecutionResult(verified)));
+        .thenReturn(Mono.just(new ForgotPasswordOtpVerifyProtectedExecutionResult(verified, null)));
     when(acquired.responses.toTransientResponse(verified)).thenReturn(response);
     when(acquired.responses.fromTransientResponse(response)).thenReturn(verified);
     StepVerifier.create(acquired.service.verify(command())).expectNext(verified).verifyComplete();
@@ -343,7 +343,7 @@ class IdempotentVerifyForgotPasswordOtpServiceTest {
         status == VerifyForgotPasswordOtpStatus.VERIFIED
             ? WorkflowNextStep.PASSWORD_SETUP
             : WorkflowNextStep.NONE,
-        null);
+        null, null);
   }
 
   private static HydratedIdempotentResponse response() {

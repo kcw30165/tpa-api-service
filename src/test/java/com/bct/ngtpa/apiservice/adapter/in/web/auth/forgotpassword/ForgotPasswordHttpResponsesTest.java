@@ -84,7 +84,7 @@ public class ForgotPasswordHttpResponsesTest {
         List.of(
             ResendForgotPasswordOtpStatus.COOLDOWN_ACTIVE,
             ResendForgotPasswordOtpStatus.RESEND_LIMIT_REACHED)) {
-      var result = new ResendForgotPasswordOtpResult(status, "j***@example.com", 240, null, 3, 25);
+      var result = new ResendForgotPasswordOtpResult(status, "j***@example.com", 240, null, 3, 25, null);
 
       ResponseEntity<?> response =
           ForgotPasswordHttpResponses.toResponse(mapper.toMutationResponse(result));

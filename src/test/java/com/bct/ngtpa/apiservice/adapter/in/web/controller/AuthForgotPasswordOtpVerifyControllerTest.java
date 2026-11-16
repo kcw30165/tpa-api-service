@@ -283,9 +283,9 @@ class AuthForgotPasswordOtpVerifyControllerTest {
     for (VerifyForgotPasswordOtpResult result :
         List.of(
             new VerifyForgotPasswordOtpResult(
-                VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE, null),
+                VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE, null, null),
             new VerifyForgotPasswordOtpResult(
-                VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, null))) {
+                VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, null, null))) {
       var exchange = exchange();
       controller(command -> Mono.just(result))
           .verify(
@@ -351,7 +351,7 @@ class AuthForgotPasswordOtpVerifyControllerTest {
       this.command = command;
       return Mono.just(
           new VerifyForgotPasswordOtpResult(
-              VerifyForgotPasswordOtpStatus.VERIFIED, WorkflowNextStep.PASSWORD_SETUP, null));
+              VerifyForgotPasswordOtpStatus.VERIFIED, WorkflowNextStep.PASSWORD_SETUP, null, null));
     }
   }
 

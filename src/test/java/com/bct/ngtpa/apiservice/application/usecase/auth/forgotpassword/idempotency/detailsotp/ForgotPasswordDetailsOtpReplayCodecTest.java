@@ -54,7 +54,7 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
   void captureSuccessWithReferenceSucceeds() {
     ForgotPasswordDetailsOtpResult result =
         new ForgotPasswordDetailsOtpResult(
-            ForgotPasswordDetailsOtpResult.Status.SUCCESS, "j***@example.com", 300, 60, List.of());
+            ForgotPasswordDetailsOtpResult.Status.SUCCESS, "j***@example.com", 300, 60, List.of(), false);
     int status = ForgotPasswordDetailsOtpReplayCodec.httpStatus(result.status());
     when(envelope.encode(any(), any())).thenReturn("{}");
     StepVerifier.create(newCodec().capture(result, response(status, Map.of()), reference()))
@@ -74,7 +74,7 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
             null,
             0,
             0,
-            List.of("dateOfBirth"));
+            List.of("dateOfBirth"), false);
     int status = ForgotPasswordDetailsOtpReplayCodec.httpStatus(result.status());
     when(envelope.encode(any(), any())).thenReturn("{}");
     StepVerifier.create(newCodec().capture(result, response(status, Map.of()), null))
@@ -86,7 +86,7 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
   void captureSystemUnavailableWithoutProtectedReplaySucceeds() {
     ForgotPasswordDetailsOtpResult result =
         new ForgotPasswordDetailsOtpResult(
-            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE, null, 0, 0, List.of());
+            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE, null, 0, 0, List.of(), false);
     when(envelope.encode(any(), any())).thenReturn("{}");
     StepVerifier.create(newCodec().capture(result, response(503, Map.of()), null))
         .assertNext(
@@ -101,7 +101,7 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
   void captureReferencePresenceMismatchErrors() {
     ForgotPasswordDetailsOtpResult result =
         new ForgotPasswordDetailsOtpResult(
-            ForgotPasswordDetailsOtpResult.Status.SUCCESS, "j***@example.com", 300, 60, List.of());
+            ForgotPasswordDetailsOtpResult.Status.SUCCESS, "j***@example.com", 300, 60, List.of(), false);
     int status = ForgotPasswordDetailsOtpReplayCodec.httpStatus(result.status());
     StepVerifier.create(newCodec().capture(result, response(status, Map.of()), null))
         .expectError(IllegalArgumentException.class)
@@ -112,7 +112,7 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
   void captureTransportMismatchErrors() {
     ForgotPasswordDetailsOtpResult result =
         new ForgotPasswordDetailsOtpResult(
-            ForgotPasswordDetailsOtpResult.Status.SUCCESS, "j***@example.com", 300, 60, List.of());
+            ForgotPasswordDetailsOtpResult.Status.SUCCESS, "j***@example.com", 300, 60, List.of(), false);
     StepVerifier.create(newCodec().capture(result, response(500, Map.of()), reference()))
         .expectError(IllegalArgumentException.class)
         .verify();
@@ -122,7 +122,7 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
   void captureInvalidSuccessResultThrowsSynchronously() {
     ForgotPasswordDetailsOtpResult malformed =
         new ForgotPasswordDetailsOtpResult(
-            ForgotPasswordDetailsOtpResult.Status.SUCCESS, "", 300, 60, List.of());
+            ForgotPasswordDetailsOtpResult.Status.SUCCESS, "", 300, 60, List.of(), false);
     assertThatThrownBy(() -> newCodec().capture(malformed, response(200, Map.of()), reference()))
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -238,7 +238,7 @@ class ForgotPasswordDetailsOtpReplayCodecTest {
             ForgotPasswordDetailsOtpResult.Status.SUCCESS);
     ForgotPasswordDetailsOtpResult delegated =
         new ForgotPasswordDetailsOtpResult(
-            ForgotPasswordDetailsOtpResult.Status.SUCCESS, "j***@example.com", 200, 45, List.of());
+            ForgotPasswordDetailsOtpResult.Status.SUCCESS, "j***@example.com", 200, 45, List.of(), false);
     when(protectedReplay.resolve(any())).thenReturn(Mono.just(delegated));
     StepVerifier.create(newCodec().hydrate(snapshot(status, Map.of(), reference())))
         .expectNext(delegated)

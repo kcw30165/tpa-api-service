@@ -16,14 +16,6 @@ public record CancelForgotPasswordResult(
     errors = errors == null ? List.of() : List.copyOf(errors);
   }
 
-  public CancelForgotPasswordResult(
-      CancelForgotPasswordStatus status,
-      boolean clearAuthFlowCookie,
-      boolean clearXsrfCookie,
-      List<WorkflowErrorDescriptor> errors) {
-    this(status, clearAuthFlowCookie, clearXsrfCookie, errors, false);
-  }
-
   public boolean successfulCleanup() {
     return switch (status) {
       case CANCELLED, SESSION_NOT_FOUND, ALREADY_CANCELLED, ALREADY_TERMINAL -> true;

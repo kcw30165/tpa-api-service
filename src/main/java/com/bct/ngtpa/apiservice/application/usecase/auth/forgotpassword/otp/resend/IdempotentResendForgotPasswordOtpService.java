@@ -173,7 +173,7 @@ public final class IdempotentResendForgotPasswordOtpService
   }
 
   private ResendForgotPasswordOtpResult simple(ResendForgotPasswordOtpStatus status) {
-    return new ResendForgotPasswordOtpResult(status, null, null, null, null, null);
+    return new ResendForgotPasswordOtpResult(status, null, null, null, null, null, null);
   }
 
   private static final class PublicationTracker {

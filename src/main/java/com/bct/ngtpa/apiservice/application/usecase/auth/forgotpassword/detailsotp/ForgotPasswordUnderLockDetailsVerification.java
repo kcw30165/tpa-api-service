@@ -15,11 +15,6 @@ public record ForgotPasswordUnderLockDetailsVerification(
     String schemeNameChi,
     FailureOrigin failureOrigin) {
 
-  public ForgotPasswordUnderLockDetailsVerification(
-      ForgotPasswordDetailsStatus status, String trustCode, String schemeName, String schemeNameChi) {
-    this(status, trustCode, schemeName, schemeNameChi, null);
-  }
-
   public static ForgotPasswordUnderLockDetailsVerification of(ForgotPasswordDetailsStatus status) {
     return new ForgotPasswordUnderLockDetailsVerification(status, null, null, null, null);
   }

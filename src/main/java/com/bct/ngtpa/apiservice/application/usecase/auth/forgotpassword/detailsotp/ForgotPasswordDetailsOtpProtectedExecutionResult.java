@@ -11,11 +11,6 @@ public record ForgotPasswordDetailsOtpProtectedExecutionResult(
     FailureOrigin failureOrigin,
     String failureStage) {
 
-  public ForgotPasswordDetailsOtpProtectedExecutionResult(
-      ForgotPasswordDetailsOtpResult result, ProtectedReplayReference replayReference) {
-    this(result, replayReference, null, null);
-  }
-
   public ForgotPasswordDetailsOtpProtectedExecutionResult {
     Objects.requireNonNull(result, "result must not be null");
     if ((result.status() == ForgotPasswordDetailsOtpResult.Status.SUCCESS)

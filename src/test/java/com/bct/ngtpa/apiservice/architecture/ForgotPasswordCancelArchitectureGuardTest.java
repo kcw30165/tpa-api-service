@@ -81,7 +81,7 @@ class ForgotPasswordCancelArchitectureGuardTest {
           CancelForgotPasswordStatus.ALREADY_CANCELLED,
           CancelForgotPasswordStatus.ALREADY_TERMINAL
         }) {
-      var result = new CancelForgotPasswordResult(status, true, true, java.util.List.of());
+      var result = new CancelForgotPasswordResult(status, true, true, java.util.List.of(), false);
       assertThat(result.successfulCleanup()).isTrue();
       assertThat(result.clearAuthFlowCookie()).isTrue();
       assertThat(result.clearXsrfCookie()).isTrue();

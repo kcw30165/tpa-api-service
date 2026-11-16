@@ -87,7 +87,7 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
     var transientResponse = new HydratedIdempotentResponse(200, "application/json", "{}", Map.of());
     when(fixture.operation.execute(command()))
         .thenReturn(
-            Mono.just(new ForgotPasswordDetailsOtpProtectedExecutionResult(result, reference)));
+            Mono.just(new ForgotPasswordDetailsOtpProtectedExecutionResult(result, reference, null, null)));
     when(fixture.responses.toTransientResponse(result)).thenReturn(transientResponse);
     when(fixture.responses.fromTransientResponse(any())).thenReturn(result);
 
@@ -123,7 +123,7 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
         .thenReturn(
             Mono.just(
                 new ForgotPasswordDetailsOtpProtectedExecutionResult(
-                    ForgotPasswordDetailsOtpResult.system(), null)));
+                    ForgotPasswordDetailsOtpResult.system(), null, null, null)));
     StepVerifier.create(fixture.service.process(command()))
         .expectError(ForgotPasswordDetailsOtpExpectedFailureException.class)
         .verify();
@@ -140,7 +140,7 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
     when(fixture.policy.detailsAndOtp(any())).thenReturn(mock(IdempotencyFingerprint.class));
     var unavailable =
         new ForgotPasswordDetailsOtpResult(
-            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE, null, 0, 0, java.util.List.of());
+            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE, null, 0, 0, java.util.List.of(), false);
     when(fixture.operation.execute(command()))
         .thenReturn(
             Mono.just(
@@ -241,7 +241,7 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
     when(fixture.policy.detailsAndOtp(any())).thenReturn(mock(IdempotencyFingerprint.class));
     var unavailable =
         new ForgotPasswordDetailsOtpResult(
-            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE, null, 0, 0, java.util.List.of());
+            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE, null, 0, 0, java.util.List.of(), false);
     when(fixture.operation.execute(command()))
         .thenReturn(
             Mono.just(
@@ -295,7 +295,7 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
         "m***@example.com",
         300,
         60,
-        java.util.List.of());
+        java.util.List.of(), false);
   }
 
   private static final class CapturingExecutor implements IdempotencyExecutor {

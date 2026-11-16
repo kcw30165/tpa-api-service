@@ -86,7 +86,7 @@ public final class ForgotPasswordOtpResendReplayCodec {
           new IllegalArgumentException("OTP_RESEND rejection cannot carry protected replay"));
     }
     ResendForgotPasswordOtpResult result =
-        new ResendForgotPasswordOtpResult(status, null, null, null, null, null);
+        new ResendForgotPasswordOtpResult(status, null, null, null, null, null, null);
     validateCapturable(result);
     return Mono.just(result);
   }

@@ -28,7 +28,7 @@ class ForgotPasswordOtpVerifyReplayCodecTest {
   void roundTripsOnlyPublicOtpVerifyResultFields() {
     var result =
         new VerifyForgotPasswordOtpResult(
-            VerifyForgotPasswordOtpStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP, 3);
+            VerifyForgotPasswordOtpStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP, 3, null);
     var transientResponse = bridge.toTransientResponse(result);
     StepVerifier.create(
             codec.capture(result, transientResponse).flatMap(c -> codec.hydrate(c.snapshot())))

@@ -108,7 +108,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
             return Mono.just(
                 execution(
                     new ResendForgotPasswordOtpResult(
-                        ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null),
+                        ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null, null),
                     null,
                     incidents));
           }
@@ -126,7 +126,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                                       null,
                                       null,
                                       null,
-                                      null),
+                                      null, null),
                                   null,
                                   incidents)))
               .onErrorResume(
@@ -140,7 +140,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                                 null,
                                 null,
                                 null,
-                                null),
+                                null, null),
                             null,
                             incidents));
                   });
@@ -191,8 +191,8 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                                 null,
                                 null,
                                 null,
-                                null),
-                            null));
+                                null, null),
+                            null, List.of()));
                   }
                   AuthFlowSessionSnapshot snapshot = optional.get();
                   return validateEligibility(command, handle, snapshot, incidents)
@@ -226,7 +226,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                             null,
                             null,
                             null,
-                            null),
+                            null, null),
                         null,
                         incidents));
                 });
@@ -518,7 +518,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                                 candidate.expiresInSeconds(),
                                 otpPolicy.resendCooldownSeconds(),
                                 remainingResendAttempts(validated.successfulResendCount + 1),
-                                null),
+                                null, null),
                             new ProtectedReplayReference(pendingRef),
                             incidents)));
   }
@@ -540,7 +540,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                     null,
                     null,
                     null,
-                    null),
+                    null, null),
                 null,
                 incidents));
   }
@@ -755,7 +755,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
               expiresInSeconds,
               null,
               remainingResendAttempts(validated.successfulResendCount),
-              validated.retryAfterSeconds());
+              validated.retryAfterSeconds(), null);
       case RESEND_LIMIT_REACHED ->
           new ResendForgotPasswordOtpResult(
               ResendForgotPasswordOtpStatus.RESEND_LIMIT_REACHED,
@@ -763,13 +763,13 @@ public final class ForgotPasswordOtpResendProtectedOperation {
               expiresInSeconds,
               null,
               0,
-              null);
+              null, null);
       case SESSION_INVALID, CHALLENGE_BINDING_INVALID, INVALID_PHASE, NO_ACTIVE_CHALLENGE ->
           validated.securityRejected()
               ? new ResendForgotPasswordOtpResult(
-                  ResendForgotPasswordOtpStatus.SECURITY_REJECTED, null, null, null, null, null)
+                  ResendForgotPasswordOtpStatus.SECURITY_REJECTED, null, null, null, null, null, null)
               : new ResendForgotPasswordOtpResult(
-                  ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID, null, null, null, null, null);
+                  ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID, null, null, null, null, null, null);
       case UNKNOWN_OUTCOME_BLOCKED ->
           new ResendForgotPasswordOtpResult(
               ResendForgotPasswordOtpStatus.UNKNOWN_OUTCOME,
@@ -777,10 +777,10 @@ public final class ForgotPasswordOtpResendProtectedOperation {
               expiresInSeconds,
               null,
               remainingResendAttempts(validated.successfulResendCount),
-              null);
+              null, null);
       default ->
           new ResendForgotPasswordOtpResult(
-              ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null);
+              ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null, null);
     };
   }
 

@@ -26,25 +26,6 @@ public record ForgotPasswordProtectedAuthFlowContextCommand(
             : Set.copyOf(acceptedStatuses);
   }
 
-  public ForgotPasswordProtectedAuthFlowContextCommand(
-      AuthFlowSessionId authFlowSessionId,
-      String csrfToken,
-      String origin,
-      String referer,
-      String correlationId,
-      Set<AuthFlowStatus> acceptedStatuses,
-      boolean csrfRequired) {
-    this(
-        authFlowSessionId,
-        csrfToken,
-        origin,
-        referer,
-        correlationId,
-        acceptedStatuses,
-        csrfRequired,
-        false);
-  }
-
   @Override
   public String toString() {
     return "ForgotPasswordProtectedAuthFlowContextCommand[authFlowSessionId=<redacted>, csrfToken=<redacted>, origin=<redacted>, referer=<redacted>, correlationId="

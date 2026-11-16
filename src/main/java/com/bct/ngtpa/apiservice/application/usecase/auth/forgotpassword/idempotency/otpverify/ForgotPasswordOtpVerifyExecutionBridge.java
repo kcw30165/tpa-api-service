@@ -62,7 +62,7 @@ public final class ForgotPasswordOtpVerifyExecutionBridge {
       return new VerifyForgotPasswordOtpResult(
           VerifyForgotPasswordOtpStatus.valueOf(status),
           WorkflowNextStep.valueOf(nextStep),
-          remainingVerifyAttempts);
+          remainingVerifyAttempts, null);
     }
   }
 }

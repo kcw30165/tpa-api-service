@@ -8,13 +8,6 @@ public record VerifyForgotPasswordOtpResult(
     WorkflowNextStep nextStep,
     Integer remainingVerifyAttempts,
     ForgotPasswordOtpVerifyPublicationReceipt publicationReceipt) {
-  public VerifyForgotPasswordOtpResult(
-      VerifyForgotPasswordOtpStatus status,
-      WorkflowNextStep nextStep,
-      Integer remainingVerifyAttempts) {
-    this(status, nextStep, remainingVerifyAttempts, null);
-  }
-
   public VerifyForgotPasswordOtpResult {
     Objects.requireNonNull(status, "status must not be null");
     nextStep = nextStep == null ? WorkflowNextStep.NONE : nextStep;

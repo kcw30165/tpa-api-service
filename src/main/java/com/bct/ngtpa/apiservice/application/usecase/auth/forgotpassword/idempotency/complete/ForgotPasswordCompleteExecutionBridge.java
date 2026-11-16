@@ -67,7 +67,7 @@ public final class ForgotPasswordCompleteExecutionBridge {
           WorkflowNextStep.valueOf(nextStep),
           clearAuthFlowCookie,
           clearXsrfCookie,
-          errors.stream().map(ForgotPasswordCompleteReplayCodec.ErrorWire::toError).toList());
+          errors.stream().map(ForgotPasswordCompleteReplayCodec.ErrorWire::toError).toList(), null);
     }
   }
 }

@@ -60,7 +60,7 @@ class AuthForgotPasswordCancelControllerTest {
         controller(
             new RecordingUseCase(
                 new CancelForgotPasswordResult(
-                    CancelForgotPasswordStatus.CANCELLED, true, true, List.of())));
+                    CancelForgotPasswordStatus.CANCELLED, true, true, List.of(), false)));
     var response = new MockServerHttpResponse();
 
     StepVerifier.create(
@@ -92,7 +92,7 @@ class AuthForgotPasswordCancelControllerTest {
         controller(
             new RecordingUseCase(
                 new CancelForgotPasswordResult(
-                    CancelForgotPasswordStatus.CANCELLED, true, true, List.of())));
+                    CancelForgotPasswordStatus.CANCELLED, true, true, List.of(), false)));
     var response = new MockServerHttpResponse();
 
     StepVerifier.create(
@@ -128,7 +128,7 @@ class AuthForgotPasswordCancelControllerTest {
         controller(
             new RecordingUseCase(
                 new CancelForgotPasswordResult(
-                    CancelForgotPasswordStatus.CANCELLED, true, true, List.of())));
+                    CancelForgotPasswordStatus.CANCELLED, true, true, List.of(), false)));
     var response = new MockServerHttpResponse();
 
     StepVerifier.create(
@@ -167,7 +167,7 @@ class AuthForgotPasswordCancelControllerTest {
         controller(
             new RecordingUseCase(
                 new CancelForgotPasswordResult(
-                    CancelForgotPasswordStatus.INVALID_AUTH_FLOW, false, false, errors)));
+                    CancelForgotPasswordStatus.INVALID_AUTH_FLOW, false, false, errors, false)));
     var response = new MockServerHttpResponse();
 
     StepVerifier.create(
@@ -205,7 +205,7 @@ class AuthForgotPasswordCancelControllerTest {
         controller(
             new RecordingUseCase(
                 new CancelForgotPasswordResult(
-                    CancelForgotPasswordStatus.SYSTEM_FAILED, false, false, errors)));
+                    CancelForgotPasswordStatus.SYSTEM_FAILED, false, false, errors, false)));
     var response = new MockServerHttpResponse();
 
     StepVerifier.create(

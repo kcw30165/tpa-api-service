@@ -60,13 +60,13 @@ class ForgotPasswordOtpResendReplayCodecCooldownFailFirstTest {
   /** Same shape the protected operation builds in mapEligibility for a cooldown. */
   private static ResendForgotPasswordOtpResult cooldownActive() {
     return new ResendForgotPasswordOtpResult(
-        ResendForgotPasswordOtpStatus.COOLDOWN_ACTIVE, "j***@example.com", 240, null, 3, 25);
+        ResendForgotPasswordOtpStatus.COOLDOWN_ACTIVE, "j***@example.com", 240, null, 3, 25, null);
   }
 
   /** Same shape the protected operation builds in mapEligibility for the resend limit. */
   private static ResendForgotPasswordOtpResult resendLimitReached() {
     return new ResendForgotPasswordOtpResult(
-        ResendForgotPasswordOtpStatus.RESEND_LIMIT_REACHED, "j***@example.com", 240, null, 0, null);
+        ResendForgotPasswordOtpStatus.RESEND_LIMIT_REACHED, "j***@example.com", 240, null, 0, null, null);
   }
 
   private void givenDecodedStatus(ResendForgotPasswordOtpStatus status) {
