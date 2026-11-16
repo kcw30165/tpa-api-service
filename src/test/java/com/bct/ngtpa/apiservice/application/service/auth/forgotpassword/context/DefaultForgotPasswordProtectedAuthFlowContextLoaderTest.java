@@ -131,14 +131,7 @@ class DefaultForgotPasswordProtectedAuthFlowContextLoaderTest {
 
     StepVerifier.create(
             fixture.loader.load(
-                new ForgotPasswordProtectedAuthFlowContextCommand(
-                    new AuthFlowSessionId("afs_fp"),
-                    "bad-token",
-                    null,
-                    null,
-                    "corr-1",
-                    Set.of(AuthFlowStatus.IDENTITY_VERIFIED),
-                    true)))
+                command(Set.of(AuthFlowStatus.IDENTITY_VERIFIED), true, true, "bad-token")))
         .assertNext(
             result ->
                 assertThat(result.status())
@@ -171,14 +164,13 @@ class DefaultForgotPasswordProtectedAuthFlowContextLoaderTest {
 
     StepVerifier.create(
             fixture.loader.load(
-                new ForgotPasswordProtectedAuthFlowContextCommand(
-                    new AuthFlowSessionId("afs_fp"),
+                newCommand(
+                    Set.of(AuthFlowStatus.IDENTITY_VERIFIED),
+                    true,
+                    true,
                     "csrf-token",
                     "https://portal.example",
-                    "https://evil.example",
-                    "corr-1",
-                    Set.of(AuthFlowStatus.IDENTITY_VERIFIED),
-                    true)))
+                    "https://evil.example")))
         .assertNext(
             result ->
                 assertThat(result.status())
@@ -202,6 +194,92 @@ class DefaultForgotPasswordProtectedAuthFlowContextLoaderTest {
             });
   }
 
+  @Test
+  void identityCheckPropagatesThrownCsrfValidatorFailureWithoutCallingSecurityAudit() {
+    var session =
+        session(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.IDENTITY_VERIFIED, false);
+    var throwingCsrf =
+        new AuthFlowSessionCsrfService(
+            new FakeAuthFlowSessionPort(session),
+            new FixedCsrfTokenGenerator(),
+            new Sha256CsrfTokenHasher()) {
+          @Override
+          public Mono<ValidateAuthFlowSessionCsrfResult> validateForSession(
+              ValidateAuthFlowSessionCsrfCommand command) {
+            return Mono.error(new IllegalStateException("token=CSRF-VALIDATOR-SECRET"));
+          }
+        };
+    var fixture = new Fixture(session, throwingCsrf);
+
+    StepVerifier.create(
+            fixture.loader.load(
+                command(Set.of(AuthFlowStatus.IDENTITY_VERIFIED), true, true, "csrf-token")))
+        .expectError(IllegalStateException.class)
+        .verify();
+
+    assertThat(fixture.auditPort.events).isEmpty();
+  }
+
+  @Test
+  void identityCheckPropagatesContextUnprotectionFailureButLegacyLoadKeepsResultMapping() {
+    var strictFixture =
+        new Fixture(
+            session(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.IDENTITY_VERIFIED, false));
+    strictFixture.protector.failDecrypt = true;
+
+    StepVerifier.create(
+            strictFixture.loader.load(
+                command(Set.of(AuthFlowStatus.IDENTITY_VERIFIED), false, true, "csrf-token")))
+        .expectError(IllegalStateException.class)
+        .verify();
+
+    assertThat(strictFixture.auditPort.events).isEmpty();
+
+    var legacyFixture =
+        new Fixture(
+            session(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.IDENTITY_VERIFIED, false));
+    legacyFixture.protector.failDecrypt = true;
+
+    StepVerifier.create(
+            legacyFixture.loader.load(
+                command(Set.of(AuthFlowStatus.IDENTITY_VERIFIED), false, false, "csrf-token")))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(
+                        ForgotPasswordProtectedAuthFlowContextStatus.CONTEXT_DECRYPTION_FAILED))
+        .verifyComplete();
+  }
+
+  @Test
+  void legacyCallerStillMapsThrownCsrfValidatorFailureToSecurityRejection() {
+    var session =
+        session(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.IDENTITY_VERIFIED, false);
+    var throwingCsrf =
+        new AuthFlowSessionCsrfService(
+            new FakeAuthFlowSessionPort(session),
+            new FixedCsrfTokenGenerator(),
+            new Sha256CsrfTokenHasher()) {
+          @Override
+          public Mono<ValidateAuthFlowSessionCsrfResult> validateForSession(
+              ValidateAuthFlowSessionCsrfCommand command) {
+            return Mono.error(new IllegalStateException("token=CSRF-VALIDATOR-SECRET"));
+          }
+        };
+    var fixture = new Fixture(session, throwingCsrf);
+
+    StepVerifier.create(
+            fixture.loader.load(
+                command(Set.of(AuthFlowStatus.IDENTITY_VERIFIED), true, false, "csrf-token")))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID))
+        .verifyComplete();
+
+    assertThat(fixture.auditPort.events).hasSize(1);
+  }
+
   private void assertRejected(
       AuthFlowSession session,
       Set<AuthFlowStatus> statuses,
@@ -219,14 +297,33 @@ class DefaultForgotPasswordProtectedAuthFlowContextLoaderTest {
 
   private ForgotPasswordProtectedAuthFlowContextCommand command(
       Set<AuthFlowStatus> statuses, boolean csrfRequired) {
+    return command(statuses, csrfRequired, false, "csrf-token");
+  }
+
+  private ForgotPasswordProtectedAuthFlowContextCommand command(
+      Set<AuthFlowStatus> statuses,
+      boolean csrfRequired,
+      boolean propagateTechnicalFailures,
+      String csrfToken) {
+    return newCommand(statuses, csrfRequired, propagateTechnicalFailures, csrfToken, null, null);
+  }
+
+  private ForgotPasswordProtectedAuthFlowContextCommand newCommand(
+      Set<AuthFlowStatus> statuses,
+      boolean csrfRequired,
+      boolean propagateTechnicalFailures,
+      String csrfToken,
+      String origin,
+      String referer) {
     return new ForgotPasswordProtectedAuthFlowContextCommand(
         new AuthFlowSessionId("afs_fp"),
-        "csrf-token",
-        null,
-        null,
+        csrfToken,
+        origin,
+        referer,
         "corr-1",
         statuses,
-        csrfRequired);
+        csrfRequired,
+        propagateTechnicalFailures);
   }
 
   private static AuthFlowSession session(

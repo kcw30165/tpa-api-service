@@ -81,7 +81,7 @@ class ForgotPasswordCancelArchitectureGuardTest {
           CancelForgotPasswordStatus.ALREADY_CANCELLED,
           CancelForgotPasswordStatus.ALREADY_TERMINAL
         }) {
-      var result = new CancelForgotPasswordResult(status, true, true, java.util.List.of());
+      var result = new CancelForgotPasswordResult(status, true, true, java.util.List.of(), false);
       assertThat(result.successfulCleanup()).isTrue();
       assertThat(result.clearAuthFlowCookie()).isTrue();
       assertThat(result.clearXsrfCookie()).isTrue();
@@ -149,5 +149,27 @@ class ForgotPasswordCancelArchitectureGuardTest {
         .doesNotContain("Idempotency-Key")
         .doesNotContain("Account-Ref")
         .doesNotContain("RedisTemplate");
+  }
+
+  @Test
+  void controllerMarksOnlyAfterConstructingAnIncidentOwnedResponse() throws Exception {
+    String controller =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java"));
+    int cancelMapping = controller.indexOf("path = \"/cancel\"");
+    int cancelEnd = controller.indexOf("@PostMapping", cancelMapping + 1);
+    String cancelRegion =
+        controller.substring(cancelMapping, cancelEnd >= 0 ? cancelEnd : controller.length());
+
+    int responseConstruction =
+        cancelRegion.indexOf(
+            "ForgotPasswordHttpResponses.toResponse(cancelMapper.toResponse(result))");
+    int ownershipMarker =
+        cancelRegion.indexOf("TerminalIncidentHttpObservation.markOwned(exchange)");
+
+    assertThat(cancelRegion).contains("result.incidentPublished()");
+    assertThat(responseConstruction).isGreaterThanOrEqualTo(0);
+    assertThat(ownershipMarker).isGreaterThan(responseConstruction);
   }
 }

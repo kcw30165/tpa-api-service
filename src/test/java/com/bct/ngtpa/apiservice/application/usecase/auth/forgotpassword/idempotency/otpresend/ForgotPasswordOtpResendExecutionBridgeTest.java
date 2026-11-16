@@ -55,7 +55,7 @@ class ForgotPasswordOtpResendExecutionBridgeTest {
 
   private static ResendForgotPasswordOtpResult resent() {
     return new ResendForgotPasswordOtpResult(
-        ResendForgotPasswordOtpStatus.RESENT, "j***@example.com", 300, 60, 4, null);
+        ResendForgotPasswordOtpStatus.RESENT, "j***@example.com", 300, 60, 4, null, null);
   }
 
   @Test

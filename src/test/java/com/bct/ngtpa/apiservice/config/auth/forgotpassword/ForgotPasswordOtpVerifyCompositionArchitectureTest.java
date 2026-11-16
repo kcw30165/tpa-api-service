@@ -31,6 +31,8 @@ class ForgotPasswordOtpVerifyCompositionArchitectureTest {
     int end = source.indexOf("\n  }\n}", start);
     assertThat(start).isGreaterThanOrEqualTo(0);
     assertThat(end).isGreaterThan(start);
-    assertThat(source.substring(start, end)).doesNotContain("ForgotPasswordIdempotencyPort");
+    assertThat(source.substring(start, end))
+        .doesNotContain("ForgotPasswordIdempotencyPort")
+        .contains("FailureEventPort failureEventPort");
   }
 }

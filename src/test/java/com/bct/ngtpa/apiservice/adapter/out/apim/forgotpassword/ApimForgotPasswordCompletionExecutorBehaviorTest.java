@@ -12,14 +12,17 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionResult;
-import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionTechnicalFailure;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -53,7 +56,9 @@ class ApimForgotPasswordCompletionExecutorBehaviorTest {
     assertThat(request.databaseScope()).isEqualTo(ApimDatabaseScope.NON_ACCOUNT);
     assertThat(request.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
     assertThat(request.credentialContext().accountEnv()).isNull();
-    assertThat(request.retryEligibility()).isEqualTo(ApimRetryEligibility.IDEMPOTENT_MUTATION);
+    assertThat(request.retryEligibility()).isEqualTo(ApimRetryEligibility.NON_RETRYABLE);
+    assertThat(request.resubmissionPolicy()).isEqualTo(ApimResubmissionPolicy.NEVER);
+    assertThat(request.incidentOwnership()).isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
   }
 
   @Test
@@ -102,6 +107,20 @@ class ApimForgotPasswordCompletionExecutorBehaviorTest {
               assertThat(r.status())
                   .isEqualTo(ForgotPasswordCompletionResult.Status.TECHNICAL_FAILURE);
               assertThat(r.downstreamErrorCode()).isNull();
+              assertThat(r.failureOrigin()).isEqualTo(FailureOrigin.DOWNSTREAM_CONTRACT);
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void emptyResetDataIsClassifiedAsDownstreamContractFailure() {
+    stubEnvelope("", List.of());
+    StepVerifier.create(adapter.complete(command()))
+        .assertNext(
+            result -> {
+              assertThat(result.status())
+                  .isEqualTo(ForgotPasswordCompletionResult.Status.TECHNICAL_FAILURE);
+              assertThat(result.failureOrigin()).isEqualTo(FailureOrigin.DOWNSTREAM_CONTRACT);
             })
         .verifyComplete();
   }
@@ -114,35 +133,49 @@ class ApimForgotPasswordCompletionExecutorBehaviorTest {
         .expectErrorSatisfies(
             e ->
                 assertThat(e)
-                    .isInstanceOf(ApimException.class)
-                    .hasMessageContaining("missing response"))
+                    .isInstanceOf(ForgotPasswordCompletionTechnicalFailure.class)
+                    .satisfies(
+                        failure -> {
+                          var technical = (ForgotPasswordCompletionTechnicalFailure) failure;
+                          assertThat(technical.origin())
+                              .isEqualTo(FailureOrigin.DOWNSTREAM_CONTRACT);
+                          assertThat(technical.getCause()).isNull();
+                        }))
         .verify();
   }
 
   @Test
-  void executorTechnicalFailureIsSanitizedApimFailure() {
+  void unknownExecutorFailureIsClassifiedAsLocalAndCauseFree() {
     when(executor.postEnvelope(any()))
         .thenAnswer(i -> Mono.error(new IllegalStateException("raw downstream secret")));
     StepVerifier.create(adapter.complete(command()))
         .expectErrorSatisfies(
             e ->
                 assertThat(e)
-                    .isInstanceOf(ApimException.class)
-                    .hasMessage("TRPResetPassword transport failed")
-                    .hasMessageNotContaining("raw downstream secret"))
+                    .isInstanceOf(ForgotPasswordCompletionTechnicalFailure.class)
+                    .satisfies(
+                        failure -> {
+                          var technical = (ForgotPasswordCompletionTechnicalFailure) failure;
+                          assertThat(technical.origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+                          assertThat(technical.getCause()).isNull();
+                          assertThat(technical.getMessage())
+                              .doesNotContain("raw downstream secret");
+                        }))
         .verify();
   }
 
   @Test
-  void uncertainCryptoFailureRemainsUnknownOutcome() {
+  void cryptoFailureIsClassifiedAsInvalidDownstreamResponse() {
     when(executor.postEnvelope(any()))
         .thenAnswer(i -> Mono.error(new ApimCryptoException("ambiguous crypto response")));
     StepVerifier.create(adapter.complete(command()))
-        .assertNext(
-            r ->
-                assertThat(r.status())
-                    .isEqualTo(ForgotPasswordCompletionResult.Status.UNKNOWN_OUTCOME))
-        .verifyComplete();
+        .expectErrorSatisfies(
+            failure -> {
+              assertThat(failure).isInstanceOf(ForgotPasswordCompletionTechnicalFailure.class);
+              assertThat(((ForgotPasswordCompletionTechnicalFailure) failure).origin())
+                  .isEqualTo(FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
+            })
+        .verify();
   }
 
   private void stubEnvelope(String error, List<TrpResetPasswordApimDataItem> data) {

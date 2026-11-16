@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -70,20 +69,6 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
   @AfterEach
   void detachLogAppender() {
     operationLogger.detachAppender(logAppender);
-  }
-
-  private void assertLoggedFailure(String stage) {
-    assertThat(logAppender.list).hasSize(1);
-    ILoggingEvent event = logAppender.list.get(0);
-    assertThat(event.getLevel()).isEqualTo(Level.ERROR);
-    assertThat(event.getThrowableProxy()).isNull();
-    assertThat(event.getFormattedMessage())
-        .contains(
-            "event=forgot-password.details-otp.failed",
-            "requestId=",
-            "stage=" + stage,
-            "exceptionType=IllegalStateException")
-        .doesNotContain("boom");
   }
 
   @Test
@@ -274,7 +259,7 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
   }
 
   @Test
-  void lockAcquisitionErrorYieldsAFailureResultAndLogsTheFailure() {
+  void lockAcquisitionErrorYieldsAFailureResultWithoutLocalErrorLogging() {
     Instant now = Instant.parse("2026-08-04T10:15:30Z");
     Clock clock = Clock.fixed(now, ZoneOffset.UTC);
     AuthFlowSessionId sessionId = new AuthFlowSessionId("afs_test_123");
@@ -419,7 +404,7 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
                     null)))
         .expectNextCount(1)
         .verifyComplete();
-    assertLoggedFailure("execute");
+    assertThat(logAppender.list).isEmpty();
   }
 
   private static final class InMemoryCommitStates implements ForgotPasswordOtpCommitStatePort {

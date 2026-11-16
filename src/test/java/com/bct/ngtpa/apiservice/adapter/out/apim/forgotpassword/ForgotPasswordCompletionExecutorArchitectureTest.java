@@ -18,7 +18,9 @@ class ForgotPasswordCompletionExecutorArchitectureTest {
         .contains(
             "ApimExchangeExecutor",
             "ApimDatabaseScope.NON_ACCOUNT",
-            "ApimRetryEligibility.IDEMPOTENT_MUTATION",
+            "ApimRetryEligibility.NON_RETRYABLE",
+            "ApimResubmissionPolicy.NEVER",
+            "ApimIncidentOwnership.TERMINAL_CALLER",
             "postEnvelope");
     assertThat(compact)
         .contains("newApimCredentialResolutionContext(command.actorUserRole(),null)");

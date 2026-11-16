@@ -3,8 +3,12 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureCategory;
+import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureClassifier;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper.TrpChkCustIdForgotPasswordResultMapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.SharedApimTrpChkCustIdTransport;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.TrpChkCustIdApimEnvelope;
@@ -12,6 +16,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdAp
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
+import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordUsernameLookupResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordUsernameLookupCommand;
@@ -54,30 +60,46 @@ public class ApimForgotPasswordUsernameLookupAdapter implements ForgotPasswordUs
             TrpChkCustIdApimDataItem.class,
             ApimDatabaseScope.NON_ACCOUNT,
             context,
-            ApimRetryEligibility.SAFE_BUSINESS_CALL);
-    return executor
-        .postEnvelope(exchange)
+            ApimRetryEligibility.SAFE_BUSINESS_CALL,
+            ApimResubmissionPolicy.ALLOW_RECOVERY,
+            ApimIncidentOwnership.TERMINAL_CALLER);
+    return Mono.defer(() -> executor.postEnvelope(exchange))
         .map(this::toTransportEnvelope)
         .map(resultMapper::toResult)
         .doOnNext(
             result ->
                 LOGGER.info(
                     "event=forgot-password.username-lookup.completed requestId={} status={}",
-                    command.correlationId(),
+                    RequestIdLogSanitizer.sanitize(command.correlationId()),
                     result.status()))
-        .doOnError(
-            error ->
-                LOGGER.error(
-                    "event=forgot-password.username-lookup.failed requestId={} exceptionType={}",
-                    command.correlationId(),
-                    error.getClass().getName(),
-                    error));
+        .onErrorResume(
+            Exception.class,
+            error -> {
+              ApimFailureCategory category = ApimFailureClassifier.classify(error);
+              LOGGER.warn(
+                  "event=forgot-password.username-lookup.failed classification={} requestId={}",
+                  category,
+                  RequestIdLogSanitizer.sanitize(command.correlationId()));
+              return Mono.just(ForgotPasswordUsernameLookupResult.systemFailed(toFailureOrigin(category)));
+            });
+  }
+
+  private FailureOrigin toFailureOrigin(ApimFailureCategory category) {
+    return switch (category) {
+      case DOWNSTREAM_CONTRACT -> FailureOrigin.DOWNSTREAM_CONTRACT;
+      case DOWNSTREAM_INVALID_RESPONSE -> FailureOrigin.DOWNSTREAM_INVALID_RESPONSE;
+      case DOWNSTREAM_TRANSPORT -> FailureOrigin.DOWNSTREAM_TRANSPORT;
+      case LOCAL_SYSTEM -> FailureOrigin.LOCAL_SYSTEM;
+    };
   }
 
   private TrpChkCustIdApimEnvelope toTransportEnvelope(
       ApimResponseEnvelope<TrpChkCustIdApimDataItem> envelope) {
     if (envelope == null || envelope.getResponse() == null) {
-      throw new IllegalStateException("TRPChkCustId response envelope is missing response");
+      throw new ApimException(
+          HttpStatus.BAD_GATEWAY,
+          ErrorCodes.APIM_RESPONSE_INVALID,
+          "TRPChkCustId returned an invalid/malformed response");
     }
     String errMessage = envelope.getResponse().getErrMessage();
     List<TrpChkCustIdApimDataItem> data = envelope.getResponse().getData();

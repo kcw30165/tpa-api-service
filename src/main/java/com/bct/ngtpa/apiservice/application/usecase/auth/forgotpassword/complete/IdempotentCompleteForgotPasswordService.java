@@ -6,6 +6,8 @@ import static com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.conte
 
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
@@ -15,8 +17,10 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFailureClassifiers;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOutcome;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
+import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
@@ -24,11 +28,14 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempote
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import reactor.core.publisher.Mono;
 
 /** Thin COMPLETE integration over the repository-wide shared idempotency executor. */
 public final class IdempotentCompleteForgotPasswordService
     implements CompleteForgotPasswordUseCase {
+  private static final String FAILURE_EVENT = "forgot-password.complete.failed";
   private static final String SOURCE_SERVER = "SERVER";
   private final IdempotencyExecutor executor;
   private final AuthFlowSessionPort sessions;
@@ -36,6 +43,7 @@ public final class IdempotentCompleteForgotPasswordService
   private final ForgotPasswordCompleteProtectedOperation operation;
   private final ForgotPasswordCompleteExecutionBridge responses;
   private final ForgotPasswordIdempotencyIntegrationPolicy policy;
+  private final FailureEventPort failureEvents;
 
   public IdempotentCompleteForgotPasswordService(
       IdempotencyExecutor executor,
@@ -43,76 +51,189 @@ public final class IdempotentCompleteForgotPasswordService
       ForgotPasswordAuthFlowContextProtectorPort protector,
       ForgotPasswordCompleteProtectedOperation operation,
       ForgotPasswordCompleteExecutionBridge responses,
-      ForgotPasswordIdempotencyIntegrationPolicy policy) {
+      ForgotPasswordIdempotencyIntegrationPolicy policy,
+      FailureEventPort failureEvents) {
     this.executor = Objects.requireNonNull(executor);
     this.sessions = Objects.requireNonNull(sessions);
     this.protector = Objects.requireNonNull(protector);
     this.operation = Objects.requireNonNull(operation);
     this.responses = Objects.requireNonNull(responses);
     this.policy = Objects.requireNonNull(policy);
+    this.failureEvents = Objects.requireNonNull(failureEvents);
   }
 
   @Override
   public Mono<CompleteForgotPasswordResult> complete(CompleteForgotPasswordCommand command) {
     Objects.requireNonNull(command, "command must not be null");
-    var execution =
-        new IdempotentExecutionCommand(
-            policy.operationId(
-                ForgotPasswordIdempotencyAction.COMPLETE,
-                command.authFlowSessionId().value(),
-                command.idempotencyKey().value()),
-            policy.complete(),
-            command.idempotencyTtl(),
-            () -> executeAcquired(command),
-            IdempotencyFailureClassifiers.possibleSideEffect(),
-            responses::capture,
-            responses::hydrate);
-    return executor
-        .execute(execution)
-        .map(result -> route(result.lifecycleOutcome(), result.terminalResponse()))
-        .onErrorReturn(systemFailed(WorkflowNextStep.NONE));
+    return Mono.defer(
+        () -> {
+          PublicationTracker publication = new PublicationTracker();
+          AtomicBoolean publicationFailed = new AtomicBoolean();
+          AtomicReference<RuntimeException> reportedOperationFailure = new AtomicReference<>();
+          AtomicReference<RuntimeException> noIncidentOutcome = new AtomicReference<>();
+          var execution =
+              new IdempotentExecutionCommand(
+                  policy.operationId(
+                      ForgotPasswordIdempotencyAction.COMPLETE,
+                      command.authFlowSessionId().value(),
+                      command.idempotencyKey().value()),
+                  policy.complete(),
+                  command.idempotencyTtl(),
+                  () ->
+                      executeAcquired(
+                          command, publication, publicationFailed, reportedOperationFailure,
+                          noIncidentOutcome),
+                  IdempotencyFailureClassifiers.possibleSideEffect(),
+                  responses::capture,
+                  responses::hydrate);
+          return Mono.defer(() -> executor.execute(execution))
+              .map(
+                  result ->
+                      withReceipt(
+                          route(result.lifecycleOutcome(), result.terminalResponse()),
+                          publication))
+              .onErrorResume(
+                  failure -> {
+                    if (publicationFailed.get()) {
+                      return Mono.just(systemFailed(WorkflowNextStep.NONE));
+                    }
+                    if (failure == reportedOperationFailure.get()) {
+                      return Mono.just(withReceipt(systemFailed(WorkflowNextStep.NONE), publication));
+                    }
+                    if (failure == noIncidentOutcome.get()) {
+                      return Mono.just(systemFailed(WorkflowNextStep.NONE));
+                    }
+                    return Mono.defer(
+                            () -> {
+                              publishAndRecord(
+                                  command,
+                                  ForgotPasswordCompleteIncident.local(
+                                      "COMPLETE_IDEMPOTENCY_FAILURE", "idempotency"),
+                                  publication,
+                                  publicationFailed);
+                              return Mono.just(
+                                  withReceipt(systemFailed(WorkflowNextStep.NONE), publication));
+                            })
+                        .onErrorResume(
+                            publishFailure -> Mono.just(systemFailed(WorkflowNextStep.NONE)));
+                  });
+        });
   }
 
-  private Mono<HydratedIdempotentResponse> executeAcquired(CompleteForgotPasswordCommand command) {
-    return sessions
-        .loadSnapshot(command.authFlowSessionId())
+  private Mono<HydratedIdempotentResponse> executeAcquired(
+      CompleteForgotPasswordCommand command,
+      PublicationTracker publication,
+      AtomicBoolean publicationFailed,
+      AtomicReference<RuntimeException> reportedOperationFailure,
+      AtomicReference<RuntimeException> noIncidentOutcome) {
+    return Mono.defer(() -> sessions.loadSnapshot(command.authFlowSessionId()))
+        .onErrorMap(
+            failure ->
+                new ForgotPasswordCompletionTechnicalFailure(
+                    FailureOrigin.LOCAL_SYSTEM, "session-read"))
         .flatMap(
             optional ->
                 optional
-                    .map(snapshot -> executeLoaded(command, snapshot))
-                    .orElseGet(() -> Mono.just(responses.toTransientResponse(invalidAuthFlow()))));
+                    .map(
+                        snapshot ->
+                            executeLoaded(
+                                command,
+                                snapshot,
+                                publication,
+                                publicationFailed,
+                                reportedOperationFailure,
+                                noIncidentOutcome))
+                    .orElseGet(
+                        () -> Mono.just(responses.toTransientResponse(invalidAuthFlow()))))
+        .onErrorResume(
+            failure -> {
+              if (failure == reportedOperationFailure.get()
+                  || failure == noIncidentOutcome.get()) {
+                return Mono.error(failure);
+              }
+              if (publicationFailed.get()) {
+                return Mono.error(failure);
+              }
+              ForgotPasswordCompleteIncident incident = incidentFor(failure);
+              try {
+                publishAndRecord(command, incident, publication, publicationFailed);
+              } catch (RuntimeException publishFailure) {
+                return Mono.error(publishFailure);
+              }
+              RuntimeException signal = new ReportedOperationFailureException();
+              reportedOperationFailure.set(signal);
+              return Mono.error(signal);
+            });
   }
 
   private Mono<HydratedIdempotentResponse> executeLoaded(
       CompleteForgotPasswordCommand command,
-      com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot snapshot) {
+      com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot snapshot,
+      PublicationTracker publication,
+      AtomicBoolean publicationFailed,
+      AtomicReference<RuntimeException> reportedOperationFailure,
+      AtomicReference<RuntimeException> noIncidentOutcome) {
     ForgotPasswordAuthFlowContext context = loadContext(snapshot.session().data().attributes());
     if (context == null) {
       return Mono.just(responses.toTransientResponse(invalidAuthFlow()));
     }
-    return operation
-        .execute(new ForgotPasswordCompleteProtectedOperationInput(command, context, snapshot))
+    return Mono.defer(
+            () ->
+                operation.execute(
+                    new ForgotPasswordCompleteProtectedOperationInput(
+                        command, context, snapshot)))
         .flatMap(
             execution -> {
               if (execution.outcome()
                   == ForgotPasswordCompleteProtectedExecutionResult.Outcome.TERMINAL) {
                 return Mono.just(responses.toTransientResponse(execution.result()));
               }
+              if (!execution.incidents().isEmpty()) {
+                return publishIncidentsAndSignalFailure(
+                    command,
+                    execution.incidents(),
+                    publication,
+                    publicationFailed,
+                    reportedOperationFailure);
+              }
               if (execution.outcome()
                   == ForgotPasswordCompleteProtectedExecutionResult.Outcome.TECHNICAL_FAILURE) {
-                return Mono.error(
-                    new IllegalStateException(
-                        "Forgot Password COMPLETE protected operation failed"));
+                try {
+                  publishAndRecord(
+                      command,
+                      ForgotPasswordCompleteIncident.local(
+                          "COMPLETE_PROTECTED_OPERATION_FAILURE", "protected-operation"),
+                      publication,
+                      publicationFailed);
+                } catch (RuntimeException publishFailure) {
+                  return Mono.error(publishFailure);
+                }
+                RuntimeException signal = new ReportedOperationFailureException();
+                reportedOperationFailure.set(signal);
+                return Mono.error(signal);
               }
-              if (execution.outcome()
-                  == ForgotPasswordCompleteProtectedExecutionResult.Outcome.UNKNOWN_OUTCOME) {
-                return Mono.error(
-                    new IllegalStateException(
-                        "Forgot Password COMPLETE protected operation outcome is unknown"));
-              }
-              return Mono.error(
-                  new IllegalStateException("Unsupported COMPLETE execution outcome"));
+              RuntimeException signal = new NoIncidentOutcomeException();
+              noIncidentOutcome.set(signal);
+              return Mono.error(signal);
             });
+  }
+
+  private Mono<HydratedIdempotentResponse> publishIncidentsAndSignalFailure(
+      CompleteForgotPasswordCommand command,
+      List<ForgotPasswordCompleteIncident> incidents,
+      PublicationTracker publication,
+      AtomicBoolean publicationFailed,
+      AtomicReference<RuntimeException> reportedOperationFailure) {
+    try {
+      for (ForgotPasswordCompleteIncident incident : incidents) {
+        publishAndRecord(command, incident, publication, publicationFailed);
+      }
+    } catch (RuntimeException publishFailure) {
+      return Mono.error(publishFailure);
+    }
+    RuntimeException signal = new ReportedOperationFailureException();
+    reportedOperationFailure.set(signal);
+    return Mono.error(signal);
   }
 
   private ForgotPasswordAuthFlowContext loadContext(Map<String, String> attributes) {
@@ -131,9 +252,50 @@ public final class IdempotentCompleteForgotPasswordService
               algorithm == null || algorithm.isBlank()
                   ? ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM
                   : algorithm));
-    } catch (RuntimeException ignored) {
-      return null;
+    } catch (RuntimeException failure) {
+      throw new ForgotPasswordCompletionTechnicalFailure(
+          FailureOrigin.LOCAL_SYSTEM, "context-protection");
     }
+  }
+
+  private void publishAndRecord(
+      CompleteForgotPasswordCommand command,
+      ForgotPasswordCompleteIncident incident,
+      PublicationTracker publication,
+      AtomicBoolean publicationFailed) {
+    try {
+      failureEvents.publish(
+          new FailureEvent(
+              FAILURE_EVENT,
+              RequestIdLogSanitizer.sanitize(command.correlationId()),
+              "FORGOT_PASSWORD",
+              "COMPLETE",
+              incident.origin(),
+              incident.internalCode(),
+              null,
+              503,
+              false,
+              Map.of("stage", incident.stage())));
+    } catch (RuntimeException failure) {
+      publicationFailed.set(true);
+      throw failure;
+    }
+    publication.markPublished();
+  }
+
+  private CompleteForgotPasswordResult withReceipt(
+      CompleteForgotPasswordResult result, PublicationTracker publication) {
+    return publication.published()
+        ? result.withPublicationReceipt(new ForgotPasswordCompletePublicationReceipt(true))
+        : result;
+  }
+
+  private ForgotPasswordCompleteIncident incidentFor(Throwable failure) {
+    if (failure instanceof ForgotPasswordCompletionTechnicalFailure technical) {
+      return ForgotPasswordCompleteIncident.apim(technical.origin(), technical.stage());
+    }
+    return ForgotPasswordCompleteIncident.local(
+        "COMPLETE_PROTECTED_OPERATION_FAILURE", "protected-operation");
   }
 
   private CompleteForgotPasswordResult route(
@@ -193,6 +355,34 @@ public final class IdempotentCompleteForgotPasswordService
                 null,
                 List.of("PAGE"),
                 WorkflowErrorSeverity.ERROR,
-                SOURCE_SERVER)));
+                SOURCE_SERVER)), null);
+  }
+
+  private static final class PublicationTracker {
+    private final AtomicBoolean published = new AtomicBoolean();
+
+    void markPublished() {
+      published.set(true);
+    }
+
+    boolean published() {
+      return published.get();
+    }
+  }
+
+  private static final class ReportedOperationFailureException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+
+    private ReportedOperationFailureException() {
+      super(null, null, false, false);
+    }
+  }
+
+  private static final class NoIncidentOutcomeException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+
+    private NoIncidentOutcomeException() {
+      super(null, null, false, false);
+    }
   }
 }

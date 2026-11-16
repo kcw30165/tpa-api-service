@@ -7,14 +7,18 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.Forgot
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.application.port.in.ResendForgotPasswordOtpUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendPublicationReceipt;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 class AuthForgotPasswordOtpResendControllerTest {
@@ -32,7 +36,8 @@ class AuthForgotPasswordOtpResendControllerTest {
             String.class,
             String.class,
             String.class,
-            org.springframework.http.server.reactive.ServerHttpResponse.class);
+            org.springframework.http.server.reactive.ServerHttpResponse.class,
+            ServerWebExchange.class);
 
     PostMapping mapping = method.getAnnotation(PostMapping.class);
     assertThat(mapping).isNotNull();
@@ -48,7 +53,9 @@ class AuthForgotPasswordOtpResendControllerTest {
     String json =
         objectMapper.writeValueAsString(
             controller
-                .resend(null, "csrf", null, null, "req", "en", "idem", new MockServerHttpResponse())
+                .resend(
+                    null, "csrf", null, null, "req", "en", "idem",
+                    new MockServerHttpResponse(), exchange())
                 .block());
 
     assertThat(json).contains("err.system.unavailable");
@@ -63,7 +70,9 @@ class AuthForgotPasswordOtpResendControllerTest {
     String json =
         objectMapper.writeValueAsString(
             controller
-                .resend("afs", null, null, null, "req", "en", "idem", new MockServerHttpResponse())
+                .resend(
+                    "afs", null, null, null, "req", "en", "idem",
+                    new MockServerHttpResponse(), exchange())
                 .block());
 
     assertThat(json).contains("err.security.authentication.required");
@@ -78,7 +87,9 @@ class AuthForgotPasswordOtpResendControllerTest {
     String json =
         objectMapper.writeValueAsString(
             controller
-                .resend("afs", "csrf", null, null, "req", "en", null, new MockServerHttpResponse())
+                .resend(
+                    "afs", "csrf", null, null, "req", "en", null,
+                    new MockServerHttpResponse(), exchange())
                 .block());
 
     assertThat(json).contains("err.workflow.idempotency.missing");
@@ -100,7 +111,8 @@ class AuthForgotPasswordOtpResendControllerTest {
             "req_abc",
             "zh-HK",
             "idem_abc",
-            response)
+            response,
+            exchange())
         .block();
 
     assertThat(useCase.called).isTrue();
@@ -129,7 +141,8 @@ class AuthForgotPasswordOtpResendControllerTest {
                     "req_abc",
                     "en",
                     "idem_abc",
-                    new MockServerHttpResponse())
+                    new MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json.at("/body/result/nextStep").asText()).isEqualTo("VERIFY_OTP");
@@ -146,23 +159,103 @@ class AuthForgotPasswordOtpResendControllerTest {
             "idem_abc",
             "otpChallengeId",
             "activeOtpChallengeId",
+            "publicationReceipt",
+            "terminalFailure",
             "XSRF-TOKEN",
             "auth_flow_sid",
             "123456");
   }
 
+  @Test
+  void publishedTerminalFailureMarksOnlyAfterResponseConstruction() {
+    var useCase = new RecordingUseCase();
+    useCase.result =
+        new ResendForgotPasswordOtpResult(
+                ResendForgotPasswordOtpStatus.DELIVERY_FAILED, null, null, null, null, null, null)
+            .withPublicationReceipt(new ForgotPasswordOtpResendPublicationReceipt(true));
+    var controller = controller(useCase);
+    var exchange = exchange();
+
+    var response =
+        controller
+            .resend(
+                "afs", "csrf", null, null, "req", "en", "idem",
+                new MockServerHttpResponse(), exchange)
+            .block();
+
+    assertThat(response.getStatusCode().value()).isEqualTo(503);
+    assertThat(response.getBody().errors())
+        .singleElement()
+        .satisfies(error -> assertThat(error.code()).isEqualTo("err.system.unavailable"));
+    assertThat(
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
+                .isOwned(exchange))
+        .isTrue();
+  }
+
+  @Test
+  void malformedCounterReceiptDoesNotMarkSuccessfulResponse() {
+    var useCase = new RecordingUseCase();
+    useCase.result =
+        new ResendForgotPasswordOtpResult(
+                ResendForgotPasswordOtpStatus.RESENT, "m****r@example.com", 300, 60, 4, null, null)
+            .withPublicationReceipt(new ForgotPasswordOtpResendPublicationReceipt(false));
+    var exchange = exchange();
+
+    var response =
+        controller(useCase)
+            .resend(
+                "afs", "csrf", null, null, "req", "en", "idem",
+                new MockServerHttpResponse(), exchange)
+            .block();
+
+    assertThat(response.getStatusCode().value()).isEqualTo(200);
+    assertThat(
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
+                .isOwned(exchange))
+        .isFalse();
+  }
+
+  @Test
+  void responseMappingFailureDoesNotMarkPublishedOwnership() {
+    var useCase = new RecordingUseCase();
+    useCase.result =
+        new ResendForgotPasswordOtpResult(
+                null, null, null, null, null, null, null)
+            .withPublicationReceipt(new ForgotPasswordOtpResendPublicationReceipt(true));
+    var exchange = exchange();
+
+    var response =
+        controller(useCase)
+            .resend(
+                "afs", "csrf", null, null, "req", "en", "idem",
+                new MockServerHttpResponse(), exchange)
+            .block();
+
+    assertThat(response.getStatusCode().value()).isEqualTo(503);
+    assertThat(
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
+                .isOwned(exchange))
+        .isFalse();
+  }
+
   private static final class RecordingUseCase implements ResendForgotPasswordOtpUseCase {
     boolean called;
     ResendForgotPasswordOtpCommand command;
+    ResendForgotPasswordOtpResult result =
+        new ResendForgotPasswordOtpResult(
+            ResendForgotPasswordOtpStatus.RESENT, "m****r@example.com", 300, 60, 4, null, null);
 
     @Override
     public Mono<ResendForgotPasswordOtpResult> resend(ResendForgotPasswordOtpCommand command) {
       called = true;
       this.command = command;
-      return Mono.just(
-          new ResendForgotPasswordOtpResult(
-              ResendForgotPasswordOtpStatus.RESENT, "m****r@example.com", 300, 60, 4, null));
+      return Mono.just(result);
     }
+  }
+
+  private static MockServerWebExchange exchange() {
+    return MockServerWebExchange.from(MockServerHttpRequest.get("/").build());
   }
 
   private static ForgotPasswordController controller(ResendForgotPasswordOtpUseCase resendUseCase) {

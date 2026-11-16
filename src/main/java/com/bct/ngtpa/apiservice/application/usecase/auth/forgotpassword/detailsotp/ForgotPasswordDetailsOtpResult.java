@@ -7,18 +7,26 @@ public record ForgotPasswordDetailsOtpResult(
     String maskedDestination,
     int expiresInSeconds,
     int resendAvailableInSeconds,
-    List<String> targets) {
+    List<String> targets,
+    boolean incidentPublished) {
+
   public enum Status {
     SUCCESS,
     EXPIRED,
     VALIDATION_FAILED,
     BUSINESS_REJECTED,
+    SYSTEM_UNAVAILABLE,
     SYSTEM_ERROR,
     IN_PROGRESS,
     KEY_REUSED
   }
 
   public static ForgotPasswordDetailsOtpResult system() {
-    return new ForgotPasswordDetailsOtpResult(Status.SYSTEM_ERROR, null, 0, 0, List.of());
+    return new ForgotPasswordDetailsOtpResult(Status.SYSTEM_ERROR, null, 0, 0, List.of(), false);
+  }
+
+  public ForgotPasswordDetailsOtpResult withIncidentPublished() {
+    return new ForgotPasswordDetailsOtpResult(
+        status, maskedDestination, expiresInSeconds, resendAvailableInSeconds, targets, true);
   }
 }

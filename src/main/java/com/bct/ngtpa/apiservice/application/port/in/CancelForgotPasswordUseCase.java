@@ -8,4 +8,9 @@ import reactor.core.publisher.Mono;
 @FunctionalInterface
 public interface CancelForgotPasswordUseCase {
   Mono<CancelForgotPasswordResult> cancel(CancelForgotPasswordCommand command);
+
+  default boolean reportSynchronousTechnicalFailure(String requestId) {
+    throw new UnsupportedOperationException(
+        "Synchronous Forgot Password cancel reporting is not supported");
+  }
 }

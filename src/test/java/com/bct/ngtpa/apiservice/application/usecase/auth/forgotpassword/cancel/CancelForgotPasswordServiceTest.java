@@ -2,11 +2,18 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.cancel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.InvalidateOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpChallengeInvalidationReason;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCancellationResult;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCancellationStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
@@ -18,6 +25,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCancellationPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
 import java.time.Clock;
@@ -27,6 +35,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -55,6 +64,7 @@ class CancelForgotPasswordServiceTest {
     assertThat(f.cancelled).hasValue(1);
     assertThat(f.cancelReason.get()).isEqualTo(AuthFlowSessionCancellationReason.USER_CANCELLED);
     assertThat(f.cancelledAt.get()).isEqualTo(NOW);
+    verifyNoInteractions(f.failureEvents);
   }
 
   @Test
@@ -65,6 +75,7 @@ class CancelForgotPasswordServiceTest {
         .verifyComplete();
     assertThat(f.invalidated).hasValue(0);
     assertThat(f.cancelled).hasValue(1);
+    verifyNoInteractions(f.failureEvents);
   }
 
   @Test
@@ -82,6 +93,7 @@ class CancelForgotPasswordServiceTest {
         .verifyComplete();
     assertThat(f.invalidated).hasValue(0);
     assertThat(f.cancelled).hasValue(0);
+    verifyNoInteractions(f.failureEvents);
   }
 
   @Test
@@ -96,6 +108,7 @@ class CancelForgotPasswordServiceTest {
         .verifyComplete();
     assertThat(f.invalidated).hasValue(0);
     assertThat(f.cancelled).hasValue(0);
+    verifyNoInteractions(f.failureEvents);
   }
 
   @Test
@@ -114,6 +127,7 @@ class CancelForgotPasswordServiceTest {
           .verifyComplete();
       assertThat(f.invalidated).hasValue(0);
       assertThat(f.cancelled).hasValue(0);
+      verifyNoInteractions(f.failureEvents);
     }
   }
 
@@ -138,6 +152,7 @@ class CancelForgotPasswordServiceTest {
           .verifyComplete();
       assertThat(f.invalidated).hasValue(0);
       assertThat(f.cancelled).hasValue(0);
+      verifyNoInteractions(f.failureEvents);
     }
   }
 
@@ -158,6 +173,7 @@ class CancelForgotPasswordServiceTest {
         .verifyComplete();
     assertThat(f.invalidated).hasValue(0);
     assertThat(f.cancelled).hasValue(0);
+    verifyNoInteractions(f.failureEvents);
   }
 
   @Test
@@ -167,6 +183,7 @@ class CancelForgotPasswordServiceTest {
         .assertNext(r -> assertThat(r.status()).isEqualTo(CancelForgotPasswordStatus.CSRF_INVALID))
         .verifyComplete();
     assertThat(f.cancelled).hasValue(0);
+    verifyNoInteractions(f.failureEvents);
   }
 
   @Test
@@ -183,6 +200,25 @@ class CancelForgotPasswordServiceTest {
   }
 
   @Test
+  void disallowedRefererIsRejected() {
+    var f = fixture(AuthFlowStatus.OTP_SENT, "csrf-safe", "otp_active");
+    StepVerifier.create(
+            service(f)
+                .cancel(
+                    new CancelForgotPasswordCommand(
+                        SID,
+                        "csrf-safe",
+                        null,
+                        "https://attacker.example/forgot-password",
+                        "req-1")))
+        .assertNext(r -> assertThat(r.status()).isEqualTo(CancelForgotPasswordStatus.CSRF_INVALID))
+        .verifyComplete();
+    assertThat(f.cancelled).hasValue(0);
+    assertThat(f.invalidated).hasValue(0);
+    verifyNoInteractions(f.failureEvents);
+  }
+
+  @Test
   void persistenceErrorFailsClosedAsSystemFailure() {
     var f = fixture(AuthFlowStatus.OTP_SENT, "csrf-safe", "otp_active");
     when(f.cancellation.cancel(any(), any(), any()))
@@ -196,6 +232,82 @@ class CancelForgotPasswordServiceTest {
               assertThat(r.clearXsrfCookie()).isFalse();
             })
         .verifyComplete();
+    verify(f.otp, times(1)).invalidateChallenge(any());
+    verify(f.cancellation, times(1)).cancel(any(), any(), any());
+  }
+
+  @Test
+  void otpInvalidationFailurePreventsSessionCancellation() {
+    var f = fixture(AuthFlowStatus.OTP_SENT, "csrf-safe", "otp_active");
+    when(f.otp.invalidateChallenge(any()))
+        .thenReturn(Mono.error(new IllegalStateException("otp invalidation failed")));
+
+    StepVerifier.create(cancel(f, "csrf-safe"))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(CancelForgotPasswordStatus.SYSTEM_FAILED);
+              assertThat(result.clearAuthFlowCookie()).isFalse();
+              assertThat(result.clearXsrfCookie()).isFalse();
+            })
+        .verifyComplete();
+
+    verify(f.otp, times(1)).invalidateChallenge(any());
+    verify(f.cancellation, never()).cancel(any(), any(), any());
+  }
+
+  @Test
+  void emptySessionLoadRemainsAnEmptyMono() {
+    var f = fixture(AuthFlowStatus.STARTED, "csrf-safe", null);
+    when(f.sessions.load(SID)).thenReturn(Mono.empty());
+
+    StepVerifier.create(cancel(f, "csrf-safe")).verifyComplete();
+
+    verify(f.otp, never()).invalidateChallenge(any());
+    verify(f.cancellation, never()).cancel(any(), any(), any());
+  }
+
+  @Test
+  void explicitRepeatAfterCancellationDoesNotRepeatCleanupWrites() {
+    var f = fixture(AuthFlowStatus.STARTED, "csrf-safe", null);
+    when(f.sessions.load(SID))
+        .thenReturn(
+            Mono.just(
+                Optional.of(
+                    session(
+                        AuthFlowScenario.FORGOT_PASSWORD,
+                        AuthFlowStatus.STARTED,
+                        "csrf-safe",
+                        null))),
+            Mono.just(
+                Optional.of(
+                    session(
+                        AuthFlowScenario.FORGOT_PASSWORD,
+                        AuthFlowStatus.STARTED,
+                        "csrf-safe",
+                        null))),
+            Mono.just(
+                Optional.of(
+                    session(
+                        AuthFlowScenario.FORGOT_PASSWORD,
+                        AuthFlowStatus.CANCELLED,
+                        "csrf-safe",
+                        null))));
+    var service = service(f);
+    var command =
+        new CancelForgotPasswordCommand(
+            SID, "csrf-safe", "https://portal.test", "https://portal.test/forgot-password", "req-1");
+
+    StepVerifier.create(
+            Mono.defer(() -> service.cancel(command))
+                .concatWith(Mono.defer(() -> service.cancel(command))))
+        .assertNext(result -> assertThat(result.status()).isEqualTo(CancelForgotPasswordStatus.CANCELLED))
+        .assertNext(
+            result ->
+                assertThat(result.status()).isEqualTo(CancelForgotPasswordStatus.ALREADY_CANCELLED))
+        .verifyComplete();
+
+    verify(f.cancellation, times(1)).cancel(any(), any(), any());
+    verify(f.otp, never()).invalidateChallenge(any());
   }
 
   @Test
@@ -204,6 +316,86 @@ class CancelForgotPasswordServiceTest {
         new CancelForgotPasswordCommand(
             SID, "csrf_secret", "https://portal.test", "https://portal.test/fp", "req-1");
     assertThat(command.toString()).doesNotContain("csrf_secret", "afs_fp_cancel");
+  }
+
+  @Test
+  void sessionReadFailurePublishesOneSanitizedCauseFreeIncidentAndReceipt() {
+    var f = new Fixture(null);
+    when(f.sessions.load(SID))
+        .thenReturn(Mono.error(new IllegalStateException("sessionId=secret")));
+
+    var command =
+        new CancelForgotPasswordCommand(
+            SID, "csrf-safe", "https://portal.test", "https://portal.test/forgot-password", "req cancel");
+    StepVerifier.create(service(f).cancel(command))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(CancelForgotPasswordStatus.SYSTEM_FAILED);
+              assertThat(result.incidentPublished()).isTrue();
+            })
+        .verifyComplete();
+
+    ArgumentCaptor<FailureEvent> event = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(f.failureEvents, times(1)).publish(event.capture());
+    assertThat(event.getValue().event()).isEqualTo("forgot-password.cancel.failed");
+    assertThat(event.getValue().requestId()).isEqualTo("req?cancel");
+    assertThat(event.getValue().capability()).isEqualTo("FORGOT_PASSWORD");
+    assertThat(event.getValue().operation()).isEqualTo("CANCEL");
+    assertThat(event.getValue().origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(event.getValue().internalCode()).isEqualTo("CANCEL_TECHNICAL_FAILURE");
+    assertThat(event.getValue().publicCode()).isEqualTo("err.system.unavailable");
+    assertThat(event.getValue().httpStatus()).isEqualTo(503);
+    assertThat(event.getValue().retryable()).isFalse();
+    assertThat(event.getValue().safeDimensions())
+        .containsExactly(java.util.Map.entry("stage", "session-read"));
+  }
+
+  @Test
+  void failureEventPublicationFailureCreatesNoReceiptAndIsNotRetried() {
+    var f = new Fixture(null);
+    when(f.sessions.load(SID)).thenReturn(Mono.error(new IllegalStateException("session read")));
+    doThrow(new IllegalStateException("publisher secret"))
+        .when(f.failureEvents)
+        .publish(any(FailureEvent.class));
+
+    StepVerifier.create(cancel(f, "csrf-safe"))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(CancelForgotPasswordStatus.SYSTEM_FAILED);
+              assertThat(result.incidentPublished()).isFalse();
+            })
+        .verifyComplete();
+
+    verify(f.failureEvents, times(1)).publish(any(FailureEvent.class));
+  }
+
+  @Test
+  void synchronousTechnicalReporterUsesTheApproved403ContractAndFixedStage() {
+    var f = fixture(AuthFlowStatus.STARTED, "csrf-safe", null);
+
+    assertThat(service(f).reportSynchronousTechnicalFailure("req-cancel")).isTrue();
+
+    ArgumentCaptor<FailureEvent> event = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(f.failureEvents).publish(event.capture());
+    assertThat(event.getValue().origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(event.getValue().httpStatus()).isEqualTo(403);
+    assertThat(event.getValue().publicCode())
+        .isEqualTo(ForgotPasswordErrorKey.CSRF_INVALID.value());
+    assertThat(event.getValue().retryable()).isFalse();
+    assertThat(event.getValue().safeDimensions())
+        .containsExactly(java.util.Map.entry("stage", "controller-sync"));
+  }
+
+  @Test
+  void synchronousPublicationFailureReturnsNoReceiptAndDoesNotRetryPublication() {
+    var f = fixture(AuthFlowStatus.STARTED, "csrf-safe", null);
+    doThrow(new IllegalStateException("publisher secret"))
+        .when(f.failureEvents)
+        .publish(any(FailureEvent.class));
+
+    assertThat(service(f).reportSynchronousTechnicalFailure("req-cancel")).isFalse();
+
+    verify(f.failureEvents, times(1)).publish(any(FailureEvent.class));
   }
 
   private static Fixture fixture(AuthFlowStatus status, String csrfRaw, String otp) {
@@ -221,6 +413,7 @@ class CancelForgotPasswordServiceTest {
         f.otp,
         f.cancellation,
         Clock.fixed(NOW, ZoneOffset.UTC),
+        f.failureEvents,
         allowed);
   }
 
@@ -265,6 +458,7 @@ class CancelForgotPasswordServiceTest {
     final OtpChallengePort otp = mock(OtpChallengePort.class);
     final AuthFlowSessionCancellationPort cancellation =
         mock(AuthFlowSessionCancellationPort.class);
+    final FailureEventPort failureEvents = mock(FailureEventPort.class);
     final AtomicInteger invalidated = new AtomicInteger();
     final AtomicInteger cancelled = new AtomicInteger();
     final AtomicReference<OtpChallengeInvalidationReason> reason = new AtomicReference<>();

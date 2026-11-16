@@ -8,7 +8,8 @@ public record CancelForgotPasswordResult(
     CancelForgotPasswordStatus status,
     boolean clearAuthFlowCookie,
     boolean clearXsrfCookie,
-    List<WorkflowErrorDescriptor> errors) {
+    List<WorkflowErrorDescriptor> errors,
+    boolean incidentPublished) {
 
   public CancelForgotPasswordResult {
     Objects.requireNonNull(status, "status must not be null");

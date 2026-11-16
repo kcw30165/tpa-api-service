@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.TrpChkCustIdApimEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimDataItem;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordUsernameLookupResult;
 import java.util.List;
 import java.util.Map;
@@ -30,21 +31,20 @@ public final class TrpChkCustIdForgotPasswordResultMapper {
     if (errMessage != null && !errMessage.isBlank()) {
       boolean notFound = USERNAME_NOT_FOUND.equals(errMessage.trim());
       LOGGER.warn(
-          "event=forgot-password.username-lookup.business-error recognizedNotFound={} errorCode={}",
-          notFound,
-          errMessage.trim());
+          "event=forgot-password.username-lookup.business-error classification={}",
+          notFound ? "USERNAME_NOT_FOUND" : "UNRECOGNIZED_DOWNSTREAM_ERROR");
       return notFound
           ? ForgotPasswordUsernameLookupResult.notFound()
-          : ForgotPasswordUsernameLookupResult.systemFailed();
+          : ForgotPasswordUsernameLookupResult.systemFailed(FailureOrigin.DOWNSTREAM_CONTRACT);
     }
 
     List<TrpChkCustIdApimDataItem> data =
         envelope == null || envelope.data() == null ? List.of() : envelope.data();
     if (data.size() != 1) {
-      LOGGER.error(
-          "event=forgot-password.username-lookup.invalid-response reason=unexpected-data-count dataCount={}",
-          data.size());
-      return ForgotPasswordUsernameLookupResult.systemFailed();
+      LOGGER.warn(
+          "event=forgot-password.username-lookup.invalid-response classification=DOWNSTREAM_INVALID_RESPONSE");
+      return ForgotPasswordUsernameLookupResult.systemFailed(
+          FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
     }
 
     TrpChkCustIdApimDataItem item = data.getFirst();
@@ -57,27 +57,21 @@ public final class TrpChkCustIdForgotPasswordResultMapper {
     String userId = normalize(item.userId());
     String tasIdentityType = normalize(item.idType());
     if (customerId == null || userId == null || tasIdentityType == null) {
-      LOGGER.error(
-          "event=forgot-password.username-lookup.invalid-response reason=missing-required-field customerIdPresent={} userIdPresent={} idTypePresent={}",
-          customerId != null,
-          userId != null,
-          tasIdentityType != null);
-      return ForgotPasswordUsernameLookupResult.systemFailed();
+      LOGGER.warn(
+          "event=forgot-password.username-lookup.invalid-response classification=DOWNSTREAM_INVALID_RESPONSE");
+      return ForgotPasswordUsernameLookupResult.systemFailed(
+          FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
     }
 
     MemberIdentityType identityType = tasIdentityTypeMapping.get(tasIdentityType);
     if (identityType == null) {
-      LOGGER.error(
-          "event=forgot-password.username-lookup.invalid-response reason=unmapped-id-type tasIdentityType={} configuredTypes={}",
-          tasIdentityType,
-          tasIdentityTypeMapping.keySet());
-      return ForgotPasswordUsernameLookupResult.systemFailed();
+      LOGGER.warn(
+          "event=forgot-password.username-lookup.invalid-response classification=DOWNSTREAM_INVALID_RESPONSE");
+      return ForgotPasswordUsernameLookupResult.systemFailed(
+          FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
     }
 
-    LOGGER.info(
-        "event=forgot-password.username-lookup.confirmed tasIdentityType={} publicIdentityType={}",
-        tasIdentityType,
-        identityType == MemberIdentityType.STAFFNO ? "STAFF_NO" : identityType.name());
+    LOGGER.info("event=forgot-password.username-lookup.confirmed");
     return ForgotPasswordUsernameLookupResult.confirmed(customerId, userId, identityType);
   }
 

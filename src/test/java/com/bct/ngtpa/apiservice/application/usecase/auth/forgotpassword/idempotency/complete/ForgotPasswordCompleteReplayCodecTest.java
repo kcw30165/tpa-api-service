@@ -11,6 +11,7 @@ import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference
 import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordStatus;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletePublicationReceipt;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -33,7 +34,7 @@ class ForgotPasswordCompleteReplayCodecTest {
             WorkflowNextStep.RETURN_TO_LOGIN,
             true,
             true,
-            List.of());
+            List.of(), null);
     var response = bridge.toTransientResponse(result);
 
     StepVerifier.create(
@@ -60,7 +61,7 @@ class ForgotPasswordCompleteReplayCodecTest {
             WorkflowNextStep.PASSWORD_SETUP,
             false,
             false,
-            List.of());
+            List.of(), null);
 
     StepVerifier.create(
             codec
@@ -72,6 +73,23 @@ class ForgotPasswordCompleteReplayCodecTest {
   }
 
   @Test
+  void invocationPublicationReceiptIsExcludedFromTransientAndReplayWireFormats() {
+    var result =
+        new CompleteForgotPasswordResult(
+                CompleteForgotPasswordStatus.SUCCESS,
+                WorkflowNextStep.RETURN_TO_LOGIN,
+                true,
+                true,
+                List.of(), null)
+            .withPublicationReceipt(new ForgotPasswordCompletePublicationReceipt(true));
+    var response = bridge.toTransientResponse(result);
+
+    assertThat(response.serializedBody())
+        .doesNotContain("publicationReceipt", "terminalFailure");
+    assertThat(bridge.fromTransientResponse(response).publicationReceipt()).isNull();
+  }
+
+  @Test
   void rejectsUnknownOutcomeActionMismatchUnknownFieldsAndProtectedReference() {
     var unknown =
         new CompleteForgotPasswordResult(
@@ -79,7 +97,7 @@ class ForgotPasswordCompleteReplayCodecTest {
             WorkflowNextStep.PASSWORD_SETUP,
             false,
             false,
-            List.of());
+            List.of(), null);
     assertThatThrownBy(() -> bridge.toTransientResponse(unknown))
         .isInstanceOf(IllegalArgumentException.class);
 

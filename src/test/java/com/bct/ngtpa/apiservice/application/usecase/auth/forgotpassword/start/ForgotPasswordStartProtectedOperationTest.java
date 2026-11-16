@@ -3,7 +3,9 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
@@ -11,6 +13,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyKey;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyMode;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionOnNewFlowPolicy;
@@ -18,9 +22,11 @@ import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CreateAuthFlowSessionCsrfResult;
@@ -128,6 +134,125 @@ class ForgotPasswordStartProtectedOperationTest {
     assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
     assertThat(result.authFlowSessionId()).isNull();
     assertThat(result.csrfToken()).isNull();
+    verify(f.failureEventPort, never()).publish(any());
+  }
+
+  @Test
+  void lookupExceptionPublishesCauseFreeLocalIncidentWithoutSensitiveValues() {
+    String marker = "R1-PRIVATE-THROWABLE-MARKER";
+    Fixture fixture = new Fixture();
+    when(fixture.lookup.lookup(any())).thenReturn(Mono.error(new IllegalStateException(marker)));
+
+    var result = fixture.operation.execute(command(null)).block();
+
+    assertThat(result.status()).isEqualTo(StartForgotPasswordResultStatus.SYSTEM_FAILED);
+    var failure = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(fixture.failureEventPort).publish(failure.capture());
+    verifyNoMoreInteractions(fixture.failureEventPort);
+    FailureEvent event = failure.getValue();
+    assertThat(event.event()).isEqualTo("forgot-password.start.failed");
+    assertThat(event.requestId()).isEqualTo("req-1");
+    assertThat(event.capability()).isEqualTo("FORGOT_PASSWORD");
+    assertThat(event.operation()).isEqualTo("ForgotPasswordStart");
+    assertThat(event.origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(event.internalCode()).isEqualTo("START_TECHNICAL_FAILURE");
+    assertThat(event.publicCode()).isEqualTo(SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value());
+    assertThat(event.httpStatus()).isEqualTo(503);
+    assertThat(event.retryable()).isFalse();
+    assertThat(event.safeDimensions()).containsExactly(Map.entry("stage", "username-lookup"));
+    assertThat(event.toString())
+        .doesNotContain(marker, "member01", "cust-db01", "tas-user-01");
+  }
+
+  @Test
+  void recognizedBusinessRejectionDoesNotEmitTechnicalIncident() {
+    Fixture fixture = new Fixture();
+    when(fixture.lookup.lookup(any()))
+        .thenReturn(Mono.just(ForgotPasswordUsernameLookupResult.notFound()));
+
+    var result = fixture.operation.execute(command(null)).block();
+
+    assertThat(result.status()).isEqualTo(StartForgotPasswordResultStatus.USERNAME_NOT_FOUND);
+    verify(fixture.failureEventPort, never()).publish(any());
+  }
+
+  @Test
+  void lookupTechnicalResultPreservesSpecificErrorClassifications() {
+    for (FailureOrigin origin :
+        new FailureOrigin[] {
+          FailureOrigin.DOWNSTREAM_CONTRACT,
+          FailureOrigin.DOWNSTREAM_INVALID_RESPONSE,
+          FailureOrigin.DOWNSTREAM_TRANSPORT,
+          FailureOrigin.LOCAL_SYSTEM
+        }) {
+      Fixture fixture = new Fixture();
+      when(fixture.lookup.lookup(any()))
+          .thenReturn(Mono.just(ForgotPasswordUsernameLookupResult.systemFailed(origin)));
+
+      var result = fixture.operation.execute(command(null)).block();
+
+      assertThat(result.status()).isEqualTo(StartForgotPasswordResultStatus.SYSTEM_FAILED);
+      var failure = ArgumentCaptor.forClass(FailureEvent.class);
+      verify(fixture.failureEventPort).publish(failure.capture());
+      assertThat(failure.getValue().origin()).isEqualTo(origin);
+      assertThat(failure.getValue().safeDimensions()).containsExactly(Map.entry("stage", "username-lookup"));
+    }
+
+    Fixture genericFailure = new Fixture();
+    when(genericFailure.lookup.lookup(any()))
+        .thenReturn(Mono.just(ForgotPasswordUsernameLookupResult.systemFailed()));
+    assertThat(genericFailure.operation.execute(command(null)).block().status())
+        .isEqualTo(StartForgotPasswordResultStatus.SYSTEM_FAILED);
+    var genericEvent = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(genericFailure.failureEventPort).publish(genericEvent.capture());
+    assertThat(genericEvent.getValue().origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+  }
+
+  @Test
+  void localSessionAndCsrfFailuresPublishLocalSystemIncidents() {
+    Fixture sessionFailure = new Fixture();
+    when(sessionFailure.lookup.lookup(any()))
+        .thenReturn(
+            Mono.just(
+                ForgotPasswordUsernameLookupResult.confirmed(
+                    "cust-db01", "tas-user-01", MemberIdentityType.ID)));
+    when(sessionFailure.concurrency.start(any()))
+        .thenReturn(Mono.error(new IllegalStateException("R1-SESSION-DETAIL")));
+
+    assertThat(sessionFailure.operation.execute(command(null)).block().status())
+        .isEqualTo(StartForgotPasswordResultStatus.SYSTEM_FAILED);
+    assertPublishedLocalSessionFailure(sessionFailure);
+
+    Fixture csrfFailure = new Fixture();
+    when(csrfFailure.lookup.lookup(any()))
+        .thenReturn(
+            Mono.just(
+                ForgotPasswordUsernameLookupResult.confirmed(
+                    "cust-db01", "tas-user-01", MemberIdentityType.ID)));
+    when(csrfFailure.concurrency.start(any())).thenReturn(Mono.just(csrfFailure.started));
+    when(csrfFailure.csrf.createForSession(any()))
+        .thenReturn(Mono.error(new IllegalStateException("R1-CSRF-DETAIL")));
+
+    assertThat(csrfFailure.operation.execute(command(null)).block().status())
+        .isEqualTo(StartForgotPasswordResultStatus.SYSTEM_FAILED);
+    assertPublishedLocalSessionFailure(csrfFailure);
+  }
+
+  private static void assertPublishedLocalSessionFailure(Fixture fixture) {
+    var failure = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(fixture.failureEventPort).publish(failure.capture());
+    verifyNoMoreInteractions(fixture.failureEventPort);
+    assertThat(failure.getValue().origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(failure.getValue().requestId()).isEqualTo("req-1");
+    assertThat(failure.getValue().safeDimensions())
+        .containsExactly(Map.entry("stage", "session-replacement-or-csrf"));
+    assertThat(failure.getValue().toString())
+        .doesNotContain(
+            "R1-SESSION-DETAIL",
+            "R1-CSRF-DETAIL",
+            "member01",
+            "cust-db01",
+            "tas-user-01");
   }
 
   private static StartForgotPasswordCommand command(String existing) {
@@ -148,6 +273,7 @@ class ForgotPasswordStartProtectedOperationTest {
         mock(AuthFlowSessionConcurrencyService.class);
     private final CreateAuthFlowSessionCsrfUseCase csrf =
         mock(CreateAuthFlowSessionCsrfUseCase.class);
+    private final FailureEventPort failureEventPort = mock(FailureEventPort.class);
     private ForgotPasswordAuthFlowContext protectedContext;
     private final ForgotPasswordAuthFlowContextProtectorPort protector =
         new ForgotPasswordAuthFlowContextProtectorPort() {
@@ -190,7 +316,8 @@ class ForgotPasswordStartProtectedOperationTest {
               true,
               true,
               true,
-              Map.of("STAFF", MemberIdentityType.STAFFNO, "ID", MemberIdentityType.ID));
+              Map.of("STAFF", MemberIdentityType.STAFFNO, "ID", MemberIdentityType.ID),
+              failureEventPort);
     }
   }
 }

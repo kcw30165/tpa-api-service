@@ -27,6 +27,7 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLock
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordCompletionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBindingPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
@@ -102,7 +103,8 @@ public class ForgotPasswordApplicationConfig {
       ObjectMapper objectMapper,
       AuthWorkflowProperties workflows,
       AuthFlowSessionProperties sessionProperties,
-      Map<String, MemberIdentityType> forgotPasswordTasIdentityTypeMapping) {
+      Map<String, MemberIdentityType> forgotPasswordTasIdentityTypeMapping,
+      FailureEventPort failureEventPort) {
     workflows.validateForgotPasswordPolicy();
     var scenario = sessionProperties.getScenarios().getForgotPassword();
     var forgotPassword = workflows.getForgotPassword();
@@ -124,7 +126,8 @@ public class ForgotPasswordApplicationConfig {
             forgotPassword.getUsername().isTrim(),
             forgotPassword.getUsername().isCaseInsensitive(),
             "ASCII_LOWERCASE".equalsIgnoreCase(forgotPassword.getUsername().getNormalization()),
-            forgotPasswordTasIdentityTypeMapping);
+            forgotPasswordTasIdentityTypeMapping,
+            failureEventPort);
     var json = new JacksonTransientJsonAdapter(objectMapper);
     var codec =
         new ForgotPasswordStartReplayCodec(
@@ -148,10 +151,18 @@ public class ForgotPasswordApplicationConfig {
           com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort sessions,
           com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort locks,
           com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort expiry,
-          Clock clock) {
+          Clock clock,
+          FailureEventPort failureEventPort) {
     return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity
         .VerifyForgotPasswordIdentityService(
-        loader, protector, sessions, locks, expiry, clock, java.time.Duration.ofSeconds(10));
+        loader,
+        protector,
+        sessions,
+        locks,
+        expiry,
+        clock,
+        java.time.Duration.ofSeconds(10),
+        failureEventPort);
   }
 
   @Bean
@@ -164,7 +175,8 @@ public class ForgotPasswordApplicationConfig {
       AuthWorkflowPolicyPort policies,
       Clock clock,
       ObjectMapper objectMapper,
-      AuthWorkflowProperties properties) {
+      AuthWorkflowProperties properties,
+      FailureEventPort failureEventPort) {
     properties.validateForgotPasswordPolicy();
     var operation =
         new ForgotPasswordCompleteProtectedOperation(
@@ -186,7 +198,7 @@ public class ForgotPasswordApplicationConfig {
             new IdempotencyOperationIdentityFactory(),
             new CanonicalIdempotencyFingerprintFactory());
     return new IdempotentCompleteForgotPasswordService(
-        idempotencyExecutor, sessions, protector, operation, responses, policy);
+        idempotencyExecutor, sessions, protector, operation, responses, policy, failureEventPort);
   }
 
   @Bean
@@ -300,7 +312,8 @@ public class ForgotPasswordApplicationConfig {
       Clock clock,
       ObjectMapper objectMapper,
       AuthWorkflowProperties properties,
-      com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort registry) {
+      com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort registry,
+      FailureEventPort failureEventPort) {
     properties.validateForgotPasswordPolicy();
     Duration ttl =
         Duration.ofSeconds(
@@ -333,7 +346,7 @@ public class ForgotPasswordApplicationConfig {
             new IdempotencyOperationIdentityFactory(),
             new CanonicalIdempotencyFingerprintFactory());
     return new IdempotentForgotPasswordDetailsOtpService(
-        idempotencyExecutor, protectedOperation, responses, policy, ttl);
+        idempotencyExecutor, protectedOperation, responses, policy, ttl, failureEventPort);
   }
 
   @Bean
@@ -406,6 +419,7 @@ public class ForgotPasswordApplicationConfig {
       OtpChallengePort otpChallenges,
       AuthFlowSessionCancellationPort cancellationPort,
       Clock clock,
+      FailureEventPort failureEventPort,
       CorsProperties corsProperties) {
     return new CancelForgotPasswordService(
         sessions,
@@ -413,6 +427,7 @@ public class ForgotPasswordApplicationConfig {
         otpChallenges,
         cancellationPort,
         clock,
+        failureEventPort,
         corsProperties == null ? List.of() : corsProperties.getAllowedOrigins());
   }
 
@@ -436,7 +451,8 @@ public class ForgotPasswordApplicationConfig {
       Clock clock,
       ObjectMapper objectMapper,
       AuthWorkflowProperties properties,
-      CorsProperties corsProperties) {
+      CorsProperties corsProperties,
+      FailureEventPort failureEventPort) {
     properties.validateForgotPasswordPolicy();
     Duration ttl =
         Duration.ofSeconds(
@@ -478,7 +494,7 @@ public class ForgotPasswordApplicationConfig {
             new CanonicalIdempotencyFingerprintFactory());
     return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend
         .IdempotentResendForgotPasswordOtpService(
-        idempotencyExecutor, protectedOperation, responses, policy, ttl);
+        idempotencyExecutor, protectedOperation, responses, policy, ttl, failureEventPort);
   }
 
   @Bean
@@ -494,7 +510,8 @@ public class ForgotPasswordApplicationConfig {
       OtpChallengePort otp,
       Clock clock,
       ObjectMapper objectMapper,
-      AuthWorkflowProperties properties) {
+      AuthWorkflowProperties properties,
+      FailureEventPort failureEventPort) {
     properties.validateForgotPasswordPolicy();
     var protectedOperation =
         new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify
@@ -522,6 +539,6 @@ public class ForgotPasswordApplicationConfig {
             new CanonicalIdempotencyFingerprintFactory());
     return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify
         .IdempotentVerifyForgotPasswordOtpService(
-        idempotencyExecutor, protectedOperation, responses, policy);
+        idempotencyExecutor, protectedOperation, responses, policy, failureEventPort);
   }
 }

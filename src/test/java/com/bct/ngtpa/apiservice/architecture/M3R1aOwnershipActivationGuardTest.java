@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 class M3R1aOwnershipActivationGuardTest {
   @Test
-  void onlyApprovedRegistrationOperationsAndFacadeInfrastructureOptInAtM3bR3() throws Exception {
+  void onlyApprovedOperationsAndFacadeInfrastructureOptInAtCurrentCheckpoints() throws Exception {
     var root = Path.of("src/main/java");
     var hits =
         Files.walk(root)
@@ -26,6 +26,9 @@ class M3R1aOwnershipActivationGuardTest {
                     "com/bct/ngtpa/apiservice/adapter/out/apim/investmentchoice/ApimInvestmentChoiceCancelAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/investmentchoice/ApimInvestmentChoiceDetailsAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/investmentchoice/ApimInvestmentChoiceInstructionAdapter.java",
+                    "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/ApimForgotPasswordCompletionAdapter.java",
+                    "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/ApimForgotPasswordUsernameLookupAdapter.java",
+                    "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/details/ApimForgotPasswordDetailsLookupAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationCompletionAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationUsernameAvailabilityAdapter.java",
@@ -61,7 +64,19 @@ class M3R1aOwnershipActivationGuardTest {
             root.resolve(
                 "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/"
                     + "ApimForgotPasswordUsernameLookupAdapter.java"));
-    assertThat(forgotPassword).doesNotContain("TERMINAL_CALLER");
+    assertThat(forgotPassword).contains("ApimIncidentOwnership.TERMINAL_CALLER");
+    String forgotPasswordDetails =
+        read(
+            root.resolve(
+                "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/details/"
+                    + "ApimForgotPasswordDetailsLookupAdapter.java"));
+    assertThat(forgotPasswordDetails).contains("ApimIncidentOwnership.TERMINAL_CALLER");
+    String forgotPasswordCompletion =
+        read(
+            root.resolve(
+                "com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/"
+                    + "ApimForgotPasswordCompletionAdapter.java"));
+    assertThat(forgotPasswordCompletion).contains("ApimIncidentOwnership.TERMINAL_CALLER");
   }
 
   @Test

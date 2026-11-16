@@ -19,6 +19,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.Forgot
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
@@ -29,6 +30,7 @@ import com.bct.ngtpa.apiservice.application.port.in.ResendForgotPasswordOtpUseCa
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordIdentityUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordOtpUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.cancel.CancelForgotPasswordCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityResult;
@@ -36,6 +38,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResultStatus;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordStartTechnicalFailure;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import java.time.Duration;
 import java.util.Map;
@@ -48,6 +51,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -82,7 +86,8 @@ public final class ForgotPasswordController {
               String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage,
           @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (!hasText(idempotencyKey)) {
       return Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.missingIdempotencyKey()));
@@ -107,9 +112,14 @@ public final class ForgotPasswordController {
                     startMapper.toMutationResponse(result, acceptLanguage));
               })
           .onErrorResume(
-              exception ->
-                  Mono.just(
-                      ForgotPasswordHttpResponses.toResponse(startMapper.systemUnavailable())));
+              exception -> {
+                var responseEntity =
+                    ForgotPasswordHttpResponses.toResponse(startMapper.systemUnavailable());
+                if (exception instanceof ForgotPasswordStartTechnicalFailure) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return Mono.just(responseEntity);
+              });
     } catch (RuntimeException exception) {
       return Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.invalidRequest()));
     }
@@ -128,7 +138,8 @@ public final class ForgotPasswordController {
           @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
               String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String language,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (!hasText(sid))
       return Mono.just(
@@ -140,7 +151,15 @@ public final class ForgotPasswordController {
     try {
       return identityCheckUseCase
           .verify(identityCheckMapper.command(body, sid, csrf, origin, referer, requestId))
-          .map(r -> ForgotPasswordHttpResponses.toResponse(identityCheckMapper.response(r)));
+          .map(
+              r -> {
+                var responseEntity =
+                    ForgotPasswordHttpResponses.toResponse(identityCheckMapper.response(r));
+                if (r.incidentPublished()) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return responseEntity;
+              });
     } catch (RuntimeException e) {
       return Mono.just(
           ForgotPasswordHttpResponses.toResponse(
@@ -165,7 +184,8 @@ public final class ForgotPasswordController {
               String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String lang,
           @RequestHeader(name = "Idempotency-Key", required = false) String key,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (b == null || !hasText(sid) || !hasText(key))
       return Mono.just(
@@ -186,7 +206,15 @@ public final class ForgotPasswordController {
                   b.dateOfBirth(),
                   b.email(),
                   b.mobile()))
-          .map(r -> ForgotPasswordHttpResponses.toResponse(detailsCheckMapper.map(r)));
+          .map(
+              r -> {
+                var responseEntity =
+                    ForgotPasswordHttpResponses.toResponse(detailsCheckMapper.map(r));
+                if (r.incidentPublished()) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return responseEntity;
+              });
     } catch (RuntimeException e) {
       return Mono.just(
           ForgotPasswordHttpResponses.toResponse(
@@ -209,7 +237,8 @@ public final class ForgotPasswordController {
           @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
               String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String language,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (!hasText(sessionId)) {
       cookieWriter.clearAuthFlowCookie(response);
@@ -218,22 +247,51 @@ public final class ForgotPasswordController {
     if (!hasText(csrfToken)) {
       return CsrfHttpResponses.missingToken();
     }
+    CancelForgotPasswordCommand command;
+    try {
+      command = cancelMapper.toCommand(sessionId, csrfToken, origin, referer, requestId);
+    } catch (RuntimeException exception) {
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.csrfInvalid()));
+    }
     try {
       return cancelUseCase
-          .cancel(cancelMapper.toCommand(sessionId, csrfToken, origin, referer, requestId))
+          .cancel(command)
           .map(
               result -> {
                 if (result.clearAuthFlowCookie()) {
                   cookieWriter.clearAuthFlowCookie(response);
                 }
-                return ForgotPasswordHttpResponses.toResponse(cancelMapper.toResponse(result));
+                ResponseEntity<
+                        MutationResponse<
+                            ForgotPasswordWorkflowResultResponse<ForgotPasswordCancelDataResponse>>>
+                    responseEntity =
+                        ForgotPasswordHttpResponses.toResponse(cancelMapper.toResponse(result));
+                if (result.incidentPublished()
+                    && responseEntity.getStatusCode().is5xxServerError()) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return responseEntity;
               })
           .onErrorResume(
               error ->
                   Mono.just(
                       ForgotPasswordHttpResponses.toResponse(cancelMapper.systemUnavailable())));
     } catch (RuntimeException exception) {
-      return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.csrfInvalid()));
+      boolean incidentPublished = false;
+      try {
+        incidentPublished = cancelUseCase.reportSynchronousTechnicalFailure(requestId);
+      } catch (RuntimeException ignored) {
+        incidentPublished = false;
+      }
+      ResponseEntity<
+              MutationResponse<
+                  ForgotPasswordWorkflowResultResponse<ForgotPasswordCancelDataResponse>>>
+          responseEntity =
+              ForgotPasswordHttpResponses.toResponse(cancelMapper.csrfInvalid());
+      if (incidentPublished && responseEntity.getStatusCode().is5xxServerError()) {
+        TerminalIncidentHttpObservation.markOwned(exchange);
+      }
+      return Mono.just(responseEntity);
     }
   }
 
@@ -255,7 +313,8 @@ public final class ForgotPasswordController {
           @RequestHeader(name = "Accept-Language", required = false) String language,
           @RequestHeader(name = "Origin", required = false) String origin,
           @RequestHeader(name = "Referer", required = false) String referer,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (!hasText(sessionId)) {
       return Mono.just(
@@ -288,7 +347,13 @@ public final class ForgotPasswordController {
                 if (result.clearAuthFlowCookie()) {
                   cookieWriter.clearAuthFlowCookie(response);
                 }
-                return ForgotPasswordHttpResponses.toResponse(completeMapper.toResponse(result));
+                var responseEntity =
+                    ForgotPasswordHttpResponses.toResponse(completeMapper.toResponse(result));
+                if (result.publicationReceipt() != null
+                    && result.publicationReceipt().terminalFailure()) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return responseEntity;
               })
           .onErrorResume(
               error ->
@@ -313,7 +378,8 @@ public final class ForgotPasswordController {
               String requestId,
           @RequestHeader(name = "Accept-Language", required = false) String language,
           @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (!hasText(idempotencyKey)) {
       return Mono.just(
@@ -336,8 +402,17 @@ public final class ForgotPasswordController {
                   clean(requestId),
                   clean(language),
                   idempotencyKey.trim()))
-          .map(otpResendMapper::toMutationResponse)
-          .map(ForgotPasswordHttpResponses::toResponse)
+          .map(
+              result -> {
+                var responseEntity =
+                    ForgotPasswordHttpResponses.toResponse(
+                        otpResendMapper.toMutationResponse(result));
+                if (result.publicationReceipt() != null
+                    && result.publicationReceipt().terminalFailure()) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return responseEntity;
+              })
           .onErrorResume(
               exception ->
                   Mono.just(
@@ -362,7 +437,8 @@ public final class ForgotPasswordController {
           @RequestHeader(name = "Accept-Language", required = false) String language,
           @RequestHeader(name = "Origin", required = false) String origin,
           @RequestHeader(name = "Referer", required = false) String referer,
-          ServerHttpResponse response) {
+          ServerHttpResponse response,
+          ServerWebExchange exchange) {
     echoRequestId(response, requestId);
     if (!hasText(sessionId)) {
       return Mono.just(
@@ -391,8 +467,17 @@ public final class ForgotPasswordController {
                   clean(language),
                   clean(requestId),
                   Duration.ofSeconds(300)))
-          .map(otpVerifyMapper::toMutationResponse)
-          .map(ForgotPasswordHttpResponses::toResponse)
+          .map(
+              result -> {
+                var responseEntity =
+                    ForgotPasswordHttpResponses.toResponse(
+                        otpVerifyMapper.toMutationResponse(result));
+                if (result.publicationReceipt() != null
+                    && result.publicationReceipt().terminalFailure()) {
+                  TerminalIncidentHttpObservation.markOwned(exchange);
+                }
+                return responseEntity;
+              })
           .onErrorResume(
               exception ->
                   Mono.just(

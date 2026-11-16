@@ -17,6 +17,8 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOu
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionResult;
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.detailsotp.ForgotPasswordDetailsOtpExecutionBridge;
@@ -85,7 +87,7 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
     var transientResponse = new HydratedIdempotentResponse(200, "application/json", "{}", Map.of());
     when(fixture.operation.execute(command()))
         .thenReturn(
-            Mono.just(new ForgotPasswordDetailsOtpProtectedExecutionResult(result, reference)));
+            Mono.just(new ForgotPasswordDetailsOtpProtectedExecutionResult(result, reference, null, null)));
     when(fixture.responses.toTransientResponse(result)).thenReturn(transientResponse);
     when(fixture.responses.fromTransientResponse(any())).thenReturn(result);
 
@@ -121,11 +123,145 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
         .thenReturn(
             Mono.just(
                 new ForgotPasswordDetailsOtpProtectedExecutionResult(
-                    ForgotPasswordDetailsOtpResult.system(), null)));
+                    ForgotPasswordDetailsOtpResult.system(), null, null, null)));
     StepVerifier.create(fixture.service.process(command()))
-        .expectErrorMessage("Forgot Password DETAILS_AND_OTP protected operation failed")
+        .expectError(ForgotPasswordDetailsOtpExpectedFailureException.class)
         .verify();
     verify(fixture.responses, never()).toTransientResponse(any());
+    verify(fixture.failureEventPort, never()).publish(any());
+  }
+
+  @Test
+  void publishedUnavailableIncidentIsMarkedOnlyOnTheAcquiredResponse() {
+    Fixture fixture = new Fixture();
+    fixture.executor.invokeProtected = true;
+    when(fixture.policy.operationId(any(), any(), any()))
+        .thenReturn(mock(IdempotencyOperationId.class));
+    when(fixture.policy.detailsAndOtp(any())).thenReturn(mock(IdempotencyFingerprint.class));
+    var unavailable =
+        new ForgotPasswordDetailsOtpResult(
+            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE, null, 0, 0, java.util.List.of(), false);
+    when(fixture.operation.execute(command()))
+        .thenReturn(
+            Mono.just(
+                new ForgotPasswordDetailsOtpProtectedExecutionResult(
+                    unavailable,
+                    null,
+                    FailureOrigin.DOWNSTREAM_TRANSPORT,
+                    "details-lookup")));
+    var transientResponse = new HydratedIdempotentResponse(503, "application/json", "{}", Map.of());
+    when(fixture.responses.toTransientResponse(any())).thenReturn(transientResponse);
+    when(fixture.responses.fromTransientResponse(transientResponse)).thenReturn(unavailable);
+
+    var result = fixture.service.process(command()).block();
+
+    assertThat(result.incidentPublished()).isTrue();
+    var eventCaptor =
+        org.mockito.ArgumentCaptor.forClass(
+            com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent.class);
+    verify(fixture.failureEventPort).publish(eventCaptor.capture());
+    assertThat(eventCaptor.getValue().origin()).isEqualTo(FailureOrigin.DOWNSTREAM_TRANSPORT);
+    assertThat(eventCaptor.getValue().safeDimensions()).containsOnlyKeys("stage");
+    assertThat(eventCaptor.getValue().safeDimensions()).containsEntry("stage", "details-lookup");
+    assertThat(eventCaptor.getValue().toString())
+        .doesNotContain("member@example.com", "04/07/1978", "csrf", "afs_test_123");
+  }
+
+  @Test
+  void publishedLocalIncidentUsesCauseFreeFailurePath() {
+    Fixture fixture = new Fixture();
+    fixture.executor.invokeProtected = true;
+    when(fixture.policy.operationId(any(), any(), any()))
+        .thenReturn(mock(IdempotencyOperationId.class));
+    when(fixture.policy.detailsAndOtp(any())).thenReturn(mock(IdempotencyFingerprint.class));
+    when(fixture.operation.execute(command()))
+        .thenReturn(
+            Mono.just(
+                new ForgotPasswordDetailsOtpProtectedExecutionResult(
+                    ForgotPasswordDetailsOtpResult.system(),
+                    null,
+                    FailureOrigin.LOCAL_SYSTEM,
+                    "session-read")));
+
+    StepVerifier.create(fixture.service.process(command()))
+        .expectErrorSatisfies(
+            exception -> {
+              assertThat(exception)
+                  .isInstanceOf(ForgotPasswordDetailsOtpIncidentPublishedException.class);
+              assertThat(exception.getMessage()).isNull();
+              assertThat(exception.getCause()).isNull();
+              assertThat(exception.getStackTrace()).isEmpty();
+            })
+        .verify();
+
+    var eventCaptor =
+        org.mockito.ArgumentCaptor.forClass(
+            com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent.class);
+    verify(fixture.failureEventPort).publish(eventCaptor.capture());
+    verify(fixture.failureEventPort, never()).publish(any(), any());
+    assertThat(eventCaptor.getValue().origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(eventCaptor.getValue().safeDimensions()).containsEntry("stage", "session-read");
+  }
+
+  @Test
+  void unknownOutcomeReplayDoesNotRepublishOrInheritIncidentMarker() {
+    Fixture fixture = new Fixture();
+    fixture.executor.invokeProtected = true;
+    fixture.executor.replayUnknownAfterFirst = true;
+    when(fixture.policy.operationId(any(), any(), any()))
+        .thenReturn(mock(IdempotencyOperationId.class));
+    when(fixture.policy.detailsAndOtp(any())).thenReturn(mock(IdempotencyFingerprint.class));
+    when(fixture.operation.execute(command()))
+        .thenReturn(
+            Mono.just(
+                new ForgotPasswordDetailsOtpProtectedExecutionResult(
+                    ForgotPasswordDetailsOtpResult.system(),
+                    null,
+                    FailureOrigin.LOCAL_SYSTEM,
+                    "message-delivery")));
+
+    StepVerifier.create(fixture.service.process(command()))
+        .expectError(ForgotPasswordDetailsOtpIncidentPublishedException.class)
+        .verify();
+    var replay = fixture.service.process(command()).block();
+
+    assertThat(replay.status()).isEqualTo(ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR);
+    assertThat(replay.incidentPublished()).isFalse();
+    verify(fixture.operation).execute(command());
+    verify(fixture.failureEventPort).publish(any());
+  }
+
+  @Test
+  void completedReplayDoesNotRepeatPublishedIncidentOrInheritMarker() {
+    Fixture fixture = new Fixture();
+    fixture.executor.invokeProtected = true;
+    fixture.executor.replayCompletedAfterFirst = true;
+    when(fixture.policy.operationId(any(), any(), any()))
+        .thenReturn(mock(IdempotencyOperationId.class));
+    when(fixture.policy.detailsAndOtp(any())).thenReturn(mock(IdempotencyFingerprint.class));
+    var unavailable =
+        new ForgotPasswordDetailsOtpResult(
+            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE, null, 0, 0, java.util.List.of(), false);
+    when(fixture.operation.execute(command()))
+        .thenReturn(
+            Mono.just(
+                new ForgotPasswordDetailsOtpProtectedExecutionResult(
+                    unavailable,
+                    null,
+                    FailureOrigin.DOWNSTREAM_TRANSPORT,
+                    "details-lookup")));
+    var transientResponse = new HydratedIdempotentResponse(503, "application/json", "{}", Map.of());
+    when(fixture.responses.toTransientResponse(any())).thenReturn(transientResponse);
+    when(fixture.responses.fromTransientResponse(transientResponse)).thenReturn(unavailable);
+
+    var original = fixture.service.process(command()).block();
+    var replay = fixture.service.process(command()).block();
+
+    assertThat(original.incidentPublished()).isTrue();
+    assertThat(replay.status()).isEqualTo(ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE);
+    assertThat(replay.incidentPublished()).isFalse();
+    verify(fixture.operation).execute(command());
+    verify(fixture.failureEventPort).publish(any());
   }
 
   private static void assertMapped(
@@ -159,7 +295,7 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
         "m***@example.com",
         300,
         60,
-        java.util.List.of());
+        java.util.List.of(), false);
   }
 
   private static final class CapturingExecutor implements IdempotencyExecutor {
@@ -167,11 +303,24 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
     private IdempotencyReservationOutcome outcome =
         IdempotencyReservationOutcome.DUPLICATE_IN_PROGRESS;
     private boolean invokeProtected;
+    private boolean replayUnknownAfterFirst;
+    private boolean replayCompletedAfterFirst;
+    private int executions;
     private HydratedIdempotentResponse protectedResponse;
 
     @Override
     public Mono<IdempotentExecutionResult> execute(IdempotentExecutionCommand supplied) {
       command = supplied;
+      if (replayUnknownAfterFirst && executions++ > 0) {
+        return Mono.just(
+            new IdempotentExecutionResult(
+                IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING, null));
+      }
+      if (replayCompletedAfterFirst && executions++ > 0) {
+        return Mono.just(
+            new IdempotentExecutionResult(
+                IdempotencyReservationOutcome.COMPLETED_REPLAY, protectedResponse));
+      }
       if (invokeProtected) {
         return supplied
             .protectedOperation()
@@ -203,8 +352,9 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
         mock(ForgotPasswordDetailsOtpExecutionBridge.class);
     private final ForgotPasswordIdempotencyIntegrationPolicy policy =
         mock(ForgotPasswordIdempotencyIntegrationPolicy.class);
+    private final FailureEventPort failureEventPort = mock(FailureEventPort.class);
     private final IdempotentForgotPasswordDetailsOtpService service =
         new IdempotentForgotPasswordDetailsOtpService(
-            executor, operation, responses, policy, Duration.ofMinutes(5));
+            executor, operation, responses, policy, Duration.ofMinutes(5), failureEventPort);
   }
 }

@@ -3,6 +3,9 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complet
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
@@ -17,6 +20,8 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
@@ -26,6 +31,7 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOu
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionResult;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.complete.ForgotPasswordCompleteExecutionBridge;
@@ -69,6 +75,7 @@ class IdempotentCompleteForgotPasswordServiceTest {
       mock(ForgotPasswordCompleteExecutionBridge.class);
   private final ForgotPasswordIdempotencyIntegrationPolicy policy =
       mock(ForgotPasswordIdempotencyIntegrationPolicy.class);
+  private final FailureEventPort failureEvents = mock(FailureEventPort.class);
 
   private final AuthFlowSessionId sid = new AuthFlowSessionId("afs-idem-complete-1");
 
@@ -80,7 +87,7 @@ class IdempotentCompleteForgotPasswordServiceTest {
 
   private IdempotentCompleteForgotPasswordService newService() {
     return new IdempotentCompleteForgotPasswordService(
-        executor, sessions, protector, operation, responses, policy);
+        executor, sessions, protector, operation, responses, policy, failureEvents);
   }
 
   private CompleteForgotPasswordCommand command() {
@@ -139,7 +146,7 @@ class IdempotentCompleteForgotPasswordServiceTest {
         WorkflowNextStep.RETURN_TO_LOGIN,
         true,
         true,
-        List.of());
+        List.of(), null);
   }
 
   private static CompleteForgotPasswordResult systemFailedResult() {
@@ -148,7 +155,7 @@ class IdempotentCompleteForgotPasswordServiceTest {
         WorkflowNextStep.PASSWORD_SETUP,
         false,
         false,
-        List.of());
+        List.of(), null);
   }
 
   /** Captures the command passed to executor.execute(...) and returns it. */
@@ -161,6 +168,7 @@ class IdempotentCompleteForgotPasswordServiceTest {
                 new IdempotentExecutionResult(
                     IdempotencyReservationOutcome.ACQUIRED,
                     mock(HydratedIdempotentResponse.class))));
+    when(responses.fromTransientResponse(any())).thenReturn(successResult());
     newService().complete(command()).block();
     return captor.getValue();
   }
@@ -190,6 +198,26 @@ class IdempotentCompleteForgotPasswordServiceTest {
   }
 
   @Test
+  void protectorFailurePublishesCauseFreeLocalIncidentWithoutChangingInvalidFlowResponse() {
+    Map<String, String> attrs =
+        Map.of(CONTEXT_CIPHERTEXT_KEY, "ciphertext-secret", CONTEXT_KEY_VERSION_KEY, "version-secret");
+    when(sessions.loadSnapshot(any()))
+        .thenReturn(Mono.just(Optional.of(snapshotOf(sessionWith(attrs)))));
+    when(protector.unprotect(any())).thenThrow(new IllegalStateException("protected-secret"));
+    IdempotentExecutionCommand cmd = captureExecutionCommand();
+
+    StepVerifier.create(cmd.protectedOperation().get()).expectError().verify();
+
+    ArgumentCaptor<FailureEvent> eventCaptor = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(failureEvents).publish(eventCaptor.capture());
+    assertThat(eventCaptor.getValue().origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(eventCaptor.getValue().operation()).isEqualTo("COMPLETE");
+    assertThat(eventCaptor.getValue().safeDimensions()).containsEntry("stage", "context-protection");
+    assertThat(eventCaptor.getValue().toString())
+        .doesNotContain("protected-secret", "ciphertext-secret", "version-secret");
+  }
+
+  @Test
   void protectedOperationWithValidContextInvokesOperationAndReturnsTerminal() {
     Map<String, String> attrs =
         Map.of(
@@ -215,6 +243,57 @@ class IdempotentCompleteForgotPasswordServiceTest {
   }
 
   @Test
+  void recognizedBusinessOutcomeDoesNotPublishTechnicalIncident() {
+    Map<String, String> attrs =
+        Map.of(
+            CONTEXT_CIPHERTEXT_KEY,
+            "ct",
+            CONTEXT_KEY_VERSION_KEY,
+            "kv",
+            CONTEXT_ALGORITHM_KEY,
+            ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM);
+    when(sessions.loadSnapshot(any()))
+        .thenReturn(Mono.just(Optional.of(snapshotOf(sessionWith(attrs)))));
+    when(protector.unprotect(any()))
+        .thenReturn(contextWithPhase(ForgotPasswordProtectedPhase.PASSWORD_SETUP));
+    CompleteForgotPasswordResult business =
+        new CompleteForgotPasswordResult(
+            CompleteForgotPasswordStatus.BUSINESS_REJECTED,
+            WorkflowNextStep.PASSWORD_SETUP,
+            false,
+            false,
+            List.of(), null);
+    when(operation.execute(any()))
+        .thenReturn(
+            Mono.just(ForgotPasswordCompleteProtectedExecutionResult.terminal(business)));
+    HydratedIdempotentResponse transientResponse =
+        new HydratedIdempotentResponse(422, "application/json", "{}", Map.of());
+    when(responses.toTransientResponse(any())).thenReturn(transientResponse);
+    when(responses.fromTransientResponse(transientResponse)).thenReturn(business);
+    when(executor.execute(any()))
+        .thenAnswer(
+            invocation -> {
+              IdempotentExecutionCommand execution = invocation.getArgument(0);
+              return execution
+                  .protectedOperation()
+                  .get()
+                  .map(
+                      response ->
+                          new IdempotentExecutionResult(
+                              IdempotencyReservationOutcome.ACQUIRED, response));
+            });
+
+    StepVerifier.create(newService().complete(command()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(CompleteForgotPasswordStatus.BUSINESS_REJECTED);
+              assertThat(result.publicationReceipt()).isNull();
+            })
+        .verifyComplete();
+    verifyNoInteractions(failureEvents);
+  }
+
+  @Test
   void protectedOperationTechnicalFailureErrors() {
     Map<String, String> attrs =
         Map.of(
@@ -235,7 +314,7 @@ class IdempotentCompleteForgotPasswordServiceTest {
                     systemFailedResult())));
     IdempotentExecutionCommand cmd = captureExecutionCommand();
     StepVerifier.create(cmd.protectedOperation().get())
-        .expectError(IllegalStateException.class)
+        .expectError()
         .verify();
   }
 
@@ -251,7 +330,15 @@ class IdempotentCompleteForgotPasswordServiceTest {
                     IdempotencyReservationOutcome.COMPLETED_REPLAY, response)));
     CompleteForgotPasswordResult expected = successResult();
     when(responses.fromTransientResponse(response)).thenReturn(expected);
-    StepVerifier.create(newService().complete(command())).expectNext(expected).verifyComplete();
+    StepVerifier.create(newService().complete(command()))
+        .assertNext(
+            result -> {
+              assertThat(result).isEqualTo(expected);
+              assertThat(result.publicationReceipt()).isNull();
+            })
+        .verifyComplete();
+    verifyNoInteractions(failureEvents);
+    verifyNoInteractions(operation);
   }
 
   @Test
@@ -310,16 +397,119 @@ class IdempotentCompleteForgotPasswordServiceTest {
                     IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING, null)));
     StepVerifier.create(newService().complete(command()))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(CompleteForgotPasswordStatus.UNKNOWN_OUTCOME))
+            r -> {
+              assertThat(r.status()).isEqualTo(CompleteForgotPasswordStatus.UNKNOWN_OUTCOME);
+              assertThat(r.publicationReceipt()).isNull();
+            })
         .verifyComplete();
+    verifyNoInteractions(failureEvents);
   }
 
   @Test
   void executorErrorYieldsSystemFailed() {
-    when(executor.execute(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
+    when(executor.execute(any()))
+        .thenReturn(Mono.error(new IllegalStateException("idempotency-secret")));
     StepVerifier.create(newService().complete(command()))
         .assertNext(
-            r -> assertThat(r.status()).isEqualTo(CompleteForgotPasswordStatus.SYSTEM_FAILED))
+            r -> {
+              assertThat(r.status()).isEqualTo(CompleteForgotPasswordStatus.SYSTEM_FAILED);
+              assertThat(r.publicationReceipt()).isNotNull();
+            })
         .verifyComplete();
+    ArgumentCaptor<FailureEvent> eventCaptor = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(failureEvents).publish(eventCaptor.capture());
+    assertThat(eventCaptor.getValue().origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(eventCaptor.getValue().internalCode()).isEqualTo("COMPLETE_IDEMPOTENCY_FAILURE");
+    assertThat(eventCaptor.getValue().safeDimensions()).containsEntry("stage", "idempotency");
+    assertThat(eventCaptor.getValue().toString()).doesNotContain("idempotency-secret");
+  }
+
+  @Test
+  void publicationFailureDoesNotCreateReceiptOrRetryPublication() {
+    when(executor.execute(any()))
+        .thenReturn(Mono.error(new IllegalStateException("idempotency-secret")));
+    org.mockito.Mockito.doThrow(new IllegalStateException("publication-secret"))
+        .when(failureEvents)
+        .publish(any(FailureEvent.class));
+
+    StepVerifier.create(newService().complete(command()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(CompleteForgotPasswordStatus.SYSTEM_FAILED);
+              assertThat(result.publicationReceipt()).isNull();
+            })
+        .verifyComplete();
+    verify(failureEvents).publish(any(FailureEvent.class));
+  }
+
+  @Test
+  void independentResetAndBlockedWriteIncidentsAreBothPublished() {
+    Map<String, String> attrs =
+        Map.of(CONTEXT_CIPHERTEXT_KEY, "ciphertext-secret", CONTEXT_KEY_VERSION_KEY, "v1");
+    when(sessions.loadSnapshot(any()))
+        .thenReturn(Mono.just(Optional.of(snapshotOf(sessionWith(attrs)))));
+    when(protector.unprotect(any()))
+        .thenReturn(contextWithPhase(ForgotPasswordProtectedPhase.PASSWORD_SETUP));
+    when(operation.execute(any()))
+        .thenReturn(
+            Mono.just(
+                ForgotPasswordCompleteProtectedExecutionResult.unknownOutcome(
+                    new CompleteForgotPasswordResult(
+                        CompleteForgotPasswordStatus.UNKNOWN_OUTCOME,
+                        WorkflowNextStep.NONE,
+                        false,
+                        false,
+                        List.of(), null),
+                    List.of(
+                        ForgotPasswordCompleteIncident.apim(
+                            FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset"),
+                        ForgotPasswordCompleteIncident.local(
+                            "COMPLETE_BLOCKED_SESSION_WRITE_FAILURE", "blocked-session-write")))));
+    IdempotencyExecutor invokingExecutor =
+        new IdempotencyExecutor() {
+          @Override
+          public Mono<IdempotentExecutionResult> execute(IdempotentExecutionCommand execution) {
+            return execution
+                .protectedOperation()
+                .get()
+                .map(
+                    response ->
+                        new IdempotentExecutionResult(
+                            IdempotencyReservationOutcome.ACQUIRED, response))
+                .onErrorResume(
+                    ignored ->
+                        Mono.just(
+                            new IdempotentExecutionResult(
+                                IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING, null)));
+          }
+
+          @Override
+          public Mono<Optional<IdempotentExecutionResult>> replayCompleted(
+              IdempotencyOperationId operationId,
+              IdempotencyFingerprint fingerprint,
+              com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayResolver resolver) {
+            return Mono.error(new AssertionError("Unexpected replay lookup"));
+          }
+        };
+    var service =
+        new IdempotentCompleteForgotPasswordService(
+            invokingExecutor, sessions, protector, operation, responses, policy, failureEvents);
+
+    StepVerifier.create(service.complete(command()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(CompleteForgotPasswordStatus.UNKNOWN_OUTCOME);
+              assertThat(result.publicationReceipt()).isNotNull();
+            })
+        .verifyComplete();
+
+    ArgumentCaptor<FailureEvent> eventCaptor = ArgumentCaptor.forClass(FailureEvent.class);
+    verify(failureEvents, times(2)).publish(eventCaptor.capture());
+    assertThat(eventCaptor.getAllValues())
+        .extracting(FailureEvent::origin)
+        .containsExactly(FailureOrigin.DOWNSTREAM_TRANSPORT, FailureOrigin.LOCAL_SYSTEM);
+    assertThat(eventCaptor.getAllValues())
+        .extracting(event -> event.safeDimensions().get("stage"))
+        .containsExactly("apim-reset", "blocked-session-write");
   }
 }

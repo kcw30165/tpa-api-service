@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -64,7 +63,7 @@ class ForgotPasswordDetailsOtpSystemFailedRoutingCharacterizationTest {
   }
 
   @Test
-  void apimExecutorFailureRoutesToSystemFailedWithErrorLogNoStackTrace() {
+  void apimExecutorFailureRoutesToSystemFailedWithoutVerifierErrorLog() {
     Instant now = Instant.parse("2026-08-04T10:15:30Z");
     SessionLockHandle lock = new SessionLockHandle(true, "lock-key", "owner-token");
     AuthFlowSessionId sessionId = new AuthFlowSessionId("afs_test_123");
@@ -118,16 +117,6 @@ class ForgotPasswordDetailsOtpSystemFailedRoutingCharacterizationTest {
                 assertThat(result.status()).isEqualTo(ForgotPasswordDetailsStatus.SYSTEM_FAILED))
         .verifyComplete();
 
-    assertThat(verifierLogAppender.list).hasSize(1);
-    ILoggingEvent event = verifierLogAppender.list.getFirst();
-    assertThat(event.getLevel()).isEqualTo(Level.ERROR);
-    assertThat(event.getThrowableProxy()).isNull();
-    assertThat(event.getFormattedMessage())
-        .contains(
-            "event=forgot-password.details-otp.failed",
-            "requestId=req-123",
-            "stage=lookup",
-            "exceptionType=IllegalStateException")
-        .doesNotContain("downstream outage");
+    assertThat(verifierLogAppender.list).isEmpty();
   }
 }

@@ -76,7 +76,7 @@ public final class ForgotPasswordOtpResendExecutionBridge {
           expiresInSeconds,
           resendCooldownSeconds,
           remainingResendAttempts,
-          retryAfterSeconds);
+          retryAfterSeconds, null);
     }
   }
 }

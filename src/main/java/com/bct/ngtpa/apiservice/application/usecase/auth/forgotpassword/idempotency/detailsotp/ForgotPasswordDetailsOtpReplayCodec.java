@@ -94,7 +94,7 @@ public final class ForgotPasswordDetailsOtpReplayCodec {
             null,
             0,
             0,
-            payload.targets() == null ? List.of() : List.copyOf(payload.targets()));
+            payload.targets() == null ? List.of() : List.copyOf(payload.targets()), false);
     validateCapturable(result);
     return Mono.just(result);
   }
@@ -104,6 +104,7 @@ public final class ForgotPasswordDetailsOtpReplayCodec {
       case SUCCESS -> 200;
       case VALIDATION_FAILED -> 400;
       case BUSINESS_REJECTED, EXPIRED -> 422;
+      case SYSTEM_UNAVAILABLE -> 503;
       default -> throw new IllegalArgumentException("DETAILS_AND_OTP result is not capturable");
     };
   }

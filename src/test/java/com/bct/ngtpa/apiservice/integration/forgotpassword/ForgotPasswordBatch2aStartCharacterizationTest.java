@@ -10,6 +10,9 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswor
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
@@ -31,6 +34,7 @@ import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyR
 import com.bct.ngtpa.apiservice.application.idempotency.CanonicalIdempotencyFingerprintFactory;
 import com.bct.ngtpa.apiservice.application.idempotency.DefaultIdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyCommands;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutionException;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationIdentityFactory;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyPort;
@@ -54,6 +58,11 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.Fo
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.IdempotentStartForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.StructuredFailureEventLogger;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingProperties;
+import com.bct.ngtpa.apiservice.shared.masking.MaskingService;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
@@ -62,14 +71,17 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 /**
  * Sub-task 2b.2 STEP 1, Batch 2a (Forgot Password Start) characterization. Full chain: real {@code
@@ -89,6 +101,8 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
 
   private Logger adapterLogger;
   private Logger operationLogger;
+  private Logger failureEventLogger;
+  private Logger requestLogger;
   private ListAppender<ILoggingEvent> listAppender;
 
   @BeforeEach
@@ -99,25 +113,29 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
     adapterLogger.addAppender(listAppender);
     operationLogger = (Logger) LoggerFactory.getLogger(ForgotPasswordStartProtectedOperation.class);
     operationLogger.addAppender(listAppender);
+    failureEventLogger = (Logger) LoggerFactory.getLogger(StructuredFailureEventLogger.class);
+    failureEventLogger.addAppender(listAppender);
+    requestLogger = (Logger) LoggerFactory.getLogger(RequestLoggingWebFilter.class);
+    requestLogger.addAppender(listAppender);
   }
 
   @AfterEach
   void tearDown() {
     adapterLogger.detachAppender(listAppender);
     operationLogger.detachAppender(listAppender);
+    failureEventLogger.detachAppender(listAppender);
+    requestLogger.detachAppender(listAppender);
     listAppender.stop();
   }
 
   /**
    * Scenario 1: {@link ApimExchangeExecutor} fails (simulated APIM transport failure) during
-   * username lookup. Real chain: adapter's {@code doOnError} logs {@code
-   * event=forgot-password.username-lookup.failed} and the error propagates (confirmed,
-   * ApimForgotPasswordUsernameLookupAdapter.java); {@code ForgotPasswordStartProtectedOperation
-   * .execute}'s {@code onErrorResume} logs {@code event=forgot-password.start.failed
-   * stage=username-lookup} and returns a {@code SYSTEM_FAILED} result (confirmed,
+   * username lookup. Real chain: the adapter's diagnostic observation is WARN and maps the error
+   * to a technical result; {@code ForgotPasswordStartProtectedOperation.execute} publishes the
+   * single terminal {@code event=forgot-password.start.failed} and returns a
+   * {@code SYSTEM_FAILED} result (confirmed,
    * ForgotPasswordStartProtectedOperation.java); {@code IdempotentStartForgotPasswordService
-   * .executeAcquired} sees {@code SYSTEM_FAILED} and converts it to {@code
-   * Mono.error(IllegalStateException)} (confirmed); the real {@link DefaultIdempotencyExecutor}, on
+   * .executeAcquired} sees {@code SYSTEM_FAILED} and converts it to a typed technical failure; the real {@link DefaultIdempotencyExecutor}, on
    * first acquisition with a failing supplier, propagates that error (mirrors the committed {@code
    * DefaultIdempotencyExecutorTest.protectedOperationFailureUsesClassifierExactlyOnce} precedent);
    * {@code IdempotentStartForgotPasswordService.start} has no {@code onErrorResume} (confirmed), so
@@ -132,7 +150,7 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
    */
   @Test
   void start_apimTransportFailure_realChainReachesSystemUnavailable() {
-    RuntimeException transportFailure = new IllegalStateException("APIM connection reset");
+    Throwable transportFailure = new java.net.ConnectException("APIM connection reset");
     ApimExchangeExecutor executor =
         new ApimExchangeExecutor() {
           @Override
@@ -145,6 +163,9 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
         new ApimForgotPasswordUsernameLookupAdapter(
             executor, Map.of("GPFS", MemberIdentityType.GPFS));
 
+    var failureEvents =
+        new StructuredFailureEventLogger(
+            new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(new MaskingProperties())));
     var operation =
         new ForgotPasswordStartProtectedOperation(
             lookupAdapter,
@@ -160,7 +181,8 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
             true,
             true,
             false,
-            Map.of("GPFS", MemberIdentityType.GPFS));
+            Map.of("GPFS", MemberIdentityType.GPFS),
+            failureEvents);
 
     var json = new JacksonTransientJsonAdapter(OBJECT_MAPPER);
     var envelope = new ActionTaggedIdempotencyResponseEnvelope(json);
@@ -183,37 +205,164 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
         new IdempotentStartForgotPasswordService(idempotencyExecutor, operation, responses, policy);
 
     ForgotPasswordController controller = startOnlyController(useCase);
+    MockServerWebExchange exchange = exchange("req-fp-start-001");
+    var httpResponse = exchange.getResponse();
 
     ResponseEntity<MutationResponse<?>> response =
         (ResponseEntity<MutationResponse<?>>)
             (ResponseEntity<?>)
-                controller
-                    .startForgotPassword(
-                        new ForgotPasswordStartRequest("member1"),
-                        "idem-fp-start-001",
-                        "req-fp-start-001",
-                        "en",
-                        null,
-                        new MockServerHttpResponse())
-                    .block();
+                invokeThroughLoggingFilter(
+                    controller, exchange, "idem-fp-start-001", "req-fp-start-001");
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isTrue();
     MutationResponse<?> body = response.getBody();
     assertThat(body).isNotNull();
     assertThat(body.success()).isFalse();
     assertThat(body.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+    assertThat(body.errors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.type()).isEqualTo("FORM");
+              assertThat(error.code()).isEqualTo("err.workflow.system.unavailable");
+              assertThat(error.message()).isNull();
+              assertThat(error.targets()).isEmpty();
+              assertThat(error.source()).isEqualTo("BFF");
+            });
     JsonNode json2 = OBJECT_MAPPER.valueToTree(body);
-    assertThat(json2.at("/errors/0/code").asText()).isNotBlank();
+    assertThat(json2.at("/errors/0/code").asText()).isEqualTo("err.workflow.system.unavailable");
+    assertThat(httpResponse.getHeaders().getFirst("Set-Cookie")).isNull();
+    assertThat(httpResponse.getHeaders().getFirst("X-Request-Id")).isEqualTo("req-fp-start-001");
 
-    assertThat(listAppender.list).hasSize(2);
-    ILoggingEvent adapterEvent = listAppender.list.get(0);
-    assertThat(adapterEvent.getLevel()).isEqualTo(Level.ERROR);
+    ILoggingEvent adapterEvent =
+        listAppender.list.stream()
+            .filter(
+                event ->
+                    event
+                        .getLoggerName()
+                        .equals(ApimForgotPasswordUsernameLookupAdapter.class.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(adapterEvent.getLevel()).isEqualTo(Level.WARN);
     assertThat(adapterEvent.getFormattedMessage())
-        .contains("forgot-password.username-lookup.failed");
-    ILoggingEvent operationEvent = listAppender.list.get(1);
-    assertThat(operationEvent.getLevel()).isEqualTo(Level.ERROR);
-    assertThat(operationEvent.getFormattedMessage()).contains("forgot-password.start.failed");
-    assertThat(operationEvent.getFormattedMessage()).contains("stage=username-lookup");
+        .contains("forgot-password.username-lookup.failed")
+        .doesNotContain("APIM connection reset", "member1");
+    assertThat(adapterEvent.getThrowableProxy()).isNull();
+    assertThat(
+            listAppender.list.stream()
+                .filter(
+                    event ->
+                        event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+                .filter(event -> event.getLevel() == Level.ERROR))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getFormattedMessage())
+                  .contains(
+                      "forgot-password.start.failed",
+                      "\"failureOrigin\":\"DOWNSTREAM_TRANSPORT\"",
+                      "\"stage\":\"username-lookup\"")
+                  .doesNotContain("APIM connection reset", "member1");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    assertThat(
+            listAppender.list.stream()
+                .filter(
+                    event ->
+                        event
+                            .getLoggerName()
+                            .equals(ForgotPasswordStartProtectedOperation.class.getName()))
+                .filter(event -> event.getLevel() == Level.ERROR))
+        .isEmpty();
+    ILoggingEvent accessEvent =
+        listAppender.list.stream()
+            .filter(
+                event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
+            .findFirst()
+            .orElseThrow();
+    assertThat(accessEvent.getLevel()).isEqualTo(Level.WARN);
+  }
+
+  @Test
+  void idempotencyStorageFailureRemainsUnownedAndPublicResponseIsUnchanged() {
+    StartForgotPasswordUseCase useCase =
+        command ->
+            Mono.error(
+                new IdempotencyExecutionException(
+                    "Shared idempotency unknown-outcome persistence failed"));
+    ForgotPasswordController controller = startOnlyController(useCase);
+    MockServerWebExchange exchange = exchange("req-fp-start-storage-001");
+
+    ResponseEntity<MutationResponse<?>> response =
+        (ResponseEntity<MutationResponse<?>>)
+            (ResponseEntity<?>)
+                invokeThroughLoggingFilter(
+                    controller,
+                    exchange,
+                    "idem-fp-start-storage-001",
+                    "req-fp-start-storage-001");
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+    assertThat(
+            OBJECT_MAPPER
+                .valueToTree(response.getBody())
+                .at("/errors/0/code")
+                .asText())
+        .isEqualTo("err.workflow.system.unavailable");
+    assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isFalse();
+    ILoggingEvent accessEvent =
+        listAppender.list.stream()
+            .filter(
+                event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
+            .findFirst()
+            .orElseThrow();
+    assertThat(accessEvent.getLevel()).isEqualTo(Level.ERROR);
+  }
+
+  private static MockServerWebExchange exchange(String requestId) {
+    return MockServerWebExchange.from(
+        MockServerHttpRequest.post("/api/v1/auth/forgot-password/start")
+            .header(RequestCorrelation.REQUEST_ID_HEADER, requestId)
+            .build());
+  }
+
+  private static ResponseEntity<?> invokeThroughLoggingFilter(
+      ForgotPasswordController controller,
+      MockServerWebExchange exchange,
+      String idempotencyKey,
+      String requestId) {
+    AtomicReference<ResponseEntity<?>> response = new AtomicReference<>();
+    var sanitizer =
+        new LoggingSanitizer(
+            OBJECT_MAPPER, new MaskingService(new MaskingProperties()));
+    var filter =
+        new RequestLoggingWebFilter(new RequestLoggingProperties(), sanitizer, OBJECT_MAPPER);
+    StepVerifier.create(
+            filter.filter(
+                exchange,
+                webExchange ->
+                    controller
+                        .startForgotPassword(
+                            new ForgotPasswordStartRequest("member1"),
+                            idempotencyKey,
+                            requestId,
+                            "en",
+                            null,
+                            webExchange.getResponse(),
+                            webExchange)
+                        .doOnNext(
+                            entity -> {
+                              response.set(entity);
+                              webExchange
+                                  .getResponse()
+                                  .setStatusCode(entity.getStatusCode());
+                            })
+                        .then()))
+        .verifyComplete();
+    return response.get();
   }
 
   // ───────────────────────── shared fixtures ─────────────────────────
