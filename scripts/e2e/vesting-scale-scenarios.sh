@@ -148,14 +148,15 @@ validate_response() {
     '(.result.data.overview.member | type) == "object"'
   record_check "$language" "$body_file" overview-plans-array \
     '(.result.data.overview.plans | type) == "array"'
-  record_check "$language" "$body_file" plan-cross-reference '
+  record_check "$language" "$body_file" overview-plan-order '
     . as $root
+    | [$root.result.data.planTypes[].planNo] as $plan_type_nos
     | [$root.result.data.overview.plans[].planNo] as $overview_plan_nos
-    | ($root.result.data.planTypes
+    | (($root.result.data.planTypes
       | map(.planNo as $plan_no
-        | ($plan_no | type == "string" and length > 0)
-          and ($overview_plan_nos | index($plan_no) != null))
+        | ($plan_no | type == "string" and length > 0))
       | all)
+      and ($overview_plan_nos == $plan_type_nos))
   '
   record_check "$language" "$body_file" vesting-scale-shape '
     (.result.data | has("vestingScale") | not)
@@ -174,6 +175,20 @@ validate_response() {
               and ($plan | has("scales"))
               and ($plan.scales == null or ($plan.scales | type) == "array"))
           | all)
+      end
+  '
+  record_check "$language" "$body_file" vesting-plan-order '
+    . as $root
+    | if ($root.result.data | has("vestingScale") | not) then true
+      else
+        [$root.result.data.planTypes[].planNo] as $plan_type_nos
+        | [$root.result.data.vestingScale.plans[].planNo] as $vesting_plan_nos
+        | (($vesting_plan_nos | unique | length) == ($vesting_plan_nos | length))
+          and (($vesting_plan_nos
+            | map(. as $plan_no | $plan_type_nos | index($plan_no))) as $indices
+            | ($indices | map(. != null) | all)
+              and ([$indices | to_entries[] | select(.key > 0)
+                | .value > $indices[.key - 1]] | all))
       end
   '
   record_check "$language" "$body_file" completed-years-order '

@@ -66,7 +66,32 @@ jq --arg scenario "$FAKE_SCENARIO" --arg language "$language" '
   elif $scenario == "success-false" then .success = false
   elif $scenario == "planTypes-not-array" then .result.data.planTypes = {}
   elif $scenario == "orphan-overview-plan" then .result.data.planTypes[0].planNo = "ZZZ"
+  elif $scenario == "overview-reordered" then
+    .result.data.overview.plans = [
+      .result.data.overview.plans[1],
+      .result.data.overview.plans[0],
+      .result.data.overview.plans[2],
+      .result.data.overview.plans[3]
+    ]
+  elif $scenario == "overview-missing-plan" then
+    .result.data.overview.plans = .result.data.overview.plans[0:3]
+  elif $scenario == "overview-extra-plan" then
+    .result.data.overview.plans += [{"planNo":"ZZZ"}]
   elif $scenario == "orphan-vesting-plan" then .result.data.vestingScale.plans[0].planNo = "ZZZ"
+  elif $scenario == "vesting-reordered" then
+    .result.data.vestingScale.plans = [
+      .result.data.vestingScale.plans[0],
+      .result.data.vestingScale.plans[2],
+      .result.data.vestingScale.plans[1],
+      .result.data.vestingScale.plans[3]
+    ]
+  elif $scenario == "vesting-duplicate" then
+    .result.data.vestingScale.plans[2].planNo = "OOI"
+  elif $scenario == "vesting-valid-subset" then
+    .result.data.vestingScale.plans = [
+      .result.data.vestingScale.plans[0],
+      .result.data.vestingScale.plans[2]
+    ]
   elif $scenario == "descending-years" then
     .result.data.vestingScale.plans[0].scales = [
       {"completedYears":2,"vestingPercentage":20},
@@ -264,8 +289,14 @@ run_case empty-scales empty-scales 200 '' PASS
 run_case non-200 full 503 '' 'FAIL vesting-scale language=en check=http-status'
 run_case success-false success-false 200 '' 'FAIL vesting-scale language=en check=envelope'
 run_case plan-types-not-array planTypes-not-array 200 '' 'FAIL vesting-scale language=en check=planTypes-array'
-run_case orphan-overview-plan orphan-overview-plan 200 '' 'FAIL vesting-scale language=en check=plan-cross-reference'
+run_case orphan-overview-plan orphan-overview-plan 200 '' 'FAIL vesting-scale language=en check=overview-plan-order'
+run_case overview-plans-reordered overview-reordered 200 '' 'FAIL vesting-scale language=en check=overview-plan-order'
+run_case overview-plans-missing overview-missing-plan 200 '' 'FAIL vesting-scale language=en check=overview-plan-order'
+run_case overview-plans-extra overview-extra-plan 200 '' 'FAIL vesting-scale language=en check=overview-plan-order'
 run_case orphan-vesting-plan orphan-vesting-plan 200 '' 'FAIL vesting-scale language=en check=vesting-plan-reference'
+run_case vesting-plans-reordered vesting-reordered 200 '' 'FAIL vesting-scale language=en check=vesting-plan-order'
+run_case vesting-plans-duplicate vesting-duplicate 200 '' 'FAIL vesting-scale language=en check=vesting-plan-order'
+run_case vesting-plans-valid-subset vesting-valid-subset 200 '' PASS
 run_case descending-years descending-years 200 '' 'FAIL vesting-scale language=en check=completed-years-order'
 run_case bad-date bad-date 200 '' 'FAIL vesting-scale language=en check=member-dates'
 run_case null-date null-date 200 '' PASS
