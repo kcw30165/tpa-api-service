@@ -72,6 +72,7 @@ post_login_main(){
  local -a names=()
  capture_post_login_account_selector || return 2
  resolved="$(collect_feature_names "${E2E_FEATURE_PACKS:-}")" || return 1
+ resolve_vesting_scale_absent_fields >/dev/null || return 2
  while IFS= read -r name; do names+=("$name"); done <<<"$resolved"
  initialize_post_login_runtime || return 1
  trap defensive_post_login_cleanup EXIT INT TERM

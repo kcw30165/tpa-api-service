@@ -12,6 +12,6 @@ Branch: `feature/vesting-scale-bff` from origin/dev (record base SHA). One bound
 | | M3.2 | `VestingScaleWebMapper`, `VestingScaleController`, `VestingScaleExceptionMappings` + registry | controller/mapper/registry tests green; full suite green |
 | M4 Review & deploy | M4.1 | Independent read-only review of M1–M3 against this pack | review REPORT.md, no blocking findings |
 | | M4.2 | Startup smoke + scripted curl validation against DEV (en, zh-HK); Sonar new issues fixed | evidence recorded; MR to dev |
-| M5 E2E | M5.1 | Add vesting-scale scenario to the real login→feature→logout orchestrator | **blocked** until Nick provides the orchestrator guideline |
+| M5 E2E | M5.1 | Add the read-only `vesting-scale` post-login feature pack. Select the shared account with zero-based `E2E_ACCOUNT_INDEX` (default `0`), replacing the earlier feature-specific `VESTING_SCALE_ACCOUNT_INDEX` proposal. | Registered two-language GET pack, offline fake-curl contract tests, summary-only evidence, and pre-login absent-field validation are complete. |
 
 Stop rules: 3 consecutive failed attempts → escalate; 10 prompts without a commit → escalate.

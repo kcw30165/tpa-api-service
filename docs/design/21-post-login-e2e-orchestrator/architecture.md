@@ -30,6 +30,10 @@ Each run creates a new mode-0700 private directory and restrictive secret files.
 
 Registry entries are trusted paths. Packs return reliable process status. Investment-choice retains standalone provided-session execution and all password/live-mutation safeguards. Orchestrated packs do not log out independently.
 
+The `vesting-scale` pack consumes only the runner's authenticated request values and performs exactly two GETs to `/api/v1/vesting-scale`, in `en` then `zh-HK`, without mutation or pack-owned login/logout. It validates the response envelope and shape, plan cross-references, optional date formats, scale ordering, and identical `planTypes[].planNo` sequences. Its evidence is summary-only (HTTP status, list counts, passed checks, and absent-list result); raw response files stay in private runtime state for normal orchestrator cleanup.
+
+`VESTING_SCALE_EXPECT_ABSENT` is optional and accepts a comma-separated, whitespace-trimmed list of unique configurable BFF field names only: member fields `memberCategory`, `dateJoinedCompany`, `dateJoinedScheme`, `employmentDate`; plan fields `planEffectiveDate`, `dateOfJoiningPlan`, `planService`, `memberContributionBasis`, `employerContributionBasis`; and section field `vestingScale`. Validation occurs during preflight before login. Each assertion uses key presence semantics, so an explicit `null` does not satisfy an expected absence.
+
 The optional live CIM lifecycle is non-retrying: GET #1, change-token issuance,
 submit once, GET #2 to refresh and prove the exact new reference is pending,
 cancel-token issuance for that same reference, cancel once, and GET #3 for a
