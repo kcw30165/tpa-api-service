@@ -162,7 +162,7 @@ public final class IdempotentVerifyForgotPasswordOtpService
       publicationFailed.set(true);
       throw failure;
     }
-    publication.record();
+    publication.markPublished();
   }
 
   private VerifyForgotPasswordOtpResult withReceipt(
@@ -197,7 +197,7 @@ public final class IdempotentVerifyForgotPasswordOtpService
   private static final class PublicationTracker {
     private final AtomicBoolean published = new AtomicBoolean();
 
-    void record() {
+    void markPublished() {
       published.set(true);
     }
 

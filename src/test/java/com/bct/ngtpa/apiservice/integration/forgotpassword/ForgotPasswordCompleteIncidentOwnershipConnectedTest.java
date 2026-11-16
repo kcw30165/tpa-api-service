@@ -99,6 +99,13 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
   void acquiredTechnicalFailureHasOneTerminalErrorAndWarnOnlyHttpObservation() throws Exception {
     RunResult run = invoke(false);
 
+    assertPublicTechnicalFailureResponse(run);
+    assertSingleTerminalIncidentError();
+    assertWarnOnlyHttpObservation();
+    assertDiagnosticPrivacy();
+  }
+
+  private void assertPublicTechnicalFailureResponse(RunResult run) {
     assertThat(run.response().getStatusCode().value()).isEqualTo(503);
     MutationResponse<?> body = responseBody(run);
     assertThat(body.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
@@ -116,7 +123,9 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
     assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isTrue();
     assertThat(run.exchange().getResponse().getHeaders().getFirst("X-Request-Id"))
         .isEqualTo(REQUEST_ID);
+  }
 
+  private void assertSingleTerminalIncidentError() {
     var terminalErrors = appender.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
     assertThat(terminalErrors).singleElement().satisfies(
         event -> {
@@ -126,9 +135,15 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
               .doesNotContain("reset-secret", "customer-secret", "ciphertext-secret");
           assertThat(event.getThrowableProxy()).isNull();
         });
+  }
+
+  private void assertWarnOnlyHttpObservation() {
     assertThat(requestEvents("http.request.failed"))
         .singleElement()
         .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
+  }
+
+  private void assertDiagnosticPrivacy() {
     assertThat(appender.list)
         .allSatisfy(
             event -> {

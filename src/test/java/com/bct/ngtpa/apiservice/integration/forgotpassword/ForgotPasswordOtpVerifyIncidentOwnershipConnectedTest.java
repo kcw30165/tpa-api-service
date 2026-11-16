@@ -89,6 +89,14 @@ class ForgotPasswordOtpVerifyIncidentOwnershipConnectedTest {
   void acquiredTechnicalFailureHasOneCauseFreeErrorAndWarnOnlyHttpObserver() throws Exception {
     RunResult run = invoke(Scenario.TECHNICAL_FAILURE);
 
+    assertPublicTechnicalFailureResponse(run);
+    assertSingleCauseFreeTerminalError();
+    assertWarnOnlyHttpObservation();
+    assertDiagnosticPrivacy();
+    verify(run.operation()).execute(any());
+  }
+
+  private void assertPublicTechnicalFailureResponse(RunResult run) throws Exception {
     assertThat(run.response().getStatusCode().value()).isEqualTo(503);
     MutationResponse<?> body = responseBody(run);
     assertThat(body.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
@@ -107,7 +115,9 @@ class ForgotPasswordOtpVerifyIncidentOwnershipConnectedTest {
     assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isTrue();
     assertThat(run.exchange().getResponse().getHeaders().getFirst("X-Request-Id"))
         .isEqualTo(REQUEST_ID);
+  }
 
+  private void assertSingleCauseFreeTerminalError() {
     var terminalErrors =
         appender.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
     assertThat(terminalErrors)
@@ -126,9 +136,15 @@ class ForgotPasswordOtpVerifyIncidentOwnershipConnectedTest {
                   .doesNotContain("otp-secret", "member-secret", "Throwable");
               assertThat(event.getThrowableProxy()).isNull();
             });
+  }
+
+  private void assertWarnOnlyHttpObservation() {
     assertThat(requestEvents("http.request.failed"))
         .singleElement()
         .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
+  }
+
+  private void assertDiagnosticPrivacy() {
     assertThat(appender.list)
         .allSatisfy(
             event -> {
@@ -136,7 +152,6 @@ class ForgotPasswordOtpVerifyIncidentOwnershipConnectedTest {
                   .doesNotContain("otp-secret", "member-secret", "csrf-secret", "idempotency-secret");
               assertThat(event.getThrowableProxy()).isNull();
             });
-    verify(run.operation()).execute(any());
   }
 
   @Test

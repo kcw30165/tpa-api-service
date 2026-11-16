@@ -232,23 +232,20 @@ class AuthForgotPasswordDetailsControllerTest {
       responseFactory
           .when(() -> ForgotPasswordHttpResponses.toResponse(any()))
           .thenThrow(new IllegalStateException());
-      assertThatThrownBy(
-              () ->
-                  controller(useCase)
-                      .details(
-                          new ForgotPasswordDetailsRequest(
-                              "31/01/1980", "member@example.com", null),
-                          "afs_abc",
-                          "csrf_abc",
-                          "https://portal.example",
-                          "https://portal.example/page",
-                          "req-1",
-                          "en",
-                          "idem-1",
-                          new MockServerHttpResponse(),
-                          exchange)
-                      .block())
-          .isInstanceOf(IllegalStateException.class);
+      var detailsResponse =
+          controller(useCase)
+              .details(
+                  new ForgotPasswordDetailsRequest("31/01/1980", "member@example.com", null),
+                  "afs_abc",
+                  "csrf_abc",
+                  "https://portal.example",
+                  "https://portal.example/page",
+                  "req-1",
+                  "en",
+                  "idem-1",
+                  new MockServerHttpResponse(),
+                  exchange);
+      assertThatThrownBy(detailsResponse::block).isInstanceOf(IllegalStateException.class);
     }
     assertThat(
             com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation

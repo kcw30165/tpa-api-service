@@ -281,7 +281,7 @@ public final class IdempotentCompleteForgotPasswordService
       publicationFailed.set(true);
       throw failure;
     }
-    publication.record();
+    publication.markPublished();
   }
 
   private CompleteForgotPasswordResult withReceipt(
@@ -362,7 +362,7 @@ public final class IdempotentCompleteForgotPasswordService
   private static final class PublicationTracker {
     private final AtomicBoolean published = new AtomicBoolean();
 
-    void record() {
+    void markPublished() {
       published.set(true);
     }
 
