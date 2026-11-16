@@ -58,7 +58,7 @@ class UnknownRouteExceptionMappingWebTest {
   }
 
   @Test
-  void unknownRouteUsesClientRequestNotFoundContract() throws Exception {
+  void unknownRouteUsesBusinessRejectedNotFoundContract() throws Exception {
     EntityExchangeResult<String> response =
         webTestClient
             .get()
@@ -72,11 +72,11 @@ class UnknownRouteExceptionMappingWebTest {
 
     assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus().value());
     assertFalse(body.path("success").asBoolean());
-    assertEquals("VALIDATION_FAILED", body.path("status").asText());
+    assertEquals("BUSINESS_REJECTED", body.path("status").asText());
     assertEquals(0, body.path("messages").size());
     assertEquals(1, body.path("errors").size());
     JsonNode error = body.path("errors").get(0);
-    assertEquals("FORM", error.path("type").asText());
+    assertEquals("BUSINESS", error.path("type").asText());
     assertEquals("err.request.resource-not-found", error.path("code").asText());
     assertEquals("The requested resource was not found.", error.path("message").asText());
     assertEquals(0, error.path("targets").size());

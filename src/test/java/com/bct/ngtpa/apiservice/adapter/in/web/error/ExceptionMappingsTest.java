@@ -622,7 +622,7 @@ class ExceptionMappingsTest {
   }
 
   @Test
-  void webResourceNotFoundMappingUsesClientRequestValidationContract() {
+  void webResourceNotFoundMappingUsesBusinessRejectedContract() {
     var mapping = WebResourceExceptionMappings.notFound();
     var exception =
         new NoResourceFoundException(
@@ -632,8 +632,8 @@ class ExceptionMappingsTest {
     ErrorEntry entry = firstEntry(descriptor);
 
     assertEquals(HttpStatus.NOT_FOUND, descriptor.httpStatus());
-    assertEquals(ApiStatus.VALIDATION_FAILED, descriptor.apiStatus());
-    assertEquals("FORM", entry.type());
+    assertEquals(ApiStatus.BUSINESS_REJECTED, descriptor.apiStatus());
+    assertEquals("BUSINESS", entry.type());
     assertEquals(ErrorCodes.REQUEST_RESOURCE_NOT_FOUND, entry.code());
     assertEquals(List.of(), entry.targets());
     assertEquals(MessagePolicy.RESOLVE, entry.policy());

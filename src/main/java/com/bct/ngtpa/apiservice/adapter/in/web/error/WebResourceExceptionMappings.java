@@ -22,8 +22,8 @@ public final class WebResourceExceptionMappings {
       public ErrorDescriptor describe(NoResourceFoundException exception, ErrorContext context) {
         return ErrorDescriptor.single(
             HttpStatus.NOT_FOUND,
-            ApiStatus.VALIDATION_FAILED,
-            "FORM",
+            ApiStatus.BUSINESS_REJECTED,
+            "BUSINESS",
             ErrorCodes.REQUEST_RESOURCE_NOT_FOUND,
             List.of(),
             "http.api.error",
