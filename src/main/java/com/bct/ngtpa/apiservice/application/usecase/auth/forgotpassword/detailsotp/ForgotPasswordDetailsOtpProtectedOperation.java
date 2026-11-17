@@ -120,10 +120,11 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                 technicalAt(
                         "lock-acquisition",
                         () -> locks.acquire(command.sessionId(), policy.lease()))
-                    .flatMap(handle -> handle.acquired() ? locked(command, reference, handle) : failure()))
+                    .flatMap(
+                        handle ->
+                            handle.acquired() ? locked(command, reference, handle) : failure()))
         .onErrorResume(LockReleaseFailure.class, ignored -> failure())
-        .onErrorResume(
-            LocalTechnicalFailure.class, error -> technicalFailure(error.stage()))
+        .onErrorResume(LocalTechnicalFailure.class, error -> technicalFailure(error.stage()))
         .onErrorResume(ignored -> technicalFailure("protected-operation"));
   }
 
@@ -139,7 +140,8 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                   if (session.scenario() != AuthFlowScenario.FORGOT_PASSWORD
                       || session.status() != AuthFlowStatus.IDENTITY_VERIFIED
                       || session.isExpired(clock.instant())) return failure();
-                  return technicalAt("context-unprotection", () -> Mono.fromCallable(() -> decrypt(session)))
+                  return technicalAt(
+                          "context-unprotection", () -> Mono.fromCallable(() -> decrypt(session)))
                       .flatMap(
                           context -> {
                             if (context.phase() != ForgotPasswordProtectedPhase.IDENTITY_VERIFIED)
@@ -160,9 +162,12 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                                       if (result.failureOrigin() != null) {
                                         ForgotPasswordDetailsOtpResult.Status status =
                                             result.status()
-                                                    == ForgotPasswordDetailsStatus.SYSTEM_UNAVAILABLE
-                                                ? ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE
-                                                : ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR;
+                                                    == ForgotPasswordDetailsStatus
+                                                        .SYSTEM_UNAVAILABLE
+                                                ? ForgotPasswordDetailsOtpResult.Status
+                                                    .SYSTEM_UNAVAILABLE
+                                                : ForgotPasswordDetailsOtpResult.Status
+                                                    .SYSTEM_ERROR;
                                         return technicalFailure(
                                             status, result.failureOrigin(), "details-lookup");
                                       }
@@ -188,8 +193,11 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                                                     null,
                                                     0,
                                                     0,
-                                                    List.of("PAGE"), false),
-                                                null, null, null));
+                                                    List.of("PAGE"),
+                                                    false),
+                                                null,
+                                                null,
+                                                null));
                                       }
                                       if (result.status()
                                           == ForgotPasswordDetailsStatus.SYSTEM_UNAVAILABLE) {
@@ -201,8 +209,11 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                                                     null,
                                                     0,
                                                     0,
-                                                    List.of(), false),
-                                                null, null, null));
+                                                    List.of(),
+                                                    false),
+                                                null,
+                                                null,
+                                                null));
                                       }
                                       return failure();
                                     });
@@ -273,8 +284,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                               .flatMap(
                                   message ->
                                       technicalAt(
-                                              "message-delivery",
-                                              () -> delivery.deliver(message))
+                                              "message-delivery", () -> delivery.deliver(message))
                                           .flatMap(
                                               result ->
                                                   bindAndCommit(
@@ -358,8 +368,11 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                                           maskedDestination,
                                           challenge.expiresInSeconds(),
                                           60,
-                                          List.of(), false),
-                                      new ProtectedReplayReference(reference), null, null))
+                                          List.of(),
+                                          false),
+                                      new ProtectedReplayReference(reference),
+                                      null,
+                                      null))
                               : Mono.error(new LocalTechnicalFailure("commit-state-persistence")));
             });
   }
@@ -429,8 +442,8 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
   }
 
   private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> technicalFailure(String stage) {
-    return technicalFailure(ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR,
-        FailureOrigin.LOCAL_SYSTEM, stage);
+    return technicalFailure(
+        ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR, FailureOrigin.LOCAL_SYSTEM, stage);
   }
 
   private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> technicalFailure(
@@ -449,8 +462,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
         .onErrorMap(ignored -> new LocalTechnicalFailure(stage));
   }
 
-  private Mono<Void> release(
-      SessionLockHandle handle, ForgotPasswordDetailsOtpCommand command) {
+  private Mono<Void> release(SessionLockHandle handle, ForgotPasswordDetailsOtpCommand command) {
     try {
       return locks.release(handle).onErrorReturn(false).then();
     } catch (RuntimeException cause) {

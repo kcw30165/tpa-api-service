@@ -138,7 +138,8 @@ public final class ForgotPasswordCompleteProtectedOperation {
                   WorkflowNextStep.PASSWORD_SETUP,
                   false,
                   false,
-                  passwordValidation.errors(), null)));
+                  passwordValidation.errors(),
+                  null)));
     }
     return completion
         .complete(
@@ -148,8 +149,7 @@ public final class ForgotPasswordCompleteProtectedOperation {
                 command.correlationId(),
                 command.actorUserRole()))
         .flatMap(result -> classify(session, context, result, now))
-        .onErrorResume(
-            failure -> blockUnknown(session, now, List.of(incidentFor(failure))));
+        .onErrorResume(failure -> blockUnknown(session, now, List.of(incidentFor(failure))));
   }
 
   private Mono<ForgotPasswordCompleteProtectedExecutionResult> classify(

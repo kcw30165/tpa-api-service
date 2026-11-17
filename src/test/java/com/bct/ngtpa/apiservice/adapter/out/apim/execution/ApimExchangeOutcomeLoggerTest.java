@@ -184,11 +184,7 @@ class ApimExchangeOutcomeLoggerTest {
     ILoggingEvent event = appender.list.get(0);
     assertThat(event.getLevel()).isEqualTo(Level.WARN);
     assertThat(event.getFormattedMessage())
-        .contains(
-            "apim.exchange.failed",
-            "req-t?private",
-            "IllegalStateException",
-            PATH)
+        .contains("apim.exchange.failed", "req-t?private", "IllegalStateException", PATH)
         .doesNotContain(marker, "errorMessage", "req-t\nprivate");
     assertThat(event.getThrowableProxy()).isNull();
   }

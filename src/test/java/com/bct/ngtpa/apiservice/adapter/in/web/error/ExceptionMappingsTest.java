@@ -24,10 +24,8 @@ import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetriev
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.exception.VestingScaleRetrievalException;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp
-    .ForgotPasswordDetailsOtpExpectedFailureException;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp
-    .ForgotPasswordDetailsOtpIncidentPublishedException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpExpectedFailureException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpIncidentPublishedException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionPreDispatchException;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
@@ -672,8 +670,7 @@ class ExceptionMappingsTest {
   }
 
   @Test
-  void configAssemblesExactlyThirtyTwoMappingsPlusCatchAll()
-      throws ReflectiveOperationException {
+  void configAssemblesExactlyThirtyTwoMappingsPlusCatchAll() throws ReflectiveOperationException {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 

@@ -215,7 +215,9 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
   void sessionLoadErrorRemainsDistinctFromAnExpectedBindingRejection() {
     when(sessions.loadSnapshot(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isNotEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isNotEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -455,16 +457,21 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
     givenContext(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
     when(challenges.findById(any())).thenReturn(Mono.error(new IllegalStateException("boom")));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isNotEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isNotEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
   @Test
   void protectorFailureRemainsDistinctFromAnExpectedBindingRejection() {
     givenSession(identityVerifiedSession());
-    when(protector.unprotect(any())).thenThrow(new IllegalStateException("protected context failed"));
+    when(protector.unprotect(any()))
+        .thenThrow(new IllegalStateException("protected context failed"));
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isNotEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r ->
+                assertThat(r.status()).isNotEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 
@@ -483,7 +490,8 @@ class ForgotPasswordOtpSessionBindingAdapterTest {
                     snapshotOf(identityVerifiedSession()))));
 
     StepVerifier.create(newAdapter().apply(command(MessageDeliveryStatus.ACCEPTED)))
-        .assertNext(r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
+        .assertNext(
+            r -> assertThat(r.status()).isEqualTo(ForgotPasswordOtpBindingResult.Status.REJECTED))
         .verifyComplete();
   }
 

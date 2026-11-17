@@ -81,6 +81,7 @@ class SlidingForgotPasswordProtectedAuthFlowContextLoaderTest {
         null,
         "corr-1",
         Set.of(AuthFlowStatus.IDENTITY_VERIFIED),
-        true, false);
+        true,
+        false);
   }
 }

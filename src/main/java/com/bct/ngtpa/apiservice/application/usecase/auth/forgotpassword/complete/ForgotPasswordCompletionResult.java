@@ -17,7 +17,8 @@ public record ForgotPasswordCompletionResult(
   }
 
   public static ForgotPasswordCompletionResult reset(String updateDate, String updateTime) {
-    return new ForgotPasswordCompletionResult(Status.RESET, null, updateDate, updateTime, null, null);
+    return new ForgotPasswordCompletionResult(
+        Status.RESET, null, updateDate, updateTime, null, null);
   }
 
   public static ForgotPasswordCompletionResult rejected(String code) {
@@ -25,7 +26,8 @@ public record ForgotPasswordCompletionResult(
   }
 
   public static ForgotPasswordCompletionResult technicalFailure() {
-    return new ForgotPasswordCompletionResult(Status.TECHNICAL_FAILURE, null, null, null, null, null);
+    return new ForgotPasswordCompletionResult(
+        Status.TECHNICAL_FAILURE, null, null, null, null, null);
   }
 
   public static ForgotPasswordCompletionResult technicalFailure(
@@ -39,6 +41,7 @@ public record ForgotPasswordCompletionResult(
   }
 
   public static ForgotPasswordCompletionResult unknownOutcome(FailureOrigin origin, String stage) {
-    return new ForgotPasswordCompletionResult(Status.UNKNOWN_OUTCOME, null, null, null, origin, stage);
+    return new ForgotPasswordCompletionResult(
+        Status.UNKNOWN_OUTCOME, null, null, null, origin, stage);
   }
 }

@@ -8,10 +8,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFailureClassification;
@@ -26,8 +26,8 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempote
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.otpverify.ForgotPasswordOtpVerifyExecutionBridge;
 import java.time.Duration;
 import java.util.Map;
-import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -165,10 +165,7 @@ class IdempotentVerifyForgotPasswordOtpServiceTest {
     assertThat(event.getValue().safeDimensions()).containsEntry("stage", "protected-operation");
     assertThat(event.getValue().requestId()).isEqualTo("req-verify-123");
     assertThat(event.getValue().toString()).doesNotContain("sensitive-protected-message");
-    verify(
-            fixture.failureEvents,
-            never())
-        .publish(any(FailureEvent.class), any(Throwable.class));
+    verify(fixture.failureEvents, never()).publish(any(FailureEvent.class), any(Throwable.class));
   }
 
   @Test
@@ -343,14 +340,16 @@ class IdempotentVerifyForgotPasswordOtpServiceTest {
         status == VerifyForgotPasswordOtpStatus.VERIFIED
             ? WorkflowNextStep.PASSWORD_SETUP
             : WorkflowNextStep.NONE,
-        null, null);
+        null,
+        null);
   }
 
   private static HydratedIdempotentResponse response() {
     return new HydratedIdempotentResponse(200, "application/json", "{}", Map.of());
   }
 
-  private static IdempotentVerifyForgotPasswordOtpService serviceWithFailureEvents(Fixture fixture) {
+  private static IdempotentVerifyForgotPasswordOtpService serviceWithFailureEvents(
+      Fixture fixture) {
     return fixture.service;
   }
 
@@ -383,11 +382,9 @@ class IdempotentVerifyForgotPasswordOtpServiceTest {
             .get()
             .map(
                 response ->
-                    new IdempotentExecutionResult(
-                        IdempotencyReservationOutcome.ACQUIRED, response))
+                    new IdempotentExecutionResult(IdempotencyReservationOutcome.ACQUIRED, response))
             .onErrorResume(
-                error ->
-                    recoveryFailure == null ? Mono.error(error) : Mono.error(recoveryFailure));
+                error -> recoveryFailure == null ? Mono.error(error) : Mono.error(recoveryFailure));
       }
       return Mono.just(new IdempotentExecutionResult(outcome, terminal));
     }

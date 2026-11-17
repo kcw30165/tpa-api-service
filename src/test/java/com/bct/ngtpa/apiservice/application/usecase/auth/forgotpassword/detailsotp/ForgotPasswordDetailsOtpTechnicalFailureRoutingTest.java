@@ -11,8 +11,8 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.ApimForgotPasswordDetailsLookupAdapter;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.ForgotPasswordResetAuthorization;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
@@ -38,11 +38,11 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionComma
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionResult;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordDetailsLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBindingPort;
-import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.NoticeTemplateRegistryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
@@ -101,10 +101,12 @@ class ForgotPasswordDetailsOtpTechnicalFailureRoutingTest {
     when(lookup.verify(any())).thenReturn(Mono.just(ForgotPasswordDetailsLookupResult.notFound()));
     var dependencies = new Dependencies();
 
-    var result = dependencies.operation(new ForgotPasswordUnderLockDetailsVerifier(lookup)).execute(
-            command())
-        .block()
-        .result();
+    var result =
+        dependencies
+            .operation(new ForgotPasswordUnderLockDetailsVerifier(lookup))
+            .execute(command())
+            .block()
+            .result();
 
     assertThat(result.status()).isEqualTo(ForgotPasswordDetailsOtpResult.Status.BUSINESS_REJECTED);
     assertThat(verifierAppender.list)
@@ -143,7 +145,8 @@ class ForgotPasswordDetailsOtpTechnicalFailureRoutingTest {
     var dependencies = new Dependencies();
 
     var result =
-        dependencies.operation(new ForgotPasswordUnderLockDetailsVerifier(adapter))
+        dependencies
+            .operation(new ForgotPasswordUnderLockDetailsVerifier(adapter))
             .execute(command())
             .block()
             .result();
@@ -198,11 +201,13 @@ class ForgotPasswordDetailsOtpTechnicalFailureRoutingTest {
     var execution =
         dependencies
             .operation(
-                new ForgotPasswordUnderLockDetailsVerifier(mock(ForgotPasswordDetailsLookupPort.class)))
+                new ForgotPasswordUnderLockDetailsVerifier(
+                    mock(ForgotPasswordDetailsLookupPort.class)))
             .execute(command())
             .block();
 
-    assertThat(execution.result().status()).isEqualTo(ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR);
+    assertThat(execution.result().status())
+        .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR);
     assertThat(execution.failureOrigin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
     assertThat(execution.failureStage()).isEqualTo("session-read");
     verify(dependencies.locks).release(LOCK);
@@ -253,7 +258,8 @@ class ForgotPasswordDetailsOtpTechnicalFailureRoutingTest {
     when(dependencies.delivery.deliver(any()))
         .thenReturn(
             Mono.just(
-                new MessageDeliveryResult(deliveryStatus, MessageDeliveryChannel.EMAIL, null, null, null)));
+                new MessageDeliveryResult(
+                    deliveryStatus, MessageDeliveryChannel.EMAIL, null, null, null)));
     when(dependencies.binding.apply(any()))
         .thenReturn(
             Mono.just(
@@ -273,11 +279,13 @@ class ForgotPasswordDetailsOtpTechnicalFailureRoutingTest {
                     "scheme-name-chi")));
 
     var execution =
-        dependencies.operation(new ForgotPasswordUnderLockDetailsVerifier(lookup))
+        dependencies
+            .operation(new ForgotPasswordUnderLockDetailsVerifier(lookup))
             .execute(command())
             .block();
 
-    assertThat(execution.result().status()).isEqualTo(ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR);
+    assertThat(execution.result().status())
+        .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR);
     assertThat(execution.failureOrigin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
     assertThat(execution.failureStage()).isEqualTo("message-delivery");
     verify(dependencies.otp).createChallenge(any());
@@ -311,11 +319,7 @@ class ForgotPasswordDetailsOtpTechnicalFailureRoutingTest {
     when(policy.detailsAndOtp(any())).thenReturn(mock(IdempotencyFingerprint.class));
     var unavailable =
         new ForgotPasswordDetailsOtpResult(
-            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE,
-            null,
-            0,
-            0,
-            List.of(), false);
+            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE, null, 0, 0, List.of(), false);
     var transientResponse = new HydratedIdempotentResponse(503, "application/json", "{}", Map.of());
     when(responses.toTransientResponse(any())).thenReturn(transientResponse);
     when(responses.fromTransientResponse(transientResponse)).thenReturn(unavailable);
@@ -350,7 +354,8 @@ class ForgotPasswordDetailsOtpTechnicalFailureRoutingTest {
     var dependencies = new Dependencies();
 
     var result =
-        dependencies.operation(new ForgotPasswordUnderLockDetailsVerifier(adapter))
+        dependencies
+            .operation(new ForgotPasswordUnderLockDetailsVerifier(adapter))
             .execute(command())
             .block()
             .result();
@@ -452,7 +457,8 @@ class ForgotPasswordDetailsOtpTechnicalFailureRoutingTest {
           new MaskingService(new MaskingProperties()),
           binding,
           commitStates,
-          new ForgotPasswordOtpCommitRetentionPolicy(Duration.ofSeconds(60), Duration.ofMinutes(10)),
+          new ForgotPasswordOtpCommitRetentionPolicy(
+              Duration.ofSeconds(60), Duration.ofMinutes(10)),
           new ForgotPasswordDetailsOtpLeasePolicy(60, 10, 10, 3, 10000, 100, 5000, 1000),
           Clock.fixed(NOW, ZoneOffset.UTC),
           Duration.ofMinutes(5),

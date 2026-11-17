@@ -41,13 +41,16 @@ class ForgotPasswordOtpVerifyReplayCodecTest {
 
   @Test
   void publicationReceiptIsNotPartOfReplayWireFormat() {
-    assertThat(Arrays.stream(VerifyForgotPasswordOtpResult.class.getRecordComponents())
-            .map(java.lang.reflect.RecordComponent::getName)
-            .toList())
+    assertThat(
+            Arrays.stream(VerifyForgotPasswordOtpResult.class.getRecordComponents())
+                .map(java.lang.reflect.RecordComponent::getName)
+                .toList())
         .contains("publicationReceipt");
-    assertThat(Arrays.stream(ForgotPasswordOtpVerifyReplayCodec.SafePayload.class.getRecordComponents())
-            .map(java.lang.reflect.RecordComponent::getName)
-            .toList())
+    assertThat(
+            Arrays.stream(
+                    ForgotPasswordOtpVerifyReplayCodec.SafePayload.class.getRecordComponents())
+                .map(java.lang.reflect.RecordComponent::getName)
+                .toList())
         .doesNotContain("publicationReceipt");
   }
 

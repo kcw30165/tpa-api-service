@@ -14,6 +14,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.Forg
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyKey;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -24,7 +25,6 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
-import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
@@ -236,7 +236,8 @@ class ForgotPasswordCompleteProtectedOperationTest {
 
   @Test
   void reactiveLockAcquisitionFailureHasLockAcquisitionClassification() {
-    when(locks.acquire(any(), any())).thenReturn(Mono.error(new IllegalStateException("lock-secret")));
+    when(locks.acquire(any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("lock-secret")));
 
     StepVerifier.create(newOp().execute(input()))
         .assertNext(
@@ -443,21 +444,21 @@ class ForgotPasswordCompleteProtectedOperationTest {
     when(completion.complete(any()))
         .thenReturn(
             Mono.error(
-                  new ForgotPasswordCompletionTechnicalFailure(
-                      FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset")));
+                new ForgotPasswordCompletionTechnicalFailure(
+                    FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset")));
 
     StepVerifier.create(newOp().execute(input()))
         .assertNext(
             result -> {
-                assertThat(result.outcome())
-                    .isEqualTo(ForgotPasswordCompleteProtectedExecutionResult.Outcome.UNKNOWN_OUTCOME);
-                assertThat(result.incidents())
-                    .extracting(ForgotPasswordCompleteIncident::stage)
-                    .containsExactly("apim-reset", "blocked-session-write");
-                assertThat(result.incidents())
-                    .extracting(ForgotPasswordCompleteIncident::origin)
-                    .containsExactly(
-                        FailureOrigin.DOWNSTREAM_TRANSPORT, FailureOrigin.LOCAL_SYSTEM);
+              assertThat(result.outcome())
+                  .isEqualTo(
+                      ForgotPasswordCompleteProtectedExecutionResult.Outcome.UNKNOWN_OUTCOME);
+              assertThat(result.incidents())
+                  .extracting(ForgotPasswordCompleteIncident::stage)
+                  .containsExactly("apim-reset", "blocked-session-write");
+              assertThat(result.incidents())
+                  .extracting(ForgotPasswordCompleteIncident::origin)
+                  .containsExactly(FailureOrigin.DOWNSTREAM_TRANSPORT, FailureOrigin.LOCAL_SYSTEM);
             })
         .verifyComplete();
     verify(completion, times(1)).complete(any());

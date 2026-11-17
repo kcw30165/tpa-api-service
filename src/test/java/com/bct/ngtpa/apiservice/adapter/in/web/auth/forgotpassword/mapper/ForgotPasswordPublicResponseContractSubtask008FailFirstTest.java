@@ -90,7 +90,8 @@ class ForgotPasswordPublicResponseContractSubtask008FailFirstTest {
                 null,
                 0,
                 0,
-                List.of("email"), false)),
+                List.of("email"),
+                false)),
         ApiStatus.VALIDATION_FAILED,
         null,
         "err.forgot-password.details.invalid",
@@ -113,7 +114,8 @@ class ForgotPasswordPublicResponseContractSubtask008FailFirstTest {
                 null,
                 null,
                 4,
-                25, null)),
+                25,
+                null)),
         ApiStatus.BUSINESS_REJECTED,
         WorkflowNextStep.VERIFY_OTP,
         "err.forgot-password.otp.resend.cooldown",
@@ -122,7 +124,10 @@ class ForgotPasswordPublicResponseContractSubtask008FailFirstTest {
     assertMachineReadable(
         verifyMapper.toMutationResponse(
             new VerifyForgotPasswordOtpResult(
-                VerifyForgotPasswordOtpStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP, null, null)),
+                VerifyForgotPasswordOtpStatus.OTP_INVALID,
+                WorkflowNextStep.VERIFY_OTP,
+                null,
+                null)),
         ApiStatus.VALIDATION_FAILED,
         WorkflowNextStep.VERIFY_OTP,
         "err.forgot-password.otp.invalid",
@@ -131,7 +136,10 @@ class ForgotPasswordPublicResponseContractSubtask008FailFirstTest {
     assertMachineReadable(
         verifyMapper.toMutationResponse(
             new VerifyForgotPasswordOtpResult(
-                VerifyForgotPasswordOtpStatus.OTP_EXPIRED, WorkflowNextStep.RESEND_OTP, null, null)),
+                VerifyForgotPasswordOtpStatus.OTP_EXPIRED,
+                WorkflowNextStep.RESEND_OTP,
+                null,
+                null)),
         ApiStatus.BUSINESS_REJECTED,
         WorkflowNextStep.RESEND_OTP,
         "err.forgot-password.otp.expired",
@@ -151,7 +159,8 @@ class ForgotPasswordPublicResponseContractSubtask008FailFirstTest {
                         "localized password text must not leak",
                         List.of("password"),
                         WorkflowErrorSeverity.ERROR,
-                        "BFF")), null)),
+                        "BFF")),
+                null)),
         ApiStatus.VALIDATION_FAILED,
         WorkflowNextStep.PASSWORD_SETUP,
         "err.forgot-password.password.invalid",

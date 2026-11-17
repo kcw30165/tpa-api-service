@@ -1,10 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.error;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp
-    .ForgotPasswordDetailsOtpIncidentPublishedException;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp
-    .ForgotPasswordDetailsOtpExpectedFailureException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpExpectedFailureException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpIncidentPublishedException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -66,8 +64,7 @@ public final class ForgotPasswordDetailsOtpExceptionMappings {
       }
 
       @Override
-      public String diagnosticMessage(
-          ForgotPasswordDetailsOtpExpectedFailureException exception) {
+      public String diagnosticMessage(ForgotPasswordDetailsOtpExpectedFailureException exception) {
         return null;
       }
     };

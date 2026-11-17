@@ -25,8 +25,8 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
-import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CreateAuthFlowSessionCsrfResult;
@@ -160,8 +160,7 @@ class ForgotPasswordStartProtectedOperationTest {
     assertThat(event.httpStatus()).isEqualTo(503);
     assertThat(event.retryable()).isFalse();
     assertThat(event.safeDimensions()).containsExactly(Map.entry("stage", "username-lookup"));
-    assertThat(event.toString())
-        .doesNotContain(marker, "member01", "cust-db01", "tas-user-01");
+    assertThat(event.toString()).doesNotContain(marker, "member01", "cust-db01", "tas-user-01");
   }
 
   @Test
@@ -195,7 +194,8 @@ class ForgotPasswordStartProtectedOperationTest {
       var failure = ArgumentCaptor.forClass(FailureEvent.class);
       verify(fixture.failureEventPort).publish(failure.capture());
       assertThat(failure.getValue().origin()).isEqualTo(origin);
-      assertThat(failure.getValue().safeDimensions()).containsExactly(Map.entry("stage", "username-lookup"));
+      assertThat(failure.getValue().safeDimensions())
+          .containsExactly(Map.entry("stage", "username-lookup"));
     }
 
     Fixture genericFailure = new Fixture();
@@ -248,11 +248,7 @@ class ForgotPasswordStartProtectedOperationTest {
         .containsExactly(Map.entry("stage", "session-replacement-or-csrf"));
     assertThat(failure.getValue().toString())
         .doesNotContain(
-            "R1-SESSION-DETAIL",
-            "R1-CSRF-DETAIL",
-            "member01",
-            "cust-db01",
-            "tas-user-01");
+            "R1-SESSION-DETAIL", "R1-CSRF-DETAIL", "member01", "cust-db01", "tas-user-01");
   }
 
   private static StartForgotPasswordCommand command(String existing) {

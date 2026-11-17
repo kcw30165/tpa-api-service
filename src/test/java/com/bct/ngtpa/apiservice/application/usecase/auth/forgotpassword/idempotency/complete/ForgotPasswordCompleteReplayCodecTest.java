@@ -34,7 +34,8 @@ class ForgotPasswordCompleteReplayCodecTest {
             WorkflowNextStep.RETURN_TO_LOGIN,
             true,
             true,
-            List.of(), null);
+            List.of(),
+            null);
     var response = bridge.toTransientResponse(result);
 
     StepVerifier.create(
@@ -61,7 +62,8 @@ class ForgotPasswordCompleteReplayCodecTest {
             WorkflowNextStep.PASSWORD_SETUP,
             false,
             false,
-            List.of(), null);
+            List.of(),
+            null);
 
     StepVerifier.create(
             codec
@@ -80,12 +82,12 @@ class ForgotPasswordCompleteReplayCodecTest {
                 WorkflowNextStep.RETURN_TO_LOGIN,
                 true,
                 true,
-                List.of(), null)
+                List.of(),
+                null)
             .withPublicationReceipt(new ForgotPasswordCompletePublicationReceipt(true));
     var response = bridge.toTransientResponse(result);
 
-    assertThat(response.serializedBody())
-        .doesNotContain("publicationReceipt", "terminalFailure");
+    assertThat(response.serializedBody()).doesNotContain("publicationReceipt", "terminalFailure");
     assertThat(bridge.fromTransientResponse(response).publicationReceipt()).isNull();
   }
 
@@ -97,7 +99,8 @@ class ForgotPasswordCompleteReplayCodecTest {
             WorkflowNextStep.PASSWORD_SETUP,
             false,
             false,
-            List.of(), null);
+            List.of(),
+            null);
     assertThatThrownBy(() -> bridge.toTransientResponse(unknown))
         .isInstanceOf(IllegalArgumentException.class);
 

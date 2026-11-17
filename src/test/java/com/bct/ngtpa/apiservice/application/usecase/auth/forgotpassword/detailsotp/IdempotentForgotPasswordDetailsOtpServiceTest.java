@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
@@ -17,7 +18,6 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOu
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionResult;
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
-import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
@@ -87,7 +87,9 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
     var transientResponse = new HydratedIdempotentResponse(200, "application/json", "{}", Map.of());
     when(fixture.operation.execute(command()))
         .thenReturn(
-            Mono.just(new ForgotPasswordDetailsOtpProtectedExecutionResult(result, reference, null, null)));
+            Mono.just(
+                new ForgotPasswordDetailsOtpProtectedExecutionResult(
+                    result, reference, null, null)));
     when(fixture.responses.toTransientResponse(result)).thenReturn(transientResponse);
     when(fixture.responses.fromTransientResponse(any())).thenReturn(result);
 
@@ -140,15 +142,17 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
     when(fixture.policy.detailsAndOtp(any())).thenReturn(mock(IdempotencyFingerprint.class));
     var unavailable =
         new ForgotPasswordDetailsOtpResult(
-            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE, null, 0, 0, java.util.List.of(), false);
+            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE,
+            null,
+            0,
+            0,
+            java.util.List.of(),
+            false);
     when(fixture.operation.execute(command()))
         .thenReturn(
             Mono.just(
                 new ForgotPasswordDetailsOtpProtectedExecutionResult(
-                    unavailable,
-                    null,
-                    FailureOrigin.DOWNSTREAM_TRANSPORT,
-                    "details-lookup")));
+                    unavailable, null, FailureOrigin.DOWNSTREAM_TRANSPORT, "details-lookup")));
     var transientResponse = new HydratedIdempotentResponse(503, "application/json", "{}", Map.of());
     when(fixture.responses.toTransientResponse(any())).thenReturn(transientResponse);
     when(fixture.responses.fromTransientResponse(transientResponse)).thenReturn(unavailable);
@@ -241,15 +245,17 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
     when(fixture.policy.detailsAndOtp(any())).thenReturn(mock(IdempotencyFingerprint.class));
     var unavailable =
         new ForgotPasswordDetailsOtpResult(
-            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE, null, 0, 0, java.util.List.of(), false);
+            ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE,
+            null,
+            0,
+            0,
+            java.util.List.of(),
+            false);
     when(fixture.operation.execute(command()))
         .thenReturn(
             Mono.just(
                 new ForgotPasswordDetailsOtpProtectedExecutionResult(
-                    unavailable,
-                    null,
-                    FailureOrigin.DOWNSTREAM_TRANSPORT,
-                    "details-lookup")));
+                    unavailable, null, FailureOrigin.DOWNSTREAM_TRANSPORT, "details-lookup")));
     var transientResponse = new HydratedIdempotentResponse(503, "application/json", "{}", Map.of());
     when(fixture.responses.toTransientResponse(any())).thenReturn(transientResponse);
     when(fixture.responses.fromTransientResponse(transientResponse)).thenReturn(unavailable);
@@ -295,7 +301,8 @@ class IdempotentForgotPasswordDetailsOtpServiceTest {
         "m***@example.com",
         300,
         60,
-        java.util.List.of(), false);
+        java.util.List.of(),
+        false);
   }
 
   private static final class CapturingExecutor implements IdempotencyExecutor {

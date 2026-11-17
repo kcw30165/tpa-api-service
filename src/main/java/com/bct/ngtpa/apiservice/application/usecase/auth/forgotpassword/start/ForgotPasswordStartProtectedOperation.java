@@ -13,11 +13,11 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
-import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
-import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
-import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
 import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
+import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CreateAuthFlowSessionCsrfCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFlowSessionWithConcurrencyCommand;
@@ -104,17 +104,13 @@ public final class ForgotPasswordStartProtectedOperation {
                   case NOT_FOUND -> Mono.just(notFound());
                   case SYSTEM_FAILED ->
                       Mono.just(
-                          technicalFailure(
-                              command,
-                              result.failureOrigin(),
-                              "username-lookup"));
+                          technicalFailure(command, result.failureOrigin(), "username-lookup"));
                 })
         .onErrorResume(
             Exception.class,
             error -> {
               return Mono.just(
-                  technicalFailure(
-                        command, FailureOrigin.LOCAL_SYSTEM, "username-lookup"));
+                  technicalFailure(command, FailureOrigin.LOCAL_SYSTEM, "username-lookup"));
             });
   }
 
@@ -191,9 +187,7 @@ public final class ForgotPasswordStartProtectedOperation {
                     isSessionReplacementConflict(error)
                         ? authFlowInvalid()
                         : technicalFailure(
-                            command,
-                            FailureOrigin.LOCAL_SYSTEM,
-                            "session-replacement-or-csrf")));
+                            command, FailureOrigin.LOCAL_SYSTEM, "session-replacement-or-csrf")));
   }
 
   private StartForgotPasswordResult technicalFailure(

@@ -25,9 +25,9 @@ import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import org.springframework.mock.web.server.MockServerWebExchange;
-import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.web.bind.annotation.PostMapping;
 import reactor.core.publisher.Mono;
 
@@ -111,8 +111,8 @@ class AuthForgotPasswordDetailsControllerTest {
     assertThat(useCase.command.idempotencyKey()).isEqualTo("idem-1");
     assertThat(response.getHeaders().getFirst("X-Request-Id")).isEqualTo("req-1");
     assertThat(
-            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
-                .isOwned(exchange))
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(
+                exchange))
         .isFalse();
     assertThat(json.at("/body/result/nextStep").asText()).isEqualTo("VERIFY_OTP");
     assertThat(json.toString())
@@ -136,7 +136,8 @@ class AuthForgotPasswordDetailsControllerTest {
                         null,
                         0,
                         0,
-                        List.of(), false));
+                        List.of(),
+                        false));
     var response = new MockServerHttpResponse();
     var exchange = exchange();
 
@@ -169,8 +170,8 @@ class AuthForgotPasswordDetailsControllerTest {
     assertThat(response.getCookies()).isEmpty();
     assertThat(response.getHeaders().getFirst("X-Request-Id")).isEqualTo("req-1");
     assertThat(
-            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
-                .isOwned(exchange))
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(
+                exchange))
         .isFalse();
   }
 
@@ -206,8 +207,8 @@ class AuthForgotPasswordDetailsControllerTest {
 
     assertThat(publicResponse.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
     assertThat(
-            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
-                .isOwned(exchange))
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(
+                exchange))
         .isTrue();
     assertThat(objectMapper.writeValueAsString(publicResponse.getBody()))
         .doesNotContain("incidentPublished");
@@ -248,8 +249,8 @@ class AuthForgotPasswordDetailsControllerTest {
       assertThatThrownBy(detailsResponse::block).isInstanceOf(IllegalStateException.class);
     }
     assertThat(
-            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
-                .isOwned(exchange))
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(
+                exchange))
         .isFalse();
   }
 
@@ -264,7 +265,8 @@ class AuthForgotPasswordDetailsControllerTest {
                         null,
                         0,
                         0,
-                        List.of("PAGE"), false));
+                        List.of("PAGE"),
+                        false));
     var response = new MockServerHttpResponse();
     var exchange = exchange();
 
@@ -297,8 +299,8 @@ class AuthForgotPasswordDetailsControllerTest {
             });
     assertThat(response.getCookies()).isEmpty();
     assertThat(
-            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
-                .isOwned(exchange))
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(
+                exchange))
         .isFalse();
   }
 
@@ -327,8 +329,8 @@ class AuthForgotPasswordDetailsControllerTest {
     assertThat(publicResponse.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     assertThat(response.getCookies()).isEmpty();
     assertThat(
-            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
-                .isOwned(exchange))
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(
+                exchange))
         .isFalse();
   }
 
@@ -360,7 +362,8 @@ class AuthForgotPasswordDetailsControllerTest {
               "m****r@example.com",
               300,
               60,
-              java.util.List.of(), false));
+              java.util.List.of(),
+              false));
     }
   }
 

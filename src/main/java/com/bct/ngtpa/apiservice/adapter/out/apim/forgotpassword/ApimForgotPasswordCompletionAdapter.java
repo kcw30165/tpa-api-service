@@ -6,8 +6,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolu
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
-import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimRequest;
@@ -16,8 +16,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper.TrpResetP
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordCompletionPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionTechnicalFailure;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -81,14 +81,11 @@ public class ApimForgotPasswordCompletionAdapter implements ForgotPasswordComple
     }
     FailureOrigin origin =
         switch (ApimFailureClassifier.classify(failure)) {
-      case DOWNSTREAM_CONTRACT ->
-          FailureOrigin.DOWNSTREAM_CONTRACT;
-      case DOWNSTREAM_INVALID_RESPONSE ->
-          FailureOrigin.DOWNSTREAM_INVALID_RESPONSE;
-      case DOWNSTREAM_TRANSPORT ->
-          FailureOrigin.DOWNSTREAM_TRANSPORT;
-      case LOCAL_SYSTEM -> FailureOrigin.LOCAL_SYSTEM;
-    };
+          case DOWNSTREAM_CONTRACT -> FailureOrigin.DOWNSTREAM_CONTRACT;
+          case DOWNSTREAM_INVALID_RESPONSE -> FailureOrigin.DOWNSTREAM_INVALID_RESPONSE;
+          case DOWNSTREAM_TRANSPORT -> FailureOrigin.DOWNSTREAM_TRANSPORT;
+          case LOCAL_SYSTEM -> FailureOrigin.LOCAL_SYSTEM;
+        };
     return new ForgotPasswordCompletionTechnicalFailure(origin, "apim-reset");
   }
 

@@ -55,13 +55,13 @@ public final class ForgotPasswordOtpSessionBindingAdapter
                   ForgotPasswordOtpBindingResult.Status.CONFIRMED_FAILED));
       case UNKNOWN_OUTCOME ->
           update(
-                  s,
-                  context.withPhase(ForgotPasswordProtectedPhase.OTP_DELIVERY_UNKNOWN),
-                  null,
-                  null,
-                  null,
-                  c.now(),
-                  ForgotPasswordOtpBindingResult.Status.UNKNOWN_OUTCOME);
+              s,
+              context.withPhase(ForgotPasswordProtectedPhase.OTP_DELIVERY_UNKNOWN),
+              null,
+              null,
+              null,
+              c.now(),
+              ForgotPasswordOtpBindingResult.Status.UNKNOWN_OUTCOME);
       case ACCEPTED -> accepted(s, context, c);
     };
   }
@@ -104,13 +104,13 @@ public final class ForgotPasswordOtpSessionBindingAdapter
                       context.workflowVersion(),
                       ForgotPasswordProtectedPhase.OTP_SENT);
               return update(
-                      s,
-                      bound,
-                      c.otpChallengeId(),
-                      c.challengeExpiresAt(),
-                      c.resendAvailableAt(),
-                      c.now(),
-                      ForgotPasswordOtpBindingResult.Status.BOUND);
+                  s,
+                  bound,
+                  c.otpChallengeId(),
+                  c.challengeExpiresAt(),
+                  c.resendAvailableAt(),
+                  c.now(),
+                  ForgotPasswordOtpBindingResult.Status.BOUND);
             });
   }
 
@@ -173,7 +173,9 @@ public final class ForgotPasswordOtpSessionBindingAdapter
                             .flatMap(
                                 mutation ->
                                     switch (mutation.outcome()) {
-                                      case APPLIED -> Mono.just(new ForgotPasswordOtpBindingResult(successStatus));
+                                      case APPLIED ->
+                                          Mono.just(
+                                              new ForgotPasswordOtpBindingResult(successStatus));
                                       case SESSION_NOT_FOUND,
                                           SESSION_REVISION_CHANGED,
                                           EXPECTED_STATE_CHANGED,

@@ -360,8 +360,7 @@ class ForgotPasswordCancelIncidentOwnershipConnectedTest {
                     CancelForgotPasswordStatus.CANCELLED, true, true, List.of(), true));
     var cookieWriter =
         new AuthFlowCookieWriter(
-            new AuthFlowCookieProperties(
-                "auth_flow_sid", "/", Duration.ZERO, true, false, "Lax")) {
+            new AuthFlowCookieProperties("auth_flow_sid", "/", Duration.ZERO, true, false, "Lax")) {
           @Override
           public void clearAuthFlowCookie(
               org.springframework.http.server.reactive.ServerHttpResponse response) {
@@ -403,8 +402,7 @@ class ForgotPasswordCancelIncidentOwnershipConnectedTest {
     ILoggingEvent completedRequest =
         appender.list.stream()
             .filter(
-                event ->
-                    event.getFormattedMessage().contains("\"event\":\"" + eventName + "\""))
+                event -> event.getFormattedMessage().contains("\"event\":\"" + eventName + "\""))
             .findFirst()
             .orElseThrow();
     assertThat(completedRequest.getLevel()).isEqualTo(expectedLevel);
@@ -453,8 +451,7 @@ class ForgotPasswordCancelIncidentOwnershipConnectedTest {
     var filter =
         new RequestLoggingWebFilter(
             new RequestLoggingProperties(),
-            new LoggingSanitizer(
-                OBJECT_MAPPER, new MaskingService(new MaskingProperties())),
+            new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(new MaskingProperties())),
             OBJECT_MAPPER);
 
     StepVerifier.create(
@@ -512,8 +509,7 @@ class ForgotPasswordCancelIncidentOwnershipConnectedTest {
 
   private static FailureEventPort failureEventLogger() {
     return new StructuredFailureEventLogger(
-        new LoggingSanitizer(
-            OBJECT_MAPPER, new MaskingService(new MaskingProperties())));
+        new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(new MaskingProperties())));
   }
 
   private static AuthFlowSessionPort sessionsWithActiveFlow(String otpChallengeId) {
@@ -547,8 +543,7 @@ class ForgotPasswordCancelIncidentOwnershipConnectedTest {
     try {
       return HexFormat.of()
           .formatHex(
-              MessageDigest.getInstance("SHA-256")
-                  .digest(value.getBytes(StandardCharsets.UTF_8)));
+              MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
     } catch (Exception exception) {
       throw new IllegalStateException(exception);
     }

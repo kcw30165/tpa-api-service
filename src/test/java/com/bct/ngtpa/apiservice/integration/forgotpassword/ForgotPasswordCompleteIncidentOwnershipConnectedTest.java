@@ -12,8 +12,8 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordCompleteRequest;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordDetailsOtpWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
@@ -108,12 +108,14 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
     assertThat(run.response().getStatusCode().value()).isEqualTo(503);
     MutationResponse<?> body = responseBody(run);
     assertThat(body.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
-    assertThat(body.errors()).singleElement().satisfies(
-        error -> {
-          assertThat(error.code()).isEqualTo("err.system.unavailable");
-          assertThat(error.type()).isEqualTo("SYSTEM");
-          assertThat(error.source()).isEqualTo("SERVER");
-        });
+    assertThat(body.errors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.code()).isEqualTo("err.system.unavailable");
+              assertThat(error.type()).isEqualTo("SYSTEM");
+              assertThat(error.source()).isEqualTo("SERVER");
+            });
     assertThat(body.success()).isFalse();
     assertThat(body.messages()).isEmpty();
     assertThat(OBJECT_MAPPER.valueToTree(body).at("/result/nextStep").asText()).isEqualTo("NONE");
@@ -125,15 +127,19 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
   }
 
   private void assertSingleTerminalIncidentError() {
-    var terminalErrors = appender.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
-    assertThat(terminalErrors).singleElement().satisfies(
-        event -> {
-          assertThat(event.getLoggerName()).isEqualTo(StructuredFailureEventLogger.class.getName());
-          assertThat(event.getFormattedMessage())
-              .contains("forgot-password.complete.failed", "COMPLETE_APIM_FAILURE", REQUEST_ID)
-              .doesNotContain("reset-secret", "customer-secret", "ciphertext-secret");
-          assertThat(event.getThrowableProxy()).isNull();
-        });
+    var terminalErrors =
+        appender.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
+    assertThat(terminalErrors)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLoggerName())
+                  .isEqualTo(StructuredFailureEventLogger.class.getName());
+              assertThat(event.getFormattedMessage())
+                  .contains("forgot-password.complete.failed", "COMPLETE_APIM_FAILURE", REQUEST_ID)
+                  .doesNotContain("reset-secret", "customer-secret", "ciphertext-secret");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
   }
 
   private void assertWarnOnlyHttpObservation() {
@@ -157,56 +163,56 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
   void postAcquisitionFailurePublishesProtectedOperationStage() {
     RunResult run =
         invoke(
-              false,
-              List.of(
-                  ForgotPasswordCompleteIncident.local(
-                      "COMPLETE_PROTECTED_OPERATION_FAILURE", "protected-operation")));
+            false,
+            List.of(
+                ForgotPasswordCompleteIncident.local(
+                    "COMPLETE_PROTECTED_OPERATION_FAILURE", "protected-operation")));
 
     assertThat(run.response().getStatusCode().value()).isEqualTo(503);
     assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isTrue();
     assertThat(appender.list.stream().filter(event -> event.getLevel() == Level.ERROR))
         .singleElement()
         .satisfies(
-              event -> {
-                assertThat(event.getLoggerName())
-                    .isEqualTo(StructuredFailureEventLogger.class.getName());
-                assertThat(event.getFormattedMessage())
-                    .contains(
-                        "COMPLETE_PROTECTED_OPERATION_FAILURE",
-                        "\"failureOrigin\":\"LOCAL_SYSTEM\"",
-                        "\"stage\":\"protected-operation\"")
-                    .doesNotContain("reset-secret", "customer-secret", "ciphertext-secret");
-                assertThat(event.getThrowableProxy()).isNull();
-              });
+            event -> {
+              assertThat(event.getLoggerName())
+                  .isEqualTo(StructuredFailureEventLogger.class.getName());
+              assertThat(event.getFormattedMessage())
+                  .contains(
+                      "COMPLETE_PROTECTED_OPERATION_FAILURE",
+                      "\"failureOrigin\":\"LOCAL_SYSTEM\"",
+                      "\"stage\":\"protected-operation\"")
+                  .doesNotContain("reset-secret", "customer-secret", "ciphertext-secret");
+              assertThat(event.getThrowableProxy()).isNull();
+            });
   }
 
   @Test
   void primaryAndBlockedSessionWriteIncidentsRemainSeparateTerminalEvents() {
     RunResult run =
         invoke(
-              false,
-              List.of(
-                  ForgotPasswordCompleteIncident.apim(
-                      FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset"),
-                  ForgotPasswordCompleteIncident.local(
-                      "COMPLETE_BLOCKED_SESSION_WRITE_FAILURE", "blocked-session-write")));
+            false,
+            List.of(
+                ForgotPasswordCompleteIncident.apim(
+                    FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset"),
+                ForgotPasswordCompleteIncident.local(
+                    "COMPLETE_BLOCKED_SESSION_WRITE_FAILURE", "blocked-session-write")));
 
     assertThat(run.response().getStatusCode().value()).isEqualTo(503);
     assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isTrue();
-    var incidentErrors = appender.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
+    var incidentErrors =
+        appender.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
     assertThat(incidentErrors)
         .hasSize(2)
         .extracting(ILoggingEvent::getFormattedMessage)
         .satisfiesExactly(
-              primary ->
-                  assertThat(primary)
-                      .contains("COMPLETE_APIM_FAILURE", "\"stage\":\"apim-reset\""),
-              blocked ->
-                  assertThat(blocked)
-                      .contains(
-                          "COMPLETE_BLOCKED_SESSION_WRITE_FAILURE",
-                          "\"failureOrigin\":\"LOCAL_SYSTEM\"",
-                          "\"stage\":\"blocked-session-write\""));
+            primary ->
+                assertThat(primary).contains("COMPLETE_APIM_FAILURE", "\"stage\":\"apim-reset\""),
+            blocked ->
+                assertThat(blocked)
+                    .contains(
+                        "COMPLETE_BLOCKED_SESSION_WRITE_FAILURE",
+                        "\"failureOrigin\":\"LOCAL_SYSTEM\"",
+                        "\"stage\":\"blocked-session-write\""));
     assertThat(incidentErrors).allSatisfy(event -> assertThat(event.getThrowableProxy()).isNull());
     assertThat(requestEvents("http.request.failed"))
         .singleElement()
@@ -221,7 +227,8 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
     assertThat(responseBody(run).status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
     assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isFalse();
     assertThat(appender.list)
-        .noneMatch(event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()));
+        .noneMatch(
+            event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()));
     assertThat(requestEvents("http.request.failed"))
         .singleElement()
         .satisfies(event -> assertThat(event.getLevel()).isEqualTo(Level.ERROR));
@@ -232,12 +239,10 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
     return invoke(
         replay,
         List.of(
-            ForgotPasswordCompleteIncident.apim(
-                FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset")));
+            ForgotPasswordCompleteIncident.apim(FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset")));
   }
 
-  private RunResult invoke(
-      boolean replay, List<ForgotPasswordCompleteIncident> incidents) {
+  private RunResult invoke(boolean replay, List<ForgotPasswordCompleteIncident> incidents) {
     appender.list.clear();
     var operation = mock(ForgotPasswordCompleteProtectedOperation.class);
     var responses = mock(ForgotPasswordCompleteExecutionBridge.class);
@@ -247,14 +252,14 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
             WorkflowNextStep.NONE,
             false,
             false,
-            List.of(), null);
+            List.of(),
+            null);
     if (!replay) {
       when(operation.execute(any()))
           .thenReturn(
               Mono.just(
                   ForgotPasswordCompleteProtectedExecutionResult.technicalFailure(
-                      technical,
-                      incidents)));
+                      technical, incidents)));
     }
 
     AuthFlowSessionId sid = new AuthFlowSessionId("session-secret");
@@ -280,7 +285,8 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
     when(sessions.loadSnapshot(any()))
         .thenReturn(
             Mono.just(
-                Optional.of(new AuthFlowSessionSnapshot(session, new SessionRevision("0".repeat(32))))));
+                Optional.of(
+                    new AuthFlowSessionSnapshot(session, new SessionRevision("0".repeat(32))))));
     var protector = mock(ForgotPasswordAuthFlowContextProtectorPort.class);
     when(protector.unprotect(any()))
         .thenReturn(
@@ -310,8 +316,7 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
             mock(com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint.class));
     FailureEventPort failureEvents =
         new StructuredFailureEventLogger(
-            new LoggingSanitizer(
-                OBJECT_MAPPER, new MaskingService(new MaskingProperties())));
+            new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(new MaskingProperties())));
     CompleteForgotPasswordUseCase service =
         new IdempotentCompleteForgotPasswordService(
             executor, sessions, protector, operation, responses, policy, failureEvents);
@@ -325,8 +330,7 @@ class ForgotPasswordCompleteIncidentOwnershipConnectedTest {
     var filter =
         new RequestLoggingWebFilter(
             new RequestLoggingProperties(),
-            new LoggingSanitizer(
-                OBJECT_MAPPER, new MaskingService(new MaskingProperties())),
+            new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(new MaskingProperties())),
             OBJECT_MAPPER);
 
     StepVerifier.create(

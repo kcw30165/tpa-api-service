@@ -30,15 +30,15 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
     return Mono.defer(
             () ->
                 lookup.verify(
-            new ForgotPasswordDetailsLookupCommand(
-                context.identityType(),
-                context.identityValue(),
-                dob,
-                email,
-                mobile,
-                context.username(),
-                requestId,
-                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
+                    new ForgotPasswordDetailsLookupCommand(
+                        context.identityType(),
+                        context.identityValue(),
+                        dob,
+                        email,
+                        mobile,
+                        context.username(),
+                        requestId,
+                        com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
         .map(
             r ->
                 r.status() == ForgotPasswordDetailsLookupStatus.MATCHED
@@ -46,7 +46,8 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
                         ForgotPasswordDetailsStatus.DETAILS_VERIFIED,
                         r.trustCode(),
                         r.schemeName(),
-                        r.schemeNameChi(), null)
+                        r.schemeNameChi(),
+                        null)
                     : ForgotPasswordUnderLockDetailsVerification.of(
                         ForgotPasswordDetailsStatus.BUSINESS_REJECTED))
         .onErrorResume(

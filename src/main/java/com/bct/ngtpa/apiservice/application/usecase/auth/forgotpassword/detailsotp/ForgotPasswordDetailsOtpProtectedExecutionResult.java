@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp;
 
-import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
+import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
 import java.util.Objects;
 
 /** Protected operation result carrying transient public data and opaque replay continuity. */

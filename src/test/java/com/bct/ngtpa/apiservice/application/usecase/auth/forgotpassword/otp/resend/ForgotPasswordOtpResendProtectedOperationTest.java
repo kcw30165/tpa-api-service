@@ -508,10 +508,9 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
             r -> {
-                assertThat(r.result().status())
-                    .isEqualTo(ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID);
-                assertThat(r.incidents())
-                    .contains(ForgotPasswordOtpResendIncident.CONTEXT_UNPROTECT);
+              assertThat(r.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID);
+              assertThat(r.incidents()).contains(ForgotPasswordOtpResendIncident.CONTEXT_UNPROTECT);
             })
         .verifyComplete();
     assertLoggedFailure("context-unprotect");
@@ -611,9 +610,9 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
             r -> {
-                assertThat(r.result().status())
-                    .isEqualTo(ResendForgotPasswordOtpStatus.COOLDOWN_ACTIVE);
-                assertThat(r.incidents()).isEmpty();
+              assertThat(r.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.COOLDOWN_ACTIVE);
+              assertThat(r.incidents()).isEmpty();
             })
         .verifyComplete();
   }
@@ -681,9 +680,9 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
             r -> {
-                assertThat(r.result().status())
-                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
-                assertThat(r.incidents()).contains(ForgotPasswordOtpResendIncident.FOUNDATION);
+              assertThat(r.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(r.incidents()).contains(ForgotPasswordOtpResendIncident.FOUNDATION);
             })
         .verifyComplete();
     assertLoggedFailure("foundation");
@@ -708,9 +707,9 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
             r -> {
-                assertThat(r.result().status())
-                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
-                assertThat(r.incidents()).contains(ForgotPasswordOtpResendIncident.SESSION_READ);
+              assertThat(r.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(r.incidents()).contains(ForgotPasswordOtpResendIncident.SESSION_READ);
             })
         .verifyComplete();
     assertLoggedFailure("session-read");
@@ -996,10 +995,9 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
             r -> {
-                assertThat(r.result().status())
-                    .isEqualTo(ResendForgotPasswordOtpStatus.DELIVERY_FAILED);
-                assertThat(r.incidents())
-                    .contains(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY);
+              assertThat(r.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.DELIVERY_FAILED);
+              assertThat(r.incidents()).contains(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY);
             })
         .verifyComplete();
   }
@@ -1019,10 +1017,9 @@ class ForgotPasswordOtpResendProtectedOperationTest {
     StepVerifier.create(newOp().execute(validCommand()))
         .assertNext(
             r -> {
-                assertThat(r.result().status())
-                    .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
-                assertThat(r.incidents())
-                    .contains(ForgotPasswordOtpResendIncident.UNKNOWN_DELIVERY);
+              assertThat(r.result().status())
+                  .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
+              assertThat(r.incidents()).contains(ForgotPasswordOtpResendIncident.UNKNOWN_DELIVERY);
             })
         .verifyComplete();
   }
@@ -1060,8 +1057,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
             result -> {
               assertThat(result.result().status())
                   .isEqualTo(ResendForgotPasswordOtpStatus.SYSTEM_FAILED);
-              assertThat(result.incidents())
-                  .contains(ForgotPasswordOtpResendIncident.COMMIT_STATE);
+              assertThat(result.incidents()).contains(ForgotPasswordOtpResendIncident.COMMIT_STATE);
             })
         .verifyComplete();
 

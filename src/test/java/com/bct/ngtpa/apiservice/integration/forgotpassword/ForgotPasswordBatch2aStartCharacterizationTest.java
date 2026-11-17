@@ -130,13 +130,13 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
 
   /**
    * Scenario 1: {@link ApimExchangeExecutor} fails (simulated APIM transport failure) during
-   * username lookup. Real chain: the adapter's diagnostic observation is WARN and maps the error
-   * to a technical result; {@code ForgotPasswordStartProtectedOperation.execute} publishes the
-   * single terminal {@code event=forgot-password.start.failed} and returns a
-   * {@code SYSTEM_FAILED} result (confirmed,
-   * ForgotPasswordStartProtectedOperation.java); {@code IdempotentStartForgotPasswordService
-   * .executeAcquired} sees {@code SYSTEM_FAILED} and converts it to a typed technical failure; the real {@link DefaultIdempotencyExecutor}, on
-   * first acquisition with a failing supplier, propagates that error (mirrors the committed {@code
+   * username lookup. Real chain: the adapter's diagnostic observation is WARN and maps the error to
+   * a technical result; {@code ForgotPasswordStartProtectedOperation.execute} publishes the single
+   * terminal {@code event=forgot-password.start.failed} and returns a {@code SYSTEM_FAILED} result
+   * (confirmed, ForgotPasswordStartProtectedOperation.java); {@code
+   * IdempotentStartForgotPasswordService .executeAcquired} sees {@code SYSTEM_FAILED} and converts
+   * it to a typed technical failure; the real {@link DefaultIdempotencyExecutor}, on first
+   * acquisition with a failing supplier, propagates that error (mirrors the committed {@code
    * DefaultIdempotencyExecutorTest.protectedOperationFailureUsesClassifierExactlyOnce} precedent);
    * {@code IdempotentStartForgotPasswordService.start} has no {@code onErrorResume} (confirmed), so
    * the error reaches {@code ForgotPasswordController.startForgotPassword}'s {@code onErrorResume},
@@ -298,19 +298,12 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
         (ResponseEntity<MutationResponse<?>>)
             (ResponseEntity<?>)
                 invokeThroughLoggingFilter(
-                    controller,
-                    exchange,
-                    "idem-fp-start-storage-001",
-                    "req-fp-start-storage-001");
+                    controller, exchange, "idem-fp-start-storage-001", "req-fp-start-storage-001");
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
     assertThat(response.getBody()).isNotNull();
     assertThat(response.getBody().status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
-    assertThat(
-            OBJECT_MAPPER
-                .valueToTree(response.getBody())
-                .at("/errors/0/code")
-                .asText())
+    assertThat(OBJECT_MAPPER.valueToTree(response.getBody()).at("/errors/0/code").asText())
         .isEqualTo("err.workflow.system.unavailable");
     assertThat(TerminalIncidentHttpObservation.isOwned(exchange)).isFalse();
     ILoggingEvent accessEvent =
@@ -336,8 +329,7 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
       String requestId) {
     AtomicReference<ResponseEntity<?>> response = new AtomicReference<>();
     var sanitizer =
-        new LoggingSanitizer(
-            OBJECT_MAPPER, new MaskingService(new MaskingProperties()));
+        new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(new MaskingProperties()));
     var filter =
         new RequestLoggingWebFilter(new RequestLoggingProperties(), sanitizer, OBJECT_MAPPER);
     StepVerifier.create(
@@ -356,9 +348,7 @@ class ForgotPasswordBatch2aStartCharacterizationTest {
                         .doOnNext(
                             entity -> {
                               response.set(entity);
-                              webExchange
-                                  .getResponse()
-                                  .setStatusCode(entity.getStatusCode());
+                              webExchange.getResponse().setStatusCode(entity.getStatusCode());
                             })
                         .then()))
         .verifyComplete();

@@ -37,8 +37,8 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpCommand;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordStartTechnicalFailure;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResultStatus;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import java.time.Duration;
 import java.util.Map;
@@ -286,8 +286,7 @@ public final class ForgotPasswordController {
       ResponseEntity<
               MutationResponse<
                   ForgotPasswordWorkflowResultResponse<ForgotPasswordCancelDataResponse>>>
-          responseEntity =
-              ForgotPasswordHttpResponses.toResponse(cancelMapper.csrfInvalid());
+          responseEntity = ForgotPasswordHttpResponses.toResponse(cancelMapper.csrfInvalid());
       if (incidentPublished && responseEntity.getStatusCode().is5xxServerError()) {
         TerminalIncidentHttpObservation.markOwned(exchange);
       }

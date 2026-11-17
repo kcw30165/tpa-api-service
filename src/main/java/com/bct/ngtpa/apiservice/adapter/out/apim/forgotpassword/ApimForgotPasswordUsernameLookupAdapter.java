@@ -1,13 +1,13 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword;
 
+import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureCategory;
+import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureClassifier;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureCategory;
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureClassifier;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
-import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper.TrpChkCustIdForgotPasswordResultMapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.SharedApimTrpChkCustIdTransport;
@@ -80,7 +80,8 @@ public class ApimForgotPasswordUsernameLookupAdapter implements ForgotPasswordUs
                   "event=forgot-password.username-lookup.failed classification={} requestId={}",
                   category,
                   RequestIdLogSanitizer.sanitize(command.correlationId()));
-              return Mono.just(ForgotPasswordUsernameLookupResult.systemFailed(toFailureOrigin(category)));
+              return Mono.just(
+                  ForgotPasswordUsernameLookupResult.systemFailed(toFailureOrigin(category)));
             });
   }
 

@@ -204,8 +204,7 @@ class VerifyForgotPasswordIdentityServiceTest {
 
     StepVerifier.create(newService().verify(command("GPN", "G12345678", "req-1\nunsafe")))
         .assertNext(
-            r ->
-                assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
+            r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
         .verifyComplete();
 
     assertSingleTechnicalFailure("session-lock-acquire", "req-1?unsafe");
@@ -400,8 +399,7 @@ class VerifyForgotPasswordIdentityServiceTest {
   void protectedContextExceptionPublishesLocalSystemIncident() {
     givenLockAcquired();
     givenSession(startedSession());
-    when(loader.load(any()))
-        .thenReturn(Mono.error(new IllegalStateException("token=CSRF-SECRET")));
+    when(loader.load(any())).thenReturn(Mono.error(new IllegalStateException("token=CSRF-SECRET")));
 
     StepVerifier.create(newService().verify(validCommand()))
         .assertNext(
@@ -441,8 +439,7 @@ class VerifyForgotPasswordIdentityServiceTest {
 
     StepVerifier.create(newService().verify(validCommand()))
         .assertNext(
-            r ->
-                assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
+            r -> assertThat(r.status()).isEqualTo(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))
         .verifyComplete();
 
     assertThat(failureEvents.events).isEmpty();
@@ -457,7 +454,8 @@ class VerifyForgotPasswordIdentityServiceTest {
     when(sessions.updateRevisioned(any()))
         .thenReturn(
             Mono.just(
-                AuthFlowSessionMutationResult.outcome(AuthFlowSessionMutationOutcome.SYSTEM_FAILURE)));
+                AuthFlowSessionMutationResult.outcome(
+                    AuthFlowSessionMutationOutcome.SYSTEM_FAILURE)));
 
     StepVerifier.create(newService().verify(validCommand()))
         .assertNext(

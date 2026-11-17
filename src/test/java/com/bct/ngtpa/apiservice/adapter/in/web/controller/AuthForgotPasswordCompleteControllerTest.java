@@ -22,8 +22,8 @@ import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.bind.annotation.PostMapping;
 import reactor.core.publisher.Mono;
@@ -127,7 +127,8 @@ class AuthForgotPasswordCompleteControllerTest {
               WorkflowNextStep.RETURN_TO_LOGIN,
               true,
               true,
-              List.of(), null));
+              List.of(),
+              null));
     }
   }
 
@@ -136,13 +137,15 @@ class AuthForgotPasswordCompleteControllerTest {
     public Mono<CompleteForgotPasswordResult> complete(CompleteForgotPasswordCommand command) {
       return Mono.just(
           new CompleteForgotPasswordResult(
-              CompleteForgotPasswordStatus.SYSTEM_FAILED,
-              WorkflowNextStep.NONE,
-              false,
-              false,
-              List.of(), null)
-              .withPublicationReceipt(new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword
-                  .complete.ForgotPasswordCompletePublicationReceipt(true)));
+                  CompleteForgotPasswordStatus.SYSTEM_FAILED,
+                  WorkflowNextStep.NONE,
+                  false,
+                  false,
+                  List.of(),
+                  null)
+              .withPublicationReceipt(
+                  new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete
+                      .ForgotPasswordCompletePublicationReceipt(true)));
     }
   }
 

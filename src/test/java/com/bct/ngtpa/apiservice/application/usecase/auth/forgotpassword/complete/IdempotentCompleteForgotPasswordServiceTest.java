@@ -13,6 +13,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.Forg
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyKey;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
@@ -20,8 +22,6 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
-import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
-import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
@@ -146,7 +146,8 @@ class IdempotentCompleteForgotPasswordServiceTest {
         WorkflowNextStep.RETURN_TO_LOGIN,
         true,
         true,
-        List.of(), null);
+        List.of(),
+        null);
   }
 
   private static CompleteForgotPasswordResult systemFailedResult() {
@@ -155,7 +156,8 @@ class IdempotentCompleteForgotPasswordServiceTest {
         WorkflowNextStep.PASSWORD_SETUP,
         false,
         false,
-        List.of(), null);
+        List.of(),
+        null);
   }
 
   /** Captures the command passed to executor.execute(...) and returns it. */
@@ -200,7 +202,8 @@ class IdempotentCompleteForgotPasswordServiceTest {
   @Test
   void protectorFailurePublishesCauseFreeLocalIncidentWithoutChangingInvalidFlowResponse() {
     Map<String, String> attrs =
-        Map.of(CONTEXT_CIPHERTEXT_KEY, "ciphertext-secret", CONTEXT_KEY_VERSION_KEY, "version-secret");
+        Map.of(
+            CONTEXT_CIPHERTEXT_KEY, "ciphertext-secret", CONTEXT_KEY_VERSION_KEY, "version-secret");
     when(sessions.loadSnapshot(any()))
         .thenReturn(Mono.just(Optional.of(snapshotOf(sessionWith(attrs)))));
     when(protector.unprotect(any())).thenThrow(new IllegalStateException("protected-secret"));
@@ -212,7 +215,8 @@ class IdempotentCompleteForgotPasswordServiceTest {
     verify(failureEvents).publish(eventCaptor.capture());
     assertThat(eventCaptor.getValue().origin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
     assertThat(eventCaptor.getValue().operation()).isEqualTo("COMPLETE");
-    assertThat(eventCaptor.getValue().safeDimensions()).containsEntry("stage", "context-protection");
+    assertThat(eventCaptor.getValue().safeDimensions())
+        .containsEntry("stage", "context-protection");
     assertThat(eventCaptor.getValue().toString())
         .doesNotContain("protected-secret", "ciphertext-secret", "version-secret");
   }
@@ -262,10 +266,10 @@ class IdempotentCompleteForgotPasswordServiceTest {
             WorkflowNextStep.PASSWORD_SETUP,
             false,
             false,
-            List.of(), null);
+            List.of(),
+            null);
     when(operation.execute(any()))
-        .thenReturn(
-            Mono.just(ForgotPasswordCompleteProtectedExecutionResult.terminal(business)));
+        .thenReturn(Mono.just(ForgotPasswordCompleteProtectedExecutionResult.terminal(business)));
     HydratedIdempotentResponse transientResponse =
         new HydratedIdempotentResponse(422, "application/json", "{}", Map.of());
     when(responses.toTransientResponse(any())).thenReturn(transientResponse);
@@ -313,9 +317,7 @@ class IdempotentCompleteForgotPasswordServiceTest {
                 ForgotPasswordCompleteProtectedExecutionResult.technicalFailure(
                     systemFailedResult())));
     IdempotentExecutionCommand cmd = captureExecutionCommand();
-    StepVerifier.create(cmd.protectedOperation().get())
-        .expectError()
-        .verify();
+    StepVerifier.create(cmd.protectedOperation().get()).expectError().verify();
   }
 
   // ----- route() outcome-switch branches (via canned executor results) --------------
@@ -459,7 +461,8 @@ class IdempotentCompleteForgotPasswordServiceTest {
                         WorkflowNextStep.NONE,
                         false,
                         false,
-                        List.of(), null),
+                        List.of(),
+                        null),
                     List.of(
                         ForgotPasswordCompleteIncident.apim(
                             FailureOrigin.DOWNSTREAM_TRANSPORT, "apim-reset"),

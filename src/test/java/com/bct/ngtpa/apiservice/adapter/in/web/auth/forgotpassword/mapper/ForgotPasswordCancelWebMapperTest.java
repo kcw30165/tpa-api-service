@@ -62,8 +62,8 @@ class ForgotPasswordCancelWebMapperTest {
                 false,
                 false,
                 List.of(
-                    error(
-                        WorkflowErrorType.FORM, "err.forgot-password.authFlow.invalid", "PAGE")), false));
+                    error(WorkflowErrorType.FORM, "err.forgot-password.authFlow.invalid", "PAGE")),
+                false));
 
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
@@ -86,8 +86,8 @@ class ForgotPasswordCancelWebMapperTest {
                 CancelForgotPasswordStatus.CSRF_INVALID,
                 false,
                 false,
-                List.of(
-                    error(WorkflowErrorType.FORM, "err.forgot-password.csrf.invalid", "PAGE")), false));
+                List.of(error(WorkflowErrorType.FORM, "err.forgot-password.csrf.invalid", "PAGE")),
+                false));
 
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
@@ -109,7 +109,8 @@ class ForgotPasswordCancelWebMapperTest {
                 CancelForgotPasswordStatus.SYSTEM_FAILED,
                 false,
                 false,
-                List.of(error(WorkflowErrorType.SYSTEM, "err.system.unavailable", "PAGE")), false));
+                List.of(error(WorkflowErrorType.SYSTEM, "err.system.unavailable", "PAGE")),
+                false));
 
     assertThat(response.success()).isFalse();
     assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
