@@ -426,8 +426,8 @@ M3a covers the Registration username-availability check only: typed APIM ownersh
 `CheckRegistrationUsernameService` terminal incident owner, the completed-HTTP observation marker,
 and connected proof. Implementation is complete. Per Nick's attestations on this HEAD, these gates
 passed: `mvn clean test`, startup smoke and the SonarQube quality gate. The earlier full-suite and
-cold unscoped Spotless gates are accepted. The MR and merge are pending. M3 as a whole remains
-incomplete.
+cold unscoped Spotless gates are accepted. M3a is merged to `dev` (`1a5d72013`) and deployed as
+recorded in the delivery-plan table below. M3 as a whole remains incomplete.
 
 The terminal-origin labels identify failures owned by `CheckRegistrationUsernameService`:
 
@@ -441,6 +441,36 @@ Known M3a limitations:
 - `ApimWebClientFacade` still logs ERROR with a throwable for `APIM_OBSERVER` callers when structured serialization fails.
 - Request filters do not validate `X-Request-Id`; the username-check terminal ERROR sanitizes its own copy (see O-18).
 - Sonar new-code coverage was evaluated by the quality gate only; no separate changed-line coverage figure was produced.
+
+#### M3b - Registration remainder (lookup, start, completion and continuation)
+
+M3b implementation is complete. The following feature-branch gates passed:
+
+- Full Maven suite: `mvn clean test` reported 7,449 tests, 0 failures, 0 errors
+  and 77 skipped.
+- Cold unscoped `mvn spotless:check`: 3,257 files inspected, 0 violations and
+  0 cache-skipped files.
+- Startup smoke and complete Registration integration: passed, as confirmed by
+  Nick.
+
+The feature-branch SonarQube Quality Gate **failed**. The exported report lists
+295 new issues spanning Registration and unrelated features. At that run,
+issue attribution and the new-code baseline were unresolved; this exception
+does not authorize suppressing issues or bypassing any required MR or deployment
+gate.
+
+M3b merged to `dev` (`b2fb430c8`); a Sonar-maintenance follow-up merged as
+`2122899d4`. The final post-remediation quality-gate result and deployment
+status are not established by the available documentation. M3 as a whole is
+not complete.
+
+Known privacy limitations remain outside this slice: legacy Registration
+`DEFAULT` lookup logging can still place arbitrary downstream text in
+`FailureEvent.internalCode`; `ApimWebClientFacade` can still log an ERROR with
+a throwable for `APIM_OBSERVER` callers when structured serialization fails;
+request filters do not validate `X-Request-Id`; and the O-17 outbound
+request-body logging/privacy work remains deferred. The metadata-only central
+technical ERROR policy is not a repository-wide logging privacy guarantee.
 
 **Execution order:** Registration (3.3), Forgot Password (3.2), Login (3.1), Username Recovery
 (3.9), then the remaining account/fund and existing M3 scopes. Existing sub-task IDs are retained;
@@ -685,14 +715,15 @@ of this reduced completion scope.
 ### M3 deferred-work schedule and closure criteria (approved 2026-11-04)
 
 Deferred means scheduled into the next milestone, not indefinitely postponed. This schedule assigns
-follow-up work without reopening M2b or claiming that any feature integration is already complete.
-Nick owns sequencing and approval; the implementer delivers each slice and the independent reviewer
-checks its evidence. All rows below are pending until separately implemented and validated.
+follow-up work without reopening M2b. At approval, every row was pending; M3b and M3c have since
+advanced as shown below, while the remaining rows stay pending until separately implemented and
+validated. Nick owns sequencing and approval; the implementer delivers each slice and the independent
+reviewer checks its evidence.
 
 | Order / ID | Scope and destination | Required outcome | Status |
 |---|---|---|---|
-| First remaining / M3b / 3.3 | Registration: lookup, start, completion and continuation; the username-availability check is M3a | Integrate technical classification at the adapter boundary and consolidate incident logging. Preserve M3a behavior, E1 business/WARN behavior, both captcha paths, public responses and replay semantics. Use bounded internal steps; one coherent feature commit when green. | Pending |
-| Second / 3.2 | Forgot Password: start, details/OTP, resend and completion | Integrate classification and logging. Revisit the deferred Details/OTP SYSTEM_FAILED seam and Completion response/replay proof only where required to establish changed-path behavior. Do not redesign the public contract. | Pending |
+| M3b / 3.3 | Registration: lookup, start, completion and continuation; the username-availability check is M3a | Integrate technical classification at the adapter boundary and consolidate incident logging. Preserve M3a behavior, E1 business/WARN behavior, both captcha paths, public responses and replay semantics. Use bounded internal steps; one coherent feature commit when green. | Merged to `dev` (`b2fb430c8`); Sonar-maintenance follow-up merged (`2122899d4`); final gate and deployment status not evidenced |
+| M3c / 3.2 | Forgot Password: start, details/OTP, resend and completion | Integrate classification and logging. Revisit the deferred Details/OTP SYSTEM_FAILED seam and Completion response/replay proof only where required to establish changed-path behavior. Do not redesign the public contract. | Implemented; merged to `dev` (`5be93e042`) and deployed to DEV (Nick-confirmed); O-19 remains OPEN |
 | Third / 3.1 | Login: start, OTP verify/resend, account-list retrieval and session establishment | Integrate classification and incident ownership while preserving BFF source, public statuses/codes and replay behavior. | Pending |
 | Fourth / 3.9 | Username Recovery | Integrate classification and logging; preserve feature-owned business rejections, public outcomes and no-ERROR behavior for expected member-not-found. | Pending |
 | Remaining / 3.10 | Account Summary, Account Balance, Account Gain/Loss and other account/fund adapters not covered by existing M3 rows | Migrate one feature at a time; reuse current adapter/mapping tests and add only changed-path gaps. | Pending |
@@ -706,21 +737,37 @@ checks its evidence. All rows below are pending until separately implemented and
 | Milestone | Scope | Status |
 |---|---|---|
 | M3a | Registration username check (`TRPChkCustId`), pilot and shared ownership plumbing | Merged and deployed |
-| M3b | Registration remainder: lookup/start (`TRPSearchMember`), completion (`TRPRegMember`), post-completion continuation | Next |
-| M3c | Forgot Password | Pending |
+| M3b | Registration remainder: lookup/start (`TRPSearchMember`), completion (`TRPRegMember`), post-completion continuation | Merged to dev (`b2fb430c8`); Sonar-maintenance follow-up merged (`2122899d4`); final gate and deployment status not evidenced |
+| M3c | Forgot Password | R1-R7 implemented; merged to dev (`7fc2007ef`, `5be93e042`); deployed to DEV, confirmed by Nick |
 | M3d | Login | Pending |
 | M3e | Username Recovery | Pending |
 | M3f | Personal Information | Pending |
 | M3g | Account and fund features | Pending |
 | M3h | Swallowed-failure audit, duplicate-observer cleanup, ERROR ratchet | Pending |
 
+**M3c completion and evidence status:** R1-R7 implementation, diagnostic
+cleanup (`ca3ccf149`), canonical-constructor migration (`b51e6a029`),
+regression/architecture-guard corrections (`6ffc5b729`, `79c792bfb`,
+`052e5eff3`, `f3072a982`), and branch Sonar remediation (`d3f7a492d`,
+`a1cc351cb`, `2450f065d`, `a24a6deca`) are complete. Failed-test correction
+(`d8879c462`) and formatting (`467338560`) preceded the final formatted merge
+`5be93e042`. Post-merge Sonar-maintenance changes also merged to `dev`
+(`1b958e94c`, `74e172780`). These commits record implementation and remediation,
+not a final passing Sonar Quality Gate. Nick confirmed M3c deployment to DEV;
+no deployment ID is recorded. The available documentation does not establish
+M3c full-regression or startup-smoke results, final gate outcome, independent
+review artifacts, or the historical deployment-authorization basis. Do not
+infer a gate pass, security approval, or risk acceptance from merge or
+deployment.
+
 **Approved 2026-11-12 deferral:** R0b.2 reset dispatch certainty and cross-key safety are deferred
 to the separate Forgot Password Reset Safety workstream recorded as O-19 in `06-open-items.md`.
-M3c continues with its planned Forgot Password classification and incident-ownership migration;
-it does not resolve or implement this reset-safety risk. Reset-safety work requires a separate
-branch and independent review. M3c deployment remains gated on either explicit risk acceptance by
-Nick / application security or completion and review of the reset-safety correction. M3c remains
-pending; do not claim it complete.
+M3c delivered its planned Forgot Password classification and incident-ownership migration; it did
+not resolve or implement this reset-safety risk. Reset-safety work requires a separate
+branch and independent review. M3c has been deployed to DEV as confirmed by Nick, but the
+historical authorization basis for that deployment is not established by the available evidence.
+This does not establish formal O-19 risk acceptance, security approval, or completed
+reset-safety remediation. O-19 remains OPEN.
 
 - Each feature milestone uses one branch, one MR, and one independent review.
 - Within a milestone, each operation has one reviewed checkpoint: fail-first tests, compile,

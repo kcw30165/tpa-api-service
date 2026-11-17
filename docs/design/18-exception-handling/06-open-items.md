@@ -361,9 +361,78 @@ remain unimplemented.
 Nick / application security and backend architecture
 </td>
 <td>
-OPEN — separate Forgot Password Reset Safety workstream. Required future work: invocation-scoped
-dispatch certainty; durable revision-CAS session fence; safe same-key/different-key handling; crash
-and persistence-failure recovery; security and replay validation.
+OPEN — Deferred for future review in the separate Forgot Password Reset Safety workstream. M3c is
+deployed to DEV, as confirmed by Nick; the historical deployment-authorization basis is not
+established by the available evidence. This does not establish formal risk acceptance, security
+approval, or reset-safety remediation. Required future work remains: invocation-scoped dispatch
+certainty; durable revision-CAS session fence; safe same-key/different-key handling; crash and
+persistence-failure recovery; security and replay validation.
+</td>
+</tr>
+<tr>
+<td>
+O-20
+</td>
+<td>
+Lock-release failure observability. Forgot Password protected operations suppress some lock-release
+errors or false results, leaving release failures without an explicit incident/diagnostic record.
+</td>
+<td>
+Implementer (fact) -> Nick (observability/behavior)
+</td>
+<td>
+OPEN — Deferred (Q3). Define how lock-release failures are detected and recorded. Preserve current
+behavior until any behavior change is separately approved.
+</td>
+</tr>
+<tr>
+<td>
+O-21
+</td>
+<td>
+Audit-sink publication failure observability. Define what is observable if FailureEventPort
+publication fails or throws, without obscuring the original workflow outcome or causing duplicate
+incident publication.
+</td>
+<td>
+Implementer (fact) -> Nick (observability/behavior)
+</td>
+<td>
+OPEN — Deferred (Q3). Publication-failure handling and its evidence are not established by the
+current milestone record.
+</td>
+</tr>
+<tr>
+<td>
+O-22
+</td>
+<td>
+Empty-Mono contract hardening. Required reactive collaborators may complete without a value where
+the protected flow expects a result, potentially bypassing its expected response or terminal
+incident path.
+</td>
+<td>
+Implementer (fact and tests) -> Nick (contract decision)
+</td>
+<td>
+OPEN — Deferred (Q3). Define the empty-result contract and add scoped handling and characterization
+without changing public or replay behavior.
+</td>
+</tr>
+<tr>
+<td>
+O-23
+</td>
+<td>
+Malformed Forgot Password OTP resend counter. A malformed stored successful-resend count is
+recorded as a non-terminal diagnostic and falls back to zero, which can restore resend eligibility.
+</td>
+<td>
+Nick / application security and backend architecture
+</td>
+<td>
+OPEN — Nick accepts preserving the existing fallback-to-zero behavior for now. It is not fail-closed;
+security/eligibility hardening is deferred for future review.
 </td>
 </tr>
 </table>

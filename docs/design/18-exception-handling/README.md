@@ -164,8 +164,7 @@ HTTP status and body are unchanged.
 </table>
 
   
-See exception-handling-m1-closure-addendum.md for the full M1 closure scope (sub-tasks 1.7-1.10),
-approved by Nick on 2026-10-22 following the review at e65b87eb.
+See `05-milestones.md` for the recorded M1 closure scope and sub-task status.
 
 ### Documents
 
@@ -228,10 +227,10 @@ Open questions, risks, deferred follow-ups (includes O-10, O-11 from M1 closure)
 </tr>
 <tr>
 <td>  
-exception-handling-m1-closure-addendum.md
+07-apim-error-classification.md
 </td>
 <td>  
-M1 closure scope: why, approved decisions, target shape, sub-tasks 1.7a-1.10, done-when criteria
+APIM error inventory and classification, feature ownership, public contracts, and remaining gaps
 </td>
 </tr>
 </table>
