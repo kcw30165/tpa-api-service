@@ -442,6 +442,34 @@ Known M3a limitations:
 - Request filters do not validate `X-Request-Id`; the username-check terminal ERROR sanitizes its own copy (see O-18).
 - Sonar new-code coverage was evaluated by the quality gate only; no separate changed-line coverage figure was produced.
 
+#### M3b - Registration remainder (lookup, start, completion and continuation)
+
+M3b implementation is complete, but the milestone remains open. The following
+feature-branch gates passed:
+
+- Full Maven suite: `mvn clean test` reported 7,449 tests, 0 failures, 0 errors
+  and 77 skipped.
+- Cold unscoped `mvn spotless:check`: 3,257 files inspected, 0 violations and
+  0 cache-skipped files.
+- Startup smoke and complete Registration integration: passed, as confirmed by
+  Nick.
+
+The feature-branch SonarQube Quality Gate **failed**. The exported report lists
+295 new issues spanning Registration and unrelated features. Issue attribution
+and the new-code baseline remain unresolved; this exception does not authorize
+suppressing issues or bypassing any required MR or deployment gate.
+
+The MR and merge are pending. M3b is not closed; dev pipeline and deployment
+validation are pending. M3 is not complete.
+
+Known privacy limitations remain outside this slice: legacy Registration
+`DEFAULT` lookup logging can still place arbitrary downstream text in
+`FailureEvent.internalCode`; `ApimWebClientFacade` can still log an ERROR with
+a throwable for `APIM_OBSERVER` callers when structured serialization fails;
+request filters do not validate `X-Request-Id`; and the O-17 outbound
+request-body logging/privacy work remains deferred. The metadata-only central
+technical ERROR policy is not a repository-wide logging privacy guarantee.
+
 **Execution order:** Registration (3.3), Forgot Password (3.2), Login (3.1), Username Recovery
 (3.9), then the remaining account/fund and existing M3 scopes. Existing sub-task IDs are retained;
 table numbering is not execution order. The deferred-work schedule below is authoritative.
@@ -706,7 +734,7 @@ checks its evidence. All rows below are pending until separately implemented and
 | Milestone | Scope | Status |
 |---|---|---|
 | M3a | Registration username check (`TRPChkCustId`), pilot and shared ownership plumbing | Merged and deployed |
-| M3b | Registration remainder: lookup/start (`TRPSearchMember`), completion (`TRPRegMember`), post-completion continuation | Next |
+| M3b | Registration remainder: lookup/start (`TRPSearchMember`), completion (`TRPRegMember`), post-completion continuation | Implementation complete; MR pending; not closed |
 | M3c | Forgot Password | Pending |
 | M3d | Login | Pending |
 | M3e | Username Recovery | Pending |
