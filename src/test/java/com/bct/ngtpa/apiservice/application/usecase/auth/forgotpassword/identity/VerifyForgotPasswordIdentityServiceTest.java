@@ -21,7 +21,6 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
-import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
@@ -43,9 +42,7 @@ import reactor.test.StepVerifier;
 
 /**
  * Branch-oriented reactive tests for {@link VerifyForgotPasswordIdentityService}. Uses the standard
- * loadSnapshot -> loader -> RevisionAwareAuthFlowSessionWriter pattern (rounds 09/11/25). {@code
- * expiry} (AuthFlowSessionExpiryRefreshPort) is a constructed-but-unused field in the real
- * production source (confirmed) - wired but never stubbed.
+ * loadSnapshot -> loader -> RevisionAwareAuthFlowSessionWriter pattern (rounds 09/11/25).
  */
 class VerifyForgotPasswordIdentityServiceTest {
 
@@ -59,15 +56,13 @@ class VerifyForgotPasswordIdentityServiceTest {
       mock(ForgotPasswordAuthFlowContextProtectorPort.class);
   private final AuthFlowSessionPort sessions = mock(AuthFlowSessionPort.class);
   private final AuthFlowSessionMutationLockPort locks = mock(AuthFlowSessionMutationLockPort.class);
-  private final AuthFlowSessionExpiryRefreshPort expiry =
-      mock(AuthFlowSessionExpiryRefreshPort.class);
   private final RecordingFailureEventPort failureEvents = new RecordingFailureEventPort();
 
   private final AuthFlowSessionId sid = new AuthFlowSessionId("afs-identity-1");
 
   private VerifyForgotPasswordIdentityService newService() {
     return new VerifyForgotPasswordIdentityService(
-        loader, protector, sessions, locks, expiry, clock, lease, failureEvents);
+        loader, protector, sessions, locks, clock, lease, failureEvents);
   }
 
   // ----- fixtures ------------------------------------------------------------

@@ -25,7 +25,6 @@ public final class VerifyForgotPasswordIdentityService
   private final ForgotPasswordAuthFlowContextProtectorPort protector;
   private final AuthFlowSessionPort sessions;
   private final AuthFlowSessionMutationLockPort locks;
-  private final AuthFlowSessionExpiryRefreshPort expiry;
   private final FailureEventPort failureEventPort;
   private final ForgotPasswordIdentityVerifier verifier = new ForgotPasswordIdentityVerifier();
   private final Clock clock;
@@ -36,7 +35,6 @@ public final class VerifyForgotPasswordIdentityService
       ForgotPasswordAuthFlowContextProtectorPort p,
       AuthFlowSessionPort s,
       AuthFlowSessionMutationLockPort x,
-      AuthFlowSessionExpiryRefreshPort e,
       Clock c,
       Duration lease,
       FailureEventPort failureEventPort) {
@@ -44,7 +42,6 @@ public final class VerifyForgotPasswordIdentityService
     protector = p;
     sessions = s;
     locks = x;
-    expiry = e;
     clock = c;
     this.lease = lease;
     this.failureEventPort = Objects.requireNonNull(failureEventPort, "failureEventPort");

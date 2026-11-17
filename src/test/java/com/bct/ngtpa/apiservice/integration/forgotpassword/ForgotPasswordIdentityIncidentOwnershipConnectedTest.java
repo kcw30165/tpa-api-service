@@ -31,7 +31,6 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordIdentityUseCase;
-import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
@@ -103,7 +102,6 @@ class ForgotPasswordIdentityIncidentOwnershipConnectedTest {
             mock(ForgotPasswordAuthFlowContextProtectorPort.class),
             sessions,
             locks,
-            mock(AuthFlowSessionExpiryRefreshPort.class),
             logger);
 
     RunResult run = invoke(service, "afs-identity", "csrf-token");
@@ -179,7 +177,6 @@ class ForgotPasswordIdentityIncidentOwnershipConnectedTest {
             mock(ForgotPasswordAuthFlowContextProtectorPort.class),
             sessions,
             acquiredLocks(),
-            mock(AuthFlowSessionExpiryRefreshPort.class),
             failureEventLogger());
 
     RunResult run = invoke(service, "afs-identity", "csrf-token");
@@ -307,10 +304,9 @@ class ForgotPasswordIdentityIncidentOwnershipConnectedTest {
       ForgotPasswordAuthFlowContextProtectorPort protector,
       AuthFlowSessionPort sessions,
       AuthFlowSessionMutationLockPort locks,
-      AuthFlowSessionExpiryRefreshPort expiry,
       FailureEventPort failureEvents) {
     return new VerifyForgotPasswordIdentityService(
-        loader, protector, sessions, locks, expiry, CLOCK, Duration.ofSeconds(10), failureEvents);
+        loader, protector, sessions, locks, CLOCK, Duration.ofSeconds(10), failureEvents);
   }
 
   private static FailureEventPort failureEventLogger() {
