@@ -19,6 +19,7 @@ public final class VerifyForgotPasswordIdentityService
     implements VerifyForgotPasswordIdentityUseCase {
   private static final String FAILURE_EVENT = "forgot-password.identity-check.failed";
   private static final String ERROR_SYSTEM_UNAVAILABLE = "err.forgot-password.system.unavailable";
+  private static final String SESSION_TRANSITION_STAGE = "session-transition";
 
   private final ForgotPasswordProtectedAuthFlowContextLoader loader;
   private final ForgotPasswordAuthFlowContextProtectorPort protector;
@@ -165,59 +166,58 @@ public final class VerifyForgotPasswordIdentityService
     return Mono.fromCallable(() -> protector.protect(verifiedContext))
         .onErrorMap(error -> new IdentityTechnicalFailure("context-protection"))
         .flatMap(
-            encrypted -> {
-              return Mono.fromCallable(
-                      () -> {
-                        var attrs = new LinkedHashMap<>(current.data().attributes());
-                        attrs.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());
-                        attrs.put(CONTEXT_KEY_VERSION, encrypted.keyVersion());
-                        attrs.put(CONTEXT_ALGORITHM, encrypted.algorithm());
-                        return new AuthFlowSession(
-                            current.authFlowSessionId(),
-                            current.scenario(),
-                            AuthFlowStatus.IDENTITY_VERIFIED,
-                            current.csrfTokenHash(),
-                            current.activeOtpChallengeId(),
-                            new AuthFlowSessionData(
-                                current.data().contactType(),
-                                current.data().maskedDestination(),
-                                attrs),
-                            current.createdAt(),
-                            now,
-                            current.expiresAt());
-                      })
-                  .onErrorMap(error -> new IdentityTechnicalFailure("session-transition"))
-                  .flatMap(
-                      updated ->
-                          Mono.defer(
-                                  () ->
-                                      sessions.updateRevisioned(
-                                          new RevisionedAuthFlowSessionMutationCommand(
-                                              latest.get(), updated)))
-                              .onErrorMap(
-                                  error -> new IdentityTechnicalFailure("session-transition"))
-                              .flatMap(
-                                  result ->
-                                      switch (result.outcome()) {
-                                        case APPLIED ->
-                                            Mono.just(
-                                                VerifyForgotPasswordIdentityResult.of(
-                                                    VerifyForgotPasswordIdentityStatus.VERIFIED));
-                                        case SESSION_NOT_FOUND,
-                                            SESSION_REVISION_CHANGED,
-                                            EXPECTED_STATE_CHANGED,
-                                            INVALID_TRANSITION ->
-                                            Mono.just(
-                                                VerifyForgotPasswordIdentityResult.of(
-                                                    VerifyForgotPasswordIdentityStatus
-                                                        .SYSTEM_FAILED));
-                                        case SESSION_REVISION_MISSING,
-                                            CORRUPT_STATE,
-                                            SCHEMA_NOT_ESTABLISHED,
-                                            SYSTEM_FAILURE ->
-                                            technicalFailure(command, "session-transition");
-                                      }));
-            });
+            encrypted ->
+                Mono.fromCallable(
+                        () -> {
+                          var attrs = new LinkedHashMap<>(current.data().attributes());
+                          attrs.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());
+                          attrs.put(CONTEXT_KEY_VERSION, encrypted.keyVersion());
+                          attrs.put(CONTEXT_ALGORITHM, encrypted.algorithm());
+                          return new AuthFlowSession(
+                              current.authFlowSessionId(),
+                              current.scenario(),
+                              AuthFlowStatus.IDENTITY_VERIFIED,
+                              current.csrfTokenHash(),
+                              current.activeOtpChallengeId(),
+                              new AuthFlowSessionData(
+                                  current.data().contactType(),
+                                  current.data().maskedDestination(),
+                                  attrs),
+                              current.createdAt(),
+                              now,
+                              current.expiresAt());
+                        })
+                    .onErrorMap(error -> new IdentityTechnicalFailure(SESSION_TRANSITION_STAGE))
+                    .flatMap(
+                        updated ->
+                            Mono.defer(
+                                    () ->
+                                        sessions.updateRevisioned(
+                                            new RevisionedAuthFlowSessionMutationCommand(
+                                                latest.get(), updated)))
+                                .onErrorMap(
+                                    error -> new IdentityTechnicalFailure(SESSION_TRANSITION_STAGE))
+                                .flatMap(
+                                    result ->
+                                        switch (result.outcome()) {
+                                          case APPLIED ->
+                                              Mono.just(
+                                                  VerifyForgotPasswordIdentityResult.of(
+                                                      VerifyForgotPasswordIdentityStatus.VERIFIED));
+                                          case SESSION_NOT_FOUND,
+                                              SESSION_REVISION_CHANGED,
+                                              EXPECTED_STATE_CHANGED,
+                                              INVALID_TRANSITION ->
+                                              Mono.just(
+                                                  VerifyForgotPasswordIdentityResult.of(
+                                                      VerifyForgotPasswordIdentityStatus
+                                                          .SYSTEM_FAILED));
+                                          case SESSION_REVISION_MISSING,
+                                              CORRUPT_STATE,
+                                              SCHEMA_NOT_ESTABLISHED,
+                                              SYSTEM_FAILURE ->
+                                              technicalFailure(command, SESSION_TRANSITION_STAGE);
+                                        })));
   }
 
   private Mono<VerifyForgotPasswordIdentityResult> technicalFailure(

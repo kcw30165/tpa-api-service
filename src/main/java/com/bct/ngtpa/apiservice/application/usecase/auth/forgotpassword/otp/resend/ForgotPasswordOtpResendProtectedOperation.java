@@ -355,7 +355,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                       foundationResult -> {
                         if (foundationResult.status()
                             == ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED) {
-                          incidents.record(ForgotPasswordOtpResendIncident.FOUNDATION);
+                          incidents.addIncident(ForgotPasswordOtpResendIncident.FOUNDATION);
                         }
                       })
                   .onErrorResume(
@@ -486,11 +486,11 @@ public final class ForgotPasswordOtpResendProtectedOperation {
       return accepted(command, stagedSnapshot, validated, candidate, pendingRef, now, incidents);
     }
     if (status == MessageDeliveryStatus.FAILED) {
-      incidents.record(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY);
+      incidents.addIncident(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY);
       return failed(
           command, stagedSnapshot, validated.context, candidate.otpChallengeId(), now, incidents);
     }
-    incidents.record(ForgotPasswordOtpResendIncident.UNKNOWN_DELIVERY);
+    incidents.addIncident(ForgotPasswordOtpResendIncident.UNKNOWN_DELIVERY);
     return unknown(
         command, stagedSnapshot, validated.context, candidate.otpChallengeId(), now, incidents);
   }
@@ -939,12 +939,12 @@ public final class ForgotPasswordOtpResendProtectedOperation {
       }
     }
 
-    void record(ForgotPasswordOtpResendIncident incident) {
+    void addIncident(ForgotPasswordOtpResendIncident incident) {
       incidents.add(incident);
     }
 
     void recordMalformedCounter(ResendForgotPasswordOtpCommand command) {
-      record(ForgotPasswordOtpResendIncident.MALFORMED_RESEND_COUNT);
+      addIncident(ForgotPasswordOtpResendIncident.MALFORMED_RESEND_COUNT);
       LOGGER.warn(
           "event=forgot-password.resend.failed requestId={} stage={} exceptionType={}",
           RequestIdLogSanitizer.sanitize(command.requestId()),

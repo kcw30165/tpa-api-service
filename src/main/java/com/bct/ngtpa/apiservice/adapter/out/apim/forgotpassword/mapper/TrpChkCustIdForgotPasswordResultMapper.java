@@ -15,6 +15,8 @@ public final class TrpChkCustIdForgotPasswordResultMapper {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TrpChkCustIdForgotPasswordResultMapper.class);
   private static final String USERNAME_NOT_FOUND = "err.tpa.cust.id.not.registered";
+  private static final String INVALID_RESPONSE_LOG =
+      "event=forgot-password.username-lookup.invalid-response classification=DOWNSTREAM_INVALID_RESPONSE";
 
   private final Map<String, MemberIdentityType> tasIdentityTypeMapping;
 
@@ -41,8 +43,7 @@ public final class TrpChkCustIdForgotPasswordResultMapper {
     List<TrpChkCustIdApimDataItem> data =
         envelope == null || envelope.data() == null ? List.of() : envelope.data();
     if (data.size() != 1) {
-      LOGGER.warn(
-          "event=forgot-password.username-lookup.invalid-response classification=DOWNSTREAM_INVALID_RESPONSE");
+      LOGGER.warn(INVALID_RESPONSE_LOG);
       return ForgotPasswordUsernameLookupResult.systemFailed(
           FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
     }
@@ -57,16 +58,14 @@ public final class TrpChkCustIdForgotPasswordResultMapper {
     String userId = normalize(item.userId());
     String tasIdentityType = normalize(item.idType());
     if (customerId == null || userId == null || tasIdentityType == null) {
-      LOGGER.warn(
-          "event=forgot-password.username-lookup.invalid-response classification=DOWNSTREAM_INVALID_RESPONSE");
+      LOGGER.warn(INVALID_RESPONSE_LOG);
       return ForgotPasswordUsernameLookupResult.systemFailed(
           FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
     }
 
     MemberIdentityType identityType = tasIdentityTypeMapping.get(tasIdentityType);
     if (identityType == null) {
-      LOGGER.warn(
-          "event=forgot-password.username-lookup.invalid-response classification=DOWNSTREAM_INVALID_RESPONSE");
+      LOGGER.warn(INVALID_RESPONSE_LOG);
       return ForgotPasswordUsernameLookupResult.systemFailed(
           FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
     }

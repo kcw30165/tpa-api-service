@@ -57,6 +57,7 @@ import reactor.core.publisher.Mono;
 /** Executes DETAILS_AND_OTP after shared idempotency ownership has been acquired. */
 public final class ForgotPasswordDetailsOtpProtectedOperation {
   private static final String CHANNEL_EMAIL = "email";
+  private static final String COMMIT_STATE_PERSISTENCE_STAGE = "commit-state-persistence";
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ForgotPasswordDetailsOtpProtectedOperation.class);
@@ -352,12 +353,12 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                       challenge.expiresAt());
               Duration ttl = retention.ttl(now, challenge.expiresAt(), now.plus(idempotencyTtl));
               return technicalAt(
-                      "commit-state-persistence",
+                      COMMIT_STATE_PERSISTENCE_STAGE,
                       () -> commitStates.saveIfAbsent(reference, state, ttl))
                   .flatMap(
                       saved ->
                           technicalAt(
-                              "commit-state-persistence", () -> commitStates.load(reference)))
+                              COMMIT_STATE_PERSISTENCE_STAGE, () -> commitStates.load(reference)))
                   .flatMap(
                       found ->
                           found.isPresent() && found.get().equals(state)
@@ -373,7 +374,8 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
                                       new ProtectedReplayReference(reference),
                                       null,
                                       null))
-                              : Mono.error(new LocalTechnicalFailure("commit-state-persistence")));
+                              : Mono.error(
+                                  new LocalTechnicalFailure(COMMIT_STATE_PERSISTENCE_STAGE)));
             });
   }
 
