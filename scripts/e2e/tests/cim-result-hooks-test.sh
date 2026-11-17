@@ -72,6 +72,8 @@ case "$call_number" in
   1)
     if [[ "$FAKE_SNAPSHOT" == FUNCTION_UNAVAILABLE ]]; then
       response='{"success":true,"status":"SUCCESS","result":{"data":{"accountNumber":"SYNTHETIC","scenario":"FUNCTION_UNAVAILABLE","history":[]}},"messages":[],"errors":[]}'
+    elif [[ "$FAKE_SNAPSHOT" == BAD_CONTRACT ]]; then
+      response='{"success":true,"status":"SUCCESS","result":{"data":{"accountNumber":"SYNTHETIC","scenario":"NORMAL"}},"messages":[],"errors":[]}'
     else
       if [[ "$FAKE_SNAPSHOT" == ONE_FUND ]]; then
         funds='[{"fundCode":"SYNTH-FUND-1","fundName":"Synthetic Fund 1"}]'
@@ -122,12 +124,16 @@ fi
 if [[ "$call_number" == "${FAKE_FAIL_CODE_CALL:-}" ]]; then
   response='{"success":false,"status":"ERROR","result":null,"messages":[],"errors":[{"code":"err.synthetic.code-mismatch"}]}'
 fi
+if [[ "$call_number" == "${FAKE_NO_TOKEN:-}" ]]; then
+  status=200
+  response='{"success":true,"status":"SUCCESS","result":{"data":{"issued":true}},"messages":[],"errors":[]}'
+fi
 printf '%s\n%s' "$response" "$status"
 FAKE_CURL
 chmod 700 "$tmp/bin/curl"
 
 run_case() {
-  local name="$1" journal_mode="$2" snapshot="$3" fail_call="$4" fail_status="$5" target_fail="$6" journal="$7" path_override="${8:-}" fail_code_call="${9:-}"
+  local name="$1" journal_mode="$2" snapshot="$3" fail_call="$4" fail_status="$5" target_fail="$6" journal="$7" path_override="${8:-}" fail_code_call="${9:-}" no_token="${10:-}"
   local -a env_args=(
     "PATH=${path_override:-$tmp/bin:$PATH}"
     "BASE_URL=http://synthetic.invalid"
@@ -143,6 +149,7 @@ run_case() {
     "FAKE_FAIL_STATUS=$fail_status"
     "FAKE_TARGET_FAIL=$target_fail"
     "FAKE_FAIL_CODE_CALL=$fail_code_call"
+    "FAKE_NO_TOKEN=$no_token"
     "REAL_JQ=${REAL_JQ:-$real_jq}"
   )
 
@@ -159,6 +166,14 @@ run_case() {
   fi
 }
 
+assert_case_parity() {
+  local name="$1" unset_rc="$2" set_rc="$3"
+  [[ "$unset_rc" -eq "$set_rc" ]] || fail_test "$name journal toggle exit status"
+  cmp -s "$tmp/$name-unset.stdout" "$tmp/$name-set.stdout" || fail_test "$name journal toggle stdout"
+  cmp -s "$tmp/$name-unset.stderr" "$tmp/$name-set.stderr" || fail_test "$name journal toggle stderr"
+  cmp -s "$tmp/$name-unset.calls" "$tmp/$name-set.calls" || fail_test "$name journal toggle request arguments"
+}
+
 group_start=$fail_count
 run_case lifecycle set ONE_FUND 12 403 '' "$tmp/lifecycle.jsonl"
 [[ "$case_rc" -eq 1 ]] || fail_test 'forced P2 HTTP mismatch exits 1'
@@ -171,7 +186,7 @@ if [[ -f "$tmp/lifecycle.jsonl" ]]; then
     and [.[].event] == [range(0;13) | "start","finish"]
     and [.[].id] == [
       "S1","S1","S2","S2","S3","S3","S4","S4","S5","S5","S6","S6","S7","S7",
-      "S8","S8","S9-extra","S9-extra","S9-blank","S9-blank","P0","P0","P1-issue","P1-issue","P2-issue","P2-issue"
+      "S8","S8","S9-extra","S9-extra","S9-blank","S9-blank","P0-issue","P0-issue","P1-issue","P1-issue","P2-issue","P2-issue"
     ]
     and all(.[];
       .record_type == "scenario"
@@ -224,6 +239,57 @@ jq -e -s '
     and .actual_public_error_code == "err.synthetic.code-mismatch"
 ' "$tmp/code-mismatch.jsonl" >/dev/null || fail_test 'public error-code mismatch has the specific reason code'
 [[ "$fail_count" -ne "$group_start" ]] || pass_test 'public error-code mismatch is classified specifically'
+
+group_start=$fail_count
+run_case first-fail-unset unset NORMAL 1 503 '' ''
+first_fail_unset_rc=$case_rc
+run_case first-fail-set set NORMAL 1 503 '' "$tmp/first-fail-set.jsonl"
+first_fail_set_rc=$case_rc
+assert_case_parity first-fail "$first_fail_unset_rc" "$first_fail_set_rc"
+[[ "$case_rc" -eq 1 ]] || fail_test 'S1 HTTP mismatch exits 1'
+jq -e -s '
+  length == 2
+  and [.[].event] == ["start","finish"]
+  and [.[].id] == ["S1","S1"]
+  and .[1].status == "FAIL"
+  and .[1].reason_code == "HTTP_STATUS_MISMATCH"
+  and .[1].expected_http_status == 200 and .[1].actual_http_status == 503
+  and ([.[] | select(.id == "S2")] | length) == 0
+' "$tmp/first-fail-set.jsonl" >/dev/null || fail_test 'S1 HTTP mismatch finishes only S1 with actual status 503'
+[[ "$fail_count" -ne "$group_start" ]] || pass_test 'first-request HTTP failure is recorded and execution remains byte-identical'
+
+group_start=$fail_count
+run_case bad-contract-unset unset BAD_CONTRACT '' '' '' ''
+bad_contract_unset_rc=$case_rc
+run_case bad-contract-set set BAD_CONTRACT '' '' '' "$tmp/bad-contract-set.jsonl"
+bad_contract_set_rc=$case_rc
+assert_case_parity bad-contract "$bad_contract_unset_rc" "$bad_contract_set_rc"
+[[ "$case_rc" -eq 1 ]] || fail_test 'S1 bad contract exits 1'
+jq -e -s '
+  length == 2
+  and .[1].id == "S1" and .[1].status == "FAIL"
+  and .[1].reason_code == "CONTRACT_MISMATCH"
+  and .[1].expected_http_status == 200 and .[1].actual_http_status == 200
+  and ([.[] | select(.id == "S2")] | length) == 0
+' "$tmp/bad-contract-set.jsonl" >/dev/null || fail_test 'S1 contract failure records status 200 without reaching S2'
+[[ "$fail_count" -ne "$group_start" ]] || pass_test 'S1 contract failure is recorded and execution remains byte-identical'
+
+group_start=$fail_count
+run_case token-missing-unset unset NORMAL '' '' '' '' '' '' 11
+token_missing_unset_rc=$case_rc
+run_case token-missing-set set NORMAL '' '' '' "$tmp/token-missing-set.jsonl" '' '' 11
+token_missing_set_rc=$case_rc
+assert_case_parity token-missing "$token_missing_unset_rc" "$token_missing_set_rc"
+[[ "$case_rc" -eq 1 ]] || fail_test 'missing P0 token exits 1'
+jq -e -s '
+  ([.[] | select(.event == "finish" and .id == "P0-issue")] | length) == 1
+  and ([.[] | select(.event == "finish" and .id == "P0-issue")][0]
+    | .status == "FAIL"
+      and .reason_code == "CONTRACT_MISMATCH"
+      and .expected_http_status == 200 and .actual_http_status == 200)
+  and ([.[] | select(.id == "P1-issue")] | length) == 0
+' "$tmp/token-missing-set.jsonl" >/dev/null || fail_test 'missing token has exactly one P0-issue CONTRACT_MISMATCH finish'
+[[ "$fail_count" -ne "$group_start" ]] || pass_test 'first token failure is recorded and execution remains byte-identical'
 
 group_start=$fail_count
 run_case normal set NORMAL '' '' '' "$tmp/normal.jsonl"
@@ -280,6 +346,44 @@ for scenario_case in pass fail skip; do
   cmp -s "$tmp/$scenario_case-unset.calls" "$tmp/$scenario_case-set.calls" || fail_test "$scenario_case journal toggle request arguments"
 done
 [[ "$fail_count" -ne "$group_start" ]] || pass_test 'journal toggle preserves output, status, and request arguments for pass/fail/skip'
+
+group_start=$fail_count
+if [[ -f "$tmp/skip-set.jsonl" ]]; then
+  jq -e -s '
+    def finished: [.[] | select(.event == "finish")];
+    length == 30
+    and [.[].seq] == [range(1;31)]
+    and [.[].event] == [range(0;15) | "start","finish"]
+    and [.[].id] == [
+      "S1","S1","S2","S2","S3","S3","S4","S4","S5","S5","S6","S6","S7","S7",
+      "S8","S8","S9-extra","S9-extra","S9-blank","S9-blank",
+      "P0-issue","P0-issue","P1-issue","P1-issue","P2-issue","P2-issue",
+      "P3-issue","P3-issue","P3-body-binding","P3-body-binding"
+    ]
+    and all(finished[10:][];
+      .status == "SKIP"
+      and .reason_code == "PRECONDITION_UNAVAILABLE"
+      and .expected_http_status == null and .actual_http_status == null
+      and .expected_public_error_code == null and .actual_public_error_code == null
+    )
+    and all(.[20:][]; .event == "start" or .event == "finish")
+    and all(.[20:][]; .id != "P0" and .id != "P1" and .id != "P2" and .id != "P3")
+  ' "$tmp/skip-set.jsonl" >/dev/null || fail_test 'all skipped P-checks use executed IDs, exact pairs, null HTTP fields and sequence'
+  for skip_name in P0 P1 P2 P3; do
+    [[ "$(grep -c "^SKIP $skip_name " "$tmp/skip-set.stdout" || :)" -eq 1 ]] \
+      || fail_test "all-skipped terminal output preserves one original $skip_name line"
+  done
+  grep -Fqx 'Summary: passed=10 skipped=4 failed=0' "$tmp/skip-set.stdout" \
+    || fail_test 'all-skipped terminal summary keeps one increment per P-group skip'
+else
+  fail_test 'all-skipped P-check journal exists'
+fi
+jq -r -s '[.[] | select(.record_type == "scenario" and (.id | test("^P[0-3]"))) | .id] | unique | .[]' \
+  "$tmp/skip-set.jsonl" >"$tmp/skipped-p-ids"
+jq -r -s '[.[] | select(.record_type == "scenario" and (.id | test("^P[0-3]"))) | .id] | unique | .[]' \
+  "$tmp/normal.jsonl" >"$tmp/executed-p-ids"
+cmp -s "$tmp/skipped-p-ids" "$tmp/executed-p-ids" || fail_test 'all-skipped and all-executed P journal ID sets match'
+[[ "$fail_count" -ne "$group_start" ]] || pass_test 'all P groups skip with canonical IDs, original terminal names and unchanged counter'
 
 group_start=$fail_count
 mkdir "$tmp/unwritable-journal"
@@ -348,7 +452,7 @@ done
 group_start=$fail_count
 hook_functions="$tmp/hook-functions.sh"
 : >"$hook_functions"
-for function_name in cim_hook_description cim_result_start cim_result_finish; do
+for function_name in cim_hook_description cim_result_start cim_result_finish cim_skip_journal_ids skip_scenario; do
   sed -n "/^${function_name}() {/,/^}/p" "$SCENARIO" >>"$hook_functions"
 done
 if ! grep -q '^cim_hook_description() {' "$hook_functions"; then
@@ -356,6 +460,49 @@ if ! grep -q '^cim_hook_description() {' "$hook_functions"; then
 else
   # shellcheck disable=SC1090 # Function bodies are extracted from the tested scenario script.
   source "$hook_functions"
+  group_start=$fail_count
+  p0_dedicated_reason="$(grep -F 'skip_scenario P0 ' "$SCENARIO" \
+    | grep -F 'dedicated existing-instruction' \
+    | sed -n "s/^[^']*'\\(.*\\)'$/\\1/p")"
+  p3_dedicated_reason="$(grep -F 'skip_scenario P3 ' "$SCENARIO" \
+    | grep -F 'dedicated existing-instruction' \
+    | sed -n "s/^[^']*'\\(.*\\)'$/\\1/p")"
+  reason_mapping_journal="$tmp/reason-mapping.jsonl"
+  E2E_RESULT_JOURNAL="$reason_mapping_journal"
+  export E2E_RESULT_JOURNAL
+  SKIPPED=0
+  if [[ -z "$p0_dedicated_reason" || -z "$p3_dedicated_reason" ]]; then
+    fail_test 'dedicated skip reasons are extracted from P0 and P3 call sites'
+  else
+    skip_scenario P0 "$p0_dedicated_reason" >"$tmp/reason-mapping.stdout"
+    skip_scenario P3 "$p3_dedicated_reason" >>"$tmp/reason-mapping.stdout"
+    skip_scenario P1 'unrelated reason' >>"$tmp/reason-mapping.stdout"
+    jq -e -s '
+      length == 8
+      and [.[].event] == ["start","finish","start","finish","start","finish","start","finish"]
+      and [.[].id] == [
+        "P0-issue","P0-issue",
+        "P3-issue","P3-issue","P3-body-binding","P3-body-binding",
+        "P1-issue","P1-issue"
+      ]
+      and ([.[] | select(.event == "finish" and .id != "P1-issue") | .reason_code]
+        == ["FEATURE_DISABLED","FEATURE_DISABLED","FEATURE_DISABLED"])
+      and ([.[] | select(.event == "finish" and .id == "P1-issue") | .reason_code]
+        == ["PRECONDITION_UNAVAILABLE"])
+      and all(.[];
+        .event != "finish"
+        or (.expected_http_status == null and .actual_http_status == null)
+      )
+    ' "$reason_mapping_journal" >/dev/null \
+      || fail_test 'extracted dedicated reasons map P0/P3 to FEATURE_DISABLED and unrelated reason to PRECONDITION_UNAVAILABLE'
+    grep -Fqx "SKIP P0 reason=$p0_dedicated_reason" "$tmp/reason-mapping.stdout" \
+      || fail_test 'P0 dedicated skip keeps the original terminal name and reason'
+    grep -Fqx "SKIP P3 reason=$p3_dedicated_reason" "$tmp/reason-mapping.stdout" \
+      || fail_test 'P3 dedicated skip keeps the original terminal name and reason'
+    [[ "$SKIPPED" -eq 3 ]] || fail_test 'isolated skip mapping increments once per call'
+  fi
+  [[ "$fail_count" -ne "$group_start" ]] || pass_test 'FEATURE_DISABLED mapping is tested from extracted dedicated-mode reasons'
+
   hook_output_journal="$tmp/hook-output.jsonl"
   E2E_RESULT_JOURNAL="$hook_output_journal"
   export E2E_RESULT_JOURNAL
@@ -369,7 +516,7 @@ else
   live_probe="$tmp/live-probe.jsonl"
   E2E_RESULT_JOURNAL="$live_probe"
   export E2E_RESULT_JOURNAL
-  for live_id in E1-issue E2-cancel E3-get L1-submit L2-get L3-issue L3-cancel L4-get unknown; do
+  for live_id in E1-issue E2-cancel E3-get L1-submit L2-get L3-issue L3-cancel L4-get P0 P1 P2 P3 unknown; do
     if cim_hook_description "$live_id" >/dev/null; then
       fail_test "hook lookup accepts unhooked id $live_id"
     fi
@@ -395,13 +542,9 @@ S7|Cancellation without a validation token is rejected.
 S8|Cancellation with an invalid validation token is rejected.
 S9-extra|Cancel validation rejects an operation payload containing an extra field.
 S9-blank|Cancel validation rejects a blank instruction reference.
-P0|A valid change payload receives a password-validation token.
 P0-issue|A valid change payload receives a password-validation token.
-P1|The isolated negative change payload is rejected for its expected validation rule.
 P1-issue|The isolated negative change payload is rejected for its expected validation rule.
-P2|Cancellation authorization rejects a reference absent from the snapshot.
 P2-issue|Cancellation authorization rejects a reference absent from the snapshot.
-P3|A cancellation token is issued for the existing pending instruction.
 P3-issue|A cancellation token is issued for the existing pending instruction.
 P3-body-binding|Cancellation with a different reference is rejected by token binding.
 DESCRIPTIONS
@@ -425,8 +568,40 @@ if [[ -f "$live_harness" ]]; then
         or (.id | test("^(E1-issue|E2-cancel|E3-get|L1-submit|L2-get|L3-issue|L3-cancel|L4-get)$") | not)
       )
     ' "$tmp/live-set.jsonl" >/dev/null || fail_test 'live harness records no unhooked live ID'
+    jq -e -s '
+      def skipped($id; $reason):
+        any(.[];
+          .record_type == "scenario"
+          and .event == "finish"
+          and .id == $id
+          and .status == "SKIP"
+          and .reason_code == $reason
+          and .expected_http_status == null
+          and .actual_http_status == null
+        );
+      skipped("P0-issue"; "FEATURE_DISABLED")
+      and skipped("P3-issue"; "FEATURE_DISABLED")
+      and skipped("P3-body-binding"; "FEATURE_DISABLED")
+      and skipped("P0-issue"; "PRECONDITION_UNAVAILABLE")
+      and all(.[];
+        .record_type != "scenario"
+        or (.id | test("^P[0-3]$") | not)
+      )
+    ' "$tmp/live-set.jsonl" >/dev/null \
+      || fail_test 'dedicated and ordinary P skips use executed IDs with their correct reason codes'
   else
     fail_test 'live harness journal exists'
+  fi
+  printed_live_ids="$(grep -Eo '\\b(E[1-3]-(issue|cancel|get)|L[1-4]-(submit|get|issue|cancel))\\b' \
+    "$tmp/live-set.stdout" | sort -u || :)"
+  if [[ -z "$printed_live_ids" ]]; then
+    pass_test 'offline harness stdout contains no scenario IDs; no live IDs are claimed as exercised'
+  else
+    while IFS= read -r printed_id; do
+      jq -e -s --arg id "$printed_id" \
+        'all(.[]; .record_type != "scenario" or .id != $id)' \
+        "$tmp/live-set.jsonl" >/dev/null || fail_test "printed live id $printed_id appears in journal"
+    done <<<"$printed_live_ids"
   fi
 else
   fail_test 'existing offline live-path harness is available'

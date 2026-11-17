@@ -118,10 +118,10 @@ cim_hook_description() {
     S8) printf '%s' 'Cancellation with an invalid validation token is rejected.' ;;
     S9-extra) printf '%s' 'Cancel validation rejects an operation payload containing an extra field.' ;;
     S9-blank) printf '%s' 'Cancel validation rejects a blank instruction reference.' ;;
-    P0|P0-issue) printf '%s' 'A valid change payload receives a password-validation token.' ;;
-    P1|P1-issue) printf '%s' 'The isolated negative change payload is rejected for its expected validation rule.' ;;
-    P2|P2-issue) printf '%s' 'Cancellation authorization rejects a reference absent from the snapshot.' ;;
-    P3|P3-issue) printf '%s' 'A cancellation token is issued for the existing pending instruction.' ;;
+    P0-issue) printf '%s' 'A valid change payload receives a password-validation token.' ;;
+    P1-issue) printf '%s' 'The isolated negative change payload is rejected for its expected validation rule.' ;;
+    P2-issue) printf '%s' 'Cancellation authorization rejects a reference absent from the snapshot.' ;;
+    P3-issue) printf '%s' 'A cancellation token is issued for the existing pending instruction.' ;;
     P3-body-binding) printf '%s' 'Cancellation with a different reference is rejected by token binding.' ;;
     *) return 1 ;;
   esac
@@ -153,7 +153,7 @@ cim_result_finish() {
 }
 
 skip_scenario() {
-  local name="$1" reason="$2"
+  local name="$1" reason="$2" scenario_id
   local reason_code=PRECONDITION_UNAVAILABLE
   printf 'SKIP %s reason=%s\n' "$name" "$reason"
   case "$reason" in
@@ -161,9 +161,21 @@ skip_scenario() {
   esac
   CIM_EXPECTED_HTTP_STATUS=''
   CIM_EXPECTED_PUBLIC_ERROR_CODE=''
-  cim_result_start "$name"
-  cim_result_finish "$name" SKIP "$reason_code" yes
+  while IFS= read -r scenario_id; do
+    [[ -n "$scenario_id" ]] || continue
+    cim_result_start "$scenario_id"
+    cim_result_finish "$scenario_id" SKIP "$reason_code" yes
+  done < <(cim_skip_journal_ids "$name")
   SKIPPED=$((SKIPPED + 1))
+}
+
+cim_skip_journal_ids() {
+  case "${1-}" in
+    P0) printf '%s\n' P0-issue ;;
+    P1) printf '%s\n' P1-issue ;;
+    P2) printf '%s\n' P2-issue ;;
+    P3) printf '%s\n' P3-issue P3-body-binding ;;
+  esac
 }
 
 dry_run() {
