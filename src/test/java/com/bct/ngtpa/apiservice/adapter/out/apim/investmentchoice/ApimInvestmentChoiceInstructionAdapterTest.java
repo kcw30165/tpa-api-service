@@ -47,7 +47,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.LoggerFactory;
@@ -158,11 +157,7 @@ class ApimInvestmentChoiceInstructionAdapterTest {
   }
 
   @ParameterizedTest
-  @CsvSource({
-    "err.account.invalid",
-    "err.role.not.allow.access",
-    "err.investment-choice.future-code"
-  })
+  @MethodSource("contractRejectionCodes")
   void errorMessageIsARejectedSubmissionAndPublishesOneContractEvent(String errorCode) {
     respond(envelope(errorCode, null));
 
@@ -238,20 +233,12 @@ class ApimInvestmentChoiceInstructionAdapterTest {
     }
   }
 
-  @ParameterizedTest
-  @MethodSource("sameSourcePendingNearMissCodes")
-  void sameSourcePendingNearMissRemainsAContractRejection(String errorCode) {
-    respond(envelope(errorCode, null));
-
-    StepVerifier.create(adapter().submit(command()).contextWrite(requestContext()))
-        .expectError(InvestmentChoiceSubmissionRejectedException.class)
-        .verify();
-
-    assertSingleEvent(FailureOrigin.DOWNSTREAM_CONTRACT, errorCode, REQUEST_ID);
-  }
-
-  static Stream<Arguments> sameSourcePendingNearMissCodes() {
+  static Stream<Arguments> contractRejectionCodes() {
     return Stream.of(
+        Arguments.of("err.account.invalid"),
+        Arguments.of("err.role.not.allow.access"),
+        Arguments.of("err.investment-choice.future-code"),
+        // Near misses prove that the same-source rejection requires an exact match.
         Arguments.of("ERR.TPA.SAME.SRC.CIM.EXIST"),
         Arguments.of(" " + SAME_SOURCE_PENDING_CODE),
         Arguments.of(SAME_SOURCE_PENDING_CODE + " "),
