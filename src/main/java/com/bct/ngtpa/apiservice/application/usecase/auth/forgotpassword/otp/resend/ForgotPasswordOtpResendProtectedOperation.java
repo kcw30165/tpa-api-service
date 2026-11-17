@@ -36,6 +36,13 @@ public final class ForgotPasswordOtpResendProtectedOperation {
   private static final String PENDING_REF = "forgotPasswordOtpPendingResendRef";
   private static final String PENDING_CANDIDATE = "forgotPasswordOtpPendingCandidateId";
   private static final String PENDING_PREVIOUS = "forgotPasswordOtpPendingPreviousChallengeId";
+
+  private record ResendOperationContext(
+      ResendForgotPasswordOtpCommand command,
+      String pendingRef,
+      Instant now,
+      IncidentCollector incidents) {}
+
   private final SecureForgotPasswordOtpCommitRefGenerator refs;
   private final AuthFlowSessionMutationLockPort locks;
   private final AuthFlowSessionPort sessions;
@@ -444,14 +451,11 @@ public final class ForgotPasswordOtpResendProtectedOperation {
         .flatMap(
             candidate ->
                 stagePending(
-                        command,
+                        new ResendOperationContext(command, pendingRef, now, incidents),
                         snapshot,
                         validated.context,
                         validated.authoritativeChallenge,
-                        candidate.otpChallengeId(),
-                        pendingRef,
-                        now,
-                        incidents)
+                        candidate.otpChallengeId())
                     .flatMap(
                         stagedSnapshot -> {
                           incidents.stage(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY);
@@ -466,61 +470,70 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                               .flatMap(
                                   deliveryResult ->
                                       transition(
-                                          command,
+                                          new ResendOperationContext(
+                                              command, pendingRef, now, incidents),
                                           stagedSnapshot,
                                           validated,
                                           candidate,
-                                          pendingRef,
-                                          deliveryResult,
-                                          now,
-                                          incidents));
+                                          deliveryResult));
                         }));
   }
 
   private Mono<AuthFlowSessionSnapshot> stagePending(
-      ResendForgotPasswordOtpCommand command,
+      ResendOperationContext operation,
       AuthFlowSessionSnapshot snapshot,
       ForgotPasswordAuthFlowContext context,
       OtpChallenge authoritative,
-      String candidateId,
-      String pendingRef,
-      Instant now,
-      IncidentCollector incidents) {
+      String candidateId) {
     Map<String, String> attrs = new LinkedHashMap<>(snapshot.session().data().attributes());
-    attrs.put(PENDING_REF, pendingRef);
+    attrs.put(PENDING_REF, operation.pendingRef());
     attrs.put(PENDING_CANDIDATE, candidateId);
     attrs.put(PENDING_PREVIOUS, authoritative.otpChallengeId());
     return mutateSession(
-        command,
+        operation.command(),
         snapshot,
         snapshot.session().activeOtpChallengeId(),
         context,
         attrs,
-        now,
-        incidents);
+        operation.now(),
+        operation.incidents());
   }
 
   private Mono<ForgotPasswordOtpResendProtectedExecutionResult> transition(
-      ResendForgotPasswordOtpCommand command,
+      ResendOperationContext operation,
       AuthFlowSessionSnapshot stagedSnapshot,
       ValidatedState validated,
       CreateOtpChallengeResult candidate,
-      String pendingRef,
-      MessageDeliveryResult deliveryResult,
-      Instant now,
-      IncidentCollector incidents) {
+      MessageDeliveryResult deliveryResult) {
     MessageDeliveryStatus status = deliveryResult.status();
     if (status == MessageDeliveryStatus.ACCEPTED) {
-      return accepted(command, stagedSnapshot, validated, candidate, pendingRef, now, incidents);
+      return accepted(
+          operation.command(),
+          stagedSnapshot,
+          validated,
+          candidate,
+          operation.pendingRef(),
+          operation.now(),
+          operation.incidents());
     }
     if (status == MessageDeliveryStatus.FAILED) {
-      incidents.addIncident(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY);
+      operation.incidents().addIncident(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY);
       return failed(
-          command, stagedSnapshot, validated.context, candidate.otpChallengeId(), now, incidents);
+          operation.command(),
+          stagedSnapshot,
+          validated.context,
+          candidate.otpChallengeId(),
+          operation.now(),
+          operation.incidents());
     }
-    incidents.addIncident(ForgotPasswordOtpResendIncident.UNKNOWN_DELIVERY);
+    operation.incidents().addIncident(ForgotPasswordOtpResendIncident.UNKNOWN_DELIVERY);
     return unknown(
-        command, stagedSnapshot, validated.context, candidate.otpChallengeId(), now, incidents);
+        operation.command(),
+        stagedSnapshot,
+        validated.context,
+        candidate.otpChallengeId(),
+        operation.now(),
+        operation.incidents());
   }
 
   private Mono<ForgotPasswordOtpResendProtectedExecutionResult> accepted(
