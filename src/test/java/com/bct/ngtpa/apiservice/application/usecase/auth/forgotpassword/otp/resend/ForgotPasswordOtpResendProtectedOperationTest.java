@@ -686,6 +686,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
             })
         .verifyComplete();
     assertLoggedFailure("foundation");
+    verify(locks).release(any());
   }
 
   @Test
@@ -978,6 +979,7 @@ class ForgotPasswordOtpResendProtectedOperationTest {
             })
         .verifyComplete();
     verify(registry).resolve(any(), any(), any());
+    verify(locks).release(any());
   }
 
   @Test
