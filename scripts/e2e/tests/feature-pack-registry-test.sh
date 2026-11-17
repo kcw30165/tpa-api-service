@@ -22,6 +22,8 @@ expect_resolved comma-tight 'vesting-scale,investment-choice' "$ordered"
 expect_resolved comma-space-after 'vesting-scale, investment-choice' "$ordered"
 expect_resolved comma-space-before 'vesting-scale ,investment-choice' "$ordered"
 expect_resolved whitespace-separator 'vesting-scale investment-choice' "$ordered"
+expect_resolved tab-separator $'vesting-scale\tinvestment-choice' "$ordered"
+expect_resolved comma-tab-separator $'vesting-scale,\tinvestment-choice' "$ordered"
 expect_failure_exact mixed-duplicate "$ROOT/scripts/e2e/vesting-scale-scenarios.sh"$'\n'"$ROOT/scripts/e2e/investment-choice-scenarios.sh"$'\n''ERROR duplicate feature pack: vesting-scale' 'vesting-scale,investment-choice vesting-scale'
 expect_failure_exact leading-comma 'ERROR E2E_FEATURE_PACKS contains an empty element' ',vesting-scale'
 expect_failure_exact trailing-comma 'ERROR E2E_FEATURE_PACKS contains an empty element' 'vesting-scale,'
@@ -44,10 +46,21 @@ source "$ROOT/scripts/e2e/run-post-login.sh" --library-only
 unset E2E_FEATURE_PACKS
 out="$(collect_feature_names "${E2E_FEATURE_PACKS:-}" 2>&1)"
 [[ "$?" -ne 0 && "$out" == 'ERROR E2E_FEATURE_PACKS must not be empty' ]] || { printf 'FAIL unset input behavior changed\n'; fail=1; }
-login_calls=0
-orchestrator_login(){ login_calls=$((login_calls+1)); return 0; }
+login_marker_dir="$(mktemp -d)" || { printf 'FAIL unable to create login marker directory\n'; exit 1; }
+login_marker="$login_marker_dir/login-calls"
+trap 'rm -f "$login_marker"; rmdir "$login_marker_dir"' EXIT
+orchestrator_login(){ printf 'called\n' >>"$login_marker"; return 0; }
+run_fake_login_positive_control(){ orchestrator_login; }
+run_fake_login_positive_control
+if [[ -s "$login_marker" ]]; then
+  printf 'PASS login marker positive control\n'
+else
+  printf 'FAIL login marker positive control\n'
+  fail=1
+fi
+: > "$login_marker"
 out="$(E2E_FEATURE_PACKS=',vesting-scale' post_login_main 2>&1)"
-[[ "$?" -ne 0 && "$out" == *'E2E_FEATURE_PACKS contains an empty element'* && "$login_calls" -eq 0 ]] || {
+[[ "$?" -ne 0 && "$out" == *'E2E_FEATURE_PACKS contains an empty element'* && ! -s "$login_marker" ]] || {
   printf 'FAIL empty-element rejection did not stop before login\n'
   fail=1
 }
