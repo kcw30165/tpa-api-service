@@ -63,7 +63,13 @@ class ApimInvestmentChoiceInstructionAdapterTest {
   private static final String CERT_NO = "cert-secret-422";
   private static final String USER_ID = "user-secret-773";
   private static final String REQUEST_ID = "request-id-123";
+  private static final String EVENT = "investment-choice.submission.downstream_failure";
+  private static final String SAME_SOURCE_PENDING_EXCEPTION =
+      "InvestmentChoiceSubmissionSamePendingException";
   private static final String PUBLIC_CODE = "err.investment-choice.submission.unavailable";
+  private static final String SAME_SOURCE_PENDING_CODE = "err.tpa.same.src.cim.exist";
+  private static final String SAME_SOURCE_PENDING_PUBLIC_CODE =
+      "err.investment-choice.submission.same-source-pending";
 
   private final ObjectMapper objectMapper = new ObjectMapper();
   private ApimExchangeExecutor executor;
@@ -165,6 +171,91 @@ class ApimInvestmentChoiceInstructionAdapterTest {
         .verify();
 
     assertSingleEvent(FailureOrigin.DOWNSTREAM_CONTRACT, errorCode, REQUEST_ID);
+  }
+
+  @Test
+  void sameSourcePendingErrorWithoutDataIsABusinessRejection() throws Exception {
+    respond(parseEnvelope("{\"response\":{\"err-message\":\"" + SAME_SOURCE_PENDING_CODE + "\"}}"));
+
+    StepVerifier.create(adapter().submit(command()).contextWrite(requestContext()))
+        .expectErrorSatisfies(
+            failure -> {
+              assertThat(failure.getClass().getSimpleName())
+                  .isEqualTo(SAME_SOURCE_PENDING_EXCEPTION);
+              assertThat(failure.toString())
+                  .doesNotContain(POLICY_NO, CERT_NO, USER_ID, "FBAL", "FHKM", "60", "40");
+            })
+        .verify();
+
+    verify(failureEventPort, times(1)).publish(any(FailureEvent.class));
+    assertThat(events)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.event()).isEqualTo(EVENT);
+              assertThat(event.requestId()).isEqualTo(REQUEST_ID);
+              assertThat(event.capability()).isEqualTo("INVESTMENT_CHOICE");
+              assertThat(event.operation()).isEqualTo("TRPCIMReq");
+              assertThat(event.origin()).isEqualTo(FailureOrigin.DOWNSTREAM_BUSINESS);
+              assertThat(event.internalCode()).isEqualTo(SAME_SOURCE_PENDING_CODE);
+              assertThat(event.publicCode()).isEqualTo(SAME_SOURCE_PENDING_PUBLIC_CODE);
+              assertThat(event.httpStatus()).isEqualTo(422);
+              assertThat(event.retryable()).isFalse();
+              assertThat(event.safeDimensions())
+                  .isEqualTo(Map.of("reason", FailureOrigin.DOWNSTREAM_BUSINESS.name()));
+            });
+    assertThat(events.getFirst().toString())
+        .doesNotContain(POLICY_NO, CERT_NO, USER_ID, "FBAL", "FHKM", "60", "40", "BO", "EE");
+    assertThat(appender.list.stream().map(ILoggingEvent::getLevel))
+        .noneMatch(level -> level == ch.qos.logback.classic.Level.ERROR);
+  }
+
+  @Test
+  void sameSourcePendingSharedApimAndFeatureLogsHaveNoError() {
+    try (var capture =
+        TerminalApimFailureLogCapture.startBusinessRejection(SAME_SOURCE_PENDING_CODE)) {
+      var terminalAdapter =
+          new ApimInvestmentChoiceInstructionAdapter(
+              capture.executor(), capture.failureEvents(), PATH);
+
+      StepVerifier.create(terminalAdapter.submit(command()).contextWrite(requestContext()))
+          .expectErrorMatches(
+              failure -> failure.getClass().getSimpleName().equals(SAME_SOURCE_PENDING_EXCEPTION))
+          .verify();
+
+      capture.assertBusinessRejectionWithoutError(
+          EVENT,
+          SAME_SOURCE_PENDING_CODE,
+          POLICY_NO,
+          CERT_NO,
+          USER_ID,
+          "FBAL",
+          "FHKM",
+          "60",
+          "40",
+          "BO",
+          "EE");
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("sameSourcePendingNearMissCodes")
+  void sameSourcePendingNearMissRemainsAContractRejection(String errorCode) {
+    respond(envelope(errorCode, null));
+
+    StepVerifier.create(adapter().submit(command()).contextWrite(requestContext()))
+        .expectError(InvestmentChoiceSubmissionRejectedException.class)
+        .verify();
+
+    assertSingleEvent(FailureOrigin.DOWNSTREAM_CONTRACT, errorCode, REQUEST_ID);
+  }
+
+  static Stream<Arguments> sameSourcePendingNearMissCodes() {
+    return Stream.of(
+        Arguments.of("ERR.TPA.SAME.SRC.CIM.EXIST"),
+        Arguments.of(" " + SAME_SOURCE_PENDING_CODE),
+        Arguments.of(SAME_SOURCE_PENDING_CODE + " "),
+        Arguments.of("prefix." + SAME_SOURCE_PENDING_CODE));
   }
 
   @Test
@@ -283,7 +374,7 @@ class ApimInvestmentChoiceInstructionAdapterTest {
     verify(failureEventPort, times(1)).publish(any(FailureEvent.class));
     assertThat(events).hasSize(1);
     var event = events.getFirst();
-    assertThat(event.event()).isEqualTo("investment-choice.submission.downstream_failure");
+    assertThat(event.event()).isEqualTo(EVENT);
     assertThat(event.requestId()).isEqualTo(requestId);
     assertThat(event.capability()).isEqualTo("INVESTMENT_CHOICE");
     assertThat(event.operation()).isEqualTo("TRPCIMReq");

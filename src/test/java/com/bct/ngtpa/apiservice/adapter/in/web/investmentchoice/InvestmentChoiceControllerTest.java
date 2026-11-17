@@ -42,6 +42,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelNotCancellableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionSamePendingException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.port.in.CancelInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetInvestmentChoiceUseCase;
@@ -87,6 +88,8 @@ class InvestmentChoiceControllerTest {
   private static final String SUBMIT_ROUTE = "/api/v1/investment-choice/instructions";
   private static final String CANCEL_ROUTE = "/api/v1/investment-choice/instructions/cancel";
   private static final String CANCEL_REFERENCE_NO = "260001449";
+  private static final String SAME_SOURCE_PENDING_CODE =
+      ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_SAME_SOURCE_PENDING;
   private static final String PRESERVED_REFERENCE_NO = "0260001449";
   private static final String CANCEL_BODY =
       """
@@ -549,6 +552,42 @@ class InvestmentChoiceControllerTest {
             }
             """,
             JsonCompareMode.STRICT);
+  }
+
+  @Test
+  void sameSourcePendingSubmissionReturnsTheExactBusinessRejectionEnvelope() {
+    WebTestClient client =
+        submitClient(
+            command -> Mono.error(new InvestmentChoiceSubmissionSamePendingException()),
+            context("ACC-1"),
+            exchange -> Optional.of(SESSION_ID));
+
+    submitPost(client, VALID_INSTRUCTION)
+        .expectStatus()
+        .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
+        .expectBody()
+        .json(
+            """
+            {
+              "success": false,
+              "status": "BUSINESS_REJECTED",
+              "result": null,
+              "messages": [],
+              "errors": [
+                {
+                  "type": "BUSINESS",
+                  "code": "%s",
+                  "targets": [],
+                  "severity": "ERROR",
+                  "source": "SERVER"
+                }
+              ]
+            }
+            """
+                .formatted(SAME_SOURCE_PENDING_CODE),
+            JsonCompareMode.STRICT)
+        .jsonPath("$.errors[0].message")
+        .doesNotExist();
   }
 
   @Test

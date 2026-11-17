@@ -13,6 +13,7 @@ import com.bct.ngtpa.apiservice.application.dto.investmentchoice.SubmitInvestmen
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionRejectedException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionSamePendingException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.port.in.SubmitInvestmentChoiceUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
@@ -80,10 +81,15 @@ public final class SubmitInvestmentChoiceService implements SubmitInvestmentChoi
     return Mono.defer(() -> instructionPort.submit(instructionCommand))
         .<InvestmentChoiceSubmitOutcome>map(InvestmentChoiceSubmitOutcome.Submitted::new)
         .onErrorResume(
-            failure ->
-                failure instanceof InvestmentChoiceSubmissionRejectedException
-                    ? Mono.error(unavailable())
-                    : reconcile(command, rows))
+            failure -> {
+              if (failure instanceof InvestmentChoiceSubmissionSamePendingException) {
+                return Mono.error(failure);
+              }
+              if (failure instanceof InvestmentChoiceSubmissionRejectedException) {
+                return Mono.error(unavailable());
+              }
+              return reconcile(command, rows);
+            })
         .switchIfEmpty(Mono.defer(() -> reconcile(command, rows)));
   }
 

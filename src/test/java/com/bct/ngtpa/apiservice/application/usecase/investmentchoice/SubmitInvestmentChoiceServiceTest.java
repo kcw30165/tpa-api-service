@@ -31,6 +31,7 @@ import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionRejectedException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionSamePendingException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnknownOutcomeException;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
@@ -226,6 +227,21 @@ class SubmitInvestmentChoiceServiceTest {
 
     verify(instructionPort).submit(any());
     verifyNoInteractions(referenceDatePort, detailsPort);
+    assertThat(appender.list).isEmpty();
+    assertNoSensitiveLogValues();
+  }
+
+  @Test
+  void sameSourcePendingExceptionPropagatesUnchangedWithoutReconciliationOrSideEffects() {
+    var exception = new InvestmentChoiceSubmissionSamePendingException();
+    when(instructionPort.submit(any())).thenReturn(Mono.error(exception));
+
+    StepVerifier.create(useCase().submit(command(VALID_REQUEST)))
+        .expectErrorSatisfies(failure -> assertThat(failure).isSameAs(exception))
+        .verify();
+
+    verify(instructionPort).submit(any());
+    verifyNoInteractions(referenceDatePort, detailsPort, snapshotCache, failures);
     assertThat(appender.list).isEmpty();
     assertNoSensitiveLogValues();
   }

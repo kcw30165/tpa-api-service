@@ -21,6 +21,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionSamePendingException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.exception.CacheException;
@@ -187,6 +188,36 @@ class ApiExceptionHandlerLoggingTest {
             && !event.getFormattedMessage().contains("cert-secret")
             && !event.getFormattedMessage().contains("account-secret")
             && !event.getFormattedMessage().contains("sid_abcdefghijklmnopqrstuvwx"));
+  }
+
+  @Test
+  void logsSameSourcePendingSubmissionAtWarnWithoutStackTrace() throws Exception {
+    var response =
+        handler.handle(
+            new InvestmentChoiceSubmissionSamePendingException(),
+            exchangeWithRequestId("same-source-pending-req-id"));
+
+    assertEquals(HttpStatus.UNPROCESSABLE_CONTENT, response.getStatusCode());
+    assertNotNull(response.getBody());
+    assertEquals(ApiStatus.BUSINESS_REJECTED, response.getBody().status());
+    assertEquals(1, response.getBody().errors().size());
+    ApiError error = response.getBody().errors().getFirst();
+    assertEquals("BUSINESS", error.type());
+    assertEquals(ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_SAME_SOURCE_PENDING, error.code());
+    assertEquals(List.of(), error.targets());
+    assertEquals("ERROR", error.severity());
+    assertEquals("SERVER", error.source());
+    assertNull(error.message());
+
+    ILoggingEvent event = singleEvent();
+    assertEquals(Level.WARN, event.getLevel());
+    assertNull(event.getThrowableProxy());
+    JsonNode payload = parse(event);
+    assertEquals(
+        ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_SAME_SOURCE_PENDING,
+        payload.get("errorCode").asText());
+    assertEquals(
+        "InvestmentChoiceSubmissionSamePendingException", payload.get("exceptionType").asText());
   }
 
   @Test

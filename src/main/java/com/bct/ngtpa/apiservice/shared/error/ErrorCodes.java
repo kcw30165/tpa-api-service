@@ -34,6 +34,8 @@ public final class ErrorCodes {
       "err.investment-choice.member-ineligible";
   public static final String INVESTMENT_CHOICE_SUBMISSION_UNAVAILABLE =
       "err.investment-choice.submission.unavailable";
+  public static final String INVESTMENT_CHOICE_SUBMISSION_SAME_SOURCE_PENDING =
+      "err.investment-choice.submission.same-source-pending";
   public static final String INVESTMENT_CHOICE_REQUEST_INVALID =
       "err.investment-choice.request.invalid";
   public static final String INVESTMENT_CHOICE_SWITCH_SOURCE_REQUIRED =

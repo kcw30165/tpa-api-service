@@ -53,6 +53,7 @@ public class ExceptionMappingRegistryConfig {
             InvestmentChoiceExceptionMappings.retrievalUnavailable(),
             VestingScaleExceptionMappings.retrievalUnavailable(),
             InvestmentChoiceExceptionMappings.submissionUnavailable(),
+            InvestmentChoiceExceptionMappings.submissionSamePending(),
             InvestmentChoiceExceptionMappings.cancelUnavailable(),
             InvestmentChoiceExceptionMappings.cancelNotCancellable(),
             ForgotPasswordDetailsOtpExceptionMappings.incidentAlreadyPublished(),

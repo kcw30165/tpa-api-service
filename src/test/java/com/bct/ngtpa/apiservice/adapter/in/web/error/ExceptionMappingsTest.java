@@ -19,6 +19,7 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformation
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelNotCancellableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionSamePendingException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.PersonalInformationUpdateException;
@@ -570,6 +571,24 @@ class ExceptionMappingsTest {
   }
 
   @Test
+  void investmentChoiceSubmissionSamePendingMapping() {
+    ErrorDescriptor descriptor =
+        new ExceptionMappingRegistryConfig()
+            .exceptionMappingRegistry()
+            .resolve(new InvestmentChoiceSubmissionSamePendingException(), CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.UNPROCESSABLE_CONTENT, descriptor.httpStatus());
+    assertEquals(ApiStatus.BUSINESS_REJECTED, descriptor.apiStatus());
+    assertEquals("BUSINESS", entry.type());
+    assertEquals(ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_SAME_SOURCE_PENDING, entry.code());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+  }
+
+  @Test
   void webExchangeBindMappingProducesOneEntryPerFieldErrorInOrder() throws Exception {
     var mapping = WebExchangeBindExceptionMappings.validationFailed();
     var exception = bindExceptionWithTwoFieldErrors("notificationId", "status");
@@ -670,11 +689,11 @@ class ExceptionMappingsTest {
   }
 
   @Test
-  void configAssemblesExactlyThirtyTwoMappingsPlusCatchAll() throws ReflectiveOperationException {
+  void configAssemblesExactlyThirtyThreeMappingsPlusCatchAll() throws ReflectiveOperationException {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(32, registry.mappingCount());
+    assertEquals(33, registry.mappingCount());
 
     ErrorDescriptor alreadyPublished =
         registry.resolve(
