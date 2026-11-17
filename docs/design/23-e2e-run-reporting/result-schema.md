@@ -7,7 +7,7 @@
 - **PROPOSAL** `results.json` uses `schema_version: 1`; the JSON block below is a structural sketch, and the field-set bullets that follow define the exact fields, including lifecycle and scenario fields not shown in the sketch. Unknown fields are rejected by the schema tests until a later version explicitly adds them.
 - **PROPOSAL** The JSON block is a schema sketch with placeholders, not an actual or illustrative execution result.
 - **REQUIREMENT (R-5, R-6)** The same structured event/result records are the only source for `REPORT.md` and `results.json`; terminal output is never parsed to build either.
-- **PROPOSAL** JSON `null` means a value is inapplicable or unavailable; it never substitutes for an observed value.
+- **PROPOSAL** JSON `null` means a value is inapplicable or unavailable; it never substitutes for an observed value. R1 records null where the current code does not capture a field or where the field is not in scope at the outcome hook.
 
 ```json
 {
@@ -95,7 +95,7 @@
 - **DECISION (D6, 2026-11-16)** R1 is limited to the record library, private journal, pack hooks, and journal tests.
 - **DECISION (Q3, 2026-11-17)** R1 adds only the record library and inert hooks; the parent creates the journal in R3.
 - **PROPOSAL** Therefore R1 tests the library against a test-owned private journal, while production hooks do nothing unless a parent supplies a journal path. R1 does not add rendering or change the orchestrator.
-- **PROPOSAL** R1.2 adds curl's `%{time_total}` to CIM's write-out as its only request-path change. Characterization tests prove existing HTTP-status parsing, response-body handling, and public-error-code parsing remain unchanged. The CIM hook may pass the already-generated local request ID to the record when the hook is in scope of that variable; this is not a request-path change. The echoed ID is `null` in R1 unless a pack already captures response headers.
+- **PROPOSAL** R1.2 records `duration_ms`, `request_id`, and `echoed_request_id` as `null` for CIM. The generated request ID is local to `request()` and is not in scope at the scenario outcome call sites. Capturing duration and request ID is deferred to R1.2b; R1.2 does not add `%{time_total}` or change `request()` or its status/body/public-code parsing.
 - **CONFIRMED** The current CIM custom curl captures HTTP status/public error code but not duration; the generic HTTP client captures `%{time_total}`. Source: [P0b §8, §9.1, §9.4].
 - **PROPOSAL** Vesting Scale request IDs remain `null` because the current pack sends no explicit `X-Request-Id`; adding that header is deferred. Echoed request IDs also remain `null` in R1 unless the pack already captures response headers. R1.3 scenario records map the checks the pack already reports; R4.2 adds phase records for the actual two GETs and validation workflow.
 - **CONFIRMED** Vesting Scale's current helper captures HTTP status only; it does not parse a public error code, record duration, or send an explicit request ID. Source: [P0b §9.2, §9.4].
