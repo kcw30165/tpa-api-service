@@ -149,6 +149,22 @@
 
 **Completion-wide preservation:** The APIM request remains `NON_RETRYABLE` / `NEVER` with `TERMINAL_CALLER`. Recognized reset business rejections (including password-invalid/reused outcomes) retain feature-owned result mapping and do not become technical incidents. The adapter-level missing-envelope/empty-data cases and the connected public/replay cases are characterized in separate tests; no single test composes the actual adapter failure through protected execution, response rendering, and completed replay (review finding F2). O-19 remains separate: `NEVER` prevents resubmission within an invocation but does not close different-key, crash, or persistence-failure uncertainty.
 
+### M3c implementation references for R2, R4, R5, and R7
+
+The existing R1, R3, and R6 entries above retain their detailed classification,
+ownership, and public/replay descriptions. The remaining M3c implementation
+references are recorded here to complete the R1-R7 inventory without
+re-specifying those approved behaviors. These commits are included in the M3c
+merge history; the connected test sources are cited as evidence locations, not
+as claims that a final full-suite or startup gate passed.
+
+| Requirement | Scope | Implementation reference | Connected-test source |
+|---|---|---|---|
+| R2 | Forgot Password identity check | `f99cc00a1` | `src/test/java/com/bct/ngtpa/apiservice/integration/forgotpassword/ForgotPasswordIdentityIncidentOwnershipConnectedTest.java` |
+| R4 | Forgot Password OTP resend | `51f97fd68` | `src/test/java/com/bct/ngtpa/apiservice/integration/forgotpassword/ForgotPasswordOtpResendIncidentOwnershipConnectedTest.java` |
+| R5 | Forgot Password OTP verify | `634d6e69e` | `src/test/java/com/bct/ngtpa/apiservice/integration/forgotpassword/ForgotPasswordOtpVerifyIncidentOwnershipConnectedTest.java` |
+| R7 | Forgot Password cancellation | `b3b8a8de4` | `src/test/java/com/bct/ngtpa/apiservice/integration/forgotpassword/ForgotPasswordCancelIncidentOwnershipConnectedTest.java` |
+
 ### Username Recovery -- TrpSearchMemberAdapter (TRPSearchMember)
 
 - **Condition:** `TrpSearchMemberApimDownstreamException` (unrecognized non-blank err-message)
