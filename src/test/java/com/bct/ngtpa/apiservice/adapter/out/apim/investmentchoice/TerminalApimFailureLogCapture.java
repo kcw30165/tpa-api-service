@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -57,12 +58,25 @@ final class TerminalApimFailureLogCapture implements AutoCloseable {
   }
 
   static TerminalApimFailureLogCapture start() {
+    return start(HttpStatus.BAD_GATEWAY, PRIVATE_VALUE);
+  }
+
+  static TerminalApimFailureLogCapture startBusinessRejection(String downstreamCode) {
+    String body = "{\"response\":{\"err-message\":\"" + downstreamCode + "\"}}";
+    return start(HttpStatus.OK, body);
+  }
+
+  private static TerminalApimFailureLogCapture start(HttpStatus status, String body) {
     ObjectMapper objectMapper = new ObjectMapper();
     ApimProperties properties = new ApimProperties();
     properties.getEncryption().setEnabled(false);
     ExchangeFunction exchangeFunction =
         request ->
-            Mono.just(ClientResponse.create(HttpStatus.BAD_GATEWAY).body(PRIVATE_VALUE).build());
+            Mono.just(
+                ClientResponse.create(status)
+                    .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                    .body(body)
+                    .build());
     WebClient.Builder builder = WebClient.builder().exchangeFunction(exchangeFunction);
     ApimCredentialProfile profile =
         new ApimCredentialProfile(
@@ -171,6 +185,44 @@ final class TerminalApimFailureLogCapture implements AutoCloseable {
         .noneSatisfy(
             message ->
                 assertThat(message).contains(PRIVATE_VALUE, "client-secret", "access-token"));
+    for (String privateValue : privateValues) {
+      assertThat(messages).noneSatisfy(message -> assertThat(message).contains(privateValue));
+    }
+  }
+
+  void assertBusinessRejectionWithoutError(
+      String featureEvent, String downstreamCode, String... privateValues) {
+    List<ILoggingEvent> events =
+        appenders.stream().flatMap(appender -> appender.list.stream()).toList();
+    assertThat(events).isNotEmpty().noneMatch(event -> event.getLevel().equals(Level.ERROR));
+
+    List<ILoggingEvent> apimEvents =
+        events.stream()
+            .filter(
+                event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+            .toList();
+    assertThat(apimEvents)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage()).contains("apim.business.rejected");
+            });
+
+    List<ILoggingEvent> featureEvents =
+        events.stream()
+            .filter(
+                event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+            .toList();
+    assertThat(featureEvents)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage()).contains(featureEvent, downstreamCode);
+              assertThat(event.getThrowableProxy()).isNull();
+            });
+    List<String> messages = events.stream().map(ILoggingEvent::getFormattedMessage).toList();
     for (String privateValue : privateValues) {
       assertThat(messages).noneSatisfy(message -> assertThat(message).contains(privateValue));
     }

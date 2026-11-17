@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelNotCancellableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceCancelUnavailableException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceDetailsRetrievalException;
+import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionSamePendingException;
 import com.bct.ngtpa.apiservice.application.exception.InvestmentChoiceSubmissionUnavailableException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
@@ -54,6 +55,30 @@ public final class InvestmentChoiceExceptionMappings {
             ApiStatus.SYSTEM_ERROR,
             SYSTEM_ERROR_TYPE,
             ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_UNAVAILABLE,
+            List.of(),
+            HTTP_API_ERROR,
+            LogLevel.WARN,
+            false);
+      }
+    };
+  }
+
+  public static ExceptionMapping<InvestmentChoiceSubmissionSamePendingException>
+      submissionSamePending() {
+    return new ExceptionMapping<>() {
+      @Override
+      public Class<InvestmentChoiceSubmissionSamePendingException> exceptionType() {
+        return InvestmentChoiceSubmissionSamePendingException.class;
+      }
+
+      @Override
+      public ErrorDescriptor describe(
+          InvestmentChoiceSubmissionSamePendingException exception, ErrorContext context) {
+        return ErrorDescriptor.singleWithoutMessage(
+            HttpStatus.UNPROCESSABLE_CONTENT,
+            ApiStatus.BUSINESS_REJECTED,
+            "BUSINESS",
+            ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_SAME_SOURCE_PENDING,
             List.of(),
             HTTP_API_ERROR,
             LogLevel.WARN,

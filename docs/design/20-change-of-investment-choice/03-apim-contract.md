@@ -126,13 +126,14 @@ If restricted responses include `SwitchSrc`, it may enrich history internally us
 | `submit-time` | string `HH:mm:ss` strict | required -> `submitTime` |
 | `ref-no` | string nonblank | required -> `referenceNo` |
 
-### err-message (all 503, origin `DOWNSTREAM_CONTRACT`, no reconciliation)
+### err-message and outcomes
 
-| Value | Meaning |
-|---|---|
-| `err.account.invalid` | member not found |
-| `err.role.not.allow.access` | login user not allowed to submit |
-| any other nonblank | generic |
+| Value | Meaning / response | Event and follow-up |
+|---|---|---|
+| `err.tpa.same.src.cim.exist` | definite business rejection: a same-source instruction is pending; Progress may return only `err-message` without a `data` property | HTTP 422 `BUSINESS_REJECTED`, code `err.investment-choice.submission.same-source-pending`; one `DOWNSTREAM_BUSINESS` event at WARN; no reconciliation; re-confirm password before another submit |
+| `err.account.invalid` | member not found | 503 `SYSTEM_ERROR`, `DOWNSTREAM_CONTRACT`; no reconciliation |
+| `err.role.not.allow.access` | login user not allowed to submit | 503 `SYSTEM_ERROR`, `DOWNSTREAM_CONTRACT`; no reconciliation |
+| any other nonblank value | generic downstream rejection | 503 `SYSTEM_ERROR`, `DOWNSTREAM_CONTRACT`; no reconciliation |
 
 ## 3. TRPCnclCIMReq (cancel)
 

@@ -27,7 +27,8 @@ class InvestmentChoiceValidationErrorCodesTest {
                 ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_REQUIRED,
                 ErrorCodes.INVESTMENT_CHOICE_CANCEL_REF_INVALID,
                 ErrorCodes.INVESTMENT_CHOICE_FUNCTION_UNAVAILABLE,
-                ErrorCodes.INVESTMENT_CHOICE_MEMBER_INELIGIBLE))
+                ErrorCodes.INVESTMENT_CHOICE_MEMBER_INELIGIBLE,
+                ErrorCodes.INVESTMENT_CHOICE_SUBMISSION_SAME_SOURCE_PENDING))
         .containsExactly(
             "err.investment-choice.request.invalid",
             "err.investment-choice.switch-source.required",
@@ -45,6 +46,7 @@ class InvestmentChoiceValidationErrorCodesTest {
             "err.investment-choice.cancel.ref-required",
             "err.investment-choice.cancel.ref-invalid",
             "err.investment-choice.function-unavailable",
-            "err.investment-choice.member-ineligible");
+            "err.investment-choice.member-ineligible",
+            "err.investment-choice.submission.same-source-pending");
   }
 }
