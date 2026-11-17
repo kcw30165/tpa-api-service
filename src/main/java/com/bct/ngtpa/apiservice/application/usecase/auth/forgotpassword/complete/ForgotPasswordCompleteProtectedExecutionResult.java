@@ -1,11 +1,13 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete;
 
-import java.util.Objects;
 import java.util.List;
+import java.util.Objects;
 
 /** Idempotency-neutral COMPLETE execution classification returned to the shared coordinator. */
 public record ForgotPasswordCompleteProtectedExecutionResult(
-    Outcome outcome, CompleteForgotPasswordResult result, List<ForgotPasswordCompleteIncident> incidents) {
+    Outcome outcome,
+    CompleteForgotPasswordResult result,
+    List<ForgotPasswordCompleteIncident> incidents) {
   public enum Outcome {
     TERMINAL,
     TECHNICAL_FAILURE,
@@ -38,7 +40,8 @@ public record ForgotPasswordCompleteProtectedExecutionResult(
 
   public static ForgotPasswordCompleteProtectedExecutionResult technicalFailure(
       CompleteForgotPasswordResult result) {
-    return new ForgotPasswordCompleteProtectedExecutionResult(Outcome.TECHNICAL_FAILURE, result, List.of());
+    return new ForgotPasswordCompleteProtectedExecutionResult(
+        Outcome.TECHNICAL_FAILURE, result, List.of());
   }
 
   public static ForgotPasswordCompleteProtectedExecutionResult technicalFailure(
@@ -49,7 +52,8 @@ public record ForgotPasswordCompleteProtectedExecutionResult(
 
   public static ForgotPasswordCompleteProtectedExecutionResult unknownOutcome(
       CompleteForgotPasswordResult result) {
-    return new ForgotPasswordCompleteProtectedExecutionResult(Outcome.UNKNOWN_OUTCOME, result, List.of());
+    return new ForgotPasswordCompleteProtectedExecutionResult(
+        Outcome.UNKNOWN_OUTCOME, result, List.of());
   }
 
   public static ForgotPasswordCompleteProtectedExecutionResult unknownOutcome(

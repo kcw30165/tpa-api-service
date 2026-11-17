@@ -311,8 +311,7 @@ class AuthForgotPasswordOtpVerifyControllerTest {
     var mapper = org.mockito.Mockito.spy(new ForgotPasswordOtpVerifyWebMapper());
     org.mockito.Mockito.doThrow(new IllegalStateException("mapping failed"))
         .when(mapper)
-        .toMutationResponse(
-            org.mockito.ArgumentMatchers.any(VerifyForgotPasswordOtpResult.class));
+        .toMutationResponse(org.mockito.ArgumentMatchers.any(VerifyForgotPasswordOtpResult.class));
     VerifyForgotPasswordOtpUseCase useCase =
         command ->
             Mono.just(

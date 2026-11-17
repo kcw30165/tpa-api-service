@@ -81,7 +81,10 @@ public final class IdempotentCompleteForgotPasswordService
                   command.idempotencyTtl(),
                   () ->
                       executeAcquired(
-                          command, publication, publicationFailed, reportedOperationFailure,
+                          command,
+                          publication,
+                          publicationFailed,
+                          reportedOperationFailure,
                           noIncidentOutcome),
                   IdempotencyFailureClassifiers.possibleSideEffect(),
                   responses::capture,
@@ -90,15 +93,15 @@ public final class IdempotentCompleteForgotPasswordService
               .map(
                   result ->
                       withReceipt(
-                          route(result.lifecycleOutcome(), result.terminalResponse()),
-                          publication))
+                          route(result.lifecycleOutcome(), result.terminalResponse()), publication))
               .onErrorResume(
                   failure -> {
                     if (publicationFailed.get()) {
                       return Mono.just(systemFailed(WorkflowNextStep.NONE));
                     }
                     if (failure == reportedOperationFailure.get()) {
-                      return Mono.just(withReceipt(systemFailed(WorkflowNextStep.NONE), publication));
+                      return Mono.just(
+                          withReceipt(systemFailed(WorkflowNextStep.NONE), publication));
                     }
                     if (failure == noIncidentOutcome.get()) {
                       return Mono.just(systemFailed(WorkflowNextStep.NONE));
@@ -143,12 +146,10 @@ public final class IdempotentCompleteForgotPasswordService
                                 publicationFailed,
                                 reportedOperationFailure,
                                 noIncidentOutcome))
-                    .orElseGet(
-                        () -> Mono.just(responses.toTransientResponse(invalidAuthFlow()))))
+                    .orElseGet(() -> Mono.just(responses.toTransientResponse(invalidAuthFlow()))))
         .onErrorResume(
             failure -> {
-              if (failure == reportedOperationFailure.get()
-                  || failure == noIncidentOutcome.get()) {
+              if (failure == reportedOperationFailure.get() || failure == noIncidentOutcome.get()) {
                 return Mono.error(failure);
               }
               if (publicationFailed.get()) {
@@ -180,8 +181,7 @@ public final class IdempotentCompleteForgotPasswordService
     return Mono.defer(
             () ->
                 operation.execute(
-                    new ForgotPasswordCompleteProtectedOperationInput(
-                        command, context, snapshot)))
+                    new ForgotPasswordCompleteProtectedOperationInput(command, context, snapshot)))
         .flatMap(
             execution -> {
               if (execution.outcome()
@@ -355,7 +355,8 @@ public final class IdempotentCompleteForgotPasswordService
                 null,
                 List.of("PAGE"),
                 WorkflowErrorSeverity.ERROR,
-                SOURCE_SERVER)), null);
+                SOURCE_SERVER)),
+        null);
   }
 
   private static final class PublicationTracker {

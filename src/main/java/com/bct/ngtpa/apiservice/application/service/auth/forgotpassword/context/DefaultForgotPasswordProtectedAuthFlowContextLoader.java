@@ -66,24 +66,24 @@ public class DefaultForgotPasswordProtectedAuthFlowContextLoader
 
     Mono<ForgotPasswordProtectedAuthFlowContextResult> validated =
         csrfService
-        .validateForSession(
-            new ValidateAuthFlowSessionCsrfCommand(
-                command.authFlowSessionId(),
-                command.csrfToken(),
-                now,
-                command.origin(),
-                command.referer(),
-                java.util.List.of(),
-                command.correlationId()))
-        .flatMap(
-            validation -> {
-              if (!validation.valid()) {
-                ForgotPasswordProtectedAuthFlowContextStatus status = map(validation.status());
-                return publishSecurityRejection(command, now, status)
-                    .thenReturn(ForgotPasswordProtectedAuthFlowContextResult.invalid(status));
-              }
-              return pipeline;
-            });
+            .validateForSession(
+                new ValidateAuthFlowSessionCsrfCommand(
+                    command.authFlowSessionId(),
+                    command.csrfToken(),
+                    now,
+                    command.origin(),
+                    command.referer(),
+                    java.util.List.of(),
+                    command.correlationId()))
+            .flatMap(
+                validation -> {
+                  if (!validation.valid()) {
+                    ForgotPasswordProtectedAuthFlowContextStatus status = map(validation.status());
+                    return publishSecurityRejection(command, now, status)
+                        .thenReturn(ForgotPasswordProtectedAuthFlowContextResult.invalid(status));
+                  }
+                  return pipeline;
+                });
     if (command.propagateTechnicalFailures()) {
       return validated;
     }

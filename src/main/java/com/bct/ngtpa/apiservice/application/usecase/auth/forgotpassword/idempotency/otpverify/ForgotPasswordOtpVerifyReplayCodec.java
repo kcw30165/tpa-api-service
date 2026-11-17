@@ -65,7 +65,8 @@ public final class ForgotPasswordOtpVerifyReplayCodec {
           new VerifyForgotPasswordOtpResult(
               VerifyForgotPasswordOtpStatus.valueOf(payload.status()),
               WorkflowNextStep.valueOf(payload.nextStep()),
-              payload.remainingVerifyAttempts(), null);
+              payload.remainingVerifyAttempts(),
+              null);
       validate(result);
       if (snapshot.httpStatus() != httpStatus(result.status())) {
         throw new IllegalArgumentException("OTP_VERIFY replay HTTP status mismatch");

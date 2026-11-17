@@ -106,7 +106,8 @@ class ForgotPasswordOtpResendReplayCodecTest {
             null,
             null,
             null,
-            null, null);
+            null,
+            null);
     assertThatThrownBy(() -> newCodec().capture(malformed, response(403, Map.of()), null))
         .isInstanceOf(IllegalArgumentException.class);
   }

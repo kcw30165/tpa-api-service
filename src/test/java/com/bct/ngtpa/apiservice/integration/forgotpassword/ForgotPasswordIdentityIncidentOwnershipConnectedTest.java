@@ -94,8 +94,7 @@ class ForgotPasswordIdentityIncidentOwnershipConnectedTest {
     when(sessions.loadSnapshot(sessionId))
         .thenReturn(
             Mono.error(
-                new IllegalStateException(
-                    "policyNo=IDENTITY-SECRET identityValue=MEMBER-SECRET")));
+                new IllegalStateException("policyNo=IDENTITY-SECRET identityValue=MEMBER-SECRET")));
     var locks = acquiredLocks();
     var logger = failureEventLogger();
     var service =
@@ -129,7 +128,8 @@ class ForgotPasswordIdentityIncidentOwnershipConnectedTest {
 
     var terminalErrors =
         appender.list.stream()
-            .filter(event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+            .filter(
+                event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
             .filter(event -> event.getLevel() == Level.ERROR)
             .toList();
     assertThat(terminalErrors)
@@ -141,18 +141,22 @@ class ForgotPasswordIdentityIncidentOwnershipConnectedTest {
                       "forgot-password.identity-check.failed",
                       "\"failureOrigin\":\"LOCAL_SYSTEM\"",
                       "\"stage\":\"session-read\"")
-                  .doesNotContain("IDENTITY-SECRET", "MEMBER-SECRET", "policyNo=", "identityValue=");
+                  .doesNotContain(
+                      "IDENTITY-SECRET", "MEMBER-SECRET", "policyNo=", "identityValue=");
               assertThat(event.getThrowableProxy()).isNull();
             });
     ILoggingEvent completedRequest =
         appender.list.stream()
-            .filter(event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
+            .filter(
+                event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
             .findFirst()
             .orElseThrow();
     assertThat(completedRequest.getLevel()).isEqualTo(Level.WARN);
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getFormattedMessage().contains("\"event\":\"http.request.error\"")))
+                .filter(
+                    event ->
+                        event.getFormattedMessage().contains("\"event\":\"http.request.error\"")))
         .isEmpty();
   }
 
@@ -167,9 +171,8 @@ class ForgotPasswordIdentityIncidentOwnershipConnectedTest {
             Mono.just(
                 com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context
                     .ForgotPasswordProtectedAuthFlowContextResult.invalid(
-                        com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context
-                            .ForgotPasswordProtectedAuthFlowContextStatus
-                            .ORIGIN_REFERER_INVALID)));
+                    com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context
+                        .ForgotPasswordProtectedAuthFlowContextStatus.ORIGIN_REFERER_INVALID)));
     var service =
         service(
             loader,
@@ -186,12 +189,15 @@ class ForgotPasswordIdentityIncidentOwnershipConnectedTest {
     assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isFalse();
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+                .filter(
+                    event ->
+                        event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
                 .filter(event -> event.getLevel() == Level.ERROR))
         .isEmpty();
     ILoggingEvent completedRequest =
         appender.list.stream()
-            .filter(event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
+            .filter(
+                event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
             .findFirst()
             .orElseThrow();
     assertThat(completedRequest.getLevel()).isEqualTo(Level.ERROR);
@@ -211,12 +217,15 @@ class ForgotPasswordIdentityIncidentOwnershipConnectedTest {
     assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isFalse();
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+                .filter(
+                    event ->
+                        event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
                 .filter(event -> event.getLevel() == Level.ERROR))
         .isEmpty();
     ILoggingEvent completedRequest =
         appender.list.stream()
-            .filter(event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
+            .filter(
+                event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
             .findFirst()
             .orElseThrow();
     assertThat(completedRequest.getLevel()).isEqualTo(Level.ERROR);
@@ -248,8 +257,7 @@ class ForgotPasswordIdentityIncidentOwnershipConnectedTest {
                 .build());
     var response = new AtomicReference<ResponseEntity<?>>();
     var sanitizer =
-        new LoggingSanitizer(
-            OBJECT_MAPPER, new MaskingService(new MaskingProperties()));
+        new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(new MaskingProperties()));
     var filter =
         new RequestLoggingWebFilter(new RequestLoggingProperties(), sanitizer, OBJECT_MAPPER);
 
@@ -307,8 +315,7 @@ class ForgotPasswordIdentityIncidentOwnershipConnectedTest {
 
   private static FailureEventPort failureEventLogger() {
     return new StructuredFailureEventLogger(
-        new LoggingSanitizer(
-            OBJECT_MAPPER, new MaskingService(new MaskingProperties())));
+        new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(new MaskingProperties())));
   }
 
   private static MutationResponse<?> responseBody(RunResult run) {

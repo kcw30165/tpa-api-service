@@ -88,18 +88,12 @@ public final class CancelForgotPasswordService implements CancelForgotPasswordUs
         .onErrorResume(
             CancellationTechnicalFailure.class,
             failure ->
-                Mono.just(
-                    systemFailure(
-                        command,
-                        failure.stage(),
-                        503,
-                        ERROR_SYSTEM_UNAVAILABLE)));
+                Mono.just(systemFailure(command, failure.stage(), 503, ERROR_SYSTEM_UNAVAILABLE)));
   }
 
   @Override
   public boolean reportSynchronousTechnicalFailure(String requestId) {
-    return publishIncident(
-        requestId, "controller-sync", 403, ERROR_CSRF_INVALID);
+    return publishIncident(requestId, "controller-sync", 403, ERROR_CSRF_INVALID);
   }
 
   private Mono<CancelForgotPasswordResult> cancelExisting(
@@ -166,12 +160,7 @@ public final class CancelForgotPasswordService implements CancelForgotPasswordUs
         .onErrorResume(
             CancellationTechnicalFailure.class,
             failure ->
-                Mono.just(
-                    systemFailure(
-                        command,
-                        failure.stage(),
-                        503,
-                        ERROR_SYSTEM_UNAVAILABLE)));
+                Mono.just(systemFailure(command, failure.stage(), 503, ERROR_SYSTEM_UNAVAILABLE)));
   }
 
   private boolean originAllowed(String origin, String referer) {
@@ -247,7 +236,10 @@ public final class CancelForgotPasswordService implements CancelForgotPasswordUs
   }
 
   private CancelForgotPasswordResult validationFailure(
-      CancelForgotPasswordStatus status, WorkflowErrorType type, String code, boolean incidentPublished) {
+      CancelForgotPasswordStatus status,
+      WorkflowErrorType type,
+      String code,
+      boolean incidentPublished) {
     return new CancelForgotPasswordResult(
         status,
         false,

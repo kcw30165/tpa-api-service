@@ -73,7 +73,8 @@ public final class ForgotPasswordDetailsOtpExecutionBridge {
           maskedDestination,
           expiresInSeconds,
           resendAvailableInSeconds,
-          targets == null ? List.of() : List.copyOf(targets), false);
+          targets == null ? List.of() : List.copyOf(targets),
+          false);
     }
   }
 }

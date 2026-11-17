@@ -1,14 +1,14 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp;
 
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFailureClassifiers;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOutcome;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
-import com.bct.ngtpa.apiservice.application.port.in.ProcessForgotPasswordDetailsOtpUseCase;
-import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
-import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
+import com.bct.ngtpa.apiservice.application.port.in.ProcessForgotPasswordDetailsOtpUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
@@ -60,7 +60,8 @@ public final class IdempotentForgotPasswordDetailsOtpService
               null,
               0,
               0,
-              validation.targets(), false));
+              validation.targets(),
+              false));
     }
     var incidentPublished = new AtomicBoolean();
     var execution =
@@ -104,8 +105,7 @@ public final class IdempotentForgotPasswordDetailsOtpService
                 if (execution.result().status()
                     == ForgotPasswordDetailsOtpResult.Status.SYSTEM_UNAVAILABLE) {
                   return Mono.just(
-                      responses.toTransientResponse(
-                          execution.result().withIncidentPublished()));
+                      responses.toTransientResponse(execution.result().withIncidentPublished()));
                 }
                 return Mono.error(new ForgotPasswordDetailsOtpIncidentPublishedException());
               }

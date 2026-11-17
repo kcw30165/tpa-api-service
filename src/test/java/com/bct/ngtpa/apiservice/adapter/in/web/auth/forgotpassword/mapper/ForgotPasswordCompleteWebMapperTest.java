@@ -33,7 +33,8 @@ class ForgotPasswordCompleteWebMapperTest {
                     null,
                     List.of("id"),
                     WorkflowErrorSeverity.ERROR,
-                    "BFF")), null);
+                    "BFF")),
+            null);
 
     MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCompleteDataResponse>>
         response = mapper.toResponse(result);
@@ -68,7 +69,8 @@ class ForgotPasswordCompleteWebMapperTest {
                     null,
                     List.of(),
                     WorkflowErrorSeverity.ERROR,
-                    "BFF")), null);
+                    "BFF")),
+            null);
 
     MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCompleteDataResponse>>
         response = mapper.toResponse(result);

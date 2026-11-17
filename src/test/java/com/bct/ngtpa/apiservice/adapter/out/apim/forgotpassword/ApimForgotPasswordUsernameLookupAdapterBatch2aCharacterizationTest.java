@@ -89,8 +89,7 @@ class ApimForgotPasswordUsernameLookupAdapterBatch2aCharacterizationTest {
   private void assertSystemFailedWithWarnOnlyObservation(
       ApimForgotPasswordUsernameLookupAdapter adapter,
       StartForgotPasswordUsernameLookupCommand command) {
-    Logger logger =
-        (Logger) LoggerFactory.getLogger(ApimForgotPasswordUsernameLookupAdapter.class);
+    Logger logger = (Logger) LoggerFactory.getLogger(ApimForgotPasswordUsernameLookupAdapter.class);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
     appender.start();
     logger.addAppender(appender);

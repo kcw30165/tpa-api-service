@@ -35,7 +35,8 @@ public final class DefaultForgotPasswordOtpResendProtectedReplayResolver
               result.expiresInSeconds(),
               null,
               result.remainingResendAttempts(),
-              result.retryAfterSeconds(), null);
+              result.retryAfterSeconds(),
+              null);
       case EXPIRED ->
           new ResendForgotPasswordOtpResult(
               ResendForgotPasswordOtpStatus.EXPIRED,
@@ -43,7 +44,8 @@ public final class DefaultForgotPasswordOtpResendProtectedReplayResolver
               result.expiresInSeconds(),
               null,
               result.remainingResendAttempts(),
-              result.retryAfterSeconds(), null);
+              result.retryAfterSeconds(),
+              null);
       case SYSTEM_ERROR ->
           new ResendForgotPasswordOtpResult(
               ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null, null);

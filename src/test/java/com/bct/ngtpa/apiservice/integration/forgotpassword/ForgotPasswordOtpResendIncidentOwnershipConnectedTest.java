@@ -96,12 +96,14 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
     assertThat(run.exchange().getResponse().getHeaders().getFirst("X-Request-Id"))
         .isEqualTo(REQUEST_ID);
 
-    var terminalErrors = appender.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
+    var terminalErrors =
+        appender.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
     assertThat(terminalErrors)
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.getLoggerName()).isEqualTo(StructuredFailureEventLogger.class.getName());
+              assertThat(event.getLoggerName())
+                  .isEqualTo(StructuredFailureEventLogger.class.getName());
               assertThat(event.getFormattedMessage())
                   .contains(
                       "forgot-password.resend.failed",
@@ -110,10 +112,7 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
                       "\"httpStatus\":503",
                       REQUEST_ID)
                   .doesNotContain(
-                      "delivery-secret",
-                      "otp-secret",
-                      "csrf-secret",
-                      "idempotency-secret");
+                      "delivery-secret", "otp-secret", "csrf-secret", "idempotency-secret");
               assertThat(event.getThrowableProxy()).isNull();
             });
     assertThat(appender.list)
@@ -142,7 +141,9 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
     assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isFalse();
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+                .filter(
+                    event ->
+                        event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
                 .filter(event -> event.getLevel() == Level.ERROR))
         .isEmpty();
     assertThat(requestEvents("http.request.failed"))
@@ -159,7 +160,9 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
     assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isTrue();
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+                .filter(
+                    event ->
+                        event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
                 .filter(event -> event.getLevel() == Level.ERROR))
         .singleElement()
         .satisfies(
@@ -189,7 +192,8 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.getLoggerName()).isEqualTo(StructuredFailureEventLogger.class.getName());
+              assertThat(event.getLoggerName())
+                  .isEqualTo(StructuredFailureEventLogger.class.getName());
               assertThat(event.getFormattedMessage())
                   .contains("OTP_RESEND_COUNTER_MALFORMED", "resend-count", "\"httpStatus\":200")
                   .doesNotContain("not-a-number");
@@ -209,7 +213,9 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
     assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isFalse();
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+                .filter(
+                    event ->
+                        event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
                 .filter(event -> event.getLevel() == Level.ERROR))
         .isEmpty();
     assertThat(requestEvents("http.request.failed"))
@@ -238,8 +244,7 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
         when(operation.execute(any()))
             .thenReturn(
                 Mono.just(
-                    new ForgotPasswordOtpResendProtectedExecutionResult(
-                        result, null, incidents)));
+                    new ForgotPasswordOtpResendProtectedExecutionResult(result, null, incidents)));
       }
     } else if (scenario == Scenario.MALFORMED_COUNTER) {
       result =
@@ -278,10 +283,8 @@ class ForgotPasswordOtpResendIncidentOwnershipConnectedTest {
             mock(com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint.class));
     FailureEventPort failureEvents =
         new StructuredFailureEventLogger(
-            new LoggingSanitizer(
-                OBJECT_MAPPER, new MaskingService(new MaskingProperties())));
-    IdempotencyExecutor executor =
-        new InvokingIdempotencyExecutor(outcome, transientResponse);
+            new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(new MaskingProperties())));
+    IdempotencyExecutor executor = new InvokingIdempotencyExecutor(outcome, transientResponse);
     var service =
         new IdempotentResendForgotPasswordOtpService(
             executor, operation, responseBridge, policy, Duration.ofMinutes(5), failureEvents);

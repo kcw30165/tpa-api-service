@@ -7,9 +7,9 @@ import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.session.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
+import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordIdentityUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;
-import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.*;
 import java.time.*;
 import java.util.*;
@@ -69,8 +69,7 @@ public final class VerifyForgotPasswordIdentityService
                         VerifyForgotPasswordIdentityResult.of(
                             VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW)))
         .onErrorResume(
-            IdentityTechnicalFailure.class,
-            failure -> technicalFailure(c, failure.stage()));
+            IdentityTechnicalFailure.class, failure -> technicalFailure(c, failure.stage()));
   }
 
   private Mono<VerifyForgotPasswordIdentityResult> locked(

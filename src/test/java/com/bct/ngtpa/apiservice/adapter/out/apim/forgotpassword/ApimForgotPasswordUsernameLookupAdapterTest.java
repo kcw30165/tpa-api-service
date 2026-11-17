@@ -5,6 +5,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
@@ -12,6 +16,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
+import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper.TrpChkCustIdForgotPasswordResultMapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.SharedApimTrpChkCustIdTransport;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimRequest;
@@ -21,11 +26,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordUsernameLookupStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordUsernameLookupCommand;
-import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper.TrpChkCustIdForgotPasswordResultMapper;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -118,15 +118,15 @@ class ApimForgotPasswordUsernameLookupAdapterTest {
   void transportFailureBecomesTechnicalLookupResultForTheTerminalOwner() {
     when(executor.postEnvelope(any()))
         .thenAnswer(
-            invocation ->
-                Mono.error(new java.net.ConnectException("private transport marker")));
+            invocation -> Mono.error(new java.net.ConnectException("private transport marker")));
     StepVerifier.create(
             adapter.lookup(
                 new StartForgotPasswordUsernameLookupCommand(
                     "member01", "req-4", ActorUserRole.ROLE_USER_MBR)))
         .assertNext(
             result -> {
-              assertThat(result.status()).isEqualTo(ForgotPasswordUsernameLookupStatus.SYSTEM_FAILED);
+              assertThat(result.status())
+                  .isEqualTo(ForgotPasswordUsernameLookupStatus.SYSTEM_FAILED);
               assertThat(result.failureOrigin()).isEqualTo(FailureOrigin.DOWNSTREAM_TRANSPORT);
             })
         .verifyComplete();
@@ -135,8 +135,7 @@ class ApimForgotPasswordUsernameLookupAdapterTest {
   @Test
   void unknownDownstreamErrorIsNotIncludedInMapperDiagnostics() {
     String marker = "R1-RAW-DOWNSTREAM-ERROR-MARKER";
-    Logger logger =
-        (Logger) LoggerFactory.getLogger(TrpChkCustIdForgotPasswordResultMapper.class);
+    Logger logger = (Logger) LoggerFactory.getLogger(TrpChkCustIdForgotPasswordResultMapper.class);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
     appender.start();
     logger.addAppender(appender);

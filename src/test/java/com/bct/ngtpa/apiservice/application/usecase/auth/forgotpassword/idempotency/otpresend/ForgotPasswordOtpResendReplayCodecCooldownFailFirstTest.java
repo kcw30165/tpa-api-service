@@ -66,7 +66,13 @@ class ForgotPasswordOtpResendReplayCodecCooldownFailFirstTest {
   /** Same shape the protected operation builds in mapEligibility for the resend limit. */
   private static ResendForgotPasswordOtpResult resendLimitReached() {
     return new ResendForgotPasswordOtpResult(
-        ResendForgotPasswordOtpStatus.RESEND_LIMIT_REACHED, "j***@example.com", 240, null, 0, null, null);
+        ResendForgotPasswordOtpStatus.RESEND_LIMIT_REACHED,
+        "j***@example.com",
+        240,
+        null,
+        0,
+        null,
+        null);
   }
 
   private void givenDecodedStatus(ResendForgotPasswordOtpStatus status) {

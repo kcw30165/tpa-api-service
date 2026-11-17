@@ -82,11 +82,11 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
   /**
    * Scenario 1 of 3: the downstream envelope is missing entirely (empty {@code data} array). Per
    * the confirmed adapter mechanism, {@code toEnvelope()} detects a missing response and converts
-   * it to a cause-free completion classification
-   * synchronously inside {@code .map(...)}, which becomes an {@code onError} signal. {@code
-   * ExecutionLoggingAspect.decorateMono(...)} routes {@code onError} to {@code logError(...)}, so
-   * exactly {@code method.execution.start} (INFO) then {@code method.execution.error} (WARN,
-   * without a Throwable) are logged because the completion caller owns the incident.
+   * it to a cause-free completion classification synchronously inside {@code .map(...)}, which
+   * becomes an {@code onError} signal. {@code ExecutionLoggingAspect.decorateMono(...)} routes
+   * {@code onError} to {@code logError(...)}, so exactly {@code method.execution.start} (INFO) then
+   * {@code method.execution.error} (WARN, without a Throwable) are logged because the completion
+   * caller owns the incident.
    */
   @Test
   void missingEnvelopeLogsStartThenWarningWithoutThrowable() {
@@ -128,8 +128,7 @@ class ApimForgotPasswordCompletionAdapterLogExecutionAspectCharacterizationTest 
    * non-crypto error (e.g. transport failure). {@code onErrorResume} only intercepts crypto
    * failures, so this propagates to {@code onErrorMap}'s {@code safeFailure}, which wraps it as an
    * {@code ApimException} - still an {@code onError} signal. Same log shape as scenario 1: {@code
-   * method.execution.start} then a warning-only {@code method.execution.error} without a
-   * Throwable.
+   * method.execution.start} then a warning-only {@code method.execution.error} without a Throwable.
    */
   @Test
   void unexpectedFailureLogsStartThenErrorWithStackTrace() {

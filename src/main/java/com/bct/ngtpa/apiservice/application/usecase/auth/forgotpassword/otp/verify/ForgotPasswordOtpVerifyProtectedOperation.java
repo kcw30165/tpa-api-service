@@ -95,11 +95,9 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
                                       WorkflowNextStep.NONE)));
             })
         .onErrorResume(
-            ClassifiedTechnicalFailure.class,
-            failure -> Mono.just(failed(failure.incident())))
+            ClassifiedTechnicalFailure.class, failure -> Mono.just(failed(failure.incident())))
         .onErrorResume(
-            failure ->
-                Mono.just(failed(ForgotPasswordOtpVerifyIncident.PROTECTED_OPERATION)));
+            failure -> Mono.just(failed(ForgotPasswordOtpVerifyIncident.PROTECTED_OPERATION)));
   }
 
   private Mono<ForgotPasswordOtpVerifyProtectedExecutionResult> locked(
@@ -148,7 +146,8 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
                         command.referer(),
                         command.requestId(),
                         Set.of(AuthFlowStatus.OTP_SENT),
-                        true, false)),
+                        true,
+                        false)),
             ForgotPasswordOtpVerifyIncident.CONTEXT_LOAD)
         .flatMap(loaded -> validateLoadedContext(command, loaded));
   }
@@ -274,7 +273,9 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
                       reloaded.csrfTokenHash(),
                       null,
                       new AuthFlowSessionData(
-                          updatedContext.contactChannel(), updatedContext.maskedDestination(), attrs),
+                          updatedContext.contactChannel(),
+                          updatedContext.maskedDestination(),
+                          attrs),
                       reloaded.createdAt(),
                       now,
                       reloaded.expiresAt());
@@ -294,8 +295,7 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
             });
   }
 
-  private <T> Mono<T> stage(
-      Supplier<Mono<T>> operation, ForgotPasswordOtpVerifyIncident incident) {
+  private <T> Mono<T> stage(Supplier<Mono<T>> operation, ForgotPasswordOtpVerifyIncident incident) {
     return Mono.defer(operation)
         .onErrorMap(
             failure ->
@@ -398,5 +398,4 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
       return incident;
     }
   }
-
 }

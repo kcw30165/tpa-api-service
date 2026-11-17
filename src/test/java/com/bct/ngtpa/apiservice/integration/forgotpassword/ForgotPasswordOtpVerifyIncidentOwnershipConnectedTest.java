@@ -146,7 +146,8 @@ class ForgotPasswordOtpVerifyIncidentOwnershipConnectedTest {
         .allSatisfy(
             event -> {
               assertThat(event.getFormattedMessage())
-                  .doesNotContain("otp-secret", "member-secret", "csrf-secret", "idempotency-secret");
+                  .doesNotContain(
+                      "otp-secret", "member-secret", "csrf-secret", "idempotency-secret");
               assertThat(event.getThrowableProxy()).isNull();
             });
   }
@@ -166,7 +167,8 @@ class ForgotPasswordOtpVerifyIncidentOwnershipConnectedTest {
               appender.list.stream()
                   .filter(
                       event ->
-                          event.getLoggerName()
+                          event
+                              .getLoggerName()
                               .equals(StructuredFailureEventLogger.class.getName())))
           .isEmpty();
       if (scenario == Scenario.EXPECTED_REJECTION) {
@@ -230,7 +232,8 @@ class ForgotPasswordOtpVerifyIncidentOwnershipConnectedTest {
                       technical, ForgotPasswordOtpVerifyIncident.SESSION_READ)));
     } else if (scenario == Scenario.EXPECTED_REJECTION) {
       when(operation.execute(any()))
-          .thenReturn(Mono.just(new ForgotPasswordOtpVerifyProtectedExecutionResult(expected, null)));
+          .thenReturn(
+              Mono.just(new ForgotPasswordOtpVerifyProtectedExecutionResult(expected, null)));
       replayResponse = new HydratedIdempotentResponse(400, "application/json", "{}", Map.of());
     } else if (scenario == Scenario.COMPLETED_REPLAY) {
       outcome = IdempotencyReservationOutcome.COMPLETED_REPLAY;
@@ -272,8 +275,7 @@ class ForgotPasswordOtpVerifyIncidentOwnershipConnectedTest {
     var filter =
         new RequestLoggingWebFilter(
             new RequestLoggingProperties(),
-            new LoggingSanitizer(
-                OBJECT_MAPPER, new MaskingService(new MaskingProperties())),
+            new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(new MaskingProperties())),
             OBJECT_MAPPER);
 
     StepVerifier.create(
@@ -330,8 +332,7 @@ class ForgotPasswordOtpVerifyIncidentOwnershipConnectedTest {
 
   private static FailureEventPort failureEventLogger() {
     return new StructuredFailureEventLogger(
-        new LoggingSanitizer(
-            OBJECT_MAPPER, new MaskingService(new MaskingProperties())));
+        new LoggingSanitizer(OBJECT_MAPPER, new MaskingService(new MaskingProperties())));
   }
 
   private List<ILoggingEvent> requestEvents(String eventName) {

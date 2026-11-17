@@ -102,7 +102,8 @@ public final class ForgotPasswordCompleteReplayCodec {
           WorkflowNextStep.valueOf(nextStep),
           clearAuthFlowCookie,
           clearXsrfCookie,
-          errors.stream().map(ErrorWire::toError).toList(), null);
+          errors.stream().map(ErrorWire::toError).toList(),
+          null);
     }
   }
 

@@ -31,14 +31,16 @@ public final class DefaultForgotPasswordDetailsOtpProtectedReplayResolver
                           result.maskedDestination(),
                           result.expiresInSeconds(),
                           result.retryAfterSeconds(),
-                          List.of(), false);
+                          List.of(),
+                          false);
                   case EXPIRED ->
                       new ForgotPasswordDetailsOtpResult(
                           ForgotPasswordDetailsOtpResult.Status.EXPIRED,
                           null,
                           0,
                           0,
-                          List.of("PAGE"), false);
+                          List.of("PAGE"),
+                          false);
                   case SYSTEM_ERROR -> ForgotPasswordDetailsOtpResult.system();
                 });
   }

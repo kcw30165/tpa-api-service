@@ -6,8 +6,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswor
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.application.port.in.ResendForgotPasswordOtpUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendPublicationReceipt;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpStatus;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -54,8 +54,15 @@ class AuthForgotPasswordOtpResendControllerTest {
         objectMapper.writeValueAsString(
             controller
                 .resend(
-                    null, "csrf", null, null, "req", "en", "idem",
-                    new MockServerHttpResponse(), exchange())
+                    null,
+                    "csrf",
+                    null,
+                    null,
+                    "req",
+                    "en",
+                    "idem",
+                    new MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json).contains("err.system.unavailable");
@@ -71,8 +78,15 @@ class AuthForgotPasswordOtpResendControllerTest {
         objectMapper.writeValueAsString(
             controller
                 .resend(
-                    "afs", null, null, null, "req", "en", "idem",
-                    new MockServerHttpResponse(), exchange())
+                    "afs",
+                    null,
+                    null,
+                    null,
+                    "req",
+                    "en",
+                    "idem",
+                    new MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json).contains("err.security.authentication.required");
@@ -88,8 +102,15 @@ class AuthForgotPasswordOtpResendControllerTest {
         objectMapper.writeValueAsString(
             controller
                 .resend(
-                    "afs", "csrf", null, null, "req", "en", null,
-                    new MockServerHttpResponse(), exchange())
+                    "afs",
+                    "csrf",
+                    null,
+                    null,
+                    "req",
+                    "en",
+                    null,
+                    new MockServerHttpResponse(),
+                    exchange())
                 .block());
 
     assertThat(json).contains("err.workflow.idempotency.missing");
@@ -179,8 +200,15 @@ class AuthForgotPasswordOtpResendControllerTest {
     var response =
         controller
             .resend(
-                "afs", "csrf", null, null, "req", "en", "idem",
-                new MockServerHttpResponse(), exchange)
+                "afs",
+                "csrf",
+                null,
+                null,
+                "req",
+                "en",
+                "idem",
+                new MockServerHttpResponse(),
+                exchange)
             .block();
 
     assertThat(response.getStatusCode().value()).isEqualTo(503);
@@ -188,8 +216,8 @@ class AuthForgotPasswordOtpResendControllerTest {
         .singleElement()
         .satisfies(error -> assertThat(error.code()).isEqualTo("err.system.unavailable"));
     assertThat(
-            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
-                .isOwned(exchange))
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(
+                exchange))
         .isTrue();
   }
 
@@ -205,14 +233,21 @@ class AuthForgotPasswordOtpResendControllerTest {
     var response =
         controller(useCase)
             .resend(
-                "afs", "csrf", null, null, "req", "en", "idem",
-                new MockServerHttpResponse(), exchange)
+                "afs",
+                "csrf",
+                null,
+                null,
+                "req",
+                "en",
+                "idem",
+                new MockServerHttpResponse(),
+                exchange)
             .block();
 
     assertThat(response.getStatusCode().value()).isEqualTo(200);
     assertThat(
-            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
-                .isOwned(exchange))
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(
+                exchange))
         .isFalse();
   }
 
@@ -220,22 +255,28 @@ class AuthForgotPasswordOtpResendControllerTest {
   void responseMappingFailureDoesNotMarkPublishedOwnership() {
     var useCase = new RecordingUseCase();
     useCase.result =
-        new ResendForgotPasswordOtpResult(
-                null, null, null, null, null, null, null)
+        new ResendForgotPasswordOtpResult(null, null, null, null, null, null, null)
             .withPublicationReceipt(new ForgotPasswordOtpResendPublicationReceipt(true));
     var exchange = exchange();
 
     var response =
         controller(useCase)
             .resend(
-                "afs", "csrf", null, null, "req", "en", "idem",
-                new MockServerHttpResponse(), exchange)
+                "afs",
+                "csrf",
+                null,
+                null,
+                "req",
+                "en",
+                "idem",
+                new MockServerHttpResponse(),
+                exchange)
             .block();
 
     assertThat(response.getStatusCode().value()).isEqualTo(503);
     assertThat(
-            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation
-                .isOwned(exchange))
+            com.bct.ngtpa.apiservice.adapter.in.web.filter.TerminalIncidentHttpObservation.isOwned(
+                exchange))
         .isFalse();
   }
 

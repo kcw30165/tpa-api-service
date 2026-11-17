@@ -19,11 +19,6 @@ public record CompleteForgotPasswordResult(
   public CompleteForgotPasswordResult withPublicationReceipt(
       ForgotPasswordCompletePublicationReceipt receipt) {
     return new CompleteForgotPasswordResult(
-        status,
-        nextStep,
-        clearAuthFlowCookie,
-        clearXsrfCookie,
-        errors,
-        receipt);
+        status, nextStep, clearAuthFlowCookie, clearXsrfCookie, errors, receipt);
   }
 }

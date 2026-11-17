@@ -16,14 +16,16 @@ class ForgotPasswordCompleteProtectedOperationFoundationTest {
             WorkflowNextStep.RETURN_TO_LOGIN,
             true,
             true,
-            List.of(), null);
+            List.of(),
+            null);
     var rejection =
         new CompleteForgotPasswordResult(
             CompleteForgotPasswordStatus.BUSINESS_REJECTED,
             WorkflowNextStep.PASSWORD_SETUP,
             false,
             false,
-            List.of(), null);
+            List.of(),
+            null);
 
     assertThat(ForgotPasswordCompleteProtectedExecutionResult.terminal(success).outcome())
         .isEqualTo(ForgotPasswordCompleteProtectedExecutionResult.Outcome.TERMINAL);
@@ -39,14 +41,16 @@ class ForgotPasswordCompleteProtectedOperationFoundationTest {
             WorkflowNextStep.NONE,
             false,
             false,
-            List.of(), null);
+            List.of(),
+            null);
     var failed =
         new CompleteForgotPasswordResult(
             CompleteForgotPasswordStatus.SYSTEM_FAILED,
             WorkflowNextStep.PASSWORD_SETUP,
             false,
             false,
-            List.of(), null);
+            List.of(),
+            null);
 
     assertThatThrownBy(() -> ForgotPasswordCompleteProtectedExecutionResult.terminal(unknown))
         .isInstanceOf(IllegalArgumentException.class);

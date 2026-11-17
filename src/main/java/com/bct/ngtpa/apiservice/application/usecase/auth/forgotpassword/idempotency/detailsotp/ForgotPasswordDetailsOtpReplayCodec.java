@@ -94,7 +94,8 @@ public final class ForgotPasswordDetailsOtpReplayCodec {
             null,
             0,
             0,
-            payload.targets() == null ? List.of() : List.copyOf(payload.targets()), false);
+            payload.targets() == null ? List.of() : List.copyOf(payload.targets()),
+            false);
     validateCapturable(result);
     return Mono.just(result);
   }

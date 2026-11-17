@@ -6,11 +6,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
-import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
-import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimIncidentOwnership;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimResubmissionPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.ForgotPasswordTrpSearchMemberDataItem;
@@ -76,7 +76,9 @@ class ApimForgotPasswordDetailsLookupAdapterTest {
   void detailsLookupUsesTerminalCallerWithoutChangingItsRoutingContract() {
     givenExecutorReturns(envelopeWith(null, List.of()));
     StepVerifier.create(newAdapter().verify(command()))
-        .assertNext(result -> assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.NOT_FOUND))
+        .assertNext(
+            result ->
+                assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.NOT_FOUND))
         .verifyComplete();
 
     ArgumentCaptor<ApimExchangeRequest> requestCaptor =
@@ -115,23 +117,17 @@ class ApimForgotPasswordDetailsLookupAdapterTest {
     assertThat(
             adapter.classifyFailure(
                 new ApimException(
-                    HttpStatus.BAD_GATEWAY,
-                    ErrorCodes.APIM_RESPONSE_INVALID,
-                    "response rejected")))
+                    HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID, "response rejected")))
         .isEqualTo(FailureOrigin.DOWNSTREAM_INVALID_RESPONSE);
     assertThat(
             adapter.classifyFailure(
                 new ApimException(
-                    HttpStatus.BAD_GATEWAY,
-                    ErrorCodes.APIM_UPSTREAM_FAILURE,
-                    "upstream rejected")))
+                    HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "upstream rejected")))
         .isEqualTo(FailureOrigin.DOWNSTREAM_TRANSPORT);
     assertThat(
             adapter.isUnavailableFailure(
                 new ApimException(
-                    HttpStatus.BAD_GATEWAY,
-                    ErrorCodes.APIM_UPSTREAM_FAILURE,
-                    "upstream rejected")))
+                    HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "upstream rejected")))
         .isFalse();
     assertThat(
             adapter.isUnavailableFailure(
@@ -218,8 +214,7 @@ class ApimForgotPasswordDetailsLookupAdapterTest {
     StepVerifier.create(adapter.verify(command()))
         .expectErrorSatisfies(
             failure -> {
-              assertThat(failure)
-                  .isInstanceOf(ForgotPasswordDetailsDownstreamException.class);
+              assertThat(failure).isInstanceOf(ForgotPasswordDetailsDownstreamException.class);
               assertThat(((ForgotPasswordDetailsDownstreamException) failure).reason())
                   .isEqualTo(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
               assertThat(adapter.classifyFailure(failure))

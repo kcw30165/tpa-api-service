@@ -101,7 +101,6 @@ class ForgotPasswordUnderLockDetailsVerifierTest {
                     lock, session, context, "04/07/1978", "HULLCS.QGLYBCY@UC.KJI", null, "req-123"))
         .expectNextCount(1)
         .verifyComplete();
-    assertThat(logAppender.list)
-        .noneMatch(event -> event.getLevel().isGreaterOrEqual(Level.ERROR));
+    assertThat(logAppender.list).noneMatch(event -> event.getLevel().isGreaterOrEqual(Level.ERROR));
   }
 }

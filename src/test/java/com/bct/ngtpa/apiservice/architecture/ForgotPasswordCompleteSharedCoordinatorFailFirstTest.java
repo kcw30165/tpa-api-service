@@ -12,7 +12,8 @@ class ForgotPasswordCompleteSharedCoordinatorFailFirstTest {
       sourcePath(
           "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/complete/IdempotentCompleteForgotPasswordService.java");
   private static final Path SHARED_EXECUTOR =
-      sourcePath("src/main/java/com/bct/ngtpa/apiservice/application/idempotency/DefaultIdempotencyExecutor.java");
+      sourcePath(
+          "src/main/java/com/bct/ngtpa/apiservice/application/idempotency/DefaultIdempotencyExecutor.java");
 
   @Test
   void requiresSharedCoordinatorImplementation() {
@@ -48,10 +49,7 @@ class ForgotPasswordCompleteSharedCoordinatorFailFirstTest {
             "public Mono<CompleteForgotPasswordResult> complete(",
             "private Mono<HydratedIdempotentResponse> executeAcquired(");
     String executionSetup =
-        section(
-            source,
-            "var execution =",
-            "return Mono.defer(() -> executor.execute(execution))");
+        section(source, "var execution =", "return Mono.defer(() -> executor.execute(execution))");
     String acquired =
         section(
             source,
@@ -89,22 +87,16 @@ class ForgotPasswordCompleteSharedCoordinatorFailFirstTest {
             "private Mono<HydratedIdempotentResponse> classifyProtectedFailureThenError(",
             "private <T> Mono<T> markUnknownThenError(");
     String unknownPersistence =
-        section(
-            executorSource,
-            "private <T> Mono<T> markUnknownThenError(",
-            "\n}");
+        section(executorSource, "private <T> Mono<T> markUnknownThenError(", "\n}");
     String hydrateCompleted =
         section(
             executorSource,
             "private Mono<IdempotentExecutionResult> hydrateCompleted(",
             "private Mono<IdempotentExecutionResult> executeOwned(");
-    String unknownReplay =
-        section(executorRoute, "case DUPLICATE_IN_PROGRESS,", "};");
+    String unknownReplay = section(executorRoute, "case DUPLICATE_IN_PROGRESS,", "};");
 
     assertThat(compact(publicComplete))
-        .contains(
-            "()->executeAcquired(",
-            "returnMono.defer(()->executor.execute(execution))");
+        .contains("()->executeAcquired(", "returnMono.defer(()->executor.execute(execution))");
     assertThat(count(publicComplete, "executor.execute(execution)")).isEqualTo(1);
     assertThat(publicComplete).doesNotContain("operation.execute(");
     assertThat(compact(executionSetup))
@@ -149,9 +141,7 @@ class ForgotPasswordCompleteSharedCoordinatorFailFirstTest {
             "classification=command.failureClassifier().classify(failure);",
             "classification==null||classification==IdempotencyFailureClassification.POSSIBLE_SIDE_EFFECT){returnmarkUnknownThenError(command,owner,failure);}");
     assertThat(compact(unknownPersistence))
-        .contains(
-            "persistence.markUnknown(",
-            "newIdempotencyCommands.MarkUnknown(");
+        .contains("persistence.markUnknown(", "newIdempotencyCommands.MarkUnknown(");
     assertThat(compact(hydrateCompleted))
         .contains(".hydrate(snapshot)")
         .doesNotContain("executeOwned(", "executeProtected(", "operation.execute(");
@@ -161,8 +151,7 @@ class ForgotPasswordCompleteSharedCoordinatorFailFirstTest {
         .doesNotContain("executeOwned(", "executeProtected(", "operation.execute(");
     assertThat(compact(executorCapture))
         .contains(
-            "Mono.defer(()->command.responseCapture().capture(response))",
-            "persistence.complete(");
+            "Mono.defer(()->command.responseCapture().capture(response))", "persistence.complete(");
   }
 
   @Test

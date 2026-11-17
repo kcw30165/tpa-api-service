@@ -3,8 +3,8 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.cancel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -35,8 +35,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -295,12 +295,17 @@ class CancelForgotPasswordServiceTest {
     var service = service(f);
     var command =
         new CancelForgotPasswordCommand(
-            SID, "csrf-safe", "https://portal.test", "https://portal.test/forgot-password", "req-1");
+            SID,
+            "csrf-safe",
+            "https://portal.test",
+            "https://portal.test/forgot-password",
+            "req-1");
 
     StepVerifier.create(
             Mono.defer(() -> service.cancel(command))
                 .concatWith(Mono.defer(() -> service.cancel(command))))
-        .assertNext(result -> assertThat(result.status()).isEqualTo(CancelForgotPasswordStatus.CANCELLED))
+        .assertNext(
+            result -> assertThat(result.status()).isEqualTo(CancelForgotPasswordStatus.CANCELLED))
         .assertNext(
             result ->
                 assertThat(result.status()).isEqualTo(CancelForgotPasswordStatus.ALREADY_CANCELLED))
@@ -326,7 +331,11 @@ class CancelForgotPasswordServiceTest {
 
     var command =
         new CancelForgotPasswordCommand(
-            SID, "csrf-safe", "https://portal.test", "https://portal.test/forgot-password", "req cancel");
+            SID,
+            "csrf-safe",
+            "https://portal.test",
+            "https://portal.test/forgot-password",
+            "req cancel");
     StepVerifier.create(service(f).cancel(command))
         .assertNext(
             result -> {

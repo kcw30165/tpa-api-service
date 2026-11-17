@@ -8,9 +8,9 @@ import com.bct.ngtpa.apiservice.application.dto.message.*;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
+import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.port.in.EvaluateForgotPasswordOtpResendUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;
-import com.bct.ngtpa.apiservice.application.observability.RequestIdLogSanitizer;
 import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.*;
@@ -108,7 +108,13 @@ public final class ForgotPasswordOtpResendProtectedOperation {
             return Mono.just(
                 execution(
                     new ResendForgotPasswordOtpResult(
-                        ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null, null),
+                        ResendForgotPasswordOtpStatus.SYSTEM_FAILED,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null),
                     null,
                     incidents));
           }
@@ -126,7 +132,8 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                                       null,
                                       null,
                                       null,
-                                      null, null),
+                                      null,
+                                      null),
                                   null,
                                   incidents)))
               .onErrorResume(
@@ -140,7 +147,8 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                                 null,
                                 null,
                                 null,
-                                null, null),
+                                null,
+                                null),
                             null,
                             incidents));
                   });
@@ -191,8 +199,10 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                                 null,
                                 null,
                                 null,
-                                null, null),
-                            null, List.of()));
+                                null,
+                                null),
+                            null,
+                            List.of()));
                   }
                   AuthFlowSessionSnapshot snapshot = optional.get();
                   return validateEligibility(command, handle, snapshot, incidents)
@@ -201,16 +211,16 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                             if (validated.status()
                                 != ForgotPasswordOtpResendEligibilityStatus.ELIGIBLE) {
                               return Mono.just(
-                                execution(
+                                  execution(
                                       mapEligibility(
                                           validated,
                                           validated.maskedDestination(),
                                           validated.expiresInSeconds()),
-                                    null,
-                                    incidents));
+                                      null,
+                                      incidents));
                             }
                             return createCandidateAndDeliver(
-                              command, pendingRef, snapshot, validated, incidents);
+                                command, pendingRef, snapshot, validated, incidents);
                           });
                 })
             .onErrorResume(
@@ -219,16 +229,17 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                     incidents.recordFailure(command, cause);
                   }
                   return Mono.just(
-                    execution(
-                        new ResendForgotPasswordOtpResult(
-                            ResendForgotPasswordOtpStatus.SYSTEM_FAILED,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null, null),
-                        null,
-                        incidents));
+                      execution(
+                          new ResendForgotPasswordOtpResult(
+                              ResendForgotPasswordOtpStatus.SYSTEM_FAILED,
+                              null,
+                              null,
+                              null,
+                              null,
+                              null,
+                              null),
+                          null,
+                          incidents));
                 });
     return Mono.usingWhen(
         Mono.just(handle),
@@ -343,8 +354,8 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                   .doOnNext(
                       foundationResult -> {
                         if (foundationResult.status()
-                                == ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED) {
-                              incidents.record(ForgotPasswordOtpResendIncident.FOUNDATION);
+                            == ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED) {
+                          incidents.record(ForgotPasswordOtpResendIncident.FOUNDATION);
                         }
                       })
                   .onErrorResume(
@@ -414,29 +425,28 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                         now,
                         incidents)
                     .flatMap(
-                        stagedSnapshot ->
-                            {
-                              incidents.stage(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY);
-                              return delivery
-                                  .deliver(
-                                      message(
+                        stagedSnapshot -> {
+                          incidents.stage(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY);
+                          return delivery
+                              .deliver(
+                                  message(
+                                      command,
+                                      validated.context,
+                                      candidate.rawCode(),
+                                      deliveryChannel,
+                                      definition))
+                              .flatMap(
+                                  deliveryResult ->
+                                      transition(
                                           command,
-                                          validated.context,
-                                          candidate.rawCode(),
-                                          deliveryChannel,
-                                          definition))
-                                  .flatMap(
-                                      deliveryResult ->
-                                          transition(
-                                              command,
-                                              stagedSnapshot,
-                                              validated,
-                                              candidate,
-                                              pendingRef,
-                                              deliveryResult,
-                                              now,
-                                              incidents));
-                            }));
+                                          stagedSnapshot,
+                                          validated,
+                                          candidate,
+                                          pendingRef,
+                                          deliveryResult,
+                                          now,
+                                          incidents));
+                        }));
   }
 
   private Mono<AuthFlowSessionSnapshot> stagePending(
@@ -453,7 +463,13 @@ public final class ForgotPasswordOtpResendProtectedOperation {
     attrs.put(PENDING_CANDIDATE, candidateId);
     attrs.put(PENDING_PREVIOUS, authoritative.otpChallengeId());
     return mutateSession(
-        command, snapshot, snapshot.session().activeOtpChallengeId(), context, attrs, now, incidents);
+        command,
+        snapshot,
+        snapshot.session().activeOtpChallengeId(),
+        context,
+        attrs,
+        now,
+        incidents);
   }
 
   private Mono<ForgotPasswordOtpResendProtectedExecutionResult> transition(
@@ -518,7 +534,8 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                                 candidate.expiresInSeconds(),
                                 otpPolicy.resendCooldownSeconds(),
                                 remainingResendAttempts(validated.successfulResendCount + 1),
-                                null, null),
+                                null,
+                                null),
                             new ProtectedReplayReference(pendingRef),
                             incidents)));
   }
@@ -540,7 +557,8 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                     null,
                     null,
                     null,
-                    null, null),
+                    null,
+                    null),
                 null,
                 incidents));
   }
@@ -560,9 +578,7 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                 context.withPhase(ForgotPasswordProtectedPhase.OTP_DELIVERY_UNKNOWN),
                 now,
                 incidents))
-        .then(
-            Mono.error(
-                new DeliveryOutcomeUnknownException()));
+        .then(Mono.error(new DeliveryOutcomeUnknownException()));
   }
 
   private Mono<AuthFlowSessionSnapshot> clearPending(
@@ -755,7 +771,8 @@ public final class ForgotPasswordOtpResendProtectedOperation {
               expiresInSeconds,
               null,
               remainingResendAttempts(validated.successfulResendCount),
-              validated.retryAfterSeconds(), null);
+              validated.retryAfterSeconds(),
+              null);
       case RESEND_LIMIT_REACHED ->
           new ResendForgotPasswordOtpResult(
               ResendForgotPasswordOtpStatus.RESEND_LIMIT_REACHED,
@@ -763,13 +780,26 @@ public final class ForgotPasswordOtpResendProtectedOperation {
               expiresInSeconds,
               null,
               0,
-              null, null);
+              null,
+              null);
       case SESSION_INVALID, CHALLENGE_BINDING_INVALID, INVALID_PHASE, NO_ACTIVE_CHALLENGE ->
           validated.securityRejected()
               ? new ResendForgotPasswordOtpResult(
-                  ResendForgotPasswordOtpStatus.SECURITY_REJECTED, null, null, null, null, null, null)
+                  ResendForgotPasswordOtpStatus.SECURITY_REJECTED,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null)
               : new ResendForgotPasswordOtpResult(
-                  ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID, null, null, null, null, null, null);
+                  ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null);
       case UNKNOWN_OUTCOME_BLOCKED ->
           new ResendForgotPasswordOtpResult(
               ResendForgotPasswordOtpStatus.UNKNOWN_OUTCOME,
@@ -777,7 +807,8 @@ public final class ForgotPasswordOtpResendProtectedOperation {
               expiresInSeconds,
               null,
               remainingResendAttempts(validated.successfulResendCount),
-              null, null);
+              null,
+              null);
       default ->
           new ResendForgotPasswordOtpResult(
               ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null, null);

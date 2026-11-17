@@ -185,16 +185,21 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
             });
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+                .filter(
+                    event ->
+                        event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
                 .map(ILoggingEvent::getLevel))
         .containsExactly(Level.WARN);
     ILoggingEvent completedRequest =
         appender.list.stream()
-            .filter(event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
+            .filter(
+                event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
             .findFirst()
             .orElseThrow();
     assertThat(completedRequest.getLevel()).isEqualTo(Level.WARN);
-    assertThat(appender.list.stream().filter(event -> event.getLoggerName().equals(ApiExceptionHandler.class.getName())))
+    assertThat(
+            appender.list.stream()
+                .filter(event -> event.getLoggerName().equals(ApiExceptionHandler.class.getName())))
         .isEmpty();
     assertDiagnosticsArePrivate();
   }
@@ -207,21 +212,28 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
     assertThat(responseBody(run).status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
     assertThat(responseBody(run).errors())
         .singleElement()
-        .satisfies(error -> assertThat(error.code()).isEqualTo("err.forgot-password.member.notFound"));
+        .satisfies(
+            error -> assertThat(error.code()).isEqualTo("err.forgot-password.member.notFound"));
     assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isFalse();
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+                .filter(
+                    event ->
+                        event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
                 .filter(event -> event.getLevel() == Level.ERROR))
         .isEmpty();
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
+                .filter(
+                    event ->
+                        event.getLoggerName().equals(ApimExchangeOutcomeLogger.class.getName()))
                 .map(ILoggingEvent::getLevel))
         .containsExactly(Level.WARN);
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
+                .filter(
+                    event ->
+                        event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
                 .map(ILoggingEvent::getLevel))
         .containsExactly(Level.WARN);
     assertDiagnosticsArePrivate();
@@ -242,8 +254,7 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
                 .filter(event -> event.getLevel() == Level.ERROR)
                 .filter(
                     event ->
-                        event.getLoggerName()
-                            .equals(StructuredFailureEventLogger.class.getName())))
+                        event.getLoggerName().equals(StructuredFailureEventLogger.class.getName())))
         .hasSize(1);
     assertThat(
             appender.list.stream()
@@ -252,7 +263,9 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
         .containsExactly(Level.WARN);
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
+                .filter(
+                    event ->
+                        event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
                 .map(ILoggingEvent::getLevel))
         .containsExactly(Level.WARN);
     assertDiagnosticsArePrivate();
@@ -268,17 +281,16 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
             appender.list.stream()
                 .filter(
                     event ->
-                        event.getLoggerName()
-                            .equals(StructuredFailureEventLogger.class.getName()))
+                        event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
                 .filter(event -> event.getLevel() == Level.ERROR))
         .hasSize(1);
     assertThat(
             appender.list.stream()
                 .filter(
+                    event -> event.getLoggerName().equals(RequestLoggingWebFilter.class.getName()))
+                .filter(
                     event ->
-                        event.getLoggerName()
-                            .equals(RequestLoggingWebFilter.class.getName()))
-                .filter(event -> event.getFormattedMessage().contains("\"event\":\"http.request.error\""))
+                        event.getFormattedMessage().contains("\"event\":\"http.request.error\""))
                 .map(ILoggingEvent::getLevel))
         .containsExactly(Level.ERROR);
     assertDiagnosticsArePrivate();
@@ -293,7 +305,9 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
     assertThat(TerminalIncidentHttpObservation.isOwned(run.exchange())).isFalse();
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
+                .filter(
+                    event ->
+                        event.getLoggerName().equals(StructuredFailureEventLogger.class.getName()))
                 .filter(event -> event.getLevel() == Level.ERROR))
         .isEmpty();
     assertThat(
@@ -303,7 +317,9 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
         .containsExactly(Level.WARN);
     assertThat(
             appender.list.stream()
-                .filter(event -> event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
+                .filter(
+                    event ->
+                        event.getFormattedMessage().contains("\"event\":\"http.request.failed\""))
                 .map(ILoggingEvent::getLevel))
         .containsExactly(Level.ERROR);
     assertDiagnosticsArePrivate();
@@ -351,32 +367,20 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
         .thenAnswer(invocation -> invocation.getArgument(1));
     if (scenario == Scenario.TRANSPORT_FAILURE
         || scenario == Scenario.RESPONSE_CONSTRUCTION_FAILURE) {
-      when(apimFacade.postSuccessfulExchange(
-              anyString(),
-              any(),
-              any(),
-              any(),
-              any(),
-              any(),
-              any()))
+      when(apimFacade.postSuccessfulExchange(anyString(), any(), any(), any(), any(), any(), any()))
           .thenReturn(Mono.error(new ConnectException("APIM-THROWABLE-SECRET")));
     } else if (scenario == Scenario.MEMBER_MISMATCH) {
-      when(apimFacade.postSuccessfulExchange(
-              anyString(),
-              any(),
-              any(),
-              any(),
-              any(),
-              any(),
-              any()))
+      when(apimFacade.postSuccessfulExchange(anyString(), any(), any(), any(), any(), any(), any()))
           .thenReturn(
-              Mono.just(new com.bct.ngtpa.apiservice.adapter.out.apim.execution
-                  .ApimSuccessfulExchange("response", profile(), null)));
+              Mono.just(
+                  new com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimSuccessfulExchange(
+                      "response", profile(), null)));
       when(crypto.decryptResponseEnvelope(
               eq(ApimForgotPasswordDetailsLookupAdapter.API_NAME),
               eq("response"),
-              eq(com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto
-                  .ForgotPasswordTrpSearchMemberDataItem.class),
+              eq(
+                  com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto
+                      .ForgotPasswordTrpSearchMemberDataItem.class),
               isNull()))
           .thenReturn(
               new ApimResponseEnvelope<>(
@@ -407,7 +411,8 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
             new MaskingService(new MaskingProperties()),
             mock(ForgotPasswordOtpSessionBindingPort.class),
             mock(ForgotPasswordOtpCommitStatePort.class),
-            new ForgotPasswordOtpCommitRetentionPolicy(Duration.ofSeconds(60), Duration.ofMinutes(10)),
+            new ForgotPasswordOtpCommitRetentionPolicy(
+                Duration.ofSeconds(60), Duration.ofMinutes(10)),
             new ForgotPasswordDetailsOtpLeasePolicy(60, 10, 10, 3, 10000, 100, 5000, 1000),
             CLOCK,
             Duration.ofMinutes(5),
@@ -432,9 +437,7 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
     var policy = mock(ForgotPasswordIdempotencyIntegrationPolicy.class);
     when(policy.operationId(any(), any(), any())).thenReturn(mock(IdempotencyOperationId.class));
     when(policy.detailsAndOtp(any())).thenReturn(mock(IdempotencyFingerprint.class));
-    FailureEventPort failureEvents =
-        new StructuredFailureEventLogger(
-            sanitizer());
+    FailureEventPort failureEvents = new StructuredFailureEventLogger(sanitizer());
     var service =
         new IdempotentForgotPasswordDetailsOtpService(
             new InvokingIdempotencyExecutor(),
@@ -451,7 +454,8 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
                 .build());
     var response = new AtomicReference<ResponseEntity<?>>();
     var handler = exceptionHandler();
-    var filter = new RequestLoggingWebFilter(new RequestLoggingProperties(), sanitizer(), OBJECT_MAPPER);
+    var filter =
+        new RequestLoggingWebFilter(new RequestLoggingProperties(), sanitizer(), OBJECT_MAPPER);
 
     Mono<Void> filtered =
         filter.filter(
@@ -531,7 +535,8 @@ class ForgotPasswordDetailsOtpIncidentOwnershipConnectedTest {
     var mappings = new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
     return new ApiExceptionHandler(
         mappings,
-        new PublicMessageResolver((ErrorMessageResolver) (code, locale, env, trust, scheme) -> null),
+        new PublicMessageResolver(
+            (ErrorMessageResolver) (code, locale, env, trust, scheme) -> null),
         new ErrorEventLogger(sanitizer()),
         new ErrorResponseRenderer());
   }
