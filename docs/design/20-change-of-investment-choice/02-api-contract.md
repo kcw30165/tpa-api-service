@@ -185,6 +185,7 @@ allocations in request order. All sources receive the same allocation (D-22, ato
 | HTTP | status | type | code | targets | When |
 |---|---|---|---|---|---|
 | 403 | `BUSINESS_REJECTED` | as rendered by the gate | `err.password-validation.authorization.invalid` | as rendered by the gate | token missing, expired, consumed, other scope, payload mismatch (existing gate) |
+| 422 | `BUSINESS_REJECTED` | `BUSINESS` | `err.investment-choice.submission.same-source-pending` | `[]` | Progress `err.tpa.same.src.cim.exist`: a same-source instruction is pending; re-confirm password before submitting again |
 | 503 | `SYSTEM_ERROR` | `SYSTEM` | `err.investment-choice.submission.unavailable` | `[]` | downstream failure, `err-message`, unreconciled unknown outcome |
 
 ## 3. POST /api/v1/investment-choice/instructions/cancel
