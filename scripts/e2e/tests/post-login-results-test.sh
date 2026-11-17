@@ -189,12 +189,21 @@ expect_rejection pass-with-reason e2e_result_finish scenario test-pack pass_reas
 expect_rejection missing-scenario-description e2e_result_finish scenario test-pack missing_description status=PASS
 expect_rejection missing-start-description e2e_result_start scenario test-pack missing_start_description
 expect_rejection unknown-lifecycle-step e2e_result_start lifecycle - authenticate
+expect_rejection duplicate-finish-key e2e_result_finish scenario test-pack duplicate_finish \
+  description='Synthetic duplicate key' status=PASS status=PASS
+expect_rejection finish-argument-without-equals e2e_result_finish scenario test-pack malformed_finish \
+  description='Synthetic malformed argument' status=PASS bare-argument
+expect_rejection lifecycle-record-with-pack e2e_result_start lifecycle test-pack login
+expect_rejection phase-record-without-pack e2e_result_start phase - submit
+expect_rejection scenario-record-without-pack e2e_result_start scenario - packless_case 'Synthetic packless scenario'
 expect_rejection bad-identifier e2e_result_start scenario test-pack 'bad/id' 'Synthetic identifier'
 expect_rejection control-character-description e2e_result_start scenario test-pack control_description $'Synthetic\ninvalid'
 too_long_description="$(printf '%201s' '')"
 expect_rejection overlong-description e2e_result_start scenario test-pack long_description "$too_long_description"
 expect_rejection http-status-out-of-range e2e_result_finish scenario test-pack bad_http \
   description='Synthetic HTTP status' status=PASS actual_http_status=600
+expect_rejection nonnumeric-actual-http-status e2e_result_finish scenario test-pack bad_http_text \
+  description='Synthetic nonnumeric HTTP status' status=PASS actual_http_status=abc
 expect_rejection expected-http-status-out-of-range e2e_result_finish scenario test-pack bad_expected_http \
   description='Synthetic expected HTTP status' status=PASS expected_http_status=99
 expect_rejection negative-duration e2e_result_finish scenario test-pack negative_duration \
@@ -333,11 +342,34 @@ expect_seconds seconds-half-up 0.0005 1
 expect_seconds seconds-fraction 0.123456 123
 expect_seconds seconds-one 1 1000
 expect_seconds seconds-round-up 12.3456 12346
+expect_seconds half-ms-500500 0.500500 501
+expect_seconds half-ms-501500 0.501500 502
+expect_seconds half-ms-1000500 1.000500 1001
+expect_seconds half-ms-12345500 12.345500 12346
+expect_seconds half-ms-999500 0.999500 1000
+expect_seconds half-ms-59999500 59.999500 60000
+expect_seconds duration-maximum 86400.0004 86400000
+expect_seconds fraction-extra-digits 0.1234567 123
+expect_seconds leading-zero-integer 007.5 7500
+for sweep_whole in 0 1 2 59; do
+  for ((sweep_ms = 0; sweep_ms < 1000; sweep_ms++)); do
+    printf -v sweep_fraction '%03d' "$sweep_ms"
+    sweep_expected=$((sweep_whole * 1000 + sweep_ms + 1))
+    expect_seconds "half-ms-sweep-${sweep_whole}-${sweep_fraction}" \
+      "${sweep_whole}.${sweep_fraction}500" "$sweep_expected"
+  done
+done
 expect_invalid_seconds seconds-nonnumeric abc
 expect_invalid_seconds seconds-empty ''
 expect_invalid_seconds seconds-negative -1
 expect_invalid_seconds seconds-exponent 1e3
-pass_test 'seconds-to-milliseconds rounding and invalid-input cases'
+expect_invalid_seconds seconds-leading-dot .5
+expect_invalid_seconds seconds-trailing-dot 5.
+expect_invalid_seconds seconds-multiple-dots 1.2.3
+expect_invalid_seconds seconds-leading-space ' 1'
+expect_invalid_seconds seconds-trailing-space '1 '
+expect_invalid_seconds seconds-long-integer 1234567890123
+pass_test 'seconds-to-milliseconds exact decimal rounding, half-ms sweep, and invalid-input cases'
 
 INERT_JOURNAL="$tmp/inert.jsonl"
 mkdir "$tmp/inert-area"

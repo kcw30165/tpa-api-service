@@ -468,23 +468,26 @@ e2e_result_finish() (
 
 e2e_result_seconds_to_ms() (
   local seconds="${1-}"
-  local normalized integer_part fractional_part result
+  local integer_part fractional_part fractional_milliseconds rounding_digit result
 
   [[ $# -eq 1 ]] || return 1
   [[ "$seconds" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
   integer_part="${seconds%%.*}"
+  [[ ${#integer_part} -le 12 ]] || return 1
   fractional_part=''
   if [[ "$seconds" == *.* ]]; then
-    fractional_part=".${seconds#*.}"
+    fractional_part="${seconds#*.}"
   fi
   while [[ ${#integer_part} -gt 1 && "${integer_part:0:1}" == 0 ]]; do
     integer_part="${integer_part:1}"
   done
-  normalized="${integer_part}${fractional_part}"
-  if ! result="$(jq -nr --arg seconds "$normalized" \
-    '($seconds | tonumber) * 1000 + 0.5 | floor' 2>/dev/null)"; then
-    return 1
+  fractional_part="${fractional_part}0000"
+  fractional_part="${fractional_part:0:4}"
+  fractional_milliseconds="${fractional_part:0:3}"
+  rounding_digit="${fractional_part:3:1}"
+  result=$((10#$integer_part * 1000 + 10#$fractional_milliseconds))
+  if (( 10#$rounding_digit >= 5 )); then
+    result=$((result + 1))
   fi
-  [[ "$result" =~ ^[0-9]+$ ]] || return 1
   printf '%s\n' "$result"
 )
