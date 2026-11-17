@@ -38,12 +38,17 @@ resolve_vesting_scale_absent_fields() {
 
 resolve_feature_packs() {
   local configured="${1:-}" feature_name feature_path
+  local IFS=$' \t,'
   local -A seen=()
   local -a names=()
   [[ -n "${configured//[[:space:]]/}" ]] || {
     printf 'ERROR E2E_FEATURE_PACKS must not be empty\n' >&2
     return 1
   }
+  if [[ "$configured" =~ ^[[:blank:]]*,|,[[:blank:]]*,|,[[:blank:]]*$ ]]; then
+    printf 'ERROR E2E_FEATURE_PACKS contains an empty element\n' >&2
+    return 1
+  fi
   read -r -a names <<<"$configured"
   [[ "${#names[@]}" -gt 0 ]] || {
     printf 'ERROR E2E_FEATURE_PACKS must not be empty\n' >&2
