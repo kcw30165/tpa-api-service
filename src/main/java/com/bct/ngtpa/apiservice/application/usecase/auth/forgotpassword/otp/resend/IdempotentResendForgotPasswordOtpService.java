@@ -80,7 +80,7 @@ public final class IdempotentResendForgotPasswordOtpService
                   cause -> {
                     if (cause != reportedOperationFailure.get()) {
                       publish(command, ForgotPasswordOtpResendIncident.IDEMPOTENCY, 503);
-                      publication.record(true);
+                      publication.markPublished(true);
                     }
                     return Mono.just(
                         withReceipt(
@@ -97,7 +97,7 @@ public final class IdempotentResendForgotPasswordOtpService
         .onErrorResume(
             cause -> {
               publish(command, ForgotPasswordOtpResendIncident.PROTECTED_OPERATION, 503);
-              publication.record(true);
+              publication.markPublished(true);
               RuntimeException signal = new ReportedOperationFailureException();
               reportedOperationFailure.set(signal);
               return Mono.error(signal);
@@ -106,7 +106,7 @@ public final class IdempotentResendForgotPasswordOtpService
             execution -> {
               for (ForgotPasswordOtpResendIncident incident : execution.incidents()) {
                 publish(command, incident, publicHttpStatus(execution.result().status()));
-                publication.record(incident.terminal());
+                publication.markPublished(incident.terminal());
               }
               if (execution.result().status() == ResendForgotPasswordOtpStatus.SYSTEM_FAILED) {
                 RuntimeException signal = new ReportedOperationFailureException();
@@ -180,7 +180,7 @@ public final class IdempotentResendForgotPasswordOtpService
     private final AtomicBoolean published = new AtomicBoolean();
     private final AtomicBoolean terminal = new AtomicBoolean();
 
-    void record(boolean terminalFailure) {
+    void markPublished(boolean terminalFailure) {
       published.set(true);
       if (terminalFailure) {
         terminal.set(true);

@@ -271,6 +271,15 @@ public final class ForgotPasswordOtpResendProtectedOperation {
       return Mono.just(
           ValidatedState.invalid(ForgotPasswordOtpResendEligibilityStatus.SESSION_INVALID, true));
     }
+    return validateContextAndChallenge(command, handle, session, now, incidents);
+  }
+
+  private Mono<ValidatedState> validateContextAndChallenge(
+      ResendForgotPasswordOtpCommand command,
+      SessionLockHandle handle,
+      AuthFlowSession session,
+      Instant now,
+      IncidentCollector incidents) {
     ForgotPasswordAuthFlowContext context;
     try {
       incidents.stage(ForgotPasswordOtpResendIncident.CONTEXT_UNPROTECT);
@@ -301,6 +310,16 @@ public final class ForgotPasswordOtpResendProtectedOperation {
               context.maskedDestination(),
               null));
     }
+    return validateChallenge(command, handle, session, context, now, incidents);
+  }
+
+  private Mono<ValidatedState> validateChallenge(
+      ResendForgotPasswordOtpCommand command,
+      SessionLockHandle handle,
+      AuthFlowSession session,
+      ForgotPasswordAuthFlowContext context,
+      Instant now,
+      IncidentCollector incidents) {
     incidents.stage(ForgotPasswordOtpResendIncident.CHALLENGE_READ);
     return challengeState
         .findById(session.activeOtpChallengeId())
@@ -314,70 +333,79 @@ public final class ForgotPasswordOtpResendProtectedOperation {
                         context.maskedDestination(),
                         null));
               }
-              OtpChallenge authoritative = optionalChallenge.get();
-              if (authoritative.scenario() != OtpScenario.FORGOT_PASSWORD
-                  || !Objects.equals(
-                      authoritative.workflowRef(), session.authFlowSessionId().value())
-                  || !Objects.equals(
-                      authoritative.destinationHash(), sha256(context.protectedDestination()))) {
-                return Mono.just(
-                    ValidatedState.invalid(
-                        ForgotPasswordOtpResendEligibilityStatus.CHALLENGE_BINDING_INVALID,
-                        false,
-                        context.maskedDestination(),
-                        secondsUntil(now, authoritative.expiresAt())));
-              }
-              int successfulResendCount =
-                  readCount(command, session.data().attributes(), incidents);
-              incidents.stage(ForgotPasswordOtpResendIncident.FOUNDATION);
-              return foundation
-                  .evaluate(
-                      new ForgotPasswordOtpResendCommand(
-                          handle,
-                          session,
-                          authoritative,
-                          context.phase(),
-                          successfulResendCount,
-                          command.idempotencyKey(),
-                          now))
-                  .map(
-                      foundationResult ->
-                          new ValidatedState(
-                              foundationResult.status(),
-                              context,
-                              authoritative,
-                              successfulResendCount,
-                              foundationResult.retryAfterSeconds(),
-                              context.maskedDestination(),
-                              secondsUntil(now, authoritative.expiresAt()),
-                              false))
-                  .doOnNext(
-                      foundationResult -> {
-                        if (foundationResult.status()
-                            == ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED) {
-                          incidents.record(ForgotPasswordOtpResendIncident.FOUNDATION);
-                        }
-                      })
-                  .onErrorResume(
-                      cause -> {
-                        incidents.recordFailure(command, cause);
-                        return Mono.just(
-                            new ValidatedState(
-                                ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED,
-                                context,
-                                authoritative,
-                                successfulResendCount,
-                                null,
-                                context.maskedDestination(),
-                                secondsUntil(now, authoritative.expiresAt()),
-                                false));
-                      });
+              return validateAuthoritativeChallenge(
+                  command, handle, session, context, now, optionalChallenge.get(), incidents);
             })
         .onErrorResume(
             cause -> {
               incidents.recordFailure(command, cause);
               return Mono.just(
                   ValidatedState.invalid(ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED));
+            });
+  }
+
+  private Mono<ValidatedState> validateAuthoritativeChallenge(
+      ResendForgotPasswordOtpCommand command,
+      SessionLockHandle handle,
+      AuthFlowSession session,
+      ForgotPasswordAuthFlowContext context,
+      Instant now,
+      OtpChallenge authoritative,
+      IncidentCollector incidents) {
+    if (authoritative.scenario() != OtpScenario.FORGOT_PASSWORD
+        || !Objects.equals(authoritative.workflowRef(), session.authFlowSessionId().value())
+        || !Objects.equals(
+            authoritative.destinationHash(), sha256(context.protectedDestination()))) {
+      return Mono.just(
+          ValidatedState.invalid(
+              ForgotPasswordOtpResendEligibilityStatus.CHALLENGE_BINDING_INVALID,
+              false,
+              context.maskedDestination(),
+              secondsUntil(now, authoritative.expiresAt())));
+    }
+    int successfulResendCount = readCount(command, session.data().attributes(), incidents);
+    incidents.stage(ForgotPasswordOtpResendIncident.FOUNDATION);
+    return foundation
+        .evaluate(
+            new ForgotPasswordOtpResendCommand(
+                handle,
+                session,
+                authoritative,
+                context.phase(),
+                successfulResendCount,
+                command.idempotencyKey(),
+                now))
+        .map(
+            foundationResult ->
+                new ValidatedState(
+                    foundationResult.status(),
+                    context,
+                    authoritative,
+                    successfulResendCount,
+                    foundationResult.retryAfterSeconds(),
+                    context.maskedDestination(),
+                    secondsUntil(now, authoritative.expiresAt()),
+                    false))
+        .doOnNext(
+            foundationResult -> {
+              if (foundationResult.status()
+                  == ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED) {
+                incidents.addIncident(ForgotPasswordOtpResendIncident.FOUNDATION);
+              }
+            })
+        .onErrorResume(
+            cause -> {
+              incidents.recordFailure(command, cause);
+              return Mono.just(
+                  new ValidatedState(
+                      ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED,
+                      context,
+                      authoritative,
+                      successfulResendCount,
+                      null,
+                      context.maskedDestination(),
+                      secondsUntil(now, authoritative.expiresAt()),
+                      false));
             });
   }
 
@@ -486,11 +514,11 @@ public final class ForgotPasswordOtpResendProtectedOperation {
       return accepted(command, stagedSnapshot, validated, candidate, pendingRef, now, incidents);
     }
     if (status == MessageDeliveryStatus.FAILED) {
-      incidents.record(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY);
+      incidents.addIncident(ForgotPasswordOtpResendIncident.MESSAGE_DELIVERY);
       return failed(
           command, stagedSnapshot, validated.context, candidate.otpChallengeId(), now, incidents);
     }
-    incidents.record(ForgotPasswordOtpResendIncident.UNKNOWN_DELIVERY);
+    incidents.addIncident(ForgotPasswordOtpResendIncident.UNKNOWN_DELIVERY);
     return unknown(
         command, stagedSnapshot, validated.context, candidate.otpChallengeId(), now, incidents);
   }
@@ -939,12 +967,12 @@ public final class ForgotPasswordOtpResendProtectedOperation {
       }
     }
 
-    void record(ForgotPasswordOtpResendIncident incident) {
+    void addIncident(ForgotPasswordOtpResendIncident incident) {
       incidents.add(incident);
     }
 
     void recordMalformedCounter(ResendForgotPasswordOtpCommand command) {
-      record(ForgotPasswordOtpResendIncident.MALFORMED_RESEND_COUNT);
+      addIncident(ForgotPasswordOtpResendIncident.MALFORMED_RESEND_COUNT);
       LOGGER.warn(
           "event=forgot-password.resend.failed requestId={} stage={} exceptionType={}",
           RequestIdLogSanitizer.sanitize(command.requestId()),

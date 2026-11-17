@@ -216,6 +216,70 @@ class ForgotPasswordDetailsOtpTechnicalFailureRoutingTest {
   }
 
   @Test
+  void commitStatePersistenceFailureKeepsItsStageAfterOtpDelivery() {
+    var dependencies = new Dependencies();
+    var challenge =
+        new com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeResult(
+            "otp-id", "123456", NOW.plusSeconds(300), 300);
+    when(dependencies.otp.createChallenge(any())).thenReturn(Mono.just(challenge));
+    when(dependencies.registry.resolve(any(), any(), any()))
+        .thenReturn(
+            new com.bct.ngtpa.apiservice.application.dto.message.NoticeTemplateDefinition(
+                com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType
+                    .FORGOT_PASSWORD_OTP,
+                MessageDeliveryChannel.EMAIL,
+                "en",
+                "Subject",
+                "Body {code}",
+                java.util.Set.of("code"),
+                "minutes"));
+    when(dependencies.delivery.deliver(any()))
+        .thenReturn(
+            Mono.just(
+                new MessageDeliveryResult(
+                    MessageDeliveryStatus.ACCEPTED,
+                    MessageDeliveryChannel.EMAIL,
+                    null,
+                    null,
+                    null)));
+    when(dependencies.binding.apply(any()))
+        .thenReturn(
+            Mono.just(
+                new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp
+                    .ForgotPasswordOtpBindingResult(
+                    com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp
+                        .ForgotPasswordOtpBindingResult.Status.BOUND)));
+    when(dependencies.commitStates.saveIfAbsent(any(), any(), any()))
+        .thenReturn(Mono.error(new IllegalStateException("persistence failure")));
+    var lookup = mock(ForgotPasswordDetailsLookupPort.class);
+    when(lookup.verify(any()))
+        .thenReturn(
+            Mono.just(
+                new ForgotPasswordDetailsLookupResult(
+                    com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details
+                        .ForgotPasswordDetailsLookupStatus.MATCHED,
+                    "trust-code",
+                    "scheme-name",
+                    "scheme-name-chi")));
+
+    var execution =
+        dependencies
+            .operation(new ForgotPasswordUnderLockDetailsVerifier(lookup))
+            .execute(command())
+            .block();
+
+    assertThat(execution.result().status())
+        .isEqualTo(ForgotPasswordDetailsOtpResult.Status.SYSTEM_ERROR);
+    assertThat(execution.failureOrigin()).isEqualTo(FailureOrigin.LOCAL_SYSTEM);
+    assertThat(execution.failureStage()).isEqualTo("commit-state-persistence");
+    verify(dependencies.otp).createChallenge(any());
+    verify(dependencies.delivery).deliver(any());
+    verify(dependencies.commitStates).saveIfAbsent(any(), any(), any());
+    verify(dependencies.commitStates, never()).load(any());
+    verify(dependencies.locks).release(LOCK);
+  }
+
+  @Test
   void genericDownstreamTechnicalObserverClassificationNeverOwnsTerminalError() {
     var lookup = mock(ForgotPasswordDetailsLookupPort.class);
     when(lookup.verify(any())).thenReturn(Mono.error(new IllegalStateException("unknown")));

@@ -108,10 +108,9 @@ public final class ForgotPasswordStartProtectedOperation {
                 })
         .onErrorResume(
             Exception.class,
-            error -> {
-              return Mono.just(
-                  technicalFailure(command, FailureOrigin.LOCAL_SYSTEM, "username-lookup"));
-            });
+            error ->
+                Mono.just(
+                    technicalFailure(command, FailureOrigin.LOCAL_SYSTEM, "username-lookup")));
   }
 
   public String normalizeUsername(String username) {

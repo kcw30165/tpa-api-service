@@ -2,23 +2,27 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.res
 
 /** Fixed, value-free incident metadata classified by the protected resend operation. */
 public enum ForgotPasswordOtpResendIncident {
-  PENDING_REFERENCE_GENERATION("OTP_RESEND_TECHNICAL_FAILURE", "pending-reference", true),
-  LOCK_ACQUISITION("OTP_RESEND_TECHNICAL_FAILURE", "lock-acquisition", true),
-  SESSION_READ("OTP_RESEND_TECHNICAL_FAILURE", "session-read", true),
-  CONTEXT_UNPROTECT("OTP_RESEND_TECHNICAL_FAILURE", "context-unprotect", true),
-  CHALLENGE_READ("OTP_RESEND_TECHNICAL_FAILURE", "challenge-read", true),
-  FOUNDATION("OTP_RESEND_TECHNICAL_FAILURE", "foundation", true),
-  TEMPLATE_RESOLUTION("OTP_RESEND_TECHNICAL_FAILURE", "template-resolution", true),
-  CHALLENGE_CREATION("OTP_RESEND_TECHNICAL_FAILURE", "challenge-creation", true),
-  CONTEXT_PROTECTION("OTP_RESEND_TECHNICAL_FAILURE", "context-protection", true),
-  SESSION_MUTATION("OTP_RESEND_TECHNICAL_FAILURE", "session-mutation", true),
-  CHALLENGE_MUTATION("OTP_RESEND_TECHNICAL_FAILURE", "challenge-mutation", true),
-  COMMIT_STATE("OTP_RESEND_TECHNICAL_FAILURE", "commit-state", true),
-  MESSAGE_DELIVERY("OTP_RESEND_TECHNICAL_FAILURE", "message-delivery", true),
+  PENDING_REFERENCE_GENERATION(InternalCodes.TECHNICAL_FAILURE, "pending-reference", true),
+  LOCK_ACQUISITION(InternalCodes.TECHNICAL_FAILURE, "lock-acquisition", true),
+  SESSION_READ(InternalCodes.TECHNICAL_FAILURE, "session-read", true),
+  CONTEXT_UNPROTECT(InternalCodes.TECHNICAL_FAILURE, "context-unprotect", true),
+  CHALLENGE_READ(InternalCodes.TECHNICAL_FAILURE, "challenge-read", true),
+  FOUNDATION(InternalCodes.TECHNICAL_FAILURE, "foundation", true),
+  TEMPLATE_RESOLUTION(InternalCodes.TECHNICAL_FAILURE, "template-resolution", true),
+  CHALLENGE_CREATION(InternalCodes.TECHNICAL_FAILURE, "challenge-creation", true),
+  CONTEXT_PROTECTION(InternalCodes.TECHNICAL_FAILURE, "context-protection", true),
+  SESSION_MUTATION(InternalCodes.TECHNICAL_FAILURE, "session-mutation", true),
+  CHALLENGE_MUTATION(InternalCodes.TECHNICAL_FAILURE, "challenge-mutation", true),
+  COMMIT_STATE(InternalCodes.TECHNICAL_FAILURE, "commit-state", true),
+  MESSAGE_DELIVERY(InternalCodes.TECHNICAL_FAILURE, "message-delivery", true),
   UNKNOWN_DELIVERY("OTP_RESEND_UNKNOWN_DELIVERY_OUTCOME", "message-delivery", true),
   MALFORMED_RESEND_COUNT("OTP_RESEND_COUNTER_MALFORMED", "resend-count", false),
   IDEMPOTENCY("OTP_RESEND_IDEMPOTENCY_FAILURE", "idempotency", true),
-  PROTECTED_OPERATION("OTP_RESEND_TECHNICAL_FAILURE", "protected-operation", true);
+  PROTECTED_OPERATION(InternalCodes.TECHNICAL_FAILURE, "protected-operation", true);
+
+  private static final class InternalCodes {
+    private static final String TECHNICAL_FAILURE = "OTP_RESEND_TECHNICAL_FAILURE";
+  }
 
   private final String internalCode;
   private final String stage;
