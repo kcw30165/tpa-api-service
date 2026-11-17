@@ -6,6 +6,8 @@ umask 077
 source "$(dirname -- "${BASH_SOURCE[0]}")/lib/cim-password.sh"
 # shellcheck source=scripts/e2e/lib/cim-valid-payload.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/lib/cim-valid-payload.sh"
+# shellcheck disable=SC1091 # Result records use the same script-relative source path as the existing CIM libraries.
+source "$(dirname -- "${BASH_SOURCE[0]}")/lib/result-records.sh"
 
 # CIM curl scenarios. Configuration is environment-only:
 #   BASE_URL                    BFF base URL, e.g. https://host (no trailing slash)
@@ -104,9 +106,63 @@ dry_request() {
   printf '\n'
 }
 
+cim_hook_description() {
+  case "${1-}" in
+    S1) printf '%s' 'Authenticated investment-choice GET satisfies the success-envelope and snapshot contract.' ;;
+    S2) printf '%s' 'Unauthenticated investment-choice GET returns the authentication-required contract.' ;;
+    S3) printf '%s' 'Instruction submission without a validation token is rejected.' ;;
+    S4) printf '%s' 'Instruction submission with an invalid validation token is rejected.' ;;
+    S5) printf '%s' 'Malformed change payload is rejected during password validation.' ;;
+    S6) printf '%s' 'Instruction submission with a malformed payload and no validation token is rejected.' ;;
+    S7) printf '%s' 'Cancellation without a validation token is rejected.' ;;
+    S8) printf '%s' 'Cancellation with an invalid validation token is rejected.' ;;
+    S9-extra) printf '%s' 'Cancel validation rejects an operation payload containing an extra field.' ;;
+    S9-blank) printf '%s' 'Cancel validation rejects a blank instruction reference.' ;;
+    P0|P0-issue) printf '%s' 'A valid change payload receives a password-validation token.' ;;
+    P1|P1-issue) printf '%s' 'The isolated negative change payload is rejected for its expected validation rule.' ;;
+    P2|P2-issue) printf '%s' 'Cancellation authorization rejects a reference absent from the snapshot.' ;;
+    P3|P3-issue) printf '%s' 'A cancellation token is issued for the existing pending instruction.' ;;
+    P3-body-binding) printf '%s' 'Cancellation with a different reference is rejected by token binding.' ;;
+    *) return 1 ;;
+  esac
+}
+
+cim_result_start() {
+  local id="${1-}" description
+  description="$(cim_hook_description "$id")" || return 0
+  e2e_result_start scenario investment-choice "$id" "$description" || :
+}
+
+cim_result_finish() {
+  local id="${1-}" status="${2-}" reason_code="${3-}" no_http="${4:-no}" description
+  local -a fields=()
+
+  description="$(cim_hook_description "$id")" || return 0
+  fields+=("description=$description" "status=$status")
+  if [[ "${CIM_EXPECTED_HTTP_STATUS:-}" =~ ^[1-5][0-9]{2}$ ]]; then
+    fields+=("expected_http_status=$CIM_EXPECTED_HTTP_STATUS")
+  fi
+  if [[ "$no_http" != yes && "${HTTP_STATUS:-}" =~ ^[1-5][0-9]{2}$ ]]; then
+    fields+=("actual_http_status=$HTTP_STATUS")
+    [[ -z "${ERROR_CODE:-}" ]] || fields+=("actual_public_error_code=$ERROR_CODE")
+  fi
+  [[ -z "${CIM_EXPECTED_PUBLIC_ERROR_CODE:-}" ]] \
+    || fields+=("expected_public_error_code=$CIM_EXPECTED_PUBLIC_ERROR_CODE")
+  [[ -z "$reason_code" ]] || fields+=("reason_code=$reason_code")
+  e2e_result_finish scenario investment-choice "$id" "${fields[@]}" || :
+}
+
 skip_scenario() {
   local name="$1" reason="$2"
+  local reason_code=PRECONDITION_UNAVAILABLE
   printf 'SKIP %s reason=%s\n' "$name" "$reason"
+  case "$reason" in
+    'dedicated existing-instruction cancellation mode uses its own fresh token'*) reason_code=FEATURE_DISABLED ;;
+  esac
+  CIM_EXPECTED_HTTP_STATUS=''
+  CIM_EXPECTED_PUBLIC_ERROR_CODE=''
+  cim_result_start "$name"
+  cim_result_finish "$name" SKIP "$reason_code" yes
   SKIPPED=$((SKIPPED + 1))
 }
 
@@ -284,30 +340,39 @@ on_exit() {
 trap on_exit EXIT
 
 fail_scenario() {
-  local name="$1" expected="$2" actual="$3" code="${4:--}"
+  local name="$1" expected="$2" actual="$3" code="${4:--}" reason_code="${5:-ASSERTION_FAILED}"
   FAILED=1
   printf 'FAIL %s expected=%s got=%s code=%s\n' "$name" "$expected" "$actual" "$code" >&2
+  cim_result_finish "$name" FAIL "$reason_code"
   exit 1
 }
 
 pass_scenario() {
-  local name="$1"
+  local name="$1" finish_mode="${2:-finish}"
   printf 'PASS %s status=%s code=%s\n' "$name" "$HTTP_STATUS" "${ERROR_CODE:--}"
+  [[ "$finish_mode" == defer ]] || cim_result_finish "$name" PASS
   PASSED=$((PASSED + 1))
 }
 
 assert_result() {
-  local name="$1" status="$2" code="$3"
-  [[ "$HTTP_STATUS" == "$status" && "$ERROR_CODE" == "$code" ]] \
-    || fail_scenario "$name" "$status${code:+/$code}" "$HTTP_STATUS" "$ERROR_CODE"
-  pass_scenario "$name"
+  local name="$1" status="$2" code="$3" finish_mode="${4:-finish}"
+  CIM_EXPECTED_HTTP_STATUS="$status"
+  CIM_EXPECTED_PUBLIC_ERROR_CODE="$code"
+  if [[ "$HTTP_STATUS" != "$status" ]]; then
+    fail_scenario "$name" "$status${code:+/$code}" "$HTTP_STATUS" "$ERROR_CODE" HTTP_STATUS_MISMATCH
+  elif [[ "$ERROR_CODE" != "$code" ]]; then
+    fail_scenario "$name" "$status${code:+/$code}" "$HTTP_STATUS" "$ERROR_CODE" PUBLIC_ERROR_CODE_MISMATCH
+  fi
+  pass_scenario "$name" "$finish_mode"
 }
 
 assert_error_target() {
   local target="$1"
+  local reason_code=CONTRACT_MISMATCH
   jq -e --arg target "$target" \
     '(.errors[0].targets | type == "array") and (.errors[0].targets | index($target) != null)' \
-    <<<"$RESPONSE_BODY" >/dev/null 2>&1 || fail_scenario "$SCENARIO" "target=$target" "$HTTP_STATUS" "$ERROR_CODE"
+    <<<"$RESPONSE_BODY" >/dev/null 2>&1 \
+    || fail_scenario "$SCENARIO" "target=$target" "$HTTP_STATUS" "$ERROR_CODE" "$reason_code"
 }
 
 request() {
@@ -362,6 +427,8 @@ ERROR_CODE=''
 RESPONSE_BODY=''
 REQUEST_BODY=''
 GET_DATA=''
+CIM_EXPECTED_HTTP_STATUS=''
+CIM_EXPECTED_PUBLIC_ERROR_CODE=''
 
 password_json() {
   local purpose="$1" operation="$2" password="$3" password_fd operation_fd jq_status
@@ -382,19 +449,25 @@ password_json() {
 
 issue_token() {
   local purpose="$1" operation="$2" password="$3" label="$4"
+  cim_result_start "$label"
   password_json "$purpose" "$operation" "$password"
   REQUEST_BODY="$ISSUANCE_BODY"
   request POST "$ISSUE_PATH" yes none present
-  assert_result "$label" 200 ''
+  assert_result "$label" 200 '' defer
   TOKEN_VALUE="$(jq -er '.result.data.token // empty' <<<"$RESPONSE_BODY" 2>/dev/null || true)"
-  [[ -n "$TOKEN_VALUE" ]] || fail_scenario "$label" 'token present' "$HTTP_STATUS" "$ERROR_CODE"
+  [[ -n "$TOKEN_VALUE" ]] || fail_scenario "$label" 'token present' "$HTTP_STATUS" "$ERROR_CODE" CONTRACT_MISMATCH
+  cim_result_finish "$label" PASS
 }
 
 printf 'Running CIM curl scenarios\n'
 
 SCENARIO=S1
+cim_result_start S1
+CIM_EXPECTED_HTTP_STATUS=200
+CIM_EXPECTED_PUBLIC_ERROR_CODE=''
 request GET "$DETAILS_PATH" yes none no
-[[ "$HTTP_STATUS" == 200 ]] || fail_scenario S1 '200/SUCCESS response contract' "$HTTP_STATUS" "$ERROR_CODE"
+[[ "$HTTP_STATUS" == 200 ]] \
+  || fail_scenario S1 '200/SUCCESS response contract' "$HTTP_STATUS" "$ERROR_CODE" HTTP_STATUS_MISMATCH
 jq -e '
   .success == true and .status == "SUCCESS"
   and (keys | sort) == ["errors","messages","result","status","success"]
@@ -414,7 +487,8 @@ jq -e '
     and ((.result.data | has("funds")) | not)
     and ((.result.data | has("pendingInstructions")) | not)
   end)
-' <<<"$RESPONSE_BODY" >/dev/null 2>&1 || fail_scenario S1 '200/SUCCESS contract' "$HTTP_STATUS" "$ERROR_CODE"
+' <<<"$RESPONSE_BODY" >/dev/null 2>&1 \
+  || fail_scenario S1 '200/SUCCESS contract' "$HTTP_STATUS" "$ERROR_CODE" CONTRACT_MISMATCH
 GET_DATA="$(jq -c '.result.data' <<<"$RESPONSE_BODY")"
 SNAPSHOT_SCENARIO="$(jq -r '.scenario' <<<"$GET_DATA")"
 interval=''
@@ -508,20 +582,24 @@ if [[ "$USE_PASSWORD" == yes ]]; then
 fi
 
 SCENARIO=S2
+cim_result_start S2
 request GET "$DETAILS_PATH" no none no yes yes
 assert_result S2 401 err.security.authentication.required
 
 SCENARIO=S3
+cim_result_start S3
 REQUEST_BODY='{}'
 request POST "$SUBMIT_PATH" yes none present
 assert_result S3 403 err.password-validation.authorization.invalid
 
 SCENARIO=S4
+cim_result_start S4
 REQUEST_BODY='{}'
 request POST "$SUBMIT_PATH" yes 'invalid-cim-token' present
 assert_result S4 403 err.password-validation.authorization.invalid
 
 SCENARIO=S5
+cim_result_start S5
 MALFORMED_SUBMIT='{"switchSources":["CIM-SOURCE"],"allocations":[{"fundCode":"CIM-FUND","percentage":99}],"unknown":"member"}'
 password_json CHANGE_INVESTMENT_CHOICE "$MALFORMED_SUBMIT" 'not-a-real-password'
 REQUEST_BODY="$ISSUANCE_BODY"
@@ -529,21 +607,25 @@ request POST "$ISSUE_PATH" yes none present
 assert_result S5 422 err.investment-choice.request.invalid
 
 SCENARIO=S6
+cim_result_start S6
 REQUEST_BODY="$MALFORMED_SUBMIT"
 request POST "$SUBMIT_PATH" yes none present
 assert_result S6 403 err.password-validation.authorization.invalid
 
 SCENARIO=S7
+cim_result_start S7
 REQUEST_BODY='{"referenceNo":"000000000"}'
 request POST "$CANCEL_PATH" yes none present
 assert_result S7 403 err.password-validation.authorization.invalid
 
 SCENARIO=S8
+cim_result_start S8
 REQUEST_BODY='{"referenceNo":"000000000"}'
 request POST "$CANCEL_PATH" yes 'invalid-cim-token' present
 assert_result S8 403 err.password-validation.authorization.invalid
 
 SCENARIO=S9-extra
+cim_result_start S9-extra
 MALFORMED_CANCEL='{"referenceNo":"000000000","extra":"member"}'
 password_json CANCEL_INVESTMENT_CHOICE "$MALFORMED_CANCEL" 'not-a-real-password'
 REQUEST_BODY="$ISSUANCE_BODY"
@@ -551,6 +633,7 @@ request POST "$ISSUE_PATH" yes none present
 assert_result S9-extra 422 err.investment-choice.request.invalid
 
 SCENARIO=S9-blank
+cim_result_start S9-blank
 MALFORMED_CANCEL='{"referenceNo":" "}'
 password_json CANCEL_INVESTMENT_CHOICE "$MALFORMED_CANCEL" 'not-a-real-password'
 REQUEST_BODY="$ISSUANCE_BODY"
@@ -572,11 +655,13 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     skip_scenario P1 "$P1_SKIP_REASON"
   else
     SCENARIO=P1-issue
+    cim_result_start P1-issue
     password_json CHANGE_INVESTMENT_CHOICE "$P1_BODY" "$CIM_PASSWORD"
     REQUEST_BODY="$ISSUANCE_BODY"
     request POST "$ISSUE_PATH" yes none present
-    assert_result P1-issue 422 "$P1_CODE"
+    assert_result P1-issue 422 "$P1_CODE" defer
     assert_error_target "$P1_TARGET"
+    cim_result_finish P1-issue PASS
   fi
 
   if [[ "$SNAPSHOT_SCENARIO" != NORMAL ]]; then
@@ -588,11 +673,13 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     P2_REFERENCE="$(cim_unavailable_reference "$GET_DATA")"
     P2_BODY="$(jq -cn --arg reference "$P2_REFERENCE" '{referenceNo:$reference}')"
     SCENARIO=P2-issue
+    cim_result_start P2-issue
     password_json CANCEL_INVESTMENT_CHOICE "$P2_BODY" "$CIM_PASSWORD"
     REQUEST_BODY="$ISSUANCE_BODY"
     request POST "$ISSUE_PATH" yes none present
-    assert_result P2-issue 422 err.investment-choice.cancel.ref-invalid
+    assert_result P2-issue 422 err.investment-choice.cancel.ref-invalid defer
     assert_error_target referenceNo
+    cim_result_finish P2-issue PASS
   fi
 
   if [[ "$LIVE_CANCEL_PENDING" == yes ]]; then
@@ -612,6 +699,7 @@ if [[ "$USE_PASSWORD" == yes ]]; then
     P3_TOKEN="$TOKEN_VALUE"
     P3_WRONG_REFERENCE="$(cim_unavailable_reference "$GET_DATA")"
     REQUEST_BODY="$(jq -cn --arg reference "$P3_WRONG_REFERENCE" '{referenceNo:$reference}')"
+    cim_result_start P3-body-binding
     request POST "$CANCEL_PATH" yes "$P3_TOKEN" present
     assert_result P3-body-binding 403 err.password-validation.authorization.invalid
   fi
