@@ -12,7 +12,7 @@
 | Chinese item name | Chinese selected; `item-name-chi` is missing, null, or blank | Treat the Chinese value as blank and fall back to `item-name-eng`. |
 | Chinese item link | Chinese selected; `item-link-chi` is missing, null, or blank | Treat the Chinese value as blank and fall back to `item-link-eng`; preserve the chosen string exactly. |
 | Chinese file name | Chinese selected; `file-name-chi` is missing, null, or blank | Treat the Chinese value as blank and fall back to `file-name-eng`. |
-| Sequence fields | `category-seq` or `item-seq` is missing, null, or non-numeric | Malformed response; return HTTP 503 with `err.download-corner.retrieval.unavailable` and log the malformed field path. |
+| Sequence fields | `category-seq` or `item-seq` is missing, null, fractional, or outside the signed 32-bit `int` range | Malformed response; exact-integer decimals such as `10010.0` are accepted. Otherwise return HTTP 503 with `err.download-corner.retrieval.unavailable`, log the malformed field path, use reason `MALFORMED_RESPONSE`, and set `internalCode` to null. |
 | Collection fields | `categories` or any category's `items` is missing or null | Malformed response; return HTTP 503 with `err.download-corner.retrieval.unavailable` and log the malformed field path. Empty arrays are valid. |
 | Item inclusion | After language selection and fallback | Drop an item only when its resolved `itemLink` is blank. Never test remote existence. |
 | Category ordering | Category sequence values | Ascending `category-seq`; stable on ties, preserving DS input order. |
@@ -146,4 +146,4 @@ Given a category with no input items, or one whose items are all dropped for bla
 
 Given categories in DS order `A(seq=2), B(seq=1), C(seq=1)`, stable ascending order is `B, C, A`. Given items in a category `X(seq=3), Y(seq=1), Z(seq=1)`, the result is `Y, Z, X`. Sequence values are not serialized.
 
-The sequence examples assume numeric sort keys for illustration. Missing, null, and non-numeric sequence values are malformed; the actual DS wire representation remains **UNVERIFIED** pending confirmation.
+The sequence examples assume numeric sort keys for illustration. Sequence values are represented as `int`; exact-integer decimal values are accepted, while missing, null, fractional, and out-of-range values are malformed. The actual DS wire representation remains **UNVERIFIED** pending confirmation.

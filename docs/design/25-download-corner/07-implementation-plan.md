@@ -60,7 +60,7 @@ The response DTO plan includes only the wrapper/data/category/item structures re
 
 ## 3. M1 — Outbound (same MR as M2)
 
-**Status: READY TO START (not started).**
+**Status: COMPLETE** at commit `a40f8d07a779676b71789f511b90493154d670ec`.
 
 Implement typed APIM request/response mapping, path properties/YAML, executor read exchange, strict response checks, failure events, and the ownership-guard update. Add and run failing adapter/DTO/mapper/config/guard tests first, then implement and rerun them.
 
@@ -68,7 +68,7 @@ Done when the APIM boundary, raw non-empty error-code event field, malformed-fie
 
 ## 4. M2 — Inbound/use case (same MR as M1)
 
-M2 still requires an explicit go-ahead at its milestone gate, notwithstanding M0 approval.
+**Status: IN PROGRESS.** M2 implementation is authorized by the explicit implementation request.
 
 Implement application input/output ports and commands, use case, application wiring, language-aware web mapping, feature controller and response DTOs, exception mapping and explicit registry entry. Add the registration test and other inbound/contract tests fail-first.
 
@@ -86,7 +86,7 @@ Done when EN/ZH response checks, ordering/shape checks, and shell-level fail-fir
 
 - **MR 1:** M1 + M2 together.
 - **MR 2:** M3 separately.
-- M1/M2 Java gates G1–G4 are described in §7. M0 approval authorizes M1 only; M2 still requires its own explicit go-ahead. Record evidence without secret values.
+- M1/M2 Java gates G1–G4 are described in §7. M0 approval authorized M1; the explicit M2 implementation request authorizes M2. Record evidence without secret values.
 - M3 is shell-only; use the relevant shell/scenario checks and report no Java gates.
 - Each milestone records test-first failure and passing evidence. No Vesting Scale code or behavior is changed.
 
@@ -132,7 +132,7 @@ There is **no enforced coverage threshold** in this gate. The coverage initiativ
 - `AUTH_WORKFLOWS_REGISTRATION_SECRET` (`src/main/resources/application.properties:1-4`; specifically the registration secret mapping)
 - `FORGOT_PASSWORD_CONTEXT_KEY_VERSION`, `FORGOT_PASSWORD_CONTEXT_SECRET` (`src/main/resources/application.yml:128-131`)
 
-The application defaults `SERVER_PORT` to `8888` (`src/main/resources/application.yml:1-2`). Redis Sentinel connectivity is also a local runtime prerequisite unless Redis is disabled, and the WSL smoke notes call for Redis forwarded ports and TLS files (`README.md:215-220,254-260`; `docs/wsl/phase-04-direct-spring-runtime.md:19-29`). No secret values or `.local` contents belong in evidence.
+The application defaults `SERVER_PORT` to `8888` (`src/main/resources/application.yml:1-2`). This worktree's local smoke port is its `.env` `SERVER_PORT` (`8908`); ports are unique per worktree. Read only this variable and do not print or record any other `.env` values. Redis Sentinel connectivity is also a local runtime prerequisite unless Redis is disabled, and the WSL smoke notes call for Redis forwarded ports and TLS files (`README.md:215-220,254-260`; `docs/wsl/phase-04-direct-spring-runtime.md:19-29`). No secret values or `.local` contents belong in evidence.
 
 ```bash
 export JAVA_HOME="/home/nd2887/tools/jdk-21.0.12.1+1"
@@ -161,7 +161,7 @@ No Sonar Maven plugin/property, scanner config, project key, server URL property
 UNVERIFIED — no repository-evidenced Sonar command or exact CI/Jenkins job invocation.
 ```
 
-The repo does not document how a developer checks NEW issues for changed files, nor an exact Sonar quality-gate criterion for this feature. Do not invent a scanner command, server property, project key, token variable, UI route, or query. Confirmation requires CI/ops evidence for the job/stage and invocation, Sonar server URL property, project key source, token **variable name only**, analyzed branch/commit behavior, and the approved changed-file/New Code issue check. The documented broad CI gate is owned by Jenkins (`docs/wsl/copilot-evidence-gate-operating-model.md:25-31`; `docs/wsl/phase-08-jenkins-quality-correction.md:33-40`).
+The repo does not document how a developer checks NEW issues for changed files, nor an exact Sonar quality-gate criterion for this feature. Do not invent a scanner command, server property, project key, token variable, UI route, or query. Nick will supply the Sonar evidence before the MR, including CI/ops evidence for the job/stage and invocation, Sonar server URL property, project key source, token **variable name only**, analyzed branch/commit behavior, and the approved changed-file/New Code issue check. The documented broad CI gate is owned by Jenkins (`docs/wsl/copilot-evidence-gate-operating-model.md:25-31`; `docs/wsl/phase-08-jenkins-quality-correction.md:33-40`).
 
 **Record in `REPORT.md` once confirmed:** exact job or command and source citation, analyzed commit/branch, Sonar analysis and quality-gate result, changed-file/New Code issue result, and evidence link/path. Never record the token value.
 
