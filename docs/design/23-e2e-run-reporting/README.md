@@ -125,7 +125,7 @@
 | R1.2b-INVENTORY | `REPORT.md` | **CONFIRMED** `e2e-r1-2b-cim-request-capture`; local, non-versioned evidence kept by Nick |
 | R1-REBASE | `REPORT.md` | **CONFIRMED** `e2e-r1-rebase`; local, non-versioned evidence kept by Nick |
 
-- **PROPOSAL — Line citations.** Line numbers cited for `scripts/e2e/*.sh` are as of the commit that introduced the statement; the R1 hook commits shifted later lines in `scripts/e2e/investment-choice-scenarios.sh` and `scripts/e2e/vesting-scale-scenarios.sh`; function names, identifiers and scenario ids are authoritative. Line numbers that cite the pre-hook version remain valid against `git show origin/dev:<path>`; re-derive current line numbers with `grep -n` at the commit you are working on.
+- **PROPOSAL — Line citations.** Line numbers cited for `scripts/e2e/*.sh` are as of the commit that introduced the statement; the R1 hook commits shifted later lines in `scripts/e2e/investment-choice-scenarios.sh` and `scripts/e2e/vesting-scale-scenarios.sh`; function names, identifiers and scenario ids are authoritative. Line numbers that cite the pre-hook version are valid against commit `1011a9d8e59a18d273fa2304d2e58f58cfc7f9e9` (`git show 1011a9d8e59a18d273fa2304d2e58f58cfc7f9e9:<path>`), the `origin/dev` head on which R1 was rebased; that commit remains in `dev`'s history. After the R1 merge, `origin/dev` itself contains the hook commits and its line numbers differ. Re-derive current line numbers with `grep -n` at the commit you are working on.
 
 - **REQUIREMENT (Citation handling)** Cite these reports by short ID and section, for example `[P0 §Dependency map]`; the local reports and evidence folders are not tracked with this design pack.
 
