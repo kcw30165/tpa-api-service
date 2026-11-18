@@ -52,6 +52,7 @@ public class ExceptionMappingRegistryConfig {
             FundFactSheetExceptionMappings.retrievalUnavailable(),
             InvestmentChoiceExceptionMappings.retrievalUnavailable(),
             VestingScaleExceptionMappings.retrievalUnavailable(),
+            DownloadCornerExceptionMappings.retrievalUnavailable(),
             InvestmentChoiceExceptionMappings.submissionUnavailable(),
             InvestmentChoiceExceptionMappings.submissionSamePending(),
             InvestmentChoiceExceptionMappings.cancelUnavailable(),

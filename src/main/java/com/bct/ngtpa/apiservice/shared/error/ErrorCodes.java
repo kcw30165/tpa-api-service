@@ -28,6 +28,8 @@ public final class ErrorCodes {
       "err.investment-choice.retrieval.unavailable";
   public static final String VESTING_SCALE_RETRIEVAL_UNAVAILABLE =
       "err.vesting-scale.retrieval.unavailable";
+  public static final String DOWNLOAD_CORNER_RETRIEVAL_UNAVAILABLE =
+      "err.download-corner.retrieval.unavailable";
   public static final String INVESTMENT_CHOICE_FUNCTION_UNAVAILABLE =
       "err.investment-choice.function-unavailable";
   public static final String INVESTMENT_CHOICE_MEMBER_INELIGIBLE =
