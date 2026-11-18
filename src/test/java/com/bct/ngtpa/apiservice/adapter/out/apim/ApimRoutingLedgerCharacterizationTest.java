@@ -247,6 +247,47 @@ class ApimRoutingLedgerCharacterizationTest {
               "EXECUTOR",
               "ACCOUNT_ENV"));
 
+  private static final List<Entry> DOWNLOAD_CORNER_LEDGER =
+      List.of(
+          e(
+              "TRPGetDownloadCorner",
+              "downloadcorner/ApimDownloadCornerAdapter.java",
+              "ACCOUNT_ENV",
+              "command.actorUserRole()",
+              "command.accountEnv()",
+              "SAFE_BUSINESS_CALL",
+              "EXECUTOR",
+              "ACCOUNT_ENV"));
+
+  @Test
+  void downloadCornerUsesTheVestingScaleAccountEnvironmentReadRouting() throws Exception {
+    Entry entry = DOWNLOAD_CORNER_LEDGER.getFirst();
+    assertThat(LEDGER.size() + DOWNLOAD_CORNER_LEDGER.size()).isEqualTo(26);
+    assertThat(DOWNLOAD_CORNER_LEDGER)
+        .containsExactly(
+            e(
+                "TRPGetDownloadCorner",
+                "downloadcorner/ApimDownloadCornerAdapter.java",
+                "ACCOUNT_ENV",
+                "command.actorUserRole()",
+                "command.accountEnv()",
+                "SAFE_BUSINESS_CALL",
+                "EXECUTOR",
+                "ACCOUNT_ENV"));
+
+    String source = source(entry.file());
+    assertThat(source)
+        .as(entry.operation())
+        .contains(
+            entry.currentRole(),
+            entry.accountEnvSource(),
+            entry.retry(),
+            "ApimDatabaseScope.ACCOUNT_ENV",
+            "ApimResubmissionPolicy.ALLOW_RECOVERY",
+            "ApimIncidentOwnership.TERMINAL_CALLER",
+            "postEnvelope(exchange)");
+  }
+
   @Test
   void ledgerCoversEveryPromptZeroOperationExactlyOnce() {
     assertThat(LEDGER)

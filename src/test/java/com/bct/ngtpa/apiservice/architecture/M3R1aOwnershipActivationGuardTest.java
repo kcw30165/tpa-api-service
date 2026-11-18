@@ -32,6 +32,7 @@ class M3R1aOwnershipActivationGuardTest {
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationCompletionAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationUsernameAvailabilityAdapter.java",
+                    "com/bct/ngtpa/apiservice/adapter/out/apim/downloadcorner/ApimDownloadCornerAdapter.java",
                     "com/bct/ngtpa/apiservice/adapter/out/apim/vestingscale/ApimVestingScaleAdapter.java")
                 .stream()
                 .sorted()
@@ -58,6 +59,13 @@ class M3R1aOwnershipActivationGuardTest {
                 "com/bct/ngtpa/apiservice/adapter/out/apim/vestingscale/"
                     + "ApimVestingScaleAdapter.java"));
     assertThat(vestingScale)
+        .contains("ApimIncidentOwnership.TERMINAL_CALLER", "FailureEventPort", "publishFailure");
+    String downloadCorner =
+        read(
+            root.resolve(
+                "com/bct/ngtpa/apiservice/adapter/out/apim/downloadcorner/"
+                    + "ApimDownloadCornerAdapter.java"));
+    assertThat(downloadCorner)
         .contains("ApimIncidentOwnership.TERMINAL_CALLER", "FailureEventPort", "publishFailure");
     String forgotPassword =
         read(
