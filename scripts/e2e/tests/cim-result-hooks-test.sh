@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+# isolate from the caller's environment (decision Q26)
+unset BASH_ENV ENV
+while IFS= read -r _name; do unset "$_name"; done < <(compgen -e | grep -E '^(E2E_|CIM_|BFF_|VESTING_|LOGIN_|APIM_|OTP_|ACCOUNT_|SESSION_|FAKE_)' || true)
+unset _name
+_remaining="$(compgen -e | grep -E '^(E2E_|CIM_|BFF_|VESTING_|LOGIN_|APIM_|OTP_|ACCOUNT_|SESSION_|FAKE_)' || true)"
+if [[ -n "$_remaining" ]]; then
+  printf 'FAIL caller environment variables remain exported: %s\n' "$_remaining" >&2
+  exit 1
+fi
+unset _remaining
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
