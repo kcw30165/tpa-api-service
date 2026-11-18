@@ -69,7 +69,7 @@
 |---|---|---|---|---|---|---|
 | **CONFIRMED — generic HTTP client** | Captured in `E2E_HTTP_STATUS` | Not parsed by the generic client; callers may assert codes | Captured in `E2E_ELAPSED_SECONDS` | Generated and captured in request state/evidence | **UNVERIFIED** Whether the echoed `X-Request-Id` is captured; Phase 0 confirms redacted response headers are saved but does not state whether that header is read | [P0 §Current evidence behavior] [P0b §8, §9.4] |
 | **CONFIRMED — CIM custom curl** | Captured | Extracted from `.errors[0].code` for assertions/results | `null` in R1.2; capture deferred to R1.2b | Generated/sent in a local variable, but not in scope at the outcome call sites; `null` in R1.2, capture deferred to R1.2b | `null` in R1.2 | [P0 §Current evidence behavior] [P0b §9.1, §9.4]; `scripts/e2e/investment-choice-scenarios.sh:315-356` |
-| **CONFIRMED — Vesting Scale** | Captured | Not parsed | Not captured | Not generated/sent | **UNVERIFIED** Whether an echoed ID is captured; the pack sends no explicit `X-Request-Id` | [P0b §9.2, §9.4] |
+| **CONFIRMED — Vesting Scale (R1.3)** | Captured by `fetch_language`; written as per-language `actual_http_status` only for integer status 100-599; `language-plan-sequence` has no HTTP status | Not parsed; `null` | Not captured; `null` | `null` (no explicit `X-Request-Id` sent) | `null` (no echoed request ID captured) | **DECISION (Q24)**; `scripts/e2e/vesting-scale-scenarios.sh:179-186,133-158,373-386` |
 
 - **REQUIREMENT (R-6 clarification)** `null` means unavailable. R1 records `null` where the current code does not capture a field; capturing a new field is a separate sub-task with characterization tests.
 
@@ -119,6 +119,8 @@
 | R1.1 | `REPORT.md` | **CONFIRMED** `e2e-r1-1-record-library`; local, non-versioned evidence kept by Nick |
 | R1.1-FIXUP | `REPORT.md` | **CONFIRMED** `e2e-r1-1-fixup`; local, non-versioned evidence kept by Nick |
 | R1.2-INVENTORY | `REPORT.md` | **CONFIRMED** `e2e-r1-2-cim-hooks`; local, non-versioned evidence kept by Nick |
+| R1.2-FIXUP | `REPORT.md` | **CONFIRMED** `e2e-r1-2-fixup`; local, non-versioned evidence kept by Nick |
+| R1.3-INVENTORY | `REPORT.md` | **CONFIRMED** `e2e-r1-3-vesting-hooks`; local, non-versioned evidence kept by Nick |
 
 - **REQUIREMENT (Citation handling)** Cite these reports by short ID and section, for example `[P0 §Dependency map]`; the local reports and evidence folders are not tracked with this design pack.
 
