@@ -63,12 +63,12 @@
 - **CONFIRMED** CIM live submit is a non-retrying workflow from an initial authenticated GET through token issuance, one submit, refreshed GET, cancel-token issuance, one cancel, and final GET; uncertain cleanup uses a private recovery record. Vesting Scale is read-only and performs two GETs, English then `zh-HK`, without CIM submit/cancel phases. Sources: [P0 §Mutation lifecycles] [P0b §9.1, §9.2].
 - **CONFIRMED** D1's merge is `a73dcf6087c5f1205858a4d08cf7d45712f64c3e`, dated 2026-11-17; both original D1 commits are ancestors of `origin/dev`. The Vesting Scale merge commits `6067be2fe97cda21bc61368e0ee1997e480d3f8c` and `7cb131f0d47618dab36ac7ab0b47e186f5df102a` are also ancestors. Sources: `git log --first-parent origin/dev`; `git merge-base --is-ancestor <commit> origin/dev`.
 
-### Per-pack field availability at the Phase 0/0b baseline
+### Per-pack field availability for the R1 reporting hooks
 
 | Component | HTTP status | Public error code | Duration | Request ID | Echoed request ID | Source |
 |---|---|---|---|---|---|---|
 | **CONFIRMED — generic HTTP client** | Captured in `E2E_HTTP_STATUS` | Not parsed by the generic client; callers may assert codes | Captured in `E2E_ELAPSED_SECONDS` | Generated and captured in request state/evidence | **UNVERIFIED** Whether the echoed `X-Request-Id` is captured; Phase 0 confirms redacted response headers are saved but does not state whether that header is read | [P0 §Current evidence behavior] [P0b §8, §9.4] |
-| **CONFIRMED — CIM custom curl** | Captured | Extracted from `.errors[0].code` for assertions/results | `null` in R1.2; capture deferred to R1.2b | Generated/sent in a local variable, but not in scope at the outcome call sites; `null` in R1.2, capture deferred to R1.2b | `null` in R1.2 | [P0 §Current evidence behavior] [P0b §9.1, §9.4]; `scripts/e2e/investment-choice-scenarios.sh:315-356` |
+| **CONFIRMED — CIM custom curl** | Captured; values outside 100-599 are omitted | Extracted from `.errors[0].code` for assertions/results | Captured around curl by R1.2b; `null` when the scenario made no request or the timestamps are unusable | Generated/sent in a local variable and captured for the most recent request before finish by R1.2b; `null` when the scenario made no request or the library rejects an unsafe value | `null` in R1.2b | [Q25]; `scripts/e2e/investment-choice-scenarios.sh:390-434` |
 | **CONFIRMED — Vesting Scale (R1.3)** | Captured by `fetch_language`; written as per-language `actual_http_status` only for integer status 100-599; `language-plan-sequence` has no HTTP status | Not parsed; `null` | Not captured; `null` | `null` (no explicit `X-Request-Id` sent) | `null` (no echoed request ID captured) | **DECISION (Q24)**; `scripts/e2e/vesting-scale-scenarios.sh:180-187,134-159,221-234,374-390` |
 
 - **REQUIREMENT (R-6 clarification)** `null` means unavailable. R1 records `null` where the current code does not capture a field; capturing a new field is a separate sub-task with characterization tests.
@@ -121,6 +121,8 @@
 | R1.2-INVENTORY | `REPORT.md` | **CONFIRMED** `e2e-r1-2-cim-hooks`; local, non-versioned evidence kept by Nick |
 | R1.2-FIXUP | `REPORT.md` | **CONFIRMED** `e2e-r1-2-fixup`; local, non-versioned evidence kept by Nick |
 | R1.3-INVENTORY | `REPORT.md` | **CONFIRMED** `e2e-r1-3-vesting-hooks`; local, non-versioned evidence kept by Nick |
+| R1.3 | `REPORT.md` | **CONFIRMED** `e2e-r1-3-vesting-hooks-run2`; local, non-versioned evidence kept by Nick |
+| R1.2b-INVENTORY | `REPORT.md` | **CONFIRMED** `e2e-r1-2b-cim-request-capture`; local, non-versioned evidence kept by Nick |
 
 - **REQUIREMENT (Citation handling)** Cite these reports by short ID and section, for example `[P0 §Dependency map]`; the local reports and evidence folders are not tracked with this design pack.
 
