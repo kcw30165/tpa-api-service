@@ -13,8 +13,8 @@
 
 ## Status and source baseline
 
-This pack defines M0 only. It does not implement the feature. Existing-code references were checked against `origin/dev` at `1011a9d8e59a18d273fa2304d2e58f58cfc7f9e9`. The two phase reports were used as investigation aids and discrepancies are recorded in [08 — Decision Log](08-decision-log.md#open-items-and-follow-ups).
+**M0 status: APPROVED by Nick on 2026-11-18 at commit `202fe9bb08ca6a21bf2558aedf8eab8e25945c92`** (design pack `fd04d50f7697dfd41e7b9f5c0473e81672e4be92` plus fix-up `202fe9bb08ca6a21bf2558aedf8eab8e25945c92`). M0 approval clears the design gate for M1 only; M2 and M3 each require an explicit go-ahead at their milestone gate. Existing-code references were checked against `origin/dev` at `1011a9d8e59a18d273fa2304d2e58f58cfc7f9e9`. The two phase reports were used as investigation aids and discrepancies are recorded in [08 — Decision Log](08-decision-log.md#open-items-and-follow-ups).
 
 **New names, paths, YAML keys and codes are explicitly marked `NEW (proposed)`.** Names and wire details not established by the feature decisions or source reports are marked `UNVERIFIED`.
 
-No Java, test, YAML, script, or build file is changed by M0. No Maven command is part of this milestone.
+M0 changes documentation only; no Java, test, YAML, script, or build file is changed. No Maven command is part of M0.

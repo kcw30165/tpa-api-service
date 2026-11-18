@@ -53,4 +53,4 @@ The shared selector's existing conflict rejection applies when `E2E_ACCOUNT_REF`
 
 ## Milestone gates
 
-For the combined M1+M2 MR: full `mvn test`, JaCoCo, startup smoke, and Sonar. Record only commands actually run and inspect Surefire/Failsafe reports after Maven runs. M3 is a separate shell-only MR, with shell/scenario tests and no Java gates. Do not run Maven for M0.
+For the combined M1+M2 Java gates G1–G4, use the evidence-backed commands and pass criteria in [07 — Implementation Plan, §7 Milestone gate commands](07-implementation-plan.md#7-milestone-gate-commands). Record the command, exit/result, report paths, and gate status in that milestone's evidence report. M3 is a separate shell-only MR and has no Java gates; this section defines no M3 commands. Do not run Maven for M0.

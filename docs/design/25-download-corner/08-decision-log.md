@@ -1,5 +1,10 @@
 # 08 — Decision Log (locked for Download Corner V0.3)
 
+## Approval record
+
+- **M0: APPROVED by Nick on 2026-11-18** at commit `202fe9bb08ca6a21bf2558aedf8eab8e25945c92` (design pack `fd04d50f7697dfd41e7b9f5c0473e81672e4be92` plus fix-up `202fe9bb08ca6a21bf2558aedf8eab8e25945c92`).
+- This approval clears the design gate for **M1 only**. **M2 and M3 each still require an explicit go-ahead at their own milestone gate.**
+
 | # | Decision | Rationale |
 |---|---|---|
 | L1 | `GET /api/v1/download-corner`; session plus `Account-Ref`; no query or body. | Matches the existing feature GET shape `/api/v1/vesting-scale`; controller convention is class `/api/v1` plus feature mapping (`VestingScaleController.java:33-35,54`). The proposed route has no naming discrepancy. |
@@ -29,7 +34,10 @@
 
 - **UNVERIFIED:** The BRD 6.9 source artifact and any detail beyond the supplied V0.3 scope/locked decisions were not found in the input reports. Confirm against the authoritative BRD before implementation if additional requirements are expected.
 - **UNVERIFIED:** The actual live DS contract and the encoding/types of non-null text fields were not found in the source evidence. The E2 presence/null/type rules are locked and M1 can implement them; live schema confirmation is a release gate, not a blocker to implementing M1 against this contract.
-- **UNVERIFIED:** The precise E2E test harness location/name and the approved JaCoCo/Sonar command invocations. The file names in the plan are proposed; use existing CI conventions when implementing.
+- **CLOSED:** The JaCoCo invocation, report path, and non-enforcement of a coverage threshold are documented in [07 — Implementation Plan, §7 G2](07-implementation-plan.md#7-milestone-gate-commands). No numeric threshold is enforced by the Maven gate.
+- **UNVERIFIED:** Sonar command/job invocation, server URL property, project key source, token variable name, branch-analysis behavior, and changed-file/New Code issue check. See [07 — Implementation Plan, §7 G4](07-implementation-plan.md#7-milestone-gate-commands); CI/ops evidence is required before claiming G4.
+- **UNVERIFIED:** The local startup-smoke port and wrapper path. `phase-04-direct-spring-runtime.md` says port 8090, while `application.yml` and README give default 8888; resolve this before executing the local health probe (see [07 — Implementation Plan, §7 G3](07-implementation-plan.md#7-milestone-gate-commands)).
+- **UNVERIFIED:** The precise M3 E2E test harness location/name and its approved test command. The file names in the plan are proposed; use existing CI conventions when implementing.
 - **UNVERIFIED:** Whether runtime APIM behavior exactly matches the supplied response/fallback contract. The source reports found no Download Corner implementation or endpoint on `origin/dev`; this design treats the user's locked decisions as authoritative.
 
 ### Prior report unknowns retained for completeness
