@@ -127,7 +127,27 @@ cim_hook_description() {
   esac
 }
 
+cim_elapsed_ms() {
+  local start="${1-}" end="${2-}" start_microseconds_text end_microseconds_text
+  local start_microseconds end_microseconds elapsed_microseconds duration_ms
+
+  [[ "$start" =~ ^[0-9]+[.,][0-9]{6}$ && "$end" =~ ^[0-9]+[.,][0-9]{6}$ ]] || return 1
+  start_microseconds_text="${start//[.,]/}"
+  end_microseconds_text="${end//[.,]/}"
+  ((${#start_microseconds_text} <= 18 && ${#end_microseconds_text} <= 18)) || return 1
+  start_microseconds=$((10#$start_microseconds_text))
+  end_microseconds=$((10#$end_microseconds_text))
+  elapsed_microseconds=$((end_microseconds - start_microseconds))
+  ((elapsed_microseconds >= 0 && elapsed_microseconds <= 86400000000)) || return 1
+  duration_ms=$(((elapsed_microseconds + 500) / 1000))
+  ((duration_ms <= 86400000)) || return 1
+  printf '%s\n' "$duration_ms"
+}
+
 cim_result_start() {
+  CIM_LAST_REQUEST_ID=''
+  CIM_LAST_TS_START=''
+  CIM_LAST_TS_END=''
   local id="${1-}" description
   description="$(cim_hook_description "$id")" || return 0
   e2e_result_start scenario investment-choice "$id" "$description" || :
@@ -135,6 +155,7 @@ cim_result_start() {
 
 cim_result_finish() {
   local id="${1-}" status="${2-}" reason_code="${3-}" no_http="${4:-no}" description
+  local duration_ms
   local -a fields=()
 
   description="$(cim_hook_description "$id")" || return 0
@@ -146,6 +167,11 @@ cim_result_finish() {
     fields+=("actual_http_status=$HTTP_STATUS")
     [[ -z "${ERROR_CODE:-}" ]] || fields+=("actual_public_error_code=$ERROR_CODE")
   fi
+  if declare -F cim_elapsed_ms >/dev/null \
+    && duration_ms="$(cim_elapsed_ms "${CIM_LAST_TS_START-}" "${CIM_LAST_TS_END-}")"; then
+    fields+=("duration_ms=$duration_ms")
+  fi
+  [[ -z "${CIM_LAST_REQUEST_ID-}" ]] || fields+=("request_id=$CIM_LAST_REQUEST_ID")
   [[ -z "${CIM_EXPECTED_PUBLIC_ERROR_CODE:-}" ]] \
     || fields+=("expected_public_error_code=$CIM_EXPECTED_PUBLIC_ERROR_CODE")
   [[ -z "$reason_code" ]] || fields+=("reason_code=$reason_code")
@@ -394,6 +420,7 @@ request() {
   include_csrf="${7:-$authenticated}"
   REQUEST_NUMBER=$((REQUEST_NUMBER + 1))
   request_id="cim-${BASHPID}-${REQUEST_NUMBER}-$(date +%s%N)"
+  CIM_LAST_REQUEST_ID="$request_id"
   exec {header_fd}< <(
     printf 'Accept-Language: %s\nX-Request-Id: %s\n' "$ACCEPT_LANGUAGE" "$request_id"
     if [[ "$authenticated" == yes ]]; then
@@ -417,11 +444,13 @@ request() {
     exec {body_fd}< <(printf '%s' "$REQUEST_BODY")
     args+=( -H 'Content-Type: application/json' --data-binary "@/dev/fd/$body_fd" )
   fi
+  CIM_LAST_TS_START="${EPOCHREALTIME-}"
   if raw="$(curl "${args[@]}" -w $'\n%{http_code}' 2>/dev/null)"; then
     curl_rc=0
   else
     curl_rc=$?
   fi
+  CIM_LAST_TS_END="${EPOCHREALTIME-}"
   exec {header_fd}<&-
   if [[ "$body" == present ]]; then exec {body_fd}<&-; fi
   HTTP_STATUS=000
@@ -441,6 +470,9 @@ REQUEST_BODY=''
 GET_DATA=''
 CIM_EXPECTED_HTTP_STATUS=''
 CIM_EXPECTED_PUBLIC_ERROR_CODE=''
+CIM_LAST_REQUEST_ID=''
+CIM_LAST_TS_START=''
+CIM_LAST_TS_END=''
 
 password_json() {
   local purpose="$1" operation="$2" password="$3" password_fd operation_fd jq_status

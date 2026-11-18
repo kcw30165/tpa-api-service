@@ -191,9 +191,24 @@ if [[ -f "$tmp/lifecycle.jsonl" ]]; then
     and all(.[];
       .record_type == "scenario"
       and .pack == "investment-choice"
-      and .duration_ms == null
-      and .request_id == null
       and .echoed_request_id == null
+      and (
+        .duration_ms == null
+        or (
+          (.duration_ms | type) == "number"
+          and (.duration_ms | floor) == .duration_ms
+          and .duration_ms >= 0
+          and .duration_ms <= 86400000
+        )
+      )
+      and (
+        .event == "start"
+        or (.status == "SKIP" and .request_id == null)
+        or (
+          .status != "SKIP"
+          and (.request_id | type == "string" and test("^cim-"))
+        )
+      )
     )
     and all(finished[]; .description != "" and .evidence_refs == [])
     and finished[0].expected_http_status == 200 and finished[0].actual_http_status == 200
