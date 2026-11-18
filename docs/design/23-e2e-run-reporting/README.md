@@ -68,7 +68,7 @@
 | Component | HTTP status | Public error code | Duration | Request ID | Echoed request ID | Source |
 |---|---|---|---|---|---|---|
 | **CONFIRMED — generic HTTP client** | Captured in `E2E_HTTP_STATUS` | Not parsed by the generic client; callers may assert codes | Captured in `E2E_ELAPSED_SECONDS` | Generated and captured in request state/evidence | **UNVERIFIED** Whether the echoed `X-Request-Id` is captured; Phase 0 confirms redacted response headers are saved but does not state whether that header is read | [P0 §Current evidence behavior] [P0b §8, §9.4] |
-| **CONFIRMED — CIM custom curl** | Captured; values outside 100-599 are omitted | Extracted from `.errors[0].code` for assertions/results | Captured around curl by R1.2b; `null` when the scenario made no request or the timestamps are unusable | Generated/sent in a local variable and captured for the most recent request before finish by R1.2b; `null` when the scenario made no request or the library rejects an unsafe value | `null` in R1.2b | [Q25]; `scripts/e2e/investment-choice-scenarios.sh:390-434` |
+| **CONFIRMED — CIM custom curl** | Captured; values outside 100-599 are omitted | Extracted from `.errors[0].code` for assertions/results | Captured around curl by R1.2b; `null` when the scenario made no request or the timestamps are unusable | Generated/sent in a local variable and captured for the most recent request before finish by R1.2b; `null` when the scenario made no request or the library rejects an unsafe value | `null` in R1.2b | [Q25]; `request()` in `scripts/e2e/investment-choice-scenarios.sh` |
 | **CONFIRMED — Vesting Scale (R1.3)** | Captured by `fetch_language`; written as per-language `actual_http_status` only for integer status 100-599; `language-plan-sequence` has no HTTP status | Not parsed; `null` | Not captured; `null` | `null` (no explicit `X-Request-Id` sent) | `null` (no echoed request ID captured) | **DECISION (Q24)**; `scripts/e2e/vesting-scale-scenarios.sh:180-187,134-159,221-234,374-390` |
 
 - **REQUIREMENT (R-6 clarification)** `null` means unavailable. R1 records `null` where the current code does not capture a field; capturing a new field is a separate sub-task with characterization tests.
@@ -123,6 +123,9 @@
 | R1.3-INVENTORY | `REPORT.md` | **CONFIRMED** `e2e-r1-3-vesting-hooks`; local, non-versioned evidence kept by Nick |
 | R1.3 | `REPORT.md` | **CONFIRMED** `e2e-r1-3-vesting-hooks-run2`; local, non-versioned evidence kept by Nick |
 | R1.2b-INVENTORY | `REPORT.md` | **CONFIRMED** `e2e-r1-2b-cim-request-capture`; local, non-versioned evidence kept by Nick |
+| R1-REBASE | `REPORT.md` | **CONFIRMED** `e2e-r1-rebase`; local, non-versioned evidence kept by Nick |
+
+- **PROPOSAL — Line citations.** Line numbers cited for `scripts/e2e/*.sh` are as of the commit that introduced the statement; the R1 hook commits shifted later lines in `scripts/e2e/investment-choice-scenarios.sh` and `scripts/e2e/vesting-scale-scenarios.sh`; function names, identifiers and scenario ids are authoritative. Line numbers that cite the pre-hook version remain valid against `git show origin/dev:<path>`; re-derive current line numbers with `grep -n` at the commit you are working on.
 
 - **REQUIREMENT (Citation handling)** Cite these reports by short ID and section, for example `[P0 §Dependency map]`; the local reports and evidence folders are not tracked with this design pack.
 
