@@ -56,7 +56,13 @@ All sample links are plain URLs with no HTML. The names and response structure a
 | `response.err-message` | Any non-empty value is an error and takes precedence over parsing `data` | Known account-context errors are classified as such; any other non-empty value is unmapped |
 | `response.data` | Exactly one element required when `err-message` is empty | Missing, empty, null, or cardinality other than one is malformed |
 | `response.data[0].env` | Ignore; Java already has `accountEnv` in the session | Never forwarded |
-| `response.data[0].categories` and nested item fields | Parse according to the agreed schema | Any DTO/tree parse or shape failure is malformed; identify the malformed path in the failure event |
+| `response.data[0].categories` | Required and non-null; an empty array is valid | Missing or null is malformed at `response.data[0].categories`; log the malformed field path |
+| `response.data[0].categories[i].category-seq` | Required, non-null, and numeric | Missing, null, or non-numeric is malformed at the field path |
+| `response.data[0].categories[i].category-name-eng` | Required, non-null, and nonblank | Missing, null, or blank is malformed at the field path |
+| `response.data[0].categories[i].items` | Required and non-null; an empty array is valid | Missing or null is malformed at `response.data[0].categories[i].items`; log the malformed field path |
+| `response.data[0].categories[i].items[j].item-seq` | Required, non-null, and numeric | Missing, null, or non-numeric is malformed at the field path |
+| English item name, link, and file name | Missing/null is treated as blank; apply L5 field-by-field fallback and then L6 link filtering | Not malformed solely because the English item field is missing or null |
+| Chinese category name, item name, link, and file name | Missing/null is treated as blank; L5 falls back to the corresponding English field | Not malformed solely because a Chinese field is missing or null |
 
 The executor returns the shared typed response envelope. As in Vesting, the feature adapter uses `postEnvelope`, then checks response/error/cardinality and maps the accepted one data item (`ApimVestingScaleAdapter.java:83-103,113-138`). The Download Corner request is an account-scoped safe read: use `ACCOUNT_ENV`, `SAFE_BUSINESS_CALL`, the same recovery setting and the shared read retry behavior. The request constructor enforces a nonblank path and nonblank `accountEnv` for `ACCOUNT_ENV` (`ApimExchangeRequest.java:62-87`).
 
@@ -66,4 +72,4 @@ The Vesting configuration uses `apim.vesting-scale.path` with a YAML default (`V
 
 ## Wire-shape items requiring confirmation
 
-The locked contract names every field but does not state scalar types, nullability, whether `categories`/`items` may be null, or whether sequence values can be absent, fractional, or encoded as strings. Treat a parse/shape failure as malformed per L10; verify the wire details with the DS contract before M1 finalizes strict DTO validation. Do not invent coercion behavior.
+The locked rules above settle presence/null handling and require numeric sequence values; empty `categories` and `items` arrays are valid. The actual live DS contract and the scalar types/encoding of non-null text values remain **UNVERIFIED**. M1 can implement the locked contract, but confirm the live DS schema before release; do not invent coercion behavior for non-null values of an unexpected type.

@@ -50,8 +50,7 @@ All paths/classes marked `NEW (proposed)` are names for the future implementatio
 | NEW (proposed) | `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/error/DownloadCornerExceptionMappingRegistrationTest.java` | Feature-specific registry assertion; no existing Download Corner counterpart |
 | NEW (proposed) | `scripts/e2e/download-corner-scenarios.sh` | `scripts/e2e/vesting-scale-scenarios.sh`; read-only two-language pack |
 | MODIFIED | `scripts/e2e/lib/feature-pack-registry.sh` | Register the Download Corner scenario pack; this is the live registry path, not the L16 path lacking `lib/` |
-| MODIFIED | `scripts/e2e/lib/authenticated-login-journey.sh` | Strictly reject both selector variables by presence before login; no Java counterpart |
-| NEW (proposed) | `scripts/e2e/tests/download-corner-scenarios-test.sh` | Shell-level contract/regression test for the new pack and selector rejection; exact test harness/path is UNVERIFIED |
+| NEW (proposed) | `scripts/e2e/tests/download-corner-scenarios-test.sh` | Shell-level contract test for the new pack; exact test harness/path is UNVERIFIED |
 
 The response DTO plan includes only the wrapper/data/category/item structures required by Download Corner. Vesting-specific overview, plan, and presence-section response types have no Download Corner equivalent.
 
@@ -73,9 +72,9 @@ Done when mapper, service, controller, response serialization, and mapping-regis
 
 ## 5. M3 — Read-only E2E pack (separate MR)
 
-Add the Download Corner scenario script, register it, invoke it only through `bash scripts/e2e/run-post-login.sh`, and use the shared `E2E_ACCOUNT_INDEX` (default `0`). Add a pre-login rejection test for simultaneous `E2E_ACCOUNT_REF` and `E2E_ACCOUNT_INDEX`; update shared selector validation only as needed to enforce rejection by variable presence. Do not introduce any live mutation or file fetch.
+Add the Download Corner scenario script, register it, and invoke it only through `bash scripts/e2e/run-post-login.sh`. Use the shared account selector exactly as it exists on `origin/dev`; the current selector rejects simultaneous `E2E_ACCOUNT_REF` and a non-empty `E2E_ACCOUNT_INDEX` (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). Do not modify the selector or add selector rejection tests/scenarios. Do not introduce any live mutation or file fetch.
 
-Done when EN/ZH response checks, ordering/shape checks, selector rejection before login, and shell-level fail-first evidence pass. M3 has no Java gates.
+Done when EN/ZH response checks, ordering/shape checks, and shell-level fail-first scenario-pack evidence pass. M3 has no Java gates.
 
 ## 6. MR and validation boundaries
 

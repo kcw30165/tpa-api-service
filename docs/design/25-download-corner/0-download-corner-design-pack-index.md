@@ -13,7 +13,7 @@
 
 ## Status and source baseline
 
-This pack defines M0 only. It does not implement the feature. Existing-code references were checked against `origin/dev` at `1011a9d8e59a18d273fa2304d2e58f58cfc7f9e9`. The two phase reports were used as investigation aids and discrepancies are recorded in [08 — Decision Log](08-decision-log.md#open-items-and-unverified-evidence).
+This pack defines M0 only. It does not implement the feature. Existing-code references were checked against `origin/dev` at `1011a9d8e59a18d273fa2304d2e58f58cfc7f9e9`. The two phase reports were used as investigation aids and discrepancies are recorded in [08 — Decision Log](08-decision-log.md#open-items-and-follow-ups).
 
 **New names, paths, YAML keys and codes are explicitly marked `NEW (proposed)`.** Names and wire details not established by the feature decisions or source reports are marked `UNVERIFIED`.
 

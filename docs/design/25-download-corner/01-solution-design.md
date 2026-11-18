@@ -4,13 +4,13 @@
 
 Download Corner is the post-login document-list page described by BRD 6.9, feature version V0.3. The BFF retrieves the categories and bilingual document metadata for the selected account and returns one language-specific list.
 
-**In scope:** `GET /api/v1/download-corner`; authenticated session and selected `Account-Ref`; one `TRPGetDownloadCorner` read through the shared APIM exchange boundary; Chinese per-field English fallback; blank-link filtering; stable sequence ordering; empty-category preservation; standard response and retrieval-unavailable handling; a read-only post-login E2E pack.
+**In scope:** `GET /api/v1/download-corner`; authenticated session and selected `Account-Ref`; one `TRPGetDownloadCorner` read through the shared APIM exchange boundary; Chinese per-field English fallback; blank-link filtering; stable sequence ordering; empty-category preservation; the E2 DS field validation rules; standard response and retrieval-unavailable handling; a read-only post-login E2E pack that leaves the shared selector unchanged.
 
 **Frontend-owned:** search, page wording, “Important Notes,” and empty-state text. Java returns data and does not implement frontend search, labels or page copy.
 
 **Out of scope:** BRD security-setting changes, remote file-existence checks, link validation or rewriting, caching, Redis writes, mutations, and any Vesting Scale change.
 
-The full BRD 6.9 artifact was not found in the repository evidence. The scope and behavior in this pack are based on the V0.3 feature decisions supplied for this task; see [open items](08-decision-log.md#open-items-and-unverified-evidence).
+The full BRD 6.9 artifact was not found in the repository evidence. The scope and behavior in this pack are based on the V0.3 feature decisions supplied for this task; see [open items and follow-ups](08-decision-log.md#open-items-and-follow-ups).
 
 ## 2. Ownership
 

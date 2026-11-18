@@ -11,6 +11,8 @@ Proposed new tests:
 | `NEW (proposed) TrpGetDownloadCornerApimDtoContractTest` | Exact request wire keys and values; response wire field names; nested categories/items |
 | `NEW (proposed) TrpGetDownloadCornerApimMapperTest` | Map one accepted response data item; ignore `env`; retain both language fields and seq values for the web mapper |
 | `NEW (proposed) ApimDownloadCornerAdapterTest` | Correct path; `ACCOUNT_ENV`; `SAFE_BUSINESS_CALL`; same read recovery/retry and terminal-caller ownership; exactly one data item; known and unknown errors; malformed response and field diagnostics; `FailureEventPort` event values; raw `internalCode` on every non-empty `err-message`; null internal code for malformed cases |
+| `NEW (proposed) ApimDownloadCornerAdapterTest` — E2 field validation | Fail first for missing/null `categories`; missing/null nested `items`; missing/null/non-numeric `category-seq`; missing/null/non-numeric `item-seq`; and missing/null/blank English category name. Assert 503 mapping, `MALFORMED_RESPONSE`, null `internalCode`, and the exact `malformedField` path for each case. |
+| `NEW (proposed) ApimDownloadCornerAdapterTest` — valid/blank cases | Fail first for valid empty `categories` and `items` arrays, preserving an empty category; missing/null English item name/link/file name treated as blank; and missing/null Chinese category/item/link/file-name fields treated as blank for per-field English fallback. Verify English blank item links still use L6 filtering. |
 | `NEW (proposed) DownloadCornerApimConfigurationTest` | Proposed YAML path binding and blank-path failure |
 | `NEW (proposed) DownloadCornerApimFieldDeserializerTest` | Presence/shape behavior if the Vesting `ApimField` utility is mirrored |
 
@@ -36,7 +38,7 @@ The serialization test mirrors the explicit Vesting response contract test (`Ves
 
 ## M3 — Read-only post-login E2E
 
-**`NEW (proposed) scripts/e2e/download-corner-scenarios.sh`** must run only authenticated GETs and use the shared runner's session, CSRF token, Account-Ref, and zero-based `E2E_ACCOUNT_INDEX` (default `0`). It performs no login/logout itself, mutation, direct APIM call, file fetch, or remote file-existence check. Register the pack in `scripts/e2e/lib/feature-pack-registry.sh` and execute it through `bash scripts/e2e/run-post-login.sh`.
+**`NEW (proposed) scripts/e2e/download-corner-scenarios.sh`** must run only authenticated GETs and use the shared runner's session, CSRF token, and selected account exactly as provided by the unchanged shared selector on `origin/dev`. It performs no login/logout itself, mutation, direct APIM call, file fetch, or remote file-existence check. Register the pack in the live registry path `scripts/e2e/lib/feature-pack-registry.sh` and execute it through `bash scripts/e2e/run-post-login.sh`.
 
 Scenarios/assertions:
 
@@ -44,9 +46,10 @@ Scenarios/assertions:
 2. Chinese GET succeeds; validate the Chinese response and expected field-level English fallback where fixture/DS data provides a blank Chinese value.
 3. Assert category/item ascending order, stable ties where the selected account has tied sequences, empty-category preservation, and omission of seq/env.
 4. Assert the pack makes read-only GET requests; it does not probe returned links.
-5. Before login, supplying both `E2E_ACCOUNT_REF` and `E2E_ACCOUNT_INDEX` is rejected. Include a set-but-empty index case: the current shared selector checks the conflict only when the index value is non-empty (`authenticated-login-journey.sh:78-97`), so M3 must first add a failing regression and then close this presence-semantics gap without changing account authorization. Verify the rejection occurs before any login HTTP request.
 
-**Fail-first evidence:** add/run a shell-level selector regression and scenario-pack contract test with stubbed HTTP/login so the new pack and strict conflict case fail before implementation. Record red/green results and confirm no live account mutation. M3 is shell-only and has no Java gates.
+The shared selector's existing conflict rejection applies when `E2E_ACCOUNT_REF` and a non-empty `E2E_ACCOUNT_INDEX` are both supplied (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). M3 does not change that shared selector or add selector rejection tests/scenarios. The pack consumes the shared runner's selection unchanged.
+
+**Fail-first evidence:** add/run a scenario-pack contract test with stubbed HTTP/login so the new read-only pack fails before implementation. Record red/green results and confirm no live account mutation. M3 is shell-only and has no Java gates.
 
 ## Milestone gates
 
