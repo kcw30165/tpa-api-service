@@ -35,9 +35,17 @@ by the sub-task that depends on it.
   `RequestLoggingWebFilter` (`http.request.failed`, because status >= 500).
 - **Confirmed.** An APIM HTTP failure is logged at ERROR by `ApimWebClientFacade` and by
   `ApimExchangeOutcomeLogger` (`apim.exchange.failed`) before reaching any handler.
-- **Confirmed.** `StructuredFailureEventLogger` logs every `FailureEvent` at ERROR, including
-  expected business rejections (registration lookup `err.tpa.member.not.found`, HTTP 422).
-  `FailureEventPort` has one production caller (`ApimRegistrationLookupAdapter`).
+- **Confirmed.** `StructuredFailureEventLogger` emits WARN for `LOCAL_VALIDATION`, `LOCAL_BUSINESS`,
+  `DOWNSTREAM_BUSINESS`, and `DOWNSTREAM_TECHNICAL`, and ERROR for other non-null failure origins.
+  The registration lookup `err.tpa.member.not.found` event has origin `DOWNSTREAM_BUSINESS` and
+  follows the WARN path
+  (`src/main/java/com/bct/ngtpa/apiservice/infrastructure/logging/StructuredFailureEventLogger.java:19-24,58-64`;
+  `src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java:181-195`).
+- **Confirmed.** `FailureEventPort` has multiple production publishers, including the APIM
+  registration and investment-choice adapters and an investment-choice application service
+  (`src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java:152-163,184-195`;
+  `src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/investmentchoice/ApimInvestmentChoiceCancelAdapter.java:156-167`;
+  `src/main/java/com/bct/ngtpa/apiservice/application/usecase/investmentchoice/CancelInvestmentChoiceService.java:83-101`).
 - **Confirmed.** Auth flows swallow failures with `doOnError(log.error)` + `onErrorReturn(...)` or
   `onErrorResume(...)`; these never reach the central handler.
   Examples: `LoginOtpVerifyService`, `EstablishAuthenticatedLoginSessionService`,
