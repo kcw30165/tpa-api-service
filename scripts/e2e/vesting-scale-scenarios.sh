@@ -7,6 +7,9 @@ umask 077
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/e2e/lib/feature-pack-registry.sh
 source "$ROOT/lib/feature-pack-registry.sh"
+# shellcheck source=scripts/e2e/lib/result-records.sh
+# shellcheck disable=SC1091 # The library is sourced relative to ROOT; it is frozen for this task.
+source "$ROOT/lib/result-records.sh"
 
 BASE_URL_VALUE="${BASE_URL:-}"
 SESSION_COOKIE_VALUE="${SESSION_COOKIE:-}"
@@ -72,6 +75,90 @@ cleanup_owned_response_state() {
 }
 trap cleanup_owned_response_state EXIT
 
+VESTING_HOOK_HTTP_STATUS=''
+
+vesting_hook_description() {
+  local language="${1-}" check="${2-}" language_label description
+
+  if [[ "$#" -eq 1 && "$language" == language-plan-sequence ]]; then
+    printf '%s' 'English and zh-HK responses contain the same planTypes sequence.'
+    return 0
+  fi
+  [[ "$#" -eq 2 ]] || return 1
+  case "$language" in
+    en) language_label=English ;;
+    zh-HK) language_label=zh-HK ;;
+    *) return 1 ;;
+  esac
+  case "$check" in
+    http-status) description='Vesting Scale response returns HTTP status 200.' ;;
+    envelope) description='Vesting Scale response has success=true and status=SUCCESS.' ;;
+    planTypes-array) description='result.data.planTypes is an array.' ;;
+    overview-member-object) description='result.data.overview.member is an object.' ;;
+    overview-plans-array) description='result.data.overview.plans is an array.' ;;
+    overview-plan-order) description='overview plan numbers match planTypes order.' ;;
+    vesting-scale-shape) description='vestingScale is absent or has an object with a plans array.' ;;
+    vesting-plan-reference) description='vesting plans reference known planTypes and valid scales.' ;;
+    vesting-plan-order) description='vesting plans are unique and ordered by planTypes.' ;;
+    completed-years-order) description='completedYears values are numeric and nondecreasing.' ;;
+    member-dates) description='member dates are null or formatted DD/MM/YYYY.' ;;
+    plan-dates) description='plan dates are null or formatted DD/MM/YYYY.' ;;
+    absent-memberCategory) description='memberCategory is absent from the member object.' ;;
+    absent-dateJoinedCompany) description='dateJoinedCompany is absent from the member object.' ;;
+    absent-dateJoinedScheme) description='dateJoinedScheme is absent from the member object.' ;;
+    absent-employmentDate) description='employmentDate is absent from the member object.' ;;
+    absent-planEffectiveDate) description='planEffectiveDate is absent from every plan object.' ;;
+    absent-dateOfJoiningPlan) description='dateOfJoiningPlan is absent from every plan object.' ;;
+    absent-planService) description='planService is absent from every plan object.' ;;
+    absent-memberContributionBasis) description='memberContributionBasis is absent from every plan object.' ;;
+    absent-employerContributionBasis) description='employerContributionBasis is absent from every plan object.' ;;
+    absent-vestingScale) description='vestingScale is absent from result.data.' ;;
+    *) return 1 ;;
+  esac
+  printf '%s %s' "$language_label" "$description"
+}
+
+vesting_result_start() {
+  local language="${1-}" check="${2-}" identifier description
+  if [[ "$#" -eq 1 && "$language" == language-plan-sequence ]]; then
+    identifier="language-plan-sequence"
+    description="$(vesting_hook_description language-plan-sequence)" || return 0
+  else
+    [[ "$#" -eq 2 ]] || return 0
+    identifier="$language.$check"
+    description="$(vesting_hook_description "$language" "$check")" || return 0
+  fi
+  e2e_result_start scenario vesting-scale "$identifier" "$description" || :
+}
+
+vesting_result_finish() {
+  local language="${1-}" check="${2-}" status="${3-}" reason_code="${4-}"
+  local identifier description
+  local -a fields=()
+
+  if [[ "$language" == language-plan-sequence ]]; then
+    [[ "$#" -ge 2 && "$#" -le 3 ]] || return 0
+    status="$check"
+    reason_code="${3-}"
+    check="language-plan-sequence"
+    identifier="language-plan-sequence"
+    description="$(vesting_hook_description language-plan-sequence)" || return 0
+  else
+    [[ "$#" -ge 3 && "$#" -le 4 ]] || return 0
+    identifier="$language.$check"
+    description="$(vesting_hook_description "$language" "$check")" || return 0
+  fi
+  fields+=("description=$description" "status=$status")
+  if [[ "$status" == FAIL ]]; then fields+=("reason_code=$reason_code"); fi
+  if [[ "$identifier" != language-plan-sequence ]]; then
+    if [[ "$VESTING_HOOK_HTTP_STATUS" =~ ^[1-5][0-9]{2}$ ]]; then
+      fields+=("actual_http_status=$VESTING_HOOK_HTTP_STATUS")
+    fi
+    if [[ "$check" == http-status ]]; then fields+=(expected_http_status=200); fi
+  fi
+  e2e_result_finish scenario vesting-scale "$identifier" "${fields[@]}" || :
+}
+
 fetch_language() {
   local language="$1" body_file="$2" error_file="$3" headers_fd status curl_rc
   exec {headers_fd}< <(
@@ -102,12 +189,15 @@ fetch_language() {
 
 record_check() {
   local language="$1" body_file="$2" name="$3" expression="$4"
+  vesting_result_start "$language" "$name" || :
   if jq -e "$expression" "$body_file" >/dev/null 2>&1; then
     checks_passed+=("$name")
+    vesting_result_finish "$language" "$name" PASS || :
   else
     checks_failed+=("$name")
     printf 'FAIL vesting-scale language=%s check=%s\n' "$language" "$name"
     validation_failed=true
+    vesting_result_finish "$language" "$name" FAIL CONTRACT_MISMATCH || :
   fi
 }
 
@@ -128,16 +218,20 @@ check_absent_field() {
 
 validate_response() {
   local language="$1" status="$2" body_file="$3"
+  VESTING_HOOK_HTTP_STATUS="$status"
   local types_count plans_count vesting_count passed absent_result field
   local validation_failed=false absent_failed=false
   local -a checks_passed=() checks_failed=()
 
+  vesting_result_start "$language" http-status || :
   if [[ "$status" == 200 ]]; then
     checks_passed+=(http-status)
+    vesting_result_finish "$language" http-status PASS || :
   else
     checks_failed+=(http-status)
     printf 'FAIL vesting-scale language=%s check=http-status\n' "$language"
     validation_failed=true
+    vesting_result_finish "$language" http-status FAIL HTTP_STATUS_MISMATCH || :
   fi
 
   record_check "$language" "$body_file" envelope \
@@ -236,13 +330,16 @@ validate_response() {
 
   if ((${#absent_fields[@]})); then
     for field in "${absent_fields[@]}"; do
+      vesting_result_start "$language" "absent-$field" || :
       if check_absent_field "$body_file" "$field"; then
         checks_passed+=("absent-$field")
+        vesting_result_finish "$language" "absent-$field" PASS || :
       else
         checks_failed+=("absent-$field")
         printf 'FAIL vesting-scale language=%s check=absent-%s\n' "$language" "$field"
         validation_failed=true
         absent_failed=true
+        vesting_result_finish "$language" "absent-$field" FAIL CONTRACT_MISMATCH || :
       fi
     done
     if [[ "$absent_failed" == true ]]; then absent_result=failed; else absent_result=passed; fi
@@ -274,6 +371,8 @@ overall_rc=0
 validate_response en "$english_status" "$english_body" || overall_rc=1
 validate_response zh-HK "$chinese_status" "$chinese_body" || overall_rc=1
 
+VESTING_HOOK_HTTP_STATUS=""
+vesting_result_start language-plan-sequence || :
 if jq -e -s '
   length == 2
   and (.[0] as $en | .[1] as $zh
@@ -281,9 +380,11 @@ if jq -e -s '
         == ($zh.result.data.planTypes | map(.planNo)))
 ' "$english_body" "$chinese_body" >/dev/null 2>&1; then
   printf 'PASS vesting-scale check=language-plan-sequence\n'
+  vesting_result_finish language-plan-sequence PASS || :
   [[ -z "$summary_file" ]] || printf 'cross_language_plan_sequence=passed\n' >>"$summary_file"
 else
   printf 'FAIL vesting-scale check=language-plan-sequence\n'
+  vesting_result_finish language-plan-sequence FAIL CONTRACT_MISMATCH || :
   [[ -z "$summary_file" ]] || printf 'cross_language_plan_sequence=failed\n' >>"$summary_file"
   overall_rc=1
 fi
