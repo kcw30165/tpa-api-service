@@ -24,7 +24,7 @@
 | L15 | Mirror the Vesting Scale feature classes one-to-one across the listed architecture layers in `07-implementation-plan.md`, adapting only structures required by this contract. | Reuses verified repository layering and test patterns without importing Vesting behavior or response fields. |
 | L16 | M0 is this pack. M1 outbound; M2 inbound; one MR for M1+M2. M3 is a separate read-only post-login E2E pack at the proposed scenario path, registered at `scripts/e2e/lib/feature-pack-registry.sh` and run via the post-login runner using the shared selector unchanged from `origin/dev`. The existing selector rejects `E2E_ACCOUNT_REF` plus a non-empty `E2E_ACCOUNT_INDEX` (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). Java gates are full Maven test, JaCoCo, startup smoke, Sonar for M1/M2 only; M3 has no Java gates. | Keeps the Java feature and shell-only E2E work independently reviewable and preserves shared selector ownership. |
 | L17 | Write tests fail-first and record failing-then-passing evidence for each milestone. | Establishes evidence for each new behavior and contract. M0 is documentation-only, so TDD does not apply. |
-| L18 | Exclude frontend search, BRD security settings, file-existence checks, and all Vesting Scale changes. Track the Vesting raw-`err-message` `internalCode` improvement as a separate follow-up, not this branch. | Preserves the bounded feature scope and avoids coupling independent behavior changes. |
+| L18 | Exclude frontend search, BRD security settings, file-existence checks, and all Vesting Scale changes. | Preserves the bounded feature scope and avoids coupling independent behavior changes. |
 | E1 | The shared E2E account selector is out of scope and must not be changed on this branch. M3 consumes its `origin/dev` behavior unchanged: the mutual-exclusion check rejects `E2E_ACCOUNT_REF` together with a non-empty `E2E_ACCOUNT_INDEX` (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). Use the live registry path `scripts/e2e/lib/feature-pack-registry.sh`. | Keeps shared test infrastructure changes separate from the Download Corner E2E pack. |
 | E2 | For `categories` and nested `items`, missing or null is malformed; empty arrays are valid. Sequence values are signed 32-bit `int`; exact-integer decimal representations are accepted, while missing/null, fractional, and out-of-range values are malformed. Missing, null, or blank English category name is malformed. Missing/null English item name, link, or file name is blank, not malformed; apply per-field English fallback (L5) and resolved-link filtering (L6). Missing/null Chinese category name, item name, link, or file name is blank and falls back field-by-field to English (L5). Every malformed case returns 503 `err.download-corner.retrieval.unavailable` and logs the malformed field path using Vesting's mechanism. Sequence failures use `MALFORMED_RESPONSE` and null `internalCode`. | Defines strict structure needed for reliable ordering and category mapping while allowing absent translations and optional item display fields to follow the locked fallback/filter rules. |
 
@@ -34,48 +34,27 @@
 |---|---|---|
 | F1 | Add an APIM routing-ledger entry for `TRPGetDownloadCorner`, modeled on `TRPGetVestingScale`. | Records the new account-environment safe read without changing Vesting Scale. |
 | F2 | `category-seq` and `item-seq` are signed 32-bit `int` values. An exact-integer decimal such as `10010.0` is accepted. A fractional or out-of-`int`-range value is malformed: return 503 `err.download-corner.retrieval.unavailable`, log the malformed field path, use reason `MALFORMED_RESPONSE`, and set `internalCode` to null. | Allows numeric JSON encoding with a decimal scale when its mathematical value is still an exact `int`, while rejecting lossy or overflowing values. |
-| F3 | `ApimField` and `ApimFieldDeserializer` were copied into the Download Corner DTO package for M1. A Sonar duplication finding triggers a separate shared-extraction follow-up. | Keeps this feature's M1 implementation bounded; shared extraction is not part of M1/M2. |
+| F3 | `ApimField` and `ApimFieldDeserializer` were copied into the Download Corner DTO package for M1. | Keeps this feature's M1 implementation bounded; shared extraction is not part of M1/M2. |
+
+## Shared-test and M1/M2 implementation decisions
+
+| # | Decision | Rationale |
+|---|---|---|
+| H1 | The shared inbound route architecture test increased its expected route count from 36 to 37 and includes `GET /api/v1/download-corner`. | Records the new endpoint without removing existing route coverage. |
+| H2 | Add the Download Corner retrieval error constant to `ErrorCodes`, mirroring the existing Vesting Scale constant pattern. | Keeps the public error code centralized and consistent with the neighboring feature. |
+| H3 | Extend `ExceptionMappingsTest` from 33 to 34 feature mappings for Download Corner. | Retains the shared exception-mapping regression checks while adding the feature mapping. |
+| H4 | Shared tests are additive-only: retain existing assertions and add Download Corner coverage without replacing or weakening prior coverage. | Prevents a feature addition from silently reducing repository-wide contract coverage. |
+| I1 | Chain the route-count assertion and expected-route assertion into one AssertJ chain. | Resolves java:S5853 without changing the route count or expected route list. |
+| I2 | Verify the Download Corner routing-ledger entry against production adapter source literals, using the existing Vesting-style source assertion; mutate retry eligibility temporarily to prove the test fails. | Resolves java:S3415 and demonstrates the assertion detects a production-routing regression. |
 
 ## Open items and follow-ups
 
-### Contract and implementation details
-
-- **UNVERIFIED:** The BRD 6.9 source artifact and any detail beyond the supplied V0.3 scope/locked decisions were not found in the input reports. Confirm against the authoritative BRD before implementation if additional requirements are expected.
-- **UNVERIFIED:** The actual live DS contract and the encoding/types of non-null text fields were not found in the source evidence. The E2 presence/null/type rules are locked and M1 can implement them; live schema confirmation is a release gate, not a blocker to implementing M1 against this contract.
-- **CLOSED:** The JaCoCo invocation, report path, and non-enforcement of a coverage threshold are documented in [07 — Implementation Plan, §7 G2](07-implementation-plan.md#7-milestone-gate-commands). No numeric threshold is enforced by the Maven gate.
-- **UNVERIFIED:** Sonar command/job invocation, server URL property, project key source, token variable name, branch-analysis behavior, and changed-file/New Code issue check. See [07 — Implementation Plan, §7 G4](07-implementation-plan.md#7-milestone-gate-commands); CI/ops evidence is required before claiming G4.
-- **UNVERIFIED:** The local startup-smoke port and wrapper path. `phase-04-direct-spring-runtime.md` says port 8090, while `application.yml` and README give default 8888; resolve this before executing the local health probe (see [07 — Implementation Plan, §7 G3](07-implementation-plan.md#7-milestone-gate-commands)).
-- **UNVERIFIED:** The precise M3 E2E test harness location/name and its approved test command. The file names in the plan are proposed; use existing CI conventions when implementing.
-- **UNVERIFIED:** Whether runtime APIM behavior exactly matches the supplied response/fallback contract. The source reports found no Download Corner implementation or endpoint on `origin/dev`; this design treats the user's locked decisions as authoritative.
-
-### Prior report unknowns retained for completeness
-
-- **UNVERIFIED (phase 0a):** The full production Redis session adapter call chain and external identity-to-actor-role mapping for internal/call-centre users were not established. This feature reuses the already-resolved context and does not need to change those flows.
-- **UNVERIFIED (phase 0a):** Whether every internal/call-centre role reaches the shared resolver as `ROLE_INPUT` or a blocked role. No role behavior is changed here.
-- **UNVERIFIED (phase 0a/0b):** Whether an external API contract registry exists outside the repository. No OpenAPI/Swagger/API-spec artifact was found in the reports' origin/dev tree search; the BFF serialization test remains the local contract proof.
-- **UNVERIFIED (phase 0b):** Whether the deployed logging encoder adds Reactor/MDC values as top-level JSON fields. No logger/config change is proposed.
-- **UNVERIFIED (phase 0b):** Whether Vesting Scale is fully migrated under the exception-handling milestone schedule. This feature relies on observed live source behavior only and makes no Vesting change.
-- **UNVERIFIED (phase 0b):** The exact DS contract for Download Corner (including Chinese fallback requirements) was not established by source evidence; the user-provided locked decisions settle this design's behavior, not independent DS verification.
-
-### E1 follow-up: shared E2E selector empty-index semantics
-
-Do not change or test-drive a selector change in M3. The current mutual-exclusion check is based on a non-empty index; the separate numeric validation also applies when `E2E_ACCOUNT_INDEX` is set (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). Any clarification or change to the set-but-empty combination is a separate follow-up, not Download Corner scope. The unmerged `refactor/e2e-run-reporting` branch also adds `scripts/e2e/lib/result-records.sh`; coordinate that separate shared-library work rather than overlapping it here.
-
-### E2 follow-up: actual DS schema
-
-The locked E2 presence/null/type rules are settled for this design. The live DS contract and the encoding of non-null text values remain **UNVERIFIED**. M1 can implement the locked contract; confirm the DS schema before release and do not invent coercions for non-null unexpected types.
-
-### Routing ledger follow-up
-
-The routing ledger currently uses a separate `DOWNLOAD_CORNER_LEDGER` with a hardcoded total of 26. Consolidate it with the main ledger when the ledger is next refactored; do not broaden M2 to refactor the shared test.
-
-### Numbering and report reconciliation
-
-- Phase 0a describes `23` as the next number after the highest numbered folder on `origin/dev`; phase 0b notes `23` appears on another ref and that global numbering differs by ref. These statements use different ref scopes and are not a source conflict: `origin/dev` contains the Vesting pack as `22`, while `23` exists on an alternate ref.
-- The task explicitly fixes this pack path at `docs/design/25-download-corner/`; the gap between `22` and `25` is intentional for this task. The requested path was absent at the M0 precondition check.
-- The M3 registry path is `scripts/e2e/lib/feature-pack-registry.sh` (`scripts/e2e/lib/feature-pack-registry.sh:4-10`), matching the live feature-pack registry.
-- No mismatch was found between the phase reports and live `origin/dev` for the verified Vesting route convention, APIM read path, response wrapper, failure-event ownership, raw CIM error-code provenance, or shared E2E selector behavior. No Download Corner source or docs existed to contradict the locked feature decisions.
-
-## Follow-up (not this branch)
-
-Update Vesting Scale in a separate follow-up to preserve the raw non-empty DS `err-message` in its failure event's `internalCode`, matching the existing CIM behavior. No Vesting code, tests, configuration, or documentation is changed by this pack.
+1. Follow up separately on preserving the raw non-empty DS `err-message` as Vesting Scale's `internalCode`.
+2. Extract `ApimField` and `ApimFieldDeserializer` into a shared implementation if Sonar flags duplication.
+3. Consolidate `DOWNLOAD_CORNER_LEDGER` into the main routing ledger; its current total is 26.
+4. Fix the shared E2E selector's empty-index handling in separate shared-infrastructure work; do not change it in M3.
+5. Correct `.github/instructions` references to the nonexistent `docs/design/15-exception-handling/`; the exception-handling documents are under `docs/design/18-exception-handling/`.
+6. Investigate and address the unmasked cause message in `StructuredFailureEventLogger`.
+7. Reconcile the 10-test difference between Maven and Surefire report totals.
+8. Confirm the live DS schema before release.
+9. Account for the worktree tool configuring an `origin/dev` upstream on newly created branches; verify the branch configuration when creating the M3 worktree.

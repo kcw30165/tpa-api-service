@@ -68,7 +68,7 @@ Done when the APIM boundary, raw non-empty error-code event field, malformed-fie
 
 ## 4. M2 — Inbound/use case (same MR as M1)
 
-**Status: IN PROGRESS.** M2 implementation is authorized by the explicit implementation request.
+**Status: COMPLETE** at `b4e120733c2ffcfc487668b0ff2fd4f262277925`.
 
 Implement application input/output ports and commands, use case, application wiring, language-aware web mapping, feature controller and response DTOs, exception mapping and explicit registry entry. Add the registration test and other inbound/contract tests fail-first.
 
@@ -76,7 +76,7 @@ Done when mapper, service, controller, response serialization, and mapping-regis
 
 ## 5. M3 — Read-only E2E pack (separate MR)
 
-M3 still requires an explicit go-ahead at its milestone gate, notwithstanding M0 approval.
+M3 starts only after M1+M2 is merged and deployed to DEV. It is a separate MR on a new branch from `origin/dev`.
 
 Add the Download Corner scenario script, register it, and invoke it only through `bash scripts/e2e/run-post-login.sh`. Use the shared account selector exactly as it exists on `origin/dev`; the current selector rejects simultaneous `E2E_ACCOUNT_REF` and a non-empty `E2E_ACCOUNT_INDEX` (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). Do not modify the selector or add selector rejection tests/scenarios. Do not introduce any live mutation or file fetch.
 
@@ -85,7 +85,7 @@ Done when EN/ZH response checks, ordering/shape checks, and shell-level fail-fir
 ## 6. MR and validation boundaries
 
 - **MR 1:** M1 + M2 together.
-- **MR 2:** M3 separately.
+- **MR 2:** M3 separately, after M1+M2 is merged and deployed to DEV; create its branch from `origin/dev`.
 - M1/M2 Java gates G1–G4 are described in §7. M0 approval authorized M1; the explicit M2 implementation request authorizes M2. Record evidence without secret values.
 - M3 is shell-only; use the relevant shell/scenario checks and report no Java gates.
 - Each milestone records test-first failure and passing evidence. No Vesting Scale code or behavior is changed.
@@ -123,7 +123,9 @@ There is **no enforced coverage threshold** in this gate. The coverage initiativ
 
 **Record in `REPORT.md`:** exact command, exit status, report path and non-empty check, exclusions, and Download Corner package/class coverage counters. Do not report a threshold pass because none is enforced.
 
-### G3 — Startup smoke (UNVERIFIED overall; local/deployed evidence differs)
+### G3 — Startup smoke (local PASSED; deployed DEV not run)
+
+**Local smoke result:** PASSED by Nick on 2026-11-18, using port `8908`. This records the completed local smoke outcome; the command and health-probe details below remain procedural documentation, not a record of a new smoke run in this task.
 
 **Local startup command (CONFIRMED):** the README documents the local profile and startup-critical settings (`README.md:233-260`). The profile can also be selected with `SPRING_PROFILES_ACTIVE=local` (`README.md:235`); the command below selects it through the Spring Boot Maven property. Required startup-critical environment-variable names are:
 
@@ -141,7 +143,7 @@ export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH"
 mvn -T 1C -DskipTests -Dspring-boot.run.profiles=local spring-boot:run
 ```
 
-The documented local smoke pass criteria are successful startup, Redis TLS/Sentinel initialization, HTTP 200 from `/actuator/health`, a complete file log, and clean shutdown (`docs/wsl/phase-04-direct-spring-runtime.md:54-60`). However, the same smoke note polls port `8090` (`docs/wsl/phase-04-direct-spring-runtime.md:24-30`), while the live application configuration and README specify default port `8888` (`src/main/resources/application.yml:1-2`; `README.md:248-252`). The WSL note says a runtime controller will wrap the command, but no controller path is identified there (`docs/wsl/phase-04-direct-spring-runtime.md:15-30`). Therefore the exact local health-probe command/port and smoke-wrapper path remain **UNVERIFIED**; do not invent a `curl` command until that discrepancy is resolved.
+The documented local smoke pass criteria are successful startup, Redis TLS/Sentinel initialization, HTTP 200 from `/actuator/health`, a complete file log, and clean shutdown (`docs/wsl/phase-04-direct-spring-runtime.md:54-60`). The same smoke note polls port `8090` (`docs/wsl/phase-04-direct-spring-runtime.md:24-30`), while the live application configuration and README specify default port `8888` (`src/main/resources/application.yml:1-2`; `README.md:248-252`). The WSL note says a runtime controller will wrap the command, but no controller path is identified there (`docs/wsl/phase-04-direct-spring-runtime.md:15-30`). The smoke result above is recorded as passed, but the exact probe command and wrapper path remain undocumented; do not invent a `curl` command.
 
 **DEV-deployed smoke (script confirmed):** the repo's post-deployment check uses `.devsecops/healthcheck.sh` (`docs/wsl/phase-08-jenkins-quality-correction.md:33-40`). It requires `APPLICATION_BASE_URL`, accepts the environment name as its positional argument, and optionally accepts `HEALTHCHECK_TIMEOUT_SECONDS` (default 10); success is HTTP 200 and JSON status `UP` (`.devsecops/healthcheck.sh:4-35`).
 
@@ -153,7 +155,9 @@ The approved DEV base URL and the Jenkins deployment invocation are not recorded
 
 **Record in `REPORT.md`:** local active profile, toolchain versions, names of required environment variables (never values), startup exit result, sanitized log path, health endpoint/port and HTTP status, Redis startup result, and clean-shutdown result. For DEV, record commit/deployment identity, environment, healthcheck output, HTTP status, and `UP` result.
 
-### G4 — Sonar (UNVERIFIED)
+### G4 — Sonar (two test smells fixed; re-run pending after rebase)
+
+The two test-code smells, java:S3415 and java:S5853, were fixed in commit `ca936f7b1`. Re-run Sonar after the rebase; no Sonar analysis was run for this evidence.
 
 No Sonar Maven plugin/property, scanner config, project key, server URL property name, or token environment-variable name was found in the repository's build/CI configuration. The Sonar remediation note points to an approved CI/Jenkins job but explicitly leaves the job, credential variable, branch-analysis behavior, project-key/API query unrecorded (`docs/sonarqube/sonarqube-bug-remediation-stabilization.md:290-304`). `scripts/ci/validate.sh` is a compile/test/JaCoCo script, not a Sonar invocation (`scripts/ci/validate.sh:28-59`).
 
