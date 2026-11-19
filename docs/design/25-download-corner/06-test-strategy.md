@@ -36,7 +36,7 @@ The serialization test mirrors the explicit Vesting response contract test (`Ves
 
 **Fail-first evidence:** add/run each affected web, mapper, service, serialization, and registration test before its production counterpart. Record targeted red and green runs in the M2 MR.
 
-## M3 — Read-only post-login E2E
+## M3 — Read-only post-login E2E (COMPLETE; live-verified)
 
 `scripts/e2e/download-corner-scenarios.sh` is implemented as a read-only post-login pack. It makes exactly two authenticated GETs, first `Accept-Language: en` and then `Accept-Language: zh-HK`, using the shared runner's session, CSRF token, and selected account unchanged. It performs no login/logout itself, mutation, direct APIM call, file fetch, or remote file-existence check. The `download-corner` name is registered in `scripts/e2e/lib/feature-pack-registry.sh` and is invoked through `bash scripts/e2e/run-post-login.sh`.
 
@@ -53,8 +53,21 @@ The per-language result IDs are `<language>.{http-status,envelope,category-shape
 
 The shared selector's existing conflict rejection applies when `E2E_ACCOUNT_REF` and a non-empty `E2E_ACCOUNT_INDEX` are both supplied (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). M3 does not change the selector, `run-post-login.sh`, or `result-records.sh`; the pack consumes the shared runner's selection unchanged.
 
-**Fail-first evidence:** `scripts/e2e/tests/download-corner-scenario-test.sh` and `scripts/e2e/tests/download-corner-result-hooks-test.sh` use a fake `curl`; both were run before the pack existed and failed on the missing pack, then passed after implementation. For the later request-ID repair, the scenario test was rerun before changing the pack and failed specifically because fake curl rejected the absent `X-Request-Id`; both offline tests pass with the corrected pack. M3 is shell-only and has no Java gates. Local live validation remains pending; Nick runs it.
+**Fail-first evidence:** `scripts/e2e/tests/download-corner-scenario-test.sh` and `scripts/e2e/tests/download-corner-result-hooks-test.sh` use a fake `curl`; both were run before the pack existed and failed on the missing pack, then passed after implementation. For the later request-ID repair, the scenario test was rerun before changing the pack and failed specifically because fake curl rejected the absent `X-Request-Id`; both offline tests pass with the corrected pack.
+
+**Implementor-run validation:** both Download Corner offline tests passed; all 22 `scripts/e2e/tests/*.sh` scripts passed under `env -i HOME="$HOME" PATH="$PATH" bash <script>`; ShellCheck reported zero findings both at the parent HEAD and on the changed scripts; and the journal-set/unset parity checks passed. Evidence: `target/evidence/gc-download-corner-m3-request-id-fix/REPORT.md`.
+
+**Nick-run final validation (2026-11-19):**
+
+| Run | Result | Evidence |
+|---|---|---|
+| Normal post-login run | `en` and `zh-HK` returned HTTP 200; all 12 checks passed; login, account selection, and logout passed; exit 0 | `target/evidence/20261119-124742-bff-e2e-post-login-orchestrator` |
+| Journaled post-login run | Same passing checks; exit 0; 24 balanced start/finish events for 12 scenario IDs, all finishes `PASS`; journal mode 0600; no `.failed` marker | `target/evidence/20261119-124818-bff-e2e-post-login-orchestrator` |
+| Journal contract | K3 fields passed, including null request IDs and duration | Journaled run above |
+| Final startup smoke and Sonar | Nick confirmed both passed; this update did not run them | No separate smoke/Sonar evidence path was supplied for this documentation update |
+
+The missing-`X-Request-Id` failure is closed by commit `48d4597165b03750a0b081fbd0e68525219ab031` and the successful live runs above. **M3 is COMPLETE; M0–M3 are ready for one MR, not merged or deployed.** M3 is shell-only and has no Java gates.
 
 ## Milestone gates
 
-For the combined M1+M2 Java gates G1–G4, use the evidence-backed commands and pass criteria in [07 — Implementation Plan, §7 Milestone gate commands](07-implementation-plan.md#7-milestone-gate-commands). Record the command, exit/result, report paths, and gate status in that milestone's evidence report. M3 is shell-only and has no Java gates; local live validation is pending Nick. Do not run Maven for M0 or M3.
+For the combined M1+M2 Java gates G1–G4, use the evidence-backed commands and pass criteria in [07 — Implementation Plan, §7 Milestone gate commands](07-implementation-plan.md#7-milestone-gate-commands). Record the command, exit/result, report paths, and gate status in that milestone's evidence report. M3 is shell-only and has no Java gates; its offline and local live validation are complete. Do not run Maven for M0 or M3.

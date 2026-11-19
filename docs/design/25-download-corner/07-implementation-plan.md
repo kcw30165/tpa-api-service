@@ -78,19 +78,20 @@ Implement application input/output ports and commands, use case, application wir
 
 Done when mapper, service, controller, response serialization, and mapping-registration tests are green and the full Java milestone gates pass.
 
-## 5. M3 — Read-only E2E pack (implemented; local live run pending)
+## 5. M3 — Read-only E2E pack (COMPLETE; live-verified)
 
-The M3 pack and offline tests are implemented on this branch. Nick will run the live pack against the local server; that live validation is pending and is not part of this implementation.
+**Status: COMPLETE** at the request-ID fix commit `48d4597165b03750a0b081fbd0e68525219ab031`. The previous implementation-stage status that the local run was pending is historical and was superseded by Nick's final validation on 2026-11-19.
 
 The pack is invoked only through `bash scripts/e2e/run-post-login.sh`. It uses the shared account selector unchanged; that selector rejects simultaneous `E2E_ACCOUNT_REF` and a non-empty `E2E_ACCOUNT_INDEX` (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). Do not introduce any live mutation or file fetch.
 
-Done for implementation when the K2 EN/ZH live checks and K3 journal hooks pass their shell-level fail-first tests. Ordering, tie order, fallback, and empty-category behavior remain covered by Java unit tests, not live assertions. M3 has no Java gates.
+The K2 EN/ZH checks and K3 journal hooks passed their shell-level tests and Nick's normal and journaled live runs. The request-ID omission discovered during the first live run was fixed at `48d4597165b03750a0b081fbd0e68525219ab031`; the first run's response body was not retained, so its public error code is not claimed as observed. Ordering, tie order, fallback, and empty-category behavior remain covered by Java unit tests, not live assertions. M3 has no Java gates.
 
 ## 6. MR and validation boundaries
 
-- **One MR:** M1 + M2 + M3 together (J1).
+- **One MR:** M0 design pack plus M1 + M2 + M3 together (J1).
 - M1/M2 Java gates G1–G4 are described in §7. M0 approval authorized M1; the explicit M2 implementation request authorizes M2. Record evidence without secret values.
-- M3 is shell-only; run the offline suite and shellcheck, report no Java gates, and leave the local live run pending for Nick.
+- M3 is shell-only; its offline suite, ShellCheck comparison, journal parity, and Nick-run local live validation are complete. No Java gates apply to M3.
+- **Current readiness:** M0–M3 are ready for one MR; the change is not merged or deployed.
 - Each milestone records test-first failure and passing evidence. No Vesting Scale code or behavior is changed.
 
 ## 7. Milestone gate commands
@@ -126,9 +127,9 @@ There is **no enforced coverage threshold** in this gate. The coverage initiativ
 
 **Record in `REPORT.md`:** exact command, exit status, report path and non-empty check, exclusions, and Download Corner package/class coverage counters. Do not report a threshold pass because none is enforced.
 
-### G3 — Startup smoke (local PASSED; deployed DEV not run)
+### G3 — Startup smoke (Nick-confirmed local PASS; deployed DEV not run)
 
-**Local smoke result:** PASSED by Nick on 2026-11-18, using port `8908`. This records the completed local smoke outcome; the command and health-probe details below remain procedural documentation, not a record of a new smoke run in this task.
+**Historical local smoke:** PASSED by Nick on 2026-11-18, using port `8908`. Nick also confirmed the final startup smoke passed on 2026-11-19. This documentation update did not run the smoke; the exact final probe command and a separate evidence path were not supplied here. The command and health-probe details below remain procedural documentation, not a record of a new smoke run.
 
 **Local startup command (CONFIRMED):** the README documents the local profile and startup-critical settings (`README.md:233-260`). The profile can also be selected with `SPRING_PROFILES_ACTIVE=local` (`README.md:235`); the command below selects it through the Spring Boot Maven property. Required startup-critical environment-variable names are:
 
@@ -158,19 +159,19 @@ The approved DEV base URL and the Jenkins deployment invocation are not recorded
 
 **Record in `REPORT.md`:** local active profile, toolchain versions, names of required environment variables (never values), startup exit result, sanitized log path, health endpoint/port and HTTP status, Redis startup result, and clean-shutdown result. For DEV, record commit/deployment identity, environment, healthcheck output, HTTP status, and `UP` result.
 
-### G4 — Sonar (two test smells fixed; re-run pending after rebase)
+### G4 — Sonar (Nick-confirmed PASS; 2026-11-19)
 
-The two test-code smells, java:S3415 and java:S5853, were fixed in commit `ca936f7b1`. Re-run Sonar after the rebase; no Sonar analysis was run for this evidence.
+**Historical status:** the two test-code smells, java:S3415 and java:S5853, were fixed in commit `ca936f7b1`; at the time of the prior note, a post-rebase Sonar run was pending. Nick confirmed the final Sonar validation passed on 2026-11-19. This documentation update did not run Sonar, and no separate Sonar evidence path or job identifier was supplied here.
 
 No Sonar Maven plugin/property, scanner config, project key, server URL property name, or token environment-variable name was found in the repository's build/CI configuration. The Sonar remediation note points to an approved CI/Jenkins job but explicitly leaves the job, credential variable, branch-analysis behavior, project-key/API query unrecorded (`docs/sonarqube/sonarqube-bug-remediation-stabilization.md:290-304`). `scripts/ci/validate.sh` is a compile/test/JaCoCo script, not a Sonar invocation (`scripts/ci/validate.sh:28-59`).
 
 ```text
-UNVERIFIED — no repository-evidenced Sonar command or exact CI/Jenkins job invocation.
+UNVERIFIED (operational detail only) — the repository does not evidence an exact Sonar command or CI/Jenkins job invocation; Nick's confirmed PASS is recorded above.
 ```
 
-The repo does not document how a developer checks NEW issues for changed files, nor an exact Sonar quality-gate criterion for this feature. Do not invent a scanner command, server property, project key, token variable, UI route, or query. Nick will supply the Sonar evidence before the MR, including CI/ops evidence for the job/stage and invocation, Sonar server URL property, project key source, token **variable name only**, analyzed branch/commit behavior, and the approved changed-file/New Code issue check. The documented broad CI gate is owned by Jenkins (`docs/wsl/copilot-evidence-gate-operating-model.md:25-31`; `docs/wsl/phase-08-jenkins-quality-correction.md:33-40`).
+The repo does not document how a developer checks NEW issues for changed files, nor an exact Sonar quality-gate criterion for this feature. Do not invent a scanner command, server property, project key, token variable, UI route, or query. Nick's final pass is recorded as a validation result; exact CI/ops job details, server URL property, project-key source, analyzed branch/commit behavior, and changed-file/New Code issue evidence were not supplied in this task. The documented broad CI gate is owned by Jenkins (`docs/wsl/copilot-evidence-gate-operating-model.md:25-31`; `docs/wsl/phase-08-jenkins-quality-correction.md:33-40`).
 
-**Record in `REPORT.md` once confirmed:** exact job or command and source citation, analyzed commit/branch, Sonar analysis and quality-gate result, changed-file/New Code issue result, and evidence link/path. Never record the token value.
+**Evidence note:** Nick confirmed the Sonar pass, but its detailed job/analysis artifact path is not available in this documentation update. Never record a token value.
 
 ### Evidence convention
 

@@ -5,10 +5,12 @@
 | Item | Value |
 |---|---|
 | Method / path | `GET /api/v1/download-corner` |
-| Headers | `Account-Ref` (required for this selected-account API), existing session/CSRF headers, optional `Accept-Language`, optional `X-Request-Id` |
+| Headers | `Account-Ref` (required for this selected-account API), existing session/CSRF headers, required nonblank `X-Request-Id`, optional `Accept-Language` |
 | Cookie | Existing authenticated portal session cookie |
 | Body / query | None |
 | Authorization | Existing post-login authorization and shared APIM credential-profile allow-list, unchanged |
+
+`X-Request-Id` is required on `/api/` requests by `RequiredRequestIdWebFilter`; a missing or blank value returns the existing HTTP 400 validation response. The shared request-logging filter returns the request ID in the response header. The ID is not included in the response body.
 
 The selected-account GET pattern is `/api/v1/{feature}`: Vesting uses class-level `/api/v1` and `@GetMapping("/vesting-scale")` (`VestingScaleController.java:33-35,54`). Thus the locked Download Corner path follows that pattern; no L1 naming discrepancy was found.
 
