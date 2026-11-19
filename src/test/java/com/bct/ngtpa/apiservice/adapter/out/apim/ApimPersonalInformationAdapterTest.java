@@ -277,17 +277,17 @@ class ApimPersonalInformationAdapterTest {
         {"response":{"err-message":"","data":[{"config":{"item-id":"ui"},"data":[{}]}]}}
         """;
 
-    assertThatThrownBy(
-            () ->
-                adapter(rawJsonResponse(new AtomicReference<>(), responseJson))
-                    .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
-                    .block())
+    var result =
+        adapter(rawJsonResponse(new AtomicReference<>(), responseJson))
+            .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR));
+
+    assertThatThrownBy(result::block)
         .isInstanceOf(ApimResponseMappingException.class)
         .hasRootCauseInstanceOf(com.fasterxml.jackson.databind.JsonMappingException.class);
   }
 
   @Test
-  void emptyAndNoEligibleMatricesProduceEmptyConfig() throws Exception {
+  void emptyAndNoEligibleMatricesProduceEmptyConfig() {
     for (String configJson :
         List.of(
             "[]",

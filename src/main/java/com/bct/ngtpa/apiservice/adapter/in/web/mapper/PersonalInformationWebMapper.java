@@ -99,10 +99,8 @@ public class PersonalInformationWebMapper {
     Map<String, MemberInfoConfigItemType> apimConfigItemTypes =
         result != null ? result.configItemTypes() : Map.of();
     return toFormPageResponse(
-        apimData,
-        apimConfig,
-        apimConfigItems,
-        apimConfigItemTypes,
+        new PersonalInformationMappingInputs(
+            apimData, apimConfig, apimConfigItems, apimConfigItemTypes),
         language,
         accountEnv,
         trustCode,
@@ -122,7 +120,11 @@ public class PersonalInformationWebMapper {
       String trustCode,
       String schemeType) {
     return toFormPageResponse(
-        apimData, apimConfig, Map.of(), language, accountEnv, trustCode, schemeType);
+        new PersonalInformationMappingInputs(apimData, apimConfig, Map.of(), Map.of()),
+        language,
+        accountEnv,
+        trustCode,
+        schemeType);
   }
 
   public FormPageResponse<FormSchemaResponse> toFormPageResponse(
@@ -143,10 +145,7 @@ public class PersonalInformationWebMapper {
       String schemeType) {
 
     return toFormPageResponse(
-        apimData,
-        apimConfig,
-        apimConfigItems,
-        Map.of(),
+        new PersonalInformationMappingInputs(apimData, apimConfig, apimConfigItems, Map.of()),
         language,
         accountEnv,
         trustCode,
@@ -154,10 +153,7 @@ public class PersonalInformationWebMapper {
   }
 
   private FormPageResponse<FormSchemaResponse> toFormPageResponse(
-      Map<String, Object> apimData,
-      Map<String, String> apimConfig,
-      Map<String, MemberInfoConfigItem> apimConfigItems,
-      Map<String, MemberInfoConfigItemType> apimConfigItemTypes,
+      PersonalInformationMappingInputs inputs,
       String language,
       String accountEnv,
       String trustCode,
@@ -167,10 +163,10 @@ public class PersonalInformationWebMapper {
         buildPage(pageSchema, language, accountEnv, trustCode, schemeType),
         buildForm(
             pageSchema,
-            apimData,
-            apimConfig,
-            apimConfigItems,
-            apimConfigItemTypes,
+            inputs.apimData(),
+            inputs.apimConfig(),
+            inputs.apimConfigItems(),
+            inputs.apimConfigItemTypes(),
             language,
             accountEnv,
             trustCode,
@@ -550,36 +546,47 @@ public class PersonalInformationWebMapper {
       Map<String, FieldState> fieldStates,
       Set<String> seenApimConfigItems) {
     for (Map.Entry<String, MemberInfoConfigItemType> entry : apimConfigItemTypes.entrySet()) {
-      String configKey = entry.getKey();
-      if (!hasText(configKey)) {
-        continue;
-      }
-      String configValue = apimConfig == null ? null : apimConfig.get(configKey);
-      seenApimConfigItems.add(configKey);
-
-      MemberInfoConfigItemType itemType = entry.getValue();
-      if (itemType == null || itemType == MemberInfoConfigItemType.UNKNOWN) {
-        continue;
-      }
-      if (itemType == MemberInfoConfigItemType.RULE) {
-        continue;
-      }
-
-      BoundField boundField = fieldsByConfigItemId.get(configKey);
-      if (boundField == null) {
-        logMissingYamlBinding(configKey, configValue);
-        continue;
-      }
-      logIfUnusableAccessValue(configKey, configValue);
-      if (FieldAccessResolver.isHidden(configValue)) {
-        continue;
-      }
-      Object value =
-          itemType == MemberInfoConfigItemType.DATA ? resolveValue(apimData, configKey) : null;
-      fieldStates.put(
-          boundField.field().getId(),
-          new FieldState(configKey, configValue, value, boundField.location()));
+      applyApimConfigItemType(
+          entry, apimConfig, apimData, fieldsByConfigItemId, fieldStates, seenApimConfigItems);
     }
+  }
+
+  private void applyApimConfigItemType(
+      Map.Entry<String, MemberInfoConfigItemType> entry,
+      Map<String, String> apimConfig,
+      Map<String, Object> apimData,
+      Map<String, BoundField> fieldsByConfigItemId,
+      Map<String, FieldState> fieldStates,
+      Set<String> seenApimConfigItems) {
+    String configKey = entry.getKey();
+    if (!hasText(configKey)) {
+      return;
+    }
+    String configValue = apimConfig == null ? null : apimConfig.get(configKey);
+    seenApimConfigItems.add(configKey);
+
+    MemberInfoConfigItemType itemType = entry.getValue();
+    if (itemType == null || itemType == MemberInfoConfigItemType.UNKNOWN) {
+      return;
+    }
+    if (itemType == MemberInfoConfigItemType.RULE) {
+      return;
+    }
+
+    BoundField boundField = fieldsByConfigItemId.get(configKey);
+    if (boundField == null) {
+      logMissingYamlBinding(configKey, configValue);
+      return;
+    }
+    logIfUnusableAccessValue(configKey, configValue);
+    if (FieldAccessResolver.isHidden(configValue)) {
+      return;
+    }
+    Object value =
+        itemType == MemberInfoConfigItemType.DATA ? resolveValue(apimData, configKey) : null;
+    fieldStates.put(
+        boundField.field().getId(),
+        new FieldState(configKey, configValue, value, boundField.location()));
   }
 
   private void applyApimConfigItems(
@@ -1082,4 +1089,10 @@ public class PersonalInformationWebMapper {
 
   private record FieldState(
       String itemId, String configValue, Object value, FieldLocation location) {}
+
+  private record PersonalInformationMappingInputs(
+      Map<String, Object> apimData,
+      Map<String, String> apimConfig,
+      Map<String, MemberInfoConfigItem> apimConfigItems,
+      Map<String, MemberInfoConfigItemType> apimConfigItemTypes) {}
 }

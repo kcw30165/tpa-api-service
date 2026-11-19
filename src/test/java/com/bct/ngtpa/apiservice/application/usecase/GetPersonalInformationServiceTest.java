@@ -116,9 +116,8 @@ class GetPersonalInformationServiceTest {
             "data",
             Map.of("email", "a@b.test", "ui-only", "must-not-render"));
     when(apimMemberInfoPort.fetchMemberInfo(
-            eq(
-                new FetchMemberInfoCommand(
-                    "JP", "policy-1", "cert-1", "user-1", ActorUserRole.ROLE_USER_MBR))))
+            new FetchMemberInfoCommand(
+                "JP", "policy-1", "cert-1", "user-1", ActorUserRole.ROLE_USER_MBR)))
         .thenReturn(Mono.just(new MemberInfoResult(payload)));
 
     StepVerifier.create(service.execute(command("en")))
@@ -163,9 +162,8 @@ class GetPersonalInformationServiceTest {
                 "data",
                 List.of(Map.of("config", config, "data", List.of(Map.of("email", "a@b.test"))))));
     when(apimMemberInfoPort.fetchMemberInfo(
-            eq(
-                new FetchMemberInfoCommand(
-                    "JP", "policy-1", "cert-1", "user-1", ActorUserRole.ROLE_USER_MBR))))
+            new FetchMemberInfoCommand(
+                "JP", "policy-1", "cert-1", "user-1", ActorUserRole.ROLE_USER_MBR)))
         .thenReturn(Mono.just(new MemberInfoResult(payload)));
 
     StepVerifier.create(service.execute(command("en")))
@@ -210,9 +208,8 @@ class GetPersonalInformationServiceTest {
                   "data",
                   List.of(Map.of("config", config, "data", List.of(Map.of())))));
       when(apimMemberInfoPort.fetchMemberInfo(
-              eq(
-                  new FetchMemberInfoCommand(
-                      "JP", "policy-1", "cert-1", "user-1", ActorUserRole.ROLE_USER_MBR))))
+              new FetchMemberInfoCommand(
+                  "JP", "policy-1", "cert-1", "user-1", ActorUserRole.ROLE_USER_MBR)))
           .thenReturn(Mono.just(new MemberInfoResult(payload)));
 
       StepVerifier.create(service.execute(command("en")))

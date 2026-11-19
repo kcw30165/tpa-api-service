@@ -82,25 +82,37 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
   }
 
   private Map<String, String> extractConfig(Map<String, Object> payload) {
-    Map<String, String> apimConfig = new LinkedHashMap<>();
     Object cfgObj = payload.get(KEY_CONFIG);
     if (cfgObj instanceof Map<?, ?> cfgMap) {
       Object itemTypesObj = payload.get(KEY_CONFIG_ITEM_TYPES);
       Map<?, ?> itemTypes = itemTypesObj instanceof Map<?, ?> map ? map : null;
-      for (Map.Entry<?, ?> e : cfgMap.entrySet()) {
-        String itemId = String.valueOf(e.getKey());
-        if (itemTypes != null && !isEligibleItemType(itemTypes.get(itemId))) {
-          continue;
-        }
-        apimConfig.put(itemId, e.getValue() == null ? "" : String.valueOf(e.getValue()));
+      return extractFlattenedConfig(cfgMap, itemTypes);
+    }
+    if (cfgObj instanceof List<?> cfgList) {
+      return extractRawListConfig(cfgList);
+    }
+    return new LinkedHashMap<>();
+  }
+
+  private Map<String, String> extractFlattenedConfig(Map<?, ?> cfgMap, Map<?, ?> itemTypes) {
+    Map<String, String> apimConfig = new LinkedHashMap<>();
+    for (Map.Entry<?, ?> entry : cfgMap.entrySet()) {
+      String itemId = String.valueOf(entry.getKey());
+      if (itemTypes != null && !isEligibleItemType(itemTypes.get(itemId))) {
+        continue;
       }
-    } else if (cfgObj instanceof List<?> cfgList) {
-      for (Object itemObj : cfgList) {
-        if (itemObj instanceof Map<?, ?> itemMap && isEligibleConfigItem(itemMap)) {
-          MemberInfoConfigItem item = toConfigItem(itemMap);
-          if (item.itemId() != null) {
-            apimConfig.put(item.itemId(), item.configValue() == null ? "" : item.configValue());
-          }
+      apimConfig.put(itemId, entry.getValue() == null ? "" : String.valueOf(entry.getValue()));
+    }
+    return apimConfig;
+  }
+
+  private Map<String, String> extractRawListConfig(List<?> cfgList) {
+    Map<String, String> apimConfig = new LinkedHashMap<>();
+    for (Object itemObj : cfgList) {
+      if (itemObj instanceof Map<?, ?> itemMap && isEligibleConfigItem(itemMap)) {
+        MemberInfoConfigItem item = toConfigItem(itemMap);
+        if (item.itemId() != null) {
+          apimConfig.put(item.itemId(), item.configValue() == null ? "" : item.configValue());
         }
       }
     }
