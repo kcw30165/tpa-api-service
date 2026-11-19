@@ -8,11 +8,18 @@ expect_resolved(){ local label="$1" value="$2" expected="$3" out; if ! out="$(re
 expect_failure_exact(){ local label="$1" expected="$2" out rc; shift 2; out="$(resolve_feature_packs "$@" 2>&1)"; rc=$?; if [[ "$rc" -eq 0 || "$out" != "$expected" ]]; then printf 'FAIL %s exit=%s output=%s\n' "$label" "$rc" "$out"; fail=1; fi; }
 resolved="$(resolve_feature_packs 'investment-choice')" || { printf 'FAIL known pack\n'; exit 1; }
 [[ "$resolved" == "$ROOT/scripts/e2e/investment-choice-scenarios.sh" ]] || { printf 'FAIL mapping=%s\n' "$resolved"; fail=1; }
+resolved="$(resolve_feature_packs 'download-corner')" || { printf 'FAIL download-corner pack\n'; exit 1; }
+[[ "$resolved" == "$ROOT/scripts/e2e/download-corner-scenarios.sh" ]] || { printf 'FAIL download-corner mapping=%s\n' "$resolved"; fail=1; }
 resolved="$(resolve_feature_packs 'vesting-scale')" || { printf 'FAIL vesting-scale pack\n'; exit 1; }
 [[ "$resolved" == "$ROOT/scripts/e2e/vesting-scale-scenarios.sh" ]] || { printf 'FAIL vesting-scale mapping=%s\n' "$resolved"; fail=1; }
 resolved="$(resolve_feature_packs 'investment-choice vesting-scale')" || { printf 'FAIL ordered packs\n'; exit 1; }
 [[ "$resolved" == "$ROOT/scripts/e2e/investment-choice-scenarios.sh"$'\n'"$ROOT/scripts/e2e/vesting-scale-scenarios.sh" ]] || {
   printf 'FAIL ordered pack paths changed\n'
+  fail=1
+}
+resolved="$(resolve_feature_packs 'download-corner vesting-scale')" || { printf 'FAIL ordered Download Corner packs\n'; exit 1; }
+[[ "$resolved" == "$ROOT/scripts/e2e/download-corner-scenarios.sh"$'\n'"$ROOT/scripts/e2e/vesting-scale-scenarios.sh" ]] || {
+  printf 'FAIL Download Corner pack order changed\n'
   fail=1
 }
 resolved="$(resolve_feature_packs $'investment-choice\n')" || { printf 'FAIL ordered singleton\n'; exit 1; }

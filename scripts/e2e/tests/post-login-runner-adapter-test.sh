@@ -46,7 +46,7 @@ export CIM_PASSWORD=explicit-cim-password
 source "$ROOT/scripts/e2e/run-post-login.sh" --library-only
 
 feature_pack_path() {
-  [[ "$1" == investment-choice || "$1" == vesting-scale ]] || return 1
+  [[ "$1" == investment-choice || "$1" == vesting-scale || "$1" == download-corner ]] || return 1
   printf '%s\n' "$tmp/feature.sh"
 }
 
@@ -193,6 +193,19 @@ for name in LOGIN_TEST_USERNAME LOGIN_TEST_PASSWORD AUTH_FLOW_COOKIE_VALUE \
   fi
 done
 unset E2E_ACCOUNT_INDEX VESTING_SCALE_EXPECT_ABSENT
+
+orchestrator_run_feature download-corner || {
+  printf 'FAIL download-corner pack did not run with the authenticated contract\n'
+  exit 1
+}
+[[ "$(cat "$RUNNER_CAPTURE")" == $'BASE_URL=http://mock\nSESSION_COOKIE=cookie-secret\nCSRF_TOKEN=csrf-secret\nACCOUNT_REF=account-secret\nVESTING_SCALE_EXPECT_ABSENT=\nCIM_PASSWORD=\nLOGIN_TEST_USERNAME=absent\nLOGIN_TEST_PASSWORD=absent\nAUTH_FLOW_COOKIE_VALUE=absent\nPORTAL_SESSION_COOKIE_VALUE=absent\nXSRF_TOKEN=absent\nSESSION_COOKIE=exported\nCSRF_TOKEN=exported\nACCOUNT_REF=exported\nCIM_PASSWORD=absent' ]] || {
+  printf 'FAIL download-corner child received an unexpected input contract\n'
+  exit 1
+}
+if contains_environment_key "$RUNNER_ENV" E2E_ACCOUNT_INDEX; then
+  printf 'FAIL shared account index was inherited by the download-corner child\n'
+  exit 1
+fi
 
 unset PORTAL_SESSION_COOKIE_VALUE XSRF_TOKEN ACCOUNT_REF
 if orchestrator_run_feature investment-choice >/dev/null 2>&1; then

@@ -4,6 +4,7 @@
 feature_pack_path() {
   local feature_name="$1"
   case "$feature_name" in
+    download-corner) printf '%s/scripts/e2e/download-corner-scenarios.sh\n' "$E2E_REPOSITORY_ROOT" ;;
     investment-choice) printf '%s/scripts/e2e/investment-choice-scenarios.sh\n' "$E2E_REPOSITORY_ROOT" ;;
     vesting-scale) printf '%s/scripts/e2e/vesting-scale-scenarios.sh\n' "$E2E_REPOSITORY_ROOT" ;;
     *) printf 'ERROR unknown feature pack: %s\n' "$feature_name" >&2; return 1 ;;
