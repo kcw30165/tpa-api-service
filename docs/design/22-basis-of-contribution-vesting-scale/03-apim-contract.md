@@ -11,7 +11,7 @@
 Implementor MUST first grep origin/dev for any existing APIM request serializing `login-user-id` / `login-user-role` and reuse that exact conversion. If none exists, serialize the role as the lowercase enum name and add a contract test asserting `role_user_mbr` for the member role.
 
 ## Response envelope and typed parsing
-ApimExchangeExecutor returns the shared envelope with `JsonNode` data. ApimVestingScaleAdapter checks that the envelope/response is present, then checks a non-blank `err-message` BEFORE reading data, then requires exactly one non-null data item (otherwise `INVALID_CARDINALITY`, field path `data`). Missing, null, empty, or whitespace-only `err-message` means no error. Only after these checks does the adapter use the injected primary Jackson 2 ObjectMapper to convert `data[0]` into `TrpGetVestingScaleApimDataItem`; the feature mapper consumes that typed DTO.
+ApimExchangeExecutor returns the shared envelope with `JsonNode` data. ApimVestingScaleAdapter checks that the envelope/response is present, then checks a non-blank `err-message` BEFORE reading data, then requires exactly one non-null data item (otherwise `INVALID_CARDINALITY`, field path `data`). Missing, null, empty, or whitespace-only `err-message` means no error. After these checks, and before typed DTO conversion, the adapter filters the raw `config` array, retaining only entries whose textual `item-type`, after trimming and case-insensitive comparison, is exactly `UI`. Missing, null, non-textual, and all other item-type values are excluded. The config field itself must still be a JSON array. Excluded entries are removed without inspecting `item-id` or `config-value`; even malformed or non-string `config-value` fields in excluded entries cannot fail parsing. The adapter then converts the filtered `data[0]` into `TrpGetVestingScaleApimDataItem`; the feature mapper consumes that typed DTO.
 
 Response DTOs and `ApimField<T>` live under `adapter/out/apim/vestingscale/dto/`. Each response record ignores unknown properties. Wire-property constants are declared once in those DTOs and shared by Jackson annotations and mapper field paths. `ApimField<T>` preserves `ABSENT`, explicit `NULL`, and `VALUE`; its contextual deserializer accepts only the documented JSON scalar kinds and delegates nested records/lists to Jackson. Jackson failures become malformed-response diagnostics using only normalized wire-field paths and static reason labels.
 
@@ -24,11 +24,12 @@ Response DTOs and `ApimField<T>` live under `adapter/out/apim/vestingscale/dto/`
 | `member.member-category` | any string incl. `""` | non-string non-null → `INVALID_TYPE` |
 | member/plan date fields | string in `dd/MM/uuuu`, `ResolverStyle.STRICT`; null allowed | non-string → `INVALID_TYPE`; invalid date → `INVALID_DATE_FORMAT` |
 | `config` | required JSON array (may be `[]`) | absent/null → `MISSING_REQUIRED_FIELD`; wrong type → `INVALID_TYPE` |
-| `config[].item-id` | required non-blank string | absent/null → `MISSING_REQUIRED_FIELD`; blank → `REQUIRED_TEXT_BLANK`; wrong type → `INVALID_TYPE` |
-| `config[].config-value` | required exact string `READONLY` or `HIDDEN` | absent/null → `MISSING_REQUIRED_FIELD`; wrong type → `INVALID_TYPE`; unknown value → `INVALID_ENUM_VALUE` |
-| duplicate `item-id` | — | `DUPLICATE_VALUE` |
+| `config[].item-type` | eligibility checked on the raw JSON entry before DTO conversion; retain only textual values that trim and compare case-insensitively to `UI` | missing/null/non-textual/other value → exclude entry without validating its other fields |
+| retained `config[].item-id` | required non-blank string | absent/null → `MISSING_REQUIRED_FIELD`; blank → `REQUIRED_TEXT_BLANK`; wrong type → `INVALID_TYPE` |
+| retained `config[].config-value` | required exact string `READONLY` or `HIDDEN` | absent/null → `MISSING_REQUIRED_FIELD`; wrong type → `INVALID_TYPE`; unknown value → `INVALID_ENUM_VALUE` |
+| duplicate retained `item-id` | — | `DUPLICATE_VALUE` |
 | unknown `item-id` (not in known list) | ignore + WARN log (item-id only) | — |
-| `config[].item-name/item-type/function/sch-type` | ignored | — |
+| `config[].item-name/function/sch-type` | ignored | — |
 | `plans` | required JSON array (may be `[]`) | absent/null → `MISSING_REQUIRED_FIELD`; wrong type → `INVALID_TYPE` |
 | `plans[].plan-no` | required non-blank; unique within response | absent/null → `MISSING_REQUIRED_FIELD`; blank → `REQUIRED_TEXT_BLANK`; duplicate → `DUPLICATE_VALUE`; wrong type → `INVALID_TYPE` |
 | `plans[].plan-type-desc-eng` | required non-blank string | absent/null → `MISSING_REQUIRED_FIELD`; blank → `REQUIRED_TEXT_BLANK`; wrong type → `INVALID_TYPE` |
@@ -45,7 +46,7 @@ Response DTOs and `ApimField<T>` live under `adapter/out/apim/vestingscale/dto/`
 ## Known config item-ids (current full list)
 `member-category, plan-effective-date, basis-cont-ee-chi, basis-cont-ee-eng, basis-cont-er-chi, basis-cont-er-eng, date-joined-company, date-joined-scheme, date-of-joining-plan, employment-date, plan-service, vesting-scale`
 
-`item-id` equals the wire field name inside `member` or `plans[]`. The APIM mapper translates known IDs using the APIM DTO wire-name constants into the application-owned `VestingScaleConfigItem` enum; the enum contains no wire strings. Duplicate detection uses the raw `item-id` before translation. An unknown ID is dropped and produces exactly one WARN from the APIM mapper, containing only that item ID.
+`item-id` equals the wire field name inside `member` or `plans[]`. For retained UI entries, the APIM mapper translates known IDs using the APIM DTO wire-name constants into the application-owned `VestingScaleConfigItem` enum; the enum contains no wire strings. Duplicate detection uses the raw `item-id` before translation and applies only to retained UI entries. An unknown ID in a retained UI entry is dropped and produces exactly one WARN from the APIM mapper, containing only that item ID.
 
 ## Not mapped
-`env`, `plan-name`, `vest-period-base` (code), all `config[]` attributes except `item-id`/`config-value`.
+`env`, `plan-name`, `vest-period-base` (code), and `config[]` attributes other than `item-id`/`config-value`. `item-type` is read only by the raw pre-deserialization UI filter and is not retained in the typed/application mapping.

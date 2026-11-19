@@ -1172,3 +1172,15 @@ B):
   unchanged.
 - A submitted field that is HIDDEN, READONLY, or has no usable config value is rejected with
   personalInformation.field.notEditable.
+
+## Approved BFF config-matrix filtering follow-up (M0)
+
+For Personal Information GET and the configuration lookup used by PUT, only downstream config entries whose textual
+`item-type`, after trimming and case-insensitive comparison, is `UI` or `DATA` participate. Missing, null, non-string,
+`CONFIG`, `RULE`, `UNKNOWN`, and other item types are excluded before config-value conversion. This is a subsequent
+BFF integration contract; the 2026-10-23 as-built notes above record the earlier behavior.
+
+This downstream item-type filter does not redefine YAML UI-only fields: YAML UI-only means a config binding without a
+data binding. Existing DATA rendering, UI access-state, retained-entry validation, and PUT cached-config behavior remain
+as recorded in `10-refactor-personal-information-design.md`. For duplicate eligible item IDs, the last eligible row
+wins. Excluded rows cannot overwrite or invalidate an eligible row, even when their config-value is malformed.

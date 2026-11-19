@@ -17,6 +17,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class GetPersonalInformationService implements GetPersonalInformationUseCase {
   private static final String KEY_CONFIG = "config";
+  private static final String KEY_CONFIG_ITEM_TYPES = "configItemTypes";
 
   private final ApimMemberInfoPort apimMemberInfoPort;
 
@@ -39,7 +40,10 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
             ? normalizePayload(memberInfoResult.getPayload())
             : Map.of();
     return new PersonalInformationResult(
-        extractData(payload), extractConfig(payload), extractConfigItems(payload));
+        extractData(payload),
+        extractConfig(payload),
+        extractConfigItems(payload),
+        extractConfigItemTypes(payload));
   }
 
   /**
@@ -78,12 +82,38 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
   }
 
   private Map<String, String> extractConfig(Map<String, Object> payload) {
-    Map<String, String> apimConfig = new LinkedHashMap<>();
     Object cfgObj = payload.get(KEY_CONFIG);
     if (cfgObj instanceof Map<?, ?> cfgMap) {
-      for (Map.Entry<?, ?> e : cfgMap.entrySet()) {
-        apimConfig.put(
-            String.valueOf(e.getKey()), e.getValue() == null ? "" : String.valueOf(e.getValue()));
+      Object itemTypesObj = payload.get(KEY_CONFIG_ITEM_TYPES);
+      Map<?, ?> itemTypes = itemTypesObj instanceof Map<?, ?> map ? map : null;
+      return extractFlattenedConfig(cfgMap, itemTypes);
+    }
+    if (cfgObj instanceof List<?> cfgList) {
+      return extractRawListConfig(cfgList);
+    }
+    return new LinkedHashMap<>();
+  }
+
+  private Map<String, String> extractFlattenedConfig(Map<?, ?> cfgMap, Map<?, ?> itemTypes) {
+    Map<String, String> apimConfig = new LinkedHashMap<>();
+    for (Map.Entry<?, ?> entry : cfgMap.entrySet()) {
+      String itemId = String.valueOf(entry.getKey());
+      if (itemTypes != null && !isEligibleItemType(itemTypes.get(itemId))) {
+        continue;
+      }
+      apimConfig.put(itemId, entry.getValue() == null ? "" : String.valueOf(entry.getValue()));
+    }
+    return apimConfig;
+  }
+
+  private Map<String, String> extractRawListConfig(List<?> cfgList) {
+    Map<String, String> apimConfig = new LinkedHashMap<>();
+    for (Object itemObj : cfgList) {
+      if (itemObj instanceof Map<?, ?> itemMap && isEligibleConfigItem(itemMap)) {
+        MemberInfoConfigItem item = toConfigItem(itemMap);
+        if (item.itemId() != null) {
+          apimConfig.put(item.itemId(), item.configValue() == null ? "" : item.configValue());
+        }
       }
     }
     return apimConfig;
@@ -94,7 +124,7 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
     Object cfgObj = payload.get(KEY_CONFIG);
     if (cfgObj instanceof List<?> cfgList) {
       for (Object itemObj : cfgList) {
-        if (itemObj instanceof Map<?, ?> itemMap) {
+        if (itemObj instanceof Map<?, ?> itemMap && isEligibleConfigItem(itemMap)) {
           MemberInfoConfigItem item = toConfigItem(itemMap);
           if (item.itemId() != null) {
             configItems.put(item.itemId(), item);
@@ -103,6 +133,22 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
       }
     }
     return configItems;
+  }
+
+  private Map<String, MemberInfoConfigItemType> extractConfigItemTypes(
+      Map<String, Object> payload) {
+    Map<String, MemberInfoConfigItemType> itemTypes = new LinkedHashMap<>();
+    Object value = payload.get(KEY_CONFIG_ITEM_TYPES);
+    if (value instanceof Map<?, ?> typeMap) {
+      for (Map.Entry<?, ?> entry : typeMap.entrySet()) {
+        if (entry.getKey() instanceof String itemId
+            && entry.getValue() instanceof String itemType
+            && isEligibleItemType(itemType)) {
+          itemTypes.put(itemId, MemberInfoConfigItemType.fromCode(itemType));
+        }
+      }
+    }
+    return itemTypes;
   }
 
   private MemberInfoConfigItem toConfigItem(Map<?, ?> itemMap) {
@@ -119,6 +165,18 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
         function,
         schType,
         configValue);
+  }
+
+  private boolean isEligibleConfigItem(Map<?, ?> itemMap) {
+    return isEligibleItemType(itemMap.get("item-type"));
+  }
+
+  private boolean isEligibleItemType(Object itemType) {
+    if (!(itemType instanceof String text)) {
+      return false;
+    }
+    String normalizedType = text.strip();
+    return normalizedType.equalsIgnoreCase("UI") || normalizedType.equalsIgnoreCase("DATA");
   }
 
   private Map<String, Object> firstMap(Object value) {

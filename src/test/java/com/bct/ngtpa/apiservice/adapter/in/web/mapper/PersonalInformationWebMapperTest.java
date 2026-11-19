@@ -130,6 +130,37 @@ class PersonalInformationWebMapperTest {
   }
 
   @Test
+  void adapterConfigTypesPreserveDataRenderingAndUiAccessState() {
+    var page =
+        pageWithSections(
+            section(
+                "main",
+                List.of(
+                    boundField("dataField", null, "data-config", null),
+                    boundField("uiField", null, "ui-config", null))));
+    var result =
+        new PersonalInformationResult(
+            Map.of("data-config", "DATA value", "ui-config", "must-not-render"),
+            Map.of("data-config", "EDITABLE_COM", "ui-config", "READONLY"),
+            Map.of(),
+            Map.of(
+                "data-config", MemberInfoConfigItemType.DATA,
+                "ui-config", MemberInfoConfigItemType.UI));
+
+    Map<String, Object> response = mapper(properties(page)).toResponse(result, "en");
+
+    List<?> fields = firstSectionFields(response);
+    assertThat(asMap(fields.get(0)))
+        .containsEntry("name", "dataField")
+        .containsEntry("value", "DATA value")
+        .containsEntry("required", true);
+    assertThat(asMap(fields.get(1)))
+        .containsEntry("name", "uiField")
+        .containsEntry("value", null)
+        .containsEntry("readonly", true);
+  }
+
+  @Test
   void hiddenConfigItemIsOmittedAndEmptySectionIsOmittedFromFrontendResponse() {
     PersonalInformationWebMapper mapper = mapper(mock(LoggingSanitizer.class));
     var result =

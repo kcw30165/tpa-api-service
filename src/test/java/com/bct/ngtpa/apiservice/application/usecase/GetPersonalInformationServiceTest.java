@@ -92,13 +92,151 @@ class GetPersonalInformationServiceTest {
         .assertNext(
             result -> {
               assertEquals("HGPQITD.XW.YQGPG@PTOJY.CLI", result.data().get("email"));
-              assertTrue(result.config().isEmpty());
+              assertThat(result.config()).isEqualTo(Map.of("email", "READONLY"));
               assertThat(result.configItems()).containsOnlyKeys("email");
               assertEquals(
                   MemberInfoConfigItemType.DATA, result.configItems().get("email").itemType());
               assertEquals("READONLY", result.configItems().get("email").configValue());
             })
         .verifyComplete();
+  }
+
+  @Test
+  void preservesAdapterConfigTypesAndExactItemIdsForGetMapping() {
+    var payload =
+        Map.<String, Object>of(
+            "config",
+            Map.of(
+                "email", "EDITABLE_COM",
+                " ui-only ", "READONLY",
+                "excluded", "NOT_AN_ACCESS_VALUE",
+                "missing-type", "READONLY"),
+            "configItemTypes",
+            Map.of("email", "DATA", " ui-only ", " UI ", "excluded", "CONFIG"),
+            "data",
+            Map.of("email", "a@b.test", "ui-only", "must-not-render"));
+    when(apimMemberInfoPort.fetchMemberInfo(
+            new FetchMemberInfoCommand(
+                "JP", "policy-1", "cert-1", "user-1", ActorUserRole.ROLE_USER_MBR)))
+        .thenReturn(Mono.just(new MemberInfoResult(payload)));
+
+    StepVerifier.create(service.execute(command("en")))
+        .assertNext(
+            result -> {
+              assertThat(result.config())
+                  .containsOnlyKeys("email", " ui-only ")
+                  .containsEntry("email", "EDITABLE_COM")
+                  .containsEntry(" ui-only ", "READONLY");
+              assertThat(result.configItemTypes())
+                  .containsOnlyKeys("email", " ui-only ")
+                  .containsEntry("email", MemberInfoConfigItemType.DATA)
+                  .containsEntry(" ui-only ", MemberInfoConfigItemType.UI);
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void rawConfigListFiltersBeforeConvertingAndKeepsLastEligibleDuplicate() {
+    List<Map<String, Object>> config =
+        List.of(
+            configItem("ui", "UI", "READONLY"),
+            configItem("lower-ui", "ui", "EDITABLE_COM"),
+            configItem("padded-data", " DATA ", "EDITABLE_OPTION"),
+            configItem("config", "CONFIG", Map.of("bad", true)),
+            configItem("rule", "RULE", List.of("bad")),
+            configItem("unknown", "UNKNOWN", false),
+            configItem("other", "OTHER", 5),
+            configItem("missing-type", null, Map.of("bad", true)),
+            configItem("null-type", NullValue.INSTANCE, null),
+            configItem("numeric-type", 7, List.of("bad")),
+            configItem("object-type", Map.of("name", "UI"), "READONLY"),
+            configItem("duplicate", "UI", "READONLY"),
+            configItem("duplicate", "CONFIG", Map.of("bad", true)),
+            configItem("duplicate", " DATA ", "EDITABLE_OPTION"));
+    var payload =
+        Map.<String, Object>of(
+            "response",
+            Map.of(
+                "err-message",
+                "",
+                "data",
+                List.of(Map.of("config", config, "data", List.of(Map.of("email", "a@b.test"))))));
+    when(apimMemberInfoPort.fetchMemberInfo(
+            new FetchMemberInfoCommand(
+                "JP", "policy-1", "cert-1", "user-1", ActorUserRole.ROLE_USER_MBR)))
+        .thenReturn(Mono.just(new MemberInfoResult(payload)));
+
+    StepVerifier.create(service.execute(command("en")))
+        .assertNext(
+            result -> {
+              assertThat(result.config())
+                  .containsOnlyKeys("ui", "lower-ui", "padded-data", "duplicate")
+                  .containsEntry("ui", "READONLY")
+                  .containsEntry("lower-ui", "EDITABLE_COM")
+                  .containsEntry("padded-data", "EDITABLE_OPTION")
+                  .containsEntry("duplicate", "EDITABLE_OPTION");
+              assertThat(result.configItems())
+                  .containsOnlyKeys("ui", "lower-ui", "padded-data", "duplicate");
+              assertThat(result.configItems().get("ui").itemType())
+                  .isEqualTo(MemberInfoConfigItemType.UI);
+              assertThat(result.configItems().get("lower-ui").itemType())
+                  .isEqualTo(MemberInfoConfigItemType.UI);
+              assertThat(result.configItems().get("padded-data").itemType())
+                  .isEqualTo(MemberInfoConfigItemType.DATA);
+              assertThat(result.configItems().get("duplicate").itemType())
+                  .isEqualTo(MemberInfoConfigItemType.DATA);
+              assertThat(result.data()).containsEntry("email", "a@b.test");
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  void emptyAndNoEligibleRawConfigListsProduceEmptyConfiguration() {
+    List<List<Map<String, Object>>> configurations =
+        List.of(
+            List.<Map<String, Object>>of(),
+            List.of(
+                configItem("config", "CONFIG", "READONLY"),
+                configItem("missing", null, "EDITABLE_COM")));
+    for (List<Map<String, Object>> config : configurations) {
+      var payload =
+          Map.<String, Object>of(
+              "response",
+              Map.of(
+                  "err-message",
+                  "",
+                  "data",
+                  List.of(Map.of("config", config, "data", List.of(Map.of())))));
+      when(apimMemberInfoPort.fetchMemberInfo(
+              new FetchMemberInfoCommand(
+                  "JP", "policy-1", "cert-1", "user-1", ActorUserRole.ROLE_USER_MBR)))
+          .thenReturn(Mono.just(new MemberInfoResult(payload)));
+
+      StepVerifier.create(service.execute(command("en")))
+          .assertNext(
+              result -> {
+                assertThat(result.config()).isEmpty();
+                assertThat(result.configItems()).isEmpty();
+              })
+          .verifyComplete();
+    }
+  }
+
+  private static Map<String, Object> configItem(
+      String itemId, Object itemType, Object configValue) {
+    Map<String, Object> item = new java.util.LinkedHashMap<>();
+    item.put("item-id", itemId);
+    if (itemType != null && itemType != NullValue.INSTANCE) {
+      item.put("item-type", itemType);
+    } else if (itemType == NullValue.INSTANCE) {
+      item.put("item-type", null);
+    }
+    item.put("config-value", configValue);
+    return item;
+  }
+
+  private enum NullValue {
+    INSTANCE
   }
 
   @Test

@@ -22,6 +22,8 @@ import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleCommand;
+import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigItem;
+import com.bct.ngtpa.apiservice.application.dto.vestingscale.VestingScaleConfigValue;
 import com.bct.ngtpa.apiservice.application.exception.VestingScaleRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
 import com.bct.ngtpa.apiservice.infrastructure.jackson.JacksonConfig;
@@ -33,10 +35,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -110,6 +114,197 @@ class ApimVestingScaleAdapterTest {
     assertThat(exchange.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
     assertThat(exchange.resubmissionPolicy()).isEqualTo(ApimResubmissionPolicy.ALLOW_RECOVERY);
     assertThat(exchange.incidentOwnership()).isEqualTo(ApimIncidentOwnership.TERMINAL_CALLER);
+  }
+
+  @ParameterizedTest(name = "retains UI item-type {0}")
+  @MethodSource("retainedUiItemTypes")
+  void retainsUiEntriesAfterTrimmingAndCaseNormalization(String label, String itemTypeJson) {
+    respond(envelope("", List.of(configData(itemTypeJson, "member-category", "\"READONLY\""))));
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(
+            result ->
+                assertThat(result.config())
+                    .containsEntry(
+                        VestingScaleConfigItem.MEMBER_CATEGORY, VestingScaleConfigValue.READONLY))
+        .verifyComplete();
+
+    assertThat(events).isEmpty();
+  }
+
+  @ParameterizedTest(name = "excludes item-type {0}")
+  @MethodSource("excludedItemTypes")
+  void excludesNonUiEntriesBeforeConfigValidation(
+      String label, String itemTypeJson, boolean includeItemType) {
+    respond(
+        envelope(
+            "",
+            List.of(
+                configData(
+                    includeItemType ? itemTypeJson : null, "member-category", "\"READONLY\""))));
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(result -> assertThat(result.config()).isEmpty())
+        .verifyComplete();
+
+    assertThat(events).isEmpty();
+  }
+
+  @Test
+  void retainsExistingValidUiConfigMapping() {
+    respond(envelope("", List.of(configData("\"UI\"", "member-category", "\"HIDDEN\""))));
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(
+            result ->
+                assertThat(result.config())
+                    .containsEntry(
+                        VestingScaleConfigItem.MEMBER_CATEGORY, VestingScaleConfigValue.HIDDEN))
+        .verifyComplete();
+
+    assertThat(events).isEmpty();
+  }
+
+  @Test
+  void ignoresMalformedStringConfigValuesInExcludedEntries() {
+    respond(envelope("", List.of(configData("\"CONFIG\"", "member-category", "\"READ_ONLY\""))));
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(result -> assertThat(result.config()).isEmpty())
+        .verifyComplete();
+
+    assertThat(events).isEmpty();
+  }
+
+  @ParameterizedTest(name = "ignores excluded non-string config-value {0}")
+  @MethodSource("nonStringConfigValues")
+  void ignoresNonStringConfigValuesInExcludedEntries(String label, String configValueJson) {
+    respond(envelope("", List.of(configData("\"CONFIG\"", "member-category", configValueJson))));
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(result -> assertThat(result.config()).isEmpty())
+        .verifyComplete();
+
+    assertThat(events).isEmpty();
+  }
+
+  @ParameterizedTest(name = "retained UI config-value failure: {0}")
+  @MethodSource("invalidRetainedUiConfigValues")
+  void preservesMalformedConfigValueValidationForRetainedUiEntries(
+      String label, String configValueJson, String expectedReason) {
+    respond(envelope("", List.of(configData("\"UI\"", "member-category", configValueJson))));
+
+    StepVerifier.create(adapter().load(command()))
+        .expectError(VestingScaleRetrievalException.class)
+        .verify();
+
+    assertMalformedEvent("config[0].config-value", expectedReason);
+  }
+
+  @Test
+  void preservesDuplicateIdRejectionForRetainedUiEntries() {
+    respond(
+        envelope(
+            "",
+            List.of(
+                json(
+                    """
+                    {"member":{},"plans":[],"config":[
+                      {"item-type":"UI","item-id":"member-category","config-value":"READONLY"},
+                      {"item-type":"ui","item-id":"member-category","config-value":"HIDDEN"}]}
+                    """))));
+
+    StepVerifier.create(adapter().load(command()))
+        .expectError(VestingScaleRetrievalException.class)
+        .verify();
+
+    assertMalformedEvent("config[1].item-id", "DUPLICATE_VALUE");
+  }
+
+  @Test
+  void excludedDuplicateIdDoesNotAffectRetainedUiEntry() {
+    respond(
+        envelope(
+            "",
+            List.of(
+                json(
+                    """
+                    {"member":{},"plans":[],"config":[
+                      {"item-type":"UI","item-id":"member-category","config-value":"READONLY"},
+                      {"item-type":"CONFIG","item-id":"member-category","config-value":"READ_ONLY"}]}
+                    """))));
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(
+            result ->
+                assertThat(result.config())
+                    .containsExactly(
+                        Map.entry(
+                            VestingScaleConfigItem.MEMBER_CATEGORY,
+                            VestingScaleConfigValue.READONLY)))
+        .verifyComplete();
+
+    assertThat(events).isEmpty();
+  }
+
+  @Test
+  void emptyAndNoEligibleConfigArraysRemainSuccessful() {
+    respond(envelope("", List.of(json("{\"member\":{},\"plans\":[],\"config\":[]}"))));
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(result -> assertThat(result.config()).isEmpty())
+        .verifyComplete();
+
+    respond(
+        envelope(
+            "",
+            List.of(
+                json(
+                    """
+                    {"member":{},"plans":[],"config":[
+                      {"item-type":"CONFIG","item-id":"member-category","config-value":{"bad":true}}]}
+                    """))));
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(result -> assertThat(result.config()).isEmpty())
+        .verifyComplete();
+
+    assertThat(events).isEmpty();
+  }
+
+  @ParameterizedTest(name = "preserves malformed config container behavior: {0}")
+  @MethodSource("invalidConfigContainers")
+  void preservesRequiredConfigArrayValidation(
+      String label, String responseJson, String expectedReason) {
+    respond(envelope("", List.of(json(responseJson))));
+
+    StepVerifier.create(adapter().load(command()))
+        .expectError(VestingScaleRetrievalException.class)
+        .verify();
+
+    assertMalformedEvent("config", expectedReason);
+  }
+
+  @Test
+  void excludesNullConfigRowsAsEntriesWithoutAnEligibleItemType() {
+    respond(envelope("", List.of(json("{\"member\":{},\"plans\":[],\"config\":[null]}"))));
+
+    StepVerifier.create(adapter().load(command()))
+        .assertNext(result -> assertThat(result.config()).isEmpty())
+        .verifyComplete();
+
+    assertThat(events).isEmpty();
+  }
+
+  @Test
+  void preservesMalformedNonObjectDataItemBehavior() {
+    respond(envelope("", List.of(json("\"not-an-object\""))));
+
+    StepVerifier.create(adapter().load(command()))
+        .expectError(VestingScaleRetrievalException.class)
+        .verify();
+
+    assertMalformedEvent("data[0]", "INVALID_TYPE");
   }
 
   @ParameterizedTest
@@ -332,7 +527,7 @@ class ApimVestingScaleAdapterTest {
             {
               "member": {},
               "plans": [],
-              "config": [{"item-id":"future-field","config-value":"READONLY"}]
+              "config": [{"item-type":"UI","item-id":"future-field","config-value":"READONLY"}]
             }
             """);
     respond(envelope("", List.of(item)));
@@ -415,6 +610,19 @@ class ApimVestingScaleAdapterTest {
 
   private static JsonNode successData() throws Exception {
     return JSON.readTree("{\"member\":{},\"plans\":[],\"config\":[]}");
+  }
+
+  private static JsonNode configData(String itemTypeJson, String itemId, String configValueJson) {
+    var data = JSON.createObjectNode();
+    data.putObject("member");
+    data.putArray("plans");
+    var item = data.putArray("config").addObject();
+    if (itemTypeJson != null) {
+      item.set("item-type", json(itemTypeJson));
+    }
+    item.put("item-id", itemId);
+    item.set("config-value", json(configValueJson));
+    return data;
   }
 
   private static ApimResponseEnvelope<JsonNode> envelope(String errMessage, List<JsonNode> data) {
@@ -501,5 +709,48 @@ class ApimVestingScaleAdapterTest {
         org.junit.jupiter.params.provider.Arguments.of(""),
         org.junit.jupiter.params.provider.Arguments.of(" "),
         org.junit.jupiter.params.provider.Arguments.of("  "));
+  }
+
+  static Stream<Arguments> retainedUiItemTypes() {
+    return Stream.of(
+        Arguments.of("exact", "\"UI\""),
+        Arguments.of("lowercase", "\"ui\""),
+        Arguments.of("surrounding whitespace", "\" UI \""));
+  }
+
+  static Stream<Arguments> excludedItemTypes() {
+    return Stream.of(
+        Arguments.of("CONFIG", "\"CONFIG\"", true),
+        Arguments.of("DATA", "\"DATA\"", true),
+        Arguments.of("RULE", "\"RULE\"", true),
+        Arguments.of("unknown string", "\"UNKNOWN\"", true),
+        Arguments.of("other string", "\"FUTURE\"", true),
+        Arguments.of("missing", null, false),
+        Arguments.of("null", "null", true),
+        Arguments.of("number", "17", true),
+        Arguments.of("boolean", "true", true),
+        Arguments.of("object", "{}", true),
+        Arguments.of("array", "[]", true));
+  }
+
+  static Stream<Arguments> nonStringConfigValues() {
+    return Stream.of(
+        Arguments.of("number", "123"),
+        Arguments.of("object", "{\"unexpected\":true}"),
+        Arguments.of("array", "[1,2]"),
+        Arguments.of("boolean", "true"));
+  }
+
+  static Stream<Arguments> invalidRetainedUiConfigValues() {
+    return Stream.of(
+        Arguments.of("unknown enum string", "\"READ_ONLY\"", "INVALID_ENUM_VALUE"),
+        Arguments.of("non-string JSON value", "123", "INVALID_TYPE"));
+  }
+
+  static Stream<Arguments> invalidConfigContainers() {
+    return Stream.of(
+        Arguments.of("missing", "{\"member\":{},\"plans\":[]}", "MISSING_REQUIRED_FIELD"),
+        Arguments.of(
+            "null", "{\"member\":{},\"plans\":[],\"config\":null}", "MISSING_REQUIRED_FIELD"));
   }
 }

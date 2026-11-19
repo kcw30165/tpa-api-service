@@ -1,5 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale;
 
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.CONFIG_KEY;
+import static com.bct.ngtpa.apiservice.adapter.out.apim.vestingscale.dto.TrpGetVestingScaleApimDataItem.ConfigItem.ITEM_TYPE_KEY;
+
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureCategory;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimFailureClassifier;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
@@ -24,6 +27,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -129,13 +134,44 @@ public final class ApimVestingScaleAdapter implements VestingScalePort {
     }
     try {
       TrpGetVestingScaleApimDataItem item =
-          objectMapper.treeToValue(data.getFirst(), TrpGetVestingScaleApimDataItem.class);
+          objectMapper.treeToValue(
+              filterConfigEntries(data.getFirst()), TrpGetVestingScaleApimDataItem.class);
       return mapper.map(item);
     } catch (JsonProcessingException | IllegalArgumentException failure) {
       throw malformed(
           jacksonPath(failure),
           VestingScaleMalformedResponseException.MalformedReason.INVALID_TYPE);
     }
+  }
+
+  private JsonNode filterConfigEntries(JsonNode dataItem) {
+    if (!dataItem.isObject()) {
+      return dataItem;
+    }
+    JsonNode config = dataItem.get(CONFIG_KEY);
+    if (config == null || !config.isArray()) {
+      return dataItem;
+    }
+
+    ObjectNode filteredDataItem = ((ObjectNode) dataItem).deepCopy();
+    ArrayNode filteredConfig = objectMapper.createArrayNode();
+    for (JsonNode configItem : config) {
+      if (isUiConfigItem(configItem)) {
+        filteredConfig.add(configItem);
+      }
+    }
+    filteredDataItem.set(CONFIG_KEY, filteredConfig);
+    return filteredDataItem;
+  }
+
+  private static boolean isUiConfigItem(JsonNode configItem) {
+    if (!configItem.isObject()) {
+      return false;
+    }
+    JsonNode itemType = configItem.get(ITEM_TYPE_KEY);
+    return itemType != null
+        && itemType.isTextual()
+        && itemType.textValue().strip().equalsIgnoreCase("UI");
   }
 
   private static String jacksonPath(Throwable failure) {
