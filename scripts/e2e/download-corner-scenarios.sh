@@ -124,10 +124,13 @@ dc_result_finish() {
 
 fetch_language() {
   local language="$1" body_file="$2" error_file="$3" headers_fd status curl_rc
+  local request_id
+  request_id="${REQUEST_ID_PREFIX:-bff-e2e}-download-corner-${language}-$(date +%s)-$$"
   exec {headers_fd}< <(
     printf 'Cookie: portal_sid=%s\n' "$SESSION_COOKIE_VALUE"
     printf 'X-XSRF-TOKEN: %s\n' "$CSRF_TOKEN_VALUE"
     printf 'Account-Ref: %s\n' "$ACCOUNT_REF_VALUE"
+    printf 'X-Request-Id: %s\n' "$request_id"
   )
   local -a curl_args=(
     --silent --show-error

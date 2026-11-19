@@ -47,11 +47,13 @@ Live checks:
 3. If a language request is not HTTP 200, that language's later checks are recorded as `SKIP`; dependent cross-language checks are also skipped.
 4. Live checks deliberately do not assert ordering, tie order, fallback behavior, or empty-category preservation; Java unit tests cover those rules.
 
+Each language GET sends exactly one nonblank `X-Request-Id`. Generate it per request using the existing request-ID convention: `${REQUEST_ID_PREFIX:-bff-e2e}-download-corner-${language}-$(date +%s)-$$`. The language segment keeps the English and zh-HK IDs distinct even when both requests occur in the same second. The offline fake-curl regression rejects a missing, blank, or duplicate header and asserts one distinct ID per language.
+
 The per-language result IDs are `<language>.{http-status,envelope,category-shape,item-shape,no-seq-env}` for `en` and `zh-HK`. Cross-language IDs are `language-category-count` and `language-item-count`. Journal hooks use the shared result library without changing terminal output, request order, or exit status; only per-language records carry valid actual HTTP status, and only `<language>.http-status` carries expected status 200.
 
 The shared selector's existing conflict rejection applies when `E2E_ACCOUNT_REF` and a non-empty `E2E_ACCOUNT_INDEX` are both supplied (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). M3 does not change the selector, `run-post-login.sh`, or `result-records.sh`; the pack consumes the shared runner's selection unchanged.
 
-**Fail-first evidence:** `scripts/e2e/tests/download-corner-scenario-test.sh` and `scripts/e2e/tests/download-corner-result-hooks-test.sh` use a fake `curl`; both were run before the pack existed and failed on the missing pack, then passed after implementation. M3 is shell-only and has no Java gates. Local live validation remains pending; Nick runs it.
+**Fail-first evidence:** `scripts/e2e/tests/download-corner-scenario-test.sh` and `scripts/e2e/tests/download-corner-result-hooks-test.sh` use a fake `curl`; both were run before the pack existed and failed on the missing pack, then passed after implementation. For the later request-ID repair, the scenario test was rerun before changing the pack and failed specifically because fake curl rejected the absent `X-Request-Id`; both offline tests pass with the corrected pack. M3 is shell-only and has no Java gates. Local live validation remains pending; Nick runs it.
 
 ## Milestone gates
 

@@ -27,6 +27,8 @@ headers_file=''
 body_file=''
 url=''
 language=''
+request_id=''
+request_id_count=0
 while (($#)); do
   case "$1" in
     -X) method="$2"; shift 2 ;;
@@ -48,6 +50,22 @@ printf '%s %s %s\n' "$method" "${url#"$BASE_URL"}" "$language" >>"$CALLS_FILE"
 printf '%s\n' "${args[@]}" >"$ARGS_DIR/args-$call_number"
 cat "$headers_file" >"$HEADERS_DIR/headers-$call_number"
 printf 'Accept-Language: %s\n' "$language" >>"$HEADERS_DIR/headers-$call_number"
+while IFS= read -r header; do
+  case "$header" in
+    X-Request-Id:*)
+      request_id_count=$((request_id_count + 1))
+      request_id="${header#X-Request-Id:}"
+      request_id="${request_id# }"
+      ;;
+  esac
+done <"$HEADERS_DIR/headers-$call_number"
+if [[ "$request_id_count" -ne 1 || -z "${request_id//[[:space:]]/}" ]]; then
+  : >"$ID_FAILURE_FILE"
+  printf '{"success":false,"status":"VALIDATION_FAILED","errors":[{"code":"err.request.id.missing","targets":["X-Request-Id"]}]}\n' \
+    >"$body_file"
+  printf '400'
+  exit 0
+fi
 jq --arg scenario "$FAKE_SCENARIO" --arg language "$language" '
   if $scenario == "categories-not-array" then
     .result.data.categories = {}
@@ -105,17 +123,22 @@ FIXTURE
 run_case() {
   local scenario="$1" http_status="$2" expected_rc="$3" expected_failure="$4" rc
   local calls="$tmp/calls-$scenario" args="$tmp/args/$scenario" headers="$tmp/headers/$scenario"
+  local id_failure="$tmp/id-failure-$scenario" request_id='' request_id_count=0
+  local request_id_en='' request_id_zh=''
   mkdir -p "$args" "$headers"
   : >"$calls"
   if BASE_URL=http://mock SESSION_COOKIE=session-secret CSRF_TOKEN=csrf-secret \
     ACCOUNT_REF=account-secret CALLS_FILE="$calls" ARGS_DIR="$args" \
     HEADERS_DIR="$headers" FIXTURE_FILE="$tmp/fixture.json" \
+    ID_FAILURE_FILE="$id_failure" \
     FAKE_SCENARIO="$scenario" FAKE_HTTP_STATUS="$http_status" \
     bash "$PACK" >"$tmp/output-$scenario" 2>&1; then
     rc=0
   else
     rc=$?
   fi
+  [[ ! -e "$id_failure" ]] \
+    || fail_test "$scenario fake curl rejected a missing, blank, or duplicate X-Request-Id"
   [[ "$rc" -eq "$expected_rc" ]] || {
     cat "$tmp/output-$scenario" >&2
     fail_test "$scenario returned $rc, expected $expected_rc"
@@ -135,11 +158,20 @@ run_case() {
       || fail_test "$scenario omitted the CSRF header"
     grep -Fxq 'Account-Ref: account-secret' "$headers/headers-$index" \
       || fail_test "$scenario omitted the selected Account-Ref"
+    request_id_count="$(grep -c '^X-Request-Id:' "$headers/headers-$index" || true)"
+    [[ "$request_id_count" -eq 1 ]] \
+      || fail_test "$scenario did not send exactly one X-Request-Id"
+    request_id="$(sed -n 's/^X-Request-Id: //p' "$headers/headers-$index")"
+    [[ -n "${request_id//[[:space:]]/}" ]] \
+      || fail_test "$scenario sent a blank X-Request-Id"
+    if [[ "$index" -eq 1 ]]; then request_id_en="$request_id"; else request_id_zh="$request_id"; fi
     grep -Fxq 'GET' "$args/args-$index" || fail_test "$scenario used a non-GET method"
     if grep -Eq '^(POST|PUT|PATCH|DELETE)$' "$args/args-$index"; then
       fail_test "$scenario issued a mutating HTTP method"
     fi
   done
+  [[ "$request_id_en" != "$request_id_zh" ]] \
+    || fail_test "$scenario reused the same X-Request-Id for both languages"
 }
 
 run_case valid 200 0 ''

@@ -27,6 +27,8 @@ headers_file=''
 body_file=''
 url=''
 language=''
+request_id=''
+request_id_count=0
 while (($#)); do
   case "$1" in
     -X) method="$2"; shift 2 ;;
@@ -48,6 +50,21 @@ printf '%s %s %s\n' "$method" "${url#"$BASE_URL"}" "$language" >>"$CALLS_FILE"
 printf '%s\n' "${args[@]}" >"$ARGS_DIR/args-$call_number"
 cat "$headers_file" >"$HEADERS_DIR/headers-$call_number"
 printf 'Accept-Language: %s\n' "$language" >>"$HEADERS_DIR/headers-$call_number"
+while IFS= read -r header; do
+  case "$header" in
+    X-Request-Id:*)
+      request_id_count=$((request_id_count + 1))
+      request_id="${header#X-Request-Id:}"
+      request_id="${request_id# }"
+      ;;
+  esac
+done <"$HEADERS_DIR/headers-$call_number"
+if [[ "$request_id_count" -ne 1 || -z "${request_id//[[:space:]]/}" ]]; then
+  printf '{"success":false,"status":"VALIDATION_FAILED","errors":[{"code":"err.request.id.missing","targets":["X-Request-Id"]}]}\n' \
+    >"$body_file"
+  printf '400'
+  exit 0
+fi
 jq --arg language "$language" '
   if $language == "zh-HK" then
     .result.data.categories[0].categoryName = "表格"
