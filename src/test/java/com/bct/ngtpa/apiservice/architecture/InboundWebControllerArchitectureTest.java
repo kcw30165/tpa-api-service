@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.logout.LogoutController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryController;
 import com.bct.ngtpa.apiservice.adapter.in.web.contribution.ContributionController;
+import com.bct.ngtpa.apiservice.adapter.in.web.downloadcorner.DownloadCornerController;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.AuthenticatedPortalContextWebExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.internal.referencedate.ReferenceDateController;
 import com.bct.ngtpa.apiservice.adapter.in.web.notification.NotificationController;
@@ -52,7 +53,8 @@ class InboundWebControllerArchitectureTest {
           NotificationController.class,
           PersonalInformationController.class,
           ReferenceDataController.class,
-          ReferenceDateController.class);
+          ReferenceDateController.class,
+          DownloadCornerController.class);
 
   @Test
   void finalArchitectureEnforcementMarkerExists() throws IOException {
@@ -113,14 +115,15 @@ class InboundWebControllerArchitectureTest {
           }
         });
     assertThat(duplicates).isEmpty();
-    assertThat(routes).hasSize(36);
     assertThat(routes)
+        .hasSize(37)
         .contains(
             "POST /api/v1/auth/login",
             "POST /api/v1/auth/registration/start",
             "POST /api/v1/auth/forgot-password/start",
             "POST /api/v1/internal/reference-date/refresh",
-            "GET /api/v1/reference-data/countries");
+            "GET /api/v1/reference-data/countries",
+            "GET /api/v1/download-corner");
   }
 
   @Test

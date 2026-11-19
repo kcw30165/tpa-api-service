@@ -304,6 +304,8 @@ apim:
       path: ${APIM_INVESTMENT_CHOICE_CANCEL_PATH:/ws/NGTPA/v1/TRPCnclCIMReq}
   vesting-scale:
     path: ${APIM_VESTING_SCALE_PATH:/ws/NGTPA/v1/TRPGetVestingScale}
+  download-corner:
+    path: ${APIM_DOWNLOAD_CORNER_PATH:/ws/NGTPA/v1/TRPGetDownloadCorner}
   general-metadata:
     path: ${APIM_GENERAL_METADATA_PATH:/ws/NGTPA/v1/TRPGetGeneralMetaData}
   routing:

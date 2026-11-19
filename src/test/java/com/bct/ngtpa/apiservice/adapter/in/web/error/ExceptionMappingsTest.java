@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLo
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
+import com.bct.ngtpa.apiservice.application.exception.DownloadCornerRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.FundComparisonRequestInvalidException;
 import com.bct.ngtpa.apiservice.application.exception.FundComparisonRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.FundFactSheetRetrievalException;
@@ -517,6 +518,23 @@ class ExceptionMappingsTest {
   }
 
   @Test
+  void downloadCornerRetrievalMapping() {
+    var exception = DownloadCornerRetrievalException.systemFailure();
+    ErrorDescriptor descriptor =
+        new ExceptionMappingRegistryConfig().exceptionMappingRegistry().resolve(exception, CONTEXT);
+    ErrorEntry entry = firstEntry(descriptor);
+
+    assertEquals(HttpStatus.SERVICE_UNAVAILABLE, descriptor.httpStatus());
+    assertEquals(ApiStatus.SYSTEM_ERROR, descriptor.apiStatus());
+    assertEquals("SYSTEM", entry.type());
+    assertEquals(ErrorCodes.DOWNLOAD_CORNER_RETRIEVAL_UNAVAILABLE, entry.code());
+    assertEquals(MessagePolicy.NONE, entry.policy());
+    assertEquals(List.of(), entry.targets());
+    assertEquals(LogLevel.WARN, descriptor.logLevel());
+    assertEquals(false, descriptor.includeStackTrace());
+  }
+
+  @Test
   void investmentChoiceSubmissionMapping() {
     var mapping = InvestmentChoiceExceptionMappings.submissionUnavailable();
     var exception = new InvestmentChoiceSubmissionUnavailableException();
@@ -689,11 +707,11 @@ class ExceptionMappingsTest {
   }
 
   @Test
-  void configAssemblesExactlyThirtyThreeMappingsPlusCatchAll() throws ReflectiveOperationException {
+  void configAssemblesExactlyThirtyFourMappingsPlusCatchAll() throws ReflectiveOperationException {
     ExceptionMappingRegistry registry =
         new ExceptionMappingRegistryConfig().exceptionMappingRegistry();
 
-    assertEquals(33, registry.mappingCount());
+    assertEquals(34, registry.mappingCount());
 
     ErrorDescriptor alreadyPublished =
         registry.resolve(
