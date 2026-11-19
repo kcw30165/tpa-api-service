@@ -37,8 +37,8 @@ central `ApiExceptionHandler` consolidation (deferred workstream);
 | D-07 | Groups live in the page YAML (`bff-pages.pages.personalInformation`) and are referenced by validator and rules; no hard-coded field lists in Java. | Nick (configurable approach) |
 | D-08 | Address rules, see 4.3. Each address group is judged on its own. | Nick |
 | D-09 | Format rules (`pattern`, `minLength`, `maxLength`, `email`, `blockedAddress`) apply only to non-blank values, so `""` can clear a field. This replaces the semantics pinned by `PersonalInformationFieldPresenceValidationSemanticsGuardTest`. | Nick (Q-A) |
-| D-10 | Mandatory source is the `TRPGetMemberInfo` config (HIDDEN / READONLY / EDITABLE_COM / EDITABLE_OPTION), cached by GET and read by PUT. EDITABLE_COM => a submitted value must be non-blank, for non-address fields. Address groups are governed only by D-08. The static `required` rule of `emailAddress` is removed. | Nick |
-| D-11 | The config cache is stored in `AuthenticatedSession.featureState` under the key `personal-information.config`, like `/api/v1/fund-comparison/options`. It stores only the item-id => config-value map plus `accountRef` and `policyNo`. No member data. | Nick |
+| D-10 | Mandatory source is the eligible `TRPGetMemberInfo` config (UI and DATA item-types; see the post-M4 filtering amendment) with values HIDDEN / READONLY / EDITABLE_COM / EDITABLE_OPTION, cached by GET and read by PUT. EDITABLE_COM => a submitted value must be non-blank, for non-address fields. Address groups are governed only by D-08. The static `required` rule of `emailAddress` is removed. | Nick |
+| D-11 | The config cache is stored in `AuthenticatedSession.featureState` under the key `personal-information.config`, like `/api/v1/fund-comparison/options`. It stores only the eligible item-id => config-value map plus `accountRef` and `policyNo`. No member data. | Nick |
 | D-12 | Lifecycle is controlled by the authenticated session (idle and absolute timeout, logout). Each GET overwrites the entry. PUT never evicts it. | Nick |
 | D-13 | PUT cache miss (or no session cookie): call `TRPGetMemberInfo` once, refresh the cache, validate. A rejection decided from a cached entry: refetch once and revalidate. If `TRPGetMemberInfo` cannot return the data: HTTP 503 `SYSTEM_ERROR`. | Nick |
 | D-14 | A config/access rejection is a content rejection: HTTP 422 `VALIDATION_FAILED` with code-only errors and frontend `targets`. Malformed request structure remains HTTP 400 under the Milestone 4 rules. | Nick (Milestone 4 supersedes original status) |
@@ -251,6 +251,10 @@ feature/step-up-pin-verification). Label removal is out of scope (separate branc
 | D-31 | Conditional-required rules stay in YAML (e.g. phone country required only when the phone number has a value) and are evaluated over submitted fields only: a rule fails only when its trigger is submitted non-blank AND its target is submitted blank. If the target key is absent, Java treats the stored value as unchanged and skips the rule; the downstream decides. | Nick (Q2) |
 | D-32 | A config value outside the four enum values is logged at ERROR (item id and value only) and treated as HIDDEN: the GET omits the field and a PUT containing it is rejected with personalInformation.field.notEditable. | Nick (option B) |
 | D-32a | A null or blank access config value is logged at ERROR (item id and value only) and treated as HIDDEN: the GET omits the field and a PUT containing it is rejected with personalInformation.field.notEditable. | Nick |
+| D-33 | Personal Information retains downstream configuration-matrix entries with item-type UI or DATA only. Compare a textual item-type after trimming and case-insensitive comparison; missing, null, non-textual, CONFIG, RULE, UNKNOWN, and all other values are excluded. | Nick (M0) |
+| D-34 | Apply item-type eligibility to raw JSON before typed deserialization so excluded rows cannot fail parsing due to malformed config-value, including non-string JSON values. Apply the same eligibility check before config-value conversion in the raw-list compatibility path. | Nick (M0) |
+| D-35 | Last eligible row wins when multiple UI/DATA entries have the same item-id. Do not normalize item-id or config-value. Retained entries preserve existing config-value/access validation. | Nick (M0) |
+| D-36 | Keep current GET DATA rendering and UI access-state behavior, PUT's filtered cached-config/refetch behavior, and the distinction between downstream item-type and YAML UI-only fields. Do not change TRPUpdMemberInfo response mapping. | Nick (M0) |
 
 ### A.2 Decisions superseded
 
@@ -652,3 +656,47 @@ does not change generic APIM handling or other endpoints.
   ]
 }
 ```
+
+## Post-M4 amendment — downstream configuration-matrix filtering (M0)
+
+This approved follow-up supersedes only the configuration-row selection and parsing behavior described in D-10/D-11 and
+the pre-filter portions of the Milestone 3 as-built notes. It does not change completed Milestone 4 history, the public
+GET/PUT response contracts, or `TRPUpdMemberInfo` response mapping.
+
+### Eligibility and parsing
+
+For `TRPGetMemberInfo`, inspect each raw JSON config entry's `item-type` before typed DTO conversion. Retain the entry
+only when `item-type` is a JSON string whose trimmed value compares case-insensitively to `UI` or `DATA`. Thus `UI`,
+`ui`, ` UI ` and the corresponding DATA variants are eligible. Missing, null, non-string, CONFIG, RULE, UNKNOWN, and
+all other values are excluded. Do not normalize `item-id` or `config-value`.
+
+Excluded rows are discarded before interpreting `config-value`; missing, null, object, array, numeric, boolean, or
+otherwise malformed values in those rows must not cause response parsing or validation failure. Retained UI and DATA
+rows keep the existing config-value interpretation and validation, including the current handling of null, blank, and
+unrecognized access values. The `GetPersonalInformationService` raw-list compatibility path applies the same
+eligibility rule before converting item-type or config-value.
+
+### GET, cache, and PUT behavior
+
+- DATA entries continue to supply the existing data-bound GET rendering behavior.
+- UI entries continue to supply the existing access-state behavior; they do not become member-data values.
+- The session cache contains the filtered item-id => config-value map. For duplicate item IDs, the last eligible UI or
+  DATA row wins; excluded rows never overwrite an eligible row.
+- PUT continues to use that cache, refetch `TRPGetMemberInfo` on a cache miss, and apply the existing stale-cache
+  rejection/refetch behavior. Each lookup uses the same filtering contract.
+- Downstream `item-type` is distinct from YAML UI-only fields (a YAML binding with config but no data binding); the
+  latter's existing validation/access-check behavior is unchanged.
+
+### Regression requirements
+
+`ApimPersonalInformationAdapterTest` must prove that UI/DATA strings with case or surrounding-whitespace variations are
+retained, while CONFIG, RULE, UNKNOWN, other strings, missing/null item-type, and non-string item-type are excluded.
+Cover empty/no-eligible matrices and mixed eligible/excluded rows. Excluded rows with missing, null, object, array,
+numeric, or boolean config-value are harmless; retained UI/DATA values still use existing validation. Cover
+last-eligible-row-wins, including an excluded duplicate that must not overwrite an eligible value.
+
+`GetPersonalInformationServiceTest` must prove the same eligibility behavior in the raw-list compatibility path before
+item-type/config-value conversion. `PersonalInformationWebMapperTest` must prove unchanged DATA rendering and UI
+access-state behavior. `PersonalInformationAccessConfigServiceTest` or
+`PersonalInformationFieldAccessCheckerTest` must prove PUT cached access uses only eligible rows and cache-miss/refetch
+results are filtered. Preserve existing retained-entry validation; do not modify `TRPUpdMemberInfo` response mapping.

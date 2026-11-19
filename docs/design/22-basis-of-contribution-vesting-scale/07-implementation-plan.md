@@ -15,3 +15,16 @@ Branch: `feature/vesting-scale-bff` from origin/dev (record base SHA). One bound
 | M5 E2E | M5.1 | Add the read-only `vesting-scale` post-login feature pack. Select the shared account with zero-based `E2E_ACCOUNT_INDEX` (default `0`); the original per-feature index proposal was replaced by this shared selector. | Registered two-language GET pack, offline fake-curl contract tests, summary-only evidence, and pre-login absent-field validation are complete. |
 
 Stop rules: 3 consecutive failed attempts → escalate; 10 prompts without a commit → escalate.
+
+## M6 — Post-M5 config-matrix filtering follow-up
+
+Status: planned by the M0 documentation update; no implementation has started. This follow-up does not rewrite the
+completed M0–M5 history. M1 and M2 are independent feature milestones; M3 starts after both are complete.
+
+| Milestone | Scope | Fail-first and completion criteria |
+|---|---|---|
+| M1 Vesting Scale | Filter raw `JsonNode` config entries to normalized UI item-types before DTO deserialization; preserve mapper enum validation, malformed-response behavior, and duplicate-ID rejection for retained entries. | Add fail-first cases in `ApimVestingScaleAdapterTest` and mapper regressions in `TrpGetVestingScaleApimMapperTest` for excluded malformed `config-value`, normalized UI eligibility, retained valid/invalid UI values, and retained duplicates; run targeted regression tests. |
+| M2 Personal Information | Filter normalized UI and DATA entries before typed conversion, including the raw-list compatibility path; preserve GET DATA rendering, UI access-state behavior, the PUT cache/refetch path, and last-row-wins for eligible duplicate IDs. | Add fail-first cases in `ApimPersonalInformationAdapterTest` and `GetPersonalInformationServiceTest`; add GET rendering coverage in `PersonalInformationWebMapperTest` and PUT cached-access coverage in `PersonalInformationAccessConfigServiceTest` or `PersonalInformationFieldAccessCheckerTest`; run targeted regression tests. Do not change `TRPUpdMemberInfo` response mapping. |
+| M3 Validation | Validate both feature milestones together. | Run full regression, coverage, startup smoke, and SonarQube; record results and any accepted gaps. |
+
+Do not introduce a shared filtering abstraction unless a separate, evidence-based need is established.

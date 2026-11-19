@@ -173,3 +173,16 @@ gate fixes have their own commit; they are not part of the formatting commit.
 | OA update semantics | Ask TAS owners whether other accounts reported as `success:true` are actually updated when the selected account is rejected. |
 | Optional result metadata | `refNo`, `submitDate` and `submitTime` are not guaranteed by TAS; FE must not rely on them. |
 | Conditional-required test coverage | Optional: add a real-YAML test for the overseas area-code trigger and a real-YAML test where both conditional fields are submitted validly. |
+
+## M5 — Post-M4 config-matrix filtering follow-up
+
+Status: planned by the M0 documentation update; not started. M1 and M2 are independent feature milestones. M3 depends
+on both. Completed Milestones 1–4 and their gate/history records above remain unchanged.
+
+| Milestone | Scope | Fail-first and completion criteria |
+|---|---|---|
+| M1 Vesting Scale | Independent change documented in `docs/design/22-basis-of-contribution-vesting-scale/07-implementation-plan.md`: retain normalized UI entries only, filtering raw JSON before DTO conversion. | Fail-first `ApimVestingScaleAdapterTest` cases for excluded malformed config-value and normalized UI eligibility; retain `TrpGetVestingScaleApimMapperTest` validation and duplicate regressions; run targeted tests. |
+| M2 Personal Information | Retain normalized UI and DATA entries only; protect typed conversion with raw JSON filtering and preserve the raw-list compatibility path. | Fail-first `ApimPersonalInformationAdapterTest` and `GetPersonalInformationServiceTest` cases; GET rendering regression in `PersonalInformationWebMapperTest` for DATA values and UI access-state; PUT cached-access/refetch regression in `PersonalInformationAccessConfigServiceTest` or `PersonalInformationFieldAccessCheckerTest`; verify last eligible duplicate wins and retained-entry validation; run targeted tests. Do not change `TRPUpdMemberInfo` response mapping. |
+| M3 Validation | Validate both feature milestones after M1 and M2. | Run full regression, coverage, startup smoke, and SonarQube; record results and any accepted gaps. |
+
+Do not introduce a shared filtering abstraction without a separately justified need.
