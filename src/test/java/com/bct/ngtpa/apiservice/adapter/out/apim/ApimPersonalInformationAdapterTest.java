@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.FetchMemberInfoCommand;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -35,7 +36,7 @@ class ApimPersonalInformationAdapterTest {
     AtomicInteger calls = new AtomicInteger();
 
     var result =
-        new ApimMemberInfoAdapter(capturing(captured, calls, validEnvelope()))
+        adapter(capturing(captured, calls, validEnvelope()))
             .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_EPR))
             .block();
     ApimExchangeRequest<?, ?> exchange = captured.get();
@@ -52,7 +53,7 @@ class ApimPersonalInformationAdapterTest {
     assertThat(body.getPolicyNo()).isEqualTo("POL-1");
     assertThat(body.getCertNo()).isEqualTo("CERT-1");
     assertThat(body.getLoginUserId()).isEqualTo("USER-1");
-    assertThat(result.getPayload()).containsOnlyKeys("config", "data");
+    assertThat(result.getPayload()).containsOnlyKeys("config", "configItemTypes", "data");
     Map<?, ?> config = (Map<?, ?>) result.getPayload().get("config");
     Map<?, ?> data = (Map<?, ?>) result.getPayload().get("data");
     assertThat(config.get("addr1")).isEqualTo("EDITABLE_COM");
@@ -63,7 +64,7 @@ class ApimPersonalInformationAdapterTest {
   void serializedRequestContainsExactTrpGetMemberInfoFieldsWithoutEnvAndNoFrontendAuthority()
       throws Exception {
     AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
-    new ApimMemberInfoAdapter(capturing(captured, new AtomicInteger(), emptyEnvelope()))
+    adapter(capturing(captured, new AtomicInteger(), emptyEnvelope()))
         .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
         .block();
 
@@ -88,7 +89,7 @@ class ApimPersonalInformationAdapterTest {
   void preservesCommandActorRoleAndAccountEnvironmentInExchange() {
     AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
     AtomicInteger calls = new AtomicInteger();
-    new ApimMemberInfoAdapter(capturing(captured, calls, emptyEnvelope()))
+    adapter(capturing(captured, calls, emptyEnvelope()))
         .fetchMemberInfo(command("UAT", ActorUserRole.ROLE_USER_EPR))
         .block();
 
@@ -103,8 +104,7 @@ class ApimPersonalInformationAdapterTest {
     AtomicInteger calls = new AtomicInteger();
     assertThatThrownBy(
             () ->
-                new ApimMemberInfoAdapter(
-                        countingFailure(calls, new AssertionError("must not run")))
+                adapter(countingFailure(calls, new AssertionError("must not run")))
                     .fetchMemberInfo(command(" ", ActorUserRole.ROLE_USER_MBR))
                     .block())
         .isInstanceOf(IllegalArgumentException.class)
@@ -115,7 +115,7 @@ class ApimPersonalInformationAdapterTest {
   @Test
   void emptyNoRecordResponseReturnsEmptyPayload() {
     var result =
-        new ApimMemberInfoAdapter(fixed(emptyEnvelope()))
+        adapter(fixed(emptyEnvelope()))
             .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
             .block();
     assertThat(result.getPayload()).isEmpty();
@@ -125,7 +125,7 @@ class ApimPersonalInformationAdapterTest {
   void businessRejectionRemainsFeatureOwned() {
     assertThatThrownBy(
             () ->
-                new ApimMemberInfoAdapter(fixed(errorEnvelope("APIM member lookup failed")))
+                adapter(fixed(errorEnvelope("APIM member lookup failed")))
                     .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
                     .block())
         .isInstanceOf(ApimException.class)
@@ -138,14 +138,14 @@ class ApimPersonalInformationAdapterTest {
   void malformedAndStructurallyInvalidEnvelopesRemainFeatureOwned() {
     assertThatThrownBy(
             () ->
-                new ApimMemberInfoAdapter(fixed(envelopeWithMissingResponse()))
+                adapter(fixed(envelopeWithMissingResponse()))
                     .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
                     .block())
         .isInstanceOf(ApimException.class)
         .hasMessageContaining("response is missing");
     assertThatThrownBy(
             () ->
-                new ApimMemberInfoAdapter(fixed(envelopeWithMissingData()))
+                adapter(fixed(envelopeWithMissingData()))
                     .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
                     .block())
         .isInstanceOf(ApimException.class)
@@ -157,7 +157,7 @@ class ApimPersonalInformationAdapterTest {
     IllegalStateException failure = new IllegalStateException("executor unavailable");
     assertThatThrownBy(
             () ->
-                new ApimMemberInfoAdapter(countingFailure(new AtomicInteger(), failure))
+                adapter(countingFailure(new AtomicInteger(), failure))
                     .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
                     .block())
         .isSameAs(failure);
@@ -174,7 +174,7 @@ class ApimPersonalInformationAdapterTest {
     var envelope = success(GetMemberInfoDataItem.builder().config(config).data(data).build());
 
     var result =
-        new ApimMemberInfoAdapter(fixed(envelope))
+        adapter(fixed(envelope))
             .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
             .block();
     Map<?, ?> mappedConfig = (Map<?, ?>) result.getPayload().get("config");
@@ -183,15 +183,175 @@ class ApimPersonalInformationAdapterTest {
     assertThat((Map<?, ?>) result.getPayload().get("data")).isEmpty();
 
     var nullItemResult =
-        new ApimMemberInfoAdapter(fixed(success((GetMemberInfoDataItem) null)))
+        adapter(fixed(success((GetMemberInfoDataItem) null)))
             .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
             .block();
     assertThat((Map<?, ?>) nullItemResult.getPayload().get("config")).isEmpty();
     assertThat((Map<?, ?>) nullItemResult.getPayload().get("data")).isEmpty();
   }
 
+  @Test
+  void filtersRawMatrixBeforeTypedMappingAndKeepsOnlyNormalizedUiAndDataRows() {
+    AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
+    String responseJson =
+        """
+        {"response":{"err-message":"","data":[{
+          "config":[
+            {"item-id":"ui","item-type":"UI","config-value":"READONLY"},
+            {"item-id":"lower-ui","item-type":"ui","config-value":"EDITABLE_COM"},
+            {"item-id":"padded-ui","item-type":" UI ","config-value":"EDITABLE_OPTION"},
+            {"item-id":"mixed-case-ui","item-type":"uI","config-value":"NOT_AN_ACCESS_VALUE"},
+            {"item-id":"data","item-type":"data","config-value":"READONLY"},
+            {"item-id":"mixed-data","item-type":" DaTa ","config-value":"EDITABLE_COM"},
+            {"item-id":"invalid-string","item-type":"CONFIG","config-value":"NOT_AN_ACCESS_VALUE"},
+            {"item-id":"object-config","item-type":"CONFIG","config-value":{"bad":[1]}},
+            {"item-id":"array-rule","item-type":"RULE","config-value":["bad"]},
+            {"item-id":"unknown","item-type":"UNKNOWN","config-value":false},
+            {"item-id":"other","item-type":"OTHER","config-value":17},
+            {"item-id":"missing-type","config-value":{"bad":true}},
+            {"item-id":"null-type","item-type":null,"config-value":null},
+            {"item-id":"numeric-type","item-type":7,"config-value":[]},
+            {"item-id":"object-type","item-type":{"name":"UI"},"config-value":"READONLY"},
+            {"item-id":"blank-type","item-type":"  ","config-value":["bad"]},
+            null,
+            7,
+            {"item-id":"duplicate","item-type":"UI","config-value":"READONLY"},
+            {"item-id":"duplicate","item-type":"CONFIG","config-value":{"bad":true}},
+            {"item-id":"duplicate","item-type":" DATA ","config-value":"EDITABLE_OPTION"}
+          ],
+          "data":[{"email":"a@b.test"}]
+        }]}}
+        """;
+
+    var result =
+        adapter(rawJsonResponse(captured, responseJson))
+            .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
+            .block();
+
+    assertThat(captured.get().responseDataType()).isEqualTo(GetMemberInfoDataItem.class);
+    assertThat(stringObjectMap(result.getPayload().get("config")))
+        .containsOnlyKeys(
+            "ui", "lower-ui", "padded-ui", "mixed-case-ui", "data", "mixed-data", "duplicate")
+        .containsEntry("ui", "READONLY")
+        .containsEntry("lower-ui", "EDITABLE_COM")
+        .containsEntry("padded-ui", "EDITABLE_OPTION")
+        .containsEntry("mixed-case-ui", "NOT_AN_ACCESS_VALUE")
+        .containsEntry("data", "READONLY")
+        .containsEntry("mixed-data", "EDITABLE_COM")
+        .containsEntry("duplicate", "EDITABLE_OPTION");
+    assertThat(stringMap(result.getPayload().get("configItemTypes")))
+        .containsOnlyKeys(
+            "ui", "lower-ui", "padded-ui", "mixed-case-ui", "data", "mixed-data", "duplicate")
+        .containsEntry("ui", "UI")
+        .containsEntry("lower-ui", "ui")
+        .containsEntry("padded-ui", " UI ")
+        .containsEntry("mixed-case-ui", "uI")
+        .containsEntry("data", "data")
+        .containsEntry("mixed-data", " DaTa ")
+        .containsEntry("duplicate", " DATA ");
+    assertThat(stringObjectMap(result.getPayload().get("data"))).containsEntry("email", "a@b.test");
+  }
+
+  @Test
+  void retainedRowsKeepTypedConfigValueValidation() {
+    String responseJson =
+        """
+        {"response":{"err-message":"","data":[{
+          "config":[{"item-id":"ui","item-type":"UI","config-value":{"invalid":true}}],
+          "data":[{}]
+        }]}}
+        """;
+
+    assertThatThrownBy(
+            () ->
+                adapter(rawJsonResponse(new AtomicReference<>(), responseJson))
+                    .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
+                    .block())
+        .hasRootCauseInstanceOf(com.fasterxml.jackson.databind.JsonMappingException.class);
+  }
+
+  @Test
+  void malformedConfigContainerRemainsAnApimMappingFailure() {
+    String responseJson =
+        """
+        {"response":{"err-message":"","data":[{"config":{"item-id":"ui"},"data":[{}]}]}}
+        """;
+
+    assertThatThrownBy(
+            () ->
+                adapter(rawJsonResponse(new AtomicReference<>(), responseJson))
+                    .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
+                    .block())
+        .isInstanceOf(ApimResponseMappingException.class)
+        .hasRootCauseInstanceOf(com.fasterxml.jackson.databind.JsonMappingException.class);
+  }
+
+  @Test
+  void emptyAndNoEligibleMatricesProduceEmptyConfig() throws Exception {
+    for (String configJson :
+        List.of(
+            "[]",
+            """
+            [
+              {"item-id":"config","item-type":"CONFIG","config-value":{"bad":true}},
+              {"item-id":"missing-type","config-value":["bad"]},
+              {"item-id":"numeric-type","item-type":5,"config-value":false}
+            ]
+            """)) {
+      String responseJson =
+          """
+          {"response":{"err-message":"","data":[{"config":%s,"data":[{"email":"a@b.test"}]}]}}
+          """
+              .formatted(configJson);
+      var result =
+          adapter(rawJsonResponse(new AtomicReference<>(), responseJson))
+              .fetchMemberInfo(command("JP", ActorUserRole.ROLE_USER_MBR))
+              .block();
+
+      assertThat(stringObjectMap(result.getPayload().get("config"))).isEmpty();
+      assertThat(stringMap(result.getPayload().get("configItemTypes"))).isEmpty();
+      assertThat(stringObjectMap(result.getPayload().get("data")))
+          .containsEntry("email", "a@b.test");
+    }
+  }
+
+  private static ApimExchangeExecutor rawJsonResponse(
+      AtomicReference<ApimExchangeRequest<?, ?>> captured, String responseJson) {
+    return new ApimExchangeExecutor() {
+      @Override
+      public <R, D> Mono<ApimResponseEnvelope<D>> postEnvelope(ApimExchangeRequest<R, D> request) {
+        captured.set(request);
+        JavaType envelopeType =
+            JSON.getTypeFactory()
+                .constructParametricType(ApimResponseEnvelope.class, request.responseDataType());
+        try {
+          @SuppressWarnings("unchecked")
+          ApimResponseEnvelope<D> response =
+              (ApimResponseEnvelope<D>) JSON.readValue(responseJson, envelopeType);
+          return Mono.just(response);
+        } catch (Exception failure) {
+          return Mono.error(new ApimResponseMappingException(failure));
+        }
+      }
+    };
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> stringObjectMap(Object value) {
+    return (Map<String, Object>) value;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, String> stringMap(Object value) {
+    return (Map<String, String>) value;
+  }
+
   private static FetchMemberInfoCommand command(String env, ActorUserRole role) {
     return new FetchMemberInfoCommand(env, "POL-1", "CERT-1", "USER-1", role);
+  }
+
+  private static ApimMemberInfoAdapter adapter(ApimExchangeExecutor executor) {
+    return new ApimMemberInfoAdapter(executor);
   }
 
   private static ApimExchangeExecutor capturing(
@@ -240,6 +400,13 @@ class ApimPersonalInformationAdapterTest {
   }
 
   private static ApimResponseEnvelope<GetMemberInfoDataItem> success(GetMemberInfoDataItem item) {
+    if (item != null && item.getConfig() != null) {
+      for (MemberInfoConfigItem configItem : item.getConfig()) {
+        if (configItem != null) {
+          configItem.setItemType("UI");
+        }
+      }
+    }
     return ApimResponseEnvelope.<GetMemberInfoDataItem>builder()
         .response(
             ApimResponseBody.<GetMemberInfoDataItem>builder()

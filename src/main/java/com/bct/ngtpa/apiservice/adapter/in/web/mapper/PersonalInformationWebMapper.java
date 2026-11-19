@@ -96,8 +96,17 @@ public class PersonalInformationWebMapper {
     Map<String, String> apimConfig = result != null ? result.config() : Map.of();
     Map<String, MemberInfoConfigItem> apimConfigItems =
         result != null ? result.configItems() : Map.of();
+    Map<String, MemberInfoConfigItemType> apimConfigItemTypes =
+        result != null ? result.configItemTypes() : Map.of();
     return toFormPageResponse(
-        apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType);
+        apimData,
+        apimConfig,
+        apimConfigItems,
+        apimConfigItemTypes,
+        language,
+        accountEnv,
+        trustCode,
+        schemeType);
   }
 
   public FormPageResponse<FormSchemaResponse> toFormPageResponse(
@@ -133,6 +142,26 @@ public class PersonalInformationWebMapper {
       String trustCode,
       String schemeType) {
 
+    return toFormPageResponse(
+        apimData,
+        apimConfig,
+        apimConfigItems,
+        Map.of(),
+        language,
+        accountEnv,
+        trustCode,
+        schemeType);
+  }
+
+  private FormPageResponse<FormSchemaResponse> toFormPageResponse(
+      Map<String, Object> apimData,
+      Map<String, String> apimConfig,
+      Map<String, MemberInfoConfigItem> apimConfigItems,
+      Map<String, MemberInfoConfigItemType> apimConfigItemTypes,
+      String language,
+      String accountEnv,
+      String trustCode,
+      String schemeType) {
     PageSchemaProperties pageSchema = resolvePageSchema();
     return FormPageResponse.success(
         buildPage(pageSchema, language, accountEnv, trustCode, schemeType),
@@ -141,6 +170,7 @@ public class PersonalInformationWebMapper {
             apimData,
             apimConfig,
             apimConfigItems,
+            apimConfigItemTypes,
             language,
             accountEnv,
             trustCode,
@@ -246,6 +276,7 @@ public class PersonalInformationWebMapper {
       Map<String, Object> apimData,
       Map<String, String> apimConfig,
       Map<String, MemberInfoConfigItem> apimConfigItems,
+      Map<String, MemberInfoConfigItemType> apimConfigItemTypes,
       String language,
       String accountEnv,
       String trustCode,
@@ -263,6 +294,7 @@ public class PersonalInformationWebMapper {
             apimData,
             apimConfig,
             apimConfigItems,
+            apimConfigItemTypes,
             language,
             accountEnv,
             trustCode,
@@ -437,6 +469,7 @@ public class PersonalInformationWebMapper {
       Map<String, Object> apimData,
       Map<String, String> apimConfig,
       Map<String, MemberInfoConfigItem> apimConfigItems,
+      Map<String, MemberInfoConfigItemType> apimConfigItemTypes,
       String language,
       String accountEnv,
       String trustCode,
@@ -447,7 +480,7 @@ public class PersonalInformationWebMapper {
       return List.of();
     }
     Map<String, FieldState> fieldStates =
-        buildFieldStates(pageSchema, apimData, apimConfig, apimConfigItems);
+        buildFieldStates(pageSchema, apimData, apimConfig, apimConfigItems, apimConfigItemTypes);
     List<SectionResponse> sections = new ArrayList<>();
     int defaultSectionOrder = 10;
     for (SectionProperties sectionSchema : pageSchema.getForm().getSections()) {
@@ -483,7 +516,8 @@ public class PersonalInformationWebMapper {
       PageSchemaProperties pageSchema,
       Map<String, Object> apimData,
       Map<String, String> apimConfig,
-      Map<String, MemberInfoConfigItem> apimConfigItems) {
+      Map<String, MemberInfoConfigItem> apimConfigItems,
+      Map<String, MemberInfoConfigItemType> apimConfigItemTypes) {
     Map<String, FieldState> fieldStates = new LinkedHashMap<>();
     Map<String, BoundField> fieldsByConfigItemId = buildFieldsByConfigItemId(pageSchema);
     Set<String> seenApimConfigItems = new HashSet<>();
@@ -491,6 +525,14 @@ public class PersonalInformationWebMapper {
     if (apimConfigItems != null && !apimConfigItems.isEmpty()) {
       applyApimConfigItems(
           apimConfigItems, apimData, fieldsByConfigItemId, fieldStates, seenApimConfigItems);
+    } else if (apimConfigItemTypes != null && !apimConfigItemTypes.isEmpty()) {
+      applyApimConfigItemTypes(
+          apimConfigItemTypes,
+          apimConfig,
+          apimData,
+          fieldsByConfigItemId,
+          fieldStates,
+          seenApimConfigItems);
     } else if (apimConfig != null) {
       applyLegacyApimConfig(
           apimConfig, apimData, fieldsByConfigItemId, fieldStates, seenApimConfigItems);
@@ -498,6 +540,46 @@ public class PersonalInformationWebMapper {
 
     logMissingExpectedApimConfig(fieldsByConfigItemId, seenApimConfigItems);
     return fieldStates;
+  }
+
+  private void applyApimConfigItemTypes(
+      Map<String, MemberInfoConfigItemType> apimConfigItemTypes,
+      Map<String, String> apimConfig,
+      Map<String, Object> apimData,
+      Map<String, BoundField> fieldsByConfigItemId,
+      Map<String, FieldState> fieldStates,
+      Set<String> seenApimConfigItems) {
+    for (Map.Entry<String, MemberInfoConfigItemType> entry : apimConfigItemTypes.entrySet()) {
+      String configKey = entry.getKey();
+      if (!hasText(configKey)) {
+        continue;
+      }
+      String configValue = apimConfig == null ? null : apimConfig.get(configKey);
+      seenApimConfigItems.add(configKey);
+
+      MemberInfoConfigItemType itemType = entry.getValue();
+      if (itemType == null || itemType == MemberInfoConfigItemType.UNKNOWN) {
+        continue;
+      }
+      if (itemType == MemberInfoConfigItemType.RULE) {
+        continue;
+      }
+
+      BoundField boundField = fieldsByConfigItemId.get(configKey);
+      if (boundField == null) {
+        logMissingYamlBinding(configKey, configValue);
+        continue;
+      }
+      logIfUnusableAccessValue(configKey, configValue);
+      if (FieldAccessResolver.isHidden(configValue)) {
+        continue;
+      }
+      Object value =
+          itemType == MemberInfoConfigItemType.DATA ? resolveValue(apimData, configKey) : null;
+      fieldStates.put(
+          boundField.field().getId(),
+          new FieldState(configKey, configValue, value, boundField.location()));
+    }
   }
 
   private void applyApimConfigItems(

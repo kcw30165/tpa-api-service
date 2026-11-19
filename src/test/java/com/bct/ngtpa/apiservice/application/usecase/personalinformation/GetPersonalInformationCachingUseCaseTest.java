@@ -11,10 +11,12 @@ import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
+import com.bct.ngtpa.apiservice.application.dto.MemberInfoResult;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationConfigCacheEntry;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.GetPersonalInformationService;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -70,6 +72,48 @@ class GetPersonalInformationCachingUseCaseTest {
         .isEqualTo(
             new PersonalInformationConfigCacheEntry(
                 ACCOUNT_REF, "policy-1", Map.of("addr1", "EDITABLE_COM", "email", "READONLY")));
+  }
+
+  @Test
+  void cachesOnlyEligibleRowsFromTheRawMemberInfoMatrix() {
+    var config =
+        java.util.List.of(
+            Map.<String, Object>of(
+                "item-id", "addr1", "item-type", "UI", "config-value", "READONLY"),
+            Map.<String, Object>of(
+                "item-id", "email", "item-type", " DATA ", "config-value", "EDITABLE_OPTION"),
+            Map.<String, Object>of(
+                "item-id", "email", "item-type", "CONFIG", "config-value", "INVALID"));
+    var payload =
+        Map.<String, Object>of(
+            "response",
+            Map.of(
+                "err-message",
+                "",
+                "data",
+                java.util.List.of(Map.of("config", config, "data", java.util.List.of(Map.of())))));
+    var service =
+        new GetPersonalInformationService(command -> Mono.just(new MemberInfoResult(payload)));
+    var cachingUseCase = new GetPersonalInformationCachingUseCase(service, cache);
+    when(cache.write(any(), any(), any())).thenReturn(Mono.empty());
+
+    StepVerifier.create(
+            cachingUseCase.executeAndCache(command(), Optional.of(SID), ACCOUNT_REF, "req-1"))
+        .assertNext(
+            result ->
+                assertThat(result.config())
+                    .containsOnlyKeys("addr1", "email")
+                    .containsEntry("addr1", "READONLY")
+                    .containsEntry("email", "EDITABLE_OPTION"))
+        .verifyComplete();
+
+    ArgumentCaptor<PersonalInformationConfigCacheEntry> entry =
+        ArgumentCaptor.forClass(PersonalInformationConfigCacheEntry.class);
+    verify(cache).write(eq(SID), entry.capture(), eq("req-1"));
+    assertThat(entry.getValue().itemConfig())
+        .containsOnlyKeys("addr1", "email")
+        .containsEntry("addr1", "READONLY")
+        .containsEntry("email", "EDITABLE_OPTION");
   }
 
   @Test

@@ -62,14 +62,17 @@ public class ApimMemberInfoAdapter implements ApimMemberInfoPort {
     GetMemberInfoDataItem first = dataItems.get(0);
     Map<String, Object> result = new LinkedHashMap<>();
     Map<String, String> configMap = new LinkedHashMap<>();
+    Map<String, String> configItemTypes = new LinkedHashMap<>();
     if (first != null && first.getConfig() != null) {
       for (MemberInfoConfigItem cfg : first.getConfig()) {
         if (cfg != null && cfg.getItemId() != null) {
           configMap.put(cfg.getItemId(), cfg.getConfigValue());
+          configItemTypes.put(cfg.getItemId(), cfg.getItemType());
         }
       }
     }
     result.put("config", configMap);
+    result.put("configItemTypes", configItemTypes);
     if (first != null && !CollectionUtils.isEmpty(first.getData())) {
       Map<String, Object> dataObj = first.getData().get(0);
       result.put("data", dataObj == null ? Map.of() : dataObj);

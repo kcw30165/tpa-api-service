@@ -17,6 +17,9 @@ public class MemberInfoConfigItem {
   @JsonProperty("item-id")
   private String itemId;
 
+  @JsonProperty("item-type")
+  private String itemType;
+
   @JsonProperty("config-value")
   private String configValue;
 }
