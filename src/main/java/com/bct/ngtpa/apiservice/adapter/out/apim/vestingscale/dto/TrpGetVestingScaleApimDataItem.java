@@ -69,6 +69,7 @@ public record TrpGetVestingScaleApimDataItem(
 
     public static final String ITEM_ID_KEY = "item-id";
     public static final String CONFIG_VALUE_KEY = "config-value";
+    public static final String ITEM_TYPE_KEY = "item-type";
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
