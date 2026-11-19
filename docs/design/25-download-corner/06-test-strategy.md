@@ -38,19 +38,21 @@ The serialization test mirrors the explicit Vesting response contract test (`Ves
 
 ## M3 — Read-only post-login E2E
 
-**`NEW (proposed) scripts/e2e/download-corner-scenarios.sh`** must run only authenticated GETs and use the shared runner's session, CSRF token, and selected account exactly as provided by the unchanged shared selector on `origin/dev`. It performs no login/logout itself, mutation, direct APIM call, file fetch, or remote file-existence check. Register the pack in the live registry path `scripts/e2e/lib/feature-pack-registry.sh` and execute it through `bash scripts/e2e/run-post-login.sh`.
+`scripts/e2e/download-corner-scenarios.sh` is implemented as a read-only post-login pack. It makes exactly two authenticated GETs, first `Accept-Language: en` and then `Accept-Language: zh-HK`, using the shared runner's session, CSRF token, and selected account unchanged. It performs no login/logout itself, mutation, direct APIM call, file fetch, or remote file-existence check. The `download-corner` name is registered in `scripts/e2e/lib/feature-pack-registry.sh` and is invoked through `bash scripts/e2e/run-post-login.sh`.
 
-Scenarios/assertions:
+Live checks:
 
-1. English GET succeeds and validates the wrapper plus `result.data.categories[].categoryName` and `items[].{itemName,itemLink,fileName}`.
-2. Chinese GET succeeds; validate the Chinese response and expected field-level English fallback where fixture/DS data provides a blank Chinese value.
-3. Assert category/item ascending order, stable ties where the selected account has tied sequences, empty-category preservation, and omission of seq/env.
-4. Assert the pack makes read-only GET requests; it does not probe returned links.
+1. For each language, `http-status` requires 200; `envelope` requires `result.data.categories` to be an array; `category-shape` requires each category to have a non-blank `categoryName` and an `items` array; `item-shape` requires non-blank `itemName`, `itemLink`, and `fileName` on every item; `no-seq-env` rejects keys `seq`, `categorySeq`, `itemSeq`, and `env` anywhere under `result.data`.
+2. Cross-language checks compare category counts and item counts at each category position.
+3. If a language request is not HTTP 200, that language's later checks are recorded as `SKIP`; dependent cross-language checks are also skipped.
+4. Live checks deliberately do not assert ordering, tie order, fallback behavior, or empty-category preservation; Java unit tests cover those rules.
 
-The shared selector's existing conflict rejection applies when `E2E_ACCOUNT_REF` and a non-empty `E2E_ACCOUNT_INDEX` are both supplied (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). M3 does not change that shared selector or add selector rejection tests/scenarios. The pack consumes the shared runner's selection unchanged.
+The per-language result IDs are `<language>.{http-status,envelope,category-shape,item-shape,no-seq-env}` for `en` and `zh-HK`. Cross-language IDs are `language-category-count` and `language-item-count`. Journal hooks use the shared result library without changing terminal output, request order, or exit status; only per-language records carry valid actual HTTP status, and only `<language>.http-status` carries expected status 200.
 
-**Fail-first evidence:** add/run a scenario-pack contract test with stubbed HTTP/login so the new read-only pack fails before implementation. Record red/green results and confirm no live account mutation. M3 is shell-only and has no Java gates.
+The shared selector's existing conflict rejection applies when `E2E_ACCOUNT_REF` and a non-empty `E2E_ACCOUNT_INDEX` are both supplied (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). M3 does not change the selector, `run-post-login.sh`, or `result-records.sh`; the pack consumes the shared runner's selection unchanged.
+
+**Fail-first evidence:** `scripts/e2e/tests/download-corner-scenario-test.sh` and `scripts/e2e/tests/download-corner-result-hooks-test.sh` use a fake `curl`; both were run before the pack existed and failed on the missing pack, then passed after implementation. M3 is shell-only and has no Java gates. Local live validation remains pending; Nick runs it.
 
 ## Milestone gates
 
-For the combined M1+M2 Java gates G1–G4, use the evidence-backed commands and pass criteria in [07 — Implementation Plan, §7 Milestone gate commands](07-implementation-plan.md#7-milestone-gate-commands). Record the command, exit/result, report paths, and gate status in that milestone's evidence report. M3 is a separate shell-only MR and has no Java gates; this section defines no M3 commands. Do not run Maven for M0.
+For the combined M1+M2 Java gates G1–G4, use the evidence-backed commands and pass criteria in [07 — Implementation Plan, §7 Milestone gate commands](07-implementation-plan.md#7-milestone-gate-commands). Record the command, exit/result, report paths, and gate status in that milestone's evidence report. M3 is shell-only and has no Java gates; local live validation is pending Nick. Do not run Maven for M0 or M3.

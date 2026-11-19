@@ -2,7 +2,7 @@
 
 ## 1. Proposed file plan
 
-All paths/classes marked `NEW (proposed)` are names for the future implementation, not existing code. Paths marked `MODIFIED` are existing files verified on `origin/dev`. Every Java counterpart is mapped to the matching Vesting Scale class; shell-only changes have no Java class counterpart.
+Paths/classes marked `NEW (proposed)` preserve the M1/M2 plan as authored. M3 rows record the delivered shell implementation. Paths marked `MODIFIED` were existing files verified on `origin/dev`. Every Java counterpart is mapped to the matching Vesting Scale class; shell-only changes have no Java class counterpart.
 
 | Status | Proposed path | Vesting Scale counterpart / purpose |
 |---|---|---|
@@ -48,9 +48,13 @@ All paths/classes marked `NEW (proposed)` are names for the future implementatio
 | NEW (proposed) | `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/downloadcorner/DownloadCornerWebMapperTest.java` | `VestingScaleWebMapperTest.java` |
 | NEW (proposed) | `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/downloadcorner/DownloadCornerResponseSerializationContractTest.java` | `VestingScaleResponseSerializationContractTest.java` |
 | NEW (proposed) | `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/error/DownloadCornerExceptionMappingRegistrationTest.java` | Feature-specific registry assertion; no existing Download Corner counterpart |
-| NEW (proposed) | `scripts/e2e/download-corner-scenarios.sh` | `scripts/e2e/vesting-scale-scenarios.sh`; read-only two-language pack |
-| MODIFIED | `scripts/e2e/lib/feature-pack-registry.sh` | Register the Download Corner scenario pack; this is the live registry path, not the L16 path lacking `lib/` |
-| NEW (proposed) | `scripts/e2e/tests/download-corner-scenarios-test.sh` | Shell-level contract test for the new pack; exact test harness/path is UNVERIFIED |
+| IMPLEMENTED | `scripts/e2e/download-corner-scenarios.sh` | Read-only two-language pack modeled on `scripts/e2e/vesting-scale-scenarios.sh` |
+| MODIFIED | `scripts/e2e/lib/feature-pack-registry.sh` | Registered `download-corner`; live registry path |
+| NEW | `scripts/e2e/tests/download-corner-scenario-test.sh` | Fake-curl contract tests for GETs, authenticated headers, shapes, redaction, and cross-language counts |
+| NEW | `scripts/e2e/tests/download-corner-result-hooks-test.sh` | Journal ID, status, skip, privacy, and output-invariance tests |
+| MODIFIED | `scripts/e2e/README.md` | Supported-pack list and read-only usage note |
+| MODIFIED | `scripts/e2e/tests/feature-pack-registry-test.sh` | Registration and ordering assertions |
+| MODIFIED | `scripts/e2e/tests/post-login-runner-adapter-test.sh` | Authenticated runner handoff assertion |
 
 The response DTO plan includes only the wrapper/data/category/item structures required by Download Corner. Vesting-specific overview, plan, and presence-section response types have no Download Corner equivalent.
 
@@ -74,20 +78,19 @@ Implement application input/output ports and commands, use case, application wir
 
 Done when mapper, service, controller, response serialization, and mapping-registration tests are green and the full Java milestone gates pass.
 
-## 5. M3 — Read-only E2E pack (separate MR)
+## 5. M3 — Read-only E2E pack (implemented; local live run pending)
 
-M3 starts only after M1+M2 is merged and deployed to DEV. It is a separate MR on a new branch from `origin/dev`.
+The M3 pack and offline tests are implemented on this branch. Nick will run the live pack against the local server; that live validation is pending and is not part of this implementation.
 
-Add the Download Corner scenario script, register it, and invoke it only through `bash scripts/e2e/run-post-login.sh`. Use the shared account selector exactly as it exists on `origin/dev`; the current selector rejects simultaneous `E2E_ACCOUNT_REF` and a non-empty `E2E_ACCOUNT_INDEX` (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). Do not modify the selector or add selector rejection tests/scenarios. Do not introduce any live mutation or file fetch.
+The pack is invoked only through `bash scripts/e2e/run-post-login.sh`. It uses the shared account selector unchanged; that selector rejects simultaneous `E2E_ACCOUNT_REF` and a non-empty `E2E_ACCOUNT_INDEX` (`scripts/e2e/lib/authenticated-login-journey.sh:78-97`). Do not introduce any live mutation or file fetch.
 
-Done when EN/ZH response checks, ordering/shape checks, and shell-level fail-first scenario-pack evidence pass. M3 has no Java gates.
+Done for implementation when the K2 EN/ZH live checks and K3 journal hooks pass their shell-level fail-first tests. Ordering, tie order, fallback, and empty-category behavior remain covered by Java unit tests, not live assertions. M3 has no Java gates.
 
 ## 6. MR and validation boundaries
 
-- **MR 1:** M1 + M2 together.
-- **MR 2:** M3 separately, after M1+M2 is merged and deployed to DEV; create its branch from `origin/dev`.
+- **One MR:** M1 + M2 + M3 together (J1).
 - M1/M2 Java gates G1–G4 are described in §7. M0 approval authorized M1; the explicit M2 implementation request authorizes M2. Record evidence without secret values.
-- M3 is shell-only; use the relevant shell/scenario checks and report no Java gates.
+- M3 is shell-only; run the offline suite and shellcheck, report no Java gates, and leave the local live run pending for Nick.
 - Each milestone records test-first failure and passing evidence. No Vesting Scale code or behavior is changed.
 
 ## 7. Milestone gate commands
