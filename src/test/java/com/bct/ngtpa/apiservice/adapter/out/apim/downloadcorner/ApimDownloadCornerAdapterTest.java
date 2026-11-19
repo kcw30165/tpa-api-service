@@ -241,8 +241,8 @@ class ApimDownloadCornerAdapterTest {
   }
 
   @ParameterizedTest(name = "{0}")
-  @MethodSource("malformedDtoTypes")
-  void mapsDtoParseFailuresToMalformedResponse(
+  @MethodSource({"malformedDtoTypes", "invalidIntegerSequenceValues"})
+  void mapsDtoTypeAndInvalidSequenceFailuresToMalformedResponse(
       String description, String dataJson, String malformedField) {
     respond(successEnvelope(dataJson));
 
@@ -333,15 +333,6 @@ class ApimDownloadCornerAdapterTest {
             })
         .verifyComplete();
     assertThat(events).isEmpty();
-  }
-
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("invalidIntegerSequenceValues")
-  void rejectsFractionalAndOutOfIntRangeSequences(
-      String description, String dataJson, String malformedField) {
-    respond(successEnvelope(dataJson));
-
-    assertMalformed(malformedField, "INVALID_TYPE");
   }
 
   @Test
