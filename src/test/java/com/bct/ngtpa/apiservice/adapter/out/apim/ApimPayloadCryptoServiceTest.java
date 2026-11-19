@@ -1,9 +1,11 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +15,9 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimPayloadFieldTransformer;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimRsaPayloadCrypto;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMemberInfoDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.MemberInfoConfigItem;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -79,6 +84,36 @@ class ApimPayloadCryptoServiceTest {
 
     assertEquals("payload", envelope.getResponse().getData().getFirst().get("secret"));
     assertEquals("visible", envelope.getResponse().getData().getFirst().get("plain"));
+  }
+
+  @Test
+  void decryptsSuppliedPersonalInformationResponseWithCodeclessTreeParser() throws Exception {
+    ApimPayloadCryptoService service =
+        service(encryptionProperties(List.of(), List.of("absent-response-field")));
+    String responseJson =
+        ApimPersonalInformationResponseFixtures.SUPPLIED_TRP_GET_MEMBER_INFO_RESPONSE;
+
+    var source = OBJECT_MAPPER.readTree(responseJson).at("/response/data/0");
+    List<MemberInfoConfigItem> expectedConfig =
+        OBJECT_MAPPER.readerForListOf(MemberInfoConfigItem.class).readValue(source.get("config"));
+    List<Map<String, Object>> expectedData =
+        OBJECT_MAPPER.convertValue(source.get("data"), new TypeReference<>() {});
+
+    ApimResponseEnvelope<GetMemberInfoDataItem> envelope =
+        assertDoesNotThrow(
+            () ->
+                service.decryptResponseEnvelope(
+                    "/ws/NGTPA/v1/TRPGetMemberInfo", responseJson, GetMemberInfoDataItem.class));
+
+    assertEquals("", envelope.getResponse().getErrMessage());
+    assertEquals(1, envelope.getResponse().getData().size());
+    GetMemberInfoDataItem dataItem = envelope.getResponse().getData().getFirst();
+    assertEquals(22, dataItem.getConfig().size());
+    assertEquals(expectedConfig, dataItem.getConfig());
+    assertTrue(dataItem.getConfig().stream().anyMatch(item -> "UI".equals(item.getItemType())));
+    assertTrue(dataItem.getConfig().stream().anyMatch(item -> "DATA".equals(item.getItemType())));
+    assertEquals(19, dataItem.getData().getFirst().size());
+    assertEquals(expectedData, dataItem.getData());
   }
 
   @Test

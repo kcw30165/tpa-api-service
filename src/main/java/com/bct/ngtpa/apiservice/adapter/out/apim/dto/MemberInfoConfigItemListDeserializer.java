@@ -19,7 +19,7 @@ public final class MemberInfoConfigItemListDeserializer
   @Override
   public List<MemberInfoConfigItem> deserialize(JsonParser parser, DeserializationContext context)
       throws IOException {
-    JsonNode config = parser.getCodec().readTree(parser);
+    JsonNode config = context.readTree(parser);
     if (!config.isArray()) {
       throw JsonMappingException.from(parser, "Expected a configuration matrix array.");
     }
@@ -27,7 +27,7 @@ public final class MemberInfoConfigItemListDeserializer
     List<MemberInfoConfigItem> items = new ArrayList<>();
     for (JsonNode item : config) {
       if (isEligible(item)) {
-        items.add(parser.getCodec().treeToValue(item, MemberInfoConfigItem.class));
+        items.add(context.readTreeAsValue(item, MemberInfoConfigItem.class));
       }
     }
     return items;
