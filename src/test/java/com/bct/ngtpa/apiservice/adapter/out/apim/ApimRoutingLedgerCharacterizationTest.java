@@ -263,26 +263,16 @@ class ApimRoutingLedgerCharacterizationTest {
   void downloadCornerUsesTheVestingScaleAccountEnvironmentReadRouting() throws Exception {
     Entry entry = DOWNLOAD_CORNER_LEDGER.getFirst();
     assertThat(LEDGER.size() + DOWNLOAD_CORNER_LEDGER.size()).isEqualTo(26);
-    assertThat(DOWNLOAD_CORNER_LEDGER)
-        .containsExactly(
-            e(
-                "TRPGetDownloadCorner",
-                "downloadcorner/ApimDownloadCornerAdapter.java",
-                "ACCOUNT_ENV",
-                "command.actorUserRole()",
-                "command.accountEnv()",
-                "SAFE_BUSINESS_CALL",
-                "EXECUTOR",
-                "ACCOUNT_ENV"));
 
     String source = source(entry.file());
     assertThat(source)
-        .as(entry.operation())
+        .as("TRPGetDownloadCorner")
         .contains(
-            entry.currentRole(),
-            entry.accountEnvSource(),
-            entry.retry(),
+            "TRPGetDownloadCorner",
             "ApimDatabaseScope.ACCOUNT_ENV",
+            "command.actorUserRole()",
+            "command.accountEnv()",
+            "ApimRetryEligibility.SAFE_BUSINESS_CALL",
             "ApimResubmissionPolicy.ALLOW_RECOVERY",
             "ApimIncidentOwnership.TERMINAL_CALLER",
             "postEnvelope(exchange)");

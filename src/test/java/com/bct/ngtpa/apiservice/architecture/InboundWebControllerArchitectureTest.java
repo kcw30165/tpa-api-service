@@ -115,8 +115,8 @@ class InboundWebControllerArchitectureTest {
           }
         });
     assertThat(duplicates).isEmpty();
-    assertThat(routes).hasSize(37);
     assertThat(routes)
+        .hasSize(37)
         .contains(
             "POST /api/v1/auth/login",
             "POST /api/v1/auth/registration/start",
